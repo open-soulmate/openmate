@@ -167,6 +167,12 @@ export const useAppStore = create<AppState>((set, get) => ({
             : s.activeConversationId,
       };
     }),
+  updateConversationTitle: (id, title) =>
+    set((s) => ({
+      conversations: s.conversations.map((c) =>
+        c.id === id ? { ...c, title } : c,
+      ),
+    })),
   addMessage: (msg) =>
     set((s) => {
       let convId = s.activeConversationId;

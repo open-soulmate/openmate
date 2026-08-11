@@ -2,37 +2,68 @@
 
 **Your Knowledge Companion.**
 
-An open AI companion platform with pluggable skill extensions, built for knowledge workers who want their tools to think alongside them.
+OpenMate is an open-source AI companion platform that helps knowledge workers organize, connect, and retrieve their knowledge. It features a Web app, a Tauri-based desktop client, and a Chrome browser extension for collecting content on the go.
 
 ## Features
 
-- **AI Chat** — Context-aware conversations powered by your personal knowledge base
-- **Knowledge Base** — Organize, tag, and retrieve documents with semantic search
-- **Knowledge Graph** — Visualize connections between concepts, entities, and documents
-- **Skills Marketplace** — Install and manage plugin-style skills to extend capabilities
-- **Unified Search** — Cross-module search across all your knowledge
+| Platform | Description |
+|----------|-------------|
+| **Web App** | Full-featured Next.js web application with AI chat, knowledge base, knowledge graph, and unified search |
+| **Desktop App** | Tauri v2 native desktop client (macOS / Windows / Linux) with system tray and local file access |
+| **Browser Extension** | Chrome MV3 extension for one-click web clipping, selection capture, and side panel browsing |
 
-## Tech Stack
+### Core Modules
 
-- **Framework**: Next.js 16 (App Router)
-- **UI**: shadcn/ui + Tailwind CSS v4
-- **State**: Zustand
-- **Icons**: Lucide React
-- **Markdown**: react-markdown
+- **AI Chat** -- Context-aware conversations powered by your personal knowledge base
+- **Knowledge Base** -- Organize, tag, and star documents with semantic search
+- **Knowledge Graph** -- Visualize connections between concepts, entities, and documents
+- **Skills Marketplace** -- Install and manage plugin-style skills to extend AI capabilities
+- **MCP Integration** -- Connect to MCP (Model Context Protocol) servers for tool-augmented AI
+- **Unified Search** -- Cross-module search across all your knowledge
+- **Agent Management** -- Monitor and configure backend agent nodes
+- **Workflow Builder** -- Design multi-step AI workflows
 
-## Getting Started
+## Quick Start
 
 ```bash
 # Install dependencies
 npm install
 
-# Start dev server
-npm run dev
+# Copy environment variables
+cp .env.local.example .env.local
 
-# Build for production
-npm run build
-npm start
+# Start development server
+npm run dev
 ```
+
+Open [http://localhost:3000](http://localhost:3000) in your browser.
+
+### Desktop App (Tauri)
+
+```bash
+# Requires Rust toolchain (https://rustup.rs)
+npm run tauri:dev
+```
+
+### Browser Extension
+
+```bash
+cd browser-extension
+npm install
+# Load the unpacked extension from chrome://extensions
+```
+
+## Tech Stack
+
+| Layer | Technology |
+|-------|------------|
+| Framework | Next.js 15 (App Router) |
+| UI | shadcn/ui + Tailwind CSS v4 |
+| State | Zustand |
+| Icons | Lucide React |
+| Markdown | react-markdown |
+| Desktop | Tauri v2 |
+| Language | TypeScript 5 |
 
 ## Project Structure
 
@@ -46,22 +77,38 @@ src/
 │   │   ├── graph/          # Knowledge graph visualization
 │   │   ├── search/         # Unified search
 │   │   ├── skills/         # Skill marketplace
+│   │   ├── mcp/            # MCP server integration
+│   │   ├── agents/         # Agent node management
+│   │   ├── workflow/       # Workflow builder
 │   │   └── settings/       # User preferences
 │   ├── layout.tsx          # Root layout
 │   ├── page.tsx            # Landing / dashboard
 │   └── globals.css         # Theme & global styles
 ├── components/
 │   ├── app-shell.tsx       # Sidebar navigation
-│   └── topbar.tsx          # Top navigation bar
+│   ├── topbar.tsx          # Top navigation bar
+│   └── ui/                 # Reusable UI primitives
 ├── stores/
 │   └── app-store.ts        # Zustand global state
 └── lib/
-    └── api.ts              # API client
+    ├── api.ts              # API client (proxied to Soul backend)
+    └── utils.ts            # Utility functions
+src-tauri/                  # Tauri desktop app (Rust)
+browser-extension/          # Chrome MV3 extension
 ```
+
+## Environment Variables
+
+Copy `.env.local.example` to `.env.local` and fill in your values:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `NEXT_PUBLIC_API_URL` | Soul backend server URL | `http://localhost:8000` |
+| `NEXT_PUBLIC_WS_URL` | WebSocket server URL | `ws://localhost:8000/ws` |
 
 ## API Proxy
 
-The dev server proxies `/api/soul/*` requests to the Soul backend service. Configure the target in `next.config.ts`.
+In development, the Next.js server proxies `/api/soul/*` requests to the Soul backend. Configure the target URL via the `SOUL_API_URL` environment variable in `next.config.ts`.
 
 ## License
 

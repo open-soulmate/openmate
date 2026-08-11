@@ -15,6 +15,7 @@ import {
   PanelLeftOpen,
   Server,
   Workflow,
+  Plug,
 } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 
@@ -24,6 +25,7 @@ const navItems = [
   { href: "/graph", label: "Graph", icon: Network },
   { href: "/search", label: "Search", icon: Search },
   { href: "/skills", label: "Skills", icon: Puzzle },
+  { href: "/mcp", label: "MCP", icon: Plug },
   { href: "/agents", label: "Agents", icon: Server },
   { href: "/workflow", label: "Workflow", icon: Workflow },
   { href: "/settings", label: "Settings", icon: Settings },
@@ -34,7 +36,7 @@ export function AppShell() {
   const collapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggle = useAppStore((s) => s.toggleSidebar);
   const [hoverExpanded, setHoverExpanded] = useState(false);
-  const hoverTimer = useRef<ReturnType<typeof setTimeout>>();
+  const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const isExpanded = !collapsed || hoverExpanded;
 
