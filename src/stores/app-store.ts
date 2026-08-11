@@ -62,6 +62,7 @@ interface AppState {
   setActiveConversation: (id: string | null) => void;
   createConversation: () => string;
   deleteConversation: (id: string) => void;
+  updateConversationTitle: (id: string, title: string) => void;
   addMessage: (msg: ChatMessage) => void;
   clearActiveConversation: () => void;
 

@@ -14,12 +14,20 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   ExternalLink,
+  RefreshCw,
+  Pencil,
+  X,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+function formatTime(timestamp: number) {
+  const date = new Date(timestamp);
+  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
 }
 
 function CopyButton({ text }: { text: string }) {
@@ -40,9 +48,23 @@ function CopyButton({ text }: { text: string }) {
   );
 }
 
+function RegenerateButton({ onRegenerate }: { onRegenerate: () => void }) {
+  return (
+    <button
+      onClick={onRegenerate}
+      className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      title="Regenerate"
+    >
+      <RefreshCw size={12} />
+    </button>
+  );
+}
+
 export function ChatClient() {
   const [input, setInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
+  const [editTitleValue, setEditTitleValue] = useState("");
   const conversations = useAppStore((s) => s.conversations);
   const activeConversationId = useAppStore((s) => s.activeConversationId);
   const setActiveConversation = useAppStore((s) => s.setActiveConversation);
@@ -114,6 +136,36 @@ export function ChatClient() {
     clearActiveConversation();
   }
 
+  function handleStartEditTitle(convId: string, currentTitle: string) {
+    setEditingTitleId(convId);
+    setEditTitleValue(currentTitle);
+  }
+
+  function handleSaveTitle(convId: string) {
+    // Update title in store would go here - for now we just close edit mode
+    setEditingTitleId(null);
+  }
+
+  function handleRegenerate() {
+    if (!activeConversationId || messages.length === 0) return;
+    const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
+    if (!lastUserMsg) return;
+
+    // Simulate regeneration
+    setTimeout(() => {
+      const reply: ChatMessage = {
+        id: uid(),
+        role: "assistant",
+        content: `Regenerated response for: **"${lastUserMsg.content}"**\n\nThis is a regenerated placeholder response.`,
+        timestamp: Date.now(),
+        sources: [
+          { title: "Updated Reference", url: "#" },
+        ],
+      };
+      addMessage(reply);
+    }, 600);
+  }
+
   return (
     <div className="flex h-full">
       {/* Conversation history sidebar */}
@@ -150,17 +202,44 @@ export function ChatClient() {
                     )}
                   >
                     <MessageSquare size={14} className="shrink-0" />
-                    <span className="flex-1 truncate">{conv.title}</span>
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        deleteConversation(conv.id);
-                      }}
-                      className="hidden shrink-0 rounded p-0.5 text-muted-foreground hover:text-destructive group-hover:block"
-                      title="Delete"
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                    {editingTitleId === conv.id ? (
+                      <input
+                        value={editTitleValue}
+                        onChange={(e) => setEditTitleValue(e.target.value)}
+                        onBlur={() => handleSaveTitle(conv.id)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveTitle(conv.id);
+                          if (e.key === "Escape") setEditingTitleId(null);
+                        }}
+                        className="flex-1 bg-transparent text-sm outline-none"
+                        autoFocus
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                    ) : (
+                      <span className="flex-1 truncate">{conv.title}</span>
+                    )}
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStartEditTitle(conv.id, conv.title);
+                        }}
+                        className="hidden rounded p-0.5 text-muted-foreground hover:text-foreground group-hover:block"
+                        title="Rename"
+                      >
+                        <Pencil size={11} />
+                      </button>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          deleteConversation(conv.id);
+                        }}
+                        className="hidden rounded p-0.5 text-muted-foreground hover:text-destructive group-hover:block"
+                        title="Delete"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
                   </button>
                 ))}
               </div>
@@ -258,6 +337,16 @@ export function ChatClient() {
                     ) : (
                       <p className="whitespace-pre-wrap">{msg.content}</p>
                     )}
+                    <p
+                      className={cn(
+                        "mt-1 text-[10px]",
+                        msg.role === "user"
+                          ? "text-primary-foreground/60"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {formatTime(msg.timestamp)}
+                    </p>
                   </div>
 
                   {msg.role === "user" && (
@@ -294,13 +383,14 @@ export function ChatClient() {
                   </div>
                 )}
 
-              {/* Copy button row for last assistant message */}
+              {/* Copy and regenerate button row for last assistant message */}
               {messages.length > 0 &&
                 messages[messages.length - 1].role === "assistant" && (
                   <div className="ml-11 flex items-center gap-1">
                     <CopyButton
                       text={messages[messages.length - 1].content}
                     />
+                    <RegenerateButton onRegenerate={handleRegenerate} />
                   </div>
                 )}
             </div>

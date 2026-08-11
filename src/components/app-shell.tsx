@@ -13,6 +13,8 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
+  Server,
+  Workflow,
 } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 
@@ -22,6 +24,8 @@ const navItems = [
   { href: "/graph", label: "Graph", icon: Network },
   { href: "/search", label: "Search", icon: Search },
   { href: "/skills", label: "Skills", icon: Puzzle },
+  { href: "/agents", label: "Agents", icon: Server },
+  { href: "/workflow", label: "Workflow", icon: Workflow },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

@@ -9,6 +9,8 @@ const titles: Record<string, string> = {
   "/graph": "Knowledge Graph",
   "/search": "Search",
   "/skills": "Skills",
+  "/agents": "Agent Nodes",
+  "/workflow": "Workflows",
   "/settings": "Settings",
 };
 
