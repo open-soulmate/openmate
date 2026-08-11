@@ -35,6 +35,23 @@ export interface Skill {
   version: string;
 }
 
+export interface LLMConfig {
+  provider: string;
+  url: string;
+  apiKey: string;
+  model: string;
+}
+
+export interface AgentNode {
+  id: string;
+  name: string;
+  type: string;
+  status: "online" | "offline" | "error";
+  lastSeen: string;
+}
+
+export type Theme = "dark" | "light" | "system";
+
 interface AppState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
@@ -63,12 +80,61 @@ interface AppState {
 
   searchQuery: string;
   setSearchQuery: (q: string) => void;
+
+  // LLM Config
+  llmConfig: LLMConfig;
+  setLLMConfig: (config: Partial<LLMConfig>) => void;
+
+  // Agent Nodes
+  agentNodes: AgentNode[];
+  setAgentNodes: (nodes: AgentNode[]) => void;
+
+  // Theme
+  theme: Theme;
+  setTheme: (theme: Theme) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
   sidebarCollapsed: false,
   toggleSidebar: () =>
     set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+
+  // LLM Config
+  llmConfig: {
+    provider: "openai",
+    url: "https://api.openai.com/v1",
+    apiKey: "",
+    model: "gpt-4o",
+  },
+  setLLMConfig: (config) =>
+    set((s) => ({ llmConfig: { ...s.llmConfig, ...config } })),
+
+  // Agent Nodes
+  agentNodes: [
+    { id: "soul-1", name: "Soul Core", type: "soul", status: "online", lastSeen: "Just now" },
+    { id: "memory-1", name: "Memory Agent", type: "memory", status: "online", lastSeen: "2 min ago" },
+    { id: "retrieval-1", name: "Retrieval Agent", type: "retrieval", status: "offline", lastSeen: "1 hour ago" },
+    { id: "skill-1", name: "Skill Executor", type: "skill", status: "online", lastSeen: "Just now" },
+  ],
+  setAgentNodes: (nodes) => set({ agentNodes: nodes }),
+
+  // Theme
+  theme: "dark",
+  setTheme: (theme) => {
+    set({ theme });
+    if (typeof document !== "undefined") {
+      const root = document.documentElement;
+      root.classList.remove("light", "dark");
+      if (theme === "system") {
+        const sys = window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "light";
+        root.classList.add(sys);
+      } else {
+        root.classList.add(theme);
+      }
+    }
+  },
 
   // Conversations
   conversations: [],
