@@ -1,20 +1,38 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
 import "./globals.css";
-import { Providers } from "./providers";
-
-const inter = Inter({ subsets: ["latin"] });
+import I18nProvider from "@/components/i18n-provider";
 
 export const metadata: Metadata = {
   title: "OpenMate — Your Knowledge Companion",
-  description: "Open-source AI knowledge companion platform",
+  description: "An open AI companion platform with pluggable skill extensions",
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+// Inline script to prevent FOUC on theme load
+const themeInitScript = `
+(function() {
+  try {
+    var t = localStorage.getItem('openmate-theme') || 'dark';
+    var r = document.documentElement;
+    r.setAttribute('data-theme', t);
+    if (t === 'light') { r.classList.add('light'); }
+    else if (t === 'purple') { r.classList.add('dark', 'theme-purple'); }
+    else { r.classList.add('dark'); }
+  } catch(e) {}
+})();
+`;
+
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <html lang="zh-CN" suppressHydrationWarning>
-      <body className={inter.className}>
-        <Providers>{children}</Providers>
+    <html lang="zh" className="dark" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
+      </head>
+      <body className="min-h-screen bg-background text-foreground antialiased">
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );
