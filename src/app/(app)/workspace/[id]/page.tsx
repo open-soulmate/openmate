@@ -1,4 +1,4 @@
-import { WorkspaceDetailClient } from "./workspace-detail-client";
+import WorkspaceDetailClient from "./workspace-detail-client";
 
 export default function WorkspaceDetailPage({
   params,
