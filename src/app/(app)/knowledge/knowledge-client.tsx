@@ -1,34 +1,60 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { BookOpen, Plus, Trash2, Search, Star, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api-client';
+import { BookOpen, Plus, Trash2, Loader2, LogIn } from 'lucide-react';
+import { api, getUserId, setUserId, isLoggedIn } from '@/lib/api-client';
 
-interface Knowledge { id: string; title: string; description?: string; starred?: boolean; pinned?: boolean; document_count?: number; created_at?: string; }
+interface Knowledge { id: string; title: string; content?: string; starred?: boolean; pinned?: boolean; created_at?: string; }
 
 export function KnowledgeClient() {
   const [items, setItems] = useState<Knowledge[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [newTitle, setNewTitle] = useState('');
-  const [newDesc, setNewDesc] = useState('');
+  const [newContent, setNewContent] = useState('');
+  const [loginUser, setLoginUser] = useState('admin');
+  const [loginPass, setLoginPass] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => { loadItems(); }, []);
 
   const loadItems = async () => {
+    const uid = getUserId();
+    if (!uid) { setLoading(false); setShowLogin(true); return; }
     setLoading(true);
     try {
-      const data = await api.getKnowledge();
+      const data = await api.getKnowledge(uid);
       setItems(Array.isArray(data) ? data : data.items || data.results || []);
     } catch (e) { setError(`加载失败: ${(e as Error).message}`); }
     setLoading(false);
   };
 
-  const handleCreate = async () => {
-    if (!newTitle.trim()) return;
+  const handleLogin = async () => {
     try {
-      await api.createKnowledge({ title: newTitle, description: newDesc });
-      setNewTitle(''); setNewDesc(''); setShowCreate(false);
+      const res = await api.login(loginUser, loginPass);
+      // 登录成功后获取用户信息
+      setUserId(loginUser); // 简化：用username做userId
+      setShowLogin(false);
+      loadItems();
+    } catch (e) { setError(`登录失败: ${(e as Error).message}`); }
+  };
+
+  const handleRegister = async () => {
+    try {
+      const res = await api.register(loginUser, loginPass, `${loginUser}@openmate.local`);
+      setUserId(res.id || loginUser);
+      setShowLogin(false);
+      loadItems();
+    } catch (e) { setError(`注册失败: ${(e as Error).message}`); }
+  };
+
+  const handleCreate = async () => {
+    if (!newTitle.trim() || !newContent.trim()) return;
+    const uid = getUserId();
+    if (!uid) { setShowLogin(true); return; }
+    try {
+      await api.createKnowledge(uid, { title: newTitle, content: newContent });
+      setNewTitle(''); setNewContent(''); setShowCreate(false);
       loadItems();
     } catch (e) { setError(`创建失败: ${(e as Error).message}`); }
   };
@@ -37,6 +63,21 @@ export function KnowledgeClient() {
     if (!confirm('确定删除？')) return;
     try { await api.deleteKnowledge(id); loadItems(); } catch (e) { setError(`删除失败: ${(e as Error).message}`); }
   };
+
+  if (showLogin) return (
+    <div className="flex items-center justify-center h-full">
+      <div className="p-6 rounded-lg border bg-card w-80">
+        <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><LogIn className="w-5 h-5" /> 登录知识库</h2>
+        <input value={loginUser} onChange={e => setLoginUser(e.target.value)} placeholder="用户名" className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
+        <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} placeholder="密码" className="w-full mb-3 px-3 py-2 rounded border bg-background text-sm" />
+        {error && <p className="text-xs text-destructive mb-2">{error}</p>}
+        <div className="flex gap-2">
+          <button onClick={handleLogin} className="flex-1 px-3 py-2 rounded bg-primary text-primary-foreground text-sm">登录</button>
+          <button onClick={handleRegister} className="flex-1 px-3 py-2 rounded border text-sm">注册</button>
+        </div>
+      </div>
+    </div>
+  );
 
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
@@ -49,8 +90,8 @@ export function KnowledgeClient() {
       {error && <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>}
       {showCreate && (
         <div className="mb-6 p-4 rounded-lg border bg-card">
-          <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="知识库名称" className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
-          <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="描述（可选）" className="w-full mb-3 px-3 py-2 rounded border bg-background text-sm" />
+          <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="知识条目标题" className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
+          <textarea value={newContent} onChange={e => setNewContent(e.target.value)} placeholder="知识内容" rows={4} className="w-full mb-3 px-3 py-2 rounded border bg-background text-sm resize-none" />
           <div className="flex gap-2">
             <button onClick={handleCreate} className="px-4 py-2 rounded bg-primary text-primary-foreground text-sm">创建</button>
             <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded border text-sm">取消</button>
@@ -58,22 +99,19 @@ export function KnowledgeClient() {
         </div>
       )}
       {items.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground"><BookOpen className="w-12 h-12 mb-4 opacity-50" /><p>还没有知识库，点击"新建"开始</p></div>
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground"><BookOpen className="w-12 h-12 mb-4 opacity-50" /><p>还没有知识条目，点击"新建"开始</p></div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {items.map(item => (
             <div key={item.id} className="p-4 rounded-lg border bg-card hover:border-primary/50 transition-colors cursor-pointer group">
               <div className="flex items-start justify-between">
                 <div className="flex-1">
-                  <h3 className="font-medium flex items-center gap-2">{item.pinned && <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />} {item.title}</h3>
-                  {item.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.description}</p>}
+                  <h3 className="font-medium">{item.title}</h3>
+                  {item.content && <p className="text-sm text-muted-foreground mt-1 line-clamp-3">{item.content}</p>}
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-opacity"><Trash2 className="w-4 h-4" /></button>
               </div>
-              <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
-                {item.document_count !== undefined && <span>{item.document_count} 个文档</span>}
-                {item.created_at && <span>{new Date(item.created_at).toLocaleDateString()}</span>}
-              </div>
+              {item.created_at && <div className="mt-2 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</div>}
             </div>
           ))}
         </div>

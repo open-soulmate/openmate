@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { Search as SearchIcon, FileText, Tag, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api-client';
+import { api, getUserId } from '@/lib/api-client';
 
 interface SearchResult { id: string; title: string; content?: string; score?: number; type?: string; tags?: string[]; }
 
@@ -15,11 +15,10 @@ export function SearchClient() {
     if (!query.trim()) return;
     setLoading(true); setSearched(true);
     try {
-      const data = await api.search(query);
+      const uid = getUserId() || 'default';
+      const data = await api.search(query, uid);
       setResults(Array.isArray(data) ? data : data.results || data.items || []);
-    } catch (e) {
-      setResults([]);
-    }
+    } catch (e) { setResults([]); }
     setLoading(false);
   };
 
@@ -45,7 +44,6 @@ export function SearchClient() {
                   <div className="flex items-center gap-2 mt-2">
                     {r.type && <span className="text-xs px-2 py-0.5 rounded bg-muted">{r.type}</span>}
                     {r.tags?.map(t => <span key={t} className="text-xs px-2 py-0.5 rounded bg-primary/10 text-primary flex items-center gap-1"><Tag className="w-3 h-3" />{t}</span>)}
-                    {r.score !== undefined && <span className="text-xs text-muted-foreground ml-auto">相关度: {(r.score * 100).toFixed(0)}%</span>}
                   </div>
                 </div>
               </div>

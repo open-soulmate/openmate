@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Network, Loader2 } from 'lucide-react';
-import { api } from '@/lib/api-client';
+import { api, getUserId } from '@/lib/api-client';
 
 interface Entity { id: string; name: string; type?: string; properties?: Record<string, unknown>; }
 interface Relation { id: string; source_id: string; target_id: string; type: string; }
@@ -17,10 +17,11 @@ export function GraphClient() {
   const loadGraph = async () => {
     setLoading(true);
     try {
-      const [eData, rData] = await Promise.all([api.getEntities(), api.getRelations()]);
+      const uid = getUserId() || 'default';
+      const [eData, rData] = await Promise.all([api.getEntities(uid), api.getRelations()]);
       setEntities(Array.isArray(eData) ? eData : eData.items || eData.results || []);
       setRelations(Array.isArray(rData) ? rData : rData.items || rData.results || []);
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
     setLoading(false);
   };
 
