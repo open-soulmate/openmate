@@ -7,6 +7,7 @@ import { useAppStore } from "@/stores/app-store";
 import {
   MessageSquare,
   BookOpen,
+  GraduationCap,
   Network,
   Search,
   Puzzle,
@@ -22,6 +23,7 @@ import { useState, useRef, useCallback } from "react";
 const navItems = [
   { href: "/chat", label: "Chat", icon: MessageSquare },
   { href: "/knowledge", label: "Knowledge", icon: BookOpen },
+  { href: "/learn", label: "Learn", icon: GraduationCap },
   { href: "/graph", label: "Graph", icon: Network },
   { href: "/search", label: "Search", icon: Search },
   { href: "/skills", label: "Skills", icon: Puzzle },
