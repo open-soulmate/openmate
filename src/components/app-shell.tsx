@@ -17,6 +17,7 @@ import {
   Server,
   Workflow,
   Plug,
+  Users,
 } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 
@@ -29,6 +30,7 @@ const navItems = [
   { href: "/skills", label: "Skills", icon: Puzzle },
   { href: "/mcp", label: "MCP", icon: Plug },
   { href: "/agents", label: "Agents", icon: Server },
+  { href: "/groups", label: "Agent 群", icon: Users },
   { href: "/workflow", label: "Workflow", icon: Workflow },
   { href: "/settings", label: "Settings", icon: Settings },
 ];

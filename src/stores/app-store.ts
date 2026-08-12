@@ -14,6 +14,8 @@ export interface Conversation {
   messages: ChatMessage[];
   createdAt: number;
   updatedAt: number;
+  pinned?: boolean;
+  unreadCount?: number;
 }
 
 export interface KnowledgeItem {
@@ -42,15 +44,51 @@ export interface LLMConfig {
   model: string;
 }
 
+export type AgentType = "soma" | "ai" | "mcp";
+
 export interface AgentNode {
   id: string;
   name: string;
-  type: string;
+  type: AgentType;
   status: "online" | "offline" | "error";
   lastSeen: string;
+  // Soma fields
+  nodeId?: string;
+  endpoint?: string;
+  // AI fields
+  provider?: string;
+  apiKey?: string;
+  baseUrl?: string;
+  model?: string;
+  // MCP fields
+  serverUrl?: string;
+  tools?: string[];
 }
 
 export type Theme = "dark" | "light" | "system";
+
+export type GroupDispatchMode = "auto" | "manual";
+
+export interface AgentGroup {
+  id: string;
+  name: string;
+  description: string;
+  masterAgentId: string;
+  memberAgentIds: string[];
+  dispatchMode: GroupDispatchMode;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface GroupChatMessage {
+  id: string;
+  role: "user" | "agent";
+  content: string;
+  agentId?: string;
+  agentName?: string;
+  agentType?: AgentType;
+  timestamp: number;
+}
 
 interface AppState {
   sidebarCollapsed: boolean;
@@ -63,6 +101,7 @@ interface AppState {
   createConversation: () => string;
   deleteConversation: (id: string) => void;
   updateConversationTitle: (id: string, title: string) => void;
+  togglePinConversation: (id: string) => void;
   addMessage: (msg: ChatMessage) => void;
   clearActiveConversation: () => void;
 
@@ -90,6 +129,18 @@ interface AppState {
   agentNodes: AgentNode[];
   setAgentNodes: (nodes: AgentNode[]) => void;
 
+  // Agent Groups
+  groups: AgentGroup[];
+  setGroups: (groups: AgentGroup[]) => void;
+  addGroup: (group: AgentGroup) => void;
+  updateGroup: (id: string, updates: Partial<AgentGroup>) => void;
+  deleteGroup: (id: string) => void;
+
+  // Group Chat Messages (keyed by group id)
+  groupMessages: Record<string, GroupChatMessage[]>;
+  addGroupMessage: (groupId: string, msg: GroupChatMessage) => void;
+  clearGroupMessages: (groupId: string) => void;
+
   // Theme
   theme: Theme;
   setTheme: (theme: Theme) => void;
@@ -112,12 +163,43 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Agent Nodes
   agentNodes: [
-    { id: "soul-1", name: "Soul Core", type: "soul", status: "online", lastSeen: "Just now" },
-    { id: "memory-1", name: "Memory Agent", type: "memory", status: "online", lastSeen: "2 min ago" },
-    { id: "retrieval-1", name: "Retrieval Agent", type: "retrieval", status: "offline", lastSeen: "1 hour ago" },
-    { id: "skill-1", name: "Skill Executor", type: "skill", status: "online", lastSeen: "Just now" },
+    { id: "soma-1", name: "采集分身-北京", type: "soma", status: "online", lastSeen: "Just now", nodeId: "soma-bj-01", endpoint: "ws://10.0.1.12:8900" },
+    { id: "soma-2", name: "采集分身-上海", type: "soma", status: "offline", lastSeen: "1 hour ago", nodeId: "soma-sh-01", endpoint: "ws://10.0.2.12:8900" },
+    { id: "ai-1", name: "GPT-4o", type: "ai", status: "online", lastSeen: "Just now", provider: "OpenAI", model: "gpt-4o", baseUrl: "https://api.openai.com/v1" },
+    { id: "ai-2", name: "Claude Sonnet", type: "ai", status: "online", lastSeen: "3 min ago", provider: "Claude", model: "claude-sonnet-4-20250514", baseUrl: "https://api.anthropic.com/v1" },
+    { id: "mcp-1", name: "文件系统 MCP", type: "mcp", status: "online", lastSeen: "5 min ago", serverUrl: "http://localhost:3001", tools: ["read_file", "write_file", "list_dir"] },
+    { id: "mcp-2", name: "数据库 MCP", type: "mcp", status: "error", lastSeen: "30 min ago", serverUrl: "http://localhost:3002", tools: ["query", "execute", "schema"] },
   ],
   setAgentNodes: (nodes) => set({ agentNodes: nodes }),
+
+  // Agent Groups
+  groups: [],
+  setGroups: (groups) => set({ groups }),
+  addGroup: (group) => set((s) => ({ groups: [group, ...s.groups] })),
+  updateGroup: (id, updates) =>
+    set((s) => ({
+      groups: s.groups.map((g) =>
+        g.id === id ? { ...g, ...updates, updatedAt: Date.now() } : g,
+      ),
+    })),
+  deleteGroup: (id) =>
+    set((s) => ({
+      groups: s.groups.filter((g) => g.id !== id),
+    })),
+
+  // Group Chat Messages
+  groupMessages: {},
+  addGroupMessage: (groupId, msg) =>
+    set((s) => ({
+      groupMessages: {
+        ...s.groupMessages,
+        [groupId]: [...(s.groupMessages[groupId] ?? []), msg],
+      },
+    })),
+  clearGroupMessages: (groupId) =>
+    set((s) => ({
+      groupMessages: { ...s.groupMessages, [groupId]: [] },
+    })),
 
   // Theme
   theme: "dark",
@@ -171,6 +253,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => ({
       conversations: s.conversations.map((c) =>
         c.id === id ? { ...c, title } : c,
+      ),
+    })),
+  togglePinConversation: (id) =>
+    set((s) => ({
+      conversations: s.conversations.map((c) =>
+        c.id === id ? { ...c, pinned: !c.pinned } : c,
       ),
     })),
   addMessage: (msg) =>
@@ -248,3 +336,31 @@ export const useAppStore = create<AppState>((set, get) => ({
   searchQuery: "",
   setSearchQuery: (q) => set({ searchQuery: q }),
 }));
+
+// ─── localStorage persistence for conversations ────────────────────────────
+if (typeof window !== "undefined") {
+  try {
+    const saved = localStorage.getItem("openmate-conversations");
+    if (saved) {
+      const parsed = JSON.parse(saved);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        useAppStore.setState({
+          conversations: parsed,
+          activeConversationId: parsed[0]?.id ?? null,
+        });
+      }
+    }
+  } catch {
+    // ignore
+  }
+
+  useAppStore.subscribe((state, prevState) => {
+    if (state.conversations !== prevState.conversations) {
+      try {
+        localStorage.setItem("openmate-conversations", JSON.stringify(state.conversations));
+      } catch {
+        // ignore
+      }
+    }
+  });
+}

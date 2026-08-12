@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
-import { useAppStore, type ChatMessage } from "@/stores/app-store";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useAppStore, type ChatMessage, type Conversation } from "@/stores/app-store";
 import {
   Send,
   Trash2,
@@ -17,9 +17,14 @@ import {
   RefreshCw,
   Pencil,
   X,
+  Pin,
+  PinOff,
+  Search,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
@@ -27,8 +32,51 @@ function uid() {
 
 function formatTime(timestamp: number) {
   const date = new Date(timestamp);
-  return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  const now = new Date();
+  const diff = now.getTime() - timestamp;
+  const isToday =
+    date.getDate() === now.getDate() &&
+    date.getMonth() === now.getMonth() &&
+    date.getFullYear() === now.getFullYear();
+
+  if (isToday) {
+    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+  }
+
+  const yesterday = new Date(now);
+  yesterday.setDate(yesterday.getDate() - 1);
+  const isYesterday =
+    date.getDate() === yesterday.getDate() &&
+    date.getMonth() === yesterday.getMonth() &&
+    date.getFullYear() === yesterday.getFullYear();
+
+  if (isYesterday) {
+    return "昨天";
+  }
+
+  if (date.getFullYear() === now.getFullYear()) {
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  }
+
+  return `${date.getFullYear()}/${date.getMonth() + 1}/${date.getDate()}`;
 }
+
+function formatTimeFull(timestamp: number) {
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
+function getLastMessagePreview(conv: Conversation): string {
+  if (conv.messages.length === 0) return "暂无消息";
+  const last = conv.messages[conv.messages.length - 1];
+  const prefix = last.role === "user" ? "" : "[AI] ";
+  const text = last.content.replace(/\n/g, " ").replace(/\*\*/g, "");
+  return prefix + (text.length > 40 ? text.slice(0, 40) + "..." : text);
+}
+
+// ─── Sub Components ──────────────────────────────────────────────────────────
 
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
@@ -41,7 +89,7 @@ function CopyButton({ text }: { text: string }) {
     <button
       onClick={handleCopy}
       className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      title="Copy"
+      title="复制"
     >
       {copied ? <Check size={12} /> : <Copy size={12} />}
     </button>
@@ -53,18 +101,146 @@ function RegenerateButton({ onRegenerate }: { onRegenerate: () => void }) {
     <button
       onClick={onRegenerate}
       className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
-      title="Regenerate"
+      title="重新生成"
     >
       <RefreshCw size={12} />
     </button>
   );
 }
 
+// ─── Conversation List Item ──────────────────────────────────────────────────
+
+function ConversationItem({
+  conv,
+  isActive,
+  onSelect,
+  onDelete,
+  onTogglePin,
+  onStartEdit,
+  isEditing,
+  editValue,
+  onEditChange,
+  onSaveEdit,
+  onCancelEdit,
+}: {
+  conv: Conversation;
+  isActive: boolean;
+  onSelect: () => void;
+  onDelete: () => void;
+  onTogglePin: () => void;
+  onStartEdit: () => void;
+  isEditing: boolean;
+  editValue: string;
+  onEditChange: (v: string) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
+}) {
+  const unread = conv.unreadCount ?? 0;
+  const lastTime = conv.messages.length > 0 ? formatTime(conv.messages[conv.messages.length - 1].timestamp) : "";
+
+  return (
+    <button
+      onClick={onSelect}
+      className={cn(
+        "group relative flex w-full items-start gap-3 rounded-lg px-3 py-2.5 text-left transition-colors",
+        isActive
+          ? "bg-primary/10 border border-primary/20"
+          : "border border-transparent hover:bg-accent/50",
+      )}
+    >
+      {/* Avatar */}
+      <div className="relative mt-0.5 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-primary/10">
+        <MessageSquare size={18} className="text-primary" />
+        {conv.pinned && (
+          <div className="absolute -right-0.5 -top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-amber-500 text-white">
+            <Pin size={8} />
+          </div>
+        )}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2">
+          {isEditing ? (
+            <input
+              value={editValue}
+              onChange={(e) => onEditChange(e.target.value)}
+              onBlur={onSaveEdit}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") onSaveEdit();
+                if (e.key === "Escape") onCancelEdit();
+              }}
+              className="flex-1 min-w-0 bg-transparent text-sm font-medium outline-none border-b border-primary"
+              autoFocus
+              onClick={(e) => e.stopPropagation()}
+            />
+          ) : (
+            <span className={cn("flex-1 min-w-0 truncate text-sm", isActive ? "font-medium" : "font-normal")}>
+              {conv.title}
+            </span>
+          )}
+          <div className="flex shrink-0 items-center gap-1">
+            <span className="text-[10px] text-muted-foreground">{lastTime}</span>
+            {unread > 0 && (
+              <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[9px] font-medium text-destructive-foreground">
+                {unread > 99 ? "99+" : unread}
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="mt-0.5 flex items-center justify-between gap-2">
+          <span className="flex-1 min-w-0 truncate text-xs text-muted-foreground">
+            {getLastMessagePreview(conv)}
+          </span>
+          {/* Action buttons */}
+          <div className="flex shrink-0 items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onTogglePin();
+              }}
+              className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+              title={conv.pinned ? "取消置顶" : "置顶"}
+            >
+              {conv.pinned ? <PinOff size={11} /> : <Pin size={11} />}
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onStartEdit();
+              }}
+              className="rounded p-0.5 text-muted-foreground hover:text-foreground"
+              title="重命名"
+            >
+              <Pencil size={11} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onDelete();
+              }}
+              className="rounded p-0.5 text-muted-foreground hover:text-destructive"
+              title="删除"
+            >
+              <X size={12} />
+            </button>
+          </div>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+
 export function ChatClient() {
   const [input, setInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [editingTitleId, setEditingTitleId] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+
   const conversations = useAppStore((s) => s.conversations);
   const activeConversationId = useAppStore((s) => s.activeConversationId);
   const setActiveConversation = useAppStore((s) => s.setActiveConversation);
@@ -72,18 +248,38 @@ export function ChatClient() {
   const deleteConversation = useAppStore((s) => s.deleteConversation);
   const addMessage = useAppStore((s) => s.addMessage);
   const clearActiveConversation = useAppStore((s) => s.clearActiveConversation);
+  const updateConversationTitle = useAppStore((s) => s.updateConversationTitle);
+  const togglePinConversation = useAppStore((s) => s.togglePinConversation);
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const activeConversation = conversations.find(
-    (c) => c.id === activeConversationId,
-  );
+  const activeConversation = conversations.find((c) => c.id === activeConversationId);
   const messages = activeConversation?.messages ?? [];
 
+  // Sort conversations: pinned first, then by updatedAt
+  const sortedConversations = useMemo(() => {
+    const filtered = searchQuery
+      ? conversations.filter(
+          (c) =>
+            c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+            c.messages.some((m) => m.content.toLowerCase().includes(searchQuery.toLowerCase())),
+        )
+      : conversations;
+
+    return [...filtered].sort((a, b) => {
+      if (a.pinned && !b.pinned) return -1;
+      if (!a.pinned && b.pinned) return 1;
+      return b.updatedAt - a.updatedAt;
+    });
+  }, [conversations, searchQuery]);
+
+  // Auto-scroll on new messages
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
+  // Auto-grow textarea
   const autoGrow = useCallback(() => {
     const el = textareaRef.current;
     if (!el) return;
@@ -94,6 +290,20 @@ export function ChatClient() {
   useEffect(() => {
     autoGrow();
   }, [input, autoGrow]);
+
+  // Handle conversation switch - clear unread
+  function handleSelectConversation(id: string) {
+    setActiveConversation(id);
+    // Clear unread count
+    const conv = useAppStore.getState().conversations.find((c) => c.id === id);
+    if (conv && (conv.unreadCount ?? 0) > 0) {
+      useAppStore.setState((s) => ({
+        conversations: s.conversations.map((c) =>
+          c.id === id ? { ...c, unreadCount: 0 } : c,
+        ),
+      }));
+    }
+  }
 
   function handleSend() {
     const text = input.trim();
@@ -111,17 +321,22 @@ export function ChatClient() {
     };
     addMessage(userMsg);
     setInput("");
+    // Reset textarea height
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+    }
 
     // Mock assistant reply with sources
+    const currentConvId = useAppStore.getState().activeConversationId;
     setTimeout(() => {
       const reply: ChatMessage = {
         id: uid(),
         role: "assistant",
-        content: `I received your message: **"${text}"**\n\nThis is a placeholder response. Connect the Soul backend to enable real AI conversations.\n\nYou can ask me about your knowledge base, and I'll provide context-aware answers.`,
+        content: `收到你的消息：**"${text}"**\n\n这是一个模拟回复。连接真实后端后，将启用 AI 对话能力。\n\n你可以向我提问关于你的知识库的问题，我会基于上下文给出回答。`,
         timestamp: Date.now(),
         sources: [
-          { title: "Project Architecture Overview", url: "#" },
-          { title: "API Design Patterns", url: "#" },
+          { title: "项目架构概览", url: "#" },
+          { title: "API 设计模式", url: "#" },
         ],
       };
       addMessage(reply);
@@ -142,8 +357,21 @@ export function ChatClient() {
   }
 
   function handleSaveTitle(convId: string) {
-    // Update title in store would go here - for now we just close edit mode
+    if (editTitleValue.trim()) {
+      updateConversationTitle(convId, editTitleValue.trim());
+    }
     setEditingTitleId(null);
+  }
+
+  function handleDeleteConversation(id: string) {
+    setDeleteTarget(id);
+  }
+
+  function confirmDelete() {
+    if (deleteTarget) {
+      deleteConversation(deleteTarget);
+      setDeleteTarget(null);
+    }
   }
 
   function handleRegenerate() {
@@ -151,16 +379,13 @@ export function ChatClient() {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     if (!lastUserMsg) return;
 
-    // Simulate regeneration
     setTimeout(() => {
       const reply: ChatMessage = {
         id: uid(),
         role: "assistant",
-        content: `Regenerated response for: **"${lastUserMsg.content}"**\n\nThis is a regenerated placeholder response.`,
+        content: `重新生成回复：**"${lastUserMsg.content}"**\n\n这是重新生成的模拟回复。`,
         timestamp: Date.now(),
-        sources: [
-          { title: "Updated Reference", url: "#" },
-        ],
+        sources: [{ title: "更新的参考", url: "#" }],
       };
       addMessage(reply);
     }, 600);
@@ -168,79 +393,71 @@ export function ChatClient() {
 
   return (
     <div className="flex h-full">
-      {/* Conversation history sidebar */}
+      {/* ─── Conversation List Sidebar ──────────────────────────────── */}
       {sidebarOpen && (
-        <div className="hidden w-64 shrink-0 border-r border-border bg-sidebar md:flex md:flex-col">
+        <div className="flex w-72 shrink-0 flex-col border-r border-border bg-sidebar">
+          {/* Sidebar header */}
           <div className="flex items-center justify-between border-b border-border px-3 py-3">
             <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-              Conversations
+              对话列表
             </span>
             <button
               onClick={handleNewChat}
               className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-              title="New conversation"
+              title="新建对话"
             >
               <Plus size={16} />
             </button>
           </div>
-          <div className="flex-1 overflow-y-auto px-2 py-2">
-            {conversations.length === 0 ? (
-              <p className="px-2 py-4 text-center text-xs text-muted-foreground">
-                No conversations yet
-              </p>
+
+          {/* Search */}
+          <div className="px-3 py-2">
+            <div className="relative">
+              <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="搜索对话..."
+                className="w-full rounded-md border border-border bg-muted/50 py-1.5 pl-8 pr-3 text-xs outline-none focus:border-primary transition-colors"
+              />
+            </div>
+          </div>
+
+          {/* Conversation list */}
+          <div className="flex-1 overflow-y-auto px-2 py-1">
+            {sortedConversations.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center">
+                <MessageSquare size={24} className="mb-2 text-muted-foreground/40" />
+                <p className="text-xs text-muted-foreground">
+                  {searchQuery ? "未找到匹配的对话" : "暂无对话"}
+                </p>
+                {!searchQuery && (
+                  <button
+                    onClick={handleNewChat}
+                    className="mt-2 text-xs text-primary hover:underline"
+                  >
+                    新建对话
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="space-y-0.5">
-                {conversations.map((conv) => (
-                  <button
+                {sortedConversations.map((conv) => (
+                  <ConversationItem
                     key={conv.id}
-                    onClick={() => setActiveConversation(conv.id)}
-                    className={cn(
-                      "group flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-sm transition-colors",
-                      conv.id === activeConversationId
-                        ? "bg-sidebar-accent text-foreground font-medium"
-                        : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",
-                    )}
-                  >
-                    <MessageSquare size={14} className="shrink-0" />
-                    {editingTitleId === conv.id ? (
-                      <input
-                        value={editTitleValue}
-                        onChange={(e) => setEditTitleValue(e.target.value)}
-                        onBlur={() => handleSaveTitle(conv.id)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") handleSaveTitle(conv.id);
-                          if (e.key === "Escape") setEditingTitleId(null);
-                        }}
-                        className="flex-1 bg-transparent text-sm outline-none"
-                        autoFocus
-                        onClick={(e) => e.stopPropagation()}
-                      />
-                    ) : (
-                      <span className="flex-1 truncate">{conv.title}</span>
-                    )}
-                    <div className="flex shrink-0 items-center gap-0.5">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleStartEditTitle(conv.id, conv.title);
-                        }}
-                        className="hidden rounded p-0.5 text-muted-foreground hover:text-foreground group-hover:block"
-                        title="Rename"
-                      >
-                        <Pencil size={11} />
-                      </button>
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          deleteConversation(conv.id);
-                        }}
-                        className="hidden rounded p-0.5 text-muted-foreground hover:text-destructive group-hover:block"
-                        title="Delete"
-                      >
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </button>
+                    conv={conv}
+                    isActive={conv.id === activeConversationId}
+                    onSelect={() => handleSelectConversation(conv.id)}
+                    onDelete={() => handleDeleteConversation(conv.id)}
+                    onTogglePin={() => togglePinConversation(conv.id)}
+                    onStartEdit={() => handleStartEditTitle(conv.id, conv.title)}
+                    isEditing={editingTitleId === conv.id}
+                    editValue={editTitleValue}
+                    onEditChange={setEditTitleValue}
+                    onSaveEdit={() => handleSaveTitle(conv.id)}
+                    onCancelEdit={() => setEditingTitleId(null)}
+                  />
                 ))}
               </div>
             )}
@@ -248,32 +465,46 @@ export function ChatClient() {
         </div>
       )}
 
-      {/* Main chat area */}
+      {/* ─── Main Chat Area ────────────────────────────────────────── */}
       <div className="flex flex-1 flex-col">
         {/* Chat header */}
-        <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-4">
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="hidden h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground md:flex"
-          >
-            {sidebarOpen ? (
-              <PanelLeftClose size={16} />
-            ) : (
-              <PanelLeftOpen size={16} />
+        <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-4">
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              {sidebarOpen ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+            </button>
+            <span className="text-sm font-medium">
+              {activeConversation ? activeConversation.title : "新对话"}
+            </span>
+            {activeConversation && (
+              <span className="text-[10px] text-muted-foreground">
+                {messages.length} 条消息
+              </span>
             )}
-          </button>
-          <span className="text-xs text-muted-foreground">
-            {activeConversation
-              ? activeConversation.title
-              : "New conversation"}
-          </span>
-          <button
-            onClick={handleClear}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-            title="Clear conversation"
-          >
-            <Trash2 size={14} />
-          </button>
+          </div>
+          <div className="flex items-center gap-1">
+            {activeConversation && (
+              <>
+                <button
+                  onClick={() => togglePinConversation(activeConversation.id)}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                  title={activeConversation.pinned ? "取消置顶" : "置顶"}
+                >
+                  {activeConversation.pinned ? <PinOff size={14} /> : <Pin size={14} />}
+                </button>
+                <button
+                  onClick={handleClear}
+                  className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+                  title="清空对话"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </>
+            )}
+          </div>
         </div>
 
         {/* Messages */}
@@ -283,19 +514,12 @@ export function ChatClient() {
               <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10">
                 <Bot className="h-7 w-7 text-primary" />
               </div>
-              <h2 className="mb-2 text-lg font-medium">
-                How can I help you today?
-              </h2>
+              <h2 className="mb-2 text-lg font-medium">有什么可以帮你的？</h2>
               <p className="max-w-sm text-sm text-muted-foreground">
-                Ask anything. Your knowledge base provides context for more
-                accurate answers.
+                随意提问。你的知识库将提供上下文，帮助生成更准确的回答。
               </p>
               <div className="mt-6 flex flex-wrap justify-center gap-2">
-                {[
-                  "Summarize my notes",
-                  "What is OpenMate?",
-                  "Explain the architecture",
-                ].map((q) => (
+                {["总结我的笔记", "OpenMate 是什么？", "解释一下架构"].map((q) => (
                   <button
                     key={q}
                     onClick={() => setInput(q)}
@@ -345,7 +569,7 @@ export function ChatClient() {
                           : "text-muted-foreground",
                       )}
                     >
-                      {formatTime(msg.timestamp)}
+                      {formatTimeFull(msg.timestamp)}
                     </p>
                   </div>
 
@@ -364,32 +588,28 @@ export function ChatClient() {
                 messages[messages.length - 1].sources!.length > 0 && (
                   <div className="ml-11 max-w-3xl">
                     <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-                      Sources
+                      参考来源
                     </p>
                     <div className="flex flex-wrap gap-1.5">
-                      {messages[messages.length - 1].sources!.map(
-                        (src, i) => (
-                          <a
-                            key={i}
-                            href={src.url}
-                            className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
-                          >
-                            <ExternalLink size={10} />
-                            {src.title}
-                          </a>
-                        ),
-                      )}
+                      {messages[messages.length - 1].sources!.map((src, i) => (
+                        <a
+                          key={i}
+                          href={src.url}
+                          className="inline-flex items-center gap-1 rounded-md border border-border bg-card px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
+                        >
+                          <ExternalLink size={10} />
+                          {src.title}
+                        </a>
+                      ))}
                     </div>
                   </div>
                 )}
 
-              {/* Copy and regenerate button row for last assistant message */}
+              {/* Copy and regenerate buttons for last assistant message */}
               {messages.length > 0 &&
                 messages[messages.length - 1].role === "assistant" && (
                   <div className="ml-11 flex items-center gap-1">
-                    <CopyButton
-                      text={messages[messages.length - 1].content}
-                    />
+                    <CopyButton text={messages[messages.length - 1].content} />
                     <RegenerateButton onRegenerate={handleRegenerate} />
                   </div>
                 )}
@@ -411,7 +631,7 @@ export function ChatClient() {
                     handleSend();
                   }
                 }}
-                placeholder="Type a message..."
+                placeholder="输入消息... (Enter 发送，Shift+Enter 换行)"
                 rows={1}
                 className="max-h-40 min-h-[36px] flex-1 resize-none bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
               />
@@ -425,11 +645,37 @@ export function ChatClient() {
               </button>
             </div>
             <p className="mt-2 text-center text-[11px] text-muted-foreground">
-              OpenMate can make mistakes. Verify important information.
+              OpenMate 可能会犯错，请核实重要信息。
             </p>
           </div>
         </div>
       </div>
+
+      {/* ─── Delete Confirmation Dialog ─────────────────────────────── */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="w-80 rounded-xl border border-border bg-card p-5 shadow-xl">
+            <h3 className="text-sm font-medium">删除对话</h3>
+            <p className="mt-2 text-xs text-muted-foreground">
+              确定要删除这个对话吗？此操作不可撤销。
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
+              >
+                取消
+              </button>
+              <button
+                onClick={confirmDelete}
+                className="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90"
+              >
+                删除
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
