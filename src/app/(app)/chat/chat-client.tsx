@@ -5,7 +5,7 @@ import { api } from '@/lib/api-client';
 
 interface Message { id: string; role: 'user' | 'assistant'; content: string; timestamp: Date; }
 
-export default function ChatClient() {
+export function ChatClient() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);

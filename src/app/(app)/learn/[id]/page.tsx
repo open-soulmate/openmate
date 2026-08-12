@@ -1,4 +1,4 @@
-import CourseClient from "./course-client";
+import { CourseClient } from "./course-client";
 
 export default async function CoursePage({
   params,

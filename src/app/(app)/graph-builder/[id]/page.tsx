@@ -1,4 +1,4 @@
-import GraphBuilderClient from "../graph-builder-client";
+import { GraphBuilderClient } from "../graph-builder-client";
 
 export default function GraphBuilderEditPage() {
   return <GraphBuilderClient />;

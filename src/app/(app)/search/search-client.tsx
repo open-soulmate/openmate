@@ -5,7 +5,7 @@ import { api } from '@/lib/api-client';
 
 interface SearchResult { id: string; title: string; content?: string; score?: number; type?: string; tags?: string[]; }
 
-export default function SearchClient() {
+export function SearchClient() {
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);

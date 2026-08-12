@@ -1,4 +1,4 @@
-import McpClient from "./mcp-client";
+import { McpClient } from "./mcp-client";
 
 export default function McpPage() {
   return <McpClient />;
