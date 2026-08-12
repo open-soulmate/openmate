@@ -190,6 +190,10 @@ export interface GroupChatMessage {
 }
 
 interface AppState {
+  // Onboarding
+  hasCompletedOnboarding: boolean;
+  completeOnboarding: () => void;
+
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 
@@ -265,6 +269,18 @@ interface AppState {
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
+  // Onboarding
+  hasCompletedOnboarding:
+    typeof window !== "undefined"
+      ? localStorage.getItem("openmate-onboarding-completed") === "true"
+      : false,
+  completeOnboarding: () => {
+    set({ hasCompletedOnboarding: true });
+    if (typeof window !== "undefined") {
+      localStorage.setItem("openmate-onboarding-completed", "true");
+    }
+  },
+
   sidebarCollapsed: false,
   toggleSidebar: () =>
     set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),

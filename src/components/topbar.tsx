@@ -16,6 +16,7 @@ export function Topbar() {
     "/skills": t("nav.skills"),
     "/agents": t("nav.agents"),
     "/workflow": t("nav.workflow"),
+    "/workflow-builder": t("nav.workflowBuilder"),
     "/settings": t("nav.settings"),
     "/learn": t("nav.learn"),
     "/mcp": t("nav.mcp"),

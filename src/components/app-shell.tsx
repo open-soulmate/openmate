@@ -19,6 +19,7 @@ import {
   Workflow,
   Plug,
   Users,
+  GitBranch,
 } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 
@@ -41,6 +42,7 @@ export function AppShell() {
     { href: "/agents", label: t("nav.agents"), icon: Server },
     { href: "/groups", label: t("nav.groups"), icon: Users },
     { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
+    { href: "/workflow-builder", label: t("nav.workflowBuilder"), icon: GitBranch },
     { href: "/settings", label: t("nav.settings"), icon: Settings },
   ];
 
