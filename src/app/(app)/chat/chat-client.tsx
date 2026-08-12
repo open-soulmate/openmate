@@ -1,15 +1,16 @@
 'use client';
 import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Paperclip, FileText, X, Camera, MessageSquare, RefreshCw } from 'lucide-react';
+import { Send, Bot, User, Loader2, Paperclip, FileText, X, Camera, MessageSquare, RefreshCw, Smartphone } from 'lucide-react';
 import { a2aClient } from '@/lib/a2a-client';
-
-interface AcpSession { sessionId: string; title: string; cwd: string; updatedAt: string; }
-interface MessagePart { type: 'text' | 'image' | 'file'; text?: string; url?: string; name?: string; data?: string; }
-interface ChatMessage { id: string; role: 'user' | 'agent'; parts: MessagePart[]; timestamp: Date; sessionId?: string; }
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090';
 
-async function acpRequest(path: string, method: string = 'GET', body?: unknown) {
+interface AcpSession { sessionId: string; title: string; cwd: string; updatedAt: string; }
+interface HermesSession { id: string; title: string; preview: string; last_active: string; source: string; }
+interface MessagePart { type: 'text' | 'image' | 'file'; text?: string; data?: string; name?: string; }
+interface ChatMessage { id: string; role: 'user' | 'agent'; parts: MessagePart[]; timestamp: Date; }
+
+async function apiRequest(path: string, method = 'GET', body?: unknown) {
   const token = localStorage.getItem('openmate-token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -18,102 +19,103 @@ async function acpRequest(path: string, method: string = 'GET', body?: unknown) 
   return res.json();
 }
 
+type SessionItem = { id: string; title: string; subtitle: string; type: 'acp' | 'hermes'; source?: string };
+
 export function ChatClient() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sessions, setSessions] = useState<AcpSession[]>([]);
-  const [selectedSession, setSelectedSession] = useState<AcpSession | null>(null);
+  const [sessions, setSessions] = useState<SessionItem[]>([]);
+  const [selected, setSelected] = useState<SessionItem | null>(null);
   const [showSessions, setShowSessions] = useState(false);
   const [attachments, setAttachments] = useState<MessagePart[]>([]);
-  const [agentMode, setAgentMode] = useState<'a2a' | 'acp'>('acp');
-  const [agentCard, setAgentCard] = useState<{ name: string; skills: { name: string; description: string }[] } | null>(null);
+  const [mode, setMode] = useState<'a2a' | 'acp' | 'hermes'>('acp');
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
-  useEffect(() => { a2aClient.getAgentCard().then(card => setAgentCard({ name: card.name, skills: card.skills })).catch(() => {}); }, []);
 
   const loadSessions = async () => {
     try {
-      const data = await acpRequest('/api/acp/sessions');
-      setSessions(data.sessions || []);
-    } catch (e) { console.error('Failed to load sessions:', e); }
-  };
+      const items: SessionItem[] = [];
 
-  const selectSession = (session: AcpSession) => {
-    setSelectedSession(session);
-    setShowSessions(false);
-    setMessages([]);
+      // Load ACP sessions
+      try {
+        const acp = await apiRequest('/api/acp/sessions');
+        for (const s of acp.sessions || []) {
+          items.push({ id: s.sessionId, title: s.title.slice(0, 60), subtitle: `${s.cwd} · ${new Date(s.updatedAt).toLocaleString()}`, type: 'acp' });
+        }
+      } catch {}
+
+      // Load WeChat sessions
+      try {
+        const wx = await apiRequest('/api/hermes/list?source=weixin&limit=10');
+        for (const s of wx.sessions || []) {
+          items.push({ id: s.id, title: s.title.slice(0, 60), subtitle: `微信 · ${s.last_active}`, type: 'hermes', source: 'weixin' });
+        }
+      } catch {}
+
+      // Load all platform sessions
+      try {
+        const all = await apiRequest('/api/hermes/list?limit=10');
+        for (const s of all.sessions || []) {
+          if (!items.find(i => i.id === s.id)) {
+            items.push({ id: s.id, title: s.title.slice(0, 60), subtitle: `${s.source} · ${s.last_active}`, type: 'hermes', source: s.source });
+          }
+        }
+      } catch {}
+
+      setSessions(items);
+    } catch (e) { console.error('Failed to load sessions:', e); }
   };
 
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || loading) return;
-
     const text = input.trim();
-    const userMsg: ChatMessage = {
-      id: Date.now().toString(), role: 'user',
-      parts: [{ type: 'text', text }, ...attachments],
-      timestamp: new Date(), sessionId: selectedSession?.sessionId,
-    };
-    setMessages(prev => [...prev, userMsg]);
+    setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', parts: [{ type: 'text', text }, ...attachments], timestamp: new Date() }]);
     setInput(''); setAttachments([]); setLoading(true);
 
     try {
-      let result: { result?: { status?: { message?: { parts?: { type: string; text?: string }[] } } } };
+      let responseText = '';
 
-      if (agentMode === 'acp') {
-        // Try sending with image if there are image attachments
-        const imageAttachment = attachments.find(a => a.type === 'image' && a.data);
-        if (imageAttachment) {
-          result = await acpRequest('/api/acp/send-image', 'POST', {
-            text, image_data: imageAttachment.data, mime_type: 'image/png',
-          });
-        } else {
-          result = await acpRequest('/api/acp/send', 'POST', {
-            text, session_id: selectedSession?.sessionId,
-          });
-        }
+      if (mode === 'hermes' && selected) {
+        // Send to Hermes session
+        const result = await apiRequest('/api/hermes/send', 'POST', { session_id: selected.id, message: text });
+        responseText = result.output || result.error || '已发送';
+      } else if (mode === 'acp') {
+        const result = await apiRequest('/api/acp/send', 'POST', { text, session_id: selected?.id });
+        const parts = result.result?.status?.message?.parts || [];
+        responseText = parts.filter((p: {type:string}) => p.type === 'text').map((p: {text?:string}) => p.text).join('\n') || '（无响应）';
       } else {
         const task = await a2aClient.chat(text);
-        result = { result: { status: { message: task.status.message } } };
+        responseText = task.status.message?.parts?.filter(p => p.type === 'text').map(p => p.text).join('\n') || '（无响应）';
       }
 
-      const agentParts: MessagePart[] = (result.result?.status?.message?.parts || [])
-        .filter((p: { type: string }) => p.type === 'text')
-        .map((p: { text?: string }) => ({ type: 'text' as const, text: p.text || '' }));
-
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(), role: 'agent',
-        parts: agentParts.length > 0 ? agentParts : [{ type: 'text', text: '（无响应）' }],
-        timestamp: new Date(), sessionId: selectedSession?.sessionId,
-      }]);
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: responseText }], timestamp: new Date() }]);
     } catch (e) {
       setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `错误: ${(e as Error).message}` }], timestamp: new Date() }]);
     }
     setLoading(false);
   };
 
+  const selectSession = (item: SessionItem) => {
+    setSelected(item);
+    setMode(item.type === 'acp' ? 'acp' : 'hermes');
+    setShowSessions(false);
+    setMessages([]);
+  };
+
   const readFileAsPart = (file: File) => {
     const reader = new FileReader();
-    reader.onload = () => {
-      const part: MessagePart = file.type.startsWith('image/')
-        ? { type: 'image', data: reader.result as string, name: file.name }
-        : { type: 'file', data: reader.result as string, name: file.name };
-      setAttachments(prev => [...prev, part]);
-    };
+    reader.onload = () => setAttachments(prev => [...prev, file.type.startsWith('image/')
+      ? { type: 'image', data: reader.result as string, name: file.name }
+      : { type: 'file', data: reader.result as string, name: file.name }]);
     reader.readAsDataURL(file);
   };
 
-  // Paste handler
   useEffect(() => {
-    const handlePaste = (e: ClipboardEvent) => {
-      for (const item of e.clipboardData?.items || []) {
-        if (item.type.startsWith('image/')) { e.preventDefault(); const f = item.getAsFile(); if (f) readFileAsPart(f); }
-      }
-    };
-    document.addEventListener('paste', handlePaste);
-    return () => document.removeEventListener('paste', handlePaste);
+    const h = (e: ClipboardEvent) => { for (const item of e.clipboardData?.items || []) if (item.type.startsWith('image/')) { e.preventDefault(); const f = item.getAsFile(); if (f) readFileAsPart(f); } };
+    document.addEventListener('paste', h); return () => document.removeEventListener('paste', h);
   }, []);
 
   return (
@@ -121,41 +123,34 @@ export function ChatClient() {
       {/* Top Bar */}
       <div className="px-6 py-2 border-b bg-muted/30 flex items-center gap-3">
         <Bot className="w-4 h-4 text-primary" />
-        <span className="text-sm font-medium">
-          {selectedSession ? `Hermes · ${selectedSession.title.slice(0, 40)}...` : agentCard?.name || 'Agent'}
-        </span>
+        <span className="text-sm font-medium">{selected ? selected.title : 'Hermes Agent'}</span>
+        {selected?.type === 'hermes' && <Smartphone className="w-3 h-3 text-green-400" />}
         <div className="flex gap-1 ml-auto">
-          <button onClick={() => { setAgentMode(agentMode === 'a2a' ? 'acp' : 'a2a'); setSelectedSession(null); setMessages([]); }}
-            className={`text-xs px-2 py-0.5 rounded-full transition-colors ${agentMode === 'acp' ? 'bg-green-500/20 text-green-400' : 'bg-blue-500/20 text-blue-400'}`}>
-            {agentMode === 'acp' ? '🟢 ACP (Hermes)' : '🔵 A2A (OpenSoul)'}
+          <button onClick={() => { setMode(mode === 'a2a' ? 'acp' : mode === 'acp' ? 'hermes' : 'a2a'); setSelected(null); setMessages([]); }}
+            className={`text-xs px-2 py-0.5 rounded-full transition-colors ${mode === 'hermes' ? 'bg-green-500/20 text-green-400' : mode === 'acp' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}`}>
+            {mode === 'hermes' ? '🟢 Hermes' : mode === 'acp' ? '🟡 ACP' : '🔵 A2A'}
           </button>
-          {agentMode === 'acp' && (
-            <>
-              <button onClick={() => { setShowSessions(!showSessions); loadSessions(); }}
-                className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20">
-                <MessageSquare className="w-3 h-3 inline mr-1" />选择会话
-              </button>
-              <button onClick={loadSessions} className="text-xs px-2 py-0.5 rounded-full hover:bg-muted">
-                <RefreshCw className="w-3 h-3" />
-              </button>
-            </>
-          )}
-          {agentMode === 'a2a' && agentCard?.skills.map(s => (
-            <span key={s.name} className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary">{s.name}</span>
-          ))}
+          <button onClick={() => { setShowSessions(!showSessions); loadSessions(); }}
+            className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20">
+            <MessageSquare className="w-3 h-3 inline mr-1" />会话
+          </button>
+          <button onClick={() => loadSessions()} className="text-xs px-2 py-0.5 rounded-full hover:bg-muted"><RefreshCw className="w-3 h-3" /></button>
         </div>
       </div>
 
       {/* Session Selector */}
       {showSessions && (
         <div className="px-6 py-3 border-b bg-card max-h-60 overflow-y-auto">
-          <p className="text-xs text-muted-foreground mb-2">选择一个Hermes会话继续对话（包括微信会话）：</p>
+          <p className="text-xs text-muted-foreground mb-2">选择会话继续对话：</p>
           <div className="space-y-1">
             {sessions.map(s => (
-              <button key={s.sessionId} onClick={() => selectSession(s)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-muted transition-colors ${selectedSession?.sessionId === s.sessionId ? 'bg-primary/10 border border-primary/30' : ''}`}>
-                <p className="font-medium truncate">{s.title.slice(0, 60)}</p>
-                <p className="text-xs text-muted-foreground">{s.cwd} · {new Date(s.updatedAt).toLocaleString()}</p>
+              <button key={s.id} onClick={() => selectSession(s)}
+                className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-muted transition-colors flex items-center gap-2 ${selected?.id === s.id ? 'bg-primary/10 border border-primary/30' : ''}`}>
+                {s.type === 'hermes' && s.source === 'weixin' ? <Smartphone className="w-4 h-4 text-green-400 shrink-0" /> : s.type === 'acp' ? <Bot className="w-4 h-4 text-yellow-400 shrink-0" /> : <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" />}
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{s.title}</p>
+                  <p className="text-xs text-muted-foreground truncate">{s.subtitle}</p>
+                </div>
               </button>
             ))}
           </div>
@@ -167,9 +162,9 @@ export function ChatClient() {
         {messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <Bot className="w-12 h-12 mb-4 opacity-50" />
-            <p className="text-lg font-medium">{agentMode === 'acp' ? 'Hermes Agent' : 'OpenSoul Agent'}</p>
-            <p className="text-sm mt-1">{agentMode === 'acp' ? '通过ACP协议连接 · 与微信共享会话' : '通过A2A协议通信'}</p>
-            {agentMode === 'acp' && <p className="text-xs mt-2">点击"选择会话"可接入微信对话 · 支持图片、截图</p>}
+            <p className="text-lg font-medium">{mode === 'hermes' ? 'Hermes' : mode === 'acp' ? 'Hermes (ACP)' : 'OpenSoul (A2A)'}</p>
+            <p className="text-sm mt-1">{mode === 'hermes' ? '通过Hermes Gateway · 与微信/Telegram同步' : mode === 'acp' ? '通过ACP协议连接' : '通过A2A协议通信'}</p>
+            <p className="text-xs mt-2">点击"会话"选择微信对话 · Ctrl+V粘贴截图 · 拖放文件</p>
           </div>
         )}
         {messages.map(msg => (
@@ -204,7 +199,7 @@ export function ChatClient() {
           <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-lg border hover:bg-muted" title="添加附件"><Paperclip className="w-4 h-4" /></button>
           <button onClick={() => navigator.clipboard.read().then(items => { for (const item of items) for (const type of item.types) if (type.startsWith('image/')) item.getType(type).then(b => readFileAsPart(new File([b], `screenshot.png`, { type }))); }).catch(() => {})} className="p-2 rounded-lg border hover:bg-muted" title="粘贴截图"><Camera className="w-4 h-4" /></button>
           <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-            placeholder={selectedSession ? `继续与 ${selectedSession.title.slice(0, 30)}... 对话` : '输入消息...'} className="flex-1 px-4 py-2 rounded-lg border bg-background text-sm resize-none" rows={1} disabled={loading} />
+            placeholder={selected ? `发送到 ${selected.title.slice(0, 30)}...` : '输入消息...'} className="flex-1 px-4 py-2 rounded-lg border bg-background text-sm resize-none" rows={1} disabled={loading} />
           <button onClick={handleSend} disabled={loading || (!input.trim() && attachments.length === 0)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"><Send className="w-4 h-4" /></button>
         </div>
       </div>
