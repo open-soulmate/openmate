@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { BookOpen, Plus, Trash2, Loader2, LogIn } from 'lucide-react';
-import { api, getUserId, setUserId, isLoggedIn } from '@/lib/api-client';
+import { api, getUserId, setUserId } from '@/lib/api-client';
 
 interface Knowledge { id: string; title: string; content?: string; starred?: boolean; pinned?: boolean; created_at?: string; }
 
@@ -32,20 +32,14 @@ export function KnowledgeClient() {
   const handleLogin = async () => {
     try {
       const res = await api.login(loginUser, loginPass);
-      // 登录成功后获取用户信息
-      setUserId(loginUser); // 简化：用username做userId
+      // 登录成功，保存user_id
+      if (res.user_id) {
+        setUserId(res.user_id);
+      }
       setShowLogin(false);
+      setError('');
       loadItems();
     } catch (e) { setError(`登录失败: ${(e as Error).message}`); }
-  };
-
-  const handleRegister = async () => {
-    try {
-      const res = await api.register(loginUser, loginPass, `${loginUser}@openmate.local`);
-      setUserId(res.id || loginUser);
-      setShowLogin(false);
-      loadItems();
-    } catch (e) { setError(`注册失败: ${(e as Error).message}`); }
   };
 
   const handleCreate = async () => {
@@ -69,11 +63,10 @@ export function KnowledgeClient() {
       <div className="p-6 rounded-lg border bg-card w-80">
         <h2 className="text-lg font-bold mb-4 flex items-center gap-2"><LogIn className="w-5 h-5" /> 登录知识库</h2>
         <input value={loginUser} onChange={e => setLoginUser(e.target.value)} placeholder="用户名" className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
-        <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} placeholder="密码" className="w-full mb-3 px-3 py-2 rounded border bg-background text-sm" />
+        <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder="密码" className="w-full mb-3 px-3 py-2 rounded border bg-background text-sm" />
         {error && <p className="text-xs text-destructive mb-2">{error}</p>}
         <div className="flex gap-2">
           <button onClick={handleLogin} className="flex-1 px-3 py-2 rounded bg-primary text-primary-foreground text-sm">登录</button>
-          <button onClick={handleRegister} className="flex-1 px-3 py-2 rounded border text-sm">注册</button>
         </div>
       </div>
     </div>
