@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import "@/lib/i18n";
+import I18nProvider from "@/components/i18n-provider";
 
 export const metadata: Metadata = {
   title: "OpenMate — Your Knowledge Companion",
@@ -32,7 +32,7 @@ export default function RootLayout({
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased">
-        {children}
+        <I18nProvider>{children}</I18nProvider>
       </body>
     </html>
   );
