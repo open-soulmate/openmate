@@ -5,7 +5,7 @@ import { api } from '@/lib/api-client';
 
 interface Knowledge { id: string; title: string; description?: string; starred?: boolean; pinned?: boolean; document_count?: number; created_at?: string; }
 
-export default function KnowledgeClient() {
+export function KnowledgeClient() {
   const [items, setItems] = useState<Knowledge[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreate, setShowCreate] = useState(false);

@@ -6,7 +6,7 @@ import { api } from '@/lib/api-client';
 interface Entity { id: string; name: string; type?: string; properties?: Record<string, unknown>; }
 interface Relation { id: string; source_id: string; target_id: string; type: string; }
 
-export default function GraphClient() {
+export function GraphClient() {
   const [entities, setEntities] = useState<Entity[]>([]);
   const [relations, setRelations] = useState<Relation[]>([]);
   const [loading, setLoading] = useState(true);

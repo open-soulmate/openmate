@@ -3,7 +3,7 @@ import { useState, useEffect } from 'react';
 import { Bot, CheckCircle, XCircle, Loader2, Settings, Play, Download, RefreshCw } from 'lucide-react';
 import { detectAllAgents, type DetectedAgent } from '@/lib/agent-detector';
 
-export default function AgentsClient() {
+export function AgentsClient() {
   const [agents, setAgents] = useState<DetectedAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'available' | 'unavailable'>('all');
