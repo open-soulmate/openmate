@@ -1,4 +1,4 @@
-"""A2A Protocol Client for OpenMate."""
+// A2A Protocol Client for OpenMate
 
 export interface AgentSkill {
   id: string;
