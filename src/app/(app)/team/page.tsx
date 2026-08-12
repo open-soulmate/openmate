@@ -1,4 +1,4 @@
-import { TeamClient } from "./team-client";
+import TeamClient from "./team-client";
 
 export default function TeamPage() {
   return <TeamClient />;

@@ -1,4 +1,4 @@
-import { CronDetailClient } from "./cron-detail-client";
+import CronDetailClient from "./cron-detail-client";
 
 export default async function CronDetailPage({
   params,
