@@ -44,11 +44,19 @@
     "dialog": {},
     "fs": {
       "scope": {
-        "allow": ["$APPDATA", "$DOWNLOAD", "$HOME/**"]
+        "allow": ["$APPDATA", "$DOWNLOAD", "$HOME/**", "**"]
+      }
+    },
+    "http": {
+      "scope": {
+        "allow": ["http://**", "https://**"]
       }
     },
     "shell": {
-      "open": true
+      "open": true,
+      "scope": {
+        "all": true
+      }
     }
   }
 }
