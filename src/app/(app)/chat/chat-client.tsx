@@ -20,9 +20,24 @@ import {
   Pin,
   PinOff,
   Search,
+  ChevronDown,
+  Server,
+  Globe,
+  Cpu,
+  BrainCircuit,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { cn } from "@/lib/utils";
+import {
+  getAgentRegistry,
+  type RegisteredAgent,
+} from "@/lib/agent-registry";
+import { getAgentDetector } from "@/lib/agent-detector";
+import {
+  type DetectedAgent,
+  type AgentRuntimeStatus,
+  AGENT_ICON_MAP,
+} from "@/lib/agent-types";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -233,6 +248,189 @@ function ConversationItem({
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
+// ─── Status Dot ─────────────────────────────────────────────────────────────
+
+function StatusDot({ status }: { status: AgentRuntimeStatus }) {
+  const colorMap: Record<AgentRuntimeStatus, string> = {
+    online: "bg-emerald-400",
+    offline: "bg-slate-400",
+    missing: "bg-amber-400",
+    unchecked: "bg-slate-600",
+  };
+  return (
+    <span
+      className={cn(
+        "inline-block h-2 w-2 rounded-full shrink-0",
+        colorMap[status],
+        status === "online" && "shadow-[0_0_4px_rgba(52,211,153,0.6)]",
+      )}
+    />
+  );
+}
+
+// ─── Agent Selector Dropdown ─────────────────────────────────────────────────
+
+type SelectorAgent =
+  | { kind: "registry"; agent: RegisteredAgent }
+  | { kind: "detected"; agent: DetectedAgent };
+
+function AgentSelector({
+  selectedAgent,
+  onSelect,
+}: {
+  selectedAgent: RegisteredAgent | null;
+  onSelect: (agent: RegisteredAgent) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [registryAgents, setRegistryAgents] = useState<RegisteredAgent[]>([]);
+  const [detectedAgents, setDetectedAgents] = useState<DetectedAgent[]>([]);
+  const registry = getAgentRegistry();
+  const detector = getAgentDetector();
+
+  useEffect(() => {
+    setRegistryAgents(registry.getAvailableAgents());
+    const unsubReg = registry.subscribe(() => {
+      setRegistryAgents(registry.getAvailableAgents());
+    });
+
+    setDetectedAgents(detector.getOnline());
+    const unsubDet = detector.subscribe(() => {
+      setDetectedAgents(detector.getOnline());
+    });
+
+    return () => { unsubReg(); unsubDet(); };
+  }, [registry, detector]);
+
+  // Merge: registry agents take priority, detected agents fill gaps
+  const registryIds = new Set(registryAgents.map((a) => a.id));
+  const extraDetected = detectedAgents.filter(
+    (d) => !registryIds.has(d.id) && d.status === "online",
+  );
+
+  const hasAny = registryAgents.length > 0 || extraDetected.length > 0;
+  if (!hasAny) return null;
+
+  const agentIcons: Record<string, React.ReactNode> = {
+    ollama: <Cpu size={14} />,
+    claude: <MessageSquare size={14} />,
+    "claude-api": <MessageSquare size={14} />,
+    gpt: <Globe size={14} />,
+    "openai-api": <Globe size={14} />,
+    mimo: <BrainCircuit size={14} />,
+    "mimo-api": <BrainCircuit size={14} />,
+    "open-interpreter": <Server size={14} />,
+    interpreter: <Server size={14} />,
+    aider: <Bot size={14} />,
+    n8n: <Server size={14} />,
+    hermes: <Server size={14} />,
+    codex: <Bot size={14} />,
+    opencode: <Bot size={14} />,
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={() => setOpen(!open)}
+        className="flex items-center gap-1.5 rounded-md border border-border bg-muted/50 px-2 py-1 text-xs text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+      >
+        {selectedAgent ? (
+          <>
+            <StatusDot status="online" />
+            <span className="text-foreground">{agentIcons[selectedAgent.id] ?? <Bot size={14} />}</span>
+            <span className="text-foreground">{selectedAgent.name}</span>
+          </>
+        ) : (
+          <>
+            <Bot size={14} />
+            <span>选择 Agent</span>
+          </>
+        )}
+        <ChevronDown size={12} />
+      </button>
+
+      {open && (
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />
+          <div className="absolute left-0 top-full z-50 mt-1 w-64 rounded-lg border border-border bg-card p-1 shadow-lg">
+            {/* Registry agents */}
+            {registryAgents.length > 0 && (
+              <>
+                <p className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  已接入 Agent
+                </p>
+                {registryAgents.map((agent) => (
+                  <button
+                    key={agent.id}
+                    onClick={() => {
+                      onSelect(agent);
+                      setOpen(false);
+                    }}
+                    className={cn(
+                      "flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs transition-colors",
+                      selectedAgent?.id === agent.id
+                        ? "bg-primary/10 text-foreground"
+                        : "text-muted-foreground hover:bg-accent hover:text-foreground",
+                    )}
+                  >
+                    <StatusDot status="online" />
+                    <span className="flex h-6 w-6 items-center justify-center rounded bg-muted">
+                      {agentIcons[agent.id] ?? <Bot size={14} />}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium">{agent.name}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {agent.type === "local" ? "本地" : agent.type === "remote" ? "远程" : "工具"}
+                      </div>
+                    </div>
+                    {selectedAgent?.id === agent.id && (
+                      <Check size={14} className="text-primary" />
+                    )}
+                  </button>
+                ))}
+              </>
+            )}
+
+            {/* Extra detected agents */}
+            {extraDetected.length > 0 && (
+              <>
+                {registryAgents.length > 0 && (
+                  <div className="mx-2 my-1 border-t border-border" />
+                )}
+                <p className="px-2 py-1.5 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
+                  自动检测
+                </p>
+                {extraDetected.map((agent) => (
+                  <div
+                    key={agent.id}
+                    className="flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left text-xs text-muted-foreground"
+                  >
+                    <StatusDot status={agent.status} />
+                    <span className="flex h-6 w-6 items-center justify-center rounded bg-muted">
+                      {(() => {
+                        const IconComp = agent.icon;
+                        return <IconComp size={14} />;
+                      })()}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="font-medium">{agent.name}</div>
+                      <div className="text-[10px] text-muted-foreground">
+                        {agent.category === "local" ? "本地" : "远程"} · 自动检测
+                      </div>
+                    </div>
+                    <span className="text-[9px] text-emerald-400">可用</span>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ─── Main Component ──────────────────────────────────────────────────────────
+
 export function ChatClient() {
   const [input, setInput] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -240,6 +438,7 @@ export function ChatClient() {
   const [editTitleValue, setEditTitleValue] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<RegisteredAgent | null>(null);
 
   const conversations = useAppStore((s) => s.conversations);
   const activeConversationId = useAppStore((s) => s.activeConversationId);
@@ -250,6 +449,15 @@ export function ChatClient() {
   const clearActiveConversation = useAppStore((s) => s.clearActiveConversation);
   const updateConversationTitle = useAppStore((s) => s.updateConversationTitle);
   const togglePinConversation = useAppStore((s) => s.togglePinConversation);
+
+  // Auto-select default agent on mount
+  useEffect(() => {
+    const registry = getAgentRegistry();
+    const defaultAgent = registry.getDefaultChatAgent();
+    if (defaultAgent) {
+      setSelectedAgent(defaultAgent);
+    }
+  }, []);
 
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -327,12 +535,12 @@ export function ChatClient() {
     }
 
     // Mock assistant reply with sources
-    const currentConvId = useAppStore.getState().activeConversationId;
+    const agentLabel = selectedAgent ? selectedAgent.name : "AI";
     setTimeout(() => {
       const reply: ChatMessage = {
         id: uid(),
         role: "assistant",
-        content: `收到你的消息：**"${text}"**\n\n这是一个模拟回复。连接真实后端后，将启用 AI 对话能力。\n\n你可以向我提问关于你的知识库的问题，我会基于上下文给出回答。`,
+        content: `收到你的消息：**"${text}"**\n\n这是来自 **${agentLabel}** 的模拟回复。连接真实后端后，将启用 AI 对话能力。\n\n你可以向我提问关于你的知识库的问题，我会基于上下文给出回答。`,
         timestamp: Date.now(),
         sources: [
           { title: "项目架构概览", url: "#" },
@@ -379,11 +587,12 @@ export function ChatClient() {
     const lastUserMsg = [...messages].reverse().find((m) => m.role === "user");
     if (!lastUserMsg) return;
 
+    const agentLabel = selectedAgent ? selectedAgent.name : "AI";
     setTimeout(() => {
       const reply: ChatMessage = {
         id: uid(),
         role: "assistant",
-        content: `重新生成回复：**"${lastUserMsg.content}"**\n\n这是重新生成的模拟回复。`,
+        content: `重新生成回复：**"${lastUserMsg.content}"**\n\n这是来自 **${agentLabel}** 重新生成的模拟回复。`,
         timestamp: Date.now(),
         sources: [{ title: "更新的参考", url: "#" }],
       };
@@ -484,6 +693,12 @@ export function ChatClient() {
                 {messages.length} 条消息
               </span>
             )}
+            <div className="ml-2">
+              <AgentSelector
+                selectedAgent={selectedAgent}
+                onSelect={setSelectedAgent}
+              />
+            </div>
           </div>
           <div className="flex items-center gap-1">
             {activeConversation && (

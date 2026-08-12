@@ -5,6 +5,13 @@ import { useAppStore, type AgentNode, type AgentType } from "@/stores/app-store"
 import { Badge } from "@/components/ui/badge";
 import { Dialog } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { getAgentRegistry, type RegisteredAgent } from "@/lib/agent-registry";
+import { getAgentDetector } from "@/lib/agent-detector";
+import {
+  type DetectedAgent,
+  type AgentRuntimeStatus,
+  AGENT_ICON_MAP,
+} from "@/lib/agent-types";
 import {
   Server,
   Trash2,
@@ -21,6 +28,7 @@ import {
   Settings,
   Zap,
   ChevronRight,
+  ChevronDown,
   ExternalLink,
   CheckCircle2,
   XCircle,
@@ -36,6 +44,9 @@ import {
   Edit3,
   Eye,
   EyeOff,
+  Download,
+  Radar,
+  Terminal,
 } from "lucide-react";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -169,6 +180,62 @@ function EmptyState({ type }: { type?: AgentType }) {
   );
 }
 
+// ─── Runtime Status Badge (for auto-detected agents) ────────────────────────
+
+function RuntimeStatusBadge({ status }: { status: AgentRuntimeStatus }) {
+  const map: Record<AgentRuntimeStatus, { variant: "success" | "default" | "warning" | "destructive"; label: string; icon: React.ElementType }> = {
+    online: { variant: "success", label: "在线", icon: CheckCircle2 },
+    offline: { variant: "default", label: "离线", icon: XCircle },
+    missing: { variant: "warning", label: "未安装", icon: AlertTriangle },
+    unchecked: { variant: "default", label: "未检测", icon: Clock },
+  };
+  const { variant, label, icon: Icon } = map[status];
+  return (
+    <Badge variant={variant}>
+      <Icon size={10} className="mr-1" />
+      {label}
+    </Badge>
+  );
+}
+
+// ─── Detected Agent Card ────────────────────────────────────────────────────
+
+function DetectedAgentCard({ agent, onInstall }: {
+  agent: DetectedAgent;
+  onInstall: (agent: DetectedAgent) => void;
+}) {
+  const IconComp = agent.icon;
+  return (
+    <div className="group rounded-lg border border-border bg-card p-3 transition-all hover:border-primary/40">
+      <div className="flex items-center gap-3">
+        <div className={cn("flex h-9 w-9 items-center justify-center rounded-lg bg-muted", agent.color)}>
+          <IconComp size={16} />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <h4 className="text-sm font-medium truncate">{agent.name}</h4>
+            <span className="shrink-0 inline-flex items-center rounded-full border border-slate-500/30 bg-slate-500/10 px-1.5 py-0.5 text-[9px] font-medium text-slate-400">
+              {agent.category === "local" ? "本地" : agent.category === "remote" ? "远程" : "工具"}
+            </span>
+          </div>
+          <p className="text-[11px] text-muted-foreground truncate">{agent.description}</p>
+        </div>
+        <div className="flex shrink-0 items-center gap-2">
+          <RuntimeStatusBadge status={agent.status} />
+          {agent.status === "missing" && (
+            <button
+              onClick={() => onInstall(agent)}
+              className="rounded-md bg-primary px-2.5 py-1 text-[11px] font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              安装
+            </button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Agent Card ──────────────────────────────────────────────────────────────
 
 function AgentCard({ agent, onDetail, onDelete }: {
@@ -178,6 +245,7 @@ function AgentCard({ agent, onDetail, onDelete }: {
 }) {
   const config = AGENT_TYPE_CONFIG[agent.type];
   const metrics = MOCK_METRICS[agent.id] ?? { cpu: 0, mem: 0, disk: 0 };
+  const isFromMarketplace = agent.id.startsWith("market-");
 
   return (
     <div
@@ -193,6 +261,7 @@ function AgentCard({ agent, onDetail, onDelete }: {
             <h3 className="text-sm font-medium">{agent.name}</h3>
             <div className="flex items-center gap-2 mt-0.5">
               <TypeBadge type={agent.type} />
+              {isFromMarketplace && <MarketplaceBadge />}
               {agent.type === "ai" && agent.provider && (
                 <span className="text-[10px] text-muted-foreground">{agent.provider}</span>
               )}
@@ -800,6 +869,46 @@ function InfoRow({ label, value, copyable }: { label: string; value: string; cop
   );
 }
 
+// ─── Marketplace Agent → AgentNode converter ─────────────────────────────────
+
+function registryToAgentNode(reg: RegisteredAgent): AgentNode {
+  // Map marketplace types to agent management types
+  const typeMap: Record<string, AgentType> = {
+    local: "ai",
+    remote: "ai",
+    tool: "mcp",
+  };
+
+  const base: AgentNode = {
+    id: `market-${reg.id}`,
+    name: reg.name,
+    type: typeMap[reg.type] ?? "ai",
+    status: reg.status === "running" ? "online" : "offline",
+    lastSeen: new Date(reg.installed_at).toLocaleString(),
+  };
+
+  if (reg.type === "remote") {
+    base.provider = reg.name;
+    base.model = reg.id;
+  }
+  if (reg.type === "tool" && reg.port) {
+    base.serverUrl = `http://localhost:${reg.port}`;
+  }
+
+  return base;
+}
+
+// ─── Marketplace Badge ───────────────────────────────────────────────────────
+
+function MarketplaceBadge() {
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-400">
+      <Download size={10} />
+      市场
+    </span>
+  );
+}
+
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export function AgentsClient() {
@@ -815,6 +924,55 @@ export function AgentsClient() {
   // Gland API state
   const [providers, setProviders] = useState<GlandProvider[]>([]);
   const [models, setModels] = useState<GlandModel[]>([]);
+
+  // Registry integration — installed marketplace agents
+  const [registryAgents, setRegistryAgents] = useState<RegisteredAgent[]>([]);
+  const registry = getAgentRegistry();
+
+  useEffect(() => {
+    setRegistryAgents(registry.getAvailableAgents());
+    const unsub = registry.subscribe(() => {
+      setRegistryAgents(registry.getAvailableAgents());
+    });
+    return unsub;
+  }, [registry]);
+
+  // Agent auto-detection
+  const [detectedAgents, setDetectedAgents] = useState<DetectedAgent[]>([]);
+  const [isDetecting, setIsDetecting] = useState(false);
+  const [showDetected, setShowDetected] = useState(true);
+  const detector = getAgentDetector();
+
+  const runDetection = useCallback(async () => {
+    setIsDetecting(true);
+    try {
+      const agents = await detector.detectAll();
+      setDetectedAgents(agents);
+    } finally {
+      setIsDetecting(false);
+    }
+  }, [detector]);
+
+  useEffect(() => {
+    // Load cached results first
+    setDetectedAgents(detector.getAll());
+    // Then run fresh detection
+    runDetection();
+    const unsub = detector.subscribe(() => {
+      setDetectedAgents(detector.getAll());
+    });
+    return unsub;
+  }, [detector, runDetection]);
+
+  const onlineDetected = detectedAgents.filter((a) => a.status === "online");
+  const offlineDetected = detectedAgents.filter((a) => a.status !== "online");
+
+  // Convert registry agents to AgentNode format and merge
+  const marketplaceNodes = registryAgents
+    .filter((r) => !agentNodes.some((n) => n.id === `market-${r.id}`))
+    .map(registryToAgentNode);
+
+  const allNodes = [...agentNodes, ...marketplaceNodes];
 
   // Fetch Gland providers/models
   const fetchGlandData = useCallback(async () => {
@@ -840,20 +998,20 @@ export function AgentsClient() {
     fetchGlandData();
   }, [fetchGlandData]);
 
-  const filteredNodes = agentNodes.filter((n) => {
+  const filteredNodes = allNodes.filter((n) => {
     if (filter !== "all" && n.type !== filter) return false;
     if (searchQuery && !n.name.toLowerCase().includes(searchQuery.toLowerCase())) return false;
     return true;
   });
 
   const counts = {
-    all: agentNodes.length,
-    soma: agentNodes.filter((n) => n.type === "soma").length,
-    ai: agentNodes.filter((n) => n.type === "ai").length,
-    mcp: agentNodes.filter((n) => n.type === "mcp").length,
+    all: allNodes.length,
+    soma: allNodes.filter((n) => n.type === "soma").length,
+    ai: allNodes.filter((n) => n.type === "ai").length,
+    mcp: allNodes.filter((n) => n.type === "mcp").length,
   };
 
-  const onlineCount = agentNodes.filter((n) => n.status === "online").length;
+  const onlineCount = allNodes.filter((n) => n.status === "online").length;
 
   function handleAdd(data: AgentFormData) {
     const id = `${data.type}-${Date.now()}`;
@@ -871,7 +1029,13 @@ export function AgentsClient() {
   }
 
   function handleDelete(id: string) {
-    setAgentNodes(agentNodes.filter((n) => n.id !== id));
+    // If it's a marketplace agent, uninstall from registry
+    if (id.startsWith("market-")) {
+      const regId = id.replace("market-", "");
+      registry.uninstall(regId);
+    } else {
+      setAgentNodes(agentNodes.filter((n) => n.id !== id));
+    }
     setDeleteTarget(null);
     setDetailTarget(null);
   }
@@ -881,6 +1045,11 @@ export function AgentsClient() {
     setAgentNodes(agentNodes.map((n) =>
       n.id === id ? { ...n, status: n.status === "error" ? "online" : n.status } : n,
     ));
+  }
+
+  function handleInstallDetected(agent: DetectedAgent) {
+    // Open skills marketplace with the agent name as search
+    window.open(`/skills?q=${encodeURIComponent(agent.name)}`, "_self");
   }
 
   return (
@@ -894,7 +1063,7 @@ export function AgentsClient() {
           <div>
             <h2 className="text-sm font-medium">Agent 管理</h2>
             <p className="text-xs text-muted-foreground">
-              {onlineCount} / {agentNodes.length} 在线
+              {onlineCount} / {allNodes.length} 在线
             </p>
           </div>
         </div>
@@ -950,6 +1119,52 @@ export function AgentsClient() {
           ))}
         </div>
       </div>
+
+      {/* Auto-detected Agents */}
+      {detectedAgents.length > 0 && (
+        <div className="border-b border-border">
+          <button
+            onClick={() => setShowDetected(!showDetected)}
+            className="flex w-full items-center justify-between px-6 py-3 text-xs font-medium text-muted-foreground hover:bg-accent/30 transition-colors"
+          >
+            <div className="flex items-center gap-2">
+              <Radar size={14} className={cn(isDetecting && "animate-pulse")} />
+              <span>自动检测</span>
+              <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
+                {onlineDetected.length} 可用
+              </span>
+              {offlineDetected.length > 0 && (
+                <span className="rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">
+                  {offlineDetected.length} 未安装
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={(e) => { e.stopPropagation(); runDetection(); }}
+                disabled={isDetecting}
+                className="rounded-md border border-border px-2 py-0.5 text-[10px] text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
+              >
+                {isDetecting ? "检测中..." : "重新检测"}
+              </button>
+              <ChevronDown size={14} className={cn("transition-transform", showDetected && "rotate-180")} />
+            </div>
+          </button>
+          {showDetected && (
+            <div className="px-6 pb-4">
+              <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                {detectedAgents.map((agent) => (
+                  <DetectedAgentCard
+                    key={agent.id}
+                    agent={agent}
+                    onInstall={handleInstallDetected}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Grid */}
       <div className="flex-1 overflow-y-auto p-6">

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import {
   Search,
   Download,
@@ -21,8 +21,19 @@ import {
   BrainCircuit,
   HardDrive,
   Radio,
+  Loader2,
+  CheckCircle2,
+  XCircle,
 } from "lucide-react";
 import { Dialog } from "@/components/ui/dialog";
+import {
+  getAgentInstaller,
+  type InstallProgress,
+} from "@/lib/agent-installer";
+import {
+  getAgentRegistry,
+  type RegisteredAgent,
+} from "@/lib/agent-registry";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -133,7 +144,8 @@ const initialAgents: Agent[] = [
     type: "tool",
     icon: <HardDrive size={22} />,
     size: "150 MB",
-    installCommand: "docker run -p 9000:9000 -p 9001:9001 minio/minio server /data --console-address :9001",
+    installCommand:
+      "docker run -p 9000:9000 -p 9001:9001 minio/minio server /data --console-address :9001",
     needsApiKey: false,
     status: "available",
   },
@@ -173,6 +185,89 @@ const typeIcons: Record<AgentType, React.ReactNode> = {
 };
 
 // ---------------------------------------------------------------------------
+// Toast
+// ---------------------------------------------------------------------------
+
+function Toast({
+  message,
+  type,
+  onClose,
+}: {
+  message: string;
+  type: "success" | "error" | "info";
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    const t = setTimeout(onClose, 3000);
+    return () => clearTimeout(t);
+  }, [onClose]);
+
+  const colors = {
+    success: "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+    error: "border-destructive/40 bg-destructive/10 text-destructive",
+    info: "border-blue-500/40 bg-blue-500/10 text-blue-300",
+  };
+
+  const icons = {
+    success: <CheckCircle2 size={14} />,
+    error: <XCircle size={14} />,
+    info: <Loader2 size={14} className="animate-spin" />,
+  };
+
+  return (
+    <div
+      className={`fixed bottom-6 right-6 z-[60] flex items-center gap-2 rounded-lg border px-4 py-2.5 text-xs font-medium shadow-lg ${colors[type]}`}
+    >
+      {icons[type]}
+      {message}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Install Progress Overlay
+// ---------------------------------------------------------------------------
+
+function InstallOverlay({
+  progress,
+  agentName,
+}: {
+  progress: InstallProgress | null;
+  agentName: string;
+}) {
+  if (!progress) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+      <div className="w-80 rounded-xl border border-border bg-card p-6 shadow-xl">
+        <div className="flex flex-col items-center text-center">
+          {progress.stage === "done" ? (
+            <CheckCircle2 size={36} className="mb-3 text-emerald-400" />
+          ) : progress.stage === "error" ? (
+            <XCircle size={36} className="mb-3 text-destructive" />
+          ) : (
+            <Loader2
+              size={36}
+              className="mb-3 animate-spin text-primary"
+            />
+          )}
+          <h3 className="text-sm font-medium">
+            {progress.stage === "done"
+              ? "安装完成"
+              : progress.stage === "error"
+                ? "安装失败"
+                : `正在安装 ${agentName}`}
+          </h3>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {progress.message}
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
@@ -188,12 +283,36 @@ export function SkillsClient() {
   const [activeTab, setActiveTab] = useState<TabKey>("market");
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"all" | AgentType>("all");
-  const [agents, setAgents] = useState<Agent[]>(initialAgents);
+  const [agents, setAgents] = useState<Agent[]>(() =>
+    syncRegistryStatus(initialAgents),
+  );
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // Install state
+  const [installingAgent, setInstallingAgent] = useState<Agent | null>(null);
+  const [installProgress, setInstallProgress] =
+    useState<InstallProgress | null>(null);
+
+  // Toast state
+  const [toast, setToast] = useState<{
+    message: string;
+    type: "success" | "error" | "info";
+  } | null>(null);
 
   // API key dialog state
   const [apiKeyAgent, setApiKeyAgent] = useState<Agent | null>(null);
   const [apiKeyValue, setApiKeyValue] = useState("");
+
+  const installer = getAgentInstaller();
+  const registry = getAgentRegistry();
+
+  // Sync registry on mount and when registry changes
+  useEffect(() => {
+    const unsub = registry.subscribe(() => {
+      setAgents(syncRegistryStatus(initialAgents));
+    });
+    return unsub;
+  }, [registry]);
 
   // ---- actions ----
 
@@ -204,39 +323,96 @@ export function SkillsClient() {
     });
   }, []);
 
-  const installAgent = useCallback((id: string) => {
-    setAgents((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status: "installed" as const } : a)),
-    );
-  }, []);
+  const handleInstall = useCallback(
+    async (agent: Agent) => {
+      if (agent.needsApiKey) {
+        setApiKeyAgent(agent);
+        return;
+      }
 
-  const uninstallAgent = useCallback((id: string) => {
-    setAgents((prev) =>
-      prev.map((a) =>
-        a.id === id ? { ...a, status: "available" as const } : a,
-      ),
-    );
-  }, []);
+      setInstallingAgent(agent);
+      setInstallProgress({ stage: "copying", message: "开始安装…" });
 
-  const toggleRun = useCallback((id: string) => {
-    setAgents((prev) =>
-      prev.map((a) => {
-        if (a.id !== id) return a;
-        return {
-          ...a,
-          status: a.status === "running" ? "installed" : "running",
-        };
-      }),
-    );
-  }, []);
+      const success = await installer.install(agent.id, (p) => {
+        setInstallProgress(p);
+      });
 
-  const handleApiKeySubmit = useCallback(() => {
-    if (apiKeyAgent && apiKeyValue.trim()) {
-      installAgent(apiKeyAgent.id);
-      setApiKeyAgent(null);
-      setApiKeyValue("");
+      // Update local state
+      setAgents(syncRegistryStatus(initialAgents));
+
+      if (success) {
+        setToast({
+          message: `${agent.name} 安装成功`,
+          type: "success",
+        });
+      } else {
+        setToast({ message: `${agent.name} 安装失败`, type: "error" });
+      }
+
+      // Clear overlay after a brief delay
+      setTimeout(() => {
+        setInstallingAgent(null);
+        setInstallProgress(null);
+      }, 1200);
+    },
+    [installer],
+  );
+
+  const handleApiKeySubmit = useCallback(async () => {
+    if (!apiKeyAgent || !apiKeyValue.trim()) return;
+
+    setApiKeyAgent(null);
+    setInstallingAgent(apiKeyAgent);
+    setInstallProgress({ stage: "saving", message: "正在接入…" });
+
+    const success = await installer.installRemoteWithKey(
+      apiKeyAgent.id,
+      apiKeyValue.trim(),
+      (p) => setInstallProgress(p),
+    );
+
+    setApiKeyValue("");
+    setAgents(syncRegistryStatus(initialAgents));
+
+    if (success) {
+      setToast({
+        message: `${apiKeyAgent.name} 接入成功`,
+        type: "success",
+      });
+    } else {
+      setToast({
+        message: `${apiKeyAgent.name} 接入失败`,
+        type: "error",
+      });
     }
-  }, [apiKeyAgent, apiKeyValue, installAgent]);
+
+    setTimeout(() => {
+      setInstallingAgent(null);
+      setInstallProgress(null);
+    }, 1200);
+  }, [apiKeyAgent, apiKeyValue, installer]);
+
+  const uninstallAgent = useCallback(
+    (id: string) => {
+      registry.uninstall(id);
+      setAgents(syncRegistryStatus(initialAgents));
+      setToast({ message: "已卸载", type: "info" });
+    },
+    [registry],
+  );
+
+  const toggleRun = useCallback(
+    (id: string) => {
+      const agent = registry.getById(id);
+      if (agent?.status === "running") {
+        registry.updateStatus(id, "installed");
+      } else if (agent?.status === "installed") {
+        registry.updateStatus(id, "running");
+      }
+      setAgents(syncRegistryStatus(initialAgents));
+    },
+    [registry],
+  );
 
   // ---- filters ----
 
@@ -350,22 +526,27 @@ export function SkillsClient() {
             </button>
           )}
 
-          {!isInstalled && !agent.needsApiKey && (
+          {!isInstalled && (
             <button
-              onClick={() => installAgent(agent.id)}
+              onClick={() => handleInstall(agent)}
               className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
             >
-              <Download size={12} /> 一键安装
+              {agent.needsApiKey ? (
+                <>
+                  <Plug size={12} /> 一键接入
+                </>
+              ) : (
+                <>
+                  <Download size={12} /> 一键安装
+                </>
+              )}
             </button>
           )}
 
-          {!isInstalled && agent.needsApiKey && (
-            <button
-              onClick={() => setApiKeyAgent(agent)}
-              className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-            >
-              <Plug size={12} /> 一键接入
-            </button>
+          {isInstalled && (
+            <span className="inline-flex items-center gap-1 text-[11px] text-emerald-400">
+              <CheckCircle2 size={12} /> 已安装
+            </span>
           )}
         </div>
       </div>
@@ -417,7 +598,9 @@ export function SkillsClient() {
           <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
             <Download size={40} className="mb-4 opacity-30" />
             <p className="text-sm">暂无已安装的 Agent</p>
-            <p className="text-xs mt-1">前往「Agent 市场」安装你需要的 Agent</p>
+            <p className="text-xs mt-1">
+              前往「Agent 市场」安装你需要的 Agent
+            </p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -524,6 +707,23 @@ export function SkillsClient() {
         {activeTab === "my" && renderMySkills()}
       </div>
 
+      {/* Install Progress Overlay */}
+      {installingAgent && (
+        <InstallOverlay
+          progress={installProgress}
+          agentName={installingAgent.name}
+        />
+      )}
+
+      {/* Toast */}
+      {toast && (
+        <Toast
+          message={toast.message}
+          type={toast.type}
+          onClose={() => setToast(null)}
+        />
+      )}
+
       {/* API Key Dialog */}
       <Dialog
         open={!!apiKeyAgent}
@@ -555,7 +755,9 @@ export function SkillsClient() {
         }
       >
         <div className="space-y-3">
-          <label className="block text-xs text-muted-foreground">API Key</label>
+          <label className="block text-xs text-muted-foreground">
+            API Key
+          </label>
           <input
             type="password"
             value={apiKeyValue}
@@ -570,4 +772,22 @@ export function SkillsClient() {
       </Dialog>
     </div>
   );
+}
+
+// ---------------------------------------------------------------------------
+// Sync helper — merge registry state into the static agent list
+// ---------------------------------------------------------------------------
+
+function syncRegistryStatus(agents: Agent[]): Agent[] {
+  const registry = getAgentRegistry();
+  return agents.map((a) => {
+    const reg = registry.getById(a.id);
+    if (reg && reg.status !== "available") {
+      return {
+        ...a,
+        status: reg.status as AgentStatus,
+      };
+    }
+    return { ...a, status: "available" };
+  });
 }
