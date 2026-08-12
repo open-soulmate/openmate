@@ -83,9 +83,8 @@ export function ChatClient() {
         const result = await apiRequest('/api/hermes/send', 'POST', { session_id: selected.id, message: text });
         responseText = result.output || result.error || '已发送';
       } else if (mode === 'acp') {
-        const result = await apiRequest('/api/acp/send', 'POST', { text, session_id: selected?.id });
-        const parts = result.result?.status?.message?.parts || [];
-        responseText = parts.filter((p: {type:string}) => p.type === 'text').map((p: {text?:string}) => p.text).join('\n') || '（无响应）';
+        const result = await apiRequest(`/api/acp/send`, "POST", { text, session_id: selected?.id });
+        responseText = result.content || '（无响应）';
       } else {
         const task = await a2aClient.chat(text);
         responseText = task.status.message?.parts?.filter(p => p.type === 'text').map(p => p.text).join('\n') || '（无响应）';
