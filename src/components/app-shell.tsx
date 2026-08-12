@@ -109,7 +109,7 @@ export function AppShell() {
                 )}
               >
                 <item.icon size={18} />
-                {isExpanded && <span>{item.label}</span>}
+                {isExpanded && <span suppressHydrationWarning>{item.label}</span>}
               </Link>
             );
           })}
@@ -156,7 +156,7 @@ export function AppShell() {
               )}
             >
               <item.icon size={20} />
-              <span>{item.label}</span>
+              <span suppressHydrationWarning>{item.label}</span>
             </Link>
           );
         })}
