@@ -1,135 +1,67 @@
-"use client";
+'use client';
+import { useState, useEffect } from 'react';
+import { Network, Loader2 } from 'lucide-react';
+import { api } from '@/lib/api-client';
 
-import { useState } from "react";
-import { ZoomIn, ZoomOut, Maximize2, Info } from "lucide-react";
+interface Entity { id: string; name: string; type?: string; properties?: Record<string, unknown>; }
+interface Relation { id: string; source_id: string; target_id: string; type: string; }
 
-interface Node {
-  id: string;
-  label: string;
-  type: "entity" | "concept" | "document";
-  x: number;
-  y: number;
-}
+export default function GraphClient() {
+  const [entities, setEntities] = useState<Entity[]>([]);
+  const [relations, setRelations] = useState<Relation[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selected, setSelected] = useState<Entity | null>(null);
 
-interface Edge {
-  from: string;
-  to: string;
-  label: string;
-}
+  useEffect(() => { loadGraph(); }, []);
 
-const nodes: Node[] = [
-  { id: "1", label: "OpenMate", type: "entity", x: 300, y: 200 },
-  { id: "2", label: "Knowledge Base", type: "concept", x: 150, y: 100 },
-  { id: "3", label: "AI Chat", type: "concept", x: 450, y: 100 },
-  { id: "4", label: "Skills", type: "concept", x: 150, y: 300 },
-  { id: "5", label: "Soul Backend", type: "entity", x: 450, y: 300 },
-  { id: "6", label: "Documents", type: "document", x: 50, y: 50 },
-  { id: "7", label: "Graph Engine", type: "concept", x: 300, y: 350 },
-];
+  const loadGraph = async () => {
+    setLoading(true);
+    try {
+      const [eData, rData] = await Promise.all([api.getEntities(), api.getRelations()]);
+      setEntities(Array.isArray(eData) ? eData : eData.items || eData.results || []);
+      setRelations(Array.isArray(rData) ? rData : rData.items || rData.results || []);
+    } catch (e) { /* ignore */ }
+    setLoading(false);
+  };
 
-const edges: Edge[] = [
-  { from: "1", to: "2", label: "contains" },
-  { from: "1", to: "3", label: "powers" },
-  { from: "1", to: "4", label: "extends via" },
-  { from: "1", to: "5", label: "connects to" },
-  { from: "2", to: "6", label: "stores" },
-  { from: "5", to: "7", label: "runs" },
-  { from: "3", to: "5", label: "queries" },
-  { from: "4", to: "5", label: "executes on" },
-];
-
-const colorMap: Record<Node["type"], string> = {
-  entity: "bg-indigo-500/20 border-indigo-500/50 text-indigo-300",
-  concept: "bg-emerald-500/20 border-emerald-500/50 text-emerald-300",
-  document: "bg-amber-500/20 border-amber-500/50 text-amber-300",
-};
-
-function getNodePos(id: string) {
-  return nodes.find((n) => n.id === id);
-}
-
-export function GraphClient() {
-  const [selected, setSelected] = useState<string | null>(null);
+  if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="relative flex h-full flex-col">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-3">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <Info size={14} />
-          <span>Click a node to inspect. Drag to pan.</span>
-        </div>
-        <div className="flex items-center gap-1">
-          <button className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
-            <ZoomIn size={14} />
-          </button>
-          <button className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
-            <ZoomOut size={14} />
-          </button>
-          <button className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground">
-            <Maximize2 size={14} />
-          </button>
-        </div>
-      </div>
-
-      {/* Canvas area */}
-      <div className="relative flex-1 overflow-hidden bg-background">
-        {/* Edges (SVG) */}
-        <svg className="absolute inset-0 h-full w-full">
-          {edges.map((edge, i) => {
-            const from = getNodePos(edge.from);
-            const to = getNodePos(edge.to);
-            if (!from || !to) return null;
-            return (
-              <g key={i}>
-                <line
-                  x1={from.x}
-                  y1={from.y}
-                  x2={to.x}
-                  y2={to.y}
-                  stroke="currentColor"
-                  className="text-border"
-                  strokeWidth={1}
-                />
-                <text
-                  x={(from.x + to.x) / 2}
-                  y={(from.y + to.y) / 2 - 6}
-                  textAnchor="middle"
-                  className="fill-muted-foreground text-[9px]"
-                >
-                  {edge.label}
-                </text>
-              </g>
-            );
-          })}
-        </svg>
-
-        {/* Nodes */}
-        {nodes.map((node) => (
-          <button
-            key={node.id}
-            onClick={() => setSelected(node.id === selected ? null : node.id)}
-            className={`absolute flex h-14 w-28 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-lg border text-xs font-medium transition-all ${
-              colorMap[node.type]
-            } ${selected === node.id ? "ring-2 ring-primary scale-105" : "hover:scale-105"}`}
-            style={{ left: node.x, top: node.y }}
-          >
-            {node.label}
-          </button>
-        ))}
-      </div>
-
-      {/* Legend */}
-      <div className="flex items-center gap-4 border-t border-border px-6 py-2 text-[10px] text-muted-foreground">
-        {Object.entries(colorMap).map(([type, cls]) => (
-          <div key={type} className="flex items-center gap-1.5">
-            <div
-              className={`h-2.5 w-2.5 rounded-sm border ${cls.split(" ").slice(0, 2).join(" ")}`}
-            />
-            <span className="capitalize">{type}</span>
+    <div className="flex h-full">
+      <div className="flex-1 p-6">
+        <h1 className="text-2xl font-bold mb-6 flex items-center gap-2"><Network className="w-6 h-6" /> 知识图谱</h1>
+        {entities.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground"><Network className="w-12 h-12 mb-4 opacity-50" /><p>暂无图谱数据</p><p className="text-sm mt-1">添加知识库后自动生成</p></div>
+        ) : (
+          <div>
+            <p className="text-sm text-muted-foreground mb-4">{entities.length} 个实体，{relations.length} 个关系</p>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              {entities.map(e => (
+                <div key={e.id} onClick={() => setSelected(e)} className={`p-3 rounded-lg border cursor-pointer transition-colors ${selected?.id === e.id ? 'border-primary bg-primary/5' : 'bg-card hover:border-primary/50'}`}>
+                  <p className="font-medium text-sm">{e.name}</p>
+                  {e.type && <span className="text-xs px-1.5 py-0.5 rounded bg-muted mt-1 inline-block">{e.type}</span>}
+                </div>
+              ))}
+            </div>
           </div>
-        ))}
+        )}
       </div>
+      {selected && (
+        <div className="w-80 border-l p-6 overflow-y-auto">
+          <h2 className="font-bold mb-4">{selected.name}</h2>
+          {selected.type && <p className="text-sm mb-2"><span className="text-muted-foreground">类型：</span>{selected.type}</p>}
+          {selected.properties && Object.entries(selected.properties).map(([k, v]) => (
+            <p key={k} className="text-sm mb-1"><span className="text-muted-foreground">{k}：</span>{String(v)}</p>
+          ))}
+          <div className="mt-4 pt-4 border-t">
+            <h3 className="text-sm font-medium mb-2">关联关系</h3>
+            {relations.filter(r => r.source_id === selected.id || r.target_id === selected.id).map(r => {
+              const other = r.source_id === selected.id ? entities.find(e => e.id === r.target_id) : entities.find(e => e.id === r.source_id);
+              return <p key={r.id} className="text-xs text-muted-foreground mb-1">{r.source_id === selected.id ? '→' : '←'} {r.type} {other?.name || '未知'}</p>;
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,133 +1,83 @@
-"use client";
+'use client';
+import { useState, useEffect } from 'react';
+import { BookOpen, Plus, Trash2, Search, Star, Loader2 } from 'lucide-react';
+import { api } from '@/lib/api-client';
 
-import { useState } from "react";
-import {
-  FileText,
-  LinkIcon,
-  StickyNote,
-  Plus,
-  Search,
-  Tag,
-  MoreHorizontal,
-} from "lucide-react";
+interface Knowledge { id: string; title: string; description?: string; starred?: boolean; pinned?: boolean; document_count?: number; created_at?: string; }
 
-interface KItem {
-  id: string;
-  title: string;
-  type: "document" | "note" | "link";
-  tags: string[];
-  updatedAt: string;
-  excerpt: string;
-}
+export default function KnowledgeClient() {
+  const [items, setItems] = useState<Knowledge[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newTitle, setNewTitle] = useState('');
+  const [newDesc, setNewDesc] = useState('');
+  const [error, setError] = useState('');
 
-const mockItems: KItem[] = [
-  {
-    id: "1",
-    title: "Project Architecture Overview",
-    type: "document",
-    tags: ["architecture", "overview"],
-    updatedAt: "2 hours ago",
-    excerpt: "High-level architecture of the OpenMate platform and its modules…",
-  },
-  {
-    id: "2",
-    title: "API Design Patterns",
-    type: "note",
-    tags: ["api", "patterns"],
-    updatedAt: "1 day ago",
-    excerpt: "Common patterns for REST API design in the Soul backend…",
-  },
-  {
-    id: "3",
-    title: "Next.js 16 Migration Notes",
-    type: "document",
-    tags: ["nextjs", "migration"],
-    updatedAt: "3 days ago",
-    excerpt: "Key changes and migration steps from Next.js 15 to 16…",
-  },
-  {
-    id: "4",
-    title: "Open WebUI Reference",
-    type: "link",
-    tags: ["reference", "ui"],
-    updatedAt: "1 week ago",
-    excerpt: "https://github.com/open-webui/open-webui",
-  },
-];
+  useEffect(() => { loadItems(); }, []);
 
-const iconMap = {
-  document: FileText,
-  note: StickyNote,
-  link: LinkIcon,
-};
+  const loadItems = async () => {
+    setLoading(true);
+    try {
+      const data = await api.getKnowledge();
+      setItems(Array.isArray(data) ? data : data.items || data.results || []);
+    } catch (e) { setError(`加载失败: ${(e as Error).message}`); }
+    setLoading(false);
+  };
 
-export function KnowledgeClient() {
-  const [query, setQuery] = useState("");
-  const filtered = mockItems.filter((i) =>
-    i.title.toLowerCase().includes(query.toLowerCase()),
-  );
+  const handleCreate = async () => {
+    if (!newTitle.trim()) return;
+    try {
+      await api.createKnowledge({ title: newTitle, description: newDesc });
+      setNewTitle(''); setNewDesc(''); setShowCreate(false);
+      loadItems();
+    } catch (e) { setError(`创建失败: ${(e as Error).message}`); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm('确定删除？')) return;
+    try { await api.deleteKnowledge(id); loadItems(); } catch (e) { setError(`删除失败: ${(e as Error).message}`); }
+  };
+
+  if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="flex h-full flex-col">
-      {/* Toolbar */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-1.5 text-sm">
-          <Search size={14} className="text-muted-foreground" />
-          <input
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            placeholder="Filter items…"
-            className="w-48 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
-          />
-        </div>
-
-        <button className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90">
-          <Plus size={14} />
-          Add
-        </button>
+    <div className="p-6">
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold flex items-center gap-2"><BookOpen className="w-6 h-6" /> 知识库</h1>
+        <button onClick={() => setShowCreate(!showCreate)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2"><Plus className="w-4 h-4" /> 新建</button>
       </div>
-
-      {/* Grid */}
-      <div className="flex-1 overflow-y-auto p-6">
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((item) => {
-            const Icon = iconMap[item.type];
-            return (
-              <div
-                key={item.id}
-                className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40"
-              >
-                <div className="mb-3 flex items-start justify-between">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                    <Icon size={16} />
-                  </div>
-                  <button className="rounded-md p-1 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100 hover:bg-accent">
-                    <MoreHorizontal size={14} />
-                  </button>
+      {error && <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">{error}</div>}
+      {showCreate && (
+        <div className="mb-6 p-4 rounded-lg border bg-card">
+          <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder="知识库名称" className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
+          <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="描述（可选）" className="w-full mb-3 px-3 py-2 rounded border bg-background text-sm" />
+          <div className="flex gap-2">
+            <button onClick={handleCreate} className="px-4 py-2 rounded bg-primary text-primary-foreground text-sm">创建</button>
+            <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded border text-sm">取消</button>
+          </div>
+        </div>
+      )}
+      {items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground"><BookOpen className="w-12 h-12 mb-4 opacity-50" /><p>还没有知识库，点击"新建"开始</p></div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          {items.map(item => (
+            <div key={item.id} className="p-4 rounded-lg border bg-card hover:border-primary/50 transition-colors cursor-pointer group">
+              <div className="flex items-start justify-between">
+                <div className="flex-1">
+                  <h3 className="font-medium flex items-center gap-2">{item.pinned && <Star className="w-3 h-3 text-yellow-500 fill-yellow-500" />} {item.title}</h3>
+                  {item.description && <p className="text-sm text-muted-foreground mt-1 line-clamp-2">{item.description}</p>}
                 </div>
-                <h3 className="mb-1 text-sm font-medium">{item.title}</h3>
-                <p className="mb-3 line-clamp-2 text-xs text-muted-foreground">
-                  {item.excerpt}
-                </p>
-                <div className="flex flex-wrap items-center gap-1.5">
-                  {item.tags.map((tag) => (
-                    <span
-                      key={tag}
-                      className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
-                    >
-                      <Tag size={8} />
-                      {tag}
-                    </span>
-                  ))}
-                  <span className="ml-auto text-[10px] text-muted-foreground">
-                    {item.updatedAt}
-                  </span>
-                </div>
+                <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-opacity"><Trash2 className="w-4 h-4" /></button>
               </div>
-            );
-          })}
+              <div className="mt-3 flex items-center gap-4 text-xs text-muted-foreground">
+                {item.document_count !== undefined && <span>{item.document_count} 个文档</span>}
+                {item.created_at && <span>{new Date(item.created_at).toLocaleDateString()}</span>}
+              </div>
+            </div>
+          ))}
         </div>
-      </div>
+      )}
     </div>
   );
 }
