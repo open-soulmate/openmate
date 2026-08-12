@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import { type ThemeId, getStoredTheme, applyTheme } from "@/lib/theme";
 
 export interface ChatMessage {
   id: string;
@@ -65,7 +66,7 @@ export interface AgentNode {
   tools?: string[];
 }
 
-export type Theme = "dark" | "light" | "system";
+export type Theme = ThemeId;
 
 export type GroupDispatchMode = "auto" | "manual";
 
@@ -142,8 +143,8 @@ interface AppState {
   clearGroupMessages: (groupId: string) => void;
 
   // Theme
-  theme: Theme;
-  setTheme: (theme: Theme) => void;
+  theme: ThemeId;
+  setTheme: (theme: ThemeId) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -202,20 +203,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
 
   // Theme
-  theme: "dark",
+  theme: getStoredTheme(),
   setTheme: (theme) => {
     set({ theme });
-    if (typeof document !== "undefined") {
-      const root = document.documentElement;
-      root.classList.remove("light", "dark");
-      if (theme === "system") {
-        const sys = window.matchMedia("(prefers-color-scheme: dark)").matches
-          ? "dark"
-          : "light";
-        root.classList.add(sys);
-      } else {
-        root.classList.add(theme);
-      }
+    applyTheme(theme);
+    if (typeof window !== "undefined") {
+      localStorage.setItem("openmate-theme", theme);
     }
   },
 

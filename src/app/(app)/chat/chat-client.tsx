@@ -38,6 +38,7 @@ import {
   type AgentRuntimeStatus,
   AGENT_ICON_MAP,
 } from "@/lib/agent-types";
+import { WorkspaceSidebar } from "@/components/workspace-sidebar";
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -675,7 +676,7 @@ export function ChatClient() {
       )}
 
       {/* ─── Main Chat Area ────────────────────────────────────────── */}
-      <div className="flex flex-1 flex-col">
+      <div className="flex flex-1 flex-col min-w-0">
         {/* Chat header */}
         <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-4">
           <div className="flex items-center gap-2">
@@ -865,6 +866,13 @@ export function ChatClient() {
           </div>
         </div>
       </div>
+
+      {/* ─── Workspace Sidebar ─────────────────────────────────────── */}
+      <WorkspaceSidebar
+        messageCount={messages.length}
+        activeAgentName={selectedAgent?.name}
+        activeAgentStatus="online"
+      />
 
       {/* ─── Delete Confirmation Dialog ─────────────────────────────── */}
       {deleteTarget && (

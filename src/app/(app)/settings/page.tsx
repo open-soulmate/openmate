@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { User, Globe, Key, Bell, Monitor, Save } from "lucide-react";
+import { useState, useEffect } from "react";
+import { User, Globe, Key, Bell, Monitor, Save, Moon, Sun, Palette } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { type ThemeId, themes, getStoredTheme, persistTheme } from "@/lib/theme";
 
 const sections = [
   { id: "profile", label: "Profile", icon: User },
@@ -13,6 +15,16 @@ const sections = [
 
 export default function SettingsPage() {
   const [active, setActive] = useState("profile");
+  const [currentTheme, setCurrentTheme] = useState<ThemeId>("dark");
+
+  useEffect(() => {
+    setCurrentTheme(getStoredTheme());
+  }, []);
+
+  function handleThemeChange(theme: ThemeId) {
+    setCurrentTheme(theme);
+    persistTheme(theme);
+  }
 
   return (
     <div className="flex h-full">
@@ -112,18 +124,28 @@ export default function SettingsPage() {
                   Theme
                 </label>
                 <div className="flex gap-3">
-                  {["Dark", "Light", "System"].map((t) => (
-                    <button
-                      key={t}
-                      className={`rounded-md border px-4 py-2 text-sm ${
-                        t === "Dark"
-                          ? "border-primary bg-primary/10 text-foreground"
-                          : "border-border bg-muted text-muted-foreground hover:bg-accent"
-                      }`}
-                    >
-                      {t}
-                    </button>
-                  ))}
+                  {themes.map((t) => {
+                    const icons: Record<ThemeId, React.ReactNode> = {
+                      dark: <Moon size={16} />,
+                      light: <Sun size={16} />,
+                      purple: <Palette size={16} />,
+                    };
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => handleThemeChange(t.id)}
+                        className={cn(
+                          "flex items-center gap-2 rounded-md border px-4 py-2 text-sm transition-colors",
+                          currentTheme === t.id
+                            ? "border-primary bg-primary/10 text-foreground"
+                            : "border-border bg-muted text-muted-foreground hover:bg-accent",
+                        )}
+                      >
+                        {icons[t.id]}
+                        {t.label}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
               <div>

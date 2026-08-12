@@ -65,3 +65,55 @@ body {
 ::selection {
   background: color-mix(in srgb, var(--color-primary) 30%, transparent);
 }
+
+/* ─── Light Theme ─────────────────────────────────────────────────────── */
+.light {
+  --color-background: #ffffff;
+  --color-foreground: #18181b;
+  --color-card: #fafafa;
+  --color-card-foreground: #18181b;
+  --color-popover: #fafafa;
+  --color-popover-foreground: #18181b;
+  --color-primary: #6366f1;
+  --color-primary-foreground: #ffffff;
+  --color-secondary: #f4f4f5;
+  --color-secondary-foreground: #71717a;
+  --color-muted: #f4f4f5;
+  --color-muted-foreground: #71717a;
+  --color-accent: #f4f4f5;
+  --color-accent-foreground: #18181b;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #ffffff;
+  --color-border: #e4e4e7;
+  --color-input: #e4e4e7;
+  --color-ring: #6366f1;
+  --color-sidebar: #fafafa;
+  --color-sidebar-foreground: #71717a;
+  --color-sidebar-accent: #f0f0f2;
+}
+
+/* ─── Purple Theme ────────────────────────────────────────────────────── */
+.theme-purple {
+  --color-background: #0c0514;
+  --color-foreground: #e8e0f0;
+  --color-card: #130a1f;
+  --color-card-foreground: #e8e0f0;
+  --color-popover: #130a1f;
+  --color-popover-foreground: #e8e0f0;
+  --color-primary: #a855f7;
+  --color-primary-foreground: #fafafa;
+  --color-secondary: #1e1230;
+  --color-secondary-foreground: #a78bbc;
+  --color-muted: #160d24;
+  --color-muted-foreground: #8b72a0;
+  --color-accent: #1e1230;
+  --color-accent-foreground: #e8e0f0;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #fafafa;
+  --color-border: #2a1a40;
+  --color-input: #2a1a40;
+  --color-ring: #a855f7;
+  --color-sidebar: #0f0819;
+  --color-sidebar-foreground: #a78bbc;
+  --color-sidebar-accent: #1a0f2e;
+}
