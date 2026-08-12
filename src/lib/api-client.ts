@@ -17,14 +17,30 @@ export const api = {
     request('/api/user/register', { method: 'POST', body: JSON.stringify({ username, password, email }) }),
 
   // Chat
-  chat: (message: string, userId: string, knowledgeId?: string) =>
-    request('/api/chat/', { method: 'POST', body: JSON.stringify({ message, user_id: userId, knowledge_id: knowledgeId }) }),
+  chat: (message: string, userId: string) =>
+    request('/api/chat/', { method: 'POST', body: JSON.stringify({ message, user_id: userId }) }),
 
-  // Knowledge - all require user_id
+  // Knowledge
   getKnowledge: (userId: string) => request(`/api/knowledge/?user_id=${userId}`),
   createKnowledge: (userId: string, data: { title: string; content: string; tags?: string[] }) =>
     request(`/api/knowledge/?user_id=${userId}`, { method: 'POST', body: JSON.stringify(data) }),
   deleteKnowledge: (id: string) => request(`/api/knowledge/${id}`, { method: 'DELETE' }),
+
+  // Knowledge Requests (申请创建知识库)
+  createKbRequest: (data: { kb_name: string; kb_description: string }) =>
+    request('/api/knowledge-requests/', { method: 'POST', body: JSON.stringify(data) }),
+  getMyKbRequests: () => request('/api/knowledge-requests/my'),
+  listKbRequests: (status?: string) => request(`/api/knowledge-requests/${status ? `?status=${status}` : ''}`),
+  reviewKbRequest: (id: string, data: { status: string; review_note: string }) =>
+    request(`/api/knowledge-requests/${id}/review`, { method: 'POST', body: JSON.stringify(data) }),
+
+  // KB Sharing (申请共享到企业知识库)
+  createSharingRequest: (data: { kb_id: string; kb_name: string }) =>
+    request('/api/kb-sharing/', { method: 'POST', body: JSON.stringify(data) }),
+  getMySharingRequests: () => request('/api/kb-sharing/my'),
+  listSharingRequests: (status?: string) => request(`/api/kb-sharing/${status ? `?status=${status}` : ''}`),
+  reviewSharingRequest: (id: string, data: { status: string; review_note: string }) =>
+    request(`/api/kb-sharing/${id}/review`, { method: 'POST', body: JSON.stringify(data) }),
 
   // Search
   search: (query: string, userId: string) => request(`/api/search/?q=${encodeURIComponent(query)}&user_id=${userId}`),
