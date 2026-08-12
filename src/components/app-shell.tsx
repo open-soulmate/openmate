@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
+import { useTranslation } from "react-i18next";
 import {
   MessageSquare,
   BookOpen,
@@ -21,26 +22,27 @@ import {
 } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 
-const navItems = [
-  { href: "/chat", label: "Chat", icon: MessageSquare },
-  { href: "/knowledge", label: "Knowledge", icon: BookOpen },
-  { href: "/learn", label: "Learn", icon: GraduationCap },
-  { href: "/graph", label: "Graph", icon: Network },
-  { href: "/search", label: "Search", icon: Search },
-  { href: "/skills", label: "Skills", icon: Puzzle },
-  { href: "/mcp", label: "MCP", icon: Plug },
-  { href: "/agents", label: "Agents", icon: Server },
-  { href: "/groups", label: "Agent 群", icon: Users },
-  { href: "/workflow", label: "Workflow", icon: Workflow },
-  { href: "/settings", label: "Settings", icon: Settings },
-];
-
 export function AppShell() {
   const pathname = usePathname();
   const collapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggle = useAppStore((s) => s.toggleSidebar);
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const { t } = useTranslation();
+
+  const navItems = [
+    { href: "/chat", label: t("nav.chat"), icon: MessageSquare },
+    { href: "/knowledge", label: t("nav.knowledge"), icon: BookOpen },
+    { href: "/learn", label: t("nav.learn"), icon: GraduationCap },
+    { href: "/graph", label: t("nav.graph"), icon: Network },
+    { href: "/search", label: t("nav.search"), icon: Search },
+    { href: "/skills", label: t("nav.skills"), icon: Puzzle },
+    { href: "/mcp", label: t("nav.mcp"), icon: Plug },
+    { href: "/agents", label: t("nav.agents"), icon: Server },
+    { href: "/groups", label: t("nav.groups"), icon: Users },
+    { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
+    { href: "/settings", label: t("nav.settings"), icon: Settings },
+  ];
 
   const isExpanded = !collapsed || hoverExpanded;
 
