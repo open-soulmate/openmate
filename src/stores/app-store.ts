@@ -1,12 +1,29 @@
 import { create } from "zustand";
 import { type ThemeId, getStoredTheme, applyTheme } from "@/lib/theme";
 
+export interface ToolCall {
+  id: string;
+  name: string;
+  args: Record<string, unknown>;
+  result?: string;
+  status: "running" | "success" | "error";
+}
+
+export interface FilePreview {
+  path: string;
+  language: string;
+  content: string;
+  lineCount: number;
+}
+
 export interface ChatMessage {
   id: string;
-  role: "user" | "assistant";
+  role: "user" | "assistant" | "system";
   content: string;
   timestamp: number;
   sources?: { title: string; url: string }[];
+  toolCalls?: ToolCall[];
+  filePreviews?: FilePreview[];
 }
 
 export interface Conversation {
@@ -70,6 +87,59 @@ export type Theme = ThemeId;
 
 export type GroupDispatchMode = "auto" | "manual";
 
+// ─── Team types ─────────────────────────────────────────────────────────────
+
+export type TeamMemberRole = "leader" | "member" | "observer";
+export type TeamMemberStatus = "online" | "offline" | "busy";
+export type ActivityType = "task_created" | "task_completed" | "member_joined" | "member_left" | "code_committed";
+export type TaskStatus = "todo" | "in_progress" | "done";
+export type TaskPriority = "low" | "medium" | "high" | "urgent";
+
+export interface TeamMember {
+  id: string;
+  agentId: string;
+  name: string;
+  type: AgentType;
+  role: TeamMemberRole;
+  status: TeamMemberStatus;
+  capabilities: string[];
+  joinedAt: number;
+}
+
+export interface TeamActivity {
+  id: string;
+  type: ActivityType;
+  actorId: string;
+  actorName: string;
+  description: string;
+  taskId?: string;
+  timestamp: number;
+}
+
+export interface TeamTask {
+  id: string;
+  title: string;
+  description?: string;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assigneeId?: string;
+  assigneeName?: string;
+  tags: string[];
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface Team {
+  id: string;
+  name: string;
+  description: string;
+  members: TeamMember[];
+  activities: TeamActivity[];
+  tasks: TeamTask[];
+  createdAt: number;
+  updatedAt: number;
+}
+
 export interface AgentGroup {
   id: string;
   name: string;
@@ -79,6 +149,34 @@ export interface AgentGroup {
   dispatchMode: GroupDispatchMode;
   createdAt: number;
   updatedAt: number;
+}
+
+// ─── Workspace types ────────────────────────────────────────────────────────
+
+export interface Workspace {
+  id: string;
+  name: string;
+  path: string;
+  lastModified: number;
+  fileCount: number;
+  size: number; // bytes
+  description?: string;
+}
+
+export interface FileNode {
+  name: string;
+  path: string;
+  type: "file" | "directory";
+  children?: FileNode[];
+  size?: number;
+  extension?: string;
+}
+
+export interface TerminalLine {
+  id: string;
+  type: "input" | "output" | "error";
+  content: string;
+  timestamp: number;
 }
 
 export interface GroupChatMessage {
@@ -142,9 +240,28 @@ interface AppState {
   addGroupMessage: (groupId: string, msg: GroupChatMessage) => void;
   clearGroupMessages: (groupId: string) => void;
 
+  // Teams
+  teams: Team[];
+  addTeam: (team: Team) => void;
+  updateTeam: (id: string, updates: Partial<Team>) => void;
+  deleteTeam: (id: string) => void;
+  addTeamMember: (teamId: string, member: TeamMember) => void;
+  removeTeamMember: (teamId: string, memberId: string) => void;
+  updateTeamMember: (teamId: string, memberId: string, updates: Partial<TeamMember>) => void;
+  addTeamActivity: (teamId: string, activity: TeamActivity) => void;
+  addTeamTask: (teamId: string, task: TeamTask) => void;
+  updateTeamTask: (teamId: string, taskId: string, updates: Partial<TeamTask>) => void;
+  moveTeamTask: (teamId: string, taskId: string, status: TaskStatus) => void;
+
   // Theme
   theme: ThemeId;
   setTheme: (theme: ThemeId) => void;
+
+  // Workspaces
+  workspaces: Workspace[];
+  addWorkspace: (ws: Workspace) => void;
+  removeWorkspace: (id: string) => void;
+  updateWorkspace: (id: string, updates: Partial<Workspace>) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -200,6 +317,94 @@ export const useAppStore = create<AppState>((set, get) => ({
   clearGroupMessages: (groupId) =>
     set((s) => ({
       groupMessages: { ...s.groupMessages, [groupId]: [] },
+    })),
+
+  // Teams
+  teams: [],
+  addTeam: (team) => set((s) => ({ teams: [team, ...s.teams] })),
+  updateTeam: (id, updates) =>
+    set((s) => ({
+      teams: s.teams.map((t) =>
+        t.id === id ? { ...t, ...updates, updatedAt: Date.now() } : t,
+      ),
+    })),
+  deleteTeam: (id) =>
+    set((s) => ({
+      teams: s.teams.filter((t) => t.id !== id),
+    })),
+  addTeamMember: (teamId, member) =>
+    set((s) => ({
+      teams: s.teams.map((t) =>
+        t.id === teamId
+          ? { ...t, members: [...t.members, member], updatedAt: Date.now() }
+          : t,
+      ),
+    })),
+  removeTeamMember: (teamId, memberId) =>
+    set((s) => ({
+      teams: s.teams.map((t) =>
+        t.id === teamId
+          ? { ...t, members: t.members.filter((m) => m.id !== memberId), updatedAt: Date.now() }
+          : t,
+      ),
+    })),
+  updateTeamMember: (teamId, memberId, updates) =>
+    set((s) => ({
+      teams: s.teams.map((t) =>
+        t.id === teamId
+          ? {
+              ...t,
+              members: t.members.map((m) =>
+                m.id === memberId ? { ...m, ...updates } : m,
+              ),
+              updatedAt: Date.now(),
+            }
+          : t,
+      ),
+    })),
+  addTeamActivity: (teamId, activity) =>
+    set((s) => ({
+      teams: s.teams.map((t) =>
+        t.id === teamId
+          ? { ...t, activities: [activity, ...t.activities], updatedAt: Date.now() }
+          : t,
+      ),
+    })),
+  addTeamTask: (teamId, task) =>
+    set((s) => ({
+      teams: s.teams.map((t) =>
+        t.id === teamId
+          ? { ...t, tasks: [...t.tasks, task], updatedAt: Date.now() }
+          : t,
+      ),
+    })),
+  updateTeamTask: (teamId, taskId, updates) =>
+    set((s) => ({
+      teams: s.teams.map((t) =>
+        t.id === teamId
+          ? {
+              ...t,
+              tasks: t.tasks.map((tk) =>
+                tk.id === taskId ? { ...tk, ...updates, updatedAt: Date.now() } : tk,
+              ),
+              updatedAt: Date.now(),
+            }
+          : t,
+      ),
+    })),
+  moveTeamTask: (teamId, taskId, status) =>
+    set((s) => ({
+      teams: s.teams.map((t) =>
+        t.id === teamId
+          ? {
+              ...t,
+              tasks: t.tasks.map((tk) =>
+                tk.id === taskId ? { ...tk, status, updatedAt: Date.now() } : tk,
+              ),
+              updatedAt: Date.now(),
+            }
+          : t,
+      ),
     })),
 
   // Theme
@@ -328,6 +533,45 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   searchQuery: "",
   setSearchQuery: (q) => set({ searchQuery: q }),
+
+  // Workspaces
+  workspaces: [
+    {
+      id: "ws-1",
+      name: "OpenMate 前端",
+      path: "~/projects/openmate",
+      lastModified: Date.now() - 3600000,
+      fileCount: 156,
+      size: 2457600,
+      description: "OpenMate 主项目前端代码",
+    },
+    {
+      id: "ws-2",
+      name: "AI Agent 后端",
+      path: "~/projects/agent-backend",
+      lastModified: Date.now() - 86400000,
+      fileCount: 89,
+      size: 1536000,
+      description: "Agent 后端服务",
+    },
+    {
+      id: "ws-3",
+      name: "数据处理管道",
+      path: "~/projects/data-pipeline",
+      lastModified: Date.now() - 172800000,
+      fileCount: 42,
+      size: 819200,
+    },
+  ],
+  addWorkspace: (ws) => set((s) => ({ workspaces: [ws, ...s.workspaces] })),
+  removeWorkspace: (id) =>
+    set((s) => ({ workspaces: s.workspaces.filter((w) => w.id !== id) })),
+  updateWorkspace: (id, updates) =>
+    set((s) => ({
+      workspaces: s.workspaces.map((w) =>
+        w.id === id ? { ...w, ...updates, lastModified: Date.now() } : w,
+      ),
+    })),
 }));
 
 // ─── localStorage persistence for conversations ────────────────────────────

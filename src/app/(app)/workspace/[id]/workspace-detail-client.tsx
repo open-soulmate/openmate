@@ -1,0 +1,479 @@
+"use client";
+
+import { useState, useEffect, useCallback, useRef } from "react";
+import { useParams } from "next/navigation";
+import { cn } from "@/lib/utils";
+import { useAppStore, type FileNode, type TerminalLine } from "@/stores/app-store";
+import { listDir, readFile, executeCommand } from "@/lib/tauri-bridge";
+import { SCMPanel } from "@/components/scm-panel";
+import {
+  FolderOpen,
+  File,
+  ChevronRight,
+  ChevronDown,
+  Terminal,
+  Code,
+  Maximize2,
+  Minimize2,
+  Send,
+  GitBranch,
+  PanelRightOpen,
+  PanelRightClose,
+  ArrowLeft,
+} from "lucide-react";
+import Link from "next/link";
+
+// ─── File Tree ──────────────────────────────────────────────────────────────
+
+function FileTreeNode({
+  node,
+  depth,
+  onSelect,
+  selected,
+}: {
+  node: FileNode;
+  depth: number;
+  onSelect: (path: string) => void;
+  selected: string | null;
+}) {
+  const [expanded, setExpanded] = useState(depth < 2);
+
+  if (node.type === "directory") {
+    return (
+      <div>
+        <button
+          onClick={() => setExpanded(!expanded)}
+          className={cn(
+            "flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-accent",
+          )}
+          style={{ paddingLeft: `${depth * 12 + 8}px` }}
+        >
+          {expanded ? (
+            <ChevronDown size={12} className="shrink-0 text-muted-foreground" />
+          ) : (
+            <ChevronRight size={12} className="shrink-0 text-muted-foreground" />
+          )}
+          <FolderOpen size={14} className="shrink-0 text-amber-400" />
+          <span className="truncate text-foreground">{node.name}</span>
+        </button>
+        {expanded &&
+          node.children?.map((child) => (
+            <FileTreeNode
+              key={child.path}
+              node={child}
+              depth={depth + 1}
+              onSelect={onSelect}
+              selected={selected}
+            />
+          ))}
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => onSelect(node.path)}
+      className={cn(
+        "flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-accent",
+        selected === node.path && "bg-accent text-foreground",
+      )}
+      style={{ paddingLeft: `${depth * 12 + 24}px` }}
+    >
+      <File size={14} className="shrink-0 text-muted-foreground" />
+      <span className="truncate">{node.name}</span>
+    </button>
+  );
+}
+
+// ─── File Content Viewer ────────────────────────────────────────────────────
+
+function FileViewer({
+  path,
+  content,
+}: {
+  path: string;
+  content: string;
+}) {
+  const lines = content.split("\n");
+  const ext = path.split(".").pop()?.toLowerCase() ?? "";
+  const fileName = path.split("/").pop() ?? path;
+
+  return (
+    <div className="flex h-full flex-col">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
+        <Code size={14} className="text-muted-foreground" />
+        <span className="text-xs font-medium text-foreground">{fileName}</span>
+        <span className="text-[10px] text-muted-foreground">
+          {lines.length} lines
+        </span>
+      </div>
+      <div className="flex-1 overflow-auto">
+        <div className="flex font-mono text-xs leading-6">
+          {/* Line numbers */}
+          <div className="shrink-0 select-none border-r border-border bg-muted/50 pr-3 text-right text-muted-foreground">
+            {lines.map((_, i) => (
+              <div key={i} className="px-2">
+                {i + 1}
+              </div>
+            ))}
+          </div>
+          {/* Code */}
+          <div className="flex-1 overflow-x-auto px-4">
+            {lines.map((line, i) => (
+              <div key={i} className="whitespace-pre text-foreground">
+                {line || "\u00A0"}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Terminal ───────────────────────────────────────────────────────────────
+
+function TerminalPanel({
+  lines,
+  onCommand,
+  cwd,
+}: {
+  lines: TerminalLine[];
+  onCommand: (cmd: string) => void;
+  cwd: string;
+}) {
+  const [input, setInput] = useState("");
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [lines]);
+
+  const handleSubmit = () => {
+    if (!input.trim()) return;
+    onCommand(input.trim());
+    setInput("");
+  };
+
+  return (
+    <div className="flex h-full flex-col bg-background">
+      <div className="flex shrink-0 items-center gap-2 border-b border-border px-3 py-1.5">
+        <Terminal size={12} className="text-muted-foreground" />
+        <span className="text-[10px] font-medium text-muted-foreground">
+          Terminal
+        </span>
+        <span className="text-[10px] text-muted-foreground truncate">
+          {cwd}
+        </span>
+      </div>
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-2 font-mono text-xs">
+        {lines.map((line) => (
+          <div
+            key={line.id}
+            className={cn(
+              "whitespace-pre-wrap break-all",
+              line.type === "input" && "text-foreground",
+              line.type === "output" && "text-muted-foreground",
+              line.type === "error" && "text-destructive",
+            )}
+          >
+            {line.type === "input" ? (
+              <span>
+                <span className="text-primary">$ </span>
+                {line.content}
+              </span>
+            ) : (
+              line.content
+            )}
+          </div>
+        ))}
+      </div>
+      <div className="flex shrink-0 items-center gap-2 border-t border-border px-2 py-1.5">
+        <span className="text-primary font-mono text-xs">$</span>
+        <input
+          type="text"
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") handleSubmit();
+          }}
+          placeholder="Enter command..."
+          className="flex-1 bg-transparent text-xs text-foreground placeholder:text-muted-foreground focus:outline-none"
+        />
+        <button
+          onClick={handleSubmit}
+          className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
+        >
+          <Send size={10} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ─────────────────────────────────────────────────────────
+
+export function WorkspaceDetailClient() {
+  const params = useParams();
+  const id = params.id as string;
+  const workspace = useAppStore((s) => s.workspaces.find((w) => w.id === id));
+
+  const [fileTree, setFileTree] = useState<FileNode[]>([]);
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [fileContent, setFileContent] = useState<string>("");
+  const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([
+    {
+      id: "welcome",
+      type: "output",
+      content: `Welcome to ${workspace?.name ?? "Workspace"} terminal`,
+      timestamp: Date.now(),
+    },
+  ]);
+  const [scmOpen, setScmOpen] = useState(true);
+  const [termHeight, setTermHeight] = useState(200);
+  const [isDragging, setIsDragging] = useState(false);
+  const dragStartY = useRef(0);
+  const dragStartHeight = useRef(0);
+
+  // Build file tree from workspace path
+  const loadFileTree = useCallback(async () => {
+    if (!workspace) return;
+    try {
+      const entries = await listDir(workspace.path);
+      const nodes: FileNode[] = [];
+      for (const entry of entries) {
+        if (entry.startsWith(".")) continue;
+        const fullPath = `${workspace.path}/${entry}`;
+        try {
+          const children = await listDir(fullPath);
+          nodes.push({
+            name: entry,
+            path: fullPath,
+            type: "directory",
+            children: children
+              .filter((c) => !c.startsWith("."))
+              .map((c) => ({
+                name: c,
+                path: `${fullPath}/${c}`,
+                type: "file" as const,
+              })),
+          });
+        } catch {
+          nodes.push({
+            name: entry,
+            path: fullPath,
+            type: "file",
+          });
+        }
+      }
+      setFileTree(nodes);
+    } catch {
+      // Fallback: show empty tree
+    }
+  }, [workspace]);
+
+  useEffect(() => {
+    loadFileTree();
+  }, [loadFileTree]);
+
+  // Load file content on select
+  useEffect(() => {
+    if (!selectedFile) return;
+    readFile(selectedFile)
+      .then(setFileContent)
+      .catch(() => setFileContent("// Failed to read file"));
+  }, [selectedFile]);
+
+  // Terminal command handler
+  const handleCommand = useCallback(
+    async (cmd: string) => {
+      const line: TerminalLine = {
+        id: `cmd-${Date.now()}`,
+        type: "input",
+        content: cmd,
+        timestamp: Date.now(),
+      };
+      setTerminalLines((prev) => [...prev, line]);
+
+      try {
+        const output = await executeCommand(
+          `cd "${workspace?.path ?? "."}" && ${cmd}`,
+        );
+        if (output.trim()) {
+          setTerminalLines((prev) => [
+            ...prev,
+            {
+              id: `out-${Date.now()}`,
+              type: "output",
+              content: output.trim(),
+              timestamp: Date.now(),
+            },
+          ]);
+        }
+      } catch (e) {
+        setTerminalLines((prev) => [
+          ...prev,
+          {
+            id: `err-${Date.now()}`,
+            type: "error",
+            content: e instanceof Error ? e.message : "Command failed",
+            timestamp: Date.now(),
+          },
+        ]);
+      }
+    },
+    [workspace],
+  );
+
+  // Drag to resize terminal
+  const handleMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      e.preventDefault();
+      setIsDragging(true);
+      dragStartY.current = e.clientY;
+      dragStartHeight.current = termHeight;
+    },
+    [termHeight],
+  );
+
+  useEffect(() => {
+    if (!isDragging) return;
+    const handleMove = (e: MouseEvent) => {
+      const delta = dragStartY.current - e.clientY;
+      setTermHeight(Math.max(100, Math.min(500, dragStartHeight.current + delta)));
+    };
+    const handleUp = () => setIsDragging(false);
+    window.addEventListener("mousemove", handleMove);
+    window.addEventListener("mouseup", handleUp);
+    return () => {
+      window.removeEventListener("mousemove", handleMove);
+      window.removeEventListener("mouseup", handleUp);
+    };
+  }, [isDragging]);
+
+  if (!workspace) {
+    return (
+      <div className="flex h-full flex-col items-center justify-center">
+        <FolderOpen size={40} className="mb-4 text-muted-foreground" />
+        <h2 className="text-lg font-semibold text-foreground">
+          Workspace not found
+        </h2>
+        <Link
+          href="/workspace"
+          className="mt-4 flex items-center gap-2 text-sm text-primary hover:underline"
+        >
+          <ArrowLeft size={14} />
+          Back to workspaces
+        </Link>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex h-full overflow-hidden">
+      {/* Left: File tree */}
+      <div className="w-56 shrink-0 border-r border-border bg-sidebar flex flex-col">
+        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
+          <FolderOpen size={14} className="text-muted-foreground" />
+          <span className="text-xs font-medium text-foreground truncate">
+            {workspace.name}
+          </span>
+        </div>
+        <div className="flex-1 overflow-y-auto p-1">
+          {fileTree.length === 0 ? (
+            <div className="flex flex-col items-center py-8 text-center">
+              <FolderOpen
+                size={24}
+                className="mb-2 text-muted-foreground"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                No files loaded
+              </p>
+            </div>
+          ) : (
+            fileTree.map((node) => (
+              <FileTreeNode
+                key={node.path}
+                node={node}
+                depth={0}
+                onSelect={setSelectedFile}
+                selected={selectedFile}
+              />
+            ))
+          )}
+        </div>
+      </div>
+
+      {/* Center: Editor + Terminal */}
+      <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Editor area */}
+        <div className="flex-1 overflow-hidden">
+          {selectedFile ? (
+            <FileViewer path={selectedFile} content={fileContent} />
+          ) : (
+            <div className="flex h-full flex-col items-center justify-center">
+              <Code size={32} className="mb-3 text-muted-foreground" />
+              <p className="text-sm font-medium text-foreground">
+                Select a file to view
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Click on a file in the tree to open it
+              </p>
+            </div>
+          )}
+        </div>
+
+        {/* Resize handle */}
+        <div
+          onMouseDown={handleMouseDown}
+          className={cn(
+            "h-1 shrink-0 cursor-row-resize border-t border-border transition-colors hover:bg-primary/30",
+            isDragging && "bg-primary/30",
+          )}
+        />
+
+        {/* Terminal */}
+        <div style={{ height: termHeight }} className="shrink-0 overflow-hidden">
+          <TerminalPanel
+            lines={terminalLines}
+            onCommand={handleCommand}
+            cwd={workspace.path}
+          />
+        </div>
+      </div>
+
+      {/* Right: SCM Panel */}
+      {scmOpen ? (
+        <div className="w-72 shrink-0 border-l border-border bg-sidebar flex flex-col">
+          <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
+            <div className="flex items-center gap-2">
+              <GitBranch size={14} className="text-primary" />
+              <span className="text-xs font-medium text-foreground">
+                SCM
+              </span>
+            </div>
+            <button
+              onClick={() => setScmOpen(false)}
+              className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            >
+              <PanelRightClose size={14} />
+            </button>
+          </div>
+          <SCMPanel workspacePath={workspace.path} className="flex-1" />
+        </div>
+      ) : (
+        <div className="flex w-10 shrink-0 flex-col items-center border-l border-border bg-sidebar py-3">
+          <button
+            onClick={() => setScmOpen(true)}
+            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            title="Open SCM Panel"
+          >
+            <PanelRightOpen size={16} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
