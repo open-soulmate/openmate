@@ -1,0 +1,38 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" width="64" height="64">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7C3AED" />
+      <stop offset="100%" style="stop-color:#3B82F6" />
+    </linearGradient>
+    <linearGradient id="grad-light" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#8B5CF6" />
+      <stop offset="100%" style="stop-color:#60A5FA" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded rectangle frame -->
+  <rect x="0" y="0" width="64" height="64" rx="14" ry="14" fill="none" stroke="url(#grad)" stroke-width="2.5"/>
+
+  <!-- Brain + bubble symbol -->
+  <!-- Left brain lobe -->
+  <path d="M22 20 C22 16, 28 12, 32 16 C36 12, 42 16, 42 20"
+        fill="none" stroke="url(#grad)" stroke-width="2" stroke-linecap="round"/>
+  <!-- Right brain lobe -->
+  <path d="M22 28 C18 28, 16 34, 22 38 C16 42, 18 48, 22 48"
+        fill="none" stroke="url(#grad-light)" stroke-width="2" stroke-linecap="round"/>
+  <path d="M42 28 C46 28, 48 34, 42 38 C48 42, 46 48, 42 48"
+        fill="none" stroke="url(#grad-light)" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Chat bubble tail -->
+  <path d="M28 48 L32 54 L36 48" fill="none" stroke="url(#grad)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Neural connection dots -->
+  <circle cx="32" cy="28" r="2" fill="url(#grad)"/>
+  <circle cx="26" cy="34" r="1.5" fill="url(#grad-light)" opacity="0.7"/>
+  <circle cx="38" cy="34" r="1.5" fill="url(#grad-light)" opacity="0.7"/>
+
+  <!-- Connection lines -->
+  <line x1="26" y1="34" x2="32" y2="28" stroke="url(#grad)" stroke-width="1" opacity="0.5"/>
+  <line x1="38" y1="34" x2="32" y2="28" stroke="url(#grad)" stroke-width="1" opacity="0.5"/>
+  <line x1="26" y1="34" x2="38" y2="34" stroke="url(#grad)" stroke-width="1" opacity="0.3"/>
+</svg>
