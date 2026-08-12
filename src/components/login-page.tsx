@@ -1,7 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { LogIn, UserPlus, Loader2 } from 'lucide-react';
-import { api, setUserId } from '@/lib/api-client';
+import { api, setUserId, setToken } from '@/lib/api-client';
 
 export function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [username, setUsername] = useState('');
@@ -20,7 +20,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
         setUserId(res.id);
       } else {
         const res = await api.login(username, password);
-        if (res.user_id) setUserId(res.user_id);
+        if (res.user_id) { setUserId(res.user_id); setToken(res.access_token); }
         else throw new Error('登录失败');
       }
       onLogin();

@@ -69,6 +69,15 @@ export function clearUser() {
   localStorage.removeItem('openmate-token');
 }
 
+export function setToken(token: string) {
+  localStorage.setItem('openmate-token', token);
+}
+
+export function getToken(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('openmate-token');
+}
+
 export function isLoggedIn(): boolean {
   return !!getUserId();
 }
