@@ -1,35 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
 import {
-  MessageSquare,
-  BookOpen,
-  GraduationCap,
-  Network,
-  Search,
-  Puzzle,
-  Settings,
-  PanelLeftClose,
-  PanelLeftOpen,
-  Server,
-  Workflow,
-  Plug,
-  Users,
-  GitBranch,
-  Clock,
+  MessageSquare, BookOpen, GraduationCap, Network, Search,
+  Puzzle, Settings, PanelLeftClose, PanelLeftOpen, Server,
+  Workflow, Plug, Users, GitBranch, Clock,
+  User, Moon, Sun, FileText, MessageCircle, LogOut,
 } from "lucide-react";
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
+import { getUserId } from "@/lib/api-client";
+import { type ThemeId, persistTheme } from "@/lib/theme";
 
 export function AppShell() {
   const pathname = usePathname();
+  const router = useRouter();
   const collapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggle = useAppStore((s) => s.toggleSidebar);
+  const storeTheme = useAppStore((s) => s.theme);
+  const setStoreTheme = useAppStore((s) => s.setTheme);
   const [hoverExpanded, setHoverExpanded] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const menuRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
   const navItems = [
@@ -49,6 +45,7 @@ export function AppShell() {
   ];
 
   const isExpanded = !collapsed || hoverExpanded;
+  const userId = getUserId() || "User";
 
   const handleMouseEnter = useCallback(() => {
     if (collapsed) {
@@ -60,6 +57,31 @@ export function AppShell() {
     clearTimeout(hoverTimer.current);
     setHoverExpanded(false);
   }, []);
+
+  // Close menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  // Close menu on route change
+  useEffect(() => { setMenuOpen(false); }, [pathname]);
+
+  function toggleTheme() {
+    const next: ThemeId = storeTheme === "dark" ? "light" : storeTheme === "light" ? "purple" : "dark";
+    persistTheme(next);
+    setStoreTheme(next);
+  }
+
+  function handleLogout() {
+    localStorage.removeItem("openmate-token");
+    localStorage.removeItem("openmate-api-url");
+    router.push("/login");
+  }
 
   return (
     <>
@@ -75,17 +97,10 @@ export function AppShell() {
         {/* Header */}
         <div className="flex h-14 shrink-0 items-center justify-between px-4">
           {isExpanded && (
-            <span className="text-sm font-semibold tracking-tight text-foreground">
-              OpenMate
-            </span>
+            <span className="text-sm font-semibold tracking-tight text-foreground">OpenMate</span>
           )}
-          <button
-            onClick={toggle}
-            className={cn(
-              "flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",
-              !isExpanded && "mx-auto"
-            )}
-          >
+          <button onClick={toggle}
+            className={cn("flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground", !isExpanded && "mx-auto")}>
             {isExpanded ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
           </button>
         </div>
@@ -95,17 +110,10 @@ export function AppShell() {
           {navItems.map((item) => {
             const active = pathname.startsWith(item.href);
             return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  "flex h-9 items-center gap-3 rounded-md px-3 text-sm transition-colors",
-                  active
-                    ? "bg-sidebar-accent text-foreground font-medium"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",
-                  !isExpanded && "justify-center"
-                )}
-              >
+              <Link key={item.href} href={item.href}
+                className={cn("flex h-9 items-center gap-3 rounded-md px-3 text-sm transition-colors",
+                  active ? "bg-sidebar-accent text-foreground font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",
+                  !isExpanded && "justify-center")}>
                 <item.icon size={18} />
                 {isExpanded && <span suppressHydrationWarning>{item.label}</span>}
               </Link>
@@ -113,34 +121,70 @@ export function AppShell() {
           })}
         </nav>
 
-        {/* Footer - User & Logout */}
-        <div className="border-t border-border px-2 py-3">
-          <div className={cn("flex items-center gap-3 px-3", !isExpanded && "justify-center")}>
+        {/* Footer - User Account Menu */}
+        <div className="border-t border-border px-2 py-3 relative" ref={menuRef}>
+          <button onClick={() => setMenuOpen(!menuOpen)}
+            className={cn("flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent", !isExpanded && "justify-center")}>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-              U
+              {userId[0].toUpperCase()}
             </div>
             {isExpanded && (
-              <div className="flex flex-1 items-center justify-between overflow-hidden">
-                <div className="flex flex-col min-w-0">
-                  <span className="truncate text-sm font-medium text-foreground">User</span>
-                  <span className="truncate text-xs text-muted-foreground">Free Plan</span>
-                </div>
-                <button
-                  onClick={() => {
-                    localStorage.removeItem("openmate-token");
-                    localStorage.removeItem("openmate-api-url");
-                    window.location.href = "/login";
-                  }}
-                  className="ml-2 p-1.5 rounded-md hover:bg-sidebar-accent text-muted-foreground hover:text-foreground transition-colors"
-                  title="退出登录"
-                >
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" /><polyline points="16 17 21 12 16 7" /><line x1="21" y1="12" x2="9" y2="12" />
-                  </svg>
-                </button>
+              <div className="flex flex-col items-start min-w-0">
+                <span className="truncate text-sm font-medium text-foreground">{userId}</span>
+                <span className="text-[10px] text-muted-foreground">OpenMate v0.1.0</span>
               </div>
             )}
-          </div>
+          </button>
+
+          {/* Account Menu Popover - Paperclip style */}
+          {menuOpen && (
+            <div className="absolute bottom-full left-0 mb-2 w-64 rounded-xl border border-border bg-card shadow-lg overflow-hidden z-50">
+              {/* User header */}
+              <div className="p-4 border-b border-border">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                    {userId[0].toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{userId}</div>
+                    <div className="text-xs text-muted-foreground">已登录</div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Menu items */}
+              <div className="py-1">
+                <MenuItem icon={User} label="查看资料" description="查看你的活动和使用记录" onClick={() => { router.push("/settings"); setMenuOpen(false); }} />
+                <MenuItem icon={Settings} label="编辑资料" description="更新显示名称和头像" onClick={() => { router.push("/settings"); setMenuOpen(false); }} />
+                <MenuItem icon={FileText} label="使用文档" description="打开 OpenMate 文档" onClick={() => window.open("https://github.com/open-soulmate/openmate", "_blank")} />
+                <MenuItem icon={MessageCircle} label="反馈" description="分享反馈或报告问题" onClick={() => window.open("https://github.com/open-soulmate/openmate/issues", "_blank")} />
+
+                {/* Theme toggle */}
+                <button onClick={toggleTheme}
+                  className="flex w-full items-start gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left">
+                  <div className="mt-0.5 text-muted-foreground">
+                    {storeTheme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-sm">{storeTheme === "dark" ? "切换到浅色模式" : storeTheme === "light" ? "切换到紫色模式" : "切换到深色模式"}</div>
+                    <div className="text-xs text-muted-foreground">切换界面外观</div>
+                  </div>
+                </button>
+              </div>
+
+              {/* Sign out */}
+              <div className="border-t border-border py-1">
+                <button onClick={handleLogout}
+                  className="flex w-full items-start gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left">
+                  <div className="mt-0.5 text-muted-foreground"><LogOut size={16} /></div>
+                  <div>
+                    <div className="text-sm">退出登录</div>
+                    <div className="text-xs text-muted-foreground">结束本次会话</div>
+                  </div>
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </aside>
 
@@ -149,14 +193,9 @@ export function AppShell() {
         {navItems.slice(0, 5).map((item) => {
           const active = pathname.startsWith(item.href);
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              className={cn(
-                "flex flex-col items-center gap-0.5 rounded-md px-3 py-1.5 text-[10px] transition-colors",
-                active ? "text-foreground" : "text-sidebar-foreground"
-              )}
-            >
+            <Link key={item.href} href={item.href}
+              className={cn("flex flex-col items-center gap-0.5 rounded-md px-3 py-1.5 text-[10px] transition-colors",
+                active ? "text-foreground" : "text-sidebar-foreground")}>
               <item.icon size={20} />
               <span suppressHydrationWarning>{item.label}</span>
             </Link>
@@ -164,5 +203,17 @@ export function AppShell() {
         })}
       </nav>
     </>
+  );
+}
+
+function MenuItem({ icon: Icon, label, description, onClick }: { icon: React.ElementType; label: string; description: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="flex w-full items-start gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left">
+      <div className="mt-0.5 text-muted-foreground"><Icon size={16} /></div>
+      <div className="min-w-0">
+        <div className="text-sm">{label}</div>
+        <div className="text-xs text-muted-foreground">{description}</div>
+      </div>
+    </button>
   );
 }
