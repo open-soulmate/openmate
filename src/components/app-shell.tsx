@@ -42,6 +42,7 @@ export function AppShell() {
     { href: "/skills", label: t("nav.skills"), icon: Puzzle },
     { href: "/mcp", label: t("nav.mcp"), icon: Plug },
     { href: "/agents", label: t("nav.agents"), icon: Server },
+    { href: "/ai-groups", label: t("nav.ai-groups") || "AI群", icon: Users },
     { href: "/groups", label: t("nav.groups"), icon: Users },
     { href: "/cron", label: t("nav.cron"), icon: Clock },
     { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
