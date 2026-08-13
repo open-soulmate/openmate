@@ -4,9 +4,9 @@
   "version": "0.1.0",
   "identifier": "com.openmate.app",
   "build": {
-    "frontendDist": "../out",
-    "devUrl": "http://localhost:3000",
-    "beforeDevCommand": "npm run dev",
+    "frontendDist": "http://localhost:3002",
+    "devUrl": "http://localhost:3002",
+    "beforeDevCommand": "npm run dev -- --port 3002",
     "beforeBuildCommand": "npm run build"
   },
   "app": {
@@ -15,7 +15,7 @@
         "title": "OpenMate",
         "width": 1200,
         "height": 800,
-        "minWidth": 800,
+        "minWidth": 375,
         "minHeight": 600,
         "resizable": true,
         "center": true
@@ -57,6 +57,12 @@
       "scope": {
         "all": true
       }
+    },
+    "updater": {
+      "endpoints": [
+        "https://raw.githubusercontent.com/open-soulmate/openmate/main/updater.json"
+      ],
+      "pubkey": ""
     }
   }
 }

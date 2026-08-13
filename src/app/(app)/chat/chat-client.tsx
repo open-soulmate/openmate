@@ -51,7 +51,7 @@ export function ChatClient() {
   // Detect installed agents and load sessions
   const initAgents = useCallback(async () => {
     // Detect installed agents via API
-    let detected: Record<string, boolean> = {};
+    let detected: Record<string, string> = {};
     try {
       const r = await fetch(`${getApiUrl()}/api/agents/detect`, { headers: { Authorization: `Bearer ${getToken()}` } });
       if (r.ok) detected = await r.json();
@@ -74,7 +74,7 @@ export function ChatClient() {
 
     // Build agent list
     const agentList: AgentInfo[] = AGENT_DEFINITIONS
-      .filter(a => detected[a.cmd] || sessionMap[a.id]?.length > 0 || a.id === 'hermes')
+      .filter(a => !!detected[a.cmd] || (sessionMap[a.id]?.length ?? 0) > 0 || a.id === 'hermes')
       .map(a => ({
         ...a,
         installed: !!detected[a.cmd],
