@@ -1,12 +1,14 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Bot, CheckCircle, XCircle, Loader2, Settings, Play, Download, RefreshCw } from 'lucide-react';
+import { Bot, CheckCircle, XCircle, Loader2, Download, RefreshCw, Play, Terminal } from 'lucide-react';
 import { detectAllAgents, type DetectedAgent } from '@/lib/agent-detector';
+import { getApiBaseUrl, getToken } from '@/lib/api-client';
 
 export function AgentsClient() {
   const [agents, setAgents] = useState<DetectedAgent[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<'all' | 'available' | 'unavailable'>('all');
+  const [installing, setInstalling] = useState<Record<string, string>>({}); // agentId -> status
 
   useEffect(() => { detect(); }, []);
 
@@ -19,6 +21,42 @@ export function AgentsClient() {
       console.error('Agent detection failed:', e);
     }
     setLoading(false);
+  };
+
+  const handleInstall = async (agent: DetectedAgent) => {
+    if (!agent.installCommand) return;
+    // If it's a URL, open in new tab
+    if (agent.installCommand.startsWith('http')) {
+      window.open(agent.installCommand, '_blank');
+      return;
+    }
+    // If it's "VS Code extension", show info
+    if (agent.installCommand.includes('extension')) {
+      setInstalling(prev => ({ ...prev, [agent.id]: '请在VS Code中搜索安装 ' + agent.name }));
+      return;
+    }
+
+    setInstalling(prev => ({ ...prev, [agent.id]: 'installing' }));
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/agent/install`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({ command: agent.installCommand }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setInstalling(prev => ({ ...prev, [agent.id]: 'done' }));
+        // Re-detect after install
+        setTimeout(() => { detect(); setInstalling(prev => { const n = { ...prev }; delete n[agent.id]; return n; }); }, 2000);
+      } else {
+        setInstalling(prev => ({ ...prev, [agent.id]: `失败: ${data.error}` }));
+      }
+    } catch (e) {
+      setInstalling(prev => ({ ...prev, [agent.id]: '网络错误' }));
+    }
   };
 
   const filtered = agents.filter(a => {
@@ -87,12 +125,28 @@ export function AgentsClient() {
                 {agent.available ? (
                   <button className="px-2 py-1 rounded text-xs bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1"><Play className="w-3 h-3" /> 启动</button>
                 ) : (
-                  <button className="px-2 py-1 rounded text-xs border hover:bg-muted flex items-center gap-1"><Download className="w-3 h-3" /> 安装</button>
+                  <button
+                    onClick={() => handleInstall(agent)}
+                    disabled={installing[agent.id] === 'installing'}
+                    className="px-2 py-1 rounded text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50"
+                  >
+                    {installing[agent.id] === 'installing' ? (
+                      <><Loader2 className="w-3 h-3 animate-spin" /> 安装中...</>
+                    ) : (
+                      <><Download className="w-3 h-3" /> 安装</>
+                    )}
+                  </button>
                 )}
               </div>
             </div>
-            {agent.installCommand && !agent.available && (
-              <div className="mt-2 p-2 rounded bg-muted text-xs font-mono break-all">{agent.installCommand}</div>
+            {/* Install status / command */}
+            {installing[agent.id] && installing[agent.id] !== 'installing' && (
+              <div className={`mt-2 p-2 rounded text-xs ${installing[agent.id] === 'done' ? 'bg-green-500/10 text-green-500' : 'bg-red-500/10 text-red-500'}`}>
+                {installing[agent.id] === 'done' ? '✓ 安装成功' : installing[agent.id]}
+              </div>
+            )}
+            {agent.installCommand && !agent.available && !installing[agent.id] && (
+              <div className="mt-2 p-2 rounded bg-muted text-xs font-mono flex items-center gap-1"><Terminal className="w-3 h-3 shrink-0" />{agent.installCommand}</div>
             )}
           </div>
         ))}
