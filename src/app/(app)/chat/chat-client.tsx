@@ -237,8 +237,8 @@ export function ChatClient() {
 
   return (
     <div className="flex h-full">
-      {/* Column 2: Agent + Session List */}
-      <div className="w-64 shrink-0 flex flex-col border-r border-border bg-card">
+      {/* Column 2: Agent + Session List - hidden on mobile when chat is active */}
+      <div className={`${selectedSession ? 'hidden md:flex' : 'flex'} w-full md:w-64 shrink-0 flex-col border-r border-border bg-card`}>
         <div className="p-3 border-b border-border">
           <input placeholder="搜索会话..." className="w-full px-3 py-1.5 rounded-lg bg-muted text-sm outline-none" />
         </div>
@@ -284,6 +284,10 @@ export function ChatClient() {
         {/* Chat header */}
         <div className="h-12 border-b border-border flex items-center px-4 justify-between shrink-0">
           <div className="flex items-center gap-2">
+            {/* Back button - mobile only */}
+            <button onClick={() => setSelectedSession(null)} className="md:hidden p-1 rounded hover:bg-muted">
+              <ChevronRight className="w-4 h-4 rotate-180" />
+            </button>
             {selectedAgent && <span className="text-sm">{selectedAgent.icon}</span>}
             <span className="font-medium text-sm">{selectedSession?.name || (selectedAgent ? `${selectedAgent.name} 新会话` : '新对话')}</span>
             {selectedAgent && <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">{selectedAgent.name}</span>}
@@ -384,7 +388,7 @@ export function ChatClient() {
 
       {/* Column 4: Details Panel */}
       {showDetails && (
-        <div className="w-72 shrink-0 border-l border-border bg-card flex flex-col">
+        <div className="hidden md:flex w-72 shrink-0 border-l border-border bg-card flex-col">
           <div className="p-3 border-b border-border flex items-center justify-between">
             <span className="text-sm font-medium flex items-center gap-1.5"><Info className="w-4 h-4" />会话详情</span>
             <button onClick={() => setShowDetails(false)} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
