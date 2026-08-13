@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Download, Pause, Play, Trash2, RefreshCw, FolderOpen, ArrowDown, ArrowUp, CheckCircle, XCircle, Loader2, Link, HardDrive, Zap, Wifi, Plus, Search } from 'lucide-react';
+import { Download, Pause, Play, Trash2, RefreshCw, FolderOpen, ArrowDown, ArrowUp, CheckCircle, XCircle, Loader2, Link, HardDrive, Zap, Wifi, Plus, Search, Square, SquareCheck } from 'lucide-react';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 
 interface DownloadTask {
@@ -84,6 +84,8 @@ export function DownloadClient() {
   const [newUrl, setNewUrl] = useState('');
   const [selectedPlugin, setSelectedPlugin] = useState<string>('');
   const [tab, setTab] = useState<'downloads' | 'cache' | 'plugins'>('downloads');
+  const [selectedPlugins, setSelectedPlugins] = useState<string[]>([]);
+  const [batchLoading, setBatchLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -206,6 +208,41 @@ export function DownloadClient() {
       });
       loadPlugins();
     } catch {}
+  };
+
+  // Batch plugin operation
+  const batchPluginAction = async (action: 'install' | 'uninstall' | 'update') => {
+    if (selectedPlugins.length === 0) return;
+    const confirmMsg = action === 'install' ? '批量安装' : action === 'uninstall' ? '批量卸载' : '批量更新';
+    if (!confirm(`确定${confirmMsg} ${selectedPlugins.length} 个插件？`)) return;
+    setBatchLoading(true);
+    try {
+      const token = getToken();
+      await fetch(`${getApiBaseUrl()}/api/download/plugins/batch`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ action, plugin_ids: selectedPlugins }),
+      });
+      setSelectedPlugins([]);
+      loadPlugins();
+    } catch {}
+    setBatchLoading(false);
+  };
+
+  // Toggle single plugin selection
+  const togglePluginSelect = (pluginId: string) => {
+    setSelectedPlugins(prev =>
+      prev.includes(pluginId) ? prev.filter(id => id !== pluginId) : [...prev, pluginId]
+    );
+  };
+
+  // Toggle select all
+  const toggleSelectAll = () => {
+    if (selectedPlugins.length === plugins.length) {
+      setSelectedPlugins([]);
+    } else {
+      setSelectedPlugins(plugins.map(p => p.id));
+    }
   };
 
   // Delete cache file
@@ -414,23 +451,74 @@ export function DownloadClient() {
               <RefreshCw className="w-3 h-3" /> 一键更新全部
             </button>
           </div>
+
+          {/* Batch action bar */}
+          <div className="flex items-center justify-between mb-3 p-3 rounded-xl border bg-card">
+            <div className="flex items-center gap-3">
+              <button onClick={toggleSelectAll} className="flex items-center gap-2 text-sm hover:text-primary transition-colors">
+                {selectedPlugins.length === plugins.length && plugins.length > 0 ? (
+                  <SquareCheck className="w-4 h-4 text-primary" />
+                ) : (
+                  <Square className="w-4 h-4 text-muted-foreground" />
+                )}
+                全选
+              </button>
+              {selectedPlugins.length > 0 && (
+                <span className="text-xs text-muted-foreground">已选 {selectedPlugins.length} 个</span>
+              )}
+            </div>
+            {selectedPlugins.length > 0 && (
+              <div className="flex gap-2">
+                <button
+                  onClick={() => batchPluginAction('install')}
+                  disabled={batchLoading}
+                  className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-500 hover:bg-green-500/20 text-xs flex items-center gap-1 disabled:opacity-50"
+                >
+                  {batchLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
+                  批量安装
+                </button>
+                <button
+                  onClick={() => batchPluginAction('update')}
+                  disabled={batchLoading}
+                  className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 text-xs flex items-center gap-1 disabled:opacity-50"
+                >
+                  {batchLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
+                  批量更新
+                </button>
+                <button
+                  onClick={() => batchPluginAction('uninstall')}
+                  disabled={batchLoading}
+                  className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 text-xs flex items-center gap-1 disabled:opacity-50"
+                >
+                  {batchLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                  批量卸载
+                </button>
+              </div>
+            )}
+          </div>
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             {plugins.map(p => (
-              <div key={p.id} className="rounded-xl border bg-card p-4">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">{getPluginIcon(p.id)}</span>
-                    <div>
-                      <h3 className="text-sm font-medium">{p.name}</h3>
-                      <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
-                      <div className="flex items-center gap-2 mt-1.5">
-                        {p.version && <span className="text-[10px] text-muted-foreground">v{p.version}</span>}
-                        {p.supports_resume && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">断点续传</span>}
-                        {p.supports_p2p && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">P2P</span>}
-                      </div>
+              <div key={p.id} className={`rounded-xl border bg-card p-4 transition-colors ${selectedPlugins.includes(p.id) ? 'border-primary/50 bg-primary/5' : ''}`}>
+                <div className="flex items-start gap-3">
+                  <button onClick={() => togglePluginSelect(p.id)} className="mt-1 shrink-0 hover:text-primary transition-colors">
+                    {selectedPlugins.includes(p.id) ? (
+                      <SquareCheck className="w-4 h-4 text-primary" />
+                    ) : (
+                      <Square className="w-4 h-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  <span className="text-2xl shrink-0">{getPluginIcon(p.id)}</span>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-medium">{p.name}</h3>
+                    <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
+                    <div className="flex items-center gap-2 mt-1.5">
+                      {p.version && <span className="text-[10px] text-muted-foreground">v{p.version}</span>}
+                      {p.supports_resume && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">断点续传</span>}
+                      {p.supports_p2p && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">P2P</span>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 shrink-0">
                     {p.status === 'available' ? (
                       <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-500">已安装</span>
                     ) : (
