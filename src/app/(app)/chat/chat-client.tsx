@@ -354,7 +354,6 @@ export function ChatClient() {
           ))}
         </div>
       </div>
-      </div>
 
       {/* Column 3: Chat Window - on mobile, only show when session selected */}
       <div className={`${selectedSession ? 'flex' : 'hidden md:flex'} flex-1 flex-col min-w-0`}>
