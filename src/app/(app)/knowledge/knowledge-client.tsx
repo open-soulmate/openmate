@@ -90,7 +90,7 @@ export function KnowledgeClient() {
     setDeduping(true);
     try {
       const uid = getUserId();
-      const res = await fetch(`http://localhost:8090/api/dedup/deduplicate?user_id=${uid}`, { method: 'POST' });
+      const res = await fetch(`${getApiBaseUrl()}/api/dedup/deduplicate?user_id=${uid}`, { method: 'POST' });
       const data = await res.json();
       setDedupResult(`扫描${data.total}条，发现${data.duplicates_found}条重复，已清理${data.duplicates_removed}条`);
       loadItems();

@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Clock, Play, Pause, Trash2, RefreshCw, Loader2, AlertCircle, CheckCircle2, ChevronRight } from 'lucide-react';
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090';
+import { getApiBaseUrl } from '@/lib/api-client';
+const getApiUrl = () => getApiBaseUrl();
 
 interface CronJob {
   id: string;
@@ -19,7 +19,7 @@ async function apiRequest(path: string, method = 'GET', body?: unknown) {
   const token = localStorage.getItem('openmate-token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const res = await fetch(`${getApiUrl()}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }

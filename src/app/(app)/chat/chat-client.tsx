@@ -3,8 +3,9 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Bot, User, Loader2, Paperclip, FileText, X, Camera, MessageSquare, RefreshCw, Smartphone, Wifi, WifiOff } from 'lucide-react';
 import { a2aClient } from '@/lib/a2a-client';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090';
-const WS_URL = API_URL.replace('http', 'ws');
+import { getApiBaseUrl, getToken } from '@/lib/api-client';
+const getApiUrl = () => getApiBaseUrl();
+const getWsUrl = () => getApiUrl().replace('http', 'ws');
 
 interface AcpSession { sessionId: string; title: string; cwd: string; updatedAt: string; }
 interface HermesSession { id: string; title: string; preview: string; last_active: string; source: string; }
@@ -15,7 +16,7 @@ async function apiRequest(path: string, method = 'GET', body?: unknown) {
   const token = localStorage.getItem('openmate-token');
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
-  const res = await fetch(`${API_URL}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
+  const res = await fetch(`${getApiUrl()}${path}`, { method, headers, body: body ? JSON.stringify(body) : undefined });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
@@ -42,7 +43,7 @@ export function ChatClient() {
     const token = localStorage.getItem('openmate-token');
     if (!token) return;
 
-    const ws = new WebSocket(`${WS_URL}/ws/chat?token=${token}`);
+    const ws = new WebSocket(`${getWsUrl()}/ws/chat?token=${token}`);
 
     ws.onopen = () => {
       setWsConnected(true);
