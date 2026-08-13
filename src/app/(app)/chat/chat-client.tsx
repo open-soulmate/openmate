@@ -352,7 +352,6 @@ export function ChatClient() {
               )}
             </div>
           ))}
-          )}
         </div>
       </div>
 
