@@ -17,7 +17,9 @@
     "groups": "Agent Groups",
     "workflow": "Workflow",
     "settings": "Settings",
-    "mcp": "MCP Client"
+    "mcp": "MCP Client",
+    "cron": "Cron Jobs",
+    "workflowBuilder": "Workflow Builder"
   },
   "chat": {
     "newChat": "New Chat",
