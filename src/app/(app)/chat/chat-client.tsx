@@ -13,7 +13,7 @@ interface Session { id: string; name: string; platform: string; chat_id?: string
 const PLATFORM_ICONS: Record<string, string> = { wechat: '💬', weixin: '💬', telegram: '✈️', discord: '🎮', hermes: '🤖', local: '💻', acp: '⚡', web: '🌐' };
 const PLATFORM_COLORS: Record<string, string> = { wechat: 'bg-green-500', weixin: 'bg-green-500', telegram: 'bg-blue-500', hermes: 'bg-purple-500', web: 'bg-gray-500' };
 
-export default function ChatClient() {
+export function ChatClient() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
