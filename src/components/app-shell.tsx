@@ -20,6 +20,7 @@ import {
   Plug,
   Users,
   GitBranch,
+  Clock,
 } from "lucide-react";
 import { useState, useRef, useCallback } from "react";
 
@@ -41,6 +42,7 @@ export function AppShell() {
     { href: "/mcp", label: t("nav.mcp"), icon: Plug },
     { href: "/agents", label: t("nav.agents"), icon: Server },
     { href: "/groups", label: t("nav.groups"), icon: Users },
+    { href: "/cron", label: t("nav.cron"), icon: Clock },
     { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
     { href: "/workflow-builder", label: t("nav.workflowBuilder"), icon: GitBranch },
     { href: "/settings", label: t("nav.settings"), icon: Settings },
@@ -67,7 +69,7 @@ export function AppShell() {
         onMouseLeave={handleMouseLeave}
         className={cn(
           "hidden h-screen flex-col border-r border-border bg-sidebar transition-all duration-200 md:flex",
-          isExpanded ? "w-60" : "w-16",
+          isExpanded ? "w-60" : "w-16"
         )}
       >
         {/* Header */}
@@ -81,14 +83,10 @@ export function AppShell() {
             onClick={toggle}
             className={cn(
               "flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",
-              !isExpanded && "mx-auto",
+              !isExpanded && "mx-auto"
             )}
           >
-            {isExpanded ? (
-              <PanelLeftClose size={18} />
-            ) : (
-              <PanelLeftOpen size={18} />
-            )}
+            {isExpanded ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
           </button>
         </div>
 
@@ -105,7 +103,7 @@ export function AppShell() {
                   active
                     ? "bg-sidebar-accent text-foreground font-medium"
                     : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",
-                  !isExpanded && "justify-center",
+                  !isExpanded && "justify-center"
                 )}
               >
                 <item.icon size={18} />
@@ -117,23 +115,14 @@ export function AppShell() {
 
         {/* Footer */}
         <div className="border-t border-border px-2 py-3">
-          <div
-            className={cn(
-              "flex items-center gap-3 px-3",
-              !isExpanded && "justify-center",
-            )}
-          >
+          <div className={cn("flex items-center gap-3 px-3", !isExpanded && "justify-center")}>
             <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
               U
             </div>
             {isExpanded && (
               <div className="flex flex-col overflow-hidden">
-                <span className="truncate text-sm font-medium text-foreground">
-                  User
-                </span>
-                <span className="truncate text-xs text-muted-foreground">
-                  Free Plan
-                </span>
+                <span className="truncate text-sm font-medium text-foreground">User</span>
+                <span className="truncate text-xs text-muted-foreground">Free Plan</span>
               </div>
             )}
           </div>
@@ -150,9 +139,7 @@ export function AppShell() {
               href={item.href}
               className={cn(
                 "flex flex-col items-center gap-0.5 rounded-md px-3 py-1.5 text-[10px] transition-colors",
-                active
-                  ? "text-foreground"
-                  : "text-sidebar-foreground",
+                active ? "text-foreground" : "text-sidebar-foreground"
               )}
             >
               <item.icon size={20} />
