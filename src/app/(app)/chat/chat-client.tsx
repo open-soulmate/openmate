@@ -1,6 +1,6 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu } from 'lucide-react';
+import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu, Trash2, Search as SearchIcon } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 
 const getApiUrl = () => getApiBaseUrl();
@@ -36,6 +36,9 @@ const AGENT_DEFINITIONS = [
 
 export function ChatClient() {
   const [messages, setMessages] = useState<Message[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [searching, setSearching] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
@@ -74,7 +77,7 @@ export function ChatClient() {
 
     // Build agent list
     const agentList: AgentInfo[] = AGENT_DEFINITIONS
-      .filter(a => !!detected[a.cmd] || (sessionMap[a.id]?.length ?? 0) > 0 || a.id === 'hermes')
+      .filter(a => !!detected[a.cmd])
       .map(a => ({
         ...a,
         installed: !!detected[a.cmd],
@@ -97,6 +100,44 @@ export function ChatClient() {
   }, []);
 
   // Load history for a session
+  // Search sessions (title + content)
+  const handleSearch = useCallback(async (q: string) => {
+    setSearchQuery(q);
+    if (!q.trim()) { setSearchResults([]); return; }
+    setSearching(true);
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/sessions/search?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${getToken()}` } });
+      if (res.ok) {
+        const data = await res.json();
+        setSearchResults(data.sessions || []);
+      }
+    } catch (e) { console.error("Search failed:", e); }
+    setSearching(false);
+  }, []);
+
+  // Delete session
+  const deleteSession = useCallback(async (sessionId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!confirm("确定删除这个会话？")) return;
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/sessions/${sessionId}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (res.ok) {
+        // Remove from local state
+        setAgents(prev => prev.map(a => ({
+          ...a,
+          sessions: a.sessions.filter(s => s.id !== sessionId),
+        })));
+        if (selectedSession?.id === sessionId) {
+          setSelectedSession(null);
+          setMessages([]);
+        }
+      }
+    } catch (e) { console.error("Delete failed:", e); }
+  }, [selectedSession]);
+
   const loadHistory = useCallback(async (sessionId: string) => {
     try {
       const r = await fetch(`${getApiUrl()}/api/hermes/sessions/${sessionId}/messages`, { headers: { Authorization: `Bearer ${getToken()}` } });
@@ -239,7 +280,7 @@ export function ChatClient() {
       {/* Column 2: Agent + Session List - hidden on mobile when chat is active */}
       <div className={`${selectedSession ? 'hidden md:flex' : 'flex'} w-full md:w-64 shrink-0 flex-col border-r border-border bg-card`}>
         <div className="p-3 border-b border-border">
-          <input placeholder="搜索会话..." className="w-full px-3 py-1.5 rounded-lg bg-muted text-sm outline-none" />
+          <input placeholder="搜索会话和消息内容..." value={searchQuery} onChange={(e) => handleSearch(e.target.value)} className="w-full px-3 py-1.5 rounded-lg bg-muted text-sm outline-none" />
         </div>
         <div className="flex-1 overflow-y-auto">
           {agents.map(agent => (
@@ -263,7 +304,8 @@ export function ChatClient() {
                   className={`w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors ${selectedSession?.id === session.id ? 'bg-muted' : ''}`}>
                   <div className="flex items-center gap-1.5">
                     <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="text-xs truncate text-foreground">{session.name}</span>
+                    <span className="text-xs truncate text-foreground flex-1">{session.name}</span>
+                    <button onClick={(e) => deleteSession(session.id, e)} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title="删除"><Trash2 className="w-3 h-3" /></button>
                   </div>
                   {session.last_active && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{session.last_active}</div>}
                 </button>
