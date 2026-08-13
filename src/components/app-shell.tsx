@@ -1,3 +1,4 @@
+import { TerminalPanel } from "@/components/terminal-panel";
 "use client";
 
 import Link from "next/link";
@@ -217,6 +218,8 @@ export function AppShell() {
           );
         })}
       </nav>
+      {/* Terminal Panel */}
+      <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
     </>
   );
 }
