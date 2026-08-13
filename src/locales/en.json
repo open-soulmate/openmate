@@ -20,7 +20,32 @@
     "mcp": "MCP Client",
     "cron": "Cron Jobs",
     "workflowBuilder": "Workflow Builder",
-    "download": "Downloads"
+    "download": "Downloads",
+    "team": "Team",
+    "workspace": "Workspace",
+    "graphBuilder": "Graph Builder",
+    "aiGroups": "AI Groups",
+    "core": "Core",
+    "knowledgeGroup": "Knowledge",
+    "toolsGroup": "Tools",
+    "automationGroup": "Automation",
+    "systemGroup": "System"
+  },
+  "dashboard": {
+    "title": "System Overview",
+    "subtitle": "OpenMate platform status at a glance",
+    "agents": "Agents",
+    "skills": "Skills",
+    "conversations": "Conversations",
+    "cronJobs": "Cron Jobs",
+    "online": "online",
+    "enabled": "enabled",
+    "messages": "messages",
+    "managed": "Managed by Cron",
+    "quickLinks": "Quick Access",
+    "items": "items",
+    "recentActivity": "Recent Activity",
+    "noActivity": "No recent activity recorded"
   },
   "chat": {
     "newChat": "New Chat",

@@ -18,7 +18,32 @@
     "workflow": "ワークフロー",
     "settings": "設定",
     "mcp": "MCPクライアント",
-    "download": "ダウンロード"
+    "download": "ダウンロード",
+    "team": "チーム",
+    "workspace": "ワークスペース",
+    "graphBuilder": "グラフビルダー",
+    "aiGroups": "AIグループ",
+    "core": "コア",
+    "knowledgeGroup": "ナレッジ",
+    "toolsGroup": "ツール",
+    "automationGroup": "自動化",
+    "systemGroup": "システム"
+  },
+  "dashboard": {
+    "title": "システム概要",
+    "subtitle": "OpenMate プラットフォームの状態一覧",
+    "agents": "エージェント数",
+    "skills": "スキル数",
+    "conversations": "会話数",
+    "cronJobs": "定時タスク",
+    "online": "オンライン",
+    "enabled": "有効",
+    "messages": "メッセージ",
+    "managed": "Cron で管理",
+    "quickLinks": "クイックアクセス",
+    "items": "件",
+    "recentActivity": "最近のアクティビティ",
+    "noActivity": "最近のアクティビティはありません"
   },
   "chat": {
     "newChat": "新しいチャット",

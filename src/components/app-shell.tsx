@@ -11,6 +11,7 @@ import {
   Puzzle, Settings, PanelLeftClose, PanelLeftOpen, Server,
   Workflow, Plug, Users, GitBranch, Clock, Download,
   User, Moon, Sun, FileText, MessageCircle, LogOut,
+  LayoutDashboard, FolderKanban, Share2, ChevronDown,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId } from "@/lib/api-client";
@@ -19,6 +20,17 @@ import { type ThemeId, persistTheme } from "@/lib/theme";
 // Paperclip-style sidebar: fixed icon column, text hides on collapse
 // Expanded: 240px, icon at 12px left, text flows right
 // Collapsed: 56px, icon stays at same position, text hidden
+
+interface NavItem {
+  href: string;
+  label: string;
+  icon: React.ElementType;
+}
+
+interface NavGroup {
+  label: string;
+  items: NavItem[];
+}
 
 export function AppShell() {
   const pathname = usePathname();
@@ -29,27 +41,66 @@ export function AppShell() {
   const setStoreTheme = useAppStore((s) => s.setTheme);
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const menuRef = useRef<HTMLDivElement>(null);
   const { t } = useTranslation();
 
-  const navItems = [
-    { href: "/chat", label: t("nav.chat"), icon: MessageSquare },
-    { href: "/knowledge", label: t("nav.knowledge"), icon: BookOpen },
-    { href: "/learn", label: t("nav.learn"), icon: GraduationCap },
-    { href: "/graph", label: t("nav.graph"), icon: Network },
-    { href: "/search", label: t("nav.search"), icon: Search },
-    { href: "/skills", label: t("nav.skills"), icon: Puzzle },
-    { href: "/mcp", label: t("nav.mcp"), icon: Plug },
-    { href: "/agents", label: t("nav.agents"), icon: Server },
-    { href: "/ai-groups", label: t("nav.ai-groups") || "AI群", icon: Users },
-    { href: "/groups", label: t("nav.groups"), icon: Users },
-    { href: "/cron", label: t("nav.cron"), icon: Clock },
-    { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
-    { href: "/workflow-builder", label: t("nav.workflowBuilder"), icon: GitBranch },
-    { href: "/download", label: t("nav.download"), icon: Download },
-    { href: "/settings", label: t("nav.settings"), icon: Settings },
+  const navGroups: NavGroup[] = [
+    {
+      label: t("nav.core") || "核心",
+      items: [
+        { href: "/chat", label: t("nav.chat"), icon: MessageSquare },
+        { href: "/ai-groups", label: t("nav.aiGroups") || "AI群", icon: Users },
+        { href: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
+      ],
+    },
+    {
+      label: t("nav.knowledgeGroup") || "知识",
+      items: [
+        { href: "/knowledge", label: t("nav.knowledge"), icon: BookOpen },
+        { href: "/learn", label: t("nav.learn"), icon: GraduationCap },
+        { href: "/graph", label: t("nav.graph"), icon: Network },
+        { href: "/graph-builder", label: t("nav.graphBuilder") || "图谱编排", icon: Share2 },
+        { href: "/search", label: t("nav.search"), icon: Search },
+      ],
+    },
+    {
+      label: t("nav.toolsGroup") || "工具",
+      items: [
+        { href: "/skills", label: t("nav.skills"), icon: Puzzle },
+        { href: "/mcp", label: t("nav.mcp"), icon: Plug },
+        { href: "/agents", label: t("nav.agents"), icon: Server },
+        { href: "/groups", label: t("nav.groups"), icon: Users },
+        { href: "/team", label: t("nav.team") || "团队", icon: Users },
+        { href: "/workspace", label: t("nav.workspace") || "工作区", icon: FolderKanban },
+      ],
+    },
+    {
+      label: t("nav.automationGroup") || "自动化",
+      items: [
+        { href: "/cron", label: t("nav.cron"), icon: Clock },
+        { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
+        { href: "/workflow-builder", label: t("nav.workflowBuilder"), icon: GitBranch },
+      ],
+    },
+    {
+      label: t("nav.systemGroup") || "系统",
+      items: [
+        { href: "/download", label: t("nav.download"), icon: Download },
+        { href: "/settings", label: t("nav.settings"), icon: Settings },
+      ],
+    },
   ];
+
+  const toggleGroup = (label: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev);
+      if (next.has(label)) next.delete(label);
+      else next.add(label);
+      return next;
+    });
+  };
 
   const isExpanded = !collapsed || hoverExpanded;
   const userId = getUserId() || "User";
@@ -114,28 +165,53 @@ export function AppShell() {
           </button>
         </div>
 
-        {/* Navigation - fixed icon column + flowing text */}
+        {/* Navigation - grouped, fixed icon column + flowing text */}
         <nav className="flex-1 overflow-y-auto px-2 py-1">
-          {navItems.map((item) => {
-            const active = pathname.startsWith(item.href);
+          {navGroups.map((group) => {
+            const groupCollapsed = collapsedGroups.has(group.label);
             return (
-              <Link key={item.href} href={item.href}
-                className={cn(
-                  "flex h-8 items-center rounded-md text-sm transition-colors group mb-0.5",
-                  active ? "bg-sidebar-accent text-foreground font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground"
-                )}>
-                {/* Fixed icon column: 32px wide, icon always centered at same position */}
-                <div className="flex w-8 shrink-0 items-center justify-center">
-                  <item.icon size={16} />
-                </div>
-                {/* Text column: hidden when collapsed */}
-                <span className={cn(
-                  "truncate whitespace-nowrap transition-all duration-150",
-                  isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
-                )} suppressHydrationWarning>
-                  {item.label}
-                </span>
-              </Link>
+              <div key={group.label} className="mb-1">
+                {/* Group header */}
+                <button
+                  onClick={() => toggleGroup(group.label)}
+                  className={cn(
+                    "flex h-7 w-full items-center rounded-md text-[11px] font-medium uppercase tracking-wider transition-colors",
+                    isExpanded ? "px-2 text-muted-foreground hover:text-foreground" : "justify-center text-muted-foreground"
+                  )}
+                >
+                  {isExpanded ? (
+                    <>
+                      <span className="flex-1 text-left">{group.label}</span>
+                      <ChevronDown size={12} className={cn("transition-transform", groupCollapsed && "-rotate-90")} />
+                    </>
+                  ) : (
+                    <div className="h-px w-4 bg-border" />
+                  )}
+                </button>
+                {/* Group items */}
+                {!groupCollapsed && group.items.map((item) => {
+                  const active = pathname.startsWith(item.href);
+                  return (
+                    <Link key={item.href} href={item.href}
+                      className={cn(
+                        "flex h-8 items-center rounded-md text-sm transition-colors group mb-0.5",
+                        active ? "bg-sidebar-accent text-foreground font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground"
+                      )}>
+                      {/* Fixed icon column: 32px wide, icon always centered at same position */}
+                      <div className="flex w-8 shrink-0 items-center justify-center">
+                        <item.icon size={16} />
+                      </div>
+                      {/* Text column: hidden when collapsed */}
+                      <span className={cn(
+                        "truncate whitespace-nowrap transition-all duration-150",
+                        isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
+                      )} suppressHydrationWarning>
+                        {item.label}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
             );
           })}
         </nav>
@@ -207,7 +283,7 @@ export function AppShell() {
 
       {/* Mobile bottom tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-50 flex h-14 items-center justify-around border-t border-border bg-sidebar px-2 md:hidden">
-        {navItems.slice(0, 5).map((item) => {
+        {navGroups.flatMap((g) => g.items).slice(0, 5).map((item) => {
           const active = pathname.startsWith(item.href);
           return (
             <Link key={item.href} href={item.href}
