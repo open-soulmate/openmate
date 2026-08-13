@@ -220,7 +220,6 @@ export function ChatClient() {
   const selectSession = (session: Session, agent: AgentInfo) => {
     setSelectedSession(session);
     setSelectedAgent(agent);
-    setMessages([]);
     loadHistory(session.id);
   };
 
