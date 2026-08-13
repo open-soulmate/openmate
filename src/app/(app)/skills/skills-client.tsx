@@ -24,10 +24,31 @@ export function SkillsClient() {
   const fetchSkills = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch(`${getApiBaseUrl()}/api/skills`, { headers: { Authorization: `Bearer ${getToken()}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setSkills(data.skills || []);
+      const headers = { Authorization: `Bearer ${getToken()}` };
+      // Fetch local installed skills
+      const localRes = await fetch(`${getApiBaseUrl()}/api/skills`, { headers });
+      const localData = localRes.ok ? await localRes.json() : { skills: [] };
+      const localSkills = localData.skills || [];
+
+      // Fetch online marketplace skills
+      try {
+        const marketRes = await fetch(`${getApiBaseUrl()}/api/marketplace/sync/skills`, { headers });
+        if (marketRes.ok) {
+          const marketData = await marketRes.json();
+          const onlineSkills = (marketData.skills || []).map((s: any) => ({
+            name: s.name, description: s.description, category: s.category || s.source_name,
+            installed: localSkills.some((l: any) => l.name === s.name),
+            version: s.version, source: s.source_name,
+          }));
+          // Merge: local skills + online skills not already installed
+          const localNames = new Set(localSkills.map((s: any) => s.name));
+          const merged = [...localSkills, ...onlineSkills.filter((s: any) => !localNames.has(s.name))];
+          setSkills(merged);
+        } else {
+          setSkills(localSkills);
+        }
+      } catch {
+        setSkills(localSkills);
       }
     } catch (e) { console.error('Failed to fetch skills:', e); }
     setLoading(false);
