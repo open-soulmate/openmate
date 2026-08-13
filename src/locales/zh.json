@@ -20,7 +20,32 @@
     "settings": "设置",
     "mcp": "MCP客户端",
     "cron": "定时任务",
-    "download": "下载管理"
+    "download": "下载管理",
+    "team": "团队",
+    "workspace": "工作区",
+    "graphBuilder": "图谱编排",
+    "aiGroups": "AI群",
+    "core": "核心",
+    "knowledgeGroup": "知识",
+    "toolsGroup": "工具",
+    "automationGroup": "自动化",
+    "systemGroup": "系统"
+  },
+  "dashboard": {
+    "title": "系统概览",
+    "subtitle": "OpenMate 平台运行状态一览",
+    "agents": "Agent 数量",
+    "skills": "技能数量",
+    "conversations": "会话数量",
+    "cronJobs": "定时任务",
+    "online": "在线",
+    "enabled": "已启用",
+    "messages": "条消息",
+    "managed": "由 Cron 管理",
+    "quickLinks": "快速访问",
+    "items": "项",
+    "recentActivity": "近期活动",
+    "noActivity": "暂无近期活动记录"
   },
   "chat": {
     "newChat": "新建对话",
