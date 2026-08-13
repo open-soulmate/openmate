@@ -77,6 +77,10 @@ export function DownloadClient() {
   const [cacheFiles, setCacheFiles] = useState<CacheFile[]>([]);
   const [cacheSize, setCacheSize] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
+  const [downloadPath, setDownloadPath] = useState(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("openmate-download-path") || "~/Downloads";
+    return "~/Downloads";
+  });
   const [newUrl, setNewUrl] = useState('');
   const [selectedPlugin, setSelectedPlugin] = useState<string>('');
   const [tab, setTab] = useState<'downloads' | 'cache' | 'plugins'>('downloads');
@@ -94,6 +98,7 @@ export function DownloadClient() {
   // Save tasks to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  localStorage.setItem("openmate-download-path", downloadPath);
   }, [tasks]);
 
   // Load plugins and cache
@@ -138,7 +143,7 @@ export function DownloadClient() {
       const res = await fetch(`${getApiBaseUrl()}/api/download/download/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ url: newUrl, plugin_id: selectedPlugin || undefined, resume: true }),
+        body: JSON.stringify({ url: newUrl, dest: downloadPath + "/" + (newUrl.split("/").pop()?.split("?")[0] || "download"), plugin_id: selectedPlugin || undefined, resume: true }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -270,6 +275,11 @@ export function DownloadClient() {
               className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : '开始下载'}
             </button>
+          </div>
+          <div className="flex items-center gap-2 mt-3">
+            <FolderOpen className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">保存到:</span>
+            <input value={downloadPath} onChange={e => setDownloadPath(e.target.value)} placeholder="~/Downloads" className="flex-1 px-3 py-1.5 rounded-lg bg-muted text-xs outline-none border border-border" />
           </div>
           <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
             <span>🚀 自动选择最优协议</span>
