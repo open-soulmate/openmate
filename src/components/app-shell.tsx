@@ -8,7 +8,7 @@ import { useTranslation } from "react-i18next";
 import {
   MessageSquare, BookOpen, GraduationCap, Network, Search,
   Puzzle, Settings, PanelLeftClose, PanelLeftOpen, Server,
-  Workflow, Plug, Users, GitBranch, Clock,
+  Workflow, Plug, Users, GitBranch, Clock, Download,
   User, Moon, Sun, FileText, MessageCircle, LogOut,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
@@ -45,6 +45,7 @@ export function AppShell() {
     { href: "/cron", label: t("nav.cron"), icon: Clock },
     { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
     { href: "/workflow-builder", label: t("nav.workflowBuilder"), icon: GitBranch },
+    { href: "/download", label: t("nav.download"), icon: Download },
     { href: "/settings", label: t("nav.settings"), icon: Settings },
   ];
 

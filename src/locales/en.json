@@ -19,7 +19,8 @@
     "settings": "Settings",
     "mcp": "MCP Client",
     "cron": "Cron Jobs",
-    "workflowBuilder": "Workflow Builder"
+    "workflowBuilder": "Workflow Builder",
+    "download": "Downloads"
   },
   "chat": {
     "newChat": "New Chat",

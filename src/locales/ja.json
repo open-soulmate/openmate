@@ -17,7 +17,8 @@
     "groups": "エージェントグループ",
     "workflow": "ワークフロー",
     "settings": "設定",
-    "mcp": "MCPクライアント"
+    "mcp": "MCPクライアント",
+    "download": "ダウンロード"
   },
   "chat": {
     "newChat": "新しいチャット",
