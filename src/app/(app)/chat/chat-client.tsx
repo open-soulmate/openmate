@@ -97,11 +97,27 @@ export function ChatClient() {
     setLoading(false);
   };
 
-  const selectSession = (item: SessionItem) => {
+  const selectSession = async (item: SessionItem) => {
     setSelected(item);
     setMode(item.type === 'acp' ? 'acp' : 'hermes');
     setShowSessions(false);
     setMessages([]);
+
+    // Load history for hermes sessions
+    if (item.type === 'hermes') {
+      setLoading(true);
+      try {
+        const data = await apiRequest(`/api/hermes/sessions/${item.id}/messages`);
+        const history: ChatMessage[] = (data.messages || []).map((m: { id: string; role: string; content: string; timestamp: number }) => ({
+          id: m.id,
+          role: m.role as 'user' | 'agent',
+          parts: [{ type: 'text' as const, text: m.content }],
+          timestamp: new Date(m.timestamp ? m.timestamp * 1000 : Date.now()),
+        }));
+        if (history.length > 0) setMessages(history);
+      } catch (e) { console.error('Failed to load session history:', e); }
+      setLoading(false);
+    }
   };
 
   const readFileAsPart = (file: File) => {
@@ -137,22 +153,49 @@ export function ChatClient() {
         </div>
       </div>
 
-      {/* Session Selector */}
+      {/* Session Selector — grouped by type */}
       {showSessions && (
-        <div className="px-6 py-3 border-b bg-card max-h-60 overflow-y-auto">
-          <p className="text-xs text-muted-foreground mb-2">选择会话继续对话：</p>
-          <div className="space-y-1">
-            {sessions.map(s => (
-              <button key={s.id} onClick={() => selectSession(s)}
-                className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-muted transition-colors flex items-center gap-2 ${selected?.id === s.id ? 'bg-primary/10 border border-primary/30' : ''}`}>
-                {s.type === 'hermes' && s.source === 'weixin' ? <Smartphone className="w-4 h-4 text-green-400 shrink-0" /> : s.type === 'acp' ? <Bot className="w-4 h-4 text-yellow-400 shrink-0" /> : <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" />}
-                <div className="flex-1 min-w-0">
-                  <p className="font-medium truncate">{s.title}</p>
-                  <p className="text-xs text-muted-foreground truncate">{s.subtitle}</p>
+        <div className="px-6 py-3 border-b bg-card max-h-80 overflow-y-auto">
+          {(() => {
+            const acpSessions = sessions.filter(s => s.type === 'acp');
+            const weixinSessions = sessions.filter(s => s.type === 'hermes' && s.source === 'weixin');
+            const hermesSessions = sessions.filter(s => s.type === 'hermes' && s.source !== 'weixin');
+
+            const renderGroup = (label: string, icon: React.ReactNode, items: SessionItem[], accentClass: string) => {
+              if (items.length === 0) return null;
+              return (
+                <div key={label} className="mb-3 last:mb-0">
+                  <div className={`flex items-center gap-2 px-2 py-1 mb-1 ${accentClass}`}>
+                    {icon}
+                    <span className="text-xs font-semibold uppercase tracking-wider">{label}</span>
+                    <span className="text-xs opacity-60">({items.length})</span>
+                  </div>
+                  <div className="space-y-0.5">
+                    {items.map(s => (
+                      <button key={s.id} onClick={() => selectSession(s)}
+                        className={`w-full text-left px-3 py-2 rounded-lg text-sm hover:bg-muted transition-colors flex items-center gap-2 ${selected?.id === s.id ? 'bg-primary/10 border border-primary/30' : ''}`}>
+                        {s.type === 'acp' ? <Bot className="w-4 h-4 text-yellow-400 shrink-0" />
+                          : s.source === 'weixin' ? <Smartphone className="w-4 h-4 text-green-400 shrink-0" />
+                          : <MessageSquare className="w-4 h-4 text-muted-foreground shrink-0" />}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{s.title}</p>
+                          <p className="text-xs text-muted-foreground truncate">{s.subtitle}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
                 </div>
-              </button>
-            ))}
-          </div>
+              );
+            };
+
+            return (
+              <>
+                {renderGroup('ACP 会话', <Bot className="w-3.5 h-3.5 text-yellow-400" />, acpSessions, 'text-yellow-400/80')}
+                {renderGroup('微信会话', <Smartphone className="w-3.5 h-3.5 text-green-400" />, weixinSessions, 'text-green-400/80')}
+                {renderGroup('Hermes 会话', <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />, hermesSessions, 'text-muted-foreground')}
+              </>
+            );
+          })()}
         </div>
       )}
 
