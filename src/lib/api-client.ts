@@ -1,8 +1,20 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090';
+const DEFAULT_API_URL = 'http://127.0.0.1:8090';
+
+export function getApiBaseUrl(): string {
+  if (typeof window === 'undefined') return DEFAULT_API_URL;
+  return localStorage.getItem('openmate-api-url') || DEFAULT_API_URL;
+}
+
+export function setApiBaseUrl(url: string) {
+  localStorage.setItem('openmate-api-url', url);
+}
 
 async function request(path: string, options: RequestInit = {}) {
+  const base = getApiBaseUrl();
   const headers: Record<string, string> = { 'Content-Type': 'application/json', ...(options.headers as Record<string, string> || {}) };
-  const res = await fetch(`${API_URL}${path}`, { ...options, headers });
+  const token = getToken();
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+  const res = await fetch(`${base}${path}`, { ...options, headers });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
 }
@@ -26,7 +38,7 @@ export const api = {
     request(`/api/knowledge/?user_id=${userId}`, { method: 'POST', body: JSON.stringify(data) }),
   deleteKnowledge: (id: string) => request(`/api/knowledge/${id}`, { method: 'DELETE' }),
 
-  // Knowledge Requests (申请创建知识库)
+  // Knowledge Requests
   createKbRequest: (data: { kb_name: string; kb_description: string }) =>
     request('/api/knowledge-requests/', { method: 'POST', body: JSON.stringify(data) }),
   getMyKbRequests: () => request('/api/knowledge-requests/my'),
@@ -34,7 +46,7 @@ export const api = {
   reviewKbRequest: (id: string, data: { status: string; review_note: string }) =>
     request(`/api/knowledge-requests/${id}/review`, { method: 'POST', body: JSON.stringify(data) }),
 
-  // KB Sharing (申请共享到企业知识库)
+  // KB Sharing
   createSharingRequest: (data: { kb_id: string; kb_name: string }) =>
     request('/api/kb-sharing/', { method: 'POST', body: JSON.stringify(data) }),
   getMySharingRequests: () => request('/api/kb-sharing/my'),
