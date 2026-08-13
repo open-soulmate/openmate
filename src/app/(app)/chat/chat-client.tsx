@@ -1,7 +1,8 @@
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, User, Loader2, Paperclip, FileText, X, Camera, MessageSquare, RefreshCw, Smartphone, Wifi, WifiOff } from 'lucide-react';
+import { Send, Bot, User, Loader2, Paperclip, FileText, X, Camera, MessageSquare, RefreshCw, Smartphone, Wifi, WifiOff, ArrowLeft, Zap } from 'lucide-react';
 import { a2aClient } from '@/lib/a2a-client';
+import { AgentSelector } from '@/components/agent-selector';
 
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 const getApiUrl = () => getApiBaseUrl();
@@ -11,6 +12,14 @@ interface AcpSession { sessionId: string; title: string; cwd: string; updatedAt:
 interface HermesSession { id: string; title: string; preview: string; last_active: string; source: string; }
 interface MessagePart { type: 'text' | 'image' | 'file'; text?: string; data?: string; name?: string; }
 interface ChatMessage { id: string; role: 'user' | 'agent'; parts: MessagePart[]; timestamp: Date; source?: string; }
+
+interface AgentInfo {
+  id: string;
+  name: string;
+  description: string;
+  available: boolean;
+  binary: string;
+}
 
 async function apiRequest(path: string, method = 'GET', body?: unknown) {
   const token = localStorage.getItem('openmate-token');
@@ -23,6 +32,15 @@ async function apiRequest(path: string, method = 'GET', body?: unknown) {
 
 type SessionItem = { id: string; title: string; subtitle: string; type: 'acp' | 'hermes'; source?: string };
 
+// Agent visual config
+const AGENT_COLORS: Record<string, string> = {
+  hermes: 'text-cyan-400',
+  mimo: 'text-purple-400',
+  claude: 'text-orange-400',
+  codex: 'text-emerald-400',
+  aider: 'text-pink-400',
+};
+
 export function ChatClient() {
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
@@ -31,8 +49,10 @@ export function ChatClient() {
   const [selected, setSelected] = useState<SessionItem | null>(null);
   const [showSessions, setShowSessions] = useState(false);
   const [attachments, setAttachments] = useState<MessagePart[]>([]);
-  const [mode, setMode] = useState<'a2a' | 'acp' | 'hermes'>('acp');
+  const [mode, setMode] = useState<'a2a' | 'acp' | 'hermes' | 'agent_proxy'>('acp');
   const [wsConnected, setWsConnected] = useState(false);
+  const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
+  const [showAgentSelector, setShowAgentSelector] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wsRef = useRef<WebSocket | null>(null);
@@ -57,7 +77,7 @@ export function ChatClient() {
         const msgId = Date.now().toString();
         agentMsgIdRef.current = msgId;
         setMessages(prev => [...prev, { id: msgId, role: 'agent', parts: [{ type: 'text', text: '' }], timestamp: new Date() }]);
-        setLoading(false); // Remove top loader, show inline
+        setLoading(false);
       } else if (data.type === 'chunk') {
         setMessages(prev => prev.map(m =>
           m.id === agentMsgIdRef.current
@@ -81,7 +101,6 @@ export function ChatClient() {
 
     ws.onclose = () => {
       setWsConnected(false);
-      // Reconnect after 3s
       setTimeout(connectWs, 3000);
     };
 
@@ -126,6 +145,19 @@ export function ChatClient() {
     } catch (e) { console.error('Failed to load sessions:', e); }
   };
 
+  const handleAgentSelect = (agent: AgentInfo) => {
+    setSelectedAgent(agent);
+    setMode('agent_proxy');
+    setShowAgentSelector(false);
+    setMessages([]);
+  };
+
+  const handleBackToSelector = () => {
+    setShowAgentSelector(true);
+    setSelectedAgent(null);
+    setMessages([]);
+  };
+
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || loading) return;
     const text = input.trim();
@@ -137,10 +169,10 @@ export function ChatClient() {
       wsRef.current.send(JSON.stringify({
         type: 'message',
         text,
-        mode: mode === 'hermes' ? 'hermes' : mode,
+        mode: mode === 'agent_proxy' ? 'agent_proxy' : mode === 'hermes' ? 'hermes' : mode,
         session_id: selected?.id,
+        agent_id: selectedAgent?.id,
       }));
-      // Response will come via WS events
       return;
     }
 
@@ -149,7 +181,11 @@ export function ChatClient() {
       let responseText = '';
       let source = '';
 
-      if (mode === 'hermes' && selected) {
+      if (mode === 'agent_proxy' && selectedAgent) {
+        const result = await apiRequest('/api/agent-proxy/send', 'POST', { agent_id: selectedAgent.id, message: text });
+        responseText = result.response || result.error || '（无响应）';
+        source = selectedAgent.id;
+      } else if (mode === 'hermes' && selected) {
         const result = await apiRequest('/api/hermes/send', 'POST', { session_id: selected.id, message: text });
         responseText = result.output || result.error || '已发送';
         source = 'hermes';
@@ -174,9 +210,10 @@ export function ChatClient() {
     setSelected(item);
     setMode(item.type === 'acp' ? 'acp' : 'hermes');
     setShowSessions(false);
+    setShowAgentSelector(false);
+    setSelectedAgent(null);
     setMessages([]);
 
-    // Load history for hermes sessions
     if (item.type === 'hermes') {
       try {
         const data = await apiRequest(`/api/hermes/sessions/${item.id}/messages`);
@@ -206,24 +243,69 @@ export function ChatClient() {
     document.addEventListener('paste', h); return () => document.removeEventListener('paste', h);
   }, []);
 
+  // Show agent selector when no agent selected
+  if (showAgentSelector && !selected) {
+    return (
+      <div className="flex flex-col h-full">
+        <AgentSelector onSelect={handleAgentSelect} selectedAgent={selectedAgent} />
+        {/* Bottom: switch to session mode */}
+        <div className="px-6 py-3 border-t bg-muted/30">
+          <button
+            onClick={() => { setShowAgentSelector(false); setMode('hermes'); setShowSessions(true); loadSessions(); }}
+            className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors flex items-center justify-center gap-2 py-2"
+          >
+            <MessageSquare className="w-4 h-4" />
+            或选择已有会话继续...
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col h-full">
       {/* Top Bar */}
       <div className="px-6 py-2 border-b bg-muted/30 flex items-center gap-3">
-        <Bot className="w-4 h-4 text-primary" />
-        <span className="text-sm font-medium">{selected ? selected.title : 'Hermes Agent'}</span>
-        {selected?.type === 'hermes' && selected?.source === 'weixin' && <Smartphone className="w-3 h-3 text-green-400" />}
+        {/* Back button when agent is selected */}
+        {selectedAgent && (
+          <button onClick={handleBackToSelector} className="p-1 rounded hover:bg-muted transition-colors" title="返回选择Agent">
+            <ArrowLeft className="w-4 h-4 text-muted-foreground" />
+          </button>
+        )}
+
+        {/* Agent/session info */}
+        {selectedAgent ? (
+          <div className="flex items-center gap-2">
+            <Zap className={`w-4 h-4 ${AGENT_COLORS[selectedAgent.id] || 'text-primary'}`} />
+            <span className="text-sm font-medium">{selectedAgent.name}</span>
+            <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded-full bg-primary/10 text-primary">Agent Proxy</span>
+          </div>
+        ) : (
+          <>
+            <Bot className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium">{selected ? selected.title : 'Hermes Agent'}</span>
+            {selected?.type === 'hermes' && selected?.source === 'weixin' && <Smartphone className="w-3 h-3 text-green-400" />}
+          </>
+        )}
+
         <span className="text-xs text-muted-foreground flex items-center gap-1">
           {wsConnected ? <><Wifi className="w-3 h-3 text-green-400" /> WS</> : <><WifiOff className="w-3 h-3 text-red-400" /> HTTP</>}
         </span>
+
         <div className="flex gap-1 ml-auto">
-          <button onClick={() => { setMode(mode === 'a2a' ? 'acp' : mode === 'acp' ? 'hermes' : 'a2a'); setSelected(null); setMessages([]); }}
-            className={`text-xs px-2 py-0.5 rounded-full transition-colors ${mode === 'hermes' ? 'bg-green-500/20 text-green-400' : mode === 'acp' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}`}>
-            {mode === 'hermes' ? '🟢 Hermes' : mode === 'acp' ? '🟡 ACP' : '🔵 A2A'}
-          </button>
+          {!selectedAgent && (
+            <button onClick={() => { setMode(mode === 'a2a' ? 'acp' : mode === 'acp' ? 'hermes' : 'a2a'); setSelected(null); setMessages([]); }}
+              className={`text-xs px-2 py-0.5 rounded-full transition-colors ${mode === 'hermes' ? 'bg-green-500/20 text-green-400' : mode === 'acp' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}`}>
+              {mode === 'hermes' ? '🟢 Hermes' : mode === 'acp' ? '🟡 ACP' : '🔵 A2A'}
+            </button>
+          )}
           <button onClick={() => { setShowSessions(!showSessions); if (!showSessions) loadSessions(); }}
             className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20">
             <MessageSquare className="w-3 h-3 inline mr-1" />会话
+          </button>
+          <button onClick={() => { setShowAgentSelector(true); setSelectedAgent(null); setSelected(null); setMessages([]); }}
+            className="text-xs px-2 py-0.5 rounded-full bg-secondary/50 hover:bg-secondary">
+            <Bot className="w-3 h-3 inline mr-1" />切换Agent
           </button>
           <button onClick={loadSessions} className="text-xs px-2 py-0.5 rounded-full hover:bg-muted"><RefreshCw className="w-3 h-3" /></button>
         </div>
@@ -278,16 +360,47 @@ export function ChatClient() {
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
         {messages.length === 0 && (
-          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
-            <Bot className="w-12 h-12 mb-4 opacity-50" />
-            <p className="text-lg font-medium">{mode === 'hermes' ? 'Hermes' : mode === 'acp' ? 'Hermes (ACP)' : 'OpenSoul (A2A)'}</p>
-            <p className="text-sm mt-1">{mode === 'hermes' ? '通过Hermes Gateway · 与微信/Telegram同步' : mode === 'acp' ? '通过ACP协议连接' : '通过A2A协议通信'}</p>
-            <p className="text-xs mt-2">点击"会话"选择微信对话 · Ctrl+V粘贴截图 · 拖放文件</p>
+          <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto">
+            <h2 className="text-2xl font-semibold mb-8">你好，今天打算做点什么？</h2>
+            <div className="w-full mb-6">
+              <div className="flex items-center gap-2 px-4 py-3 rounded-xl border bg-card text-sm text-muted-foreground">
+                <Bot className="w-4 h-4" />
+                <span>选择一个要使用的模式</span>
+                <span className="ml-auto px-2 py-0.5 rounded bg-primary/10 text-primary text-xs">{mode === 'hermes' ? 'Hermes' : mode === 'acp' ? 'ACP' : 'A2A'}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
+              {[
+                { icon: '📝', label: '需求文档', desc: '帮我写需求文档' },
+                { icon: '🎨', label: '原型设计', desc: '设计产品原型' },
+                { icon: '📊', label: '数据分析', desc: '分析数据报表' },
+                { icon: '💻', label: '代码开发', desc: '编写和调试代码' },
+                { icon: '📋', label: '项目排期', desc: '制定项目计划' },
+                { icon: '🧪', label: '测试用例', desc: '撰写测试文档' },
+                { icon: '📄', label: '方案编写', desc: '编写技术方案' },
+                { icon: '🔍', label: '知识搜索', desc: '搜索知识库内容' },
+              ].map(item => (
+                <button key={item.label} onClick={() => { setInput(item.desc); }}
+                  className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card hover:bg-muted/80 hover:border-primary/30 transition-all group">
+                  <span className="text-2xl">{item.icon}</span>
+                  <span className="text-sm font-medium">{item.label}</span>
+                  <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">{item.desc}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
         {messages.map(msg => (
           <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-            {msg.role === 'agent' && <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><Bot className="w-4 h-4 text-primary" /></div>}
+            {msg.role === 'agent' && (
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                {selectedAgent ? (
+                  <Zap className={`w-4 h-4 ${AGENT_COLORS[selectedAgent.id] || 'text-primary'}`} />
+                ) : (
+                  <Bot className="w-4 h-4 text-primary" />
+                )}
+              </div>
+            )}
             <div className={`max-w-[70%] rounded-lg px-4 py-2 ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
               {msg.parts.map((p, i) => p.type === 'text' ? <p key={i} className="text-sm whitespace-pre-wrap">{p.text}</p> : p.type === 'image' ? <img key={i} src={p.data} alt="" className="max-w-xs rounded mt-1" /> : null)}
               <div className="flex items-center gap-2 mt-1">
@@ -320,7 +433,7 @@ export function ChatClient() {
           <button onClick={() => fileInputRef.current?.click()} className="p-2 rounded-lg border hover:bg-muted" title="添加附件"><Paperclip className="w-4 h-4" /></button>
           <button onClick={() => navigator.clipboard.read().then(items => { for (const item of items) for (const type of item.types) if (type.startsWith('image/')) item.getType(type).then(b => readFileAsPart(new File([b], `screenshot.png`, { type }))); }).catch(() => {})} className="p-2 rounded-lg border hover:bg-muted" title="粘贴截图"><Camera className="w-4 h-4" /></button>
           <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-            placeholder={selected ? `发送到 ${selected.title.slice(0, 30)}...` : '输入消息...'} className="flex-1 px-4 py-2 rounded-lg border bg-background text-sm resize-none" rows={1} disabled={loading} />
+            placeholder={selectedAgent ? `向 ${selectedAgent.name} 发送消息...` : selected ? `发送到 ${selected.title.slice(0, 30)}...` : '输入消息...'} className="flex-1 px-4 py-2 rounded-lg border bg-background text-sm resize-none" rows={1} disabled={loading} />
           <button onClick={handleSend} disabled={loading || (!input.trim() && attachments.length === 0)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"><Send className="w-4 h-4" /></button>
         </div>
       </div>

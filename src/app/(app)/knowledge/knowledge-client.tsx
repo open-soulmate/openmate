@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { BookOpen, Plus, Trash2, Loader2, LogIn, Send, CheckCircle, XCircle, Clock, Share2, Sparkles } from 'lucide-react';
-import { api, getUserId, setUserId } from '@/lib/api-client';
+import { api, getUserId, setUserId, getApiBaseUrl } from '@/lib/api-client';
 
 interface Knowledge { id: string; title: string; content?: string; starred?: boolean; pinned?: boolean; created_at?: string; metadata?: Record<string, unknown>; }
 interface KbRequest { id: string; kb_name: string; kb_description: string; status: string; created_at: string; review_note?: string; }
@@ -183,7 +183,7 @@ export function KnowledgeClient() {
                   <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive" title="删除"><Trash2 className="w-4 h-4" /></button>
                 </div>
               </div>
-              {(item.metadata as Record<string, unknown>)?.shared_to_enterprise && <div className="mt-2 text-xs text-green-500 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> 已共享到企业知识库</div>}
+              {!!(item.metadata as Record<string, unknown>)?.shared_to_enterprise && <div className="mt-2 text-xs text-green-500 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> 已共享到企业知识库</div>}
               {item.created_at && <div className="mt-2 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</div>}
             </div>
           ))}

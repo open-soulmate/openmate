@@ -19,7 +19,8 @@ export function GraphBuilderClient() {
   const loadGraph = useCallback(async () => {
     setLoading(true);
     try {
-      const [eData, rData] = await Promise.all([api.getEntities(), api.getRelations()]);
+      const uid = localStorage.getItem('openmate-user-id') || '';
+      const [eData, rData] = await Promise.all([api.getEntities(uid), api.getRelations()]);
       setEntities(Array.isArray(eData) ? eData : eData.items || eData.results || []);
       setRelations(Array.isArray(rData) ? rData : rData.items || rData.results || []);
     } catch { /* ignore */ }

@@ -71,7 +71,6 @@ export function WorkflowBuilderClient() {
       onEdgesChange(changes);
       setTimeout(() => {
         setStoreEdges(
-          // @ts-expect-error -- ReactFlow edge types differ slightly
           reactFlowInstance.current?.getEdges() ?? [],
         );
       }, 0);
@@ -189,7 +188,7 @@ export function WorkflowBuilderClient() {
             onConnect={onConnect}
             onNodeClick={onNodeClick}
             onPaneClick={onPaneClick}
-            onInit={onInit}
+            onInit={onInit as never}
             onDrop={onDrop}
             onDragOver={onDragOver}
             nodeTypes={nodeTypes}
