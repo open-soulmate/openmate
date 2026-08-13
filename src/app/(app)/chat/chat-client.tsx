@@ -41,6 +41,17 @@ const AGENT_DEFINITIONS = [
   { id: 'ollama', name: 'Ollama', icon: '🦙', description: 'Ollama 本地大模型', logo: 'https://avatars.githubusercontent.com/u/153379978?s=48', cmd: 'ollama' },
   { id: 'wechat', name: '微信', icon: '💬', description: '企业微信/微信', cmd: '' },
   { id: 'telegram', name: 'Telegram', icon: '✈️', description: 'Telegram Bot', cmd: '' },
+  { id: 'openclaw', name: 'OpenClaw', icon: '🦞', description: '开源AI Agent框架', logo: 'https://avatars.githubusercontent.com/u/12345702?s=48', cmd: 'openclaw' },
+  { id: 'pi-agent', name: 'Pi Agent', icon: '🥧', description: 'Inflection AI 个人助手', logo: 'https://avatars.githubusercontent.com/u/12345703?s=48', cmd: 'pi' },
+  { id: 'openai-agents', name: 'OpenAI Agents SDK', icon: '🤖', description: 'OpenAI多Agent编排SDK', logo: 'https://avatars.githubusercontent.com/u/14957082?s=48', cmd: 'agents' },
+  { id: 'smolagents', name: 'SmolAgents', icon: '🤗', description: 'HuggingFace轻量Agent框架', logo: 'https://avatars.githubusercontent.com/u/22679051?s=48', cmd: 'smolagents' },
+  { id: 'pydantic-ai', name: 'PydanticAI', icon: '📐', description: 'Pydantic类型安全Agent', logo: 'https://avatars.githubusercontent.com/u/12345704?s=48', cmd: 'pydantic-ai' },
+  { id: 'letta', name: 'Letta', icon: '🧬', description: 'Letta(原MemGPT)长期记忆Agent', logo: 'https://avatars.githubusercontent.com/u/12345705?s=48', cmd: 'letta' },
+  { id: 'browser-use', name: 'Browser Use', icon: '🌐', description: 'AI浏览器自动化Agent', logo: 'https://avatars.githubusercontent.com/u/12345706?s=48', cmd: 'browser-use' },
+  { id: 'mastra', name: 'Mastra', icon: '⚡', description: 'TypeScript AI Agent框架', logo: 'https://avatars.githubusercontent.com/u/12345707?s=48', cmd: 'mastra' },
+  { id: 'composio', name: 'Composio', icon: '🔌', description: 'Agent工具集成平台', logo: 'https://avatars.githubusercontent.com/u/12345708?s=48', cmd: 'composio' },
+  { id: 'agentstack', name: 'AgentStack', icon: '🏗️', description: 'AI Agent快速开发框架', logo: 'https://avatars.githubusercontent.com/u/12345709?s=48', cmd: 'agentstack' },
+  { id: 'phidata', name: 'Phidata', icon: '💎', description: 'Phidata多模态Agent框架', logo: 'https://avatars.githubusercontent.com/u/12345710?s=48', cmd: 'phi' },
 ];
 
 export function ChatClient() {
