@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal as TerminalIcon, X, Maximize2, Minimize2 } from 'lucide-react';
+import { GitStatusBar } from './git-status-bar';
 
 interface TerminalPanelProps {
   apiBase: string;
@@ -59,6 +60,15 @@ export function TerminalPanel({ apiBase, token }: TerminalPanelProps) {
     return () => { wsRef.current?.close(); };
   }, [open, initTerminal]);
 
+  const handleRunCommand = useCallback(
+    (command: string) => {
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        wsRef.current.send(JSON.stringify({ type: 'input', data: command + '\n' }));
+      }
+    },
+    []
+  );
+
   return (
     <>
       {/* Toggle button */}
@@ -84,7 +94,10 @@ export function TerminalPanel({ apiBase, token }: TerminalPanelProps) {
               </button>
             </div>
           </div>
-          <div ref={termRef} className="w-full h-[calc(100%-36px)]" />
+          {/* Git Status Bar */}
+          <GitStatusBar apiBase={apiBase} token={token} onRunCommand={handleRunCommand} />
+          {/* Terminal container */}
+          <div ref={termRef} className="w-full h-[calc(100%-90px)]" />
         </div>
       )}
     </>

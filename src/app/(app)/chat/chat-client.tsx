@@ -1,5 +1,6 @@
-import { MarkdownContent } from "@/components/markdown-content";
 'use client';
+import { MarkdownContent } from "@/components/markdown-content";
+import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu, Trash2, Search as SearchIcon } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
@@ -8,7 +9,7 @@ const getApiUrl = () => getApiBaseUrl();
 const getWsUrl = () => getApiUrl().replace('http', 'ws');
 
 interface MessagePart { type: string; text?: string; data?: string; name?: string; mime_type?: string; url?: string; }
-interface Message { id: string; role: 'user' | 'agent'; parts: MessagePart[]; timestamp: Date; source?: string; }
+interface Message { id: string; role: 'user' | 'agent'; parts: MessagePart[]; timestamp: Date; source?: string; fileChanges?: FileChange[]; }
 interface Session { id: string; name: string; platform: string; chat_id?: string; last_message?: string; unread?: number; workspace?: string; last_active?: string; }
 
 // Agent definitions with detection
@@ -54,6 +55,87 @@ const AGENT_DEFINITIONS = [
   { id: 'agentstack', name: 'AgentStack', icon: '🏗️', description: 'AI Agent快速开发框架', logo: 'https://avatars.githubusercontent.com/u/12345709?s=48', cmd: 'agentstack' },
   { id: 'phidata', name: 'Phidata', icon: '💎', description: 'Phidata多模态Agent框架', logo: 'https://avatars.githubusercontent.com/u/12345710?s=48', cmd: 'phi' },
 ];
+
+// Parse file changes from AI response content
+function parseFileChanges(content: string): FileChange[] {
+  const files: FileChange[] = [];
+  // Match patterns like: --- a/file.ts +++ b/file.ts or *** file.ts
+  const fileRegex = /(?:---\s+a\/(.+?)\s*\n\+\+\+\s+b\/(.+?)|(\*\*\*\s+.+?))\s*\n([\s\S]*?)(?=---\s+a\/|\*\*\*|$)/g;
+  let match;
+  while ((match = fileRegex.exec(content)) !== null) {
+    const path = match[1] || match[3]?.replace(/^\*\*\*\s+/, '') || 'unknown';
+    const diff = match[4] || '';
+    
+    // Extract language from file extension
+    const ext = path.split('.').pop()?.toLowerCase() || '';
+    const langMap: Record<string, string> = {
+      ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript',
+      py: 'python', rb: 'ruby', go: 'go', rs: 'rust', java: 'java',
+      cpp: 'cpp', c: 'c', cs: 'csharp', php: 'php', swift: 'swift',
+      kt: 'kotlin', scala: 'scala', sh: 'bash', bash: 'bash',
+      html: 'html', css: 'css', scss: 'scss', less: 'less',
+      json: 'json', yaml: 'yaml', yml: 'yaml', xml: 'xml',
+      md: 'markdown', sql: 'sql', dockerfile: 'dockerfile',
+    };
+    const language = langMap[ext] || ext;
+
+    // Parse diff content to extract original and modified
+    const lines = diff.split('\n');
+    let original = '';
+    let modified = '';
+    let status: FileChange['status'] = 'modified';
+
+    for (const line of lines) {
+      if (line.startsWith('-') && !line.startsWith('---')) {
+        original += line.substring(1) + '\n';
+      } else if (line.startsWith('+') && !line.startsWith('+++')) {
+        modified += line.substring(1) + '\n';
+      } else if (line.startsWith(' ')) {
+        original += line.substring(1) + '\n';
+        modified += line.substring(1) + '\n';
+      }
+    }
+
+    // Determine status
+    if (original.trim() === '' && modified.trim() !== '') {
+      status = 'added';
+    } else if (modified.trim() === '' && original.trim() !== '') {
+      status = 'deleted';
+    }
+
+    files.push({
+      path,
+      language,
+      original: original.trimEnd(),
+      modified: modified.trimEnd(),
+      status,
+    });
+  }
+
+  // Also try to parse code blocks with filename comments
+  const codeBlockRegex = /```(\w+)?\s*(?:\/\/\s*(.+?))?\n([\s\S]*?)```/g;
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    const language = match[1] || 'text';
+    const fileName = match[2]?.trim();
+    const code = match[3]?.trim() || '';
+    
+    if (fileName && code) {
+      // Check if this file is already in the list
+      const existing = files.find(f => f.path === fileName);
+      if (!existing) {
+        files.push({
+          path: fileName,
+          language,
+          original: '',
+          modified: code,
+          status: 'added',
+        });
+      }
+    }
+  }
+
+  return files;
+}
 
 export function ChatClient() {
   const [messages, setMessages] = useState<Message[]>([]);
@@ -172,13 +254,18 @@ export function ChatClient() {
             if (role === 'assistant' && content && content.trim()) return true;
             return false;
           })
-          .map((m: Record<string, unknown>) => ({
-            id: (m.id || Date.now()).toString(),
-            role: m.role === 'user' ? 'user' : 'agent',
-            parts: [{ type: 'text', text: (m.content as string) || '' }],
-            timestamp: new Date((m.timestamp as string) || Date.now()),
-            source: m.source as string,
-          }));
+          .map((m: Record<string, unknown>) => {
+            const content = (m.content as string) || '';
+            const isAgent = m.role !== 'user';
+            return {
+              id: (m.id || Date.now()).toString(),
+              role: isAgent ? 'agent' : 'user',
+              parts: [{ type: 'text', text: content }],
+              timestamp: new Date((m.timestamp as string) || Date.now()),
+              source: m.source as string,
+              fileChanges: isAgent ? parseFileChanges(content) : undefined,
+            };
+          });
         setMessages(msgs);
       }
     } catch {}
@@ -196,7 +283,20 @@ export function ChatClient() {
     ws.onmessage = (e) => {
       try {
         const data = JSON.parse(e.data);
-        if (data.type === 'done') { setLoading(false); if (data.text) initAgents(); }
+        if (data.type === 'done') {
+          setLoading(false);
+          if (data.text) initAgents();
+          // Parse file changes from the completed message
+          setMessages(prev => {
+            const last = prev[prev.length - 1];
+            if (last?.role === 'agent' && last?.source === 'streaming') {
+              const content = last.parts[0]?.text || '';
+              const fileChanges = parseFileChanges(content);
+              return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges }];
+            }
+            return prev;
+          });
+        }
         else if (data.type === 'chunk') {
           setMessages(prev => {
             const last = prev[prev.length - 1];
@@ -235,7 +335,15 @@ export function ChatClient() {
         body: JSON.stringify({ text, session_id: selectedSession?.id }),
       });
       const d = await r.json();
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: d.content || d.error || '无响应' }], timestamp: new Date(), source: d.source }]);
+      const content = d.content || d.error || '无响应';
+      setMessages(prev => [...prev, {
+        id: Date.now().toString(),
+        role: 'agent',
+        parts: [{ type: 'text', text: content }],
+        timestamp: new Date(),
+        source: d.source,
+        fileChanges: parseFileChanges(content),
+      }]);
     } catch {
       setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: '请求超时' }], timestamp: new Date() }]);
     }
@@ -424,11 +532,33 @@ export function ChatClient() {
               <div className={`max-w-[70%] rounded-xl px-4 py-2.5 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                 {msg.parts.map((p, i) => (
                   <div key={i}>
-                    {p.type === 'text' {p.type === 'text' && <span className="whitespace-pre-wrap">{p.text}</span>}{p.type === 'text' && <span className="whitespace-pre-wrap">{p.text}</span>} <MarkdownContent content={p.text} //>}
+                    {p.type === 'text' && <MarkdownContent content={p.text || ''} onCodeApply={(code, lang) => {
+                      // Handle code apply - copy to clipboard
+                      navigator.clipboard.writeText(code);
+                    }} />}
                     {p.type === 'image' && p.data && <img src={`data:${p.mime_type || 'image/png'};base64,${p.data}`} alt={p.name || 'image'} className="max-w-xs rounded-lg mt-1" />}
                     {p.type === 'file' && <div className="flex items-center gap-2 mt-1 p-2 bg-background/50 rounded"><FileText className="w-4 h-4" /><span className="text-xs">{p.name || 'file'}</span></div>}
                   </div>
                 ))}
+                {/* Multi-file diff view for agent messages with file changes */}
+                {msg.role === 'agent' && msg.fileChanges && msg.fileChanges.length > 0 && (
+                  <MultiFileDiff
+                    files={msg.fileChanges}
+                    onAccept={(path, content) => {
+                      // Handle accept - copy to clipboard
+                      navigator.clipboard.writeText(content);
+                    }}
+                    onReject={(path) => {
+                      console.log('Rejected:', path);
+                    }}
+                    onAcceptAll={() => {
+                      console.log('Accepted all files');
+                    }}
+                    onRejectAll={() => {
+                      console.log('Rejected all files');
+                    }}
+                  />
+                )}
                 <div className="text-[10px] mt-1.5 opacity-60 flex items-center gap-1">
                   <span>{msg.timestamp.toLocaleTimeString()}</span>
                   {msg.source && <span className="px-1 py-0.5 rounded bg-black/10 text-[9px]">{msg.source}</span>}

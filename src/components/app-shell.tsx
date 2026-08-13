@@ -1,5 +1,5 @@
-import { TerminalPanel } from "@/components/terminal-panel";
 "use client";
+import { TerminalPanel } from "@/components/terminal-panel";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
