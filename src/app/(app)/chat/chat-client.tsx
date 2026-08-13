@@ -352,7 +352,8 @@ export function ChatClient() {
               )}
             </div>
           ))
-          }
+          })
+}
       </div>
 
       {/* Column 3: Chat Window - on mobile, only show when session selected */}
