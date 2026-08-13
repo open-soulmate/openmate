@@ -3,6 +3,8 @@ import "./globals.css";
 import I18nProvider from "@/components/i18n-provider";
 
 export const metadata: Metadata = {
+  manifest: "/manifest.json",
+  themeColor: "#7c3aed",
   title: "OpenMate — Your Knowledge Companion",
   description: "An open AI companion platform with pluggable skill extensions",
 };
@@ -33,6 +35,7 @@ export default function RootLayout({
       </head>
       <body className="min-h-screen bg-background text-foreground antialiased">
         <I18nProvider>{children}</I18nProvider>
+      <script dangerouslySetInnerHTML={{ __html: "if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}" }} />
       </body>
     </html>
   );
