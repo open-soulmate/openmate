@@ -1,4 +1,4 @@
-name: Build Tauri Desktop
+name: Build Tauri Desktop & Mobile
 
 on:
   push:
@@ -9,20 +9,17 @@ permissions:
   contents: write
 
 jobs:
-  build:
+  build-desktop:
     strategy:
       fail-fast: false
       matrix:
         include:
           - platform: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-            ext: deb
           - platform: windows-latest
             target: x86_64-pc-windows-msvc
-            ext: msi
           - platform: macos-latest
             target: aarch64-apple-darwin
-            ext: dmg
 
     runs-on: ${{ matrix.platform }}
     steps:
@@ -51,23 +48,73 @@ jobs:
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         with:
           tagName: v__VERSION__
           releaseName: OpenMate v__VERSION__
           releaseBody: |
-            ## OpenMate Desktop v__VERSION__
-            
-            ### Downloads
+            ## Downloads
             - **Windows**: `.msi` installer
-            - **Linux**: `.deb` or `.rpm` package
-            - **macOS**: `.dmg` disk image
-            
-            ### Features
-            - AI Chat with multi-agent support
-            - WebSocket real-time messaging
-            - Session history & management
-            - PWA mobile support
-            - Auto-update support
+            - **Linux**: `.deb` or `.rpm`
+            - **macOS**: `.dmg`
+            - **Android**: `.apk`
           releaseDraft: true
           prerelease: false
+
+  build-android:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Rust stable
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Setup Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install Android NDK
+        run: sdkmanager "ndk;27.0.12077973"
+
+      - name: Set environment variables
+        run: |
+          echo "ANDROID_HOME=$ANDROID_HOME" >> $GITHUB_ENV
+          echo "NDK_HOME=$ANDROID_HOME/ndk/27.0.12077973" >> $GITHUB_ENV
+          echo "$ANDROID_HOME/ndk/27.0.12077973/toolchains/llvm/prebuilt/linux-x86_64/bin" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Install frontend dependencies
+        run: npm ci
+
+      - name: Initialize Tauri Android
+        run: npx tauri android init
+
+      - name: Build Android APK
+        run: npx tauri android build --apk
+        env:
+          NDK_HOME: ${{ env.NDK_HOME }}
+
+      - name: Upload APK
+        uses: softprops/action-gh-release@v2
+        if: startsWith(github.ref, 'refs/tags/')
+        with:
+          files: |
+            src-tauri/gen/android/app/build/outputs/apk/universal/release/*.apk
+            src-tauri/gen/android/app/build/outputs/apk/arm64/release/*.apk
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
