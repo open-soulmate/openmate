@@ -150,7 +150,7 @@ export function ChatClient() {
     return () => ws.close();
   }, [initAgents]);
 
-  useEffect(() => { initAgents(); }, [initAgents]);
+  useEffect(() => { initAgents(); const timer = setInterval(initAgents, 30000); return () => clearInterval(timer); }, [initAgents]);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
 
   const handleSend = async () => {
