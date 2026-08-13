@@ -15,6 +15,10 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId } from "@/lib/api-client";
 import { type ThemeId, persistTheme } from "@/lib/theme";
 
+// Paperclip-style sidebar: fixed icon column, text hides on collapse
+// Expanded: 240px, icon at 12px left, text flows right
+// Collapsed: 56px, icon stays at same position, text hidden
+
 export function AppShell() {
   const pathname = usePathname();
   const router = useRouter();
@@ -68,7 +72,6 @@ export function AppShell() {
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
-  // Close menu on route change
   useEffect(() => { setMenuOpen(false); }, [pathname]);
 
   function toggleTheme() {
@@ -85,61 +88,78 @@ export function AppShell() {
 
   return (
     <>
-      {/* Desktop sidebar */}
+      {/* Desktop sidebar - Paperclip style */}
       <aside
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         className={cn(
-          "hidden h-screen flex-col border-r border-border bg-sidebar transition-all duration-200 md:flex",
-          isExpanded ? "w-60" : "w-16"
+          "hidden h-screen flex-col border-r border-border bg-sidebar transition-[width] duration-200 md:flex",
+          isExpanded ? "w-60" : "w-14"
         )}
       >
-        {/* Header */}
-        <div className="flex h-14 shrink-0 items-center justify-between px-4">
-          {isExpanded && (
-            <span className="text-sm font-semibold tracking-tight text-foreground">OpenMate</span>
-          )}
+        {/* Header: brand + collapse toggle */}
+        <div className="flex h-12 shrink-0 items-center px-3">
+          <div className="flex w-8 shrink-0 items-center justify-center">
+            <span className={cn("text-sm font-bold text-primary transition-opacity duration-150", isExpanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden")}>OM</span>
+          </div>
+          <div className={cn("flex-1 min-w-0 transition-all duration-150", isExpanded ? "ml-2 opacity-100" : "w-0 opacity-0 overflow-hidden")}>
+            <span className="text-sm font-semibold text-foreground whitespace-nowrap">OpenMate</span>
+          </div>
           <button onClick={toggle}
-            className={cn("flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground", !isExpanded && "mx-auto")}>
-            {isExpanded ? <PanelLeftClose size={18} /> : <PanelLeftOpen size={18} />}
+            className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
+            {isExpanded ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
           </button>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 space-y-0.5 px-2 py-2">
+        {/* Navigation - fixed icon column + flowing text */}
+        <nav className="flex-1 overflow-y-auto px-2 py-1">
           {navItems.map((item) => {
             const active = pathname.startsWith(item.href);
             return (
               <Link key={item.href} href={item.href}
-                className={cn("flex h-9 items-center gap-3 rounded-md px-3 text-sm transition-colors",
-                  active ? "bg-sidebar-accent text-foreground font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground",
-                  !isExpanded && "justify-center")}>
-                <item.icon size={18} />
-                {isExpanded && <span suppressHydrationWarning>{item.label}</span>}
+                className={cn(
+                  "flex h-8 items-center rounded-md text-sm transition-colors group mb-0.5",
+                  active ? "bg-sidebar-accent text-foreground font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground"
+                )}>
+                {/* Fixed icon column: 32px wide, icon always centered at same position */}
+                <div className="flex w-8 shrink-0 items-center justify-center">
+                  <item.icon size={16} />
+                </div>
+                {/* Text column: hidden when collapsed */}
+                <span className={cn(
+                  "truncate whitespace-nowrap transition-all duration-150",
+                  isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
+                )} suppressHydrationWarning>
+                  {item.label}
+                </span>
               </Link>
             );
           })}
         </nav>
 
-        {/* Footer - User Account Menu */}
-        <div className="border-t border-border px-2 py-3 relative" ref={menuRef}>
+        {/* Footer - User Account */}
+        <div className="border-t border-border px-2 py-2 relative" ref={menuRef}>
           <button onClick={() => setMenuOpen(!menuOpen)}
-            className={cn("flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm transition-colors hover:bg-sidebar-accent", !isExpanded && "justify-center")}>
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-medium text-primary-foreground">
-              {userId[0].toUpperCase()}
-            </div>
-            {isExpanded && (
-              <div className="flex flex-col items-start min-w-0">
-                <span className="truncate text-sm font-medium text-foreground">{userId}</span>
-                <span className="text-[10px] text-muted-foreground">OpenMate v0.1.0</span>
+            className="flex w-full items-center rounded-md py-1.5 text-sm transition-colors hover:bg-sidebar-accent">
+            {/* Fixed avatar column */}
+            <div className="flex w-8 shrink-0 items-center justify-center">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
+                {userId[0].toUpperCase()}
               </div>
-            )}
+            </div>
+            {/* User info: hidden when collapsed */}
+            <div className={cn(
+              "flex flex-col items-start min-w-0 transition-all duration-150",
+              isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
+            )}>
+              <span className="truncate text-sm font-medium text-foreground">{userId}</span>
+              <span className="text-[10px] text-muted-foreground">v0.1.0</span>
+            </div>
           </button>
 
-          {/* Account Menu Popover - Paperclip style */}
+          {/* Account Menu Popover */}
           {menuOpen && (
             <div className="absolute bottom-full left-0 mb-2 w-64 rounded-xl border border-border bg-card shadow-lg overflow-hidden z-50">
-              {/* User header */}
               <div className="p-4 border-b border-border">
                 <div className="flex items-center gap-3">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
@@ -151,15 +171,11 @@ export function AppShell() {
                   </div>
                 </div>
               </div>
-
-              {/* Menu items */}
               <div className="py-1">
-                <MenuItem icon={User} label="查看资料" description="查看你的活动和使用记录" onClick={() => { router.push("/settings"); setMenuOpen(false); }} />
-                <MenuItem icon={Settings} label="编辑资料" description="更新显示名称和头像" onClick={() => { router.push("/settings"); setMenuOpen(false); }} />
+                <MenuItem icon={User} label="查看资料" description="查看你的活动和使用记录" onClick={() => { router.push("/settings#account"); setMenuOpen(false); }} />
+                <MenuItem icon={Settings} label="编辑资料" description="更新显示名称和头像" onClick={() => { router.push("/settings#account"); setMenuOpen(false); }} />
                 <MenuItem icon={FileText} label="使用文档" description="打开 OpenMate 文档" onClick={() => window.open("https://github.com/open-soulmate/openmate", "_blank")} />
                 <MenuItem icon={MessageCircle} label="反馈" description="分享反馈或报告问题" onClick={() => window.open("https://github.com/open-soulmate/openmate/issues", "_blank")} />
-
-                {/* Theme toggle */}
                 <button onClick={toggleTheme}
                   className="flex w-full items-start gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left">
                   <div className="mt-0.5 text-muted-foreground">
@@ -171,8 +187,6 @@ export function AppShell() {
                   </div>
                 </button>
               </div>
-
-              {/* Sign out */}
               <div className="border-t border-border py-1">
                 <button onClick={handleLogout}
                   className="flex w-full items-start gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left">
