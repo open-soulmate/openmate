@@ -21,6 +21,7 @@ export function AgentsClient() {
   const [loading, setLoading] = useState(true);
   const [os, setOs] = useState('linux');
   const [filter, setFilter] = useState<'all' | 'available' | 'unavailable'>('all');
+  const [category, setCategory] = useState("all");
   const [installs, setInstalls] = useState<Record<string, InstallState>>({});
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
@@ -164,9 +165,11 @@ export function AgentsClient() {
   // ─── Filter ───────────────────────────────────────────────────
 
   const filtered = agents.filter(a => {
+    const matchCategory = category === "all" || (a as any).category === category;
     if (filter === 'available') return a.available;
     if (filter === 'unavailable') return !a.available;
     return true;
+    return matchFilter && matchCategory;
   });
   const availableCount = agents.filter(a => a.available).length;
 
