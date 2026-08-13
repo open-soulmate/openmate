@@ -19,7 +19,8 @@
     "workflowBuilder": "工作流编排",
     "settings": "设置",
     "mcp": "MCP客户端",
-    "cron": "定时任务"
+    "cron": "定时任务",
+    "download": "下载管理"
   },
   "chat": {
     "newChat": "新建对话",
