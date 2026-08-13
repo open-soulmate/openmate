@@ -119,7 +119,13 @@ export function SettingsClient() {
   const llmConfig = useAppStore((s) => s.llmConfig);
   const setLLMConfig = useAppStore((s) => s.setLLMConfig);
 
-  const [active, setActive] = useState<SectionId>("appearance");
+  const [active, setActive] = useState<SectionId>(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.replace("#", "") as SectionId;
+      if (["appearance","agent","model","tools","storage","account","about"].includes(hash)) return hash;
+    }
+    return "appearance";
+  });
   const [saved, setSaved] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
 
