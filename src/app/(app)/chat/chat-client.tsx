@@ -153,7 +153,6 @@ export function ChatClient() {
 
   const selectSession = (s: Session) => {
     setSelected(s); setMessages([]);
-    if (s.platform === 'hermes' || s.platform === 'web') return;
     loadHistory(s.id);
   };
 
