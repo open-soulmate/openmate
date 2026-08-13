@@ -80,7 +80,7 @@ export function AppShell() {
   function handleLogout() {
     localStorage.removeItem("openmate-token");
     localStorage.removeItem("openmate-api-url");
-    router.push("/login");
+    window.location.href = "/login";
   }
 
   return (
