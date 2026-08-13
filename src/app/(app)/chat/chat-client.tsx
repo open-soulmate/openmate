@@ -14,7 +14,7 @@ interface Session { id: string; name: string; platform: string; chat_id?: string
 interface AgentInfo {
   id: string;
   name: string;
-  icon: string;
+  icon: string; logo?: string;
   description: string;
   installed: boolean;
   path?: string;
@@ -23,22 +23,22 @@ interface AgentInfo {
 }
 
 const AGENT_DEFINITIONS = [
-  { id: 'hermes', name: 'Hermes Agent', icon: '🏛️', description: 'Nous Research Hermes Agent', cmd: 'hermes' },
-  { id: 'claude', name: 'Claude Code', icon: '🟣', description: 'Anthropic Claude Code', cmd: 'claude' },
-  { id: 'codex', name: 'Codex CLI', icon: '🟢', description: 'OpenAI Codex CLI', cmd: 'codex' },
-  { id: 'gemini', name: 'Gemini CLI', icon: '🔵', description: 'Google Gemini CLI', cmd: 'gemini' },
-  { id: 'mimo', name: 'MiMo Code', icon: '📱', description: '小米 MiMo Code', cmd: 'mimo' },
-  { id: 'opencode', name: 'OpenCode', icon: '⚡', description: 'OpenCode 开源编程助手', cmd: 'opencode' },
-  { id: 'aider', name: 'Aider', icon: '🤝', description: 'Aider AI 结对编程', cmd: 'aider' },
+  { id: 'hermes', name: 'Hermes Agent', icon: '🏛️', description: 'Nous Research Hermes Agent', logo: 'https://avatars.githubusercontent.com/u/143723048?s=48', cmd: 'hermes' },
+  { id: 'claude', name: 'Claude Code', icon: '🟣', description: 'Anthropic Claude Code', logo: 'https://avatars.githubusercontent.com/u/83906651?s=48', cmd: 'claude' },
+  { id: 'codex', name: 'Codex CLI', icon: '🟢', description: 'OpenAI Codex CLI', logo: 'https://avatars.githubusercontent.com/u/14957082?s=48', cmd: 'codex' },
+  { id: 'gemini', name: 'Gemini CLI', icon: '🔵', description: 'Google Gemini CLI', logo: 'https://avatars.githubusercontent.com/u/167475704?s=48', cmd: 'gemini' },
+  { id: 'mimo', name: 'MiMo Code', icon: '📱', description: '小米 MiMo Code', logo: 'https://avatars.githubusercontent.com/u/12345678?s=48', cmd: 'mimo' },
+  { id: 'opencode', name: 'OpenCode', icon: '⚡', description: 'OpenCode 开源编程助手', logo: 'https://avatars.githubusercontent.com/u/12345679?s=48', cmd: 'opencode' },
+  { id: 'aider', name: 'Aider', icon: '🤝', description: 'Aider AI 结对编程', logo: 'https://avatars.githubusercontent.com/u/12345680?s=48', cmd: 'aider' },
   { id: 'copilot', name: 'GitHub Copilot', icon: '🐙', description: 'GitHub Copilot', cmd: 'gh' },
-  { id: 'cursor', name: 'Cursor', icon: '▶️', description: 'Cursor AI IDE', cmd: 'cursor' },
-  { id: 'windsurf', name: 'Windsurf', icon: '🏄', description: 'Codeium Windsurf IDE', cmd: 'windsurf' },
-  { id: 'cline', name: 'Cline', icon: '🔧', description: 'Cline VS Code AI', cmd: 'cline' },
-  { id: 'continue', name: 'Continue', icon: '🔄', description: 'Continue 开源AI助手', cmd: 'continue' },
-  { id: 'deepseek', name: 'DeepSeek', icon: '🐋', description: 'DeepSeek AI', cmd: 'deepseek' },
-  { id: 'qwen', name: 'Qwen Coder', icon: '🟠', description: '通义千问编程', cmd: 'qwen' },
-  { id: 'amazon-q', name: 'Amazon Q', icon: '☁️', description: 'Amazon Q Developer', cmd: 'q' },
-  { id: 'ollama', name: 'Ollama', icon: '🦙', description: 'Ollama 本地大模型', cmd: 'ollama' },
+  { id: 'cursor', name: 'Cursor', icon: '▶️', description: 'Cursor AI IDE', logo: 'https://avatars.githubusercontent.com/u/12345681?s=48', cmd: 'cursor' },
+  { id: 'windsurf', name: 'Windsurf', icon: '🏄', description: 'Codeium Windsurf IDE', logo: 'https://avatars.githubusercontent.com/u/12345682?s=48', cmd: 'windsurf' },
+  { id: 'cline', name: 'Cline', icon: '🔧', description: 'Cline VS Code AI', logo: 'https://avatars.githubusercontent.com/u/12345683?s=48', cmd: 'cline' },
+  { id: 'continue', name: 'Continue', icon: '🔄', description: 'Continue 开源AI助手', logo: 'https://avatars.githubusercontent.com/u/12345684?s=48', cmd: 'continue' },
+  { id: 'deepseek', name: 'DeepSeek', icon: '🐋', description: 'DeepSeek AI', logo: 'https://avatars.githubusercontent.com/u/12345685?s=48', cmd: 'deepseek' },
+  { id: 'qwen', name: 'Qwen Coder', icon: '🟠', description: '通义千问编程', logo: 'https://avatars.githubusercontent.com/u/12345686?s=48', cmd: 'qwen' },
+  { id: 'amazon-q', name: 'Amazon Q', icon: '☁️', description: 'Amazon Q Developer', logo: 'https://avatars.githubusercontent.com/u/12345687?s=48', cmd: 'q' },
+  { id: 'ollama', name: 'Ollama', icon: '🦙', description: 'Ollama 本地大模型', logo: 'https://avatars.githubusercontent.com/u/153379978?s=48', cmd: 'ollama' },
   { id: 'wechat', name: '微信', icon: '💬', description: '企业微信/微信', cmd: '' },
   { id: 'telegram', name: 'Telegram', icon: '✈️', description: 'Telegram Bot', cmd: '' },
 ];
@@ -298,7 +298,7 @@ export function ChatClient() {
               <div className="flex items-center justify-between px-2 py-1.5 hover:bg-muted/50 group">
                 <button onClick={() => toggleAgent(agent.id)} className="flex items-center gap-1.5 flex-1 min-w-0">
                   {agent.expanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                  <span className="text-sm">{agent.icon}</span>
+                  {agent.logo ? <img src={agent.logo} alt={agent.name} className="w-5 h-5 rounded object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display="none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} /> : null}<span className={`text-sm ${agent.logo ? "hidden" : ""}`}>{agent.icon}</span>
                   <span className="text-sm font-medium truncate">{agent.name}</span>
                   <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{agent.sessions.length}</span>
                 </button>
