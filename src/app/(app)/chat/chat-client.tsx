@@ -1,3 +1,4 @@
+import { MarkdownContent } from "@/components/markdown-content";
 'use client';
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu, Trash2, Search as SearchIcon } from "lucide-react";
@@ -423,7 +424,7 @@ export function ChatClient() {
               <div className={`max-w-[70%] rounded-xl px-4 py-2.5 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                 {msg.parts.map((p, i) => (
                   <div key={i}>
-                    {p.type === 'text' && <span className="whitespace-pre-wrap">{p.text}</span>}
+                    {p.type === 'text' {p.type === 'text' && <span className="whitespace-pre-wrap">{p.text}</span>}{p.type === 'text' && <span className="whitespace-pre-wrap">{p.text}</span>} <MarkdownContent content={p.text} //>}
                     {p.type === 'image' && p.data && <img src={`data:${p.mime_type || 'image/png'};base64,${p.data}`} alt={p.name || 'image'} className="max-w-xs rounded-lg mt-1" />}
                     {p.type === 'file' && <div className="flex items-center gap-2 mt-1 p-2 bg-background/50 rounded"><FileText className="w-4 h-4" /><span className="text-xs">{p.name || 'file'}</span></div>}
                   </div>
