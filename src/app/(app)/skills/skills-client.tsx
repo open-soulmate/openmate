@@ -19,6 +19,7 @@ export function SkillsClient() {
   const [filter, setFilter] = useState<'all' | 'installed' | 'available'>('all');
   const [category, setCategory] = useState('all');
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [migrating, setMigrating] = useState(false);
 
   const fetchSkills = useCallback(async () => {
     setLoading(true);
@@ -33,6 +34,24 @@ export function SkillsClient() {
   }, []);
 
   useEffect(() => { fetchSkills(); }, [fetchSkills]);
+
+  const handleMigrate = async () => {
+    setMigrating(true);
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/skills/migrate`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      const data = await res.json();
+      if (data.count > 0) {
+        setToast({ message: `已迁移 ${data.count} 个技能到共享目录`, type: "success" });
+      } else {
+        setToast({ message: "没有需要迁移的技能", type: "success" });
+      }
+      fetchSkills();
+    } catch { setToast({ message: "迁移失败", type: "error" }); }
+    setMigrating(false);
+  };
 
   const handleInstall = async (skill: Skill) => {
     try {
@@ -92,9 +111,16 @@ export function SkillsClient() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Puzzle className="w-6 h-6" /> 技能市场</h1>
-          <p className="text-sm text-muted-foreground mt-1">浏览和安装 Hermes 技能，扩展 AI Agent 能力</p>
+          <p className="text-sm text-muted-foreground mt-1">浏览和安装共享技能，所有本机 AI Agent 均可调用</p>
         </div>
-        <button onClick={fetchSkills} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> 刷新</button>
+        <div className="flex gap-2">
+          <button onClick={handleMigrate} disabled={migrating}
+            className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm disabled:opacity-50">
+            {migrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {migrating ? '迁移中...' : '一键迁移'}
+          </button>
+          <button onClick={fetchSkills} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> 刷新</button>
+        </div>
       </div>
 
       {/* Stats */}
