@@ -292,7 +292,33 @@ export function ChatClient() {
           <input placeholder="搜索会话和消息内容..." value={searchQuery} onChange={(e) => handleSearch(e.target.value)} className="w-full px-3 py-1.5 rounded-lg bg-muted text-sm outline-none" />
         </div>
         <div className="flex-1 overflow-y-auto">
-          {agents.map(agent => (
+          {/* Search Results */}
+          {searchQuery.trim() ? (
+            <div>
+              {searching && <div className="p-3 text-xs text-muted-foreground">搜索中...</div>}
+              {!searching && searchResults.length === 0 && (
+                <div className="p-3 text-xs text-muted-foreground">未找到匹配结果</div>
+              )}
+              {searchResults.map(r => {
+                const matchedAgent = agents.find(a => a.sessions.some(s => s.id === r.id));
+                return (
+                  <button key={r.id} onClick={() => {
+                    if (matchedAgent) {
+                      const session = matchedAgent.sessions.find(s => s.id === r.id);
+                      if (session) { selectSession(session, matchedAgent); setSearchQuery(''); setSearchResults([]); }
+                    }
+                  }} className="w-full text-left px-3 py-2 hover:bg-muted/80 transition-colors border-b border-border/30">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs">{r.match_type === 'title' ? '📋' : '💬'}</span>
+                      <span className="text-xs font-medium truncate">{r.title || r.id}</span>
+                    </div>
+                    {r.snippet && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{r.snippet}</p>}
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+          agents.map(agent => (
             <div key={agent.id}>
               {/* Agent header - click to expand/collapse, + button for new session */}
               <div className="flex items-center justify-between px-2 py-1.5 hover:bg-muted/50 group">
@@ -326,6 +352,7 @@ export function ChatClient() {
               )}
             </div>
           ))}
+          )}
         </div>
       </div>
 
