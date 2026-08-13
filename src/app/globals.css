@@ -117,3 +117,4 @@ body {
   --color-sidebar-foreground: #a78bbc;
   --color-sidebar-accent: #1a0f2e;
 }
+@import "@xterm/xterm/css/xterm.css";
