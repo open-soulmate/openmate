@@ -155,7 +155,7 @@ export function SettingsClient() {
   function handleLogout() {
     localStorage.removeItem("openmate-token");
     localStorage.removeItem("openmate-api-url");
-    router.push("/login");
+    window.location.href = "/login";
   }
 
   const currentProvider = llmProviders.find((p) => p.value === settings.llmProvider);
