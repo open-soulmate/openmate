@@ -190,9 +190,9 @@ export function ChatClient() {
 
             return (
               <>
-                {renderGroup('ACP 会话', <Bot className="w-3.5 h-3.5 text-yellow-400" />, acpSessions, 'text-yellow-400/80')}
-                {renderGroup('微信会话', <Smartphone className="w-3.5 h-3.5 text-green-400" />, weixinSessions, 'text-green-400/80')}
-                {renderGroup('Hermes 会话', <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />, hermesSessions, 'text-muted-foreground')}
+                {renderGroup('微信会话', <Smartphone className="w-3.5 h-3.5 text-green-400" />, weixinSessions.slice(0, 8), 'text-green-400/80')}
+                {renderGroup('Hermes 会话', <MessageSquare className="w-3.5 h-3.5 text-muted-foreground" />, hermesSessions.slice(0, 5), 'text-muted-foreground')}
+                {renderGroup('ACP 会话', <Bot className="w-3.5 h-3.5 text-yellow-400" />, acpSessions.slice(0, 5), 'text-yellow-400/80')}
               </>
             );
           })()}
