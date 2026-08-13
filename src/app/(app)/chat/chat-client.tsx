@@ -1,14 +1,15 @@
 'use client';
-import { useState, useRef, useEffect } from 'react';
-import { Send, Bot, User, Loader2, Paperclip, FileText, X, Camera, MessageSquare, RefreshCw, Smartphone } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { Send, Bot, User, Loader2, Paperclip, FileText, X, Camera, MessageSquare, RefreshCw, Smartphone, Wifi, WifiOff } from 'lucide-react';
 import { a2aClient } from '@/lib/a2a-client';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8090';
+const WS_URL = API_URL.replace('http', 'ws');
 
 interface AcpSession { sessionId: string; title: string; cwd: string; updatedAt: string; }
 interface HermesSession { id: string; title: string; preview: string; last_active: string; source: string; }
 interface MessagePart { type: 'text' | 'image' | 'file'; text?: string; data?: string; name?: string; }
-interface ChatMessage { id: string; role: 'user' | 'agent'; parts: MessagePart[]; timestamp: Date; }
+interface ChatMessage { id: string; role: 'user' | 'agent'; parts: MessagePart[]; timestamp: Date; source?: string; }
 
 async function apiRequest(path: string, method = 'GET', body?: unknown) {
   const token = localStorage.getItem('openmate-token');
@@ -30,32 +31,88 @@ export function ChatClient() {
   const [showSessions, setShowSessions] = useState(false);
   const [attachments, setAttachments] = useState<MessagePart[]>([]);
   const [mode, setMode] = useState<'a2a' | 'acp' | 'hermes'>('acp');
+  const [wsConnected, setWsConnected] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
+  const agentMsgIdRef = useRef<string>('');
+
+  // WebSocket connection
+  const connectWs = useCallback(() => {
+    const token = localStorage.getItem('openmate-token');
+    if (!token) return;
+
+    const ws = new WebSocket(`${WS_URL}/ws/chat?token=${token}`);
+
+    ws.onopen = () => {
+      setWsConnected(true);
+      console.log('WS connected');
+    };
+
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+
+      if (data.type === 'thinking') {
+        const msgId = Date.now().toString();
+        agentMsgIdRef.current = msgId;
+        setMessages(prev => [...prev, { id: msgId, role: 'agent', parts: [{ type: 'text', text: '' }], timestamp: new Date() }]);
+        setLoading(false); // Remove top loader, show inline
+      } else if (data.type === 'chunk') {
+        setMessages(prev => prev.map(m =>
+          m.id === agentMsgIdRef.current
+            ? { ...m, parts: [{ type: 'text', text: m.parts[0]?.text + data.text }] }
+            : m
+        ));
+      } else if (data.type === 'done') {
+        setMessages(prev => prev.map(m =>
+          m.id === agentMsgIdRef.current
+            ? { ...m, parts: [{ type: 'text', text: data.text }], source: data.source }
+            : m
+        ));
+        setLoading(false);
+      } else if (data.type === 'error') {
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `错误: ${data.message}` }], timestamp: new Date() }]);
+        setLoading(false);
+      } else if (data.type === 'connected') {
+        console.log('WS authenticated:', data.user_id);
+      }
+    };
+
+    ws.onclose = () => {
+      setWsConnected(false);
+      // Reconnect after 3s
+      setTimeout(connectWs, 3000);
+    };
+
+    ws.onerror = () => {
+      setWsConnected(false);
+    };
+
+    wsRef.current = ws;
+  }, []);
+
+  useEffect(() => {
+    connectWs();
+    return () => { wsRef.current?.close(); };
+  }, [connectWs]);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
 
   const loadSessions = async () => {
     try {
       const items: SessionItem[] = [];
-
-      // Load ACP sessions
       try {
         const acp = await apiRequest('/api/acp/sessions');
         for (const s of acp.sessions || []) {
           items.push({ id: s.sessionId, title: s.title.slice(0, 60), subtitle: `${s.cwd} · ${new Date(s.updatedAt).toLocaleString()}`, type: 'acp' });
         }
       } catch {}
-
-      // Load WeChat sessions
       try {
         const wx = await apiRequest('/api/hermes/list?source=weixin&limit=10');
         for (const s of wx.sessions || []) {
           items.push({ id: s.id, title: s.title.slice(0, 60), subtitle: `微信 · ${s.last_active}`, type: 'hermes', source: 'weixin' });
         }
       } catch {}
-
-      // Load all platform sessions
       try {
         const all = await apiRequest('/api/hermes/list?limit=10');
         for (const s of all.sessions || []) {
@@ -64,7 +121,6 @@ export function ChatClient() {
           }
         }
       } catch {}
-
       setSessions(items);
     } catch (e) { console.error('Failed to load sessions:', e); }
   };
@@ -75,22 +131,38 @@ export function ChatClient() {
     setMessages(prev => [...prev, { id: Date.now().toString(), role: 'user', parts: [{ type: 'text', text }, ...attachments], timestamp: new Date() }]);
     setInput(''); setAttachments([]); setLoading(true);
 
+    // Try WebSocket first
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'message',
+        text,
+        mode: mode === 'hermes' ? 'hermes' : mode,
+        session_id: selected?.id,
+      }));
+      // Response will come via WS events
+      return;
+    }
+
+    // Fallback to HTTP
     try {
       let responseText = '';
+      let source = '';
 
       if (mode === 'hermes' && selected) {
-        // Send to Hermes session
         const result = await apiRequest('/api/hermes/send', 'POST', { session_id: selected.id, message: text });
         responseText = result.output || result.error || '已发送';
+        source = 'hermes';
       } else if (mode === 'acp') {
-        const result = await apiRequest(`/api/acp/send`, "POST", { text, session_id: selected?.id });
+        const result = await apiRequest('/api/acp/send', 'POST', { text, session_id: selected?.id });
         responseText = result.content || '（无响应）';
+        source = result.source || 'acp';
       } else {
         const task = await a2aClient.chat(text);
         responseText = task.status.message?.parts?.filter(p => p.type === 'text').map(p => p.text).join('\n') || '（无响应）';
+        source = 'a2a';
       }
 
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: responseText }], timestamp: new Date() }]);
+      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: responseText }], timestamp: new Date(), source }]);
     } catch (e) {
       setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `错误: ${(e as Error).message}` }], timestamp: new Date() }]);
     }
@@ -105,18 +177,18 @@ export function ChatClient() {
 
     // Load history for hermes sessions
     if (item.type === 'hermes') {
-      setLoading(true);
       try {
         const data = await apiRequest(`/api/hermes/sessions/${item.id}/messages`);
-        const history: ChatMessage[] = (data.messages || []).map((m: { id: string; role: string; content: string; timestamp: number }) => ({
-          id: m.id,
-          role: m.role as 'user' | 'agent',
-          parts: [{ type: 'text' as const, text: m.content }],
-          timestamp: new Date(m.timestamp ? m.timestamp * 1000 : Date.now()),
+        const history: ChatMessage[] = (data.messages || []).map((m: {role: string; content: string; timestamp: number}, i: number) => ({
+          id: `hist-${i}`,
+          role: m.role === 'user' ? 'user' : 'agent',
+          parts: [{ type: 'text', text: m.content }],
+          timestamp: new Date((m.timestamp || 0) * 1000),
         }));
-        if (history.length > 0) setMessages(history);
-      } catch (e) { console.error('Failed to load session history:', e); }
-      setLoading(false);
+        setMessages(history);
+      } catch (e) {
+        console.error('Failed to load history:', e);
+      }
     }
   };
 
@@ -139,27 +211,30 @@ export function ChatClient() {
       <div className="px-6 py-2 border-b bg-muted/30 flex items-center gap-3">
         <Bot className="w-4 h-4 text-primary" />
         <span className="text-sm font-medium">{selected ? selected.title : 'Hermes Agent'}</span>
-        {selected?.type === 'hermes' && <Smartphone className="w-3 h-3 text-green-400" />}
+        {selected?.type === 'hermes' && selected?.source === 'weixin' && <Smartphone className="w-3 h-3 text-green-400" />}
+        <span className="text-xs text-muted-foreground flex items-center gap-1">
+          {wsConnected ? <><Wifi className="w-3 h-3 text-green-400" /> WS</> : <><WifiOff className="w-3 h-3 text-red-400" /> HTTP</>}
+        </span>
         <div className="flex gap-1 ml-auto">
           <button onClick={() => { setMode(mode === 'a2a' ? 'acp' : mode === 'acp' ? 'hermes' : 'a2a'); setSelected(null); setMessages([]); }}
             className={`text-xs px-2 py-0.5 rounded-full transition-colors ${mode === 'hermes' ? 'bg-green-500/20 text-green-400' : mode === 'acp' ? 'bg-yellow-500/20 text-yellow-400' : 'bg-blue-500/20 text-blue-400'}`}>
             {mode === 'hermes' ? '🟢 Hermes' : mode === 'acp' ? '🟡 ACP' : '🔵 A2A'}
           </button>
-          <button onClick={() => { setShowSessions(!showSessions); loadSessions(); }}
+          <button onClick={() => { setShowSessions(!showSessions); if (!showSessions) loadSessions(); }}
             className="text-xs px-2 py-0.5 rounded-full bg-primary/10 text-primary hover:bg-primary/20">
             <MessageSquare className="w-3 h-3 inline mr-1" />会话
           </button>
-          <button onClick={() => loadSessions()} className="text-xs px-2 py-0.5 rounded-full hover:bg-muted"><RefreshCw className="w-3 h-3" /></button>
+          <button onClick={loadSessions} className="text-xs px-2 py-0.5 rounded-full hover:bg-muted"><RefreshCw className="w-3 h-3" /></button>
         </div>
       </div>
 
-      {/* Session Selector — grouped by type */}
+      {/* Session Selector */}
       {showSessions && (
         <div className="px-6 py-3 border-b bg-card max-h-80 overflow-y-auto">
           {(() => {
-            const acpSessions = sessions.filter(s => s.type === 'acp');
             const weixinSessions = sessions.filter(s => s.type === 'hermes' && s.source === 'weixin');
             const hermesSessions = sessions.filter(s => s.type === 'hermes' && s.source !== 'weixin');
+            const acpSessions = sessions.filter(s => s.type === 'acp');
 
             const renderGroup = (label: string, icon: React.ReactNode, items: SessionItem[], accentClass: string) => {
               if (items.length === 0) return null;
@@ -214,7 +289,10 @@ export function ChatClient() {
             {msg.role === 'agent' && <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0"><Bot className="w-4 h-4 text-primary" /></div>}
             <div className={`max-w-[70%] rounded-lg px-4 py-2 ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
               {msg.parts.map((p, i) => p.type === 'text' ? <p key={i} className="text-sm whitespace-pre-wrap">{p.text}</p> : p.type === 'image' ? <img key={i} src={p.data} alt="" className="max-w-xs rounded mt-1" /> : null)}
-              <p className="text-xs mt-1 opacity-50">{msg.timestamp.toLocaleTimeString()}</p>
+              <div className="flex items-center gap-2 mt-1">
+                <p className="text-xs opacity-50">{msg.timestamp.toLocaleTimeString()}</p>
+                {msg.source && <span className="text-xs opacity-30">{msg.source}</span>}
+              </div>
             </div>
             {msg.role === 'user' && <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0"><User className="w-4 h-4" /></div>}
           </div>
