@@ -166,10 +166,10 @@ export function AgentsClient() {
 
   const filtered = agents.filter(a => {
     const matchCategory = category === "all" || (a as any).category === category;
+    if (!matchCategory) return false;
     if (filter === 'available') return a.available;
     if (filter === 'unavailable') return !a.available;
     return true;
-    return matchFilter && matchCategory;
   });
   const availableCount = agents.filter(a => a.available).length;
 

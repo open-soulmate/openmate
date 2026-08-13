@@ -2,14 +2,17 @@
 import { MarkdownContent } from "@/components/markdown-content";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu, Trash2, Search as SearchIcon } from "lucide-react";
+import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu, Trash2, Search as SearchIcon, Bookmark, RotateCcw, Zap, Brain } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 
 const getApiUrl = () => getApiBaseUrl();
 const getWsUrl = () => getApiUrl().replace('http', 'ws');
 
 interface MessagePart { type: string; text?: string; data?: string; name?: string; mime_type?: string; url?: string; }
-interface Message { id: string; role: 'user' | 'agent'; parts: MessagePart[]; timestamp: Date; source?: string; fileChanges?: FileChange[]; }
+interface TokenUsage { input: number; output: number; }
+interface Checkpoint { id: string; messageId: string; timestamp: Date; messages: Message[]; label: string; }
+type AgentMode = 'plan' | 'act';
+interface Message { id: string; role: 'user' | 'agent'; parts: MessagePart[]; timestamp: Date; source?: string; fileChanges?: FileChange[]; tokenUsage?: TokenUsage; }
 interface Session { id: string; name: string; platform: string; chat_id?: string; last_message?: string; unread?: number; workspace?: string; last_active?: string; }
 
 // Agent definitions with detection
@@ -150,9 +153,47 @@ export function ChatClient() {
   const [attachments, setAttachments] = useState<MessagePart[]>([]);
   const [wsConnected, setWsConnected] = useState(false);
   const [showDetails, setShowDetails] = useState(true);
+  const [agentMode, setAgentMode] = useState<AgentMode>('act');
+  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
+  const [showCheckpoints, setShowCheckpoints] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+
+  // Cost calculation (approximate pricing per 1K tokens)
+  const calculateCost = (usage: TokenUsage): number => {
+    const inputCost = (usage.input / 1000) * 0.01;  // $0.01 per 1K input tokens
+    const outputCost = (usage.output / 1000) * 0.03; // $0.03 per 1K output tokens
+    return inputCost + outputCost;
+  };
+
+  // Simulate token usage for demo purposes
+  const simulateTokenUsage = (content: string): TokenUsage => {
+    const words = content.split(/\s+/).length;
+    const inputTokens = Math.floor(words * 1.3); // rough estimate
+    const outputTokens = Math.floor(words * 1.5);
+    return { input: inputTokens, output: outputTokens };
+  };
+
+  // Checkpoint management
+  const saveCheckpoint = useCallback((messageId: string) => {
+    const checkpoint: Checkpoint = {
+      id: Date.now().toString(),
+      messageId,
+      timestamp: new Date(),
+      messages: [...messages],
+      label: `检查点 ${checkpoints.length + 1}`,
+    };
+    setCheckpoints(prev => [...prev, checkpoint]);
+  }, [messages, checkpoints]);
+
+  const rollbackToCheckpoint = useCallback((checkpointId: string) => {
+    const checkpoint = checkpoints.find(cp => cp.id === checkpointId);
+    if (checkpoint) {
+      setMessages(checkpoint.messages);
+      setShowCheckpoints(false);
+    }
+  }, [checkpoints]);
 
   // Detect installed agents and load sessions
   const initAgents = useCallback(async () => {
@@ -286,13 +327,14 @@ export function ChatClient() {
         if (data.type === 'done') {
           setLoading(false);
           if (data.text) initAgents();
-          // Parse file changes from the completed message
+          // Parse file changes from the completed message and add token usage
           setMessages(prev => {
             const last = prev[prev.length - 1];
             if (last?.role === 'agent' && last?.source === 'streaming') {
               const content = last.parts[0]?.text || '';
               const fileChanges = parseFileChanges(content);
-              return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges }];
+              const tokenUsage = data.tokenUsage || simulateTokenUsage(content);
+              return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
             }
             return prev;
           });
@@ -322,9 +364,12 @@ export function ChatClient() {
     setMessages(prev => [...prev, userMsg]);
     setInput(''); setAttachments([]); setLoading(true);
 
+    // Add mode prefix for plan mode
+    const messageText = agentMode === 'plan' ? `[PLAN MODE] ${text}` : text;
+
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
-        type: 'message', text, mode: 'hermes', session_id: selectedSession?.id,
+        type: 'message', text: messageText, mode: 'hermes', session_id: selectedSession?.id,
         attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name })),
       }));
       return;
@@ -332,10 +377,11 @@ export function ChatClient() {
     try {
       const r = await fetch(`${getApiUrl()}/api/acp/send`, {
         method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ text, session_id: selectedSession?.id }),
+        body: JSON.stringify({ text: messageText, session_id: selectedSession?.id, mode: agentMode }),
       });
       const d = await r.json();
       const content = d.content || d.error || '无响应';
+      const tokenUsage = d.tokenUsage || simulateTokenUsage(content);
       setMessages(prev => [...prev, {
         id: Date.now().toString(),
         role: 'agent',
@@ -343,6 +389,7 @@ export function ChatClient() {
         timestamp: new Date(),
         source: d.source,
         fileChanges: parseFileChanges(content),
+        tokenUsage,
       }]);
     } catch {
       setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: '请求超时' }], timestamp: new Date() }]);
@@ -559,10 +606,30 @@ export function ChatClient() {
                     }}
                   />
                 )}
-                <div className="text-[10px] mt-1.5 opacity-60 flex items-center gap-1">
+                <div className="text-[10px] mt-1.5 opacity-60 flex items-center gap-1 flex-wrap">
                   <span>{msg.timestamp.toLocaleTimeString()}</span>
                   {msg.source && <span className="px-1 py-0.5 rounded bg-black/10 text-[9px]">{msg.source}</span>}
+                  {msg.role === 'agent' && msg.tokenUsage && (
+                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/10 text-[9px]">
+                      <span>IN: {msg.tokenUsage.input.toLocaleString()}</span>
+                      <span>OUT: {msg.tokenUsage.output.toLocaleString()}</span>
+                      <span className="text-yellow-500">${calculateCost(msg.tokenUsage).toFixed(4)}</span>
+                    </span>
+                  )}
                 </div>
+                {/* Checkpoint button for agent messages */}
+                {msg.role === 'agent' && (
+                  <div className="mt-2 flex justify-end">
+                    <button
+                      onClick={() => saveCheckpoint(msg.id)}
+                      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-muted-foreground hover:bg-muted-foreground/10 transition-colors"
+                      title="保存检查点"
+                    >
+                      <Bookmark className="w-3 h-3" />
+                      <span>保存检查点</span>
+                    </button>
+                  </div>
+                )}
               </div>
               {msg.role === 'user' && (
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
@@ -592,12 +659,45 @@ export function ChatClient() {
               ))}
             </div>
           )}
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-end">
             <button onClick={() => fileRef.current?.click()} className="px-3 py-2 rounded-lg hover:bg-muted"><Paperclip className="w-4 h-4 text-muted-foreground" /></button>
             <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
+            
+            {/* Plan/Act Mode Toggle */}
+            <button
+              onClick={() => setAgentMode(prev => prev === 'plan' ? 'act' : 'plan')}
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                agentMode === 'plan'
+                  ? 'bg-blue-500/10 text-blue-500 border border-blue-500/30'
+                  : 'bg-green-500/10 text-green-500 border border-green-500/30'
+              }`}
+            >
+              {agentMode === 'plan' ? (
+                <>
+                  <Brain className="w-4 h-4" />
+                  <span>Plan</span>
+                </>
+              ) : (
+                <>
+                  <Zap className="w-4 h-4" />
+                  <span>Act</span>
+                </>
+              )}
+            </button>
+
             <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              onPaste={handlePaste} placeholder="输入消息... (Ctrl+V粘贴截图)" rows={1}
+              onPaste={handlePaste} placeholder={agentMode === 'plan' ? "描述你想做什么，我会先制定计划..." : "输入消息... (Ctrl+V粘贴截图)"} rows={1}
               className="flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+            
+            <button onClick={() => setShowCheckpoints(!showCheckpoints)} className="px-3 py-2 rounded-lg hover:bg-muted relative" title="检查点">
+              <RotateCcw className="w-4 h-4 text-muted-foreground" />
+              {checkpoints.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
+                  {checkpoints.length}
+                </span>
+              )}
+            </button>
+            
             <button onClick={handleSend} disabled={loading || (!input.trim() && attachments.length === 0)}
               className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"><Send className="w-4 h-4" /></button>
           </div>
@@ -650,6 +750,41 @@ export function ChatClient() {
                 <div className="p-2 rounded bg-muted/50 text-center"><div className="text-lg font-bold">{imageCount}</div><div className="text-[10px] text-muted-foreground">图片</div></div>
                 <div className="p-2 rounded bg-muted/50 text-center"><div className="text-lg font-bold">{fileCount}</div><div className="text-[10px] text-muted-foreground">文件</div></div>
               </div>
+            </div>
+            
+            {/* Checkpoints Section */}
+            <div>
+              <div className="text-xs text-muted-foreground mb-2 flex items-center justify-between">
+                <span className="flex items-center gap-1"><RotateCcw className="w-3 h-3" />检查点 ({checkpoints.length})</span>
+                <button 
+                  onClick={() => setShowCheckpoints(!showCheckpoints)}
+                  className="text-primary hover:underline"
+                >
+                  {showCheckpoints ? '隐藏' : '查看'}
+                </button>
+              </div>
+              {showCheckpoints && (
+                <div className="space-y-2">
+                  {checkpoints.length === 0 ? (
+                    <div className="text-xs text-muted-foreground italic">暂无检查点</div>
+                  ) : (
+                    checkpoints.map(cp => (
+                      <div key={cp.id} className="flex items-center justify-between p-2 rounded-lg bg-muted/50">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium truncate">{cp.label}</div>
+                          <div className="text-[10px] text-muted-foreground">{cp.timestamp.toLocaleString()}</div>
+                        </div>
+                        <button
+                          onClick={() => rollbackToCheckpoint(cp.id)}
+                          className="ml-2 px-2 py-1 rounded text-[10px] bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+                        >
+                          回滚
+                        </button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>

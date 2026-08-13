@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 import {
   Server, Puzzle, MessageSquare, Clock, Users, Workflow,
   BookOpen, Network, TrendingUp, Activity, ArrowRight,
+  DollarSign, Cpu, Zap,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -62,6 +63,20 @@ export function DashboardClient() {
     },
   ];
 
+  // Mock cost data for demo
+  const costStats = {
+    totalTokens: 1250000,
+    inputTokens: 850000,
+    outputTokens: 400000,
+    estimatedCost: 21.50,
+    todayCost: 3.25,
+    modelBreakdown: [
+      { model: 'GPT-4o', tokens: 750000, cost: 15.00 },
+      { model: 'Claude Sonnet', tokens: 350000, cost: 4.50 },
+      { model: 'Gemini Pro', tokens: 150000, cost: 2.00 },
+    ],
+  };
+
   const quickLinks = [
     { label: t("nav.knowledge") || "知识库", icon: BookOpen, href: "/knowledge", count: knowledgeItems.length },
     { label: t("nav.groups") || "Agent 分组", icon: Users, href: "/groups", count: groups.length },
@@ -105,6 +120,84 @@ export function DashboardClient() {
               </div>
             </Link>
           ))}
+        </div>
+
+        {/* Cost Statistics Card */}
+        <div className="mb-8 rounded-xl border border-border bg-card p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h3 className="text-lg font-semibold flex items-center gap-2">
+                <DollarSign className="w-5 h-5 text-yellow-500" />
+                {t("dashboard.costStats") || "费用统计"}
+              </h3>
+              <p className="text-sm text-muted-foreground mt-1">
+                {t("dashboard.costStatsDesc") || "Token 使用量与估算费用"}
+              </p>
+            </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-yellow-500">${costStats.estimatedCost.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground">{t("dashboard.totalCost") || "总费用"}</div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div className="p-4 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-2 mb-2">
+                <Cpu className="w-4 h-4 text-blue-500" />
+                <span className="text-sm font-medium">{t("dashboard.totalTokens") || "总 Token"}</span>
+              </div>
+              <div className="text-2xl font-bold">{(costStats.totalTokens / 1000000).toFixed(1)}M</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {t("dashboard.input") || "输入"}: {(costStats.inputTokens / 1000000).toFixed(1)}M | 
+                {t("dashboard.output") || "输出"}: {(costStats.outputTokens / 1000000).toFixed(1)}M
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-2 mb-2">
+                <Zap className="w-4 h-4 text-green-500" />
+                <span className="text-sm font-medium">{t("dashboard.todayCost") || "今日费用"}</span>
+              </div>
+              <div className="text-2xl font-bold text-green-500">${costStats.todayCost.toFixed(2)}</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {t("dashboard.vsYesterday") || "较昨日 -12%"}
+              </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/50">
+              <div className="flex items-center gap-2 mb-2">
+                <TrendingUp className="w-4 h-4 text-violet-500" />
+                <span className="text-sm font-medium">{t("dashboard.avgCostPerMsg") || "每消息平均费用"}</span>
+              </div>
+              <div className="text-2xl font-bold">${(costStats.estimatedCost / Math.max(totalMessages, 1)).toFixed(4)}</div>
+              <div className="text-xs text-muted-foreground mt-1">
+                {totalMessages} {t("dashboard.messages") || "条消息"}
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <h4 className="text-sm font-medium mb-3">{t("dashboard.modelBreakdown") || "模型费用分布"}</h4>
+            <div className="space-y-2">
+              {costStats.modelBreakdown.map((model) => (
+                <div key={model.model} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Cpu className="w-4 h-4 text-primary" />
+                    </div>
+                    <div>
+                      <div className="text-sm font-medium">{model.model}</div>
+                      <div className="text-xs text-muted-foreground">{(model.tokens / 1000).toFixed(0)}K tokens</div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-bold">${model.cost.toFixed(2)}</div>
+                    <div className="text-xs text-muted-foreground">{((model.cost / costStats.estimatedCost) * 100).toFixed(1)}%</div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </div>
 
         {/* Quick links */}
