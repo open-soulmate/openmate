@@ -34,7 +34,7 @@ const AGENT_DEFINITIONS = [
   { id: 'telegram', name: 'Telegram', icon: '✈️', description: 'Telegram Bot', cmd: '' },
 ];
 
-export default function ChatClient() {
+export function ChatClient() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
