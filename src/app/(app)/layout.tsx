@@ -26,7 +26,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <AppShell />
       <div className="flex flex-1 flex-col overflow-hidden">
         <Topbar />
-        <main className="flex-1 overflow-auto">{children}</main>
+        <main className="flex-1 overflow-hidden">{children}</main>
       </div>
       <CommandMenu />
     </div>
