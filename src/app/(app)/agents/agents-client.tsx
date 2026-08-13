@@ -242,7 +242,8 @@ export function AgentsClient() {
                   <button onClick={() => toggleSelect(agent.id)} className="mt-1 shrink-0">
                     {isSelected ? <CheckSquare size={16} className="text-primary" /> : <Square size={16} className="text-muted-foreground" />}
                   </button>
-                  <span className="text-2xl">{agent.icon}</span>
+                  {(agent as any).logo ? <img src={(agent as any).logo} alt={agent.name} className="w-10 h-10 rounded-lg object-contain bg-muted" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} /> : null}
+                  <span className={`text-2xl ${(agent as any).logo ? "hidden" : ""}`}>{agent.icon}</span>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium truncate">{agent.name}</h3>
                     <p className="text-xs text-muted-foreground truncate">{agent.description}</p>
