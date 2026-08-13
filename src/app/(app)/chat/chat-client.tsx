@@ -351,7 +351,7 @@ export function ChatClient() {
                 <div className="pl-8 pr-3 py-2 text-xs text-muted-foreground italic">暂无会话</div>
               )}
             </div>
-          ))}
+          )))}
         </div>
       </div>
 
