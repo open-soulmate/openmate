@@ -344,7 +344,8 @@ export function ChatClient() {
                   </div>
                   {session.last_active && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{session.last_active}</div>}
                 </button>
-              ))}
+          ))
+          }
 
               {/* Empty state */}
               {agent.expanded && agent.sessions.length === 0 && (
