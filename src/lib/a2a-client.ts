@@ -129,5 +129,5 @@ export class A2AClient {
 
 /** Default client pointing to OpenSoul */
 export const a2aClient = new A2AClient(
-  (typeof window !== 'undefined' ? localStorage.getItem('openmate-api-url') : null) || 'http://127.0.0.1:8090'
+  (typeof window !== 'undefined' ? localStorage.getItem('openmate-api-url') || `http://${window.location.hostname}:8090` : null) || 'http://127.0.0.1:8090'
 );
