@@ -47,11 +47,22 @@ export function ChatClient() {
       const r = await fetch(`${getApiUrl()}/api/hermes/sessions/${sessionId}/messages`, { headers: { Authorization: `Bearer ${getToken()}` } });
       if (r.ok) {
         const d = await r.json();
-        const msgs: Message[] = (d.messages || []).map((m: Record<string, unknown>) => ({
-          id: m.id || Date.now().toString(), role: m.role === 'user' ? 'user' : 'agent',
-          parts: typeof m.content === 'string' ? [{ type: 'text', text: m.content }] : (m.parts || [{ type: 'text', text: m.content }]),
-          timestamp: new Date((m.timestamp as string) || Date.now()), source: m.source,
-        }));
+        const msgs: Message[] = (d.messages || [])
+          .filter((m: Record<string, unknown>) => {
+            // Only show user and assistant messages with actual content
+            const role = m.role as string;
+            const content = m.content as string;
+            if (role === 'user' && content) return true;
+            if (role === 'assistant' && content && content.trim()) return true;
+            return false;
+          })
+          .map((m: Record<string, unknown>) => ({
+            id: (m.id || Date.now()).toString(),
+            role: m.role === 'user' ? 'user' : 'agent',
+            parts: [{ type: 'text', text: (m.content as string) || '' }],
+            timestamp: new Date((m.timestamp as string) || Date.now()),
+            source: m.source as string,
+          }));
         setMessages(msgs);
       }
     } catch {}
