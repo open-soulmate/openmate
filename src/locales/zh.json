@@ -14,11 +14,12 @@
     "learn": "学习",
     "skills": "技能市场",
     "agents": "Agent管理",
-    "groups": "Agent群",
+    "groups": "Agent分组",
     "workflow": "工作流",
     "workflowBuilder": "工作流编排",
     "settings": "设置",
-    "mcp": "MCP客户端"
+    "mcp": "MCP客户端",
+    "cron": "定时任务"
   },
   "chat": {
     "newChat": "新建对话",
