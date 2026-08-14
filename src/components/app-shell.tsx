@@ -119,6 +119,7 @@ export function AppShell() {
         { href: "/reflex", label: t("nav.reflex") || "反射", icon: Bolt },
         { href: "/heredity", label: t("nav.heredity") || "遗传链", icon: GitBranch },
         { href: "/pulse", label: t("nav.pulse") || "脉搏", icon: Heart },
+        { href: "/trajectory", label: t("nav.trajectory") || "轨迹", icon: GitBranch },
       ],
     },
     {

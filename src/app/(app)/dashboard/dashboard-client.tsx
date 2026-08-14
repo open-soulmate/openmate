@@ -78,6 +78,7 @@ export function DashboardClient() {
     { key: "voice", label: "🎤 Voice", endpoint: "/api/voice/health" },
     { key: "vision", label: "🎨 Vision", endpoint: "/api/vision/health" },
     { key: "mind", label: "💭 Mind", endpoint: "/api/mind/health" },
+    { key: "trajectory", label: "📊 Trajectory", endpoint: "/api/trajectory/health" },
   ];
 
   const checkOrganHealth = useCallback(async () => {

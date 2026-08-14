@@ -53,7 +53,8 @@
     "vision": "视觉",
     "mind": "心智",
     "nerve": "神经",
-    "plugins": "插件"
+    "plugins": "插件",
+    "trajectory": "轨迹"
   },
   "dashboard": {
     "title": "系统概览",
@@ -895,5 +896,27 @@
     "steps": "步骤",
     "startedAt": "开始时间",
     "completedAt": "完成时间"
+  },
+  "trajectory": {
+    "title": "轨迹 · Agent执行追踪",
+    "subtitle": "全链路追踪 · 回放 · 分叉",
+    "newSession": "新建会话",
+    "totalSessions": "总会话",
+    "running": "运行中",
+    "totalEvents": "总事件",
+    "totalTokens": "总Token",
+    "allStatus": "所有状态",
+    "filterAgent": "按Agent筛选...",
+    "createSession": "创建轨迹会话",
+    "agentId": "Agent ID",
+    "tags": "标签（逗号分隔）",
+    "taskDesc": "任务描述",
+    "task": "任务",
+    "agent": "Agent",
+    "status": "状态",
+    "events": "事件数",
+    "tokens": "Token",
+    "createdAt": "创建时间",
+    "noSessions": "暂无轨迹会话"
   }
 }
