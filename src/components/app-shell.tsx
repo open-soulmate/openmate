@@ -16,7 +16,8 @@ import {
   Zap, Activity,
   Sparkles,
   Brain,
-} from "lucide-react";
+  Bolt,
+  } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId } from "@/lib/api-client";
 import { type ThemeId, persistTheme } from "@/lib/theme";
@@ -96,6 +97,7 @@ export function AppShell() {
         { href: "/gene", label: t("nav.gene") || "基因", icon: Dna },
         { href: "/vital", label: t("nav.vital") || "体征", icon: Activity },
         { href: "/hippo", label: t("nav.hippo") || "海马体", icon: Brain },
+        { href: "/reflex", label: t("nav.reflex") || "反射", icon: Bolt },
       ],
     },
     {
