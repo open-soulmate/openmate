@@ -7,7 +7,8 @@ import { getApiBaseUrl } from "@/lib/api-client";
 import {
   Folder, HardDrive, Upload, FolderOpen, Search,
   Image, FileText, Code, Paperclip, RefreshCw,
-  Download, Trash2,
+  Download, Trash2, Database, Zap, BarChart3,
+  Layers, Database as CacheIcon, ArrowDownToLine, ArrowUpFromLine,
 } from "lucide-react";
 
 interface FileItem {
@@ -24,7 +25,31 @@ interface VeinStats {
   store: {
     total_files: number;
     total_size_bytes: number;
+    unique_blobs: number;
+    disk_usage_bytes: number;
+    dedup_savings_bytes: number;
   };
+  cache: {
+    entries: number;
+    current_size_bytes: number;
+    max_size_bytes: number;
+    usage_percent: number;
+    hits: number;
+    misses: number;
+    hit_rate: number;
+    default_ttl_seconds: number;
+  };
+  uploads: {
+    active_sessions: number;
+  };
+}
+
+interface CacheEntry {
+  key: string;
+  size_bytes: number;
+  created_at: number;
+  ttl_seconds: number;
+  hits: number;
 }
 
 function formatBytes(bytes: number): string {
@@ -79,7 +104,7 @@ function getFileTypeLabel(mimeType: string): string {
   const ext = mimeType.split("/")[1] || mimeType;
   const map: Record<string, string> = {
     pdf: "PDF",
-    "msword": "Word",
+    msword: "Word",
     "vnd.openxmlformats-officedocument.wordprocessingml.document": "Word",
     "vnd.ms-excel": "Excel",
     "vnd.openxmlformats-officedocument.spreadsheetml.sheet": "Excel",
@@ -121,8 +146,11 @@ function StatCard({ icon: Icon, label, value, sub, color, bg }: {
   );
 }
 
+type TabId = "files" | "cache";
+
 export function VeinClient() {
   const { t } = useTranslation();
+  const [tab, setTab] = useState<TabId>("files");
   const [files, setFiles] = useState<FileItem[]>([]);
   const [stats, setStats] = useState<VeinStats | null>(null);
   const [search, setSearch] = useState("");
@@ -133,6 +161,9 @@ export function VeinClient() {
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const apiBase = getApiBaseUrl();
+
+  // Chunked upload state
+  const [chunkedUploads, setChunkedUploads] = useState<any[]>([]);
 
   const fetchFiles = useCallback(async () => {
     setLoading(true);
@@ -159,10 +190,19 @@ export function VeinClient() {
     }
   }, [apiBase]);
 
+  const fetchChunkedUploads = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/vein/upload/chunked`);
+      const data = await res.json();
+      setChunkedUploads(data.sessions || []);
+    } catch {}
+  }, [apiBase]);
+
   useEffect(() => {
     fetchFiles();
     fetchStats();
-  }, [fetchFiles, fetchStats]);
+    fetchChunkedUploads();
+  }, [fetchFiles, fetchStats, fetchChunkedUploads]);
 
   const handleSearch = () => {
     fetchFiles();
@@ -172,22 +212,88 @@ export function VeinClient() {
     if (!fileList || fileList.length === 0) return;
     setUploading(true);
     const file = fileList[0];
-    setUploadProgress(`上传中: ${file.name} (${formatBytes(file.size)})`);
+
+    // Use chunked upload for files > 10MB
+    const CHUNK_THRESHOLD = 10 * 1024 * 1024;
+    if (file.size > CHUNK_THRESHOLD) {
+      await handleChunkedUpload(file);
+    } else {
+      setUploadProgress(`上传中: ${file.name} (${formatBytes(file.size)})`);
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch(`${apiBase}/api/vein/upload`, { method: "POST", body: form });
+        if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
+        const data = await res.json();
+        setUploadProgress(`上传成功: ${data.name} (${formatBytes(data.size)})`);
+        fetchFiles();
+        fetchStats();
+      } catch (e: any) {
+        setUploadProgress(`上传失败: ${e.message}`);
+      } finally {
+        setUploading(false);
+        setTimeout(() => setUploadProgress(""), 3000);
+      }
+    }
+  };
+
+  const handleChunkedUpload = async (file: File) => {
+    const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
+    const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
+
+    setUploadProgress(`初始化分片上传: ${file.name} (${formatBytes(file.size)}, ${totalChunks} 片)`);
 
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await fetch(`${apiBase}/api/vein/upload`, { method: "POST", body: form });
-      if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
-      const data = await res.json();
-      setUploadProgress(`上传成功: ${data.name} (${formatBytes(data.size)})`);
+      // Init session
+      const initRes = await fetch(`${apiBase}/api/vein/upload/chunked/init`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          filename: file.name,
+          total_size: file.size,
+          chunk_size: CHUNK_SIZE,
+          mime_type: file.type || "application/octet-stream",
+        }),
+      });
+      if (!initRes.ok) throw new Error(`Init failed: ${initRes.status}`);
+      const session = await initRes.json();
+      const uploadId = session.upload_id;
+
+      // Upload chunks
+      for (let i = 0; i < totalChunks; i++) {
+        const start = i * CHUNK_SIZE;
+        const end = Math.min(start + CHUNK_SIZE, file.size);
+        const chunk = file.slice(start, end);
+
+        setUploadProgress(`上传分片 ${i + 1}/${totalChunks}: ${file.name}`);
+
+        const formData = new FormData();
+        formData.append("file", chunk, `chunk_${i}`);
+
+        const chunkRes = await fetch(
+          `${apiBase}/api/vein/upload/chunked/${uploadId}/chunk/${i}`,
+          { method: "POST", body: formData }
+        );
+        if (!chunkRes.ok) throw new Error(`Chunk ${i} failed: ${chunkRes.status}`);
+      }
+
+      // Complete
+      setUploadProgress(`合并分片中...`);
+      const completeRes = await fetch(`${apiBase}/api/vein/upload/chunked/${uploadId}/complete`, {
+        method: "POST",
+      });
+      if (!completeRes.ok) throw new Error(`Complete failed: ${completeRes.status}`);
+      const result = await completeRes.json();
+
+      setUploadProgress(`分片上传成功: ${result.name} (${formatBytes(result.size)})`);
       fetchFiles();
       fetchStats();
+      fetchChunkedUploads();
     } catch (e: any) {
-      setUploadProgress(`上传失败: ${e.message}`);
+      setUploadProgress(`分片上传失败: ${e.message}`);
     } finally {
       setUploading(false);
-      setTimeout(() => setUploadProgress(""), 3000);
+      setTimeout(() => setUploadProgress(""), 5000);
     }
   };
 
@@ -233,7 +339,34 @@ export function VeinClient() {
     if (e.dataTransfer.files?.length) handleUpload(e.dataTransfer.files);
   };
 
+  const handleCacheClear = async () => {
+    if (!confirm("确定清除所有缓存？")) return;
+    try {
+      await fetch(`${apiBase}/api/vein/cache/clear`, { method: "POST" });
+      fetchStats();
+    } catch {}
+  };
+
+  const handleCacheCleanup = async () => {
+    try {
+      await fetch(`${apiBase}/api/vein/cache/cleanup`, { method: "POST" });
+      fetchStats();
+    } catch {}
+  };
+
+  const handleCancelUpload = async (uploadId: string) => {
+    try {
+      await fetch(`${apiBase}/api/vein/upload/chunked/${uploadId}`, { method: "DELETE" });
+      fetchChunkedUploads();
+    } catch {}
+  };
+
   const filteredFiles = files;
+
+  const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
+    { id: "files", label: t("vein.filesTab") || "文件管理", icon: Folder },
+    { id: "cache", label: t("vein.cacheTab") || "缓存管理", icon: CacheIcon },
+  ];
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
@@ -247,17 +380,21 @@ export function VeinClient() {
           </span>
         </div>
         <div className="flex gap-2">
+          {tab === "files" && (
+            <>
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading}
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-sm text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                <Upload size={14} />
+                {uploading ? (t("vein.uploading") || "上传中...") : (t("vein.upload") || "上传文件")}
+              </button>
+              <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => handleUpload(e.target.files)} />
+            </>
+          )}
           <button
-            onClick={() => fileInputRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-sm text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            <Upload size={14} />
-            {uploading ? (t("vein.uploading") || "上传中...") : (t("vein.upload") || "上传文件")}
-          </button>
-          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => handleUpload(e.target.files)} />
-          <button
-            onClick={() => { fetchFiles(); fetchStats(); }}
+            onClick={() => { fetchFiles(); fetchStats(); fetchChunkedUploads(); }}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
           >
             <RefreshCw size={14} /> {t("common.refresh") || "刷新"}
@@ -265,14 +402,33 @@ export function VeinClient() {
         </div>
       </div>
 
+      {/* Tabs */}
+      <div className="flex border-b border-border px-6">
+        {tabs.map((t) => (
+          <button
+            key={t.id}
+            onClick={() => setTab(t.id)}
+            className={cn(
+              "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors",
+              tab === t.id
+                ? "border-primary text-primary"
+                : "border-transparent text-muted-foreground hover:text-foreground"
+            )}
+          >
+            <t.icon size={14} />
+            {t.label}
+          </button>
+        ))}
+      </div>
+
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Upload progress */}
         {uploadProgress && (
           <div className={cn(
             "rounded-lg px-4 py-2.5 text-sm",
-            uploadProgress.startsWith("上传成功")
+            uploadProgress.startsWith("上传成功") || uploadProgress.startsWith("分片上传成功")
               ? "bg-emerald-500/10 text-emerald-500"
-              : uploadProgress.startsWith("上传失败")
+              : uploadProgress.startsWith("上传失败") || uploadProgress.startsWith("分片上传失败")
                 ? "bg-red-500/10 text-red-500"
                 : "bg-blue-500/10 text-blue-500"
           )}>
@@ -282,159 +438,344 @@ export function VeinClient() {
 
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
               icon={Folder}
               label={t("vein.totalFiles") || "文件总数"}
               value={stats.store.total_files}
-              sub={formatBytes(stats.store.total_size_bytes)}
+              sub={`${stats.store.unique_blobs} 唯一blob`}
               color="text-blue-500"
               bg="bg-blue-500/10"
             />
             <StatCard
               icon={HardDrive}
-              label={t("vein.totalSize") || "总存储大小"}
+              label={t("vein.totalSize") || "存储大小"}
               value={formatBytes(stats.store.total_size_bytes)}
-              sub={`${stats.store.total_files} 个文件`}
+              sub={`磁盘: ${formatBytes(stats.store.disk_usage_bytes)}`}
               color="text-emerald-500"
               bg="bg-emerald-500/10"
+            />
+            <StatCard
+              icon={Database}
+              label="去重节省"
+              value={formatBytes(stats.store.dedup_savings_bytes)}
+              sub={`${stats.store.total_files - stats.store.unique_blobs} 个重复blob`}
+              color="text-amber-500"
+              bg="bg-amber-500/10"
+            />
+            <StatCard
+              icon={Zap}
+              label="缓存命中率"
+              value={`${stats.cache.hit_rate.toFixed(1)}%`}
+              sub={`${stats.cache.hits}命中 / ${stats.cache.misses}未中`}
+              color="text-purple-500"
+              bg="bg-purple-500/10"
             />
           </div>
         )}
 
-        {/* Drag & drop zone */}
-        <div
-          onDragEnter={handleDrag}
-          onDragLeave={handleDrag}
-          onDragOver={handleDrag}
-          onDrop={handleDrop}
-          onClick={() => fileInputRef.current?.click()}
-          className={cn(
-            "rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-all",
-            dragActive
-              ? "border-primary bg-primary/5"
-              : "border-border hover:border-primary/50"
-          )}
-        >
-          <Upload size={32} className="mx-auto text-muted-foreground/50" />
-          <p className="mt-2 text-sm font-medium">
-            {dragActive ? (t("vein.dropToUpload") || "释放文件以上传") : (t("vein.dragOrClick") || "拖拽文件到此处，或点击选择文件")}
-          </p>
-          <p className="text-xs text-muted-foreground">
-            {t("vein.supportAll") || "支持任意文件类型，自动去重存储"}
-          </p>
-        </div>
-
-        {/* Search + File List */}
-        <div className="space-y-3">
-          <div className="flex items-center gap-3">
-            <div className="relative flex-1 max-w-sm">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder={t("vein.searchPlaceholder") || "搜索文件名..."}
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
-              />
-            </div>
-            <button
-              onClick={handleSearch}
-              className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90 transition-colors"
+        {/* Tab Content */}
+        {tab === "files" && (
+          <>
+            {/* Drag & drop zone */}
+            <div
+              onDragEnter={handleDrag}
+              onDragLeave={handleDrag}
+              onDragOver={handleDrag}
+              onDrop={handleDrop}
+              onClick={() => fileInputRef.current?.click()}
+              className={cn(
+                "rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-all",
+                dragActive
+                  ? "border-primary bg-primary/5"
+                  : "border-border hover:border-primary/50"
+              )}
             >
-              {t("common.search") || "搜索"}
-            </button>
-            <span className="text-xs text-muted-foreground">
-              {loading ? (t("common.loading") || "加载中...") : `${filteredFiles.length} ${(t("vein.files") || "个文件")}`}
-            </span>
-          </div>
-
-          {filteredFiles.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-              <FolderOpen size={40} className="opacity-30 mb-3" />
-              <p className="text-sm">{t("vein.noFiles") || "暂无文件"}</p>
-              <p className="text-xs mt-1">
-                {search ? (t("vein.noMatch") || "未找到匹配的文件") : (t("vein.startUpload") || "上传文件开始使用")}
+              <Upload size={32} className="mx-auto text-muted-foreground/50" />
+              <p className="mt-2 text-sm font-medium">
+                {dragActive ? (t("vein.dropToUpload") || "释放文件以上传") : (t("vein.dragOrClick") || "拖拽文件到此处，或点击选择文件")}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {t("vein.supportAll") || "支持任意文件类型，>10MB自动分片上传，自动去重存储"}
               </p>
             </div>
-          ) : (
-            <div className="rounded-xl border border-border overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                      {t("vein.fileName") || "文件名"}
-                    </th>
-                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
-                      {t("vein.size") || "大小"}
-                    </th>
-                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
-                      {t("vein.type") || "类型"}
-                    </th>
-                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-40">
-                      {t("vein.uploadTime") || "上传时间"}
-                    </th>
-                    <th className="px-4 py-2.5 text-right font-medium text-muted-foreground w-28">
-                      {t("vein.actions") || "操作"}
-                    </th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredFiles.map((f) => {
-                    const FileIcon = getFileIcon(f.mime_type);
-                    return (
-                      <tr
-                        key={f.file_id}
-                        className={cn(
-                          "border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer",
-                          selectedFile?.file_id === f.file_id && "bg-muted/30"
-                        )}
-                        onClick={() => setSelectedFile(selectedFile?.file_id === f.file_id ? null : f)}
+
+            {/* Chunked Upload Sessions */}
+            {chunkedUploads.length > 0 && (
+              <div className="rounded-xl border border-border bg-card p-4">
+                <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                  <Layers size={14} className="text-blue-500" />
+                  进行中的分片上传 ({chunkedUploads.length})
+                </h3>
+                <div className="space-y-2">
+                  {chunkedUploads.map((s: any) => (
+                    <div key={s.upload_id} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{s.filename}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full bg-blue-500 rounded-full transition-all"
+                              style={{ width: `${s.progress || 0}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-muted-foreground">
+                            {s.progress || 0}% ({s.received_chunks?.length || 0}/{s.total_chunks || 0})
+                          </span>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => handleCancelUpload(s.upload_id)}
+                        className="rounded-md border border-red-500/30 p-1.5 text-red-500 hover:bg-red-500/10"
                       >
-                        <td className="px-4 py-2.5">
-                          <div className="flex items-center gap-2">
-                            <FileIcon size={14} className="shrink-0 text-muted-foreground" />
-                            <span className="truncate max-w-[280px]" title={f.name}>
-                              {f.name}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                          {formatBytes(f.size)}
-                        </td>
-                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                          {getFileTypeLabel(f.mime_type)}
-                        </td>
-                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                          {formatTime(f.created_at)}
-                        </td>
-                        <td className="px-4 py-2.5 text-right">
-                          <div className="flex gap-1 justify-end">
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDownload(f.file_id, f.name); }}
-                              title={t("vein.download") || "下载"}
-                              className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted transition-colors"
-                            >
-                              <Download size={12} />
-                            </button>
-                            <button
-                              onClick={(e) => { e.stopPropagation(); handleDelete(f.file_id); }}
-                              title={t("vein.delete") || "删除"}
-                              className="rounded-md border border-red-500/30 p-1.5 text-red-500 hover:bg-red-500/10 transition-colors"
-                            >
-                              <Trash2 size={12} />
-                            </button>
-                          </div>
-                        </td>
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Search + File List */}
+            <div className="space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="relative flex-1 max-w-sm">
+                  <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="text"
+                    placeholder={t("vein.searchPlaceholder") || "搜索文件名..."}
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                  />
+                </div>
+                <button
+                  onClick={handleSearch}
+                  className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90 transition-colors"
+                >
+                  {t("common.search") || "搜索"}
+                </button>
+                <span className="text-xs text-muted-foreground">
+                  {loading ? (t("common.loading") || "加载中...") : `${filteredFiles.length} ${(t("vein.files") || "个文件")}`}
+                </span>
+              </div>
+
+              {filteredFiles.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <FolderOpen size={40} className="opacity-30 mb-3" />
+                  <p className="text-sm">{t("vein.noFiles") || "暂无文件"}</p>
+                  <p className="text-xs mt-1">
+                    {search ? (t("vein.noMatch") || "未找到匹配的文件") : (t("vein.startUpload") || "上传文件开始使用")}
+                  </p>
+                </div>
+              ) : (
+                <div className="rounded-xl border border-border overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                          {t("vein.fileName") || "文件名"}
+                        </th>
+                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
+                          {t("vein.size") || "大小"}
+                        </th>
+                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
+                          {t("vein.type") || "类型"}
+                        </th>
+                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-40">
+                          {t("vein.uploadTime") || "上传时间"}
+                        </th>
+                        <th className="px-4 py-2.5 text-right font-medium text-muted-foreground w-28">
+                          {t("vein.actions") || "操作"}
+                        </th>
                       </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                    </thead>
+                    <tbody>
+                      {filteredFiles.map((f) => {
+                        const FileIcon = getFileIcon(f.mime_type);
+                        return (
+                          <tr
+                            key={f.file_id}
+                            className={cn(
+                              "border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer",
+                              selectedFile?.file_id === f.file_id && "bg-muted/30"
+                            )}
+                            onClick={() => setSelectedFile(selectedFile?.file_id === f.file_id ? null : f)}
+                          >
+                            <td className="px-4 py-2.5">
+                              <div className="flex items-center gap-2">
+                                <FileIcon size={14} className="shrink-0 text-muted-foreground" />
+                                <span className="truncate max-w-[280px]" title={f.name}>
+                                  {f.name}
+                                </span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                              {formatBytes(f.size)}
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                              {getFileTypeLabel(f.mime_type)}
+                            </td>
+                            <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                              {formatTime(f.created_at)}
+                            </td>
+                            <td className="px-4 py-2.5 text-right">
+                              <div className="flex gap-1 justify-end">
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleDownload(f.file_id, f.name); }}
+                                  title={t("vein.download") || "下载"}
+                                  className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+                                >
+                                  <Download size={12} />
+                                </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handleDelete(f.file_id); }}
+                                  title={t("vein.delete") || "删除"}
+                                  className="rounded-md border border-red-500/30 p-1.5 text-red-500 hover:bg-red-500/10 transition-colors"
+                                >
+                                  <Trash2 size={12} />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
+
+        {tab === "cache" && stats && (
+          <div className="space-y-6">
+            {/* Cache Overview */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <StatCard
+                icon={CacheIcon}
+                label="缓存条目"
+                value={stats.cache.entries}
+                sub={`${formatBytes(stats.cache.current_size_bytes)} / ${formatBytes(stats.cache.max_size_bytes)}`}
+                color="text-purple-500"
+                bg="bg-purple-500/10"
+              />
+              <StatCard
+                icon={BarChart3}
+                label="使用率"
+                value={`${stats.cache.usage_percent.toFixed(1)}%`}
+                sub={`TTL: ${stats.cache.default_ttl_seconds}s`}
+                color="text-blue-500"
+                bg="bg-blue-500/10"
+              />
+              <StatCard
+                icon={ArrowDownToLine}
+                label="缓存命中"
+                value={stats.cache.hits}
+                sub={`命中率: ${stats.cache.hit_rate.toFixed(1)}%`}
+                color="text-emerald-500"
+                bg="bg-emerald-500/10"
+              />
+              <StatCard
+                icon={ArrowUpFromLine}
+                label="缓存未中"
+                value={stats.cache.misses}
+                sub={`总计查询: ${stats.cache.hits + stats.cache.misses}`}
+                color="text-amber-500"
+                bg="bg-amber-500/10"
+              />
+            </div>
+
+            {/* Cache Usage Bar */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-sm font-medium">缓存空间使用</h3>
+                <span className="text-xs text-muted-foreground">
+                  {formatBytes(stats.cache.current_size_bytes)} / {formatBytes(stats.cache.max_size_bytes)}
+                </span>
+              </div>
+              <div className="h-3 rounded-full bg-muted overflow-hidden">
+                <div
+                  className={cn(
+                    "h-full rounded-full transition-all",
+                    stats.cache.usage_percent > 80 ? "bg-red-500" :
+                    stats.cache.usage_percent > 50 ? "bg-amber-500" : "bg-emerald-500"
+                  )}
+                  style={{ width: `${Math.min(stats.cache.usage_percent, 100)}%` }}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                {stats.cache.entries > 0
+                  ? `平均条目大小: ${formatBytes(stats.cache.current_size_bytes / stats.cache.entries)}`
+                  : "缓存为空"
+                }
+              </p>
+            </div>
+
+            {/* Cache Actions */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h3 className="text-sm font-medium mb-3">缓存操作</h3>
+              <div className="flex gap-3">
+                <button
+                  onClick={handleCacheCleanup}
+                  className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"
+                >
+                  <RefreshCw size={14} />
+                  清理过期
+                </button>
+                <button
+                  onClick={handleCacheClear}
+                  className="flex items-center gap-1.5 rounded-lg border border-red-500/30 px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+                >
+                  <Trash2 size={14} />
+                  清除全部缓存
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                清理过期：仅删除TTL已过期的条目。清除全部：删除所有缓存条目，文件仍保留在磁盘。
+              </p>
+            </div>
+
+            {/* Dedup Info */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <Database size={14} className="text-amber-500" />
+                去重统计
+              </h3>
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <p className="text-2xl font-bold">{stats.store.total_files}</p>
+                  <p className="text-xs text-muted-foreground">逻辑文件数</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{stats.store.unique_blobs}</p>
+                  <p className="text-xs text-muted-foreground">唯一blob数</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold text-amber-500">{formatBytes(stats.store.dedup_savings_bytes)}</p>
+                  <p className="text-xs text-muted-foreground">去重节省空间</p>
+                </div>
+              </div>
+              {stats.store.total_files > 0 && (
+                <div className="mt-3 pt-3 border-t border-border">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-xs text-muted-foreground">去重效率</span>
+                    <span className="text-xs font-medium">
+                      {((1 - stats.store.unique_blobs / stats.store.total_files) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="h-2 rounded-full bg-muted overflow-hidden">
+                    <div
+                      className="h-full bg-amber-500 rounded-full"
+                      style={{ width: `${Math.min((1 - stats.store.unique_blobs / stats.store.total_files) * 100, 100)}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
