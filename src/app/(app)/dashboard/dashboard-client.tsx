@@ -48,22 +48,22 @@ export function DashboardClient() {
   ];
 
   const checkOrganHealth = useCallback(async () => {
-    const initial: Record<string, "loading"> = {};
-    organs.forEach((o) => (initial[o.key] = "loading"));
-    setOrganHealth(initial);
-
-    const results: Record<string, "ok" | "error"> = {};
-    await Promise.allSettled(
-      organs.map(async (organ) => {
-        try {
-          const res = await fetch(`${apiBase}${organ.endpoint}`, { signal: AbortSignal.timeout(5000) });
-          results[organ.key] = res.ok ? "ok" : "error";
-        } catch {
-          results[organ.key] = "error";
-        }
-      })
-    );
-    setOrganHealth(results);
+    try {
+      const res = await fetch(`${apiBase}/api/health/all`, { signal: AbortSignal.timeout(8000) });
+      if (res.ok) {
+        const data = await res.json();
+        setOrganHealth(data.organs || {});
+      } else {
+        // Fallback: mark all as error
+        const fallback: Record<string, "error"> = {};
+        organs.forEach((o) => (fallback[o.key] = "error"));
+        setOrganHealth(fallback);
+      }
+    } catch {
+      const fallback: Record<string, "error"> = {};
+      organs.forEach((o) => (fallback[o.key] = "error"));
+      setOrganHealth(fallback);
+    }
   }, [apiBase]);
 
   useEffect(() => { checkOrganHealth(); }, [checkOrganHealth]);
