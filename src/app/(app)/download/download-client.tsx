@@ -63,7 +63,7 @@ function detectUrlType(url: string): DownloadTask['type'] {
 function TypeTag({ type }: { type: DownloadTask['type'] }) {
   const styles: Record<string, string> = {
     http: 'bg-blue-500/10 text-blue-400',
-    bt: 'bg-green-500/10 text-green-400',
+    bt: 'bg-green-500/10 text-emerald-400',
     video: 'bg-purple-500/10 text-purple-400',
     thunder: 'bg-orange-500/10 text-orange-400',
   };
