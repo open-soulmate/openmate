@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
@@ -18,6 +19,7 @@ interface AuditEntry {
 }
 
 export function ImmuneClient() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"moderate" | "rate" | "ip" | "audit">("moderate");
   const [health, setHealth] = useState<any>(null);
   const [modText, setModText] = useState("");
@@ -104,10 +106,10 @@ export function ImmuneClient() {
   };
 
   const tabs = [
-    { id: "moderate" as const, label: "内容风控", icon: Eye },
-    { id: "rate" as const, label: "限流", icon: Activity },
-    { id: "ip" as const, label: "IP管控", icon: Ban },
-    { id: "audit" as const, label: "审计日志", icon: Clock },
+    { id: "moderate" as const, label: t("immune.moderate") || "内容风控", icon: Eye },
+    { id: "rate" as const, label: t("immune.rateLimit") || "限流", icon: Activity },
+    { id: "ip" as const, label: t("immune.ipControl") || "IP管控", icon: Ban },
+    { id: "audit" as const, label: t("immune.audit") || "审计日志", icon: Clock },
   ];
 
   const riskColor = (r: string) => r === "high" ? "text-red-500" : r === "medium" ? "text-amber-500" : "text-emerald-500";
@@ -117,14 +119,14 @@ export function ImmuneClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Shield size={20} className="text-orange-500" />
-          <h1 className="text-lg font-semibold">OpenImmune 免疫系统</h1>
+          <h1 className="text-lg font-semibold">{t("immune.title") || "免疫 · 安全防护"}</h1>
           <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-xs font-medium text-orange-500">
-            风控 · 限流 · 审计
+            {t("immune.subtitle") || "风控 · 限流 · 审计"}
           </span>
         </div>
         <button onClick={() => { fetchHealth(); tab === "ip" && fetchIpLists(); tab === "audit" && fetchAudit(); }}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors">
-          <RefreshCw size={14} /> 刷新
+          <RefreshCw size={14} /> {t("common.refresh") || "刷新"}
         </button>
       </div>
 
@@ -132,20 +134,20 @@ export function ImmuneClient() {
         {/* Stats */}
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard icon={Eye} label="风控规则" value={health.modules?.moderator?.patterns || 0} color="text-orange-500" bg="bg-orange-500/10" />
-            <StatCard icon={Activity} label="限流跟踪" value={health.modules?.rate_limiter?.tracked_keys || 0} color="text-blue-500" bg="bg-blue-500/10" />
-            <StatCard icon={Ban} label="黑名单" value={health.modules?.access_control?.blacklist_count || 0} color="text-red-500" bg="bg-red-500/10" />
-            <StatCard icon={Clock} label="审计条目" value={health.modules?.audit?.total_entries || 0} color="text-violet-500" bg="bg-violet-500/10" />
+            <StatCard icon={Eye} label={t("immune.moderationRules") || "风控规则"} value={health.modules?.moderator?.patterns || 0} color="text-orange-500" bg="bg-orange-500/10" />
+            <StatCard icon={Activity} label={t("immune.rateLimitTracking") || "限流跟踪"} value={health.modules?.rate_limiter?.tracked_keys || 0} color="text-blue-500" bg="bg-blue-500/10" />
+            <StatCard icon={Ban} label={t("immune.blacklist") || "黑名单"} value={health.modules?.access_control?.blacklist_count || 0} color="text-red-500" bg="bg-red-500/10" />
+            <StatCard icon={Clock} label={t("immune.auditEntries") || "审计条目"} value={health.modules?.audit?.total_entries || 0} color="text-violet-500" bg="bg-violet-500/10" />
           </div>
         )}
 
         {/* Tabs */}
         <div className="flex gap-2">
-          {tabs.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
+          {tabs.map((tabItem) => (
+            <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
               className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                tab === t.id ? "bg-orange-500/10 text-orange-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
-              <t.icon size={14} /> {t.label}
+                tab === tabItem.id ? "bg-orange-500/10 text-orange-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
+              <tabItem.icon size={14} /> {tabItem.label}
             </button>
           ))}
         </div>
@@ -157,20 +159,20 @@ export function ImmuneClient() {
               <textarea
                 value={modText}
                 onChange={(e) => setModText(e.target.value)}
-                placeholder="输入要检测的文本内容..."
+                placeholder={t("immune.checkContent") || "输入要检测的文本内容..."}
                 className="flex-1 rounded-lg border border-border bg-background p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500/20 min-h-[100px] resize-none"
               />
             </div>
             <button onClick={handleModerate} disabled={loading}
               className="rounded-lg bg-orange-500 px-4 py-2 text-sm text-white hover:bg-orange-600 disabled:opacity-50">
-              {loading ? "检测中..." : "开始风控检测"}
+              {loading ? (t("common.processing") || "检测中...") : (t("immune.startCheck") || "开始风控检测")}
             </button>
             {modResult && (
               <div className={cn("rounded-xl border p-4 space-y-2", modResult.is_safe ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5")}>
                 <div className="flex items-center gap-2">
                   {modResult.is_safe ? <CheckCircle size={16} className="text-emerald-500" /> : <XCircle size={16} className="text-red-500" />}
-                  <span className="font-medium text-sm">{modResult.is_safe ? "安全" : "检测到风险"}</span>
-                  <span className={cn("text-xs", riskColor(modResult.risk_level))}>风险等级: {modResult.risk_level}</span>
+                  <span className="font-medium text-sm">{modResult.is_safe ? (t("immune.safe") || "安全") : (t("immune.unsafe") || "检测到风险")}</span>
+                  <span className={cn("text-xs", riskColor(modResult.risk_level))}>{t("immune.riskLevel") || "风险等级"}: {modResult.risk_level}</span>
                 </div>
                 {modResult.findings?.length > 0 && (
                   <div className="space-y-1">
@@ -185,7 +187,7 @@ export function ImmuneClient() {
                 )}
                 {modResult.redacted_text && modResult.redacted_text !== modText && (
                   <div className="text-xs">
-                    <span className="text-muted-foreground">脱敏后: </span>
+                    <span className="text-muted-foreground">{t("immune.redacted") || "脱敏后"}: </span>
                     <span className="font-mono">{modResult.redacted_text}</span>
                   </div>
                 )}
@@ -199,22 +201,22 @@ export function ImmuneClient() {
           <div className="space-y-4">
             <div className="flex gap-3">
               <input value={rateKey} onChange={(e) => setRateKey(e.target.value)}
-                placeholder="输入限流 key (如 IP 或用户 ID)"
+                placeholder={t("immune.rateLimitKey") || "输入限流 key (如 IP 或用户 ID)"}
                 className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-500/20"
                 onKeyDown={(e) => e.key === "Enter" && handleRateCheck()} />
               <button onClick={handleRateCheck}
-                className="rounded-lg bg-orange-500 px-4 py-2 text-sm text-white hover:bg-orange-600">检测</button>
+                className="rounded-lg bg-orange-500 px-4 py-2 text-sm text-white hover:bg-orange-600">{t("common.check") || "检测"}</button>
             </div>
             {rateResult && (
               <div className={cn("rounded-xl border p-4", rateResult.allowed ? "border-emerald-500/30" : "border-red-500/30")}>
                 <div className="flex items-center gap-2 mb-2">
                   {rateResult.allowed ? <CheckCircle size={16} className="text-emerald-500" /> : <XCircle size={16} className="text-red-500" />}
-                  <span className="font-medium text-sm">{rateResult.allowed ? "允许" : "已限流"}</span>
+                  <span className="font-medium text-sm">{rateResult.allowed ? (t("immune.allowed") || "允许") : (t("immune.rateLimited") || "已限流")}</span>
                 </div>
                 <div className="grid grid-cols-3 gap-4 text-xs text-muted-foreground">
-                  <div>分钟: {rateResult.minute_count}/{rateResult.minute_limit}</div>
-                  <div>小时: {rateResult.hour_count}/{rateResult.hour_limit}</div>
-                  <div>突发: {rateResult.burst_count}/{rateResult.burst_limit}</div>
+                  <div>{t("common.minute") || "分钟"}: {rateResult.minute_count}/{rateResult.minute_limit}</div>
+                  <div>{t("common.hour") || "小时"}: {rateResult.hour_count}/{rateResult.hour_limit}</div>
+                  <div>{t("common.burst") || "突发"}: {rateResult.burst_count}/{rateResult.burst_limit}</div>
                 </div>
               </div>
             )}
@@ -226,18 +228,18 @@ export function ImmuneClient() {
           <div className="space-y-4">
             <div className="flex gap-3">
               <input value={newIp} onChange={(e) => setNewIp(e.target.value)}
-                placeholder="输入 IP 地址"
+                placeholder={t("immune.enterIp") || "输入 IP 地址"}
                 className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-orange-500/20" />
               <button onClick={() => handleIpAction("blacklist", newIp)}
-                className="rounded-lg bg-red-500 px-3 py-2 text-sm text-white hover:bg-red-600">加入黑名单</button>
+                className="rounded-lg bg-red-500 px-3 py-2 text-sm text-white hover:bg-red-600">{t("immune.addBlacklist") || "加入黑名单"}</button>
               <button onClick={() => handleIpAction("whitelist", newIp)}
-                className="rounded-lg bg-emerald-500 px-3 py-2 text-sm text-white hover:bg-emerald-600">加入白名单</button>
+                className="rounded-lg bg-emerald-500 px-3 py-2 text-sm text-white hover:bg-emerald-600">{t("immune.addWhitelist") || "加入白名单"}</button>
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="rounded-xl border border-border p-4">
-                <h3 className="text-sm font-medium mb-3 text-red-500">黑名单 ({ipLists?.blacklist?.length || 0})</h3>
+                <h3 className="text-sm font-medium mb-3 text-red-500">{t("immune.blacklist") || "黑名单"} ({ipLists?.blacklist?.length || 0})</h3>
                 {ipLists?.blacklist?.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">暂无</p>
+                  <p className="text-xs text-muted-foreground">{t("common.none") || "暂无"}</p>
                 ) : (
                   <div className="space-y-1">
                     {ipLists?.blacklist?.map((item: any) => (
@@ -251,9 +253,9 @@ export function ImmuneClient() {
                 )}
               </div>
               <div className="rounded-xl border border-border p-4">
-                <h3 className="text-sm font-medium mb-3 text-emerald-500">白名单 ({ipLists?.whitelist?.length || 0})</h3>
+                <h3 className="text-sm font-medium mb-3 text-emerald-500">{t("immune.whitelist") || "白名单"} ({ipLists?.whitelist?.length || 0})</h3>
                 {ipLists?.whitelist?.length === 0 ? (
-                  <p className="text-xs text-muted-foreground">暂无</p>
+                  <p className="text-xs text-muted-foreground">{t("common.none") || "暂无"}</p>
                 ) : (
                   <div className="space-y-1">
                     {ipLists?.whitelist?.map((item: any) => (
@@ -276,16 +278,16 @@ export function ImmuneClient() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">时间</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">操作</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">IP</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">风险</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">详情</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("common.time") || "时间"}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("immune.action") || "操作"}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("immune.clientIp") || "IP"}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("immune.riskLevel") || "风险"}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("immune.detail") || "详情"}</th>
                 </tr>
               </thead>
               <tbody>
                 {auditLog.length === 0 ? (
-                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs">暂无审计记录</td></tr>
+                  <tr><td colSpan={5} className="px-4 py-8 text-center text-muted-foreground text-xs">{t("immune.noAudit") || "暂无审计记录"}</td></tr>
                 ) : auditLog.map((e) => (
                   <tr key={e.id} className="border-b border-border last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(e.ts * 1000).toLocaleString("zh-CN")}</td>

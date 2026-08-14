@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
@@ -18,6 +19,7 @@ interface Connector {
 }
 
 export function LinkClient() {
+  const { t } = useTranslation();
   const [connectors, setConnectors] = useState<Connector[]>([]);
   const [health, setHealth] = useState<any>(null);
   const [selected, setSelected] = useState<Connector | null>(null);
@@ -116,7 +118,7 @@ export function LinkClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Link2 size={20} className="text-teal-500" />
-          <h1 className="text-lg font-semibold">OpenLink 突触系统</h1>
+          <h1 className="text-lg font-semibold">{t("link.title") || "突触 · 双向集成"}</h1>
           <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-500">
             双向集成
           </span>

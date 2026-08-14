@@ -86,7 +86,7 @@ export function AppShell() {
       ],
     },
     {
-      label: t("nav.systemGroup") || "系统",
+      label: t("nav.organsGroup") || "器官",
       items: [
         { href: "/vein", label: t("nav.vein") || "血管", icon: Droplets },
         { href: "/sense", label: t("nav.sense") || "感官", icon: Eye },
@@ -96,6 +96,11 @@ export function AppShell() {
         { href: "/echo", label: t("nav.echo") || "回声", icon: Volume2 },
         { href: "/mirror", label: t("nav.mirror") || "镜像", icon: Layers },
         { href: "/link", label: t("nav.link") || "突触", icon: Link2 },
+      ],
+    },
+    {
+      label: t("nav.systemGroup") || "系统",
+      items: [
         { href: "/download", label: t("nav.download"), icon: Download },
         { href: "/settings", label: t("nav.settings"), icon: Settings },
       ],
