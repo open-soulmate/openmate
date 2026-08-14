@@ -144,7 +144,7 @@ export function DownloadClient() {
       const token = getToken();
       const res = await fetch(`${getApiBaseUrl()}/api/download/download/sync`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ url: newUrl, dest: downloadPath + "/" + (newUrl.split("/").pop()?.split("?")[0] || "download"), plugin_id: selectedPlugin || undefined, resume: true }),
       });
       if (res.ok) {
@@ -220,7 +220,7 @@ export function DownloadClient() {
       const token = getToken();
       await fetch(`${getApiBaseUrl()}/api/download/plugins/batch`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, plugin_ids: selectedPlugins }),
       });
       setSelectedPlugins([]);
