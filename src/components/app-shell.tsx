@@ -17,6 +17,7 @@ import {
   Sparkles,
   Brain,
   Bolt,
+  Heart,
   } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId } from "@/lib/api-client";
@@ -98,6 +99,8 @@ export function AppShell() {
         { href: "/vital", label: t("nav.vital") || "体征", icon: Activity },
         { href: "/hippo", label: t("nav.hippo") || "海马体", icon: Brain },
         { href: "/reflex", label: t("nav.reflex") || "反射", icon: Bolt },
+        { href: "/heredity", label: t("nav.heredity") || "遗传链", icon: GitBranch },
+        { href: "/pulse", label: t("nav.pulse") || "脉搏", icon: Heart },
       ],
     },
     {
