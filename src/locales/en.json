@@ -40,7 +40,8 @@
     "link": "Link",
     "organsGroup": "Organs",
     "gland": "Gland",
-    "vital": "Vital"
+    "vital": "Vital",
+    "internalServices": "Internal Services"
   },
   "dashboard": {
     "title": "System Overview",

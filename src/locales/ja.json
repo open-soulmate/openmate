@@ -38,7 +38,8 @@
     "link": "シナプス",
     "organsGroup": "臓器",
     "gland": "腺",
-    "vital": "バイタル"
+    "vital": "バイタル",
+    "internalServices": "内部サービス"
   },
   "dashboard": {
     "title": "システム概要",
