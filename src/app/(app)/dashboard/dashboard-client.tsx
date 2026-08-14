@@ -7,10 +7,67 @@ import {
   Server, Puzzle, MessageSquare, Clock, Users, Workflow,
   BookOpen, Network, TrendingUp, Activity, ArrowRight,
   DollarSign, Cpu, Zap,
+  Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
+  Brain, Bolt, Heart, Home, MousePointer, Mic, ImageIcon, Smile,
+  CheckCircle, XCircle, Loader2,
 } from "lucide-react";
+import { useState, useEffect, useCallback } from "react";
+import { getApiBaseUrl } from "@/lib/api-client";
 import Link from "next/link";
 
 export function DashboardClient() {
+  const apiBase = getApiBaseUrl();
+  const [organHealth, setOrganHealth] = useState<Record<string, "ok" | "error" | "loading">>({});
+
+  const organs = [
+    { key: "soul", label: "🧠 Soul", endpoint: "/api/health" },
+    { key: "cortex", label: "🧩 Cortex", endpoint: "/api/cortex/health" },
+    { key: "nerve", label: "⚡ Nerve", endpoint: "/api/nerve/health" },
+    { key: "vein", label: "🩸 Vein", endpoint: "/api/vein/health" },
+    { key: "soma", label: "🤖 Soma", endpoint: "/api/health" },
+    { key: "sense", label: "👁 Sense", endpoint: "/api/sense/health" },
+    { key: "will", label: "✨ Will", endpoint: "/api/will/health" },
+    { key: "mate", label: "👤 Mate", endpoint: "/api/health" },
+    { key: "immune", label: "🛡 Immune", endpoint: "/api/immune/health" },
+    { key: "vital", label: "📊 Vital", endpoint: "/api/vital/health" },
+    { key: "marrow", label: "🦴 Marrow", endpoint: "/api/marrow/health" },
+    { key: "gland", label: "🧪 Gland", endpoint: "/api/gland/health" },
+    { key: "gene", label: "🧬 Gene", endpoint: "/api/gene/health" },
+    { key: "echo", label: "🔊 Echo", endpoint: "/api/echo/health" },
+    { key: "mirror", label: "🪞 Mirror", endpoint: "/api/mirror/health" },
+    { key: "link", label: "🔗 Link", endpoint: "/api/link/health" },
+    { key: "hippo", label: "🧠 Hippo", endpoint: "/api/hippo/health" },
+    { key: "reflex", label: "⚡ Reflex", endpoint: "/api/reflex/health" },
+    { key: "heredity", label: "🔗 Heredity", endpoint: "/api/heredity/health" },
+    { key: "nest", label: "🏠 Nest", endpoint: "/api/nest/health" },
+    { key: "pulse", label: "💓 Pulse", endpoint: "/api/pulse/health" },
+    { key: "limb", label: "💪 Limb", endpoint: "/api/limb/health" },
+    { key: "voice", label: "🎤 Voice", endpoint: "/api/voice/health" },
+    { key: "vision", label: "🎨 Vision", endpoint: "/api/vision/health" },
+    { key: "mind", label: "💭 Mind", endpoint: "/api/mind/health" },
+  ];
+
+  const checkOrganHealth = useCallback(async () => {
+    const initial: Record<string, "loading"> = {};
+    organs.forEach((o) => (initial[o.key] = "loading"));
+    setOrganHealth(initial);
+
+    const results: Record<string, "ok" | "error"> = {};
+    await Promise.allSettled(
+      organs.map(async (organ) => {
+        try {
+          const res = await fetch(`${apiBase}${organ.endpoint}`, { signal: AbortSignal.timeout(5000) });
+          results[organ.key] = res.ok ? "ok" : "error";
+        } catch {
+          results[organ.key] = "error";
+        }
+      })
+    );
+    setOrganHealth(results);
+  }, [apiBase]);
+
+  useEffect(() => { checkOrganHealth(); }, [checkOrganHealth]);
+
   const { t } = useTranslation();
   const agentNodes = useAppStore((s) => s.agentNodes);
   const skills = useAppStore((s) => s.skills);
@@ -224,6 +281,55 @@ export function DashboardClient() {
                 <ArrowRight size={14} className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
               </Link>
             ))}
+          </div>
+        </div>
+
+        {/* Organ Health Overview */}
+        <div className="mb-8">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              {t("dashboard.organHealth") || "器官健康状态"}
+            </h3>
+            <button
+              onClick={checkOrganHealth}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ↻ {t("dashboard.refreshHealth") || "刷新"}
+            </button>
+          </div>
+          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-8">
+            {organs.map((organ) => {
+              const status = organHealth[organ.key];
+              return (
+                <div
+                  key={organ.key}
+                  className={cn(
+                    "flex flex-col items-center gap-1 rounded-lg border p-3 text-center transition-colors",
+                    status === "ok" && "border-emerald-500/30 bg-emerald-500/5",
+                    status === "error" && "border-red-500/30 bg-red-500/5",
+                    status === "loading" && "border-border bg-card"
+                  )}
+                >
+                  <span className="text-lg">{organ.label.split(" ")[0]}</span>
+                  <span className="text-[10px] font-medium leading-tight">
+                    {organ.label.split(" ").slice(1).join(" ")}
+                  </span>
+                  {status === "ok" && <CheckCircle size={12} className="text-emerald-500" />}
+                  {status === "error" && <XCircle size={12} className="text-red-500" />}
+                  {status === "loading" && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+                </div>
+              );
+            })}
+          </div>
+          <div className="mt-2 flex items-center gap-4 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <CheckCircle size={10} className="text-emerald-500" />
+              {Object.values(organHealth).filter((s) => s === "ok").length} {t("dashboard.healthy") || "正常"}
+            </span>
+            <span className="flex items-center gap-1">
+              <XCircle size={10} className="text-red-500" />
+              {Object.values(organHealth).filter((s) => s === "error").length} {t("dashboard.unhealthy") || "异常"}
+            </span>
           </div>
         </div>
 

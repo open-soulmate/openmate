@@ -68,7 +68,11 @@
     "quickLinks": "快速访问",
     "items": "项",
     "recentActivity": "近期活动",
-    "noActivity": "暂无近期活动记录"
+    "noActivity": "暂无近期活动记录",
+    "organHealth": "器官健康状态",
+    "refreshHealth": "刷新",
+    "healthy": "正常",
+    "unhealthy": "异常"
   },
   "chat": {
     "newChat": "新建对话",

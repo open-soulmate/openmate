@@ -68,7 +68,11 @@
     "quickLinks": "Quick Access",
     "items": "items",
     "recentActivity": "Recent Activity",
-    "noActivity": "No recent activity recorded"
+    "noActivity": "No recent activity recorded",
+    "organHealth": "Organ Health Status",
+    "refreshHealth": "Refresh",
+    "healthy": "Healthy",
+    "unhealthy": "Unhealthy"
   },
   "chat": {
     "newChat": "New Chat",
