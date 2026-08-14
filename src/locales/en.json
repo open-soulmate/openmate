@@ -918,5 +918,30 @@
     "tokens": "Tokens",
     "createdAt": "Created At",
     "noSessions": "No trajectory sessions yet"
+  },
+  "vein": {
+    "title": "Vein · File Management",
+    "subtitle": "Chunked upload · Cache · Dedup",
+    "totalFiles": "Total Files",
+    "totalSize": "Total Size",
+    "upload": "Upload File",
+    "uploading": "Uploading...",
+    "startUpload": "Upload File",
+    "dragOrClick": "Drag files here, or click to select",
+    "dropToUpload": "Drop to upload",
+    "supportAll": "Supports all file types, automatic dedup",
+    "searchPlaceholder": "Search by filename...",
+    "files": "File List",
+    "fileName": "Filename",
+    "size": "Size",
+    "type": "Type",
+    "uploadTime": "Upload Time",
+    "actions": "Actions",
+    "download": "Download",
+    "delete": "Delete",
+    "noFiles": "No files yet",
+    "noMatch": "No matching files found",
+    "uploadSuccess": "Upload successful",
+    "uploadFailed": "Upload failed"
   }
 }
