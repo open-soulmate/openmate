@@ -14,6 +14,7 @@ import {
   LayoutDashboard, FolderKanban, Share2, ChevronDown,
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
   Zap, Activity,
+  Sparkles,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId } from "@/lib/api-client";
@@ -84,11 +85,13 @@ export function AppShell() {
         { href: "/cron", label: t("nav.cron"), icon: Clock },
         { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
         { href: "/workflow-builder", label: t("nav.workflowBuilder"), icon: GitBranch },
+        { href: "/will", label: t("nav.will") || "意志", icon: Sparkles },
       ],
     },
     {
       label: t("nav.organsGroup") || "器官",
       items: [
+        { href: "/nerve", label: t("nav.nerve") || "神经", icon: Zap },
         { href: "/vein", label: t("nav.vein") || "血管", icon: Droplets },
         { href: "/sense", label: t("nav.sense") || "感官", icon: Eye },
         { href: "/immune", label: t("nav.immune") || "免疫", icon: Shield },
