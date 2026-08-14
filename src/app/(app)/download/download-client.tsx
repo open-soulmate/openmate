@@ -236,7 +236,7 @@ export function DownloadClient() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
-        {([['downloads', '下载任务'], ['cache', '下载文件'], ['settings', 'OpenWing设置']] as const).map(([key, label]) => (
+        {([['downloads', '下载中'], ['done', '已完成'], ['settings', 'OpenWing设置']] as const).map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)}
             className={`px-4 py-1.5 rounded-md text-sm transition-colors ${tab === key ? 'bg-card text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
             {label}
@@ -326,7 +326,39 @@ export function DownloadClient() {
       )}
 
       {/* Download Files Tab */}
-      {tab === 'cache' && (
+      {tab === 'done' && (() => {
+        const doneList = tasks.filter(t => t.status === 'done');
+        return (
+        <div>
+          {doneList.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground">
+              <CheckCircle className="w-12 h-12 mx-auto mb-3 opacity-30" />
+              <p className="text-lg font-medium">暂无已完成的下载</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {doneList.map(task => (
+                <div key={task.id} className="rounded-xl border bg-card p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                      <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
+                      <h3 className="text-sm font-medium truncate">{task.filename}</h3>
+                      <TypeTag type={task.type} />
+                      <span className="text-xs text-muted-foreground">{formatBytes(task.downloadedBytes)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 ml-2 shrink-0">
+                      <button onClick={() => deleteFile(task)} className="p-1.5 rounded hover:bg-muted text-red-400" title="删除文件">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        );
+      })()}
         <div>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
