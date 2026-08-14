@@ -12,6 +12,7 @@ import {
   Workflow, Plug, Users, GitBranch, Clock, Download,
   User, Moon, Sun, FileText, MessageCircle, LogOut,
   LayoutDashboard, FolderKanban, Share2, ChevronDown,
+  Droplets,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId } from "@/lib/api-client";
@@ -87,6 +88,7 @@ export function AppShell() {
     {
       label: t("nav.systemGroup") || "系统",
       items: [
+        { href: "/vein", label: t("nav.vein") || "血管", icon: Droplets },
         { href: "/download", label: t("nav.download"), icon: Download },
         { href: "/settings", label: t("nav.settings"), icon: Settings },
       ],
