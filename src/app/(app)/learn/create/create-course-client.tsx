@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   ArrowLeft,
@@ -12,11 +12,12 @@ import {
   Tag,
 } from "lucide-react";
 import Link from "next/link";
+import { getApiBaseUrl } from "@/lib/api-client";
 
 interface KnowledgeItem {
   id: string;
   title: string;
-  type: "document" | "note" | "link";
+  type: string;
   tags: string[];
   excerpt: string;
 }
@@ -41,61 +42,45 @@ const availableDomains = [
   "AI/ML",
 ];
 
-const mockKnowledgeItems: KnowledgeItem[] = [
-  {
-    id: "k1",
-    title: "Project Architecture Overview",
-    type: "document",
-    tags: ["architecture", "overview"],
-    excerpt: "High-level architecture of the OpenMate platform…",
-  },
-  {
-    id: "k2",
-    title: "API Design Patterns",
-    type: "note",
-    tags: ["api", "patterns"],
-    excerpt: "Common patterns for REST API design…",
-  },
-  {
-    id: "k3",
-    title: "Next.js 16 Migration Notes",
-    type: "document",
-    tags: ["nextjs", "migration"],
-    excerpt: "Key changes and migration steps…",
-  },
-  {
-    id: "k4",
-    title: "React Server Components Guide",
-    type: "document",
-    tags: ["react", "rsc"],
-    excerpt: "Understanding React Server Components…",
-  },
-  {
-    id: "k5",
-    title: "Database Indexing Strategies",
-    type: "note",
-    tags: ["database", "performance"],
-    excerpt: "When and how to create indexes…",
-  },
-  {
-    id: "k6",
-    title: "Docker Compose Reference",
-    type: "document",
-    tags: ["docker", "devops"],
-    excerpt: "Common Docker Compose patterns…",
-  },
-];
-
 export function CreateCourseClient() {
   const router = useRouter();
+  const apiBase = getApiBaseUrl();
   const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
   const [selectedTopics, setSelectedTopics] = useState<string[]>([]);
   const [selectedDomain, setSelectedDomain] = useState("");
   const [selectedItems, setSelectedItems] = useState<string[]>([]);
   const [knowledgeQuery, setKnowledgeQuery] = useState("");
+  const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [loadingKb, setLoadingKb] = useState(true);
 
-  const filteredItems = mockKnowledgeItems.filter(
+  // Fetch knowledge base items from real API
+  useEffect(() => {
+    const fetchKnowledge = async () => {
+      try {
+        const res = await fetch(`${apiBase}/api/knowledge/`);
+        if (res.ok) {
+          const data = await res.json();
+          const items: KnowledgeItem[] = (data.knowledge_bases || data.items || []).map((kb: any) => ({
+            id: kb.kb_id || kb.id,
+            title: kb.name || kb.title || "Untitled",
+            type: kb.type || "document",
+            tags: kb.tags || [],
+            excerpt: kb.description || kb.excerpt || "",
+          }));
+          setKnowledgeItems(items);
+        }
+      } catch (e) {
+        console.error("Failed to fetch knowledge bases", e);
+      } finally {
+        setLoadingKb(false);
+      }
+    };
+    fetchKnowledge();
+  }, [apiBase]);
+
+  const filteredItems = knowledgeItems.filter(
     (item) =>
       item.title.toLowerCase().includes(knowledgeQuery.toLowerCase()) ||
       item.tags.some((t) => t.includes(knowledgeQuery.toLowerCase())),
@@ -113,22 +98,57 @@ export function CreateCourseClient() {
     );
   };
 
-  const canGenerate =
-    title.trim().length > 0 &&
-    selectedTopics.length > 0 &&
-    selectedItems.length > 0;
+  const canGenerate = title.trim().length > 0 && selectedTopics.length > 0;
 
   const handleGenerate = async () => {
     if (!canGenerate) return;
     setGenerating(true);
 
-    // Simulate API call to POST /api/cortex/plan
-    // In production: await api.post("/cortex/plan", { title, topics: selectedTopics, domain: selectedDomain, knowledgeIds: selectedItems })
-    await new Promise((r) => setTimeout(r, 2000));
+    try {
+      // Create course via real API
+      const res = await fetch(`${apiBase}/api/learn/courses`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title,
+          description: description || `A course about ${selectedTopics.join(", ")}`,
+          tags: selectedTopics.map((t) => t.toLowerCase().replace(/\s+/g, "-")),
+          topics: selectedTopics,
+          domain: selectedDomain,
+          knowledge_ids: selectedItems,
+          generated_by: "manual",
+        }),
+      });
 
-    setGenerating(false);
-    // Navigate to the newly created course
-    router.push("/learn/1");
+      if (res.ok) {
+        const course = await res.json();
+        // Add placeholder chapters based on topics
+        for (let i = 0; i < Math.max(3, selectedTopics.length); i++) {
+          const topicName = selectedTopics[i % selectedTopics.length];
+          await fetch(`${apiBase}/api/learn/courses/${course.id}/chapters`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              title: `${topicName} — Chapter ${i + 1}`,
+              content: `## ${topicName}\n\nThis chapter covers the fundamentals of ${topicName}.\n\n### Key Concepts\n\n- Concept 1\n- Concept 2\n- Concept 3\n\n> Start writing your notes here...`,
+              quiz: [
+                {
+                  question: `What is the main topic of this chapter?`,
+                  options: [topicName, "Something else", "Not sure", "Skip"],
+                  correct_index: 0,
+                  explanation: `This chapter focuses on ${topicName}.`,
+                },
+              ],
+            }),
+          });
+        }
+        router.push(`/learn/${course.id}`);
+      }
+    } catch (e) {
+      console.error("Failed to create course", e);
+    } finally {
+      setGenerating(false);
+    }
   };
 
   return (
@@ -161,6 +181,20 @@ export function CreateCourseClient() {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Next.js 15 Deep Dive"
               className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
+            />
+          </section>
+
+          {/* Description */}
+          <section>
+            <label className="mb-2 block text-sm font-medium">
+              Description <span className="font-normal text-muted-foreground">(optional)</span>
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief description of what this course covers..."
+              rows={3}
+              className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-primary resize-none"
             />
           </section>
 
@@ -244,49 +278,59 @@ export function CreateCourseClient() {
             </div>
 
             <div className="max-h-64 space-y-2 overflow-y-auto rounded-lg border border-border p-2">
-              {filteredItems.map((item) => {
-                const selected = selectedItems.includes(item.id);
-                return (
-                  <button
-                    key={item.id}
-                    onClick={() => toggleItem(item.id)}
-                    className={`flex w-full items-start gap-3 rounded-md border p-3 text-left transition-colors ${
-                      selected
-                        ? "border-primary bg-primary/5"
-                        : "border-transparent hover:bg-accent"
-                    }`}
-                  >
-                    <div
-                      className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+              {loadingKb ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredItems.length === 0 ? (
+                <p className="py-8 text-center text-xs text-muted-foreground">
+                  No knowledge entries found
+                </p>
+              ) : (
+                filteredItems.map((item) => {
+                  const selected = selectedItems.includes(item.id);
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => toggleItem(item.id)}
+                      className={`flex w-full items-start gap-3 rounded-md border p-3 text-left transition-colors ${
                         selected
-                          ? "border-primary bg-primary text-primary-foreground"
-                          : "border-border"
+                          ? "border-primary bg-primary/5"
+                          : "border-transparent hover:bg-accent"
                       }`}
                     >
-                      {selected && <Check size={12} />}
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium">
-                        {item.title}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">
-                        {item.excerpt}
-                      </p>
-                      <div className="mt-1 flex flex-wrap gap-1">
-                        {item.tags.map((tag) => (
-                          <span
-                            key={tag}
-                            className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
-                          >
-                            <Tag size={8} />
-                            {tag}
-                          </span>
-                        ))}
+                      <div
+                        className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded border ${
+                          selected
+                            ? "border-primary bg-primary text-primary-foreground"
+                            : "border-border"
+                        }`}
+                      >
+                        {selected && <Check size={12} />}
                       </div>
-                    </div>
-                  </button>
-                );
-              })}
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium">
+                          {item.title}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">
+                          {item.excerpt}
+                        </p>
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {item.tags.map((tag) => (
+                            <span
+                              key={tag}
+                              className="inline-flex items-center gap-0.5 rounded-full bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground"
+                            >
+                              <Tag size={8} />
+                              {tag}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })
+              )}
             </div>
 
             {selectedItems.length > 0 && (
