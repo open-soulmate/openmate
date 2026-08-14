@@ -14,7 +14,7 @@ import {
   LayoutDashboard, FolderKanban, Share2, ChevronDown,
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
   Zap, Activity, Sparkles, Brain, Bolt, Heart, Home,
-  MousePointer, Mic, ImageIcon, Smile,
+  MousePointer, Mic, ImageIcon, Smile, Stethoscope,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getApiBaseUrl } from "@/lib/api-client";
@@ -119,7 +119,6 @@ export function AppShell() {
         { href: "/reflex", label: t("nav.reflex") || "反射", icon: Bolt },
         { href: "/heredity", label: t("nav.heredity") || "遗传链", icon: GitBranch },
         { href: "/pulse", label: t("nav.pulse") || "脉搏", icon: Heart },
-        { href: "/trajectory", label: t("nav.trajectory") || "轨迹", icon: GitBranch },
       ],
     },
     {
@@ -143,6 +142,8 @@ export function AppShell() {
     {
       label: t("nav.systemGroup") || "系统",
       items: [
+        { href: "/trajectory", label: t("nav.trajectory") || "轨迹", icon: Activity },
+        { href: "/diagnostics", label: "系统诊断", icon: Stethoscope },
         { href: "/download", label: t("nav.download"), icon: Download },
         { href: "/plugins", label: t("nav.plugins") || "插件", icon: Puzzle },
         { href: "/settings", label: t("nav.settings"), icon: Settings },
