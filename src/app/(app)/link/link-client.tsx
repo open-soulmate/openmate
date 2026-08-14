@@ -6,6 +6,7 @@ import { getApiBaseUrl } from "@/lib/api-client";
 import {
   Link2, RefreshCw, Plus, Trash2, Play, Pause,
   Webhook, Globe, Plug, Activity, Settings, Send,
+  Clock, Filter,
 } from "lucide-react";
 
 interface Connector {
@@ -16,6 +17,17 @@ interface Connector {
   endpoint: string;
   created_at: number;
   event_count: number;
+}
+
+interface LinkEvent {
+  event_id: string;
+  connector_id: string;
+  connector_name?: string;
+  direction: string;
+  event_type: string;
+  payload_summary: string;
+  status: string;
+  timestamp: number;
 }
 
 export function LinkClient() {
@@ -31,6 +43,9 @@ export function LinkClient() {
   const [testPayload, setTestPayload] = useState("{}");
   const [testResult, setTestResult] = useState<any>(null);
   const [loading, setLoading] = useState(false);
+  const [events, setEvents] = useState<LinkEvent[]>([]);
+  const [showEvents, setShowEvents] = useState(false);
+  const [eventFilter, setEventFilter] = useState("");
   const apiBase = getApiBaseUrl();
 
   const fetchHealth = useCallback(async () => {
@@ -48,10 +63,24 @@ export function LinkClient() {
     } catch {}
   }, [apiBase]);
 
+  const fetchEvents = useCallback(async () => {
+    try {
+      const params = new URLSearchParams();
+      if (eventFilter) params.set("connector_id", eventFilter);
+      const res = await fetch(`${apiBase}/api/link/events?${params}`);
+      const data = await res.json();
+      setEvents(data.events || []);
+    } catch {}
+  }, [apiBase, eventFilter]);
+
   useEffect(() => {
     fetchHealth();
     fetchConnectors();
   }, [fetchHealth, fetchConnectors]);
+
+  useEffect(() => {
+    if (showEvents) fetchEvents();
+  }, [showEvents, fetchEvents]);
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -97,6 +126,17 @@ export function LinkClient() {
     } catch {}
   };
 
+  const handleSend = async (id: string) => {
+    try {
+      const res = await fetch(`${apiBase}/api/link/connectors/${id}/send`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: testPayload,
+      });
+      setTestResult(await res.json());
+    } catch {}
+  };
+
   const typeIcons: Record<string, React.ElementType> = {
     webhook_in: Webhook,
     webhook_out: Send,
@@ -124,6 +164,13 @@ export function LinkClient() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={() => setShowEvents(!showEvents)}
+            className={cn(
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
+              showEvents ? "bg-teal-500 text-white" : "border border-border hover:bg-muted"
+            )}>
+            <Activity size={14} /> 事件日志
+          </button>
           <button onClick={() => setShowCreate(true)}
             className="flex items-center gap-1.5 rounded-lg bg-teal-500 px-3 py-1.5 text-sm text-white hover:bg-teal-600">
             <Plus size={14} /> 新建连接
@@ -155,6 +202,65 @@ export function LinkClient() {
               <span className="text-xs text-muted-foreground">类型分布</span>
               <p className="text-xs font-mono mt-1">{Object.entries(health.by_type || {}).map(([k, v]) => `${k}:${v}`).join(" · ")}</p>
             </div>
+          </div>
+        )}
+
+        {/* Event Log Panel */}
+        {showEvents && (
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <Activity size={14} className="text-teal-500" />
+                事件日志
+              </h3>
+              <div className="flex items-center gap-2">
+                <div className="flex items-center gap-1">
+                  <Filter size={12} className="text-muted-foreground" />
+                  <select
+                    value={eventFilter}
+                    onChange={(e) => setEventFilter(e.target.value)}
+                    className="rounded border border-border bg-background px-2 py-1 text-xs"
+                  >
+                    <option value="">全部连接器</option>
+                    {connectors.map((c) => (
+                      <option key={c.connector_id} value={c.connector_id}>{c.name}</option>
+                    ))}
+                  </select>
+                </div>
+                <button onClick={fetchEvents}
+                  className="rounded p-1 text-muted-foreground hover:bg-muted">
+                  <RefreshCw size={12} />
+                </button>
+              </div>
+            </div>
+            {events.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-4">暂无事件</p>
+            ) : (
+              <div className="max-h-60 overflow-y-auto space-y-1">
+                {events.map((e) => (
+                  <div key={e.event_id} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted/50">
+                    <span className={cn(
+                      "text-[10px] font-medium px-1.5 py-0.5 rounded",
+                      e.direction === "inbound" ? "bg-blue-500/10 text-blue-500" : "bg-violet-500/10 text-violet-500"
+                    )}>
+                      {e.direction === "inbound" ? "入站" : "出站"}
+                    </span>
+                    <span className="text-xs font-medium">{e.connector_name || e.connector_id}</span>
+                    <span className="text-xs text-muted-foreground truncate flex-1">{e.payload_summary}</span>
+                    <span className={cn(
+                      "text-[10px]",
+                      e.status === "success" ? "text-emerald-500" : "text-red-500"
+                    )}>
+                      {e.status}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <Clock size={10} />
+                      {new Date(e.timestamp * 1000).toLocaleTimeString("zh-CN")}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
@@ -200,6 +306,12 @@ export function LinkClient() {
                     className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
                     <Activity size={12} /> 测试
                   </button>
+                  {(selected.type === "webhook_out" || selected.type === "rest_api") && (
+                    <button onClick={() => handleSend(selected.connector_id)}
+                      className="flex items-center gap-1 rounded-lg border border-teal-500/30 px-3 py-1.5 text-xs text-teal-600 hover:bg-teal-500/10">
+                      <Send size={12} /> 发送
+                    </button>
+                  )}
                   <button onClick={() => handleDelete(selected.connector_id)}
                     className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
                     <Trash2 size={12} /> 删除
