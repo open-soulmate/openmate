@@ -406,7 +406,8 @@ export function DownloadClient() {
             </div>
           )}
         </div>
-      )}
+        );
+      })()}
 
       {/* Settings Tab */}
       {tab === 'settings' && (
