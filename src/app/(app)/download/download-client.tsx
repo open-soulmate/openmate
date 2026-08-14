@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { Download, Pause, Play, Trash2, RefreshCw, FolderOpen, ArrowDown, ArrowUp, CheckCircle, XCircle, Loader2, Link, HardDrive, Zap, Wifi, Plus, Search, Square, SquareCheck } from 'lucide-react';
+import { Download, Pause, Play, Trash2, RefreshCw, FolderOpen, ArrowDown, ArrowUp, CheckCircle, XCircle, Loader2, Link, HardDrive, Zap, Wifi, Plus } from 'lucide-react';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 
 interface DownloadTask {
@@ -17,17 +17,6 @@ interface DownloadTask {
   supportsResume: boolean;
   error?: string;
   addedAt: number;
-}
-
-interface PluginInfo {
-  id: string;
-  name: string;
-  description: string;
-  version: string;
-  status: string;
-  supports_resume: boolean;
-  supports_p2p: boolean;
-  priority: number;
 }
 
 interface CacheFile {
@@ -59,33 +48,13 @@ function formatEta(seconds: number): string {
   return `${Math.floor(seconds / 3600)}时${Math.floor((seconds % 3600) / 60)}分`;
 }
 
-function getPluginIcon(id: string) {
-  switch (id) {
-    case 'aria2': return '🚀';
-    case 'axel': return '⚡';
-    case 'curl-resume': return '🔗';
-    case 'wget': return '📥';
-    case 'rsync': return '🔄';
-    case 'curl': return '🌐';
-    default: return '📦';
-  }
-}
-
 export function DownloadClient() {
   const [tasks, setTasks] = useState<DownloadTask[]>([]);
-  const [plugins, setPlugins] = useState<PluginInfo[]>([]);
   const [cacheFiles, setCacheFiles] = useState<CacheFile[]>([]);
   const [cacheSize, setCacheSize] = useState(0);
   const [showAdd, setShowAdd] = useState(false);
-  const [downloadPath, setDownloadPath] = useState(() => {
-    if (typeof window !== "undefined") return localStorage.getItem("openmate-download-path") || "~/Downloads";
-    return "~/Downloads";
-  });
   const [newUrl, setNewUrl] = useState('');
-  const [selectedPlugin, setSelectedPlugin] = useState<string>('');
-  const [tab, setTab] = useState<'downloads' | 'cache' | 'plugins'>('downloads');
-  const [selectedPlugins, setSelectedPlugins] = useState<string[]>([]);
-  const [batchLoading, setBatchLoading] = useState(false);
+  const [tab, setTab] = useState<'downloads' | 'cache'>('downloads');
   const [loading, setLoading] = useState(false);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -100,23 +69,9 @@ export function DownloadClient() {
   // Save tasks to localStorage
   useEffect(() => {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-  localStorage.setItem("openmate-download-path", downloadPath);
   }, [tasks]);
 
-  // Load plugins and cache
-  const loadPlugins = useCallback(async () => {
-    try {
-      const token = getToken();
-      const res = await fetch(`${getApiBaseUrl()}/api/download/plugins`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.ok) {
-        const data = await res.json();
-        setPlugins(data.plugins || []);
-      }
-    } catch {}
-  }, []);
-
+  // Load cache
   const loadCache = useCallback(async () => {
     try {
       const token = getToken();
@@ -132,9 +87,8 @@ export function DownloadClient() {
   }, []);
 
   useEffect(() => {
-    loadPlugins();
     loadCache();
-  }, [loadPlugins, loadCache]);
+  }, [loadCache]);
 
   // Start download
   const startDownload = async () => {
@@ -145,7 +99,7 @@ export function DownloadClient() {
       const res = await fetch(`${getApiBaseUrl()}/api/download/download/sync`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: newUrl, dest: downloadPath + "/" + (newUrl.split("/").pop()?.split("?")[0] || "download"), plugin_id: selectedPlugin || undefined, resume: true }),
+        body: JSON.stringify({ url: newUrl, resume: true }),
       });
       if (res.ok) {
         const data = await res.json();
@@ -172,77 +126,6 @@ export function DownloadClient() {
       }
     } catch {}
     setLoading(false);
-  };
-
-  // Update plugin
-  const updatePlugin = async (pluginId: string) => {
-    try {
-      const token = getToken();
-      await fetch(`${getApiBaseUrl()}/api/download/plugins/${pluginId}/update`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      loadPlugins();
-    } catch {}
-  };
-
-  // Update all plugins
-  const updateAllPlugins = async () => {
-    try {
-      const token = getToken();
-      await fetch(`${getApiBaseUrl()}/api/download/plugins/update-all`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      loadPlugins();
-    } catch {}
-  };
-
-  // Install plugin
-  const installPlugin = async (pluginId: string) => {
-    try {
-      const token = getToken();
-      await fetch(`${getApiBaseUrl()}/api/download/plugins/${pluginId}/install`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      loadPlugins();
-    } catch {}
-  };
-
-  // Batch plugin operation
-  const batchPluginAction = async (action: 'install' | 'uninstall' | 'update') => {
-    if (selectedPlugins.length === 0) return;
-    const confirmMsg = action === 'install' ? '批量安装' : action === 'uninstall' ? '批量卸载' : '批量更新';
-    if (!confirm(`确定${confirmMsg} ${selectedPlugins.length} 个插件？`)) return;
-    setBatchLoading(true);
-    try {
-      const token = getToken();
-      await fetch(`${getApiBaseUrl()}/api/download/plugins/batch`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, plugin_ids: selectedPlugins }),
-      });
-      setSelectedPlugins([]);
-      loadPlugins();
-    } catch {}
-    setBatchLoading(false);
-  };
-
-  // Toggle single plugin selection
-  const togglePluginSelect = (pluginId: string) => {
-    setSelectedPlugins(prev =>
-      prev.includes(pluginId) ? prev.filter(id => id !== pluginId) : [...prev, pluginId]
-    );
-  };
-
-  // Toggle select all
-  const toggleSelectAll = () => {
-    if (selectedPlugins.length === plugins.length) {
-      setSelectedPlugins([]);
-    } else {
-      setSelectedPlugins(plugins.map(p => p.id));
-    }
   };
 
   // Delete cache file
@@ -285,7 +168,7 @@ export function DownloadClient() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Download className="w-6 h-6" /> 下载管理</h1>
-          <p className="text-sm text-muted-foreground mt-1">支持断点续传、多协议、P2P · 替代迅雷等下载工具</p>
+          <p className="text-sm text-muted-foreground mt-1">支持断点续传、多协议 · 替代迅雷等下载工具</p>
         </div>
         <div className="flex gap-2">
           <button onClick={() => setShowAdd(!showAdd)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground flex items-center gap-2 text-sm hover:bg-primary/90">
@@ -301,22 +184,10 @@ export function DownloadClient() {
             <input value={newUrl} onChange={e => setNewUrl(e.target.value)} placeholder="输入下载链接 (HTTP/FTP/磁力链...)"
               className="flex-1 px-4 py-2.5 rounded-lg bg-muted text-sm outline-none border border-border focus:border-primary"
               onKeyDown={e => e.key === 'Enter' && startDownload()} />
-            <select value={selectedPlugin} onChange={e => setSelectedPlugin(e.target.value)}
-              className="px-3 py-2.5 rounded-lg bg-muted text-sm border border-border outline-none">
-              <option value="">自动选择协议</option>
-              {plugins.filter(p => p.status === 'available').map(p => (
-                <option key={p.id} value={p.id}>{getPluginIcon(p.id)} {p.name} {p.supports_resume ? '(续传)' : ''} {p.supports_p2p ? '(P2P)' : ''}</option>
-              ))}
-            </select>
             <button onClick={startDownload} disabled={loading || !newUrl.trim()}
               className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : '开始下载'}
             </button>
-          </div>
-          <div className="flex items-center gap-2 mt-3">
-            <FolderOpen className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">保存到:</span>
-            <input value={downloadPath} onChange={e => setDownloadPath(e.target.value)} placeholder="~/Downloads" className="flex-1 px-3 py-1.5 rounded-lg bg-muted text-xs outline-none border border-border" />
           </div>
           <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
             <span>🚀 自动选择最优协议</span>
@@ -330,13 +201,10 @@ export function DownloadClient() {
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
         <button onClick={() => setTab('downloads')} className={`px-4 py-1.5 rounded-md text-sm transition-colors ${tab === 'downloads' ? 'bg-card text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
-          下载列表 {tasks.length > 0 && <span className="ml-1 text-xs bg-primary/20 text-primary px-1.5 rounded-full">{tasks.length}</span>}
+          下载任务 {tasks.length > 0 && <span className="ml-1 text-xs bg-primary/20 text-primary px-1.5 rounded-full">{tasks.length}</span>}
         </button>
         <button onClick={() => setTab('cache')} className={`px-4 py-1.5 rounded-md text-sm transition-colors ${tab === 'cache' ? 'bg-card text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
           缓存管理 {cacheFiles.length > 0 && <span className="ml-1 text-xs bg-muted-foreground/20 px-1.5 rounded-full">{cacheFiles.length}</span>}
-        </button>
-        <button onClick={() => setTab('plugins')} className={`px-4 py-1.5 rounded-md text-sm transition-colors ${tab === 'plugins' ? 'bg-card text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
-          协议插件
         </button>
       </div>
 
@@ -366,7 +234,6 @@ export function DownloadClient() {
                     </div>
                     <div className="flex items-center gap-1 ml-3 shrink-0">
                       {task.supportsResume && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">续传</span>}
-                      {task.plugin && <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">{getPluginIcon(task.plugin)} {task.plugin}</span>}
                       <button onClick={() => removeTask(task.id)} className="p-1 rounded hover:bg-muted text-muted-foreground" title="移除">
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -439,116 +306,6 @@ export function DownloadClient() {
               ))}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Plugins Tab */}
-      {tab === 'plugins' && (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <p className="text-sm text-muted-foreground">下载协议插件 · 自动选择最优协议</p>
-            <button onClick={updateAllPlugins} className="px-3 py-1.5 rounded-lg border hover:bg-muted text-xs flex items-center gap-1">
-              <RefreshCw className="w-3 h-3" /> 一键更新全部
-            </button>
-          </div>
-
-          {/* Batch action bar */}
-          <div className="flex items-center justify-between mb-3 p-3 rounded-xl border bg-card">
-            <div className="flex items-center gap-3">
-              <button onClick={toggleSelectAll} className="flex items-center gap-2 text-sm hover:text-primary transition-colors">
-                {selectedPlugins.length === plugins.length && plugins.length > 0 ? (
-                  <SquareCheck className="w-4 h-4 text-primary" />
-                ) : (
-                  <Square className="w-4 h-4 text-muted-foreground" />
-                )}
-                全选
-              </button>
-              {selectedPlugins.length > 0 && (
-                <span className="text-xs text-muted-foreground">已选 {selectedPlugins.length} 个</span>
-              )}
-            </div>
-            {selectedPlugins.length > 0 && (
-              <div className="flex gap-2">
-                <button
-                  onClick={() => batchPluginAction('install')}
-                  disabled={batchLoading}
-                  className="px-3 py-1.5 rounded-lg bg-green-500/10 text-green-500 hover:bg-green-500/20 text-xs flex items-center gap-1 disabled:opacity-50"
-                >
-                  {batchLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />}
-                  批量安装
-                </button>
-                <button
-                  onClick={() => batchPluginAction('update')}
-                  disabled={batchLoading}
-                  className="px-3 py-1.5 rounded-lg bg-blue-500/10 text-blue-500 hover:bg-blue-500/20 text-xs flex items-center gap-1 disabled:opacity-50"
-                >
-                  {batchLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
-                  批量更新
-                </button>
-                <button
-                  onClick={() => batchPluginAction('uninstall')}
-                  disabled={batchLoading}
-                  className="px-3 py-1.5 rounded-lg bg-red-500/10 text-red-500 hover:bg-red-500/20 text-xs flex items-center gap-1 disabled:opacity-50"
-                >
-                  {batchLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                  批量卸载
-                </button>
-              </div>
-            )}
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            {plugins.map(p => (
-              <div key={p.id} className={`rounded-xl border bg-card p-4 transition-colors ${selectedPlugins.includes(p.id) ? 'border-primary/50 bg-primary/5' : ''}`}>
-                <div className="flex items-start gap-3">
-                  <button onClick={() => togglePluginSelect(p.id)} className="mt-1 shrink-0 hover:text-primary transition-colors">
-                    {selectedPlugins.includes(p.id) ? (
-                      <SquareCheck className="w-4 h-4 text-primary" />
-                    ) : (
-                      <Square className="w-4 h-4 text-muted-foreground" />
-                    )}
-                  </button>
-                  <span className="text-2xl shrink-0">{getPluginIcon(p.id)}</span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-medium">{p.name}</h3>
-                    <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      {p.version && <span className="text-[10px] text-muted-foreground">v{p.version}</span>}
-                      {p.supports_resume && <span className="text-[10px] px-1.5 py-0.5 rounded bg-green-500/10 text-green-500">断点续传</span>}
-                      {p.supports_p2p && <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-500/10 text-blue-500">P2P</span>}
-                    </div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    {p.status === 'available' ? (
-                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-green-500/10 text-green-500">已安装</span>
-                    ) : (
-                      <button onClick={() => installPlugin(p.id)} className="px-3 py-1 rounded-lg bg-primary text-primary-foreground text-xs hover:bg-primary/90">安装</button>
-                    )}
-                    {p.status === 'available' && (
-                      <button onClick={() => updatePlugin(p.id)} className="p-1.5 rounded hover:bg-muted text-muted-foreground" title="更新">
-                        <RefreshCw className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Plugin priority chain */}
-          <div className="mt-6 p-4 rounded-xl border bg-card">
-            <h3 className="text-sm font-medium mb-3">🔄 自动降级链（优先级从左到右）</h3>
-            <div className="flex items-center gap-2 flex-wrap">
-              {plugins.sort((a, b) => a.priority - b.priority).map((p, i) => (
-                <span key={p.id} className="flex items-center gap-1">
-                  {i > 0 && <span className="text-muted-foreground text-xs">→</span>}
-                  <span className={`text-xs px-2 py-1 rounded-lg ${p.status === 'available' ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground line-through'}`}>
-                    {getPluginIcon(p.id)} {p.name}
-                  </span>
-                </span>
-              ))}
-            </div>
-          </div>
         </div>
       )}
     </div>

@@ -1,0 +1,259 @@
+"use client";
+import { useState, useEffect, useCallback } from "react";
+import { cn } from "@/lib/utils";
+import { getApiBaseUrl } from "@/lib/api-client";
+import {
+  Link2, RefreshCw, Plus, Trash2, Play, Pause,
+  Webhook, Globe, Plug, Activity, Settings, Send,
+} from "lucide-react";
+
+interface Connector {
+  connector_id: string;
+  name: string;
+  type: string;
+  status: string;
+  endpoint: string;
+  created_at: number;
+  event_count: number;
+}
+
+export function LinkClient() {
+  const [connectors, setConnectors] = useState<Connector[]>([]);
+  const [health, setHealth] = useState<any>(null);
+  const [selected, setSelected] = useState<Connector | null>(null);
+  const [showCreate, setShowCreate] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [newType, setNewType] = useState("webhook_in");
+  const [newEndpoint, setNewEndpoint] = useState("");
+  const [newSecret, setNewSecret] = useState("");
+  const [testPayload, setTestPayload] = useState("{}");
+  const [testResult, setTestResult] = useState<any>(null);
+  const [loading, setLoading] = useState(false);
+  const apiBase = getApiBaseUrl();
+
+  const fetchHealth = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/link/health`);
+      setHealth(await res.json());
+    } catch {}
+  }, [apiBase]);
+
+  const fetchConnectors = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/link/connectors`);
+      const data = await res.json();
+      setConnectors(data.connectors || []);
+    } catch {}
+  }, [apiBase]);
+
+  useEffect(() => {
+    fetchHealth();
+    fetchConnectors();
+  }, [fetchHealth, fetchConnectors]);
+
+  const handleCreate = async () => {
+    if (!newName.trim()) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/api/link/connectors`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newName,
+          type: newType,
+          endpoint: newEndpoint,
+          secret: newSecret,
+        }),
+      });
+      if (res.ok) {
+        setShowCreate(false);
+        setNewName(""); setNewEndpoint(""); setNewSecret("");
+        fetchConnectors();
+        fetchHealth();
+      }
+    } catch {} finally { setLoading(false); }
+  };
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("确定删除此连接器？")) return;
+    try {
+      await fetch(`${apiBase}/api/link/connectors/${id}`, { method: "DELETE" });
+      setSelected(null);
+      fetchConnectors();
+      fetchHealth();
+    } catch {}
+  };
+
+  const handleTest = async (id: string) => {
+    try {
+      const res = await fetch(`${apiBase}/api/link/connectors/${id}/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: testPayload,
+      });
+      setTestResult(await res.json());
+    } catch {}
+  };
+
+  const typeIcons: Record<string, React.ElementType> = {
+    webhook_in: Webhook,
+    webhook_out: Send,
+    rest_api: Globe,
+    oa_system: Plug,
+    custom: Settings,
+  };
+
+  const typeColors: Record<string, string> = {
+    webhook_in: "text-blue-500 bg-blue-500/10",
+    webhook_out: "text-violet-500 bg-violet-500/10",
+    rest_api: "text-emerald-500 bg-emerald-500/10",
+    oa_system: "text-amber-500 bg-amber-500/10",
+    custom: "text-gray-500 bg-gray-500/10",
+  };
+
+  return (
+    <div className="flex h-full flex-col overflow-hidden">
+      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex items-center gap-3">
+          <Link2 size={20} className="text-teal-500" />
+          <h1 className="text-lg font-semibold">OpenLink 突触系统</h1>
+          <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-500">
+            双向集成
+          </span>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={() => setShowCreate(true)}
+            className="flex items-center gap-1.5 rounded-lg bg-teal-500 px-3 py-1.5 text-sm text-white hover:bg-teal-600">
+            <Plus size={14} /> 新建连接
+          </button>
+          <button onClick={() => { fetchHealth(); fetchConnectors(); }}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
+            <RefreshCw size={14} />
+          </button>
+        </div>
+      </div>
+
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        {/* Stats */}
+        {health && (
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <span className="text-xs text-muted-foreground">连接器</span>
+              <p className="text-2xl font-bold">{health.total_connectors || 0}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <span className="text-xs text-muted-foreground">活跃</span>
+              <p className="text-2xl font-bold text-emerald-500">{health.active || 0}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <span className="text-xs text-muted-foreground">总事件</span>
+              <p className="text-2xl font-bold">{health.total_events || 0}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <span className="text-xs text-muted-foreground">类型分布</span>
+              <p className="text-xs font-mono mt-1">{Object.entries(health.by_type || {}).map(([k, v]) => `${k}:${v}`).join(" · ")}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="flex gap-6">
+          {/* Connector List */}
+          <div className="w-80 space-y-3">
+            {connectors.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                <Plug size={40} className="mb-3 opacity-30" />
+                <p className="text-sm">暂无连接器</p>
+              </div>
+            ) : connectors.map((c) => {
+              const Icon = typeIcons[c.type] || Plug;
+              const colorCls = typeColors[c.type] || "text-gray-500 bg-gray-500/10";
+              return (
+                <div key={c.connector_id}
+                  onClick={() => setSelected(c)}
+                  className={cn(
+                    "rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-md",
+                    selected?.connector_id === c.connector_id && "ring-2 ring-teal-500"
+                  )}>
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className={cn("rounded-lg p-1.5", colorCls)}><Icon size={14} /></div>
+                    <span className="font-medium text-sm">{c.name}</span>
+                    <span className={cn("text-xs ml-auto", c.status === "active" ? "text-emerald-500" : "text-muted-foreground")}>
+                      {c.status}
+                    </span>
+                  </div>
+                  <div className="text-xs text-muted-foreground font-mono truncate">{c.endpoint || "无 endpoint"}</div>
+                  <div className="text-xs text-muted-foreground mt-1">事件: {c.event_count}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Detail Panel */}
+          {selected && (
+            <div className="flex-1 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-semibold">{selected.name}</h3>
+                <div className="flex gap-2">
+                  <button onClick={() => handleTest(selected.connector_id)}
+                    className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
+                    <Activity size={12} /> 测试
+                  </button>
+                  <button onClick={() => handleDelete(selected.connector_id)}
+                    className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
+                    <Trash2 size={12} /> 删除
+                  </button>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4 text-sm">
+                <div><span className="text-muted-foreground">类型:</span> {selected.type}</div>
+                <div><span className="text-muted-foreground">状态:</span> {selected.status}</div>
+                <div className="col-span-2"><span className="text-muted-foreground">Endpoint:</span> <span className="font-mono text-xs">{selected.endpoint}</span></div>
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">测试 Payload (JSON)</label>
+                <textarea value={testPayload} onChange={(e) => setTestPayload(e.target.value)}
+                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono min-h-[80px] mt-1" />
+              </div>
+              {testResult && (
+                <div className="rounded-lg border border-border bg-muted p-3">
+                  <pre className="text-xs">{JSON.stringify(testResult, null, 2)}</pre>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Create Modal */}
+        {showCreate && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+            <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4">
+              <h3 className="font-semibold">新建连接器</h3>
+              <input value={newName} onChange={(e) => setNewName(e.target.value)}
+                placeholder="连接器名称" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+              <select value={newType} onChange={(e) => setNewType(e.target.value)}
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                <option value="webhook_in">Webhook (入站)</option>
+                <option value="webhook_out">Webhook (出站)</option>
+                <option value="rest_api">REST API</option>
+                <option value="oa_system">OA 系统</option>
+                <option value="custom">自定义</option>
+              </select>
+              <input value={newEndpoint} onChange={(e) => setNewEndpoint(e.target.value)}
+                placeholder="Endpoint URL" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+              <input value={newSecret} onChange={(e) => setNewSecret(e.target.value)}
+                placeholder="Secret (可选)" type="password" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+              <div className="flex justify-end gap-2">
+                <button onClick={() => setShowCreate(false)}
+                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">取消</button>
+                <button onClick={handleCreate} disabled={loading}
+                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm text-white hover:bg-teal-600 disabled:opacity-50">
+                  {loading ? "创建中..." : "创建"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
