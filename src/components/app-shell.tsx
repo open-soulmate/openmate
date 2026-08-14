@@ -15,6 +15,7 @@ import {
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
   Zap, Activity,
   Sparkles,
+  Brain,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId } from "@/lib/api-client";
@@ -94,6 +95,7 @@ export function AppShell() {
         { href: "/vein", label: t("nav.vein") || "血管", icon: Droplets },
         { href: "/gene", label: t("nav.gene") || "基因", icon: Dna },
         { href: "/vital", label: t("nav.vital") || "体征", icon: Activity },
+        { href: "/hippo", label: t("nav.hippo") || "海马体", icon: Brain },
       ],
     },
     {
