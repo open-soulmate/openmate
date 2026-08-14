@@ -18,6 +18,8 @@ import {
   Brain,
   Bolt,
   Heart,
+  Home,
+  MousePointer,
   } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId } from "@/lib/api-client";
@@ -114,6 +116,8 @@ export function AppShell() {
         { href: "/mirror", label: t("nav.mirror") || "镜像", icon: Layers },
         { href: "/link", label: t("nav.link") || "突触", icon: Link2 },
         { href: "/gland", label: t("nav.gland") || "腺体", icon: Zap },
+        { href: "/nest", label: t("nav.nest") || "巢穴", icon: Home },
+        { href: "/limb", label: t("nav.limb") || "四肢", icon: MousePointer },
       ],
     },
     {
