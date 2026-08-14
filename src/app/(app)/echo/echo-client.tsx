@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 
 export function EchoClient() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"send" | "channels" | "history">("send");
   const [health, setHealth] = useState<any>(null);
   const [channels, setChannels] = useState<any[]>([]);
@@ -104,14 +106,14 @@ export function EchoClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Volume2 size={20} className="text-pink-500" />
-          <h1 className="text-lg font-semibold">OpenEcho 回声系统</h1>
+          <h1 className="text-lg font-semibold">{t("echo.title") || "回声 · 消息推送"}</h1>
           <span className="rounded-full bg-pink-500/10 px-2 py-0.5 text-xs font-medium text-pink-500">
             消息推送
           </span>
         </div>
         <button onClick={() => { fetchHealth(); tab === "channels" && fetchChannels(); tab === "history" && fetchHistory(); }}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
-          <RefreshCw size={14} /> 刷新
+          <RefreshCw size={14} /> {t("common.refresh") || "刷新"}
         </button>
       </div>
 
@@ -140,11 +142,11 @@ export function EchoClient() {
 
         {/* Tabs */}
         <div className="flex gap-2">
-          {tabs.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
+          {tabs.map((tabItem) => (
+            <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
               className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm",
-                tab === t.id ? "bg-pink-500/10 text-pink-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
-              <t.icon size={14} /> {t.label}
+                tab === tabItem.id ? "bg-pink-500/10 text-pink-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
+              <tabItem.icon size={14} /> {tabItem.label}
             </button>
           ))}
         </div>

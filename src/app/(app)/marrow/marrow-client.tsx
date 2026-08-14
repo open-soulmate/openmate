@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
@@ -8,6 +9,7 @@ import {
 } from "lucide-react";
 
 export function MarrowClient() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"backup" | "export">("backup");
   const [health, setHealth] = useState<any>(null);
   const [backups, setBackups] = useState<any[]>([]);
@@ -87,8 +89,8 @@ export function MarrowClient() {
   }
 
   const tabs = [
-    { id: "backup" as const, label: "备份恢复", icon: Archive },
-    { id: "export" as const, label: "数据导出", icon: Download },
+    { id: "backup" as const, label: t("marrow.backup") || "备份恢复", icon: Archive },
+    { id: "export" as const, label: t("marrow.export") || "数据导出", icon: Download },
   ];
 
   return (
@@ -96,14 +98,14 @@ export function MarrowClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Bone size={20} className="text-amber-600" />
-          <h1 className="text-lg font-semibold">OpenMarrow 骨髓系统</h1>
+          <h1 className="text-lg font-semibold">{t("marrow.title") || "骨髓 · 备份恢复"}</h1>
           <span className="rounded-full bg-amber-600/10 px-2 py-0.5 text-xs font-medium text-amber-600">
             备份 · 恢复 · 迁移
           </span>
         </div>
         <button onClick={() => { fetchHealth(); fetchBackups(); fetchExports(); }}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors">
-          <RefreshCw size={14} /> 刷新
+          <RefreshCw size={14} /> {t("common.refresh") || "刷新"}
         </button>
       </div>
 
@@ -138,11 +140,11 @@ export function MarrowClient() {
 
         {/* Tabs */}
         <div className="flex gap-2">
-          {tabs.map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
+          {tabs.map((tabItem) => (
+            <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
               className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                tab === t.id ? "bg-amber-600/10 text-amber-700 font-medium" : "hover:bg-muted text-muted-foreground")}>
-              <t.icon size={14} /> {t.label}
+                tab === tabItem.id ? "bg-amber-600/10 text-amber-700 font-medium" : "hover:bg-muted text-muted-foreground")}>
+              <tabItem.icon size={14} /> {tabItem.label}
             </button>
           ))}
         </div>
@@ -153,13 +155,13 @@ export function MarrowClient() {
             <button onClick={handleBackup} disabled={loading}
               className="flex items-center gap-2 rounded-lg bg-amber-600 px-4 py-2 text-sm text-white hover:bg-amber-700 disabled:opacity-50">
               {loading ? <Loader2 size={14} className="animate-spin" /> : <Archive size={14} />}
-              {loading ? "备份中..." : "创建新备份"}
+              {loading ? (t("common.backingUp") || "备份中...") : (t("marrow.createBackup") || "创建新备份")}
             </button>
             <div className="rounded-xl border border-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">备份ID</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("marrow.backupId") || "备份ID"}</th>
                     <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">时间</th>
                     <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">大小</th>
                     <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">类型</th>
@@ -178,11 +180,11 @@ export function MarrowClient() {
                       <td className="px-4 py-2.5 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button onClick={() => handleRestore(b.backup_id)}
-                            className="rounded-md p-1.5 text-muted-foreground hover:text-amber-600 hover:bg-amber-600/10" title="恢复">
+                            className="rounded-md p-1.5 text-muted-foreground hover:text-amber-600 hover:bg-amber-600/10" title={t("marrow.restore") || "恢复"}>
                             <Play size={14} />
                           </button>
                           <button onClick={() => handleDeleteBackup(b.backup_id)}
-                            className="rounded-md p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" title="删除">
+                            className="rounded-md p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10" title={t("marrow.delete") || "删除"}>
                             <Trash2 size={14} />
                           </button>
                         </div>
@@ -201,7 +203,7 @@ export function MarrowClient() {
             <button onClick={handleExport} disabled={loading}
               className="flex items-center gap-2 rounded-lg bg-blue-500 px-4 py-2 text-sm text-white hover:bg-blue-600 disabled:opacity-50">
               {loading ? <Loader2 size={14} className="animate-spin" /> : <Download size={14} />}
-              {loading ? "导出中..." : "创建数据导出"}
+              {loading ? (t("common.exporting") || "导出中...") : (t("marrow.createExport") || "创建数据导出")}
             </button>
             <div className="rounded-xl border border-border overflow-hidden">
               <table className="w-full text-sm">

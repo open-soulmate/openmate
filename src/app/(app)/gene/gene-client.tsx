@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
@@ -18,6 +19,7 @@ interface Template {
 }
 
 export function GeneClient() {
+  const { t } = useTranslation();
   const [templates, setTemplates] = useState<Template[]>([]);
   const [health, setHealth] = useState<any>(null);
   const [filter, setFilter] = useState("");
@@ -116,7 +118,7 @@ export function GeneClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Dna size={20} className="text-emerald-500" />
-          <h1 className="text-lg font-semibold">OpenGene 基因系统</h1>
+          <h1 className="text-lg font-semibold">{t("gene.title") || "基因 · 模板库"}</h1>
           <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-500">
             模板库
           </span>

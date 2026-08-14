@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
@@ -17,6 +18,7 @@ interface Sandbox {
 }
 
 export function MirrorClient() {
+  const { t } = useTranslation();
   const [sandboxes, setSandboxes] = useState<Sandbox[]>([]);
   const [health, setHealth] = useState<any>(null);
   const [selected, setSelected] = useState<Sandbox | null>(null);
@@ -117,7 +119,7 @@ export function MirrorClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Layers size={20} className="text-indigo-500" />
-          <h1 className="text-lg font-semibold">OpenMirror 镜像系统</h1>
+          <h1 className="text-lg font-semibold">{t("mirror.title") || "镜像 · 沙箱测试"}</h1>
           <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-500">
             沙箱测试
           </span>
