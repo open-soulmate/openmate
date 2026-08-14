@@ -64,6 +64,16 @@ export const api = {
   getEntities: (userId: string) => request(`/api/graph/entities?user_id=${userId}`),
   getRelations: () => request('/api/graph/relations'),
 
+  // Entity CRUD
+  createEntity: (userId: string, data: { name: string; type: string; description?: string; properties?: Record<string, unknown> }) =>
+    request(`/api/entity/?user_id=${userId}`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteEntity: (entityId: string, userId: string) =>
+    request(`/api/entity/${entityId}?user_id=${userId}`, { method: 'DELETE' }),
+
+  // Relation CRUD
+  createRelation: (data: { source_id: string; target_id: string; type: string }) =>
+    request('/api/graph/relations', { method: 'POST', body: JSON.stringify(data) }),
+
   // Health
   health: () => request('/api/health'),
 };
