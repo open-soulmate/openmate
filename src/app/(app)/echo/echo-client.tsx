@@ -21,6 +21,7 @@ export function EchoClient() {
   const [sendResult, setSendResult] = useState<any>(null);
   const [chEndpoint, setChEndpoint] = useState("");
   const [chToken, setChToken] = useState("");
+  const [chExtra, setChExtra] = useState("");
   const apiBase = getApiBaseUrl();
 
   const fetchHealth = useCallback(async () => {
@@ -85,12 +86,16 @@ export function EchoClient() {
 
   const handleConfigure = async (channel: string) => {
     try {
+      let extra = {};
+      if (chExtra.trim()) {
+        try { extra = JSON.parse(chExtra); } catch { /* ignore */ }
+      }
       await fetch(`${apiBase}/api/echo/channels/configure`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ channel, endpoint: chEndpoint, token: chToken, enabled: true }),
+        body: JSON.stringify({ channel, endpoint: chEndpoint, token: chToken, enabled: true, extra }),
       });
-      setChEndpoint(""); setChToken("");
+      setChEndpoint(""); setChToken(""); setChExtra("");
       fetchChannels();
     } catch {}
   };
@@ -159,9 +164,11 @@ export function EchoClient() {
                 className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
                 <option value="webhook">Webhook</option>
                 <option value="dingtalk">钉钉</option>
-                <option value="wechat">企业微信</option>
+                <option value="wechat_work">企业微信</option>
+                <option value="feishu">飞书</option>
+                <option value="telegram">Telegram</option>
                 <option value="email">邮件</option>
-                <option value="sms">短信</option>
+                <option value="console">控制台</option>
               </select>
               <input value={sendTarget} onChange={(e) => setSendTarget(e.target.value)}
                 placeholder="目标地址 (可选)" className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
@@ -196,30 +203,37 @@ export function EchoClient() {
               <div>
                 <label className="text-xs text-muted-foreground">Endpoint</label>
                 <input value={chEndpoint} onChange={(e) => setChEndpoint(e.target.value)}
-                  placeholder="Webhook URL / API endpoint"
+                  placeholder="Webhook URL / SMTP host"
                   className="block rounded-lg border border-border bg-background px-3 py-2 text-sm w-80" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">Token</label>
+                <label className="text-xs text-muted-foreground">Token / Password</label>
                 <input value={chToken} onChange={(e) => setChToken(e.target.value)}
-                  placeholder="API Token" type="password"
+                  placeholder="API Token / SMTP password" type="password"
                   className="block rounded-lg border border-border bg-background px-3 py-2 text-sm w-48" />
+              </div>
+              <div>
+                <label className="text-xs text-muted-foreground">Extra (JSON)</label>
+                <input value={chExtra} onChange={(e) => setChExtra(e.target.value)}
+                  placeholder='{"smtp_port":587,"username":"..."}'
+                  className="block rounded-lg border border-border bg-background px-3 py-2 text-sm w-64" />
               </div>
             </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {channels.map((ch) => (
-                <div key={ch.name} className="rounded-xl border border-border bg-card p-4">
+                <div key={ch.channel} className="rounded-xl border border-border bg-card p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Radio size={16} className={ch.enabled ? "text-emerald-500" : "text-muted-foreground"} />
-                      <span className="font-medium text-sm">{ch.name}</span>
+                      <span className="font-medium text-sm">{ch.channel}</span>
                     </div>
                     <span className={cn("text-xs", ch.enabled ? "text-emerald-500" : "text-muted-foreground")}>
                       {ch.enabled ? "已启用" : "未启用"}
                     </span>
                   </div>
-                  {ch.endpoint && <p className="text-xs text-muted-foreground font-mono truncate">{ch.endpoint}</p>}
-                  <button onClick={() => handleConfigure(ch.name)}
+                  {ch.has_endpoint && <p className="text-xs text-muted-foreground font-mono">已配置 endpoint</p>}
+                  {ch.has_token && <p className="text-xs text-muted-foreground">已配置 token</p>}
+                  <button onClick={() => handleConfigure(ch.channel)}
                     className="mt-2 rounded-lg border border-border px-3 py-1 text-xs hover:bg-muted">
                     更新配置
                   </button>
@@ -245,12 +259,12 @@ export function EchoClient() {
                 {history.length === 0 ? (
                   <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground text-xs">暂无历史</td></tr>
                 ) : history.map((m, i) => (
-                  <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(m.ts * 1000).toLocaleString("zh-CN")}</td>
+                  <tr key={m.msg_id || i} className="border-b border-border last:border-0 hover:bg-muted/30">
+                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(m.timestamp * 1000).toLocaleString("zh-CN")}</td>
                     <td className="px-4 py-2.5 text-xs font-mono">{m.channel}</td>
                     <td className="px-4 py-2.5 text-xs">{m.title}</td>
                     <td className="px-4 py-2.5">
-                      {m.success ? <CheckCircle size={14} className="text-emerald-500" /> : <XCircle size={14} className="text-red-500" />}
+                      {m.status === "sent" ? <CheckCircle size={14} className="text-emerald-500" /> : <XCircle size={14} className="text-red-500" />}
                     </td>
                   </tr>
                 ))}
