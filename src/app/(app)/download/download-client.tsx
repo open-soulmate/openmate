@@ -359,55 +359,6 @@ export function DownloadClient() {
         </div>
         );
       })()}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <FolderOpen className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm">下载目录: <strong className="font-mono">{config.download_dir}</strong></span>
-            </div>
-            <div className="flex gap-2">
-              <button onClick={loadCache} className="px-3 py-1.5 rounded-lg border hover:bg-muted text-xs flex items-center gap-1"><RefreshCw className="w-3 h-3" /> 刷新</button>
-              <button onClick={() => window.open(`file://${config.download_dir}`, '_blank')} className="px-3 py-1.5 rounded-lg border hover:bg-muted text-xs flex items-center gap-1"><ExternalLink className="w-3 h-3" /> 打开文件夹</button>
-            </div>
-          </div>
-          {cacheFiles.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <FolderOpen className="w-10 h-10 mx-auto mb-2 opacity-30" /><p>暂无下载文件</p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {cacheFiles.map(f => {
-                const ext = f.name.split('.').pop()?.toLowerCase() || '';
-                const isVideo = ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'ts'].includes(ext);
-                const isAudio = ['mp3', 'flac', 'wav', 'aac', 'ogg', 'm4a'].includes(ext);
-                const isArchive = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz'].includes(ext);
-                const isDoc = ['pdf', 'doc', 'docx', 'txt', 'md', 'epub'].includes(ext);
-                const FileIcon = isVideo ? FileVideo : isAudio ? FileAudio : isArchive ? FileArchive : isDoc ? FileText : File;
-                const iconColor = isVideo ? 'text-purple-400' : isAudio ? 'text-blue-400' : isArchive ? 'text-yellow-400' : isDoc ? 'text-green-400' : 'text-muted-foreground';
-                const filePath = `${config.download_dir}/${f.name}`;
-                return (
-                  <div key={f.name}
-                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors cursor-pointer group"
-                    onClick={() => { navigator.clipboard.writeText(filePath); }}
-                    title={`点击复制路径: ${filePath}`}>
-                    <div className="flex items-center gap-3 min-w-0 flex-1">
-                      <FileIcon className={`w-5 h-5 shrink-0 ${iconColor}`} />
-                      <div className="min-w-0">
-                        <div className="text-sm font-medium truncate">{f.name}</div>
-                        <div className="text-xs text-muted-foreground">{formatBytes(f.size)} · {new Date(f.modified * 1000).toLocaleString()}</div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Copy className="w-3.5 h-3.5 text-muted-foreground" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-        );
-      })()}
 
       {/* Settings Tab */}
       {tab === 'settings' && (
