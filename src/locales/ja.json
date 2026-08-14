@@ -51,7 +51,8 @@
     "vision": "視覚",
     "mind": "心",
     "nerve": "神経",
-    "plugins": "プラグイン"
+    "plugins": "プラグイン",
+    "trajectory": "軌跡"
   },
   "dashboard": {
     "title": "システム概要",
@@ -893,5 +894,27 @@
     "steps": "ステップ",
     "startedAt": "開始時刻",
     "completedAt": "完了時刻"
+  },
+  "trajectory": {
+    "title": "軌跡 · Agent実行トレース",
+    "subtitle": "フルチェーントレース · リプレイ · フォーク",
+    "newSession": "新規セッション",
+    "totalSessions": "総セッション",
+    "running": "実行中",
+    "totalEvents": "総イベント",
+    "totalTokens": "総トークン",
+    "allStatus": "すべて",
+    "filterAgent": "エージェントでフィルター...",
+    "createSession": "軌跡セッション作成",
+    "agentId": "エージェントID",
+    "tags": "タグ（カンマ区切り）",
+    "taskDesc": "タスク説明",
+    "task": "タスク",
+    "agent": "エージェント",
+    "status": "ステータス",
+    "events": "イベント",
+    "tokens": "トークン",
+    "createdAt": "作成日時",
+    "noSessions": "軌跡セッションがありません"
   }
 }

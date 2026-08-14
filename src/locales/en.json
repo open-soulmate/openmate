@@ -53,7 +53,8 @@
     "vision": "Vision",
     "mind": "Mind",
     "nerve": "Nerve",
-    "plugins": "Plugins"
+    "plugins": "Plugins",
+    "trajectory": "Trajectory"
   },
   "dashboard": {
     "title": "System Overview",
@@ -895,5 +896,27 @@
     "steps": "Steps",
     "startedAt": "Started At",
     "completedAt": "Completed At"
+  },
+  "trajectory": {
+    "title": "Trajectory · Agent Execution Trace",
+    "subtitle": "Full-chain tracing · Replay · Fork",
+    "newSession": "New Session",
+    "totalSessions": "Total Sessions",
+    "running": "Running",
+    "totalEvents": "Total Events",
+    "totalTokens": "Total Tokens",
+    "allStatus": "All Status",
+    "filterAgent": "Filter by agent...",
+    "createSession": "Create Trajectory Session",
+    "agentId": "Agent ID",
+    "tags": "Tags (comma separated)",
+    "taskDesc": "Task description",
+    "task": "Task",
+    "agent": "Agent",
+    "status": "Status",
+    "events": "Events",
+    "tokens": "Tokens",
+    "createdAt": "Created At",
+    "noSessions": "No trajectory sessions yet"
   }
 }
