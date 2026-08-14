@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { Download, Trash2, RefreshCw, FolderOpen, ArrowDown, CheckCircle, XCircle, Loader2, Plus, Magnet, Video, Settings, Zap, HardDrive, Link } from 'lucide-react';
+import { Download, Trash2, RefreshCw, FolderOpen, ArrowDown, CheckCircle, XCircle, Loader2, Plus, Magnet, Video, Settings, Zap, HardDrive, Link, FileText, FileVideo, FileAudio, FileArchive, File, Copy, ExternalLink, Pause, Play } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api-client';
 
 interface DownloadTask {
@@ -12,6 +12,7 @@ interface DownloadTask {
   speed: number;
   eta: number;
   status: 'pending' | 'downloading' | 'paused' | 'done' | 'error';
+  savePath?: string;
   type: 'http' | 'bt' | 'video' | 'thunder';
   error?: string;
   addedAt: number;
@@ -140,6 +141,7 @@ export function DownloadClient() {
           speed: data.speed || 0, eta: data.eta || 0,
           status: data.status === 'done' ? 'done' : data.status === 'error' ? 'error' : 'downloading',
           type: detectUrlType(newUrl), error: data.error, addedAt: Date.now(),
+          savePath: data.save_path,
         };
         setTasks(prev => [task, ...prev]);
         setNewUrl('');
@@ -150,16 +152,37 @@ export function DownloadClient() {
     setLoading(false);
   };
 
-  const deleteCacheFile = async (filename: string) => {
-    try { await fetch(`${getApiBaseUrl()}/api/download/cache/${filename}`, { method: 'DELETE' }); loadCache(); } catch {}
-  };
-
-  const clearCache = async () => {
-    if (!confirm('确定清空所有缓存？')) return;
-    try { await fetch(`${getApiBaseUrl()}/api/download/cache`, { method: 'DELETE' }); loadCache(); } catch {}
-  };
-
   const removeTask = (id: string) => setTasks(prev => prev.filter(t => t.id !== id));
+
+  const togglePause = (id: string) => {
+    setTasks(prev => prev.map(t =>
+      t.id === id ? { ...t, status: t.status === 'paused' ? 'downloading' : 'paused' } : t
+    ));
+  };
+
+  const openFileDir = async (task: DownloadTask) => {
+    try {
+      const filePath = task.savePath || `${config.download_dir}/${task.filename}`;
+      await fetch(`${getApiBaseUrl()}/api/download/open-file`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: filePath }),
+      });
+    } catch {}
+  };
+
+  const deleteFile = async (task: DownloadTask) => {
+    try {
+      const filePath = task.savePath || `${config.download_dir}/${task.filename}`;
+      await fetch(`${getApiBaseUrl()}/api/download/delete-file`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: filePath }),
+      });
+      removeTask(task.id);
+      loadCache();
+    } catch {}
+  };
 
   const urlType = detectUrlType(newUrl);
 
@@ -205,7 +228,7 @@ export function DownloadClient() {
 
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
-        {([['downloads', '下载任务'], ['cache', '缓存管理'], ['settings', 'OpenWing设置']] as const).map(([key, label]) => (
+        {([['downloads', '下载任务'], ['cache', '下载文件'], ['settings', 'OpenWing设置']] as const).map(([key, label]) => (
           <button key={key} onClick={() => setTab(key)}
             className={`px-4 py-1.5 rounded-md text-sm transition-colors ${tab === key ? 'bg-card text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
             {label}
@@ -234,20 +257,45 @@ export function DownloadClient() {
                         {task.status === 'done' && <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />}
                         {task.status === 'error' && <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
                         {task.status === 'downloading' && <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />}
+                        {task.status === 'paused' && <Pause className="w-4 h-4 text-yellow-500 shrink-0" />}
                         <h3 className="text-sm font-medium truncate">{task.filename}</h3>
                         <TypeTag type={task.type} />
                       </div>
                       <p className="text-xs text-muted-foreground truncate mt-1">{task.url}</p>
                     </div>
-                    <button onClick={() => removeTask(task.id)} className="p-1 rounded hover:bg-muted text-muted-foreground ml-2" title="移除">
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1 ml-2 shrink-0">
+                      {task.status === 'done' && (
+                        <>
+                          <button onClick={() => openFileDir(task)} className="px-2.5 py-1 rounded-md text-xs bg-primary/10 text-primary hover:bg-primary/20 flex items-center gap-1" title="打开文件所在目录">
+                            <FolderOpen className="w-3 h-3" /> 打开文件
+                          </button>
+                          <button onClick={() => deleteFile(task)} className="px-2.5 py-1 rounded-md text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 flex items-center gap-1" title="删除已下载文件">
+                            <Trash2 className="w-3 h-3" /> 删除文件
+                          </button>
+                        </>
+                      )}
+                      {task.status === 'downloading' && (
+                        <button onClick={() => togglePause(task.id)} className="px-2.5 py-1 rounded-md text-xs bg-yellow-500/10 text-yellow-400 hover:bg-yellow-500/20 flex items-center gap-1" title="暂停下载">
+                          <Pause className="w-3 h-3" /> 暂停
+                        </button>
+                      )}
+                      {task.status === 'paused' && (
+                        <button onClick={() => togglePause(task.id)} className="px-2.5 py-1 rounded-md text-xs bg-green-500/10 text-green-400 hover:bg-green-500/20 flex items-center gap-1" title="继续下载">
+                          <Play className="w-3 h-3" /> 继续
+                        </button>
+                      )}
+                      {task.status === 'error' && (
+                        <button onClick={() => removeTask(task.id)} className="p-1 rounded hover:bg-muted text-muted-foreground" title="移除">
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   {task.status !== 'done' && (
                     <div className="mb-2">
                       <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-                        <div className={`h-full rounded-full transition-all duration-300 ${task.status === 'error' ? 'bg-red-500' : 'bg-primary'}`}
+                        <div className={`h-full rounded-full transition-all duration-300 ${task.status === 'error' ? 'bg-red-500' : task.status === 'paused' ? 'bg-yellow-500' : 'bg-primary'}`}
                           style={{ width: `${task.totalBytes > 0 ? (task.downloadedBytes / task.totalBytes * 100) : 0}%` }} />
                       </div>
                     </div>
@@ -256,9 +304,10 @@ export function DownloadClient() {
                   <div className="flex items-center gap-4 text-xs text-muted-foreground">
                     {task.totalBytes > 0 && <span>{formatBytes(task.downloadedBytes)} / {formatBytes(task.totalBytes)}</span>}
                     {task.status === 'done' && <span className="text-green-500">{formatBytes(task.downloadedBytes)}</span>}
-                    {task.speed > 0 && <span className="flex items-center gap-1"><ArrowDown className="w-3 h-3" />{formatSpeed(task.speed)}</span>}
-                    {task.eta > 0 && <span>ETA: {formatEta(task.eta)}</span>}
+                    {task.speed > 0 && task.status === 'downloading' && <span className="flex items-center gap-1"><ArrowDown className="w-3 h-3" />{formatSpeed(task.speed)}</span>}
+                    {task.eta > 0 && task.status === 'downloading' && <span>ETA: {formatEta(task.eta)}</span>}
                     {task.status === 'done' && <span className="text-green-500">✅ 完成</span>}
+                    {task.status === 'paused' && <span className="text-yellow-500">⏸ 已暂停</span>}
                     {task.status === 'error' && <span className="text-red-500">❌ {task.error || '失败'}</span>}
                   </div>
                 </div>
@@ -268,39 +317,52 @@ export function DownloadClient() {
         </div>
       )}
 
-      {/* Cache Tab */}
+      {/* Download Files Tab */}
       {tab === 'cache' && (
         <div>
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <HardDrive className="w-5 h-5 text-muted-foreground" />
-              <span className="text-sm">缓存大小: <strong>{formatBytes(cacheSize)}</strong></span>
+              <FolderOpen className="w-5 h-5 text-muted-foreground" />
+              <span className="text-sm">下载目录: <strong className="font-mono">{config.download_dir}</strong></span>
             </div>
             <div className="flex gap-2">
               <button onClick={loadCache} className="px-3 py-1.5 rounded-lg border hover:bg-muted text-xs flex items-center gap-1"><RefreshCw className="w-3 h-3" /> 刷新</button>
-              {cacheFiles.length > 0 && <button onClick={clearCache} className="px-3 py-1.5 rounded-lg border border-red-500/30 text-red-500 hover:bg-red-500/5 text-xs">清空缓存</button>}
+              <button onClick={() => window.open(`file://${config.download_dir}`, '_blank')} className="px-3 py-1.5 rounded-lg border hover:bg-muted text-xs flex items-center gap-1"><ExternalLink className="w-3 h-3" /> 打开文件夹</button>
             </div>
           </div>
           {cacheFiles.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              <FolderOpen className="w-10 h-10 mx-auto mb-2 opacity-30" /><p>暂无缓存文件</p>
+              <FolderOpen className="w-10 h-10 mx-auto mb-2 opacity-30" /><p>暂无下载文件</p>
             </div>
           ) : (
             <div className="space-y-2">
-              {cacheFiles.map(f => (
-                <div key={f.name} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors">
-                  <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <FolderOpen className="w-4 h-4 text-muted-foreground shrink-0" />
-                    <div className="min-w-0">
-                      <div className="text-sm font-medium truncate">{f.name}</div>
-                      <div className="text-xs text-muted-foreground">{formatBytes(f.size)} · {new Date(f.modified * 1000).toLocaleString()}</div>
+              {cacheFiles.map(f => {
+                const ext = f.name.split('.').pop()?.toLowerCase() || '';
+                const isVideo = ['mp4', 'mkv', 'avi', 'mov', 'wmv', 'flv', 'webm', 'ts'].includes(ext);
+                const isAudio = ['mp3', 'flac', 'wav', 'aac', 'ogg', 'm4a'].includes(ext);
+                const isArchive = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz'].includes(ext);
+                const isDoc = ['pdf', 'doc', 'docx', 'txt', 'md', 'epub'].includes(ext);
+                const FileIcon = isVideo ? FileVideo : isAudio ? FileAudio : isArchive ? FileArchive : isDoc ? FileText : File;
+                const iconColor = isVideo ? 'text-purple-400' : isAudio ? 'text-blue-400' : isArchive ? 'text-yellow-400' : isDoc ? 'text-green-400' : 'text-muted-foreground';
+                const filePath = `${config.download_dir}/${f.name}`;
+                return (
+                  <div key={f.name}
+                    className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/30 transition-colors cursor-pointer group"
+                    onClick={() => { navigator.clipboard.writeText(filePath); }}
+                    title={`点击复制路径: ${filePath}`}>
+                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                      <FileIcon className={`w-5 h-5 shrink-0 ${iconColor}`} />
+                      <div className="min-w-0">
+                        <div className="text-sm font-medium truncate">{f.name}</div>
+                        <div className="text-xs text-muted-foreground">{formatBytes(f.size)} · {new Date(f.modified * 1000).toLocaleString()}</div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <Copy className="w-3.5 h-3.5 text-muted-foreground" />
                     </div>
                   </div>
-                  <button onClick={() => deleteCacheFile(f.name)} className="p-1.5 rounded hover:bg-muted text-muted-foreground ml-2" title="删除">
-                    <Trash2 className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
