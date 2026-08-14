@@ -98,6 +98,11 @@ export default function AIGroupsPage() {
       const res = await fetch(`${API_BASE}/api/ai-groups`);
       const data = await res.json();
       setGroups(data);
+      // Sync selectedGroup with latest data
+      if (selectedGroup) {
+        const updated = data.find((g: AIGroup) => g.id === selectedGroup.id);
+        if (updated) setSelectedGroup(updated);
+      }
       if (!selectedGroup && data.length > 0) {
         selectGroup(data[0]);
       }
@@ -170,6 +175,10 @@ export default function AIGroupsPage() {
       body: JSON.stringify({ name: editingName }),
     });
     setEditingGroupId(null);
+    // Update selectedGroup immediately
+    if (selectedGroup?.id === id) {
+      setSelectedGroup(prev => prev ? { ...prev, name: editingName } : prev);
+    }
     fetchGroups();
   };
 
@@ -180,6 +189,8 @@ export default function AIGroupsPage() {
       body: JSON.stringify({ name: editGroupName, description: editGroupDesc }),
     });
     setShowGroupSettings(false);
+    // Update selectedGroup immediately
+    setSelectedGroup(prev => prev ? { ...prev, name: editGroupName, description: editGroupDesc } : prev);
     fetchGroups();
   };
 
