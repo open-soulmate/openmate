@@ -6,6 +6,7 @@ import { getApiBaseUrl } from "@/lib/api-client";
 import {
   RefreshCw, Plus, Play, Pause, Trash2,
   Camera, Terminal, Settings, Box, Loader2, Layers,
+  Sparkles,
 } from "lucide-react";
 
 interface Sandbox {
@@ -28,6 +29,9 @@ export function MirrorClient() {
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [loading, setLoading] = useState(false);
+  const [logMessage, setLogMessage] = useState("");
+  const [varKey, setVarKey] = useState("");
+  const [varValue, setVarValue] = useState("");
   const apiBase = getApiBaseUrl();
 
   const fetchHealth = useCallback(async () => {
@@ -98,11 +102,65 @@ export function MirrorClient() {
     } catch {}
   };
 
+  const handlePause = async (id: string) => {
+    try {
+      await fetch(`${apiBase}/api/mirror/sandboxes/${id}/pause`, { method: "POST" });
+      fetchSandboxes();
+      if (selected?.sandbox_id === id) {
+        setSelected({ ...selected, status: "paused" });
+      }
+    } catch {}
+  };
+
+  const handleResume = async (id: string) => {
+    try {
+      await fetch(`${apiBase}/api/mirror/sandboxes/${id}/resume`, { method: "POST" });
+      fetchSandboxes();
+      if (selected?.sandbox_id === id) {
+        setSelected({ ...selected, status: "active" });
+      }
+    } catch {}
+  };
+
   const handleDestroy = async (id: string) => {
     if (!confirm("确定销毁此沙箱？")) return;
     try {
       await fetch(`${apiBase}/api/mirror/sandboxes/${id}`, { method: "DELETE" });
       setSelected(null);
+      fetchSandboxes();
+      fetchHealth();
+    } catch {}
+  };
+
+  const handleAddLog = async (id: string) => {
+    if (!logMessage.trim()) return;
+    try {
+      await fetch(`${apiBase}/api/mirror/sandboxes/${id}/log`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level: "info", message: logMessage }),
+      });
+      setLogMessage("");
+      fetchLogs(id);
+    } catch {}
+  };
+
+  const handleSetVariable = async (id: string) => {
+    if (!varKey.trim()) return;
+    try {
+      await fetch(`${apiBase}/api/mirror/sandboxes/${id}/variables`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ key: varKey, value: varValue }),
+      });
+      setVarKey(""); setVarValue("");
+      fetchVariables(id);
+    } catch {}
+  };
+
+  const handleCleanup = async () => {
+    try {
+      await fetch(`${apiBase}/api/mirror/cleanup`, { method: "POST" });
       fetchSandboxes();
       fetchHealth();
     } catch {}
@@ -125,6 +183,10 @@ export function MirrorClient() {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button onClick={handleCleanup}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted">
+            <Sparkles size={12} /> 清理过期
+          </button>
           <button onClick={() => setShowCreate(true)}
             className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-1.5 text-sm text-white hover:bg-indigo-600">
             <Plus size={14} /> 新建沙箱
@@ -190,8 +252,28 @@ export function MirrorClient() {
           {selected && (
             <div className="flex-1 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">{selected.name}</h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold">{selected.name}</h3>
+                  <span className={cn("text-xs px-2 py-0.5 rounded-full",
+                    selected.status === "active" ? "bg-emerald-500/10 text-emerald-500" :
+                    selected.status === "paused" ? "bg-amber-500/10 text-amber-500" :
+                    "bg-muted text-muted-foreground"
+                  )}>
+                    {selected.status}
+                  </span>
+                </div>
                 <div className="flex gap-2">
+                  {selected.status === "active" ? (
+                    <button onClick={() => handlePause(selected.sandbox_id)}
+                      className="flex items-center gap-1 rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs text-amber-600 hover:bg-amber-500/10">
+                      <Pause size={12} /> 暂停
+                    </button>
+                  ) : selected.status === "paused" ? (
+                    <button onClick={() => handleResume(selected.sandbox_id)}
+                      className="flex items-center gap-1 rounded-lg border border-emerald-500/30 px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-500/10">
+                      <Play size={12} /> 恢复
+                    </button>
+                  ) : null}
                   <button onClick={() => handleSnapshot(selected.sandbox_id)}
                     className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
                     <Camera size={12} /> 快照
@@ -209,7 +291,7 @@ export function MirrorClient() {
                 {Object.keys(variables).length === 0 ? (
                   <p className="text-xs text-muted-foreground">暂无变量</p>
                 ) : (
-                  <div className="space-y-1">
+                  <div className="space-y-1 mb-3">
                     {Object.entries(variables).map(([k, v]) => (
                       <div key={k} className="flex gap-2 text-xs">
                         <span className="font-mono text-indigo-500">{k}</span>
@@ -219,11 +301,32 @@ export function MirrorClient() {
                     ))}
                   </div>
                 )}
+                <div className="flex gap-2 mt-2">
+                  <input value={varKey} onChange={(e) => setVarKey(e.target.value)}
+                    placeholder="键" className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
+                  <input value={varValue} onChange={(e) => setVarValue(e.target.value)}
+                    placeholder="值" className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
+                  <button onClick={() => handleSetVariable(selected.sandbox_id)}
+                    className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
+                    设置
+                  </button>
+                </div>
               </div>
 
               {/* Logs */}
               <div className="rounded-xl border border-border p-4">
-                <h4 className="text-sm font-medium mb-2">日志 ({logs.length})</h4>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-sm font-medium">日志 ({logs.length})</h4>
+                  <div className="flex gap-2">
+                    <input value={logMessage} onChange={(e) => setLogMessage(e.target.value)}
+                      onKeyDown={(e) => e.key === "Enter" && handleAddLog(selected.sandbox_id)}
+                      placeholder="添加日志..." className="rounded border border-border bg-background px-2 py-1 text-xs w-48" />
+                    <button onClick={() => handleAddLog(selected.sandbox_id)}
+                      className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
+                      添加
+                    </button>
+                  </div>
+                </div>
                 <div className="max-h-60 overflow-y-auto space-y-1">
                   {logs.length === 0 ? (
                     <p className="text-xs text-muted-foreground">暂无日志</p>
