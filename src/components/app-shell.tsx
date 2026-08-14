@@ -44,10 +44,10 @@ export function AppShell() {
   const setStoreTheme = useAppStore((s) => s.setTheme);
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const { t } = useTranslation();
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set([t("nav.internalServices") || "内部服务"]));
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const menuRef = useRef<HTMLDivElement>(null);
-  const { t } = useTranslation();
 
   const navGroups: NavGroup[] = [
     {
@@ -91,17 +91,22 @@ export function AppShell() {
     {
       label: t("nav.organsGroup") || "器官",
       items: [
-        { href: "/nerve", label: t("nav.nerve") || "神经", icon: Zap },
         { href: "/vein", label: t("nav.vein") || "血管", icon: Droplets },
+        { href: "/gene", label: t("nav.gene") || "基因", icon: Dna },
+        { href: "/vital", label: t("nav.vital") || "体征", icon: Activity },
+      ],
+    },
+    {
+      label: t("nav.internalServices") || "内部服务",
+      items: [
+        { href: "/nerve", label: t("nav.nerve") || "神经", icon: Zap },
         { href: "/sense", label: t("nav.sense") || "感官", icon: Eye },
         { href: "/immune", label: t("nav.immune") || "免疫", icon: Shield },
         { href: "/marrow", label: t("nav.marrow") || "骨髓", icon: Bone },
-        { href: "/gene", label: t("nav.gene") || "基因", icon: Dna },
         { href: "/echo", label: t("nav.echo") || "回声", icon: Volume2 },
         { href: "/mirror", label: t("nav.mirror") || "镜像", icon: Layers },
         { href: "/link", label: t("nav.link") || "突触", icon: Link2 },
         { href: "/gland", label: t("nav.gland") || "腺体", icon: Zap },
-        { href: "/vital", label: t("nav.vital") || "体征", icon: Activity },
       ],
     },
     {
