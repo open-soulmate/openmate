@@ -162,11 +162,6 @@ export function DownloadClient() {
     } catch { removeTask(task.id); }
   };
 
-  const togglePause = (id: string) => {
-    setTasks(prev => prev.map(t =>
-      t.id === id ? { ...t, status: t.status === 'paused' ? 'downloading' : 'paused' } : t
-    ));
-  };
 
   const openFileDir = async (task: DownloadTask) => {
     try {
