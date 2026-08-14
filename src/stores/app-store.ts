@@ -256,6 +256,7 @@ interface AppState {
   addTeamTask: (teamId: string, task: TeamTask) => void;
   updateTeamTask: (teamId: string, taskId: string, updates: Partial<TeamTask>) => void;
   moveTeamTask: (teamId: string, taskId: string, status: TaskStatus) => void;
+  deleteTeamTask: (teamId: string, taskId: string) => void;
 
   // Theme
   theme: ThemeId;
@@ -417,6 +418,18 @@ export const useAppStore = create<AppState>((set, get) => ({
               tasks: t.tasks.map((tk) =>
                 tk.id === taskId ? { ...tk, status, updatedAt: Date.now() } : tk,
               ),
+              updatedAt: Date.now(),
+            }
+          : t,
+      ),
+    })),
+  deleteTeamTask: (teamId, taskId) =>
+    set((s) => ({
+      teams: s.teams.map((t) =>
+        t.id === teamId
+          ? {
+              ...t,
+              tasks: t.tasks.filter((tk) => tk.id !== taskId),
               updatedAt: Date.now(),
             }
           : t,
