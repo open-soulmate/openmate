@@ -1,12 +1,24 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
+import { useTranslation } from "react-i18next"
+import { getApiBaseUrl } from "@/lib/api-client"
+import {
+  Dna, Loader2, Plus, Trash2, Play, Search, Tag, Package,
+  ChevronDown, ChevronRight, Copy, CheckCircle, X, Settings,
+} from "lucide-react"
 
 interface Template {
-  id: string
+  template_id: string
   name: string
   category: string
   description: string
+  version: string
+  author: string
+  tags: string[]
+  config: Record<string, unknown>
+  variables: Array<{ name: string; type: string; default?: string; description?: string }>
+  usage_count: number
   builtin: boolean
 }
 
@@ -18,14 +30,7 @@ interface GeneHealth {
   by_category: Record<string, number>
 }
 
-function getApiBaseUrl() {
-  if (typeof window !== "undefined") {
-    const envUrl = process.env.NEXT_PUBLIC_API_URL
-    if (envUrl) return envUrl
-    return `${window.location.protocol}//${window.location.hostname}:8090`
-  }
-  return "http://127.0.0.1:8090"
-}
+type ActiveTab = "browse" | "create" | "instantiate"
 
 const CATEGORY_COLORS: Record<string, string> = {
   agent: "#3b82f6",
@@ -34,71 +39,508 @@ const CATEGORY_COLORS: Record<string, string> = {
   skill: "#eab308",
 }
 
+const CATEGORY_LABELS: Record<string, string> = {
+  agent: "Agent",
+  knowledge_base: "知识库",
+  workflow: "工作流",
+  skill: "技能",
+}
+
 export function GeneClient() {
+  const { t } = useTranslation()
+  const apiBase = getApiBaseUrl()
+
   const [health, setHealth] = useState<GeneHealth | null>(null)
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
-  const apiBase = getApiBaseUrl()
+  const [activeTab, setActiveTab] = useState<ActiveTab>("browse")
+  const [selectedCategory, setSelectedCategory] = useState<string>("")
+  const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null)
 
-  useEffect(() => {
-    Promise.all([
-      fetch(`${apiBase}/api/gene/health`).then(r => r.json()),
-      fetch(`${apiBase}/api/gene/templates`).then(r => r.json()).catch(() => ({ templates: [] })),
-    ]).then(([h, t]) => {
+  // Create state
+  const [newName, setNewName] = useState("")
+  const [newCategory, setNewCategory] = useState("agent")
+  const [newDescription, setNewDescription] = useState("")
+  const [newTags, setNewTags] = useState("")
+  const [newConfig, setNewConfig] = useState("{\n  \n}")
+  const [createLoading, setCreateLoading] = useState(false)
+  const [createResult, setCreateResult] = useState<{ template_id: string } | null>(null)
+
+  // Instantiate state
+  const [instTemplateId, setInstTemplateId] = useState("")
+  const [instVariables, setInstVariables] = useState("{}")
+  const [instLoading, setInstLoading] = useState(false)
+  const [instResult, setInstResult] = useState<Record<string, unknown> | null>(null)
+
+  const fetchAll = useCallback(async () => {
+    try {
+      const [h, t] = await Promise.all([
+        fetch(`${apiBase}/api/gene/health`).then(r => r.json()),
+        fetch(`${apiBase}/api/gene/templates`).then(r => r.json()).catch(() => ({ templates: [] })),
+      ])
       setHealth(h)
       setTemplates(t.templates || t || [])
-    }).catch(() => {}).finally(() => setLoading(false))
+    } catch {} finally {
+      setLoading(false)
+    }
   }, [apiBase])
 
-  if (loading) return <div style={{ padding: 24, color: "hsl(var(--muted-foreground))" }}>Loading...</div>
+  useEffect(() => { fetchAll() }, [fetchAll])
+
+  const handleCreate = useCallback(async () => {
+    setCreateLoading(true)
+    setCreateResult(null)
+    try {
+      let config = {}
+      try { config = JSON.parse(newConfig) } catch {}
+      const tags = newTags.split(",").map(s => s.trim()).filter(Boolean)
+      const res = await fetch(`${apiBase}/api/gene/templates`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: newName,
+          category: newCategory,
+          description: newDescription,
+          tags,
+          config,
+        }),
+      })
+      const data = await res.json()
+      setCreateResult(data)
+      await fetchAll()
+    } catch {} finally {
+      setCreateLoading(false)
+    }
+  }, [newName, newCategory, newDescription, newTags, newConfig, apiBase, fetchAll])
+
+  const handleDelete = useCallback(async (templateId: string) => {
+    try {
+      await fetch(`${apiBase}/api/gene/templates/${templateId}`, { method: "DELETE" })
+      await fetchAll()
+    } catch {}
+  }, [apiBase, fetchAll])
+
+  const handleInstantiate = useCallback(async () => {
+    if (!instTemplateId) return
+    setInstLoading(true)
+    setInstResult(null)
+    try {
+      let variables = {}
+      try { variables = JSON.parse(instVariables) } catch {}
+      const res = await fetch(`${apiBase}/api/gene/templates/${instTemplateId}/instantiate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ variables }),
+      })
+      setInstResult(await res.json())
+    } catch {} finally {
+      setInstLoading(false)
+    }
+  }, [instTemplateId, instVariables, apiBase])
+
+  const filtered = selectedCategory
+    ? templates.filter(t => t.category === selectedCategory)
+    : templates
+
+  const categories = Object.keys(health?.by_category || {})
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Dna }> = [
+    { key: "browse", label: "浏览模板", icon: Package },
+    { key: "create", label: "创建模板", icon: Plus },
+    { key: "instantiate", label: "实例化", icon: Play },
+  ]
 
   return (
-    <div style={{ padding: 24 }}>
-      <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 24 }}>🧬 Gene — 模板库</h2>
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
+          <Dna className="w-6 h-6 text-emerald-400" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold">🧬 Gene — 模板库</h1>
+          <p className="text-sm text-muted-foreground">行业预制模板、Agent配方、知识库模板、工作流一键配置</p>
+        </div>
+      </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 32 }}>
+      {/* Stats */}
+      <div className="grid grid-cols-4 gap-4">
         {[
           { label: "总模板", value: health?.total_templates ?? 0 },
-          { label: "内置", value: health?.builtin_count ?? 0 },
+          { label: "内置模板", value: health?.builtin_count ?? 0 },
           { label: "用户创建", value: health?.user_count ?? 0 },
-          { label: "分类数", value: Object.keys(health?.by_category ?? {}).length },
+          { label: "分类数", value: categories.length },
         ].map(s => (
-          <div key={s.label} style={{
-            padding: 16, borderRadius: 8, border: "1px solid hsl(var(--border))",
-          }}>
-            <div style={{ fontSize: 28, fontWeight: 700 }}>{s.value}</div>
-            <div style={{ fontSize: 13, color: "hsl(var(--muted-foreground))" }}>{s.label}</div>
+          <div key={s.label} className="bg-card border border-border rounded-xl p-4">
+            <div className="text-2xl font-bold">{s.value}</div>
+            <div className="text-xs text-muted-foreground">{s.label}</div>
           </div>
         ))}
       </div>
 
-      <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>模板列表</h3>
-      {templates.length === 0 ? (
-        <p style={{ color: "hsl(var(--muted-foreground))" }}>暂无模板</p>
-      ) : (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
-          {templates.map(t => {
-            const color = CATEGORY_COLORS[t.category] || "#6b7280"
-            return (
-              <div key={t.id} style={{
-                padding: 16, borderRadius: 8, border: "1px solid hsl(var(--border))",
-              }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                  <span style={{
-                    padding: "2px 8px", borderRadius: 4, fontSize: 11, fontWeight: 500,
-                    background: `${color}22`, color, border: `1px solid ${color}44`,
-                  }}>
-                    {t.category}
-                  </span>
-                  {t.builtin && (
-                    <span style={{ fontSize: 11, color: "hsl(var(--muted-foreground))" }}>内置</span>
+      {/* Tab Navigation */}
+      <div className="flex gap-2 border-b border-border pb-2">
+        {tabs.map(tab => {
+          const Icon = tab.icon
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-medium transition-all ${
+                activeTab === tab.key
+                  ? "bg-card border border-b-0 border-border text-foreground"
+                  : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              }`}
+            >
+              <Icon className="w-4 h-4" />
+              {tab.label}
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Browse Tab */}
+      {activeTab === "browse" && (
+        <div className="space-y-4">
+          {/* Category Filter */}
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setSelectedCategory("")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                !selectedCategory
+                  ? "bg-foreground text-background"
+                  : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
+              }`}
+            >
+              全部
+            </button>
+            {categories.map(cat => {
+              const color = CATEGORY_COLORS[cat] || "#6b7280"
+              return (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(selectedCategory === cat ? "" : cat)}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                    selectedCategory === cat
+                      ? "text-white"
+                      : "text-muted-foreground hover:opacity-80"
+                  }`}
+                  style={{
+                    backgroundColor: selectedCategory === cat ? color : `${color}15`,
+                    border: `1px solid ${selectedCategory === cat ? color : `${color}30`}`,
+                    color: selectedCategory === cat ? "#fff" : color,
+                  }}
+                >
+                  {CATEGORY_LABELS[cat] || cat} ({health?.by_category?.[cat] ?? 0})
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Template Grid */}
+          {filtered.length === 0 ? (
+            <div className="text-center py-16 text-muted-foreground/50">
+              <Package className="w-12 h-12 mx-auto mb-2" />
+              <p className="text-sm">暂无模板</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              {filtered.map(tmpl => {
+                const color = CATEGORY_COLORS[tmpl.category] || "#6b7280"
+                const expanded = expandedTemplate === tmpl.template_id
+                return (
+                  <div
+                    key={tmpl.template_id}
+                    className="bg-card border border-border rounded-xl overflow-hidden hover:border-border/80 transition-all"
+                  >
+                    <button
+                      onClick={() => setExpandedTemplate(expanded ? null : tmpl.template_id)}
+                      className="w-full text-left p-4"
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2 mb-1">
+                            <span
+                              className="px-2 py-0.5 rounded text-xs font-medium"
+                              style={{ background: `${color}20`, color, border: `1px solid ${color}40` }}
+                            >
+                              {CATEGORY_LABELS[tmpl.category] || tmpl.category}
+                            </span>
+                            {tmpl.builtin && (
+                              <span className="text-xs text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">内置</span>
+                            )}
+                            <span className="text-xs text-muted-foreground ml-auto">v{tmpl.version}</span>
+                          </div>
+                          <h4 className="font-semibold text-sm">{tmpl.name}</h4>
+                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{tmpl.description}</p>
+                        </div>
+                        {expanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
+                      </div>
+                    </button>
+
+                    {expanded && (
+                      <div className="border-t border-border p-4 space-y-3 bg-muted/10">
+                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                          <span>ID: <code className="font-mono">{tmpl.template_id}</code></span>
+                          <span>作者: {tmpl.author}</span>
+                          <span>使用: {tmpl.usage_count}次</span>
+                        </div>
+
+                        {tmpl.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1">
+                            {tmpl.tags.map(tag => (
+                              <span key={tag} className="px-2 py-0.5 bg-muted/30 rounded text-xs flex items-center gap-1">
+                                <Tag className="w-2.5 h-2.5" /> {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+
+                        {tmpl.variables.length > 0 && (
+                          <div>
+                            <h5 className="text-xs font-medium text-muted-foreground mb-2">变量</h5>
+                            <div className="space-y-1">
+                              {tmpl.variables.map((v, i) => (
+                                <div key={i} className="flex items-center gap-2 text-xs bg-muted/20 rounded p-2">
+                                  <code className="font-mono text-emerald-400">{v.name}</code>
+                                  <span className="text-muted-foreground">({v.type})</span>
+                                  {v.default && <span className="text-muted-foreground">= {v.default}</span>}
+                                  {v.description && <span className="text-muted-foreground ml-auto">{v.description}</span>}
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {Object.keys(tmpl.config).length > 0 && (
+                          <div>
+                            <h5 className="text-xs font-medium text-muted-foreground mb-2">配置</h5>
+                            <pre className="text-xs font-mono bg-background/50 rounded p-2 overflow-x-auto max-h-40">
+                              {JSON.stringify(tmpl.config, null, 2)}
+                            </pre>
+                          </div>
+                        )}
+
+                        <div className="flex gap-2 pt-2">
+                          <button
+                            onClick={() => {
+                              setInstTemplateId(tmpl.template_id)
+                              setActiveTab("instantiate")
+                            }}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-medium hover:bg-emerald-500/20 transition-colors"
+                          >
+                            <Play className="w-3 h-3" /> 实例化
+                          </button>
+                          {!tmpl.builtin && (
+                            <button
+                              onClick={() => handleDelete(tmpl.template_id)}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors"
+                            >
+                              <Trash2 className="w-3 h-3" /> 删除
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Create Tab */}
+      {activeTab === "create" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <h3 className="font-semibold">创建新模板</h3>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">模板名称 *</label>
+              <input
+                type="text"
+                value={newName}
+                onChange={(e) => setNewName(e.target.value)}
+                placeholder="如：客服助手Agent"
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">分类</label>
+              <select
+                value={newCategory}
+                onChange={(e) => setNewCategory(e.target.value)}
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="agent">Agent</option>
+                <option value="knowledge_base">知识库</option>
+                <option value="workflow">工作流</option>
+                <option value="skill">技能</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">描述</label>
+              <textarea
+                value={newDescription}
+                onChange={(e) => setNewDescription(e.target.value)}
+                placeholder="模板描述..."
+                rows={3}
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm resize-none"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">标签（逗号分隔）</label>
+              <input
+                type="text"
+                value={newTags}
+                onChange={(e) => setNewTags(e.target.value)}
+                placeholder="rag, qa, knowledge"
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">配置 (JSON)</label>
+              <textarea
+                value={newConfig}
+                onChange={(e) => setNewConfig(e.target.value)}
+                rows={6}
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm font-mono resize-none"
+              />
+            </div>
+            <button
+              onClick={handleCreate}
+              disabled={!newName || createLoading}
+              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
+            >
+              {createLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+              {createLoading ? "创建中..." : "创建模板"}
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-semibold">创建结果</h3>
+            <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
+              {createResult ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-green-400">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-medium">模板创建成功</span>
+                  </div>
+                  <div className="bg-muted/30 rounded-lg p-3 text-sm">
+                    <span className="text-muted-foreground">模板 ID: </span>
+                    <code className="font-mono text-emerald-400">{createResult.template_id}</code>
+                  </div>
+                  <button
+                    onClick={() => setActiveTab("browse")}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    返回浏览 →
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
+                  <Settings className="w-12 h-12 mb-2" />
+                  <p className="text-sm">填写信息后点击"创建模板"</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Instantiate Tab */}
+      {activeTab === "instantiate" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <h3 className="font-semibold">从模板实例化</h3>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">选择模板</label>
+              <select
+                value={instTemplateId}
+                onChange={(e) => setInstTemplateId(e.target.value)}
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+              >
+                <option value="">-- 选择模板 --</option>
+                {templates.map(t => (
+                  <option key={t.template_id} value={t.template_id}>
+                    [{CATEGORY_LABELS[t.category] || t.category}] {t.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            {instTemplateId && (() => {
+              const tmpl = templates.find(t => t.template_id === instTemplateId)
+              if (!tmpl) return null
+              return (
+                <div className="bg-muted/20 rounded-xl p-4 space-y-2">
+                  <h4 className="font-medium text-sm">{tmpl.name}</h4>
+                  <p className="text-xs text-muted-foreground">{tmpl.description}</p>
+                  {tmpl.variables.length > 0 && (
+                    <div className="text-xs text-muted-foreground">
+                      需要变量: {tmpl.variables.map(v => v.name).join(", ")}
+                    </div>
                   )}
                 </div>
-                <div style={{ fontWeight: 600, fontSize: 15, marginBottom: 4 }}>{t.name}</div>
-                <div style={{ fontSize: 13, color: "hsl(var(--muted-foreground))" }}>{t.description}</div>
-              </div>
-            )
-          })}
+              )
+            })()}
+
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">变量 (JSON)</label>
+              <textarea
+                value={instVariables}
+                onChange={(e) => setInstVariables(e.target.value)}
+                rows={6}
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm font-mono resize-none"
+                placeholder='{"key": "value"}'
+              />
+            </div>
+
+            <button
+              onClick={handleInstantiate}
+              disabled={!instTemplateId || instLoading}
+              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
+            >
+              {instLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+              {instLoading ? "实例化中..." : "开始实例化"}
+            </button>
+          </div>
+
+          <div className="space-y-4">
+            <h3 className="font-semibold">实例化结果</h3>
+            <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
+              {instResult ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-green-400">
+                    <CheckCircle className="w-5 h-5" />
+                    <span className="font-medium">实例化成功</span>
+                  </div>
+                  <pre className="text-xs font-mono bg-background/50 rounded p-3 overflow-x-auto max-h-[400px]">
+                    {JSON.stringify(instResult, null, 2)}
+                  </pre>
+                  <button
+                    onClick={() => navigator.clipboard.writeText(JSON.stringify(instResult, null, 2)).catch(() => {})}
+                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <Copy className="w-3 h-3" /> 复制结果
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
+                  <Play className="w-12 h-12 mb-2" />
+                  <p className="text-sm">选择模板后点击"开始实例化"</p>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       )}
     </div>
