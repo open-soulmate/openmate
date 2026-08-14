@@ -37,6 +37,8 @@ const llmProviders = [
   { value: "openai", label: "OpenAI", models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"] },
   { value: "claude", label: "Claude (Anthropic)", models: ["claude-sonnet-4-20250514", "claude-haiku-4-20250514"] },
   { value: "mimo", label: "MiMo (小米)", models: ["mimo-v2.5-pro", "mimo-v2.5", "mimo-auto"] },
+  { value: "deepseek", label: "DeepSeek", models: ["deepseek-chat", "deepseek-coder", "deepseek-r1"] },
+  { value: "qwen", label: "Qwen (通义)", models: ["qwen-max", "qwen-plus", "qwen-turbo"] },
   { value: "ollama", label: "Ollama (本地)", models: ["llama3.1", "qwen2.5", "deepseek-r1"] },
   { value: "custom", label: "自定义", models: [] },
 ];
@@ -128,15 +130,43 @@ export function SettingsClient() {
   });
   const [saved, setSaved] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
+  const [loadingConfig, setLoadingConfig] = useState(true);
+  const [backendVersion, setBackendVersion] = useState<string>("");
 
   const [settings, setSettings] = useState<SettingsState>({
     theme: "dark", fontSize: "medium", language: "zh", sidebarPosition: "left", animationEnabled: true,
     defaultAgent: "auto", agentTimeout: 30, retryStrategy: "exponential", logLevel: "info",
-    llmProvider: llmConfig.provider || "mimo", apiKey: llmConfig.apiKey || "", model: llmConfig.model || "mimo-v2.5-pro",
+    llmProvider: "mimo", apiKey: "", model: "mimo-v2.5-pro",
     temperature: 0.7, maxTokens: 4096,
     shellWhitelist: "ls, cat, grep, find, git", fileAccess: "full", networkAccess: true, mcpConfig: "",
     knowledgePath: "~/.openmate/knowledge", cacheLimit: 512,
   });
+
+  // Load backend config on mount
+  useEffect(() => {
+    const apiBase = getApiBaseUrl();
+    const loadBackendConfig = async () => {
+      try {
+        // Load config
+        const res = await fetch(`${apiBase}/api/config`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.models?.default) {
+            setSettings(s => ({ ...s, model: data.models.default }));
+          }
+        }
+        // Load version
+        const vRes = await fetch(`${apiBase}/api/version`);
+        if (vRes.ok) {
+          const vData = await vRes.json();
+          setBackendVersion(vData.version || "");
+        }
+      } catch {} finally {
+        setLoadingConfig(false);
+      }
+    };
+    loadBackendConfig();
+  }, []);
 
   useEffect(() => { setSettings((s) => ({ ...s, theme: storeTheme })); }, [storeTheme]);
 
@@ -144,10 +174,44 @@ export function SettingsClient() {
     setSettings((s) => ({ ...s, [key]: value }));
   }, []);
 
-  function handleSave() {
+  async function handleSave() {
+    // Save local settings
     persistTheme(settings.theme);
     setStoreTheme(settings.theme);
     setLLMConfig({ provider: settings.llmProvider, apiKey: settings.apiKey, model: settings.model });
+
+    // Save to backend config
+    const apiBase = getApiBaseUrl();
+    try {
+      await fetch(`${apiBase}/api/config`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          data: {
+            models: {
+              default: settings.model,
+              provider: settings.llmProvider,
+            },
+            agent: {
+              default: settings.defaultAgent,
+              timeout: settings.agentTimeout,
+              retry_strategy: settings.retryStrategy,
+              log_level: settings.logLevel,
+            },
+            tools: {
+              shell_whitelist: settings.shellWhitelist,
+              file_access: settings.fileAccess,
+              network_access: settings.networkAccess,
+            },
+            storage: {
+              knowledge_path: settings.knowledgePath,
+              cache_limit_mb: settings.cacheLimit,
+            },
+          },
+        }),
+      });
+    } catch {}
+
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -156,6 +220,22 @@ export function SettingsClient() {
     localStorage.removeItem("openmate-token");
     localStorage.removeItem("openmate-api-url");
     window.location.href = "/login";
+  }
+
+  async function handleTestConnection() {
+    setTestStatus("testing");
+    try {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/api/health`);
+      if (res.ok) {
+        setTestStatus("success");
+      } else {
+        setTestStatus("error");
+      }
+    } catch {
+      setTestStatus("error");
+    }
+    setTimeout(() => setTestStatus("idle"), 3000);
   }
 
   const currentProvider = llmProviders.find((p) => p.value === settings.llmProvider);
@@ -193,7 +273,10 @@ export function SettingsClient() {
         </nav>
         {/* Version info */}
         <div className="mt-auto pt-4 border-t border-border">
-          <div className="text-[10px] text-muted-foreground px-3">OpenMate v0.1.0</div>
+          <div className="text-[10px] text-muted-foreground px-3 space-y-0.5">
+            <div>OpenMate v0.1.0</div>
+            {backendVersion && <div>OpenSoul v{backendVersion}</div>}
+          </div>
         </div>
       </div>
 
@@ -256,7 +339,7 @@ export function SettingsClient() {
               <SettingCard title="API Key" description="输入你的 API 密钥">
                 <TextInput value={settings.apiKey} onChange={(v) => update("apiKey", v)} placeholder="sk-..." type="password" />
                 <div className="flex gap-2 mt-2">
-                  <button onClick={() => { setTestStatus("testing"); setTimeout(() => setTestStatus(settings.apiKey ? "success" : "error"), 1500); }}
+                  <button onClick={handleTestConnection}
                     className="px-3 py-1.5 rounded-lg border border-border text-xs hover:bg-muted flex items-center gap-1.5">
                     {testStatus === "testing" ? <RefreshCw size={12} className="animate-spin" /> : testStatus === "success" ? <CheckCircle2 size={12} className="text-green-500" /> : testStatus === "error" ? <AlertCircle size={12} className="text-red-500" /> : <Wifi size={12} />}
                     测试连接
@@ -281,6 +364,11 @@ export function SettingsClient() {
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10"><Bot size={16} className="text-primary" /></div>
                 <div><h1 className="text-lg font-semibold">Agent 设置</h1><p className="text-xs text-muted-foreground">配置 Agent 运行时参数和行为策略</p></div>
               </div>
+
+              <SettingCard title="默认 Agent" description="系统默认使用的 Agent">
+                <SelectInput value={settings.defaultAgent} onChange={(v) => update("defaultAgent", v)}
+                  options={[{ value: "auto", label: "自动选择" }, { value: "hermes", label: "Hermes" }, { value: "mimo", label: "MiMo" }]} />
+              </SettingCard>
 
               <SettingCard title="Agent 超时" description={`单次执行最大等待时间: ${settings.agentTimeout}s`}>
                 <Slider value={settings.agentTimeout} onChange={(v) => update("agentTimeout", v)} min={5} max={300} step={5} unit="s" />
@@ -389,10 +477,22 @@ export function SettingsClient() {
 
               <SettingCard title="OpenMate">
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">版本</span><span className="font-mono">v0.1.0</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">前端版本</span><span className="font-mono">v0.1.0</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">后端版本</span><span className="font-mono">{backendVersion || "检测中..."}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">框架</span><span>Next.js + Tauri</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">后端</span><span>OpenSoul (FastAPI)</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">许可证</span><span>MIT</span></div>
+                </div>
+              </SettingCard>
+
+              <SettingCard title="25组件生态">
+                <div className="grid grid-cols-2 gap-1.5 text-xs">
+                  {["OpenSoul", "OpenMate", "OpenSoma", "OpenCortex", "OpenNerve", "OpenVein", "OpenSense", "OpenWill", "OpenVital", "OpenGland", "OpenImmune", "OpenMarrow", "OpenGene", "OpenEcho", "OpenMirror", "OpenLink", "OpenHippo", "OpenReflex", "OpenHeredity", "OpenNest", "OpenPulse", "OpenLimb", "OpenVoice", "OpenVision", "OpenMind"].map(name => (
+                    <div key={name} className="flex items-center gap-1.5 p-1.5 rounded bg-muted/50">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      <span>{name}</span>
+                    </div>
+                  ))}
                 </div>
               </SettingCard>
 
