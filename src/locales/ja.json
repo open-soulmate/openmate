@@ -53,6 +53,8 @@
     "nerve": "神経",
     "plugins": "プラグイン",
     "trajectory": "軌跡",
+    "cron": "定時タスク",
+    "workflowBuilder": "ワークフロービルダー",
     "cortex": "皮質"
   },
   "dashboard": {

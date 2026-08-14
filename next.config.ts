@@ -3,6 +3,7 @@ import type { NextConfig } from "next";
 const soulApiUrl = process.env.SOUL_API_URL || "http://localhost:8000";
 
 const nextConfig: NextConfig = {
+  devIndicators: false,
   async rewrites() {
     return [
       {
