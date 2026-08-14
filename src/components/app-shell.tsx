@@ -14,7 +14,7 @@ import {
   LayoutDashboard, FolderKanban, Share2, ChevronDown,
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
   Zap, Activity, Sparkles, Brain, Bolt, Heart, Home,
-  MousePointer, Mic, ImageIcon, Smile, Stethoscope,
+  MousePointer, Mic, ImageIcon, Smile, Stethoscope, Cpu,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getApiBaseUrl } from "@/lib/api-client";
@@ -112,6 +112,7 @@ export function AppShell() {
     {
       label: t("nav.organsGroup") || "器官",
       items: [
+        { href: "/cortex", label: t("nav.cortex") || "皮层", icon: Cpu },
         { href: "/vein", label: t("nav.vein") || "血管", icon: Droplets },
         { href: "/gene", label: t("nav.gene") || "基因", icon: Dna },
         { href: "/vital", label: t("nav.vital") || "体征", icon: Activity },
