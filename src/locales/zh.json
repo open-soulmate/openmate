@@ -525,7 +525,8 @@
     "burst": "突发",
     "time": "时间",
     "backingUp": "备份中...",
-    "exporting": "导出中..."
+    "exporting": "导出中...",
+    "search": "搜索"
   },
   "gland": {
     "title": "腺体 · 模型网关",

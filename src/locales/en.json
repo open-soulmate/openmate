@@ -525,7 +525,8 @@
     "burst": "Burst",
     "time": "Time",
     "backingUp": "Backing up...",
-    "exporting": "Exporting..."
+    "exporting": "Exporting...",
+    "search": "Search"
   },
   "gland": {
     "title": "Gland · Model Gateway",
