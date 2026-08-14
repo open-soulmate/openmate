@@ -15,9 +15,42 @@ import { useState, useEffect, useCallback } from "react";
 import { getApiBaseUrl } from "@/lib/api-client";
 import Link from "next/link";
 
+interface UsageSummary {
+  total_tokens: number;
+  budget_limit: number | null;
+  remaining_budget: number | null;
+  call_count: number;
+  by_model: Record<string, number>;
+  by_user: Record<string, number>;
+  by_provider: Record<string, number>;
+}
+
+interface RecentRecord {
+  provider: string;
+  model: string;
+  prompt_tokens: number;
+  completion_tokens: number;
+  total_tokens: number;
+  user_id: string | null;
+  timestamp: number;
+}
+
+interface CronJob {
+  id: string;
+  name: string;
+  schedule: string;
+  enabled: boolean;
+  last_run: string | null;
+  next_run: string | null;
+}
+
 export function DashboardClient() {
   const apiBase = getApiBaseUrl();
   const [organHealth, setOrganHealth] = useState<Record<string, "ok" | "error" | "loading">>({});
+  const [usageSummary, setUsageSummary] = useState<UsageSummary | null>(null);
+  const [recentRecords, setRecentRecords] = useState<RecentRecord[]>([]);
+  const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
+  const [cronCount, setCronCount] = useState(0);
 
   const organs = [
     { key: "soul", label: "🧠 Soul", endpoint: "/api/health" },
@@ -66,7 +99,50 @@ export function DashboardClient() {
     }
   }, [apiBase]);
 
-  useEffect(() => { checkOrganHealth(); }, [checkOrganHealth]);
+  const fetchUsage = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/gland/usage`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = await res.json();
+        setUsageSummary(data);
+      }
+    } catch (e) {
+      console.error("Failed to fetch usage", e);
+    }
+  }, [apiBase]);
+
+  const fetchRecentUsage = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/gland/usage/recent?limit=20`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = await res.json();
+        setRecentRecords(data.records || []);
+      }
+    } catch (e) {
+      console.error("Failed to fetch recent usage", e);
+    }
+  }, [apiBase]);
+
+  const fetchCronJobs = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/cron/jobs`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        const data = await res.json();
+        const jobs = data.jobs || data || [];
+        setCronJobs(Array.isArray(jobs) ? jobs : []);
+        setCronCount(Array.isArray(jobs) ? jobs.length : 0);
+      }
+    } catch (e) {
+      console.error("Failed to fetch cron jobs", e);
+    }
+  }, [apiBase]);
+
+  useEffect(() => {
+    checkOrganHealth();
+    fetchUsage();
+    fetchRecentUsage();
+    fetchCronJobs();
+  }, [checkOrganHealth, fetchUsage, fetchRecentUsage, fetchCronJobs]);
 
   const { t } = useTranslation();
   const agentNodes = useAppStore((s) => s.agentNodes);
@@ -111,7 +187,7 @@ export function DashboardClient() {
     },
     {
       label: t("dashboard.cronJobs") || "定时任务",
-      value: 0,
+      value: cronCount,
       sub: t("dashboard.managed") || "由 Cron 管理",
       icon: Clock,
       href: "/cron",
@@ -120,18 +196,39 @@ export function DashboardClient() {
     },
   ];
 
-  // Mock cost data for demo
+  // Compute cost stats from real usage data
+  // Estimate cost: ~$0.01 per 1K tokens (rough average across models)
+  const totalTokens = usageSummary?.total_tokens ?? 0;
+  const callCount = usageSummary?.call_count ?? 0;
+  const estimatedCost = totalTokens * 0.00001; // $0.01 per 1K tokens
+
+  // Build model breakdown from by_model
+  const modelBreakdown = Object.entries(usageSummary?.by_model || {}).map(([model, tokens]) => ({
+    model,
+    tokens,
+    cost: tokens * 0.00001,
+  })).sort((a, b) => b.tokens - a.tokens);
+
+  // Compute today's usage from recent records
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayTs = todayStart.getTime() / 1000;
+  const todayTokens = recentRecords
+    .filter((r) => r.timestamp >= todayTs)
+    .reduce((sum, r) => sum + r.total_tokens, 0);
+  const todayCost = todayTokens * 0.00001;
+
+  // Input/output tokens from recent records
+  const inputTokens = recentRecords.reduce((sum, r) => sum + r.prompt_tokens, 0);
+  const outputTokens = recentRecords.reduce((sum, r) => sum + r.completion_tokens, 0);
+
   const costStats = {
-    totalTokens: 1250000,
-    inputTokens: 850000,
-    outputTokens: 400000,
-    estimatedCost: 21.50,
-    todayCost: 3.25,
-    modelBreakdown: [
-      { model: 'GPT-4o', tokens: 750000, cost: 15.00 },
-      { model: 'Claude Sonnet', tokens: 350000, cost: 4.50 },
-      { model: 'Gemini Pro', tokens: 150000, cost: 2.00 },
-    ],
+    totalTokens,
+    inputTokens,
+    outputTokens,
+    estimatedCost,
+    todayCost,
+    modelBreakdown,
   };
 
   const quickLinks = [
@@ -333,17 +430,84 @@ export function DashboardClient() {
           </div>
         </div>
 
-        {/* Recent activity placeholder */}
+        {/* Recent activity — from recent usage records */}
         <div>
-          <h3 className="mb-4 text-sm font-medium text-muted-foreground">
-            {t("dashboard.recentActivity") || "近期活动"}
-          </h3>
-          <div className="rounded-xl border border-border bg-card p-8 text-center">
-            <TrendingUp size={32} className="mx-auto mb-3 text-muted-foreground/50" />
-            <p className="text-sm text-muted-foreground">
-              {t("dashboard.noActivity") || "暂无近期活动记录"}
-            </p>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium text-muted-foreground">
+              {t("dashboard.recentActivity") || "近期活动"}
+            </h3>
+            <button
+              onClick={() => { fetchRecentUsage(); fetchCronJobs(); }}
+              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ↻ {t("common.refresh") || "刷新"}
+            </button>
           </div>
+          {recentRecords.length > 0 ? (
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.time") || "时间"}</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.model") || "模型"}</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.provider") || "提供商"}</th>
+                    <th className="px-4 py-2.5 text-right font-medium text-muted-foreground text-xs">{t("dashboard.tokens") || "Tokens"}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {recentRecords.slice(0, 10).map((r, i) => (
+                    <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                      <td className="px-4 py-2 text-xs text-muted-foreground">
+                        {new Date(r.timestamp * 1000).toLocaleString("zh-CN", {
+                          month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
+                        })}
+                      </td>
+                      <td className="px-4 py-2 text-xs font-medium">{r.model}</td>
+                      <td className="px-4 py-2 text-xs text-muted-foreground">{r.provider}</td>
+                      <td className="px-4 py-2 text-xs text-right">
+                        <span className="text-blue-500">{r.prompt_tokens.toLocaleString()}</span>
+                        <span className="text-muted-foreground mx-1">→</span>
+                        <span className="text-emerald-500">{r.completion_tokens.toLocaleString()}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <div className="px-4 py-2 text-[10px] text-muted-foreground bg-muted/20 border-t border-border">
+                {t("dashboard.showingRecent") || "显示最近"} 10 / {recentRecords.length} {t("dashboard.records") || "条记录"} · {callCount} {t("dashboard.totalCalls") || "总调用次数"}
+              </div>
+            </div>
+          ) : cronJobs.length > 0 ? (
+            <div className="rounded-xl border border-border bg-card overflow-hidden">
+              <div className="px-4 py-3 space-y-2">
+                <p className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.cronJobs") || "定时任务"}</p>
+                {cronJobs.slice(0, 5).map((job, i) => (
+                  <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
+                    <div className="flex items-center gap-2">
+                      <div className={cn("w-2 h-2 rounded-full", job.enabled ? "bg-emerald-500" : "bg-muted-foreground/30")} />
+                      <span className="text-sm font-medium">{job.name || job.id}</span>
+                      <span className="text-[10px] text-muted-foreground font-mono">{job.schedule}</span>
+                    </div>
+                    {job.next_run && (
+                      <span className="text-[10px] text-muted-foreground">
+                        {t("dashboard.nextRun") || "下次"}: {new Date(job.next_run).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border bg-card p-8 text-center">
+              <TrendingUp size={32} className="mx-auto mb-3 text-muted-foreground/50" />
+              <p className="text-sm text-muted-foreground">
+                {t("dashboard.noActivity") || "暂无近期活动记录"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {t("dashboard.noActivityHint") || "使用 AI 对话或执行任务后，这里将显示活动记录"}
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>
