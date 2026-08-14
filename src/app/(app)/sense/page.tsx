@@ -1,4 +1,7 @@
-"use client";
-import dynamic from "next/dynamic";
-const SenseClient = dynamic(() => import("./sense-client").then(m => m.SenseClient), { ssr: false });
-export default function SensePage() { return <SenseClient />; }
+import { SenseClient } from "./sense-client"
+
+export const metadata = { title: "Sense" }
+
+export default function SensePage() {
+  return <SenseClient />
+}

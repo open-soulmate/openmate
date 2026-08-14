@@ -1,183 +1,79 @@
-"use client";
-import { useState, useRef } from "react";
-import { useTranslation } from "react-i18next";
-import { cn } from "@/lib/utils";
-import { getApiBaseUrl } from "@/lib/api-client";
-import {
-  Eye, Upload, FileText, Mic, Image as ImageIcon,
-  RefreshCw, Loader2, Volume2, Languages,
-} from "lucide-react";
+"use client"
+
+import { useEffect, useState } from "react"
+
+interface SenseHealth {
+  status: string
+  component: string
+  engines: Record<string, { available: boolean; engine: string; [k: string]: unknown }>
+}
+
+function getApiBaseUrl() {
+  if (typeof window !== "undefined") {
+    const envUrl = process.env.NEXT_PUBLIC_API_URL
+    if (envUrl) return envUrl
+    return `${window.location.protocol}//${window.location.hostname}:8090`
+  }
+  return "http://127.0.0.1:8090"
+}
 
 export function SenseClient() {
-  const { t } = useTranslation();
-  const [tab, setTab] = useState<"ocr" | "asr" | "analyze">("ocr");
-  const [result, setResult] = useState<any>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const fileRef = useRef<HTMLInputElement>(null);
-  const apiBase = getApiBaseUrl();
+  const [health, setHealth] = useState<SenseHealth | null>(null)
+  const [loading, setLoading] = useState(true)
+  const apiBase = getApiBaseUrl()
 
-  const handleProcess = async (file: File) => {
-    setLoading(true);
-    setError("");
-    setResult(null);
-    try {
-      const form = new FormData();
-      form.append("file", file);
-      let endpoint = "";
-      if (tab === "ocr") endpoint = "/api/sense/ocr/image";
-      else if (tab === "asr") endpoint = "/api/sense/asr/transcribe";
-      else endpoint = "/api/sense/analyze/image";
-      const res = await fetch(`${apiBase}${endpoint}`, { method: "POST", body: form });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setResult(await res.json());
-    } catch (e: any) {
-      setError(e.message);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => {
+    fetch(`${apiBase}/api/sense/health`)
+      .then(r => r.json())
+      .then(setHealth)
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [apiBase])
 
-  const tabs = [
-    { id: "ocr" as const, label: t("sense.ocr") || "OCR 识别", icon: FileText, desc: "图片/PDF 文字提取" },
-    { id: "asr" as const, label: t("sense.asr") || "语音转写", icon: Mic, desc: "音频 → 文字" },
-    { id: "analyze" as const, label: t("sense.analyze") || "图像分析", icon: ImageIcon, desc: "元数据/色彩/EXIF" },
-  ];
+  if (loading) return <div style={{ padding: 24, color: "hsl(var(--muted-foreground))" }}>Loading...</div>
+
+  const engines = health?.engines || {}
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-3">
-          <Eye size={20} className="text-cyan-500" />
-          <h1 className="text-lg font-semibold">{t("sense.title") || "感官 · 多模态解析"}</h1>
-          <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-xs font-medium text-cyan-500">
-            {t("sense.subtitle") || "OCR · ASR · 多模态"}
-          </span>
-        </div>
-      </div>
+    <div style={{ padding: 24 }}>
+      <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 24 }}>👁️ Sense — 感知引擎</h2>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
-        {/* Tab Selector */}
-        <div className="flex gap-3">
-          {tabs.map((tabItem) => (
-            <button
-              key={tabItem.id}
-              onClick={() => { setTab(tabItem.id); setResult(null); setError(""); }}
-              className={cn(
-                "flex items-center gap-2 rounded-xl border px-4 py-3 text-sm transition-colors",
-                tab === tabItem.id
-                  ? "border-cyan-500 bg-cyan-500/10 text-cyan-600"
-                  : "border-border hover:bg-muted"
-              )}
-            >
-              <tabItem.icon size={16} />
-              <div className="text-left">
-                <div className="font-medium">{tabItem.label}</div>
-                <div className="text-[10px] text-muted-foreground">{tabItem.desc}</div>
-              </div>
-            </button>
-          ))}
-        </div>
-
-        {/* Upload Zone */}
-        <div
-          onClick={() => fileRef.current?.click()}
-          className="flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed border-border p-10 cursor-pointer hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-colors"
-        >
-          {loading ? (
-            <Loader2 size={32} className="text-cyan-500 animate-spin" />
-          ) : (
-            <Upload size={32} className="text-muted-foreground" />
-          )}
-          <div className="text-center">
-            <p className="text-sm font-medium">
-              {loading ? (t("sense.processing") || "处理中...") : `${t("common.upload") || "点击上传"}${tab === "ocr" ? "图片/PDF" : tab === "asr" ? "音频文件" : "图片"}`}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              {tab === "ocr" ? "支持 PNG/JPG/PDF" : tab === "asr" ? "支持 WAV/MP3/OGG/FLAC" : "支持 PNG/JPG"}
-            </p>
-          </div>
-          <input
-            ref={fileRef}
-            type="file"
-            accept={tab === "ocr" ? "image/*,.pdf" : tab === "asr" ? "audio/*" : "image/*"}
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && handleProcess(e.target.files[0])}
-          />
-        </div>
-
-        {/* Error */}
-        {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">
-            {error}
-          </div>
-        )}
-
-        {/* Result */}
-        {result && (
-          <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <h3 className="text-sm font-semibold">{t("sense.result") || "识别结果"}</h3>
-            {tab === "ocr" && (
-              <>
-                <div className="flex gap-4 text-xs text-muted-foreground">
-                  <span>{t("sense.engine") || "引擎"}: {result.engine}</span>
-                  <span>{t("sense.confidence") || "置信度"}: {result.confidence}%</span>
-                  <span>{t("sense.language") || "语言"}: {result.language}</span>
-                </div>
-                <pre className="whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm max-h-80 overflow-y-auto">
-                  {result.text || `(${t("sense.noText") || "无文字"})`}
-                </pre>
-              </>
-            )}
-            {tab === "asr" && (
-              <>
-                <div className="flex gap-4 text-xs text-muted-foreground">
-                  <span>{t("sense.engine") || "引擎"}: {result.engine}</span>
-                  <span>{t("sense.duration") || "时长"}: {result.duration_seconds?.toFixed(1)}s</span>
-                  <span>{t("sense.language") || "语言"}: {result.language}</span>
-                </div>
-                <pre className="whitespace-pre-wrap rounded-lg bg-muted p-4 text-sm max-h-80 overflow-y-auto">
-                  {result.text || `(${t("sense.noText") || "无文字"})`}
-                </pre>
-                {result.segments?.length > 0 && (
-                  <details className="text-xs">
-                    <summary className="cursor-pointer text-muted-foreground">{t("sense.timeline") || "时间轴"} ({result.segments.length} {t("sense.segments") || "段"})</summary>
-                    <div className="mt-2 space-y-1">
-                      {result.segments.map((s: any, i: number) => (
-                        <div key={i} className="flex gap-2">
-                          <span className="text-muted-foreground w-20">{s.start?.toFixed(1)}s-{s.end?.toFixed(1)}s</span>
-                          <span>{s.text}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </details>
-                )}
-              </>
-            )}
-            {tab === "analyze" && (
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><span className="text-muted-foreground">{t("sense.dimensions") || "尺寸"}:</span> {result.width}×{result.height}</div>
-                <div><span className="text-muted-foreground">{t("common.format") || "格式"}:</span> {result.format} ({result.mode})</div>
-                <div><span className="text-muted-foreground">{t("sense.fileSize") || "文件大小"}:</span> {(result.file_size / 1024).toFixed(1)} KB</div>
-                <div><span className="text-muted-foreground">{t("common.description") || "描述"}:</span> {result.description}</div>
-                {result.dominant_colors?.length > 0 && (
-                  <div className="col-span-2">
-                    <span className="text-muted-foreground">{t("sense.colors") || "主色调"}:</span>
-                    <div className="flex gap-2 mt-1">
-                      {result.dominant_colors.map((c: string, i: number) => (
-                        <div key={i} className="flex items-center gap-1">
-                          <div className="w-4 h-4 rounded border" style={{ backgroundColor: c }} />
-                          <span className="text-xs">{c}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(280px, 1fr))", gap: 16 }}>
+        {Object.entries(engines).map(([name, eng]) => (
+          <div key={name} style={{
+            padding: 16, borderRadius: 8,
+            border: `1px solid ${eng.available ? "#22c55e33" : "#6b728033"}`,
+            background: eng.available ? "#22c55e08" : "#6b728008",
+          }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>
+              <span style={{
+                width: 8, height: 8, borderRadius: "50%",
+                background: eng.available ? "#22c55e" : "#6b7280",
+              }} />
+              <span style={{ fontWeight: 600, fontSize: 15, textTransform: "uppercase" }}>{name}</span>
+            </div>
+            <div style={{ fontSize: 13, color: "hsl(var(--muted-foreground))" }}>
+              Engine: {eng.engine}
+            </div>
+            {eng.languages && (
+              <div style={{ fontSize: 13, color: "hsl(var(--muted-foreground))", marginTop: 4 }}>
+                Languages: {(eng.languages as string[]).join(", ")}
               </div>
             )}
+            {eng.model && (
+              <div style={{ fontSize: 13, color: "hsl(var(--muted-foreground))", marginTop: 4 }}>
+                Model: {eng.model as string}
+              </div>
+            )}
+            <div style={{
+              marginTop: 8, fontSize: 12, fontWeight: 500,
+              color: eng.available ? "#22c55e" : "#6b7280",
+            }}>
+              {eng.available ? "✓ 可用" : "✗ 不可用"}
+            </div>
           </div>
-        )}
+        ))}
       </div>
     </div>
-  );
+  )
 }
