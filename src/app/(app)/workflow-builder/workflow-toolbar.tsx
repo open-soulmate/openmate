@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { useWorkflowStore } from "@/stores/workflow-store";
+import { useWorkflowStore } from "@//stores/workflow-store";
 import {
   Play,
   Bug,
@@ -10,8 +10,11 @@ import {
   Upload,
   History,
   Plus,
+  StopCircle,
+  Loader2,
+  PanelBottomOpen,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn } from "@//lib/utils";
 
 interface WorkflowToolbarProps {
   onCreateNew: () => void;
@@ -26,6 +29,12 @@ export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
   const exportWorkflow = useWorkflowStore((s) => s.exportWorkflow);
   const importWorkflow = useWorkflowStore((s) => s.importWorkflow);
   const activeWorkflow = useWorkflowStore((s) => s.activeWorkflow);
+  const isExecuting = useWorkflowStore((s) => s.isExecuting);
+  const runWorkflow = useWorkflowStore((s) => s.runWorkflow);
+  const cancelExecution = useWorkflowStore((s) => s.cancelExecution);
+  const showExecutionPanel = useWorkflowStore((s) => s.showExecutionPanel);
+  const toggleExecutionPanel = useWorkflowStore((s) => s.toggleExecutionPanel);
+  const currentExecution = useWorkflowStore((s) => s.currentExecution);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const handleExport = () => {
@@ -55,14 +64,30 @@ export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
     e.target.value = "";
   };
 
-  const handleRun = () => {
-    // Placeholder: would trigger workflow execution
-    alert("运行工作流（功能开发中）");
+  const handleRun = async () => {
+    if (isExecuting) {
+      await cancelExecution();
+    } else {
+      await runWorkflow();
+    }
   };
 
   const handleDebug = () => {
     setDebugMode(!debugMode);
   };
+
+  // Execution status indicator
+  const execStatus = currentExecution?.status;
+  const execStatusColor =
+    execStatus === "completed"
+      ? "text-emerald-500"
+      : execStatus === "failed"
+        ? "text-red-500"
+        : execStatus === "running"
+          ? "text-blue-500"
+          : execStatus === "cancelled"
+            ? "text-amber-500"
+            : "text-muted-foreground";
 
   return (
     <div className="flex h-10 shrink-0 items-center gap-1 border-b border-border bg-card px-3">
@@ -80,11 +105,25 @@ export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
       <button
         onClick={handleRun}
         disabled={!activeWorkflowId}
-        className={cn(toolbarBtnCls, "text-emerald-600 hover:bg-emerald-500/10")}
-        title="运行"
+        className={cn(
+          toolbarBtnCls,
+          isExecuting
+            ? "text-red-600 hover:bg-red-500/10"
+            : "text-emerald-600 hover:bg-emerald-500/10",
+        )}
+        title={isExecuting ? "取消执行" : "运行工作流"}
       >
-        <Play size={14} />
-        <span className="text-xs">运行</span>
+        {isExecuting ? (
+          <>
+            <Loader2 size={14} className="animate-spin" />
+            <span className="text-xs">停止</span>
+          </>
+        ) : (
+          <>
+            <Play size={14} />
+            <span className="text-xs">运行</span>
+          </>
+        )}
       </button>
 
       <button
@@ -114,7 +153,12 @@ export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
         <span className="text-xs">保存{isDirty ? " *" : ""}</span>
       </button>
 
-      <button onClick={handleExport} disabled={!activeWorkflowId} className={toolbarBtnCls} title="导出">
+      <button
+        onClick={handleExport}
+        disabled={!activeWorkflowId}
+        className={toolbarBtnCls}
+        title="导出"
+      >
         <Download size={14} />
         <span className="text-xs">导出</span>
       </button>
@@ -134,12 +178,48 @@ export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
 
       <div className="flex-1" />
 
+      {/* Execution status */}
+      {currentExecution && (
+        <button
+          onClick={toggleExecutionPanel}
+          className={cn(
+            "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-accent",
+            execStatusColor,
+          )}
+          title="查看执行结果"
+        >
+          {isExecuting ? (
+            <Loader2 size={12} className="animate-spin" />
+          ) : execStatus === "completed" ? (
+            <span className="inline-block h-2 w-2 rounded-full bg-emerald-500" />
+          ) : execStatus === "failed" ? (
+            <span className="inline-block h-2 w-2 rounded-full bg-red-500" />
+          ) : (
+            <span className="inline-block h-2 w-2 rounded-full bg-amber-500" />
+          )}
+          <span>{currentExecution.status}</span>
+        </button>
+      )}
+
+      <button
+        onClick={toggleExecutionPanel}
+        className={cn(
+          toolbarBtnCls,
+          showExecutionPanel && "bg-accent text-foreground",
+        )}
+        title="执行面板"
+      >
+        <PanelBottomOpen size={14} />
+      </button>
+
       {activeWorkflow && (
-        <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+        <div className="flex items-center gap-2 text-[11px] text-muted-foreground ml-2">
           <History size={12} />
           <span>v{activeWorkflow.version}</span>
           <span>·</span>
-          <span>{new Date(activeWorkflow.updatedAt).toLocaleString("zh-CN")}</span>
+          <span>
+            {new Date(activeWorkflow.updatedAt).toLocaleString("zh-CN")}
+          </span>
         </div>
       )}
     </div>
