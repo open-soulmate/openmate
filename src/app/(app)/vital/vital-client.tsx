@@ -2,7 +2,11 @@
 import { useState, useEffect, useCallback } from "react";
 import { getApiBaseUrl } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
-import { Activity, RefreshCw, Loader2, CheckCircle2, XCircle, AlertCircle, Clock, Wifi } from "lucide-react";
+import {
+  Activity, RefreshCw, Loader2, CheckCircle2, XCircle, AlertCircle,
+  Clock, Wifi, Cpu, HardDrive, MemoryStick, Network, AlertTriangle,
+  TrendingUp, TrendingDown, Server, Database, Zap, Shield,
+} from "lucide-react";
 import { useTranslation } from "react-i18next";
 
 interface ComponentStatus {
@@ -18,150 +22,481 @@ interface HealthReport {
   ts: number;
 }
 
+interface SystemMetrics {
+  cpu_percent: number;
+  memory_percent: number;
+  memory_used_mb: number;
+  memory_total_mb: number;
+  disk_percent: number;
+  disk_used_gb: number;
+  disk_total_gb: number;
+  net_sent_bytes: number;
+  net_recv_bytes: number;
+  request_qps: number;
+  latency_p99_ms: number;
+  error_rate: number;
+  requests_total: number;
+  errors_total: number;
+  knowledge_entries: number;
+  agents_online: number;
+  search_count: number;
+}
+
+interface Alert {
+  rule: string;
+  severity: string;
+  message: string;
+  value: number;
+  threshold: number;
+  resolved: boolean;
+  ts: number;
+}
+
 const STATUS_CONFIG: Record<string, { color: string; bg: string; border: string; icon: typeof CheckCircle2; label: string }> = {
   up: { color: "text-emerald-500", bg: "bg-emerald-500/8", border: "border-emerald-500/20", icon: CheckCircle2, label: "UP" },
   down: { color: "text-red-500", bg: "bg-red-500/8", border: "border-red-500/20", icon: XCircle, label: "DOWN" },
   skipped: { color: "text-yellow-500", bg: "bg-yellow-500/8", border: "border-yellow-500/20", icon: AlertCircle, label: "SKIPPED" },
 };
 
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
+
+function formatRelativeTime(ts: number): string {
+  const diff = Date.now() - ts * 1000;
+  if (diff < 60_000) return "刚刚";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
+  return `${Math.floor(diff / 86_400_000)} 天前`;
+}
+
+function GaugeBar({ value, max = 100, color = "emerald", label, detail }: {
+  value: number; max?: number; color?: string; label: string; detail?: string;
+}) {
+  const pct = Math.min((value / max) * 100, 100);
+  const colorClass = pct > 90 ? "bg-red-500" : pct > 70 ? "bg-yellow-500" : `bg-${color}-500`;
+  const textClass = pct > 90 ? "text-red-500" : pct > 70 ? "text-yellow-500" : `text-${color}-500`;
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <span className={cn("text-xs font-semibold tabular-nums", textClass)}>
+          {detail || `${pct.toFixed(1)}%`}
+        </span>
+      </div>
+      <div className="h-2 rounded-full bg-muted/50 overflow-hidden">
+        <div
+          className={cn("h-full rounded-full transition-all duration-700 ease-out", colorClass)}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 export function VitalClient() {
   const { t } = useTranslation();
-  const [health, setHealth] = useState<HealthReport | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [lastFetch, setLastFetch] = useState<Date | null>(null);
-  const [loading, setLoading] = useState(false);
   const apiBase = getApiBaseUrl();
 
+  // Health state
+  const [health, setHealth] = useState<HealthReport | null>(null);
+  const [healthError, setHealthError] = useState<string | null>(null);
+  const [healthLoading, setHealthLoading] = useState(false);
+
+  // Metrics state
+  const [metrics, setMetrics] = useState<SystemMetrics | null>(null);
+  const [metricsLoading, setMetricsLoading] = useState(false);
+
+  // Alerts state
+  const [alerts, setAlerts] = useState<Alert[]>([]);
+  const [alertsLoading, setAlertsLoading] = useState(false);
+
+  const [lastFetch, setLastFetch] = useState<Date | null>(null);
+  const [activeTab, setActiveTab] = useState<"health" | "metrics" | "alerts">("metrics");
+
   const fetchHealth = useCallback(async () => {
-    setLoading(true);
+    setHealthLoading(true);
     try {
       const res = await fetch(`${apiBase}/api/vital/health`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data: HealthReport = await res.json();
       setHealth(data);
-      setError(null);
-      setLastFetch(new Date());
+      setHealthError(null);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Request failed");
+      setHealthError(e instanceof Error ? e.message : "Request failed");
     } finally {
-      setLoading(false);
+      setHealthLoading(false);
     }
   }, [apiBase]);
 
+  const fetchMetrics = useCallback(async () => {
+    setMetricsLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/api/vital/metrics`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      // Parse Prometheus-style metrics
+      const parsed: Record<string, number> = {};
+      text.split("\n").forEach(line => {
+        const [key, val] = line.split(" ");
+        if (key && val) {
+          const name = key.replace("vital_", "");
+          parsed[name] = parseFloat(val);
+        }
+      });
+      setMetrics(parsed as unknown as SystemMetrics);
+    } catch {
+      // silent
+    } finally {
+      setMetricsLoading(false);
+    }
+  }, [apiBase]);
+
+  const fetchAlerts = useCallback(async () => {
+    setAlertsLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/api/vital/alerts`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setAlerts(data.alerts || []);
+    } catch {
+      // silent
+    } finally {
+      setAlertsLoading(false);
+    }
+  }, [apiBase]);
+
+  const fetchAll = useCallback(async () => {
+    await Promise.all([fetchHealth(), fetchMetrics(), fetchAlerts()]);
+    setLastFetch(new Date());
+  }, [fetchHealth, fetchMetrics, fetchAlerts]);
+
   useEffect(() => {
-    fetchHealth();
-    const timer = setInterval(fetchHealth, 30_000);
+    fetchAll();
+    const timer = setInterval(fetchAll, 30_000);
     return () => clearInterval(timer);
-  }, [fetchHealth]);
+  }, [fetchAll]);
 
   const upCount = health?.components.filter(c => c.status === "up").length || 0;
   const downCount = health?.components.filter(c => c.status === "down").length || 0;
   const totalCount = health?.components.length || 0;
   const avgLatency = health ? Math.round(health.components.reduce((s, c) => s + c.latency_ms, 0) / (totalCount || 1)) : 0;
+  const activeAlerts = alerts.filter(a => !a.resolved).length;
+  const criticalAlerts = alerts.filter(a => !a.resolved && a.severity === "critical").length;
+
+  const tabs = [
+    { key: "metrics" as const, label: t("vital.tabMetrics") || "系统指标", icon: Activity },
+    { key: "health" as const, label: t("vital.tabHealth") || "组件健康", icon: Server, badge: downCount > 0 ? downCount : undefined },
+    { key: "alerts" as const, label: t("vital.tabAlerts") || "告警记录", icon: AlertTriangle, badge: activeAlerts > 0 ? activeAlerts : undefined },
+  ];
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
-          <Activity size={20} className="text-emerald-500" />
-          <h1 className="text-lg font-semibold">{t("vital.title") || "生命体征 · 系统监控"}</h1>
-          <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-500">
-            {t("vital.subtitle") || "健康检查 · 性能监控"}
-          </span>
+          <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/10">
+            <Activity size={18} className="text-emerald-500" />
+          </div>
+          <div>
+            <h1 className="text-base font-semibold">{t("vital.title") || "生命体征 · 系统监控"}</h1>
+            <p className="text-xs text-muted-foreground">{t("vital.subtitle") || "实时监控系统健康、性能指标与告警"}</p>
+          </div>
         </div>
-        <button
-          onClick={fetchHealth}
-          disabled={loading}
-          className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted transition-colors disabled:opacity-50"
-        >
-          {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-          {t("common.refresh") || "刷新"}
-        </button>
+        <div className="flex items-center gap-3">
+          {lastFetch && (
+            <span className="text-[10px] text-muted-foreground">
+              {lastFetch.toLocaleTimeString("zh-CN")}
+            </span>
+          )}
+          <button
+            onClick={fetchAll}
+            disabled={healthLoading || metricsLoading || alertsLoading}
+            className="flex items-center gap-2 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted transition-colors disabled:opacity-50"
+          >
+            {(healthLoading || metricsLoading || alertsLoading) ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <RefreshCw size={12} />
+            )}
+            {t("common.refresh") || "刷新"}
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      {/* Overview Cards */}
+      {metrics && (
+        <div className="border-b border-border px-6 py-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+            <MetricCard
+              icon={Cpu}
+              label="CPU"
+              value={`${(metrics.cpu_percent || 0).toFixed(1)}%`}
+              status={(metrics.cpu_percent || 0) > 90 ? "critical" : (metrics.cpu_percent || 0) > 70 ? "warning" : "ok"}
+            />
+            <MetricCard
+              icon={MemoryStick}
+              label="内存"
+              value={`${(metrics.memory_percent || 0).toFixed(1)}%`}
+              detail={`${((metrics.memory_used_mb || 0) / 1024).toFixed(1)} / ${((metrics.memory_total_mb || 0) / 1024).toFixed(1)} GB`}
+              status={(metrics.memory_percent || 0) > 90 ? "critical" : (metrics.memory_percent || 0) > 70 ? "warning" : "ok"}
+            />
+            <MetricCard
+              icon={HardDrive}
+              label="磁盘"
+              value={`${(metrics.disk_percent || 0).toFixed(1)}%`}
+              detail={`${(metrics.disk_used_gb || 0).toFixed(0)} / ${(metrics.disk_total_gb || 0).toFixed(0)} GB`}
+              status={(metrics.disk_percent || 0) > 95 ? "critical" : (metrics.disk_percent || 0) > 85 ? "warning" : "ok"}
+            />
+            <MetricCard
+              icon={Network}
+              label="网络"
+              value={`${formatBytes(metrics.net_sent_bytes || 0)} ↑`}
+              detail={`${formatBytes(metrics.net_recv_bytes || 0)} ↓`}
+              status="ok"
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Tabs */}
+      <div className="flex items-center gap-1 border-b border-border px-6">
+        {tabs.map(tab => {
+          const Icon = tab.icon;
+          return (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={cn(
+                "flex items-center gap-2 px-4 py-2.5 text-xs font-medium border-b-2 transition-colors -mb-px",
+                activeTab === tab.key
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              )}
+            >
+              <Icon size={14} />
+              {tab.label}
+              {tab.badge !== undefined && tab.badge > 0 && (
+                <span className="ml-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[10px] font-semibold text-red-500">
+                  {tab.badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto p-6">
         {/* Error banner */}
-        {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500 flex items-center gap-2">
+        {healthError && activeTab === "health" && (
+          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500 flex items-center gap-2">
             <XCircle size={16} />
-            {t("vital.fetchError") || "获取健康数据失败"}: {error}
+            {t("vital.fetchError") || "获取健康数据失败"}: {healthError}
           </div>
         )}
 
-        {/* Overview cards */}
-        {health && (
-          <div className="grid grid-cols-4 gap-4">
-            <OverviewCard
-              label={t("vital.overallStatus") || "整体状态"}
-              value={health.status.toUpperCase()}
-              icon={health.status === "up" ? CheckCircle2 : XCircle}
-              valueClass={health.status === "up" ? "text-emerald-500" : "text-red-500"}
-            />
-            <OverviewCard
-              label={t("vital.healthyNodes") || "健康节点"}
-              value={`${upCount}/${totalCount}`}
-              icon={Wifi}
-              valueClass="text-emerald-500"
-            />
-            <OverviewCard
-              label={t("vital.errorNodes") || "异常节点"}
-              value={String(downCount)}
-              icon={XCircle}
-              valueClass={downCount > 0 ? "text-red-500" : "text-emerald-500"}
-            />
-            <OverviewCard
-              label={t("vital.avgLatency") || "平均延迟"}
-              value={`${avgLatency}ms`}
-              icon={Clock}
-              valueClass="text-muted-foreground"
-            />
+        {/* Metrics Tab */}
+        {activeTab === "metrics" && metrics && (
+          <div className="space-y-6">
+            {/* Resource Gauges */}
+            <Section title="资源使用" icon={Server}>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <GaugeBar value={metrics.cpu_percent || 0} label="CPU 使用率" color="blue" />
+                  <GaugeBar value={metrics.memory_percent || 0} label="内存使用率" color="purple" detail={`${((metrics.memory_used_mb || 0) / 1024).toFixed(1)} / ${((metrics.memory_total_mb || 0) / 1024).toFixed(1)} GB`} />
+                  <GaugeBar value={metrics.disk_percent || 0} label="磁盘使用率" color="amber" detail={`${(metrics.disk_used_gb || 0).toFixed(0)} / ${(metrics.disk_total_gb || 0).toFixed(0)} GB`} />
+                </div>
+                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <MiniStat label="请求 QPS" value={(metrics.request_qps || 0).toFixed(1)} icon={Zap} />
+                    <MiniStat label="P99 延迟" value={`${(metrics.latency_p99_ms || 0).toFixed(0)}ms`} icon={Clock} />
+                    <MiniStat label="总请求数" value={String(metrics.requests_total || 0)} icon={TrendingUp} />
+                    <MiniStat label="错误率" value={`${((metrics.error_rate || 0) * 100).toFixed(2)}%`} icon={AlertCircle} danger={(metrics.error_rate || 0) > 0.01} />
+                  </div>
+                </div>
+              </div>
+            </Section>
+
+            {/* Business Metrics */}
+            <Section title="业务指标" icon={Database}>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <StatCard label="知识条目" value={String(metrics.knowledge_entries || 0)} icon={Database} color="blue" />
+                <StatCard label="在线 Agent" value={String(metrics.agents_online || 0)} icon={Server} color="emerald" />
+                <StatCard label="搜索次数" value={String(metrics.search_count || 0)} icon={Activity} color="purple" />
+                <StatCard label="错误总数" value={String(metrics.errors_total || 0)} icon={AlertCircle} color={Number(metrics.errors_total) > 0 ? "red" : "emerald"} />
+              </div>
+            </Section>
+
+            {/* Network */}
+            <Section title="网络流量" icon={Network}>
+              <div className="grid grid-cols-2 gap-3">
+                <StatCard label="上行流量" value={formatBytes(metrics.net_sent_bytes || 0)} icon={TrendingUp} color="blue" />
+                <StatCard label="下行流量" value={formatBytes(metrics.net_recv_bytes || 0)} icon={TrendingDown} color="emerald" />
+              </div>
+            </Section>
           </div>
         )}
 
-        {/* Component list */}
-        {health && (
-          <div className="space-y-2">
-            <h2 className="text-sm font-medium text-muted-foreground mb-3">
-              {t("vital.components") || "组件状态"} ({totalCount})
-            </h2>
-            {health.components.map((comp) => {
-              const cfg = STATUS_CONFIG[comp.status] || STATUS_CONFIG.down;
-              const Icon = cfg.icon;
-              return (
-                <div
-                  key={comp.name}
-                  className={cn(
-                    "flex items-center rounded-xl border p-4 transition-colors",
-                    cfg.border, cfg.bg
-                  )}
-                >
-                  <Icon size={16} className={cn("shrink-0", cfg.color)} />
-                  <span className="ml-3 text-sm font-medium min-w-[140px] capitalize">
-                    {comp.name}
+        {/* Health Tab */}
+        {activeTab === "health" && health && (
+          <div className="space-y-4">
+            {/* Summary */}
+            <div className="grid grid-cols-4 gap-3">
+              <OverviewCard
+                label={t("vital.overallStatus") || "整体状态"}
+                value={health.status.toUpperCase()}
+                icon={health.status === "ok" ? CheckCircle2 : XCircle}
+                valueClass={health.status === "ok" ? "text-emerald-500" : "text-red-500"}
+              />
+              <OverviewCard
+                label={t("vital.healthyNodes") || "健康节点"}
+                value={`${upCount}/${totalCount}`}
+                icon={Wifi}
+                valueClass="text-emerald-500"
+              />
+              <OverviewCard
+                label={t("vital.errorNodes") || "异常节点"}
+                value={String(downCount)}
+                icon={XCircle}
+                valueClass={downCount > 0 ? "text-red-500" : "text-emerald-500"}
+              />
+              <OverviewCard
+                label={t("vital.avgLatency") || "平均延迟"}
+                value={`${avgLatency}ms`}
+                icon={Clock}
+                valueClass="text-muted-foreground"
+              />
+            </div>
+
+            {/* Component list */}
+            <div className="space-y-2">
+              <h2 className="text-sm font-medium text-muted-foreground mb-3">
+                {t("vital.components") || "组件状态"} ({totalCount})
+              </h2>
+              {health.components.map((comp) => {
+                const cfg = STATUS_CONFIG[comp.status] || STATUS_CONFIG.down;
+                const Icon = cfg.icon;
+                return (
+                  <div
+                    key={comp.name}
+                    className={cn(
+                      "flex items-center rounded-xl border p-4 transition-colors",
+                      cfg.border, cfg.bg
+                    )}
+                  >
+                    <Icon size={16} className={cn("shrink-0", cfg.color)} />
+                    <span className="ml-3 text-sm font-medium min-w-[140px] capitalize">
+                      {comp.name}
+                    </span>
+                    <span className={cn(
+                      "ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                      cfg.color, cfg.bg
+                    )}>
+                      {cfg.label}
+                    </span>
+                    <span className="ml-auto text-xs text-muted-foreground font-mono tabular-nums">
+                      {comp.latency_ms}ms
+                    </span>
+                    {comp.message && comp.message !== "ok" && (
+                      <span className="ml-3 text-xs text-muted-foreground truncate max-w-[200px]">
+                        {comp.message}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Alerts Tab */}
+        {activeTab === "alerts" && (
+          <div className="space-y-4">
+            {alerts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                <Shield size={32} className="mb-3 opacity-50" />
+                <p className="text-sm">暂无告警记录</p>
+                <p className="text-xs mt-1">系统运行正常，所有指标在阈值范围内</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-sm text-muted-foreground">
+                    共 {alerts.length} 条告警，{activeAlerts} 条未解决
                   </span>
-                  <span className={cn(
-                    "ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
-                    cfg.color, cfg.bg
-                  )}>
-                    {cfg.label}
-                  </span>
-                  <span className="ml-auto text-xs text-muted-foreground font-mono tabular-nums">
-                    {comp.latency_ms}ms
-                  </span>
-                  {comp.message && comp.message !== "ok" && (
-                    <span className="ml-3 text-xs text-muted-foreground truncate max-w-[200px]">
-                      {comp.message}
+                  {criticalAlerts > 0 && (
+                    <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-500">
+                      {criticalAlerts} 严重
                     </span>
                   )}
                 </div>
-              );
-            })}
+                {alerts.map((alert, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "flex items-start gap-3 rounded-xl border p-4 transition-colors",
+                      alert.resolved
+                        ? "border-border bg-card opacity-60"
+                        : alert.severity === "critical"
+                          ? "border-red-500/30 bg-red-500/5"
+                          : "border-yellow-500/30 bg-yellow-500/5"
+                    )}
+                  >
+                    <div className={cn(
+                      "flex items-center justify-center w-8 h-8 rounded-lg shrink-0",
+                      alert.resolved
+                        ? "bg-muted"
+                        : alert.severity === "critical"
+                          ? "bg-red-500/10"
+                          : "bg-yellow-500/10"
+                    )}>
+                      {alert.resolved ? (
+                        <CheckCircle2 size={16} className="text-muted-foreground" />
+                      ) : alert.severity === "critical" ? (
+                        <XCircle size={16} className="text-red-500" />
+                      ) : (
+                        <AlertTriangle size={16} className="text-yellow-500" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={cn(
+                          "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
+                          alert.severity === "critical"
+                            ? "bg-red-500/15 text-red-500"
+                            : "bg-yellow-500/15 text-yellow-500"
+                        )}>
+                          {alert.severity}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono">{alert.rule}</span>
+                        {alert.resolved && (
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-500">
+                            已恢复
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm">{alert.message}</p>
+                      <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                        <span>当前值: {alert.value}</span>
+                        <span>阈值: {alert.threshold}</span>
+                        <span>{formatRelativeTime(alert.ts)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
           </div>
         )}
 
         {/* Loading state */}
-        {!health && !error && (
+        {!health && !metrics && !healthError && (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 size={28} className="animate-spin text-primary mb-3" />
             <p className="text-sm text-muted-foreground">{t("vital.checking") || "正在检查系统状态..."}</p>
@@ -169,15 +504,75 @@ export function VitalClient() {
         )}
 
         {/* Footer */}
-        {health && (
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-4 border-t border-border">
+        {lastFetch && (
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-4 mt-6 border-t border-border">
             <span>
-              {t("vital.lastUpdated") || "最后更新"}: {lastFetch?.toLocaleString("zh-CN")}
+              {t("vital.lastUpdated") || "最后更新"}: {lastFetch.toLocaleString("zh-CN")}
             </span>
             <span>{t("vital.autoRefresh") || "每 30 秒自动刷新"}</span>
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+function Section({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Icon size={14} className="text-muted-foreground" />
+        <h3 className="text-sm font-medium">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function MetricCard({ icon: Icon, label, value, detail, status }: {
+  icon: React.ElementType; label: string; value: string; detail?: string; status: "ok" | "warning" | "critical";
+}) {
+  const statusColors = {
+    ok: "text-emerald-500 bg-emerald-500/8 border-emerald-500/20",
+    warning: "text-yellow-500 bg-yellow-500/8 border-yellow-500/20",
+    critical: "text-red-500 bg-red-500/8 border-red-500/20",
+  };
+  return (
+    <div className={cn("rounded-xl border p-3", statusColors[status])}>
+      <div className="flex items-center gap-2 mb-1">
+        <Icon size={14} className="opacity-70" />
+        <span className="text-[11px] uppercase tracking-wider opacity-70">{label}</span>
+      </div>
+      <div className="text-lg font-semibold">{value}</div>
+      {detail && <div className="text-[11px] opacity-60 mt-0.5">{detail}</div>}
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon: Icon, color }: {
+  label: string; value: string; icon: React.ElementType; color: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={14} className="text-muted-foreground" />
+        <span className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</span>
+      </div>
+      <div className="text-xl font-semibold">{value}</div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, icon: Icon, danger }: {
+  label: string; value: string; icon: React.ElementType; danger?: boolean;
+}) {
+  return (
+    <div className="rounded-lg bg-muted/30 p-3">
+      <div className="flex items-center gap-1.5 mb-1">
+        <Icon size={12} className="text-muted-foreground" />
+        <span className="text-[10px] text-muted-foreground">{label}</span>
+      </div>
+      <div className={cn("text-sm font-semibold tabular-nums", danger && "text-red-500")}>{value}</div>
     </div>
   );
 }
