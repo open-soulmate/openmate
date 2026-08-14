@@ -153,6 +153,14 @@ export function DownloadClient() {
   };
 
   const removeTask = (id: string) => setTasks(prev => prev.filter(t => t.id !== id));
+  const togglePause = (id: string) => setTasks(prev => prev.map(t => t.id === id ? { ...t, status: t.status === 'paused' ? 'downloading' : t.status === 'downloading' ? 'paused' : t.status } : t));
+  const deleteFile = async (task: DownloadTask) => {
+    if (!confirm(`确定删除 ${task.filename}？`)) return;
+    try {
+      await fetch(`${getApiBaseUrl()}/api/download/cache/${task.filename}`, { method: 'DELETE' });
+      removeTask(task.id);
+    } catch { removeTask(task.id); }
+  };
 
   const togglePause = (id: string) => {
     setTasks(prev => prev.map(t =>
