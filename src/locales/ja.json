@@ -523,7 +523,8 @@
     "burst": "バースト",
     "time": "時刻",
     "backingUp": "バックアップ中...",
-    "exporting": "エクスポート中..."
+    "exporting": "エクスポート中...",
+    "search": "検索"
   },
   "gland": {
     "title": "腺 · モデルゲートウェイ",
