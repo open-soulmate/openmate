@@ -79,6 +79,7 @@ export function DashboardClient() {
     { key: "vision", label: "🎨 Vision", endpoint: "/api/vision/health" },
     { key: "mind", label: "💭 Mind", endpoint: "/api/mind/health" },
     { key: "trajectory", label: "📊 Trajectory", endpoint: "/api/trajectory/health" },
+    { key: "mcp", label: "🔌 MCP", endpoint: "/api/mcp/health" },
   ];
 
   const checkOrganHealth = useCallback(async () => {
