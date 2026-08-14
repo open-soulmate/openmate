@@ -50,7 +50,8 @@
     "voice": "声帯",
     "vision": "視覚",
     "mind": "心",
-    "nerve": "神経"
+    "nerve": "神経",
+    "plugins": "プラグイン"
   },
   "dashboard": {
     "title": "システム概要",

@@ -52,7 +52,8 @@
     "voice": "Voice",
     "vision": "Vision",
     "mind": "Mind",
-    "nerve": "Nerve"
+    "nerve": "Nerve",
+    "plugins": "Plugins"
   },
   "dashboard": {
     "title": "System Overview",
