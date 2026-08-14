@@ -45,7 +45,7 @@ export function AppShell() {
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { t } = useTranslation();
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set([t("nav.internalServices") || "内部服务"]));
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["内部服务"]));
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const menuRef = useRef<HTMLDivElement>(null);
 
