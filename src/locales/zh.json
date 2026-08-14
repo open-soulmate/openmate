@@ -52,7 +52,8 @@
     "voice": "声带",
     "vision": "视觉",
     "mind": "心智",
-    "nerve": "神经"
+    "nerve": "神经",
+    "plugins": "插件"
   },
   "dashboard": {
     "title": "系统概览",

@@ -122,6 +122,7 @@ export function AppShell() {
       label: t("nav.systemGroup") || "系统",
       items: [
         { href: "/download", label: t("nav.download"), icon: Download },
+        { href: "/plugins", label: t("nav.plugins") || "插件", icon: Puzzle },
         { href: "/settings", label: t("nav.settings"), icon: Settings },
       ],
     },

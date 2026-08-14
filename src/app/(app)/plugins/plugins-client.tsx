@@ -1,0 +1,457 @@
+"use client";
+import { useState, useEffect, useCallback } from "react";
+import {
+  Puzzle, Plus, Trash2, Power, PowerOff, RefreshCw,
+  Package, Code, AlertCircle, CheckCircle2, Loader2,
+  X, Search, ChevronDown,
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { getApiBaseUrl, getToken } from "@/lib/api-client";
+import { useTranslation } from "react-i18next";
+
+// ─── Types ──────────────────────────────────────────────────────────
+
+interface Plugin {
+  id: string;
+  name: string;
+  version: string;
+  type: string;
+  enabled: boolean;
+  description?: string;
+  author?: string;
+}
+
+// ─── API helpers ────────────────────────────────────────────────────
+
+function apiBase() {
+  return getApiBaseUrl() || "";
+}
+
+function apiHeaders(): HeadersInit {
+  const token = getToken();
+  return {
+    "Content-Type": "application/json",
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+async function fetchPlugins(): Promise<Plugin[]> {
+  const res = await fetch(`${apiBase()}/api/plugins`, { headers: apiHeaders() });
+  if (!res.ok) throw new Error(`Failed to fetch plugins: ${res.status}`);
+  return res.json();
+}
+
+async function installPlugin(manifest: Record<string, unknown>): Promise<Plugin> {
+  const res = await fetch(`${apiBase()}/api/plugins`, {
+    method: "POST",
+    headers: apiHeaders(),
+    body: JSON.stringify(manifest),
+  });
+  if (!res.ok) throw new Error(`Install failed: ${res.status}`);
+  return res.json();
+}
+
+async function togglePlugin(id: string, enabled: boolean): Promise<Plugin> {
+  const res = await fetch(`${apiBase()}/api/plugins/${id}`, {
+    method: "PATCH",
+    headers: apiHeaders(),
+    body: JSON.stringify({ enabled }),
+  });
+  if (!res.ok) throw new Error(`Toggle failed: ${res.status}`);
+  return res.json();
+}
+
+async function uninstallPlugin(id: string): Promise<void> {
+  const res = await fetch(`${apiBase()}/api/plugins/${id}`, {
+    method: "DELETE",
+    headers: apiHeaders(),
+  });
+  if (!res.ok) throw new Error(`Uninstall failed: ${res.status}`);
+}
+
+// ─── Sub-components ─────────────────────────────────────────────────
+
+function StatusBadge({ enabled }: { enabled: boolean }) {
+  return (
+    <span className={cn(
+      "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
+      enabled
+        ? "bg-green-500/10 text-green-600 dark:text-green-400"
+        : "bg-muted text-muted-foreground"
+    )}>
+      {enabled ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
+      {enabled ? "已启用" : "已停用"}
+    </span>
+  );
+}
+
+function TypeBadge({ type }: { type: string }) {
+  const colors: Record<string, string> = {
+    tool: "bg-blue-500/10 text-blue-600 dark:text-blue-400",
+    skill: "bg-purple-500/10 text-purple-600 dark:text-purple-400",
+    provider: "bg-orange-500/10 text-orange-600 dark:text-orange-400",
+    theme: "bg-pink-500/10 text-pink-600 dark:text-pink-400",
+  };
+  return (
+    <span className={cn(
+      "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+      colors[type] || "bg-muted text-muted-foreground"
+    )}>
+      {type}
+    </span>
+  );
+}
+
+function PluginCard({
+  plugin,
+  onToggle,
+  onUninstall,
+}: {
+  plugin: Plugin;
+  onToggle: (id: string, enabled: boolean) => void;
+  onUninstall: (id: string) => void;
+}) {
+  const [toggling, setToggling] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+
+  const handleToggle = async () => {
+    setToggling(true);
+    try {
+      await onToggle(plugin.id, !plugin.enabled);
+    } finally {
+      setToggling(false);
+    }
+  };
+
+  return (
+    <div className="group relative rounded-xl border border-border bg-card p-5 transition-all hover:shadow-md hover:border-primary/20">
+      <div className="flex items-start justify-between mb-3">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+            <Package size={18} />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold leading-tight">{plugin.name}</h3>
+            <p className="text-[11px] text-muted-foreground mt-0.5">v{plugin.version}</p>
+          </div>
+        </div>
+        <StatusBadge enabled={plugin.enabled} />
+      </div>
+
+      {plugin.description && (
+        <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{plugin.description}</p>
+      )}
+
+      <div className="flex items-center gap-2 mb-4">
+        <TypeBadge type={plugin.type} />
+        {plugin.author && (
+          <span className="text-[11px] text-muted-foreground">by {plugin.author}</span>
+        )}
+      </div>
+
+      <div className="flex items-center gap-2 pt-3 border-t border-border">
+        <button
+          onClick={handleToggle}
+          disabled={toggling}
+          className={cn(
+            "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+            plugin.enabled
+              ? "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400"
+              : "bg-green-500/10 text-green-600 hover:bg-green-500/20 dark:text-green-400"
+          )}
+        >
+          {toggling ? (
+            <Loader2 size={13} className="animate-spin" />
+          ) : plugin.enabled ? (
+            <PowerOff size={13} />
+          ) : (
+            <Power size={13} />
+          )}
+          {plugin.enabled ? "停用" : "启用"}
+        </button>
+
+        {showConfirm ? (
+          <div className="flex items-center gap-1.5 ml-auto">
+            <span className="text-[11px] text-destructive">确认卸载?</span>
+            <button
+              onClick={() => { onUninstall(plugin.id); setShowConfirm(false); }}
+              className="rounded-lg bg-destructive/10 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20"
+            >
+              确定
+            </button>
+            <button
+              onClick={() => setShowConfirm(false)}
+              className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/80"
+            >
+              取消
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => setShowConfirm(true)}
+            className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors ml-auto"
+          >
+            <Trash2 size={13} />
+            卸载
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstalled: () => void }) {
+  const [manifest, setManifest] = useState("");
+  const [error, setError] = useState("");
+  const [installing, setInstalling] = useState(false);
+
+  const handleInstall = async () => {
+    setError("");
+    try {
+      const parsed = JSON.parse(manifest);
+      setInstalling(true);
+      await installPlugin(parsed);
+      onInstalled();
+      onClose();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Invalid JSON or install failed");
+    } finally {
+      setInstalling(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm" onClick={onClose}>
+      <div
+        className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+          <div className="flex items-center gap-2.5">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
+              <Plus size={16} />
+            </div>
+            <h2 className="text-base font-semibold">安装插件</h2>
+          </div>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            <X size={16} />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-4">
+          <div>
+            <label className="text-sm font-medium mb-1.5 block">Plugin Manifest (JSON)</label>
+            <p className="text-xs text-muted-foreground mb-2">粘贴插件的 manifest JSON 配置</p>
+            <textarea
+              value={manifest}
+              onChange={(e) => setManifest(e.target.value)}
+              placeholder={`{\n  "name": "my-plugin",\n  "version": "1.0.0",\n  "type": "tool",\n  "description": "A sample plugin"\n}`}
+              rows={10}
+              className="w-full rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+            />
+          </div>
+
+          {error && (
+            <div className="flex items-start gap-2 rounded-lg bg-destructive/10 px-3 py-2.5 text-xs text-destructive">
+              <AlertCircle size={14} className="mt-0.5 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+        </div>
+
+        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/30">
+          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+            取消
+          </button>
+          <button
+            onClick={handleInstall}
+            disabled={!manifest.trim() || installing}
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {installing ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
+            安装
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main Component ─────────────────────────────────────────────────
+
+export function PluginsClient() {
+  const [plugins, setPlugins] = useState<Plugin[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [showInstall, setShowInstall] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [filterType, setFilterType] = useState<string>("all");
+
+  const loadPlugins = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    try {
+      const data = await fetchPlugins();
+      setPlugins(data);
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : "Failed to load plugins");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { loadPlugins(); }, [loadPlugins]);
+
+  const handleToggle = async (id: string, enabled: boolean) => {
+    await togglePlugin(id, enabled);
+    setPlugins((prev) => prev.map((p) => (p.id === id ? { ...p, enabled } : p)));
+  };
+
+  const handleUninstall = async (id: string) => {
+    await uninstallPlugin(id);
+    setPlugins((prev) => prev.filter((p) => p.id !== id));
+  };
+
+  const types = ["all", ...new Set(plugins.map((p) => p.type))];
+
+  const filtered = plugins.filter((p) => {
+    const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      p.description?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesType = filterType === "all" || p.type === filterType;
+    return matchesSearch && matchesType;
+  });
+
+  const enabledCount = plugins.filter((p) => p.enabled).length;
+
+  return (
+    <div className="flex-1 overflow-y-auto">
+      <div className="mx-auto max-w-6xl px-6 py-8">
+        {/* Header */}
+        <div className="flex items-center justify-between mb-8">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                <Puzzle size={22} />
+              </div>
+              插件管理
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1.5">
+              安装、配置和管理系统插件
+              {plugins.length > 0 && (
+                <span className="ml-2 text-xs">
+                  · 共 {plugins.length} 个插件，{enabledCount} 个已启用
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={loadPlugins}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <RefreshCw size={14} />
+              刷新
+            </button>
+            <button
+              onClick={() => setShowInstall(true)}
+              className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Plus size={14} />
+              安装插件
+            </button>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex items-center gap-3 mb-6">
+          <div className="relative flex-1 max-w-sm">
+            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="搜索插件..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full rounded-lg border border-border bg-muted/50 pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          {types.length > 2 && (
+            <select
+              value={filterType}
+              onChange={(e) => setFilterType(e.target.value)}
+              className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+            >
+              {types.map((t) => (
+                <option key={t} value={t}>{t === "all" ? "全部类型" : t}</option>
+              ))}
+            </select>
+          )}
+        </div>
+
+        {/* Content */}
+        {loading ? (
+          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+            <Loader2 size={32} className="animate-spin mb-4" />
+            <p className="text-sm">加载插件列表...</p>
+          </div>
+        ) : error ? (
+          <div className="flex flex-col items-center justify-center py-24">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-4">
+              <AlertCircle size={24} />
+            </div>
+            <p className="text-sm font-medium mb-1">加载失败</p>
+            <p className="text-xs text-muted-foreground mb-4">{error}</p>
+            <button
+              onClick={loadPlugins}
+              className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <RefreshCw size={14} />
+              重试
+            </button>
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-4">
+              <Package size={32} />
+            </div>
+            <p className="text-sm font-medium mb-1">
+              {searchQuery || filterType !== "all" ? "没有匹配的插件" : "暂无插件"}
+            </p>
+            <p className="text-xs text-muted-foreground mb-4">
+              {searchQuery || filterType !== "all"
+                ? "尝试调整搜索条件"
+                : "点击「安装插件」开始扩展系统功能"}
+            </p>
+            {!searchQuery && filterType === "all" && (
+              <button
+                onClick={() => setShowInstall(true)}
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <Plus size={14} />
+                安装插件
+              </button>
+            )}
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((plugin) => (
+              <PluginCard
+                key={plugin.id}
+                plugin={plugin}
+                onToggle={handleToggle}
+                onUninstall={handleUninstall}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Install Dialog */}
+      {showInstall && (
+        <InstallDialog
+          onClose={() => setShowInstall(false)}
+          onInstalled={loadPlugins}
+        />
+      )}
+    </div>
+  );
+}
