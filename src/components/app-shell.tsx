@@ -13,14 +13,9 @@ import {
   User, Moon, Sun, FileText, MessageCircle, LogOut,
   LayoutDashboard, FolderKanban, Share2, ChevronDown,
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
-  Zap, Activity,
-  Sparkles,
-  Brain,
-  Bolt,
-  Heart,
-  Home,
-  MousePointer,
-  } from "lucide-react";
+  Zap, Activity, Sparkles, Brain, Bolt, Heart, Home,
+  MousePointer, Mic, ImageIcon, Smile,
+} from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId } from "@/lib/api-client";
 import { type ThemeId, persistTheme } from "@/lib/theme";
@@ -118,6 +113,9 @@ export function AppShell() {
         { href: "/gland", label: t("nav.gland") || "腺体", icon: Zap },
         { href: "/nest", label: t("nav.nest") || "巢穴", icon: Home },
         { href: "/limb", label: t("nav.limb") || "四肢", icon: MousePointer },
+        { href: "/voice", label: t("nav.voice") || "声带", icon: Mic },
+        { href: "/vision", label: t("nav.vision") || "视觉", icon: ImageIcon },
+        { href: "/mind", label: t("nav.mind") || "心智", icon: Smile },
       ],
     },
     {
