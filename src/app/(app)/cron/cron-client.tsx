@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useMemo } from 'react';
-import { Clock, Play, Pause, Trash2, RefreshCw, Loader2, AlertCircle, ChevronRight, ChevronDown, Bot } from 'lucide-react';
+import { Clock, Play, Pause, Trash2, RefreshCw, Loader2, AlertCircle, ChevronRight, ChevronDown, Bot, Plus, X, Zap } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api-client';
 const getApiUrl = () => getApiBaseUrl();
 
@@ -47,6 +47,13 @@ export function CronClient() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
   const [expandedAgents, setExpandedAgents] = useState<Set<string>>(new Set());
+  const [showCreate, setShowCreate] = useState(false);
+  const [createName, setCreateName] = useState('');
+  const [createSchedule, setCreateSchedule] = useState('30m');
+  const [createPrompt, setCreatePrompt] = useState('');
+  const [createDeliver, setCreateDeliver] = useState('');
+  const [creating, setCreating] = useState(false);
+  const [createError, setCreateError] = useState('');
 
   useEffect(() => { loadJobs(); }, []);
 
@@ -84,6 +91,26 @@ export function CronClient() {
     });
   };
 
+  const handleCreate = async () => {
+    if (!createSchedule.trim()) return;
+    setCreating(true);
+    setCreateError('');
+    try {
+      await apiRequest('/api/cron/create', 'POST', {
+        schedule: createSchedule.trim(),
+        prompt: createPrompt.trim(),
+        name: createName.trim(),
+        deliver: createDeliver.trim(),
+      });
+      setShowCreate(false);
+      setCreateName(''); setCreateSchedule('30m'); setCreatePrompt(''); setCreateDeliver('');
+      await loadJobs();
+    } catch (e: unknown) {
+      setCreateError(e instanceof Error ? e.message : 'Failed to create job');
+    }
+    setCreating(false);
+  };
+
   // Group jobs by agent
   const grouped = useMemo(() => {
     const map: Record<string, CronJob[]> = {};
@@ -108,7 +135,10 @@ export function CronClient() {
           <h1 className="text-2xl font-bold flex items-center gap-2"><Clock className="w-6 h-6 text-primary" /> 定时任务</h1>
           <p className="text-sm text-muted-foreground mt-1">按Agent分组管理定时任务和计划</p>
         </div>
-        <button onClick={loadJobs} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> 刷新</button>
+        <div className="flex gap-2">
+          <button onClick={() => setShowCreate(!showCreate)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 text-sm"><Plus className="w-4 h-4" /> 新建任务</button>
+          <button onClick={loadJobs} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> 刷新</button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -117,6 +147,49 @@ export function CronClient() {
         <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-green-500">{activeCount}</p><p className="text-sm text-muted-foreground">运行中</p></div>
         <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-amber-500">{pausedCount}</p><p className="text-sm text-muted-foreground">已暂停</p></div>
       </div>
+
+      {/* Create Dialog */}
+      {showCreate && (
+        <div className="mb-6 p-4 rounded-xl border bg-card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-medium flex items-center gap-2"><Zap className="w-4 h-4 text-primary" /> 新建定时任务</h3>
+            <button onClick={() => { setShowCreate(false); setCreateError(''); }} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
+          </div>
+          <div className="grid grid-cols-2 gap-4 mb-4">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">任务名称</label>
+              <input value={createName} onChange={e => setCreateName(e.target.value)} placeholder="可选"
+                className="w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-primary" />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">调度规则 <span className="text-destructive">*</span></label>
+              <input value={createSchedule} onChange={e => setCreateSchedule(e.target.value)} placeholder="30m / every 2h / 0 9 * * *"
+                className="w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-primary" />
+            </div>
+          </div>
+          <div className="mb-4">
+            <label className="text-xs text-muted-foreground mb-1 block">执行提示词</label>
+            <textarea value={createPrompt} onChange={e => setCreatePrompt(e.target.value)} rows={3} placeholder="任务指令..."
+              className="w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-primary resize-none" />
+          </div>
+          <div className="mb-4">
+            <label className="text-xs text-muted-foreground mb-1 block">投递目标</label>
+            <input value={createDeliver} onChange={e => setCreateDeliver(e.target.value)} placeholder="origin / local / telegram:chat_id"
+              className="w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-primary" />
+          </div>
+          {createError && (
+            <p className="text-xs text-destructive mb-3">{createError}</p>
+          )}
+          <div className="flex gap-2">
+            <button onClick={handleCreate} disabled={creating || !createSchedule.trim()}
+              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1">
+              {creating ? <Loader2 className="w-3 h-3 animate-spin" /> : <Zap className="w-3 h-3" />} 创建
+            </button>
+            <button onClick={() => { setShowCreate(false); setCreateError(''); }}
+              className="px-4 py-2 rounded-lg border text-sm hover:bg-muted">取消</button>
+          </div>
+        </div>
+      )}
 
       {/* Agent Groups */}
       {Object.keys(grouped).length === 0 ? (
