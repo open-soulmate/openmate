@@ -1,7 +1,14 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from "react";
+import { useTranslation } from "react-i18next";
+import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import {
+  Folder, HardDrive, Upload, FolderOpen, Search,
+  Image, FileText, Code, Paperclip, RefreshCw,
+  Download, Trash2,
+} from "lucide-react";
 
 interface FileItem {
   file_id: string;
@@ -38,8 +45,8 @@ function formatTime(ts: number): string {
   });
 }
 
-function getFileIcon(mimeType: string): string {
-  if (mimeType.startsWith("image/")) return "🖼️";
+function getFileIcon(mimeType: string) {
+  if (mimeType.startsWith("image/")) return Image;
   if (
     mimeType.startsWith("text/") ||
     mimeType.includes("pdf") ||
@@ -50,7 +57,7 @@ function getFileIcon(mimeType: string): string {
     mimeType.includes("excel") ||
     mimeType.includes("powerpoint")
   )
-    return "📄";
+    return FileText;
   if (
     mimeType.includes("javascript") ||
     mimeType.includes("json") ||
@@ -64,8 +71,8 @@ function getFileIcon(mimeType: string): string {
     mimeType.includes("tar") ||
     mimeType.includes("gzip")
   )
-    return "💻";
-  return "📎";
+    return Code;
+  return Paperclip;
 }
 
 function getFileTypeLabel(mimeType: string): string {
@@ -99,7 +106,23 @@ function getFileTypeLabel(mimeType: string): string {
   return map[ext] || ext.toUpperCase();
 }
 
+function StatCard({ icon: Icon, label, value, sub, color, bg }: {
+  icon: React.ElementType; label: string; value: string | number; sub: string; color: string; bg: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center justify-between mb-2">
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+        <div className={cn("rounded-lg p-1.5", bg)}><Icon size={14} className={color} /></div>
+      </div>
+      <p className="text-2xl font-bold">{value}</p>
+      <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
+    </div>
+  );
+}
+
 export function VeinClient() {
+  const { t } = useTranslation();
   const [files, setFiles] = useState<FileItem[]>([]);
   const [stats, setStats] = useState<VeinStats | null>(null);
   const [search, setSearch] = useState("");
@@ -157,11 +180,11 @@ export function VeinClient() {
       const res = await fetch(`${apiBase}/api/vein/upload`, { method: "POST", body: form });
       if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
       const data = await res.json();
-      setUploadProgress(`✅ 上传成功: ${data.name} (${formatBytes(data.size)})`);
+      setUploadProgress(`上传成功: ${data.name} (${formatBytes(data.size)})`);
       fetchFiles();
       fetchStats();
     } catch (e: any) {
-      setUploadProgress(`❌ 上传失败: ${e.message}`);
+      setUploadProgress(`上传失败: ${e.message}`);
     } finally {
       setUploading(false);
       setTimeout(() => setUploadProgress(""), 3000);
@@ -213,124 +236,69 @@ export function VeinClient() {
   const filteredFiles = files;
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", height: "100%", overflow: "hidden" }}>
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "space-between",
-          borderBottom: "1px solid var(--border, #e5e7eb)",
-          padding: "16px 24px",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-          <span style={{ fontSize: "20px" }}>🩸</span>
-          <h1 style={{ fontSize: "18px", fontWeight: 600, margin: 0 }}>文件管理</h1>
-          <span
-            style={{
-              borderRadius: "9999px",
-              background: "rgba(239,68,68,0.1)",
-              padding: "2px 8px",
-              fontSize: "12px",
-              fontWeight: 500,
-              color: "#ef4444",
-            }}
-          >
+      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex items-center gap-3">
+          <Folder size={20} className="text-red-500" />
+          <h1 className="text-lg font-semibold">{t("vein.title") || "文件管理"}</h1>
+          <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500">
             Vein
           </span>
         </div>
-        <div style={{ display: "flex", gap: "8px" }}>
+        <div className="flex gap-2">
           <button
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              borderRadius: "8px",
-              border: "none",
-              padding: "6px 14px",
-              fontSize: "14px",
-              cursor: uploading ? "not-allowed" : "pointer",
-              background: "var(--primary, #3b82f6)",
-              color: "#fff",
-              opacity: uploading ? 0.6 : 1,
-            }}
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-sm text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
-            ⬆️ {uploading ? "上传中..." : "上传文件"}
+            <Upload size={14} />
+            {uploading ? (t("vein.uploading") || "上传中...") : (t("vein.upload") || "上传文件")}
           </button>
-          <input ref={fileInputRef} type="file" multiple style={{ display: "none" }} onChange={e => handleUpload(e.target.files)} />
+          <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => handleUpload(e.target.files)} />
           <button
             onClick={() => { fetchFiles(); fetchStats(); }}
-            style={{
-              display: "flex",
-              alignItems: "center",
-              gap: "6px",
-              borderRadius: "8px",
-              border: "1px solid var(--border, #e5e7eb)",
-              padding: "6px 12px",
-              fontSize: "14px",
-              cursor: "pointer",
-              background: "transparent",
-            }}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
           >
-            🔄 刷新
+            <RefreshCw size={14} /> {t("common.refresh") || "刷新"}
           </button>
         </div>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", padding: "24px", display: "flex", flexDirection: "column", gap: "24px" }}>
+      <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Upload progress */}
         {uploadProgress && (
-          <div style={{
-            padding: "10px 16px",
-            borderRadius: "8px",
-            background: uploadProgress.startsWith("✅") ? "rgba(16,185,129,0.1)" : uploadProgress.startsWith("❌") ? "rgba(239,68,68,0.1)" : "rgba(59,130,246,0.1)",
-            fontSize: "13px",
-            color: uploadProgress.startsWith("✅") ? "#10b981" : uploadProgress.startsWith("❌") ? "#ef4444" : "#3b82f6",
-          }}>
+          <div className={cn(
+            "rounded-lg px-4 py-2.5 text-sm",
+            uploadProgress.startsWith("上传成功")
+              ? "bg-emerald-500/10 text-emerald-500"
+              : uploadProgress.startsWith("上传失败")
+                ? "bg-red-500/10 text-red-500"
+                : "bg-blue-500/10 text-blue-500"
+          )}>
             {uploadProgress}
           </div>
         )}
 
         {/* Stats */}
         {stats && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: "16px" }}>
-            <div
-              style={{
-                borderRadius: "12px",
-                border: "1px solid var(--border, #e5e7eb)",
-                padding: "16px",
-                background: "var(--card, #fff)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--muted-foreground, #6b7280)" }}>文件总数</span>
-                <span style={{ borderRadius: "8px", background: "rgba(59,130,246,0.1)", padding: "6px", fontSize: "14px" }}>📁</span>
-              </div>
-              <p style={{ fontSize: "28px", fontWeight: 700, margin: 0 }}>{stats.store.total_files}</p>
-              <p style={{ fontSize: "12px", color: "var(--muted-foreground, #6b7280)", marginTop: "2px" }}>
-                {formatBytes(stats.store.total_size_bytes)}
-              </p>
-            </div>
-            <div
-              style={{
-                borderRadius: "12px",
-                border: "1px solid var(--border, #e5e7eb)",
-                padding: "16px",
-                background: "var(--card, #fff)",
-              }}
-            >
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: "8px" }}>
-                <span style={{ fontSize: "12px", fontWeight: 500, color: "var(--muted-foreground, #6b7280)" }}>总存储大小</span>
-                <span style={{ borderRadius: "8px", background: "rgba(16,185,129,0.1)", padding: "6px", fontSize: "14px" }}>💾</span>
-              </div>
-              <p style={{ fontSize: "28px", fontWeight: 700, margin: 0 }}>{formatBytes(stats.store.total_size_bytes)}</p>
-              <p style={{ fontSize: "12px", color: "var(--muted-foreground, #6b7280)", marginTop: "2px" }}>
-                {stats.store.total_files} 个文件
-              </p>
-            </div>
+          <div className="grid grid-cols-2 gap-4">
+            <StatCard
+              icon={Folder}
+              label={t("vein.totalFiles") || "文件总数"}
+              value={stats.store.total_files}
+              sub={formatBytes(stats.store.total_size_bytes)}
+              color="text-blue-500"
+              bg="bg-blue-500/10"
+            />
+            <StatCard
+              icon={HardDrive}
+              label={t("vein.totalSize") || "总存储大小"}
+              value={formatBytes(stats.store.total_size_bytes)}
+              sub={`${stats.store.total_files} 个文件`}
+              color="text-emerald-500"
+              bg="bg-emerald-500/10"
+            />
           </div>
         )}
 
@@ -341,195 +309,127 @@ export function VeinClient() {
           onDragOver={handleDrag}
           onDrop={handleDrop}
           onClick={() => fileInputRef.current?.click()}
-          style={{
-            borderRadius: "12px",
-            border: `2px dashed ${dragActive ? "var(--primary, #3b82f6)" : "var(--border, #e5e7eb)"}`,
-            padding: "32px",
-            textAlign: "center",
-            cursor: "pointer",
-            background: dragActive ? "rgba(59,130,246,0.05)" : "transparent",
-            transition: "all 0.2s",
-          }}
+          className={cn(
+            "rounded-xl border-2 border-dashed p-8 text-center cursor-pointer transition-all",
+            dragActive
+              ? "border-primary bg-primary/5"
+              : "border-border hover:border-primary/50"
+          )}
         >
-          <span style={{ fontSize: "32px", opacity: 0.5 }}>📤</span>
-          <p style={{ margin: "8px 0 4px", fontSize: "14px", fontWeight: 500 }}>
-            {dragActive ? "释放文件以上传" : "拖拽文件到此处，或点击选择文件"}
+          <Upload size={32} className="mx-auto text-muted-foreground/50" />
+          <p className="mt-2 text-sm font-medium">
+            {dragActive ? (t("vein.dropToUpload") || "释放文件以上传") : (t("vein.dragOrClick") || "拖拽文件到此处，或点击选择文件")}
           </p>
-          <p style={{ margin: 0, fontSize: "12px", color: "var(--muted-foreground, #6b7280)" }}>
-            支持任意文件类型，自动去重存储
+          <p className="text-xs text-muted-foreground">
+            {t("vein.supportAll") || "支持任意文件类型，自动去重存储"}
           </p>
         </div>
 
         {/* Search + File List */}
-        <div style={{ display: "flex", flexDirection: "column", gap: "12px" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
-            <div style={{ position: "relative", flex: 1, maxWidth: "384px" }}>
-              <span
-                style={{
-                  position: "absolute",
-                  left: "12px",
-                  top: "50%",
-                  transform: "translateY(-50%)",
-                  color: "var(--muted-foreground, #6b7280)",
-                  fontSize: "14px",
-                }}
-              >
-                🔍
-              </span>
+        <div className="space-y-3">
+          <div className="flex items-center gap-3">
+            <div className="relative flex-1 max-w-sm">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
-                placeholder="搜索文件名..."
+                placeholder={t("vein.searchPlaceholder") || "搜索文件名..."}
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                style={{
-                  width: "100%",
-                  borderRadius: "8px",
-                  border: "1px solid var(--border, #e5e7eb)",
-                  background: "var(--background, #fff)",
-                  padding: "8px 12px 8px 36px",
-                  fontSize: "14px",
-                  outline: "none",
-                }}
+                className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
               />
             </div>
             <button
               onClick={handleSearch}
-              style={{
-                borderRadius: "8px",
-                border: "1px solid var(--border, #e5e7eb)",
-                padding: "8px 16px",
-                fontSize: "14px",
-                cursor: "pointer",
-                background: "var(--primary, #3b82f6)",
-                color: "#fff",
-              }}
+              className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90 transition-colors"
             >
-              搜索
+              {t("common.search") || "搜索"}
             </button>
-            <span style={{ fontSize: "12px", color: "var(--muted-foreground, #6b7280)" }}>
-              {loading ? "加载中..." : `${filteredFiles.length} 个文件`}
+            <span className="text-xs text-muted-foreground">
+              {loading ? (t("common.loading") || "加载中...") : `${filteredFiles.length} ${(t("vein.files") || "个文件")}`}
             </span>
           </div>
 
           {filteredFiles.length === 0 ? (
-            <div
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                alignItems: "center",
-                justifyContent: "center",
-                padding: "64px 0",
-                color: "var(--muted-foreground, #6b7280)",
-              }}
-            >
-              <span style={{ fontSize: "40px", opacity: 0.3, marginBottom: "12px" }}>📂</span>
-              <p style={{ fontSize: "14px", margin: 0 }}>暂无文件</p>
-              <p style={{ fontSize: "12px", marginTop: "4px" }}>
-                {search ? "未找到匹配的文件" : "上传文件开始使用"}
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <FolderOpen size={40} className="opacity-30 mb-3" />
+              <p className="text-sm">{t("vein.noFiles") || "暂无文件"}</p>
+              <p className="text-xs mt-1">
+                {search ? (t("vein.noMatch") || "未找到匹配的文件") : (t("vein.startUpload") || "上传文件开始使用")}
               </p>
             </div>
           ) : (
-            <div
-              style={{
-                borderRadius: "12px",
-                border: "1px solid var(--border, #e5e7eb)",
-                overflow: "hidden",
-              }}
-            >
-              <table style={{ width: "100%", fontSize: "14px", borderCollapse: "collapse" }}>
+            <div className="rounded-xl border border-border overflow-hidden">
+              <table className="w-full text-sm">
                 <thead>
-                  <tr style={{ borderBottom: "1px solid var(--border, #e5e7eb)", background: "var(--muted, #f9fafb)" }}>
-                    <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 500, color: "var(--muted-foreground, #6b7280)" }}>
-                      文件名
+                  <tr className="border-b border-border bg-muted/30">
+                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                      {t("vein.fileName") || "文件名"}
                     </th>
-                    <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 500, color: "var(--muted-foreground, #6b7280)", width: "100px" }}>
-                      大小
+                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
+                      {t("vein.size") || "大小"}
                     </th>
-                    <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 500, color: "var(--muted-foreground, #6b7280)", width: "100px" }}>
-                      类型
+                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
+                      {t("vein.type") || "类型"}
                     </th>
-                    <th style={{ padding: "10px 16px", textAlign: "left", fontWeight: 500, color: "var(--muted-foreground, #6b7280)", width: "160px" }}>
-                      上传时间
+                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-40">
+                      {t("vein.uploadTime") || "上传时间"}
                     </th>
-                    <th style={{ padding: "10px 16px", textAlign: "right", fontWeight: 500, color: "var(--muted-foreground, #6b7280)", width: "120px" }}>
-                      操作
+                    <th className="px-4 py-2.5 text-right font-medium text-muted-foreground w-28">
+                      {t("vein.actions") || "操作"}
                     </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredFiles.map((f) => (
-                    <tr
-                      key={f.file_id}
-                      style={{
-                        borderBottom: "1px solid var(--border, #e5e7eb)",
-                        transition: "background 0.15s",
-                        background: selectedFile?.file_id === f.file_id ? "var(--muted, #f9fafb)" : "transparent",
-                      }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = "var(--muted, #f9fafb)")}
-                      onMouseLeave={(e) => (e.currentTarget.style.background = selectedFile?.file_id === f.file_id ? "var(--muted, #f9fafb)" : "transparent")}
-                      onClick={() => setSelectedFile(selectedFile?.file_id === f.file_id ? null : f)}
-                    >
-                      <td style={{ padding: "10px 16px" }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
-                          <span style={{ flexShrink: 0 }}>{getFileIcon(f.mime_type)}</span>
-                          <span
-                            style={{
-                              overflow: "hidden",
-                              textOverflow: "ellipsis",
-                              whiteSpace: "nowrap",
-                              maxWidth: "280px",
-                            }}
-                            title={f.name}
-                          >
-                            {f.name}
-                          </span>
-                        </div>
-                      </td>
-                      <td style={{ padding: "10px 16px", color: "var(--muted-foreground, #6b7280)" }}>
-                        {formatBytes(f.size)}
-                      </td>
-                      <td style={{ padding: "10px 16px", color: "var(--muted-foreground, #6b7280)", fontSize: "12px" }}>
-                        {getFileTypeLabel(f.mime_type)}
-                      </td>
-                      <td style={{ padding: "10px 16px", color: "var(--muted-foreground, #6b7280)", fontSize: "12px" }}>
-                        {formatTime(f.created_at)}
-                      </td>
-                      <td style={{ padding: "10px 16px", textAlign: "right" }}>
-                        <div style={{ display: "flex", gap: "4px", justifyContent: "flex-end" }}>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDownload(f.file_id, f.name); }}
-                            title="下载"
-                            style={{
-                              borderRadius: "6px",
-                              border: "1px solid var(--border, #e5e7eb)",
-                              padding: "4px 8px",
-                              fontSize: "12px",
-                              cursor: "pointer",
-                              background: "transparent",
-                            }}
-                          >
-                            ⬇️
-                          </button>
-                          <button
-                            onClick={(e) => { e.stopPropagation(); handleDelete(f.file_id); }}
-                            title="删除"
-                            style={{
-                              borderRadius: "6px",
-                              border: "1px solid rgba(239,68,68,0.3)",
-                              padding: "4px 8px",
-                              fontSize: "12px",
-                              cursor: "pointer",
-                              background: "transparent",
-                              color: "#ef4444",
-                            }}
-                          >
-                            🗑️
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {filteredFiles.map((f) => {
+                    const FileIcon = getFileIcon(f.mime_type);
+                    return (
+                      <tr
+                        key={f.file_id}
+                        className={cn(
+                          "border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer",
+                          selectedFile?.file_id === f.file_id && "bg-muted/30"
+                        )}
+                        onClick={() => setSelectedFile(selectedFile?.file_id === f.file_id ? null : f)}
+                      >
+                        <td className="px-4 py-2.5">
+                          <div className="flex items-center gap-2">
+                            <FileIcon size={14} className="shrink-0 text-muted-foreground" />
+                            <span className="truncate max-w-[280px]" title={f.name}>
+                              {f.name}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                          {formatBytes(f.size)}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                          {getFileTypeLabel(f.mime_type)}
+                        </td>
+                        <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                          {formatTime(f.created_at)}
+                        </td>
+                        <td className="px-4 py-2.5 text-right">
+                          <div className="flex gap-1 justify-end">
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDownload(f.file_id, f.name); }}
+                              title={t("vein.download") || "下载"}
+                              className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted transition-colors"
+                            >
+                              <Download size={12} />
+                            </button>
+                            <button
+                              onClick={(e) => { e.stopPropagation(); handleDelete(f.file_id); }}
+                              title={t("vein.delete") || "删除"}
+                              className="rounded-md border border-red-500/30 p-1.5 text-red-500 hover:bg-red-500/10 transition-colors"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
