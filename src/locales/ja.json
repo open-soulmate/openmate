@@ -587,7 +587,16 @@
     "rule": "ルール",
     "message": "メッセージ",
     "value": "値",
-    "threshold": "しきい値"
+    "threshold": "しきい値",
+    "fetchError": "ヘルスデータの取得に失敗しました",
+    "overallStatus": "全体状態",
+    "healthyNodes": "正常ノード",
+    "errorNodes": "異常ノード",
+    "avgLatency": "平均遅延",
+    "components": "コンポーネント状態",
+    "checking": "システム状態を確認中...",
+    "lastUpdated": "最終更新",
+    "autoRefresh": "30秒ごとに自動更新"
   },
   "hippo": {
     "title": "海馬 · メモリライフサイクル",

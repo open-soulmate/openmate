@@ -587,7 +587,16 @@
     "rule": "Rule",
     "message": "Message",
     "value": "Value",
-    "threshold": "Threshold"
+    "threshold": "Threshold",
+    "fetchError": "Failed to fetch health data",
+    "overallStatus": "Overall Status",
+    "healthyNodes": "Healthy Nodes",
+    "errorNodes": "Error Nodes",
+    "avgLatency": "Avg Latency",
+    "components": "Components",
+    "checking": "Checking system status...",
+    "lastUpdated": "Last updated",
+    "autoRefresh": "Auto-refreshes every 30 seconds"
   },
   "hippo": {
     "title": "Hippocampus · Memory Lifecycle",
