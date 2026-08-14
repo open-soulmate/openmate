@@ -1,7 +1,7 @@
 "use client";
-
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
+import { getApiBaseUrl } from "@/lib/api-client";
 import {
   BookOpen,
   Bot,
@@ -12,6 +12,7 @@ import {
   Hash,
   Clock,
   Zap,
+  RefreshCw,
 } from "lucide-react";
 
 interface WorkspaceSidebarProps {
@@ -26,11 +27,12 @@ interface KnowledgeRef {
   type: "document" | "note" | "link";
 }
 
-const mockKnowledgeRefs: KnowledgeRef[] = [
-  { id: "k1", title: "项目架构概览", type: "document" },
-  { id: "k2", title: "API 设计模式", type: "note" },
-  { id: "k3", title: "技术选型对比", type: "link" },
-];
+interface VitalStats {
+  cpu_percent?: number;
+  memory_percent?: number;
+  disk_percent?: number;
+  uptime_seconds?: number;
+}
 
 export function WorkspaceSidebar({
   messageCount,
@@ -38,6 +40,49 @@ export function WorkspaceSidebar({
   activeAgentStatus = "online",
 }: WorkspaceSidebarProps) {
   const [collapsed, setCollapsed] = useState(false);
+  const [knowledgeRefs, setKnowledgeRefs] = useState<KnowledgeRef[]>([]);
+  const [vitalStats, setVitalStats] = useState<VitalStats | null>(null);
+  const [tokenCount, setTokenCount] = useState(0);
+  const apiBase = getApiBaseUrl();
+
+  const fetchKnowledge = useCallback(async () => {
+    if (!apiBase) return;
+    try {
+      const res = await fetch(`${apiBase}/api/knowledge/list?limit=5`);
+      if (res.ok) {
+        const data = await res.json();
+        const items = (data.knowledge_bases || data.items || []).map((k: any) => ({
+          id: k.id || k.kb_id,
+          title: k.name || k.title || "未命名",
+          type: "document" as const,
+        }));
+        setKnowledgeRefs(items);
+      }
+    } catch {}
+  }, [apiBase]);
+
+  const fetchVital = useCallback(async () => {
+    if (!apiBase) return;
+    try {
+      const res = await fetch(`${apiBase}/api/vital/health`);
+      if (res.ok) {
+        const data = await res.json();
+        setVitalStats({
+          cpu_percent: data.cpu_percent,
+          memory_percent: data.memory_percent,
+          disk_percent: data.disk_percent,
+          uptime_seconds: data.uptime_seconds,
+        });
+      }
+    } catch {}
+  }, [apiBase]);
+
+  useEffect(() => {
+    fetchKnowledge();
+    fetchVital();
+    // Estimate token count from message count
+    setTokenCount(messageCount * 120);
+  }, [fetchKnowledge, fetchVital, messageCount]);
 
   if (collapsed) {
     return (
@@ -80,12 +125,21 @@ export function WorkspaceSidebar({
         <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           工作区
         </span>
-        <button
-          onClick={() => setCollapsed(true)}
-          className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-        >
-          <PanelRightClose size={14} />
-        </button>
+        <div className="flex items-center gap-1">
+          <button
+            onClick={() => { fetchKnowledge(); fetchVital(); }}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+            title="刷新"
+          >
+            <RefreshCw size={12} />
+          </button>
+          <button
+            onClick={() => setCollapsed(true)}
+            className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+          >
+            <PanelRightClose size={14} />
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
@@ -96,25 +150,29 @@ export function WorkspaceSidebar({
             <h3 className="text-xs font-medium text-foreground">知识引用</h3>
           </div>
           <div className="space-y-1.5">
-            {mockKnowledgeRefs.map((ref) => (
-              <div
-                key={ref.id}
-                className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-2 transition-colors hover:border-primary/30"
-              >
-                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
-                  {ref.type === "document" ? (
-                    <BookOpen size={12} />
-                  ) : ref.type === "note" ? (
-                    <MessageSquare size={12} />
-                  ) : (
-                    <Hash size={12} />
-                  )}
+            {knowledgeRefs.length === 0 ? (
+              <p className="text-xs text-muted-foreground px-2 py-1">暂无知识库</p>
+            ) : (
+              knowledgeRefs.map((ref) => (
+                <div
+                  key={ref.id}
+                  className="flex items-center gap-2 rounded-md border border-border bg-card px-2.5 py-2 transition-colors hover:border-primary/30"
+                >
+                  <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded bg-muted text-muted-foreground">
+                    {ref.type === "document" ? (
+                      <BookOpen size={12} />
+                    ) : ref.type === "note" ? (
+                      <MessageSquare size={12} />
+                    ) : (
+                      <Hash size={12} />
+                    )}
+                  </div>
+                  <span className="truncate text-xs text-foreground">
+                    {ref.title}
+                  </span>
                 </div>
-                <span className="truncate text-xs text-foreground">
-                  {ref.title}
-                </span>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </section>
 
@@ -157,6 +215,27 @@ export function WorkspaceSidebar({
           </div>
         </section>
 
+        {/* System Vitals */}
+        {vitalStats && (vitalStats.cpu_percent !== undefined || vitalStats.memory_percent !== undefined) && (
+          <section>
+            <div className="mb-2 flex items-center gap-2">
+              <Zap size={14} className="text-muted-foreground" />
+              <h3 className="text-xs font-medium text-foreground">系统状态</h3>
+            </div>
+            <div className="space-y-2">
+              {vitalStats.cpu_percent !== undefined && (
+                <VitalBar label="CPU" value={vitalStats.cpu_percent} />
+              )}
+              {vitalStats.memory_percent !== undefined && (
+                <VitalBar label="内存" value={vitalStats.memory_percent} />
+              )}
+              {vitalStats.disk_percent !== undefined && (
+                <VitalBar label="磁盘" value={vitalStats.disk_percent} />
+              )}
+            </div>
+          </section>
+        )}
+
         {/* Conversation Stats */}
         <section>
           <div className="mb-2 flex items-center gap-2">
@@ -172,7 +251,7 @@ export function WorkspaceSidebar({
             <StatCard
               icon={<Hash size={14} />}
               label="Token 数"
-              value={messageCount > 0 ? `~${messageCount * 120}` : "0"}
+              value={tokenCount > 0 ? `~${tokenCount}` : "0"}
             />
             <StatCard
               icon={<Clock size={14} />}
@@ -180,12 +259,27 @@ export function WorkspaceSidebar({
               value={messageCount > 0 ? `${messageCount * 0.6}s` : "0s"}
             />
             <StatCard
-              icon={<Zap size={14} />}
-              label="引用数"
-              value={String(mockKnowledgeRefs.length)}
+              icon={<BookOpen size={14} />}
+              label="知识库"
+              value={String(knowledgeRefs.length)}
             />
           </div>
         </section>
+      </div>
+    </div>
+  );
+}
+
+function VitalBar({ label, value }: { label: string; value: number }) {
+  const color = value > 80 ? "bg-red-500" : value > 50 ? "bg-amber-500" : "bg-emerald-500";
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-0.5">
+        <span className="text-[10px] text-muted-foreground">{label}</span>
+        <span className="text-[10px] font-medium">{value.toFixed(1)}%</span>
+      </div>
+      <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+        <div className={cn("h-full rounded-full transition-all", color)} style={{ width: `${Math.min(value, 100)}%` }} />
       </div>
     </div>
   );
