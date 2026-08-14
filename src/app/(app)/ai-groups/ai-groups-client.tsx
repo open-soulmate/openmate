@@ -1,6 +1,10 @@
 'use client';
-import { useState, useEffect } from 'react';
-import { Users, Plus, Play, CheckCircle, XCircle, Trash2, ChevronDown, ChevronRight, Bot, Shield, Zap, User } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import {
+  Users, Plus, Send, Bot, Shield, Zap, User, Trash2, ChevronDown,
+  ChevronRight, Settings, X, Loader2, Search, UserPlus, Edit3, Check,
+  MessageSquare, AtSign, PanelRightClose, PanelRightOpen,
+} from 'lucide-react';
 
 const API_BASE = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8090` : '';
 
@@ -10,16 +14,19 @@ interface AgentRole {
   role: string;
   model: string;
   status: string;
+  temperature?: number;
+  system_prompt?: string;
 }
 
-interface SubTask {
+interface GroupMessage {
   id: string;
-  goal: string;
-  status: string;
-  assigned_agent_id: string;
-  result: string;
-  quality_score: number;
-  iteration: number;
+  role: 'user' | 'agent';
+  agent_id?: string;
+  agent_name?: string;
+  agent_role?: string;
+  content: string;
+  timestamp: Date;
+  target?: string; // @agent_id or @all
 }
 
 interface AIGroup {
@@ -34,31 +41,100 @@ interface AIGroup {
 
 const ROLE_ICONS: Record<string, any> = { advisor: Shield, executor: Zap, verifier: Bot, human: User };
 const ROLE_COLORS: Record<string, string> = { advisor: 'text-yellow-400', executor: 'text-blue-400', verifier: 'text-green-400', human: 'text-purple-400' };
-const STATUS_COLORS: Record<string, string> = {
-  planning: 'bg-yellow-500/20 text-yellow-400', executing: 'bg-blue-500/20 text-blue-400',
-  verifying: 'bg-green-500/20 text-green-400', reviewing: 'bg-purple-500/20 text-purple-400',
-  completed: 'bg-emerald-500/20 text-emerald-400', failed: 'bg-red-500/20 text-red-400', pending: 'bg-zinc-500/20 text-zinc-400'
-};
+const ROLE_BG_COLORS: Record<string, string> = { advisor: 'bg-yellow-500/20', executor: 'bg-blue-500/20', verifier: 'bg-green-500/20', human: 'bg-purple-500/20' };
+const AGENT_AVATAR_COLORS = [
+  'bg-rose-500/20 text-rose-400', 'bg-sky-500/20 text-sky-400', 'bg-emerald-500/20 text-emerald-400',
+  'bg-amber-500/20 text-amber-400', 'bg-violet-500/20 text-violet-400', 'bg-pink-500/20 text-pink-400',
+  'bg-teal-500/20 text-teal-400', 'bg-orange-500/20 text-orange-400',
+];
+
+function getAgentAvatarColor(index: number) {
+  return AGENT_AVATAR_COLORS[index % AGENT_AVATAR_COLORS.length];
+}
 
 export default function AIGroupsPage() {
   const [groups, setGroups] = useState<AIGroup[]>([]);
+  const [selectedGroup, setSelectedGroup] = useState<AIGroup | null>(null);
+  const [messages, setMessages] = useState<GroupMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [showRightPanel, setShowRightPanel] = useState(true);
+
+  // Create group
   const [showCreate, setShowCreate] = useState(false);
   const [newName, setNewName] = useState('');
   const [newDesc, setNewDesc] = useState('');
-  const [expandedGroup, setExpandedGroup] = useState<string | null>(null);
-  const [expandedTask, setExpandedTask] = useState<string | null>(null);
-  const [taskGoal, setTaskGoal] = useState('');
-  const [loading, setLoading] = useState(false);
+
+  // Edit group name inline
+  const [editingGroupId, setEditingGroupId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+
+  // @mention
+  const [showMention, setShowMention] = useState(false);
+  const [mentionFilter, setMentionFilter] = useState('');
+  const [mentionIndex, setMentionIndex] = useState(0);
+  const [selectedTarget, setSelectedTarget] = useState<string>('all');
+
+  // Agent management
+  const [expandedAgent, setExpandedAgent] = useState<string | null>(null);
+  const [showAddAgent, setShowAddAgent] = useState(false);
+  const [newAgent, setNewAgent] = useState({ name: '', role: 'executor', model: 'claude-sonnet' });
+
+  // Edit agent
+  const [editingAgent, setEditingAgent] = useState<string | null>(null);
+  const [editAgentData, setEditAgentData] = useState({ name: '', model: '', temperature: 0.7, role: '' });
+
+  // Group settings
+  const [showGroupSettings, setShowGroupSettings] = useState(false);
+  const [editGroupName, setEditGroupName] = useState('');
+  const [editGroupDesc, setEditGroupDesc] = useState('');
+
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
 
   const fetchGroups = async () => {
     try {
       const res = await fetch(`${API_BASE}/api/ai-groups`);
       const data = await res.json();
       setGroups(data);
+      if (!selectedGroup && data.length > 0) {
+        selectGroup(data[0]);
+      }
+    } catch (e) { console.error(e); }
+  };
+
+  const selectGroup = async (group: AIGroup) => {
+    setSelectedGroup(group);
+    setMessages([]);
+    try {
+      const res = await fetch(`${API_BASE}/api/ai-groups/${group.id}`);
+      const data = await res.json();
+      const updated = { ...group, ...data };
+      setSelectedGroup(updated);
+      setGroups(prev => prev.map(g => g.id === group.id ? updated : g));
+      // Generate demo messages from tasks
+      const msgs: GroupMessage[] = [];
+      (data.tasks || []).forEach((task: any, i: number) => {
+        msgs.push({
+          id: `task-${task.id || i}`, role: 'user', content: task.goal || '',
+          timestamp: new Date(task.created_at || Date.now()), target: 'all',
+        });
+        (task.subtasks || []).forEach((st: any, j: number) => {
+          const agent = (data.agents || []).find((a: AgentRole) => a.agent_id === st.assigned_agent_id);
+          msgs.push({
+            id: `st-${st.id || j}`, role: 'agent', agent_id: st.assigned_agent_id,
+            agent_name: agent?.name || st.assigned_agent_id, agent_role: agent?.role || 'executor',
+            content: st.result || st.goal || '', timestamp: new Date(),
+          });
+        });
+      });
+      setMessages(msgs);
     } catch (e) { console.error(e); }
   };
 
   useEffect(() => { fetchGroups(); }, []);
+  useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
 
   const createGroup = async () => {
     if (!newName.trim()) return;
@@ -67,186 +143,627 @@ export default function AIGroupsPage() {
       await fetch(`${API_BASE}/api/ai-groups`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newName, description: newDesc, agents: [
-          { agent_id: 'advisor-1', name: 'Claude Opus', role: 'advisor', model: 'claude-opus' },
-          { agent_id: 'executor-1', name: 'Claude Sonnet', role: 'executor', model: 'claude-sonnet' },
-          { agent_id: 'verifier-1', name: 'GPT-4o', role: 'verifier', model: 'gpt-4o' },
-        ]})
+        body: JSON.stringify({
+          name: newName, description: newDesc, agents: [
+            { agent_id: 'advisor-1', name: 'Claude Opus', role: 'advisor', model: 'claude-opus' },
+            { agent_id: 'executor-1', name: 'Claude Sonnet', role: 'executor', model: 'claude-sonnet' },
+            { agent_id: 'verifier-1', name: 'GPT-4o', role: 'verifier', model: 'gpt-4o' },
+          ]
+        })
       });
       setNewName(''); setNewDesc(''); setShowCreate(false);
       fetchGroups();
     } finally { setLoading(false); }
   };
 
-  const submitTask = async (groupId: string) => {
-    if (!taskGoal.trim()) return;
-    setLoading(true);
-    try {
-      await fetch(`${API_BASE}/api/ai-groups/${groupId}/tasks`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ goal: taskGoal })
-      });
-      setTaskGoal('');
-      fetchGroups();
-    } finally { setLoading(false); }
-  };
-
-  const deleteGroup = async (id: string) => {
+  const deleteGroup = async (id: string, e: React.MouseEvent) => {
+    e.stopPropagation();
     await fetch(`${API_BASE}/api/ai-groups/${id}`, { method: 'DELETE' });
+    if (selectedGroup?.id === id) { setSelectedGroup(null); setMessages([]); }
     fetchGroups();
   };
 
-  const fetchGroupDetail = async (id: string) => {
-    const res = await fetch(`${API_BASE}/api/ai-groups/${id}`);
-    const data = await res.json();
-    setGroups(prev => prev.map(g => g.id === id ? { ...g, ...data } : g));
+  const renameGroup = async (id: string) => {
+    if (!editingName.trim()) { setEditingGroupId(null); return; }
+    await fetch(`${API_BASE}/api/ai-groups/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: editingName }),
+    });
+    setEditingGroupId(null);
+    fetchGroups();
   };
 
+  const saveGroupSettings = async () => {
+    if (!selectedGroup) return;
+    await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: editGroupName, description: editGroupDesc }),
+    });
+    setShowGroupSettings(false);
+    fetchGroups();
+  };
+
+  const addAgent = async () => {
+    if (!selectedGroup || !newAgent.name.trim()) return;
+    const agent: AgentRole = {
+      agent_id: `agent-${Date.now()}`, name: newAgent.name,
+      role: newAgent.role, model: newAgent.model, status: 'online',
+    };
+    const updated = [...(selectedGroup.agents || []), agent];
+    await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agents: updated }),
+    });
+    setNewAgent({ name: '', role: 'executor', model: 'claude-sonnet' });
+    setShowAddAgent(false);
+    selectGroup(selectedGroup);
+  };
+
+  const removeAgent = async (agentId: string) => {
+    if (!selectedGroup) return;
+    const updated = (selectedGroup.agents || []).filter(a => a.agent_id !== agentId);
+    await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agents: updated }),
+    });
+    selectGroup(selectedGroup);
+  };
+
+  const startEditAgent = (agent: AgentRole) => {
+    setEditingAgent(agent.agent_id);
+    setEditAgentData({ name: agent.name, model: agent.model, temperature: agent.temperature || 0.7, role: agent.role });
+  };
+
+  const saveEditAgent = async (agentId: string) => {
+    if (!selectedGroup) return;
+    const updated = (selectedGroup.agents || []).map(a =>
+      a.agent_id === agentId ? { ...a, name: editAgentData.name, model: editAgentData.model, temperature: editAgentData.temperature, role: editAgentData.role } : a
+    );
+    await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ agents: updated }),
+    });
+    setEditingAgent(null);
+    selectGroup(selectedGroup);
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || !selectedGroup || sendingMessage) return;
+    const text = input.trim();
+
+    // Parse @mentions
+    let target = selectedTarget;
+    const mentionMatch = text.match(/^@(\S+)\s/);
+    if (mentionMatch) {
+      const mention = mentionMatch[1];
+      if (mention === 'all') target = 'all';
+      else {
+        const agent = (selectedGroup.agents || []).find(a => a.name.toLowerCase().includes(mention.toLowerCase()) || a.agent_id === mention);
+        if (agent) target = agent.agent_id;
+      }
+    }
+
+    const userMsg: GroupMessage = {
+      id: `msg-${Date.now()}`, role: 'user', content: text,
+      timestamp: new Date(), target,
+    };
+    setMessages(prev => [...prev, userMsg]);
+    setInput(''); setSelectedTarget('all'); setSendingMessage(true);
+
+    try {
+      const res = await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}/tasks`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ goal: text, target_agent: target }),
+      });
+      const data = await res.json();
+
+      // Add agent response
+      if (data.response) {
+        const targetAgent = target === 'all'
+          ? (selectedGroup.agents || [])[0]
+          : (selectedGroup.agents || []).find(a => a.agent_id === target);
+        setMessages(prev => [...prev, {
+          id: `resp-${Date.now()}`, role: 'agent',
+          agent_id: targetAgent?.agent_id, agent_name: targetAgent?.name || 'Agent',
+          agent_role: targetAgent?.role || 'executor',
+          content: data.response, timestamp: new Date(),
+        }]);
+      }
+      selectGroup(selectedGroup);
+    } catch (e) {
+      setMessages(prev => [...prev, {
+        id: `err-${Date.now()}`, role: 'agent', agent_name: 'System',
+        agent_role: 'executor', content: '发送失败，请重试', timestamp: new Date(),
+      }]);
+    }
+    setSendingMessage(false);
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setInput(val);
+    // Detect @ trigger
+    const cursorPos = e.target.selectionStart;
+    const textBeforeCursor = val.slice(0, cursorPos);
+    const atMatch = textBeforeCursor.match(/@(\w*)$/);
+    if (atMatch) {
+      setShowMention(true);
+      setMentionFilter(atMatch[1].toLowerCase());
+      setMentionIndex(0);
+    } else {
+      setShowMention(false);
+    }
+  };
+
+  const insertMention = (agent: AgentRole | { name: string; agent_id: string }) => {
+    const cursorPos = inputRef.current?.selectionStart || input.length;
+    const textBeforeCursor = input.slice(0, cursorPos);
+    const atIndex = textBeforeCursor.lastIndexOf('@');
+    const before = input.slice(0, atIndex);
+    const after = input.slice(cursorPos);
+    setInput(`${before}@${agent.name} ${after}`);
+    setSelectedTarget(agent.agent_id);
+    setShowMention(false);
+    inputRef.current?.focus();
+  };
+
+  const filteredAgents = (selectedGroup?.agents || []).filter(a =>
+    a.name.toLowerCase().includes(mentionFilter) || a.agent_id.toLowerCase().includes(mentionFilter)
+  );
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (showMention) {
+      const items = [{ name: 'all', agent_id: 'all' }, ...filteredAgents];
+      if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % items.length); }
+      else if (e.key === 'ArrowUp') { e.preventDefault(); setMentionIndex(i => (i - 1 + items.length) % items.length); }
+      else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); insertMention(items[mentionIndex]); }
+      else if (e.key === 'Escape') { setShowMention(false); }
+      return;
+    }
+    if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+  };
+
+  const getAgentById = (id?: string) => (selectedGroup?.agents || []).find(a => a.agent_id === id);
+
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between p-6 border-b border-border">
-        <div>
-          <h1 className="text-2xl font-bold">AI群管理</h1>
-          <p className="text-sm text-muted-foreground mt-1">多Agent协作 — advisor规划 → executor执行 → verifier验证</p>
+    <div className="flex h-full">
+      {/* Left: Group List (264px) */}
+      <div className="w-64 shrink-0 flex flex-col border-r border-border bg-card">
+        {/* Header */}
+        <div className="p-3 border-b border-border">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-sm font-medium flex items-center gap-1.5">
+              <Users className="w-4 h-4" /> AI群组
+            </span>
+            <button onClick={() => setShowCreate(!showCreate)}
+              className="p-1 rounded hover:bg-muted transition-colors" title="新建群组">
+              <Plus className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </div>
+          {/* Create form inline */}
+          {showCreate && (
+            <div className="space-y-2 mt-2 p-2 rounded-lg bg-muted/50">
+              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="群组名称"
+                className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50" />
+              <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="描述（可选）"
+                className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50" />
+              <div className="flex gap-1.5">
+                <button onClick={createGroup} disabled={loading}
+                  className="flex-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90 disabled:opacity-50">
+                  {loading ? '创建中...' : '创建'}
+                </button>
+                <button onClick={() => setShowCreate(false)}
+                  className="px-2.5 py-1.5 bg-muted border border-border rounded text-xs hover:bg-accent">取消</button>
+              </div>
+            </div>
+          )}
         </div>
-        <button onClick={() => setShowCreate(!showCreate)} className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition-colors">
-          <Plus className="w-4 h-4" /> 创建AI群
-        </button>
+
+        {/* Group list */}
+        <div className="flex-1 overflow-y-auto">
+          {groups.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+              <Users className="w-8 h-8 mb-2 opacity-40" />
+              <p className="text-xs">暂无群组</p>
+            </div>
+          )}
+          {groups.map(group => (
+            <div key={group.id}
+              className={`group px-3 py-2.5 cursor-pointer hover:bg-muted/80 transition-colors border-b border-border/30 ${selectedGroup?.id === group.id ? 'bg-muted' : ''}`}
+              onClick={() => selectGroup(group)}>
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <div className="w-8 h-8 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                    <Users className="w-4 h-4 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    {editingGroupId === group.id ? (
+                      <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                        <input value={editingName} onChange={e => setEditingName(e.target.value)}
+                          className="w-full px-1.5 py-0.5 bg-background border border-border rounded text-xs focus:outline-none"
+                          onKeyDown={e => { if (e.key === 'Enter') renameGroup(group.id); if (e.key === 'Escape') setEditingGroupId(null); }}
+                          autoFocus />
+                        <button onClick={() => renameGroup(group.id)} className="p-0.5 rounded hover:bg-muted"><Check className="w-3 h-3 text-primary" /></button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-medium truncate">{group.name}</span>
+                        <button className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted/50 transition-opacity"
+                          onClick={e => { e.stopPropagation(); setEditingGroupId(group.id); setEditingName(group.name); }}>
+                          <Edit3 className="w-2.5 h-2.5 text-muted-foreground" />
+                        </button>
+                      </div>
+                    )}
+                    <p className="text-[11px] text-muted-foreground truncate">
+                      {group.description || `${group.agents?.length || 0} 个Agent`}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1">
+                  {/* Agent avatars */}
+                  <div className="flex -space-x-1.5 mr-1">
+                    {(group.agents || []).slice(0, 3).map((a, i) => {
+                      const Icon = ROLE_ICONS[a.role] || Bot;
+                      return <div key={i} className={`w-5 h-5 rounded-full flex items-center justify-center border border-card ${getAgentAvatarColor(i)}`}><Icon className="w-2.5 h-2.5" /></div>;
+                    })}
+                  </div>
+                  <button className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity"
+                    onClick={(e) => deleteGroup(group.id, e)} title="删除">
+                    <Trash2 className="w-3 h-3" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
 
-      {/* Create form */}
-      {showCreate && (
-        <div className="p-6 border-b border-border bg-card/50">
-          <div className="max-w-xl space-y-3">
-            <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="AI群名称" className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="描述（可选）" className="w-full px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" />
-            <p className="text-xs text-muted-foreground">默认创建：advisor(Claude Opus) + executor(Claude Sonnet) + verifier(GPT-4o)</p>
-            <div className="flex gap-2">
-              <button onClick={createGroup} disabled={loading} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 disabled:opacity-50">{loading ? '创建中...' : '创建'}</button>
-              <button onClick={() => setShowCreate(false)} className="px-4 py-2 bg-muted border border-border rounded-lg text-sm hover:bg-accent">取消</button>
+      {/* Center: Chat Messages (flex-1) */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Chat header */}
+        <div className="h-12 border-b border-border flex items-center px-4 justify-between shrink-0">
+          <div className="flex items-center gap-2">
+            <Users className="w-4 h-4 text-primary" />
+            <span className="font-medium text-sm">{selectedGroup?.name || '选择一个群组'}</span>
+            {selectedGroup && (
+              <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
+                {selectedGroup.agents?.length || 0} Agent
+              </span>
+            )}
+            {selectedTarget !== 'all' && selectedGroup && (
+              <span className="text-xs text-primary px-1.5 py-0.5 rounded bg-primary/10">
+                @{getAgentById(selectedTarget)?.name || selectedTarget}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            <button onClick={() => setShowRightPanel(!showRightPanel)} className="p-1 rounded hover:bg-muted">
+              {showRightPanel ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+          {!selectedGroup && (
+            <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+              <MessageSquare className="w-12 h-12 mb-4 opacity-40" />
+              <p className="text-sm">选择或创建一个AI群组开始协作</p>
+            </div>
+          )}
+          {selectedGroup && messages.length === 0 && (
+            <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto text-center">
+              <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
+                <Users className="w-8 h-8 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">{selectedGroup.name}</h3>
+              <p className="text-sm text-muted-foreground mb-4">{selectedGroup.description || '多Agent协作群组'}</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                {(selectedGroup.agents || []).map((a, i) => {
+                  const Icon = ROLE_ICONS[a.role] || Bot;
+                  return (
+                    <div key={i} className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ${ROLE_BG_COLORS[a.role] || 'bg-muted'}`}>
+                      <Icon className={`w-3.5 h-3.5 ${ROLE_COLORS[a.role]}`} />
+                      <span className="text-xs font-medium">{a.name}</span>
+                    </div>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground mt-6">输入消息开始对话，使用 @ 提及特定Agent</p>
+            </div>
+          )}
+          {messages.map(msg => {
+            const agent = msg.role === 'agent' ? getAgentById(msg.agent_id) : null;
+            const agentIndex = (selectedGroup?.agents || []).findIndex(a => a.agent_id === msg.agent_id);
+            return (
+              <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+                {msg.role === 'agent' && (
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${getAgentAvatarColor(agentIndex >= 0 ? agentIndex : 0)}`}>
+                    {(() => { const Icon = ROLE_ICONS[msg.agent_role || 'executor'] || Bot; return <Icon className="w-4 h-4" />; })()}
+                  </div>
+                )}
+                <div className={`max-w-[70%] ${msg.role === 'user' ? 'order-first' : ''}`}>
+                  {msg.role === 'agent' && (
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <span className="text-xs font-medium">{msg.agent_name || 'Agent'}</span>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${ROLE_BG_COLORS[msg.agent_role || 'executor']} ${ROLE_COLORS[msg.agent_role || 'executor']}`}>
+                        {msg.agent_role || 'executor'}
+                      </span>
+                      {msg.target && msg.target !== 'all' && (
+                        <span className="text-[10px] text-muted-foreground">回复 @{msg.target}</span>
+                      )}
+                    </div>
+                  )}
+                  <div className={`rounded-xl px-4 py-2.5 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted rounded-tl-sm'}`}>
+                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                    <div className="text-[10px] mt-1.5 opacity-60">
+                      {msg.timestamp.toLocaleTimeString()}
+                      {msg.role === 'user' && msg.target && msg.target !== 'all' && (
+                        <span className="ml-1.5">@{getAgentById(msg.target)?.name || msg.target}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {msg.role === 'user' && (
+                  <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
+                    <User className="w-4 h-4 text-primary-foreground" />
+                  </div>
+                )}
+              </div>
+            );
+          })}
+          {sendingMessage && (
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"><Bot className="w-4 h-4 text-primary" /></div>
+              <div className="bg-muted rounded-xl px-4 py-2.5"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+            </div>
+          )}
+        </div>
+
+        {/* Input area */}
+        {selectedGroup && (
+          <div className="border-t border-border p-4 shrink-0">
+            {/* Target selector */}
+            <div className="flex items-center gap-2 mb-2 flex-wrap">
+              <span className="text-[11px] text-muted-foreground">发送给:</span>
+              <button onClick={() => setSelectedTarget('all')}
+                className={`text-[11px] px-2 py-0.5 rounded-full transition-colors ${selectedTarget === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}>
+                @所有人
+              </button>
+              {(selectedGroup.agents || []).map((a, i) => {
+                const Icon = ROLE_ICONS[a.role] || Bot;
+                return (
+                  <button key={a.agent_id} onClick={() => setSelectedTarget(a.agent_id)}
+                    className={`flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full transition-colors ${selectedTarget === a.agent_id ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}>
+                    <Icon className="w-3 h-3" /> {a.name}
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="flex gap-2 items-end relative">
+              <div className="flex-1 relative">
+                <textarea ref={inputRef} value={input} onChange={handleInputChange} onKeyDown={handleKeyDown}
+                  placeholder={selectedTarget === 'all' ? '输入消息... (@提及Agent)' : `@${getAgentById(selectedTarget)?.name || 'Agent'} ...`}
+                  rows={1}
+                  className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+
+                {/* @mention dropdown */}
+                {showMention && (
+                  <div className="absolute bottom-full left-0 mb-1 w-56 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-50">
+                    <div className="p-1">
+                      <button onClick={() => insertMention({ name: 'all', agent_id: 'all' })}
+                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-sm hover:bg-muted transition-colors ${mentionIndex === 0 ? 'bg-muted' : ''}`}>
+                        <AtSign className="w-3.5 h-3.5 text-muted-foreground" />
+                        <span>所有人</span>
+                      </button>
+                      {filteredAgents.map((a, i) => {
+                        const Icon = ROLE_ICONS[a.role] || Bot;
+                        return (
+                          <button key={a.agent_id} onClick={() => insertMention(a)}
+                            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-sm hover:bg-muted transition-colors ${mentionIndex === i + 1 ? 'bg-muted' : ''}`}>
+                            <Icon className={`w-3.5 h-3.5 ${ROLE_COLORS[a.role]}`} />
+                            <span className="flex-1 text-left">{a.name}</span>
+                            <span className="text-[10px] text-muted-foreground">{a.role}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <button onClick={handleSend} disabled={sendingMessage || !input.trim()}
+                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Right: Agent Management Panel (288px) */}
+      {showRightPanel && selectedGroup && (
+        <div className="w-72 shrink-0 border-l border-border bg-card flex flex-col">
+          <div className="p-3 border-b border-border flex items-center justify-between">
+            <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />群组管理</span>
+            <button onClick={() => setShowRightPanel(false)} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto">
+            {/* Group info */}
+            <div className="p-3 border-b border-border">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs text-muted-foreground">群组信息</span>
+                <button onClick={() => {
+                  setEditGroupName(selectedGroup.name);
+                  setEditGroupDesc(selectedGroup.description || '');
+                  setShowGroupSettings(!showGroupSettings);
+                }} className="p-0.5 rounded hover:bg-muted"><Edit3 className="w-3 h-3 text-muted-foreground" /></button>
+              </div>
+              {showGroupSettings ? (
+                <div className="space-y-2">
+                  <input value={editGroupName} onChange={e => setEditGroupName(e.target.value)} placeholder="群组名称"
+                    className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50" />
+                  <textarea value={editGroupDesc} onChange={e => setEditGroupDesc(e.target.value)} placeholder="描述"
+                    rows={2} className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none" />
+                  <div className="flex gap-1.5">
+                    <button onClick={saveGroupSettings} className="flex-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90">保存</button>
+                    <button onClick={() => setShowGroupSettings(false)} className="px-2.5 py-1.5 bg-muted border border-border rounded text-xs hover:bg-accent">取消</button>
+                  </div>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-sm font-medium">{selectedGroup.name}</p>
+                  {selectedGroup.description && <p className="text-xs text-muted-foreground mt-0.5">{selectedGroup.description}</p>}
+                </div>
+              )}
+            </div>
+
+            {/* Agents list */}
+            <div className="p-3">
+              <div className="flex items-center justify-between mb-3">
+                <span className="text-xs text-muted-foreground">参与的Agent ({selectedGroup.agents?.length || 0})</span>
+                <button onClick={() => setShowAddAgent(!showAddAgent)}
+                  className="flex items-center gap-1 text-[11px] text-primary hover:underline">
+                  <UserPlus className="w-3 h-3" /> 添加
+                </button>
+              </div>
+
+              {/* Add agent form */}
+              {showAddAgent && (
+                <div className="mb-3 p-2.5 rounded-lg bg-muted/50 space-y-2">
+                  <input value={newAgent.name} onChange={e => setNewAgent({ ...newAgent, name: e.target.value })} placeholder="Agent名称"
+                    className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50" />
+                  <select value={newAgent.role} onChange={e => setNewAgent({ ...newAgent, role: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none">
+                    <option value="advisor">Advisor (顾问)</option>
+                    <option value="executor">Executor (执行)</option>
+                    <option value="verifier">Verifier (验证)</option>
+                  </select>
+                  <select value={newAgent.model} onChange={e => setNewAgent({ ...newAgent, model: e.target.value })}
+                    className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none">
+                    <option value="claude-opus">Claude Opus</option>
+                    <option value="claude-sonnet">Claude Sonnet</option>
+                    <option value="gpt-4o">GPT-4o</option>
+                    <option value="gpt-4o-mini">GPT-4o Mini</option>
+                    <option value="deepseek-r1">DeepSeek R1</option>
+                  </select>
+                  <div className="flex gap-1.5">
+                    <button onClick={addAgent} className="flex-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90">添加</button>
+                    <button onClick={() => setShowAddAgent(false)} className="px-2.5 py-1.5 bg-background border border-border rounded text-xs hover:bg-accent">取消</button>
+                  </div>
+                </div>
+              )}
+
+              {/* Agent items */}
+              <div className="space-y-1.5">
+                {(selectedGroup.agents || []).map((agent, i) => {
+                  const Icon = ROLE_ICONS[agent.role] || Bot;
+                  const isExpanded = expandedAgent === agent.agent_id;
+                  const isEditing = editingAgent === agent.agent_id;
+                  return (
+                    <div key={agent.agent_id} className="rounded-lg border border-border overflow-hidden">
+                      <div className="flex items-center gap-2 p-2.5 hover:bg-muted/50 cursor-pointer transition-colors"
+                        onClick={() => setExpandedAgent(isExpanded ? null : agent.agent_id)}>
+                        <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getAgentAvatarColor(i)}`}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5">
+                            <span className="text-sm font-medium truncate">{agent.name}</span>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded ${ROLE_BG_COLORS[agent.role]} ${ROLE_COLORS[agent.role]}`}>
+                              {agent.role}
+                            </span>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground truncate">{agent.model}</p>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`w-2 h-2 rounded-full ${agent.status === 'online' ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
+                          {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
+                        </div>
+                      </div>
+
+                      {isExpanded && (
+                        <div className="border-t border-border p-2.5 bg-muted/30">
+                          {isEditing ? (
+                            <div className="space-y-2">
+                              <div>
+                                <label className="text-[10px] text-muted-foreground mb-0.5 block">名称</label>
+                                <input value={editAgentData.name} onChange={e => setEditAgentData({ ...editAgentData, name: e.target.value })}
+                                  className="w-full px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none" />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-muted-foreground mb-0.5 block">角色</label>
+                                <select value={editAgentData.role} onChange={e => setEditAgentData({ ...editAgentData, role: e.target.value })}
+                                  className="w-full px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none">
+                                  <option value="advisor">Advisor</option>
+                                  <option value="executor">Executor</option>
+                                  <option value="verifier">Verifier</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-muted-foreground mb-0.5 block">模型</label>
+                                <select value={editAgentData.model} onChange={e => setEditAgentData({ ...editAgentData, model: e.target.value })}
+                                  className="w-full px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none">
+                                  <option value="claude-opus">Claude Opus</option>
+                                  <option value="claude-sonnet">Claude Sonnet</option>
+                                  <option value="gpt-4o">GPT-4o</option>
+                                  <option value="gpt-4o-mini">GPT-4o Mini</option>
+                                  <option value="deepseek-r1">DeepSeek R1</option>
+                                </select>
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-muted-foreground mb-0.5 block">Temperature: {editAgentData.temperature}</label>
+                                <input type="range" min="0" max="2" step="0.1" value={editAgentData.temperature}
+                                  onChange={e => setEditAgentData({ ...editAgentData, temperature: parseFloat(e.target.value) })}
+                                  className="w-full" />
+                              </div>
+                              <div className="flex gap-1.5">
+                                <button onClick={() => saveEditAgent(agent.agent_id)}
+                                  className="flex-1 px-2 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90">保存</button>
+                                <button onClick={() => setEditingAgent(null)}
+                                  className="px-2 py-1.5 bg-background border border-border rounded text-xs hover:bg-accent">取消</button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-2">
+                              <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div><span className="text-muted-foreground">模型:</span> <span className="font-medium">{agent.model}</span></div>
+                                <div><span className="text-muted-foreground">状态:</span> <span className={`font-medium ${agent.status === 'online' ? 'text-emerald-500' : 'text-zinc-500'}`}>{agent.status || 'offline'}</span></div>
+                                <div><span className="text-muted-foreground">温度:</span> <span className="font-medium">{agent.temperature || 0.7}</span></div>
+                                <div><span className="text-muted-foreground">ID:</span> <span className="font-medium truncate">{agent.agent_id}</span></div>
+                              </div>
+                              <div className="flex gap-1.5 pt-1">
+                                <button onClick={() => startEditAgent(agent)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 bg-muted border border-border rounded text-xs hover:bg-accent transition-colors flex-1 justify-center">
+                                  <Edit3 className="w-3 h-3" /> 编辑
+                                </button>
+                                <button onClick={() => removeAgent(agent.agent_id)}
+                                  className="flex items-center gap-1 px-2.5 py-1.5 text-red-400 bg-red-500/10 rounded text-xs hover:bg-red-500/20 transition-colors">
+                                  <Trash2 className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {(selectedGroup.agents || []).length === 0 && (
+                <div className="text-center py-6 text-muted-foreground">
+                  <Bot className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  <p className="text-xs">暂无Agent</p>
+                  <p className="text-[11px] mt-0.5">点击上方"添加"按钮添加Agent</p>
+                </div>
+              )}
             </div>
           </div>
         </div>
       )}
-
-      {/* Groups list */}
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
-        {groups.length === 0 && (
-          <div className="text-center py-20 text-muted-foreground">
-            <Users className="w-12 h-12 mx-auto mb-4 opacity-50" />
-            <p>还没有AI群</p>
-            <p className="text-sm mt-1">点击"创建AI群"开始多Agent协作</p>
-          </div>
-        )}
-
-        {groups.map(group => (
-          <div key={group.id} className="border border-border rounded-xl bg-card overflow-hidden">
-            {/* Group header */}
-            <div className="flex items-center justify-between p-4 cursor-pointer hover:bg-muted/50 transition-colors" onClick={() => {
-              const next = expandedGroup === group.id ? null : group.id;
-              setExpandedGroup(next);
-              if (next) fetchGroupDetail(group.id);
-            }}>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-primary/20 flex items-center justify-center">
-                  <Users className="w-5 h-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="font-semibold">{group.name}</h3>
-                  <p className="text-xs text-muted-foreground">{group.description || '无描述'} · {group.task_count || 0} 个任务</p>
-                </div>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex -space-x-2">
-                  {(group.agents || []).slice(0, 4).map((a, i) => {
-                    const Icon = ROLE_ICONS[a.role] || Bot;
-                    return <div key={i} className={`w-7 h-7 rounded-full bg-muted border-2 border-card flex items-center justify-center ${ROLE_COLORS[a.role]}`}><Icon className="w-3.5 h-3.5" /></div>;
-                  })}
-                </div>
-                {expandedGroup === group.id ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-              </div>
-            </div>
-
-            {/* Group detail */}
-            {expandedGroup === group.id && (
-              <div className="border-t border-border">
-                {/* Agents */}
-                <div className="p-4 bg-muted/30">
-                  <h4 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">Agent角色</h4>
-                  <div className="flex gap-3 flex-wrap">
-                    {(group.agents || []).map((a, i) => {
-                      const Icon = ROLE_ICONS[a.role] || Bot;
-                      return (
-                        <div key={i} className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg">
-                          <Icon className={`w-4 h-4 ${ROLE_COLORS[a.role]}`} />
-                          <div>
-                            <p className="text-sm font-medium">{a.name}</p>
-                            <p className="text-[10px] text-muted-foreground">{a.role} · {a.model}</p>
-                          </div>
-                          <span className={`w-2 h-2 rounded-full ${a.status === 'online' ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
-                        </div>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Submit task */}
-                <div className="p-4 border-t border-border">
-                  <div className="flex gap-2">
-                    <input value={taskGoal} onChange={e => setTaskGoal(e.target.value)} placeholder="输入任务目标，自动分解为子任务..." className="flex-1 px-3 py-2 bg-muted border border-border rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/50" onKeyDown={e => e.key === 'Enter' && submitTask(group.id)} />
-                    <button onClick={() => submitTask(group.id)} disabled={loading || !taskGoal.trim()} className="flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 disabled:opacity-50">
-                      <Play className="w-3.5 h-3.5" /> 提交任务
-                    </button>
-                  </div>
-                </div>
-
-                {/* Tasks */}
-                <div className="p-4 border-t border-border space-y-2">
-                  <h4 className="text-xs font-medium text-muted-foreground mb-3 uppercase tracking-wider">任务列表</h4>
-                  {(group.tasks || []).length === 0 && <p className="text-sm text-muted-foreground py-4 text-center">暂无任务</p>}
-                  {(group.tasks || []).map(task => (
-                    <div key={task.id} className="border border-border rounded-lg overflow-hidden">
-                      <div className="flex items-center justify-between p-3 cursor-pointer hover:bg-muted/30" onClick={() => setExpandedTask(expandedTask === task.id ? null : task.id)}>
-                        <div className="flex items-center gap-2 flex-1 min-w-0">
-                          <span className={`px-2 py-0.5 rounded text-[10px] font-medium ${STATUS_COLORS[task.status] || ''}`}>{task.status}</span>
-                          <span className="text-sm truncate">{task.goal}</span>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {task.quality_score > 0 && <span>{task.quality_score}/10</span>}
-                          {task.subtasks && <span>{task.subtasks.length} 子任务</span>}
-                        </div>
-                      </div>
-                      {expandedTask === task.id && task.subtasks && (
-                        <div className="border-t border-border p-3 space-y-2 bg-muted/20">
-                          {task.subtasks.map((st: SubTask) => {
-                            const Icon = ROLE_ICONS[st.goal.includes('规划') ? 'advisor' : st.goal.includes('验证') ? 'verifier' : 'executor'] || Bot;
-                            return (
-                              <div key={st.id} className="flex items-center gap-2 px-3 py-2 bg-card border border-border rounded-lg text-sm">
-                                <Icon className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                                <span className="flex-1 truncate">{st.goal}</span>
-                                <span className={`px-2 py-0.5 rounded text-[10px] ${STATUS_COLORS[st.status] || ''}`}>{st.status}</span>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                </div>
-
-                {/* Delete */}
-                <div className="p-4 border-t border-border flex justify-end">
-                  <button onClick={() => deleteGroup(group.id)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 rounded-lg transition-colors">
-                    <Trash2 className="w-3.5 h-3.5" /> 删除群
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
     </div>
   );
 }
