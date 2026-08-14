@@ -916,5 +916,30 @@
     "tokens": "トークン",
     "createdAt": "作成日時",
     "noSessions": "軌跡セッションがありません"
+  },
+  "vein": {
+    "title": "血管 · ファイル管理",
+    "subtitle": "チャンクアップロード · キャッシュ · 重複排除",
+    "totalFiles": "ファイル総数",
+    "totalSize": "総サイズ",
+    "upload": "ファイルアップロード",
+    "uploading": "アップロード中...",
+    "startUpload": "ファイルアップロード",
+    "dragOrClick": "ファイルをここにドラッグ、またはクリックして選択",
+    "dropToUpload": "ドロップしてアップロード",
+    "supportAll": "全ファイルタイプ対応、自動重複排除",
+    "searchPlaceholder": "ファイル名で検索...",
+    "files": "ファイル一覧",
+    "fileName": "ファイル名",
+    "size": "サイズ",
+    "type": "タイプ",
+    "uploadTime": "アップロード日時",
+    "actions": "操作",
+    "download": "ダウンロード",
+    "delete": "削除",
+    "noFiles": "ファイルがありません",
+    "noMatch": "一致するファイルが見つかりません",
+    "uploadSuccess": "アップロード成功",
+    "uploadFailed": "アップロード失敗"
   }
 }
