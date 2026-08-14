@@ -40,7 +40,8 @@
     "link": "突触",
     "organsGroup": "器官系统",
     "gland": "腺体",
-    "vital": "体征"
+    "vital": "体征",
+    "internalServices": "内部服务"
   },
   "dashboard": {
     "title": "系统概览",
