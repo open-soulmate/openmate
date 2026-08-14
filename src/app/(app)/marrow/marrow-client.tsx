@@ -1,20 +1,25 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
   Bone, RefreshCw, Download, Upload, Play, Trash2,
   HardDrive, Archive, Clock, CheckCircle, Loader2,
+  FileUp, AlertCircle,
 } from "lucide-react";
 
 export function MarrowClient() {
   const { t } = useTranslation();
-  const [tab, setTab] = useState<"backup" | "export">("backup");
+  const [tab, setTab] = useState<"backup" | "export" | "import">("backup");
   const [health, setHealth] = useState<any>(null);
   const [backups, setBackups] = useState<any[]>([]);
   const [exports, setExports] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
+  const [importFormat, setImportFormat] = useState("json");
+  const [importError, setImportError] = useState("");
+  const importInputRef = useRef<HTMLInputElement>(null);
   const apiBase = getApiBaseUrl();
 
   const fetchHealth = useCallback(async () => {
@@ -80,6 +85,37 @@ export function MarrowClient() {
     } catch {} finally { setLoading(false); }
   };
 
+  const handleImport = async (fileList: FileList | null) => {
+    if (!fileList || fileList.length === 0) return;
+    const file = fileList[0];
+    setLoading(true);
+    setImportResult(null);
+    setImportError("");
+
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      form.append("format", importFormat);
+
+      const res = await fetch(`${apiBase}/api/marrow/import`, {
+        method: "POST",
+        body: form,
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        throw new Error(err.detail || `Import failed: ${res.status}`);
+      }
+
+      const data = await res.json();
+      setImportResult(data);
+    } catch (e: any) {
+      setImportError(e.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   function formatBytes(bytes: number): string {
     if (bytes === 0) return "0 B";
     const k = 1024;
@@ -91,6 +127,7 @@ export function MarrowClient() {
   const tabs = [
     { id: "backup" as const, label: t("marrow.backup") || "备份恢复", icon: Archive },
     { id: "export" as const, label: t("marrow.export") || "数据导出", icon: Download },
+    { id: "import" as const, label: t("marrow.import") || "数据导入", icon: FileUp },
   ];
 
   return (
@@ -226,6 +263,111 @@ export function MarrowClient() {
                   ))}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {/* Import Tab */}
+        {tab === "import" && (
+          <div className="space-y-4">
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h3 className="text-sm font-medium mb-3">导入数据</h3>
+              <p className="text-xs text-muted-foreground mb-4">
+                从 JSON、JSONL 或 CSV 文件导入数据到知识库。支持的格式：
+              </p>
+              <div className="flex gap-3 mb-4">
+                {["json", "jsonl", "csv"].map((fmt) => (
+                  <button
+                    key={fmt}
+                    onClick={() => setImportFormat(fmt)}
+                    className={cn(
+                      "rounded-lg px-3 py-1.5 text-xs font-medium transition-colors",
+                      importFormat === fmt
+                        ? "bg-amber-600 text-white"
+                        : "border border-border hover:bg-muted text-muted-foreground"
+                    )}
+                  >
+                    {fmt.toUpperCase()}
+                  </button>
+                ))}
+              </div>
+
+              <div
+                onClick={() => importInputRef.current?.click()}
+                className="rounded-xl border-2 border-dashed border-border p-8 text-center cursor-pointer hover:border-amber-500/50 transition-colors"
+              >
+                {loading ? (
+                  <Loader2 size={32} className="mx-auto text-amber-500 animate-spin" />
+                ) : (
+                  <FileUp size={32} className="mx-auto text-muted-foreground/50" />
+                )}
+                <p className="mt-2 text-sm font-medium">
+                  {loading ? "导入中..." : "点击选择文件导入"}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  支持 {importFormat.toUpperCase()} 格式
+                </p>
+              </div>
+              <input
+                ref={importInputRef}
+                type="file"
+                accept={`.${importFormat}`}
+                className="hidden"
+                onChange={(e) => handleImport(e.target.files)}
+              />
+            </div>
+
+            {/* Import Result */}
+            {importResult && (
+              <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/5 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <CheckCircle size={16} className="text-emerald-500" />
+                  <h3 className="text-sm font-medium text-emerald-600">导入成功</h3>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  共导入 <span className="font-medium text-foreground">{importResult.records}</span> 条记录
+                </p>
+                {importResult.data && importResult.data.length > 0 && (
+                  <div className="mt-3 max-h-40 overflow-y-auto">
+                    <p className="text-xs text-muted-foreground mb-1">预览前 {Math.min(importResult.data.length, 5)} 条：</p>
+                    {importResult.data.slice(0, 5).map((item: any, i: number) => (
+                      <div key={i} className="text-xs font-mono text-muted-foreground truncate">
+                        {JSON.stringify(item).substring(0, 120)}...
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Import Error */}
+            {importError && (
+              <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4">
+                <div className="flex items-center gap-2">
+                  <AlertCircle size={16} className="text-red-500" />
+                  <h3 className="text-sm font-medium text-red-600">导入失败</h3>
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">{importError}</p>
+              </div>
+            )}
+
+            {/* Format Info */}
+            <div className="rounded-xl border border-border bg-card p-4">
+              <h3 className="text-sm font-medium mb-2">格式说明</h3>
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <div>
+                  <span className="font-mono text-amber-600">JSON</span> — 数组格式，每条记录为一个对象
+                  <p className="text-[10px] mt-0.5">{"[{\"title\": \"...\", \"content\": \"...\"}, ...]"}</p>
+                </div>
+                <div>
+                  <span className="font-mono text-amber-600">JSONL</span> — 每行一个JSON对象
+                  <p className="text-[10px] mt-0.5">{"{\"title\": \"...\", \"content\": \"...\"}"}</p>
+                </div>
+                <div>
+                  <span className="font-mono text-amber-600">CSV</span> — 逗号分隔，首行为表头
+                  <p className="text-[10px] mt-0.5">title,content,metadata</p>
+                </div>
+              </div>
             </div>
           </div>
         )}
