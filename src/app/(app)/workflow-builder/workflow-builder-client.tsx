@@ -23,6 +23,7 @@ import { NodePalette } from "./node-palette";
 import { NodeConfigPanel } from "./node-config-panel";
 import { WorkflowToolbar } from "./workflow-toolbar";
 import { WorkflowListPanel } from "./workflow-list-panel";
+import { WorkflowExecutionPanel } from "./workflow-execution-panel";
 
 const defaultNodes: Node<WorkflowNodeData>[] = [
   {
@@ -42,6 +43,7 @@ export function WorkflowBuilderClient() {
   const selectNode = useWorkflowStore((s) => s.selectNode);
   const debugNodeId = useWorkflowStore((s) => s.debugNodeId);
   const activeWorkflowId = useWorkflowStore((s) => s.activeWorkflowId);
+  const showExecutionPanel = useWorkflowStore((s) => s.showExecutionPanel);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(
     storeNodes.length > 0 ? storeNodes : defaultNodes,
@@ -237,6 +239,9 @@ export function WorkflowBuilderClient() {
           />
         )}
       </div>
+
+      {/* Execution Panel */}
+      {showExecutionPanel && <WorkflowExecutionPanel />}
     </div>
   );
 }
