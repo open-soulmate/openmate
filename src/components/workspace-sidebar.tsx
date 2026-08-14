@@ -48,10 +48,11 @@ export function WorkspaceSidebar({
   const fetchKnowledge = useCallback(async () => {
     if (!apiBase) return;
     try {
-      const res = await fetch(`${apiBase}/api/knowledge/list?limit=5`);
+      const userId = localStorage.getItem("openmate-user-id") || "default";
+      const res = await fetch(`${apiBase}/api/knowledge/?user_id=${encodeURIComponent(userId)}`);
       if (res.ok) {
         const data = await res.json();
-        const items = (data.knowledge_bases || data.items || []).map((k: any) => ({
+        const items = (Array.isArray(data) ? data : data.knowledge_bases || data.items || []).slice(0, 5).map((k: any) => ({
           id: k.id || k.kb_id,
           title: k.name || k.title || "未命名",
           type: "document" as const,
@@ -64,14 +65,17 @@ export function WorkspaceSidebar({
   const fetchVital = useCallback(async () => {
     if (!apiBase) return;
     try {
-      const res = await fetch(`${apiBase}/api/vital/health`);
+      const res = await fetch(`${apiBase}/api/vital/metrics`);
       if (res.ok) {
-        const data = await res.json();
+        const text = await res.text();
+        const parse = (name: string) => {
+          const match = text.match(new RegExp(`${name}\\s+([\\d.]+)`));
+          return match ? parseFloat(match[1]) : undefined;
+        };
         setVitalStats({
-          cpu_percent: data.cpu_percent,
-          memory_percent: data.memory_percent,
-          disk_percent: data.disk_percent,
-          uptime_seconds: data.uptime_seconds,
+          cpu_percent: parse("vital_cpu_percent"),
+          memory_percent: parse("vital_memory_percent"),
+          disk_percent: parse("vital_disk_percent"),
         });
       }
     } catch {}
