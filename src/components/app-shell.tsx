@@ -17,7 +17,7 @@ import {
   MousePointer, Mic, ImageIcon, Smile,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
-import { getUserId } from "@/lib/api-client";
+import { getUserId, getApiBaseUrl } from "@/lib/api-client";
 import { type ThemeId, persistTheme } from "@/lib/theme";
 
 // Paperclip-style sidebar: fixed icon column, text hides on collapse
@@ -46,8 +46,29 @@ export function AppShell() {
   const [menuOpen, setMenuOpen] = useState(false);
   const { t } = useTranslation();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["内部服务"]));
+  const [pluginGroups, setPluginGroups] = useState<NavGroup[]>([]);
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    fetch(`${apiBase}/api/plugins/sidebar`)
+      .then((res) => (res.ok ? res.json() : []))
+      .then((items: { group: string; label: string; href: string; icon?: string }[]) => {
+        if (!Array.isArray(items) || items.length === 0) return;
+        const grouped = new Map<string, NavItem[]>();
+        for (const item of items) {
+          const arr = grouped.get(item.group) || [];
+          arr.push({ href: item.href, label: item.label, icon: Plug });
+          grouped.set(item.group, arr);
+        }
+        setPluginGroups(
+          Array.from(grouped.entries()).map(([label, navItems]) => ({ label, items: navItems }))
+        );
+      })
+      .catch(() => {});
+  }, []);
 
   const navGroups: NavGroup[] = [
     {
@@ -128,6 +149,19 @@ export function AppShell() {
     },
   ];
 
+  // Insert plugin groups between "内部服务" and "系统"
+  const allNavGroups: NavGroup[] = (() => {
+    if (pluginGroups.length === 0) return navGroups;
+    const result: NavGroup[] = [];
+    for (const group of navGroups) {
+      result.push(group);
+      if (group.label === (t("nav.internalServices") || "内部服务")) {
+        result.push(...pluginGroups);
+      }
+    }
+    return result;
+  })();
+
   const toggleGroup = (label: string) => {
     setCollapsedGroups((prev) => {
       const next = new Set(prev);
@@ -202,7 +236,7 @@ export function AppShell() {
 
         {/* Navigation - grouped, fixed icon column + flowing text */}
         <nav className="flex-1 overflow-y-auto px-2 py-1">
-          {navGroups.map((group) => {
+          {allNavGroups.map((group) => {
             const groupCollapsed = collapsedGroups.has(group.label);
             return (
               <div key={group.label} className="mb-1">
