@@ -14,8 +14,8 @@ import {
   LayoutDashboard, FolderKanban, Share2, ChevronDown,
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
   Zap, Activity, Sparkles, Brain, Bolt, Heart, Home,
-  MousePointer, Mic, ImageIcon, Smile, Stethoscope, Cpu,
-} from "lucide-react";
+ MousePointer, Mic, ImageIcon, Smile, Stethoscope, Cpu,
+ } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getApiBaseUrl } from "@/lib/api-client";
 import { type ThemeId, persistTheme } from "@/lib/theme";
@@ -77,6 +77,7 @@ export function AppShell() {
         { href: "/chat", label: t("nav.chat"), icon: MessageSquare },
         { href: "/ai-groups", label: t("nav.aiGroups") || "AI群", icon: Users },
         { href: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
+        { href: "/body-map", label: "Body Map", icon: Activity },
       ],
     },
     {
