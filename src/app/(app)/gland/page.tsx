@@ -1,4 +1,7 @@
-"use client";
-import dynamic from "next/dynamic";
-const GlandClient = dynamic(() => import("./gland-client").then(m => m.GlandClient), { ssr: false });
-export default function GlandPage() { return <GlandClient />; }
+import { GlandClient } from "./gland-client"
+
+export const metadata = { title: "Gland" }
+
+export default function GlandPage() {
+  return <GlandClient />
+}
