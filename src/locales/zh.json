@@ -60,7 +60,8 @@
     "soma": "躯体",
     "bodyMap": "躯体地图",
     "activity": "活动",
-    "diagnostics": "系统诊断"
+    "diagnostics": "系统诊断",
+    "intelligence": "智能分析"
   },
   "dashboard": {
     "title": "系统概览",

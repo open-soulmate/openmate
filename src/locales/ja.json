@@ -60,7 +60,8 @@
     "soma": "ソーマ",
     "bodyMap": "ボディマップ",
     "activity": "アクティビティ",
-    "diagnostics": "システム診断"
+    "diagnostics": "システム診断",
+    "intelligence": "インテリジェンス分析"
   },
   "dashboard": {
     "title": "システム概要",
