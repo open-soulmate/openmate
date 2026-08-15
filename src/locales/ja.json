@@ -568,7 +568,16 @@
     "tokens": "トークン",
     "noUsage": "使用記録なし",
     "testConnection": "接続テスト",
-    "autoSelect": "最高優先度を自動選択"
+    "autoSelect": "最高優先度を自動選択",
+    "description": "マルチLLMルーティング、キー管理、トークン計量",
+    "tabs": {
+      "overview": "概要",
+      "usage": "使用統計"
+    },
+    "totalCalls": "総呼出数",
+    "providerStatus": "プロバイダー状態",
+    "tokenBudget": "トークン予算",
+    "providerManagement": "プロバイダー管理"
   },
   "vital": {
     "title": "バイタル · システム監視",

@@ -568,7 +568,16 @@
     "tokens": "Tokens",
     "noUsage": "No usage records",
     "testConnection": "Test Connection",
-    "autoSelect": "Auto select highest priority"
+    "autoSelect": "Auto select highest priority",
+    "description": "Multi-LLM routing, key management, token metering",
+    "tabs": {
+      "overview": "Overview",
+      "usage": "Usage Stats"
+    },
+    "totalCalls": "Total Calls",
+    "providerStatus": "Provider Status",
+    "tokenBudget": "Token Budget",
+    "providerManagement": "Provider Management"
   },
   "vital": {
     "title": "Vital · System Monitor",

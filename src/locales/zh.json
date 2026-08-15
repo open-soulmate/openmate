@@ -568,7 +568,16 @@
     "tokens": "Tokens",
     "noUsage": "暂无使用记录",
     "testConnection": "测试连接",
-    "autoSelect": "自动选择最高优先级"
+    "autoSelect": "自动选择最高优先级",
+    "description": "多LLM统一调度、密钥管理、Token计量",
+    "tabs": {
+      "overview": "概览",
+      "usage": "用量统计"
+    },
+    "totalCalls": "总调用",
+    "providerStatus": "Provider 状态",
+    "tokenBudget": "Token 预算",
+    "providerManagement": "Provider 管理"
   },
   "vital": {
     "title": "体征 · 系统监控",
