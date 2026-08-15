@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { useTranslation } from "react-i18next"
 import { getApiBaseUrl } from "@/lib/api-client"
 import { cn } from "@/lib/utils"
 import {
@@ -78,6 +79,7 @@ interface WillHealth {
 type ActiveTab = "overview" | "workflows" | "executions"
 
 export function WillClient() {
+  const { t } = useTranslation()
   const apiBase = getApiBaseUrl()
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview")
   const [health, setHealth] = useState<WillHealth | null>(null)
@@ -88,14 +90,9 @@ export function WillClient() {
   const [deleting, setDeleting] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null)
 
-  // Create workflow form
   const [showCreate, setShowCreate] = useState(false)
   const [createForm, setCreateForm] = useState({ name: "", description: "", trigger: "manual" })
-
-  // Expanded workflow
   const [expandedWf, setExpandedWf] = useState<string | null>(null)
-
-  // Execution detail
   const [selectedExec, setSelectedExec] = useState<Execution | null>(null)
 
   const refresh = useCallback(async () => {
@@ -132,16 +129,16 @@ export function WillClient() {
         }),
       })
       if (res.ok) {
-        showMsg("ok", "工作流创建成功")
+        showMsg("ok", t("will.createdOk"))
         setShowCreate(false)
         setCreateForm({ name: "", description: "", trigger: "manual" })
         refresh()
       } else {
         const err = await res.json()
-        showMsg("err", err.detail || "创建失败")
+        showMsg("err", err.detail || t("will.createFail"))
       }
     } catch (e: any) {
-      showMsg("err", e.message || "网络错误")
+      showMsg("err", e.message || t("will.networkError"))
     }
   }
 
@@ -155,27 +152,27 @@ export function WillClient() {
       })
       if (res.ok) {
         const data = await res.json()
-        showMsg("ok", `执行已启动: ${data.id}`)
+        showMsg("ok", `${t("will.execStarted")}: ${data.id}`)
         refresh()
       } else {
         const err = await res.json()
-        showMsg("err", err.detail || "执行失败")
+        showMsg("err", err.detail || t("will.execFail"))
       }
     } catch (e: any) {
-      showMsg("err", e.message || "网络错误")
+      showMsg("err", e.message || t("will.networkError"))
     }
     setExecuting(null)
   }
 
   const handleDelete = async (wfId: string) => {
-    if (!confirm("确认删除此工作流？")) return
+    if (!confirm(t("will.confirmDelete"))) return
     setDeleting(wfId)
     try {
       await fetch(`${apiBase}/api/will/workflows/${wfId}`, { method: "DELETE" })
-      showMsg("ok", "工作流已删除")
+      showMsg("ok", t("will.deletedOk"))
       refresh()
     } catch (e: any) {
-      showMsg("err", e.message || "删除失败")
+      showMsg("err", e.message || t("will.deleteFail"))
     }
     setDeleting(null)
   }
@@ -185,12 +182,12 @@ export function WillClient() {
       const res = await fetch(`${apiBase}/api/will/workflows/${wfId}/validate`)
       const data = await res.json()
       if (data.valid) {
-        showMsg("ok", "工作流验证通过 ✓")
+        showMsg("ok", t("will.validateOk"))
       } else {
-        showMsg("err", `验证失败: ${data.errors.join(", ")}`)
+        showMsg("err", `${t("will.validateFail")}: ${data.errors.join(", ")}`)
       }
     } catch (e: any) {
-      showMsg("err", e.message || "验证失败")
+      showMsg("err", e.message || t("will.validateFail"))
     }
   }
 
@@ -225,9 +222,9 @@ export function WillClient() {
 
   const eng = health?.engine
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Sparkles }> = [
-    { key: "overview", label: "概览", icon: Activity },
-    { key: "workflows", label: "工作流", icon: Workflow },
-    { key: "executions", label: "执行记录", icon: Clock },
+    { key: "overview", label: t("will.overview"), icon: Activity },
+    { key: "workflows", label: t("will.workflows"), icon: Workflow },
+    { key: "executions", label: t("will.executions"), icon: Clock },
   ]
 
   return (
@@ -239,28 +236,27 @@ export function WillClient() {
             <Sparkles className="w-5 h-5 text-indigo-400" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Will — 意志系统</h1>
-            <p className="text-sm text-muted-foreground">工作流编排、条件触发、多分支流程</p>
+            <h1 className="text-lg font-semibold text-foreground">{t("will.title")}</h1>
+            <p className="text-sm text-muted-foreground">{t("will.subtitle")}</p>
           </div>
         </div>
 
-        {/* Tab Navigation */}
         <div className="flex gap-2 border-b border-border pb-2 mt-4">
-          {tabs.map(tab => {
-            const Icon = tab.icon
+          {tabs.map(tabItem => {
+            const Icon = tabItem.icon
             return (
               <button
-                key={tab.key}
-                onClick={() => setActiveTab(tab.key)}
+                key={tabItem.key}
+                onClick={() => setActiveTab(tabItem.key)}
                 className={cn(
                   "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-t-lg transition-colors",
-                  activeTab === tab.key
+                  activeTab === tabItem.key
                     ? "bg-card border border-b-0 border-border text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
                 )}
               >
                 <Icon size={14} />
-                {tab.label}
+                {tabItem.label}
               </button>
             )
           })}
@@ -288,10 +284,10 @@ export function WillClient() {
           <div className="space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: "总工作流", value: eng?.total_workflows ?? 0, icon: Workflow, color: "text-blue-400", bg: "from-blue-500/20 to-blue-600/10" },
-                { label: "活跃", value: eng?.active_workflows ?? 0, icon: CheckCircle, color: "text-green-400", bg: "from-green-500/20 to-green-600/10" },
-                { label: "总执行", value: eng?.total_executions ?? 0, icon: Play, color: "text-purple-400", bg: "from-purple-500/20 to-purple-600/10" },
-                { label: "成功率", value: `${(eng?.success_rate ?? 0).toFixed(0)}%`, icon: Activity, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
+                { label: t("will.totalWorkflows"), value: eng?.total_workflows ?? 0, icon: Workflow, color: "text-blue-400", bg: "from-blue-500/20 to-blue-600/10" },
+                { label: t("will.active"), value: eng?.active_workflows ?? 0, icon: CheckCircle, color: "text-green-400", bg: "from-green-500/20 to-green-600/10" },
+                { label: t("will.totalExec"), value: eng?.total_executions ?? 0, icon: Play, color: "text-purple-400", bg: "from-purple-500/20 to-purple-600/10" },
+                { label: t("will.successRate"), value: `${(eng?.success_rate ?? 0).toFixed(0)}%`, icon: Activity, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
               ].map(s => (
                 <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-4", s.bg)}>
                   <s.icon className={cn("w-4 h-4 mb-2", s.color)} />
@@ -301,12 +297,11 @@ export function WillClient() {
               ))}
             </div>
 
-            {/* Execution Stats */}
             <div className="grid grid-cols-3 gap-4">
               {[
-                { label: "成功", value: eng?.successful ?? 0, color: "text-green-400" },
-                { label: "失败", value: eng?.failed ?? 0, color: "text-red-400" },
-                { label: "运行中", value: eng?.running ?? 0, color: "text-blue-400" },
+                { label: t("will.success"), value: eng?.successful ?? 0, color: "text-green-400" },
+                { label: t("will.failed"), value: eng?.failed ?? 0, color: "text-red-400" },
+                { label: t("will.running"), value: eng?.running ?? 0, color: "text-blue-400" },
               ].map(s => (
                 <div key={s.label} className="p-4 rounded-xl border border-border bg-card text-center">
                   <div className={cn("text-xl font-bold", s.color)}>{s.value}</div>
@@ -315,10 +310,9 @@ export function WillClient() {
               ))}
             </div>
 
-            {/* Recent Workflows */}
             {workflows.length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-foreground mb-3">最近工作流</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-3">{t("will.recentWorkflows")}</h3>
                 <div className="space-y-2">
                   {workflows.slice(0, 5).map(wf => (
                     <div key={wf.id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card">
@@ -326,7 +320,7 @@ export function WillClient() {
                       <div className="flex-1 min-w-0">
                         <div className="text-sm font-medium text-foreground truncate">{wf.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {wf.nodes.length} 节点 · {wf.edges.length} 连接 · 执行 {wf.run_count} 次
+                          {wf.nodes.length} {t("will.nodesCount")} · {wf.edges.length} {t("will.edgesCount")} · {t("will.runCount")} {wf.run_count} {t("will.runCountUnit")}
                         </div>
                       </div>
                       <span className={cn("flex items-center gap-1 px-2 py-0.5 rounded text-xs border", statusColor(wf.status))}>
@@ -344,7 +338,7 @@ export function WillClient() {
         {activeTab === "workflows" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">工作流管理</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("will.workflowManage")}</h3>
               <div className="flex gap-2">
                 <button onClick={refresh} className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground">
                   <RefreshCw className="w-4 h-4" />
@@ -353,45 +347,43 @@ export function WillClient() {
                   onClick={() => setShowCreate(!showCreate)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90"
                 >
-                  <Plus className="w-3.5 h-3.5" /> 新建工作流
+                  <Plus className="w-3.5 h-3.5" /> {t("will.newWorkflow")}
                 </button>
               </div>
             </div>
 
-            {/* Create Form */}
             {showCreate && (
               <div className="p-4 rounded-xl border border-border bg-card space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">名称 *</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("will.name")} *</label>
                     <input value={createForm.name} onChange={e => setCreateForm({ ...createForm, name: e.target.value })}
-                      placeholder="每日数据同步" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("will.createWorkflow")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">触发方式</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("will.triggerType")}</label>
                     <select value={createForm.trigger} onChange={e => setCreateForm({ ...createForm, trigger: e.target.value })}
                       className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                      <option value="manual">手动触发</option>
-                      <option value="cron">定时触发</option>
-                      <option value="event">事件触发</option>
-                      <option value="webhook">Webhook</option>
+                      <option value="manual">{t("will.triggerManual")}</option>
+                      <option value="cron">{t("will.triggerCron")}</option>
+                      <option value="event">{t("will.triggerEvent")}</option>
+                      <option value="webhook">{t("will.triggerWebhook")}</option>
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="text-xs text-muted-foreground mb-1 block">描述</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("will.description")}</label>
                     <input value={createForm.description} onChange={e => setCreateForm({ ...createForm, description: e.target.value })}
-                      placeholder="工作流描述 (可选)" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("will.descPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => setShowCreate(false)} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">取消</button>
+                  <button onClick={() => setShowCreate(false)} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">{t("will.cancel")}</button>
                   <button onClick={handleCreate} disabled={!createForm.name}
-                    className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40">创建</button>
+                    className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40">{t("will.create")}</button>
                 </div>
               </div>
             )}
 
-            {/* Workflow List */}
             <div className="space-y-2">
               {workflows.map(wf => (
                 <div key={wf.id} className="rounded-xl border border-border bg-card overflow-hidden">
@@ -413,41 +405,39 @@ export function WillClient() {
                     </div>
 
                     <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1"><GitBranch className="w-3 h-3" /> {wf.nodes.length} 节点</span>
-                      <span>{wf.edges.length} 连接</span>
-                      <span>执行 {wf.run_count} 次</span>
-                      {wf.last_run_at && <span>最后: {new Date(wf.last_run_at).toLocaleString("zh-CN")}</span>}
+                      <span className="flex items-center gap-1"><GitBranch className="w-3 h-3" /> {wf.nodes.length} {t("will.nodesCount")}</span>
+                      <span>{wf.edges.length} {t("will.edgesCount")}</span>
+                      <span>{t("will.runCount")} {wf.run_count} {t("will.runCountUnit")}</span>
+                      {wf.last_run_at && <span>{t("will.lastRunAt")}: {new Date(wf.last_run_at).toLocaleString()}</span>}
                     </div>
 
-                    {/* Actions */}
                     <div className="flex gap-2 mt-3">
                       <button onClick={() => handleExecute(wf.id)} disabled={executing === wf.id || wf.status === "draft"}
                         className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-40">
                         {executing === wf.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
-                        执行
+                        {t("will.execute")}
                       </button>
                       <button onClick={() => handleValidate(wf.id)}
                         className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs bg-blue-500/10 text-blue-400 hover:bg-blue-500/20 transition-colors">
-                        <CheckCircle className="w-3 h-3" /> 验证
+                        <CheckCircle className="w-3 h-3" /> {t("will.validate")}
                       </button>
                       <button onClick={() => setExpandedWf(expandedWf === wf.id ? null : wf.id)}
                         className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs bg-muted text-muted-foreground hover:text-foreground transition-colors">
-                        <Eye className="w-3 h-3" /> 详情
+                        <Eye className="w-3 h-3" /> {t("will.details")}
                       </button>
                       <button onClick={() => handleDelete(wf.id)} disabled={deleting === wf.id}
                         className="flex items-center gap-1 px-3 py-1.5 rounded-md text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40">
                         {deleting === wf.id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                        删除
+                        {t("will.delete")}
                       </button>
                     </div>
                   </div>
 
-                  {/* Expanded Detail */}
                   {expandedWf === wf.id && (
                     <div className="border-t border-border p-4 bg-muted/30">
                       <div className="grid grid-cols-2 gap-4">
                         <div>
-                          <h4 className="text-xs font-semibold text-muted-foreground mb-2">节点</h4>
+                          <h4 className="text-xs font-semibold text-muted-foreground mb-2">{t("will.nodes")}</h4>
                           {wf.nodes.length > 0 ? (
                             <div className="space-y-1">
                               {wf.nodes.map(n => (
@@ -458,10 +448,10 @@ export function WillClient() {
                                 </div>
                               ))}
                             </div>
-                          ) : <div className="text-xs text-muted-foreground">无节点</div>}
+                          ) : <div className="text-xs text-muted-foreground">{t("will.noNodes")}</div>}
                         </div>
                         <div>
-                          <h4 className="text-xs font-semibold text-muted-foreground mb-2">连接</h4>
+                          <h4 className="text-xs font-semibold text-muted-foreground mb-2">{t("will.edges")}</h4>
                           {wf.edges.length > 0 ? (
                             <div className="space-y-1">
                               {wf.edges.map(e => (
@@ -473,12 +463,12 @@ export function WillClient() {
                                 </div>
                               ))}
                             </div>
-                          ) : <div className="text-xs text-muted-foreground">无连接</div>}
+                          ) : <div className="text-xs text-muted-foreground">{t("will.noEdges")}</div>}
                         </div>
                       </div>
                       {Object.keys(wf.variables).length > 0 && (
                         <div className="mt-3">
-                          <h4 className="text-xs font-semibold text-muted-foreground mb-2">变量</h4>
+                          <h4 className="text-xs font-semibold text-muted-foreground mb-2">{t("will.variables")}</h4>
                           <div className="flex gap-2 flex-wrap">
                             {Object.entries(wf.variables).map(([k, v]) => (
                               <span key={k} className="px-2 py-0.5 rounded text-xs bg-card border border-border">
@@ -495,7 +485,7 @@ export function WillClient() {
               {workflows.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground text-sm">
                   <Workflow className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  暂无工作流
+                  {t("will.noWorkflows")}
                 </div>
               )}
             </div>
@@ -506,30 +496,29 @@ export function WillClient() {
         {activeTab === "executions" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">执行记录</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("will.executions")}</h3>
               <button onClick={refresh} className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground">
                 <RefreshCw className="w-4 h-4" />
               </button>
             </div>
 
-            {/* Execution Detail Modal */}
             {selectedExec && (
               <div className="p-4 rounded-xl border border-border bg-card space-y-3">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-sm font-semibold text-foreground">执行详情: {selectedExec.id.slice(0, 8)}</h4>
+                  <h4 className="text-sm font-semibold text-foreground">{t("will.execDetail")}: {selectedExec.id.slice(0, 8)}</h4>
                   <button onClick={() => setSelectedExec(null)} className="text-muted-foreground hover:text-foreground">
                     <XCircle className="w-4 h-4" />
                   </button>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div><span className="text-muted-foreground">工作流:</span> <span className="text-foreground">{selectedExec.workflow_name}</span></div>
-                  <div><span className="text-muted-foreground">状态:</span> <span className={cn("px-1.5 py-0.5 rounded border", statusColor(selectedExec.status))}>{selectedExec.status}</span></div>
-                  <div><span className="text-muted-foreground">开始:</span> <span className="text-foreground">{new Date(selectedExec.started_at).toLocaleString("zh-CN")}</span></div>
-                  {selectedExec.completed_at && <div><span className="text-muted-foreground">完成:</span> <span className="text-foreground">{new Date(selectedExec.completed_at).toLocaleString("zh-CN")}</span></div>}
+                  <div><span className="text-muted-foreground">{t("will.workflows")}:</span> <span className="text-foreground">{selectedExec.workflow_name}</span></div>
+                  <div><span className="text-muted-foreground">{t("will.execStatus")}:</span> <span className={cn("px-1.5 py-0.5 rounded border", statusColor(selectedExec.status))}>{selectedExec.status}</span></div>
+                  <div><span className="text-muted-foreground">{t("will.startedAt")}:</span> <span className="text-foreground">{new Date(selectedExec.started_at).toLocaleString()}</span></div>
+                  {selectedExec.completed_at && <div><span className="text-muted-foreground">{t("will.completedAt")}:</span> <span className="text-foreground">{new Date(selectedExec.completed_at).toLocaleString()}</span></div>}
                 </div>
                 {selectedExec.steps.length > 0 && (
                   <div>
-                    <h5 className="text-xs font-semibold text-muted-foreground mb-2">步骤</h5>
+                    <h5 className="text-xs font-semibold text-muted-foreground mb-2">{t("will.steps")}</h5>
                     <div className="space-y-1">
                       {selectedExec.steps.map((step, i) => (
                         <div key={i} className="flex items-center gap-2 text-xs p-2 rounded bg-muted/30">
@@ -552,7 +541,6 @@ export function WillClient() {
               </div>
             )}
 
-            {/* Execution List */}
             <div className="space-y-2">
               {executions.map(ex => (
                 <div key={ex.id} onClick={() => setSelectedExec(ex)}
@@ -563,18 +551,18 @@ export function WillClient() {
                   <div className="flex-1 min-w-0">
                     <div className="text-sm font-medium text-foreground truncate">{ex.workflow_name || ex.workflow_id}</div>
                     <div className="text-xs text-muted-foreground">
-                      {new Date(ex.started_at).toLocaleString("zh-CN")}
-                      {ex.completed_at && ` → ${new Date(ex.completed_at).toLocaleString("zh-CN")}`}
+                      {new Date(ex.started_at).toLocaleString()}
+                      {ex.completed_at && ` → ${new Date(ex.completed_at).toLocaleString()}`}
                     </div>
                   </div>
-                  <span className="text-xs text-muted-foreground">{ex.steps.length} 步骤</span>
+                  <span className="text-xs text-muted-foreground">{ex.steps.length} {t("will.steps")}</span>
                   <ChevronRight className="w-4 h-4 text-muted-foreground" />
                 </div>
               ))}
               {executions.length === 0 && (
                 <div className="text-center py-12 text-muted-foreground text-sm">
                   <Clock className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  暂无执行记录
+                  {t("will.noExecutions")}
                 </div>
               )}
             </div>

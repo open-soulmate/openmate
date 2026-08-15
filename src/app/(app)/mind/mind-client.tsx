@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
@@ -35,7 +36,7 @@ interface Personality {
 
 const EMOTION_ICONS: Record<string, string> = {
   joy: "😊", sadness: "😢", anger: "😠", fear: "😨",
-  surprise: "😲", trust: "🤝", anticipation: "期待", confusion: "困惑", neutral: "😐",
+  surprise: "😲", trust: "🤝", anticipation: "🔮", confusion: "😕", neutral: "😐",
 };
 
 const EMOTION_COLORS: Record<string, string> = {
@@ -44,7 +45,10 @@ const EMOTION_COLORS: Record<string, string> = {
   anticipation: "text-orange-500", confusion: "text-gray-500", neutral: "text-slate-500",
 };
 
+const TONE_OPTIONS = ["neutral", "friendly", "professional", "humorous", "empathetic", "assertive"] as const;
+
 export function MindClient() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"emotion" | "personality">("emotion");
   const [loading, setLoading] = useState(false);
 
@@ -135,23 +139,27 @@ export function MindClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Brain size={20} className="text-violet-500" />
-          <h1 className="text-lg font-semibold">心智 · 情绪与人格</h1>
+          <h1 className="text-lg font-semibold">{t("mind.title")}</h1>
           <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-500">
-            识别 · 调节
+            {t("mind.badge")}
           </span>
         </div>
+        <button onClick={() => { fetchPersonalities(); }}
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+          <RefreshCw size={14} />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         <div className="flex gap-2">
           {[
-            { id: "emotion" as const, label: "情绪识别", icon: Smile },
-            { id: "personality" as const, label: "人格库", icon: Sparkles },
-          ].map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
+            { id: "emotion" as const, label: t("mind.emotionTab"), icon: Smile },
+            { id: "personality" as const, label: t("mind.personalityTab"), icon: Sparkles },
+          ].map((tabItem) => (
+            <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
               className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                tab === t.id ? "bg-violet-500/10 text-violet-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
-              <t.icon size={14} /> {t.label}
+                tab === tabItem.id ? "bg-violet-500/10 text-violet-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
+              <tabItem.icon size={14} /> {tabItem.label}
             </button>
           ))}
         </div>
@@ -161,23 +169,23 @@ export function MindClient() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-                <h3 className="font-semibold text-sm">输入文本</h3>
+                <h3 className="font-semibold text-sm">{t("mind.inputText")}</h3>
                 <textarea value={emotionText} onChange={(e) => setEmotionText(e.target.value)}
-                  placeholder="输入要分析情绪的文本..."
+                  placeholder={t("mind.textPlaceholder")}
                   rows={6} className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm resize-none" />
                 <div className="flex justify-between">
-                  <span className="text-xs text-muted-foreground">{emotionText.length} 字符</span>
+                  <span className="text-xs text-muted-foreground">{emotionText.length} {t("mind.chars")}</span>
                 </div>
                 <button onClick={handleAnalyze} disabled={loading || !emotionText.trim()}
                   className="flex items-center justify-center gap-2 w-full rounded-lg bg-violet-500 px-4 py-2.5 text-sm text-white hover:bg-violet-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                  分析情绪
+                  {t("mind.analyzeEmotion")}
                 </button>
               </div>
 
               {/* Quick samples */}
               <div className="rounded-xl border border-border bg-card p-5 space-y-2">
-                <h3 className="font-semibold text-sm">快速测试</h3>
+                <h3 className="font-semibold text-sm">{t("mind.quickTest")}</h3>
                 {[
                   "太棒了！这个功能终于实现了，我好开心！",
                   "这个bug让我非常头疼，已经折腾了一整天。",
@@ -199,7 +207,7 @@ export function MindClient() {
                 <>
                   <div className="rounded-xl border border-border bg-card p-5 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-sm">主要情绪</h3>
+                      <h3 className="font-semibold text-sm">{t("mind.primaryEmotion")}</h3>
                       <div className="flex items-center gap-2">
                         {sentimentIcon(emotionResult.sentiment)}
                         <span className="text-xs text-muted-foreground">{emotionResult.sentiment}</span>
@@ -212,7 +220,7 @@ export function MindClient() {
                           {emotionResult.primary_emotion}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          置信度 {(emotionResult.confidence * 100).toFixed(0)}%
+                          {t("mind.confidence")} {(emotionResult.confidence * 100).toFixed(0)}%
                         </p>
                       </div>
                     </div>
@@ -237,13 +245,13 @@ export function MindClient() {
                     {/* Valence & Arousal */}
                     <div className="grid grid-cols-2 gap-3">
                       <div className="rounded-lg bg-muted/50 p-3 text-center">
-                        <span className="text-xs text-muted-foreground">效价 (Valence)</span>
+                        <span className="text-xs text-muted-foreground">{t("mind.valence")}</span>
                         <p className={cn("text-lg font-bold", emotionResult.valence > 0 ? "text-emerald-500" : "text-red-500")}>
                           {emotionResult.valence > 0 ? "+" : ""}{emotionResult.valence.toFixed(2)}
                         </p>
                       </div>
                       <div className="rounded-lg bg-muted/50 p-3 text-center">
-                        <span className="text-xs text-muted-foreground">唤醒度 (Arousal)</span>
+                        <span className="text-xs text-muted-foreground">{t("mind.arousal")}</span>
                         <p className="text-lg font-bold text-amber-500">{emotionResult.arousal.toFixed(2)}</p>
                       </div>
                     </div>
@@ -251,7 +259,7 @@ export function MindClient() {
                     {/* Keywords */}
                     {emotionResult.keywords.length > 0 && (
                       <div>
-                        <span className="text-xs text-muted-foreground">触发词</span>
+                        <span className="text-xs text-muted-foreground">{t("mind.triggerWords")}</span>
                         <div className="flex flex-wrap gap-1 mt-1">
                           {emotionResult.keywords.map((kw, i) => (
                             <span key={i} className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] text-violet-600">
@@ -267,7 +275,7 @@ export function MindClient() {
                 <div className="rounded-xl border border-border bg-card p-5">
                   <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                     <Smile size={40} className="mb-3 opacity-30" />
-                    <p className="text-sm">输入文本后点击分析</p>
+                    <p className="text-sm">{t("mind.inputHint")}</p>
                   </div>
                 </div>
               )}
@@ -279,10 +287,10 @@ export function MindClient() {
         {tab === "personality" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">当前人格: <strong>{activeId}</strong></span>
+              <span className="text-sm text-muted-foreground">{t("mind.activePersonality")}: <strong>{activeId}</strong></span>
               <button onClick={() => setShowCreate(true)}
                 className="flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm text-white hover:bg-violet-600">
-                <Plus size={14} /> 创建人格
+                <Plus size={14} /> {t("mind.createPersonality")}
               </button>
             </div>
 
@@ -299,7 +307,7 @@ export function MindClient() {
                       <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
                     </div>
                     {activeId === p.personality_id && (
-                      <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] text-violet-600">当前</span>
+                      <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] text-violet-600">{t("mind.current")}</span>
                     )}
                   </div>
                   <div className="flex flex-wrap gap-1">
@@ -308,8 +316,8 @@ export function MindClient() {
                     ))}
                   </div>
                   <div className="space-y-1 text-xs text-muted-foreground">
-                    <div className="flex justify-between"><span>语气</span><span>{p.tone}</span></div>
-                    <div className="flex justify-between"><span>长度</span><span>{p.response_length}</span></div>
+                    <div className="flex justify-between"><span>{t("mind.tone")}</span><span>{p.tone}</span></div>
+                    <div className="flex justify-between"><span>{t("mind.length")}</span><span>{p.response_length}</span></div>
                     <div className="flex justify-between"><span>Emoji</span><span>{p.emoji_usage}</span></div>
                   </div>
                   <div className="flex gap-2">
@@ -319,7 +327,7 @@ export function MindClient() {
                           ? "bg-violet-500 text-white"
                           : "bg-violet-500/10 text-violet-600 hover:bg-violet-500/20")}>
                       {activeId === p.personality_id ? <Check size={12} /> : <Zap size={12} />}
-                      {activeId === p.personality_id ? "使用中" : "切换"}
+                      {activeId === p.personality_id ? t("mind.inUse") : t("mind.switch")}
                     </button>
                     {!p.builtin && (
                       <button onClick={() => handleDelete(p.personality_id)}
@@ -339,46 +347,43 @@ export function MindClient() {
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4">
-            <h3 className="font-semibold">创建人格</h3>
+            <h3 className="font-semibold">{t("mind.createPersonality")}</h3>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-muted-foreground">名称</label>
+                <label className="text-xs text-muted-foreground">{t("mind.personalityName")}</label>
                 <input value={newP.name} onChange={(e) => setNewP({ ...newP, name: e.target.value })}
-                  placeholder="如：学术风格" className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                  placeholder={t("mind.namePlaceholder")} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">描述</label>
+                <label className="text-xs text-muted-foreground">{t("mind.personalityDesc")}</label>
                 <input value={newP.description} onChange={(e) => setNewP({ ...newP, description: e.target.value })}
-                  placeholder="这个人格的特点" className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                  placeholder={t("mind.descPlaceholder")} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">语气</label>
+                <label className="text-xs text-muted-foreground">{t("mind.tone")}</label>
                 <select value={newP.tone} onChange={(e) => setNewP({ ...newP, tone: e.target.value })}
                   className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                  <option value="neutral">中性</option>
-                  <option value="friendly">友善</option>
-                  <option value="professional">专业</option>
-                  <option value="humorous">幽默</option>
-                  <option value="empathetic">共情</option>
-                  <option value="assertive">坚定</option>
+                  {TONE_OPTIONS.map((tone) => (
+                    <option key={tone} value={tone}>{t(`mind.tone${tone.charAt(0).toUpperCase() + tone.slice(1)}`)}</option>
+                  ))}
                 </select>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">特质 (逗号分隔)</label>
+                <label className="text-xs text-muted-foreground">{t("mind.traits")}</label>
                 <input value={newP.traits} onChange={(e) => setNewP({ ...newP, traits: e.target.value })}
-                  placeholder="耐心,专业,严谨" className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                  placeholder={t("mind.traitsPlaceholder")} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">补充指令</label>
+                <label className="text-xs text-muted-foreground">{t("mind.extraPrompt")}</label>
                 <textarea value={newP.system_prompt_suffix} onChange={(e) => setNewP({ ...newP, system_prompt_suffix: e.target.value })}
-                  placeholder="额外的系统提示词"
+                  placeholder={t("mind.extraPromptPlaceholder")}
                   rows={3} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm resize-none" />
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowCreate(false)} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">取消</button>
+              <button onClick={() => setShowCreate(false)} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t("mind.cancel")}</button>
               <button onClick={handleCreate} disabled={!newP.name}
-                className="rounded-lg bg-violet-500 px-4 py-2 text-sm text-white hover:bg-violet-600 disabled:opacity-50">创建</button>
+                className="rounded-lg bg-violet-500 px-4 py-2 text-sm text-white hover:bg-violet-600 disabled:opacity-50">{t("mind.create")}</button>
             </div>
           </div>
         </div>
