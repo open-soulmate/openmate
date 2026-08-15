@@ -85,6 +85,47 @@ function FileTreeNode({
   );
 }
 
+// ─── Highlighted Code (lazy-loaded) ────────────────────────────────────────
+
+function HighlightedCode({ content, language }: { content: string; language: string }) {
+  const [Component, setComponent] = useState<React.ComponentType<{ children: string }> | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    import("react-syntax-highlighter").then((mod) => {
+      if (cancelled) return;
+      const SyntaxHighlighter = mod.Prism;
+      import("react-syntax-highlighter/dist/cjs/styles/prism").then((styles) => {
+        if (cancelled) return;
+        const Wrapped = ({ children }: { children: string }) => (
+          <SyntaxHighlighter
+            language={language}
+            style={styles.oneDark}
+            showLineNumbers
+            wrapLines
+            customStyle={{ margin: 0, borderRadius: 0, background: "transparent", fontSize: "12px", lineHeight: "1.5" }}
+            lineNumberStyle={{ minWidth: "3em", paddingRight: "1em", opacity: 0.4 }}
+          >
+            {children}
+          </SyntaxHighlighter>
+        );
+        setComponent(() => Wrapped);
+      });
+    }).catch(() => {});
+    return () => { cancelled = true; };
+  }, [language]);
+
+  if (!Component) {
+    return (
+      <div className="p-4 font-mono text-xs whitespace-pre overflow-x-auto">
+        {content}
+      </div>
+    );
+  }
+
+  return <Component>{content}</Component>;
+}
+
 // ─── File Content Viewer ────────────────────────────────────────────────────
 
 function FileViewer({
@@ -137,41 +178,20 @@ function FileViewer({
 
   // Use syntax highlighter for known languages
   if (lang && typeof window !== "undefined") {
-    try {
-      // Dynamic import to avoid SSR issues
-      const { Prism: SyntaxHighlighter } = require("react-syntax-highlighter");
-      const { oneDark } = require("react-syntax-highlighter/dist/cjs/styles/prism");
-      return (
-        <div className="flex h-full flex-col">
-          <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
-            <Code size={14} className="text-muted-foreground" />
-            <span className="text-xs font-medium text-foreground">{fileName}</span>
-            <span className="text-[10px] text-muted-foreground">{lines.length} lines</span>
-            <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground font-mono">{lang}</span>
-          </div>
-          <div className="flex-1 overflow-auto text-xs">
-            <SyntaxHighlighter
-              language={lang}
-              style={oneDark}
-              showLineNumbers
-              wrapLines
-              customStyle={{
-                margin: 0,
-                borderRadius: 0,
-                background: "transparent",
-                fontSize: "12px",
-                lineHeight: "1.5",
-              }}
-              lineNumberStyle={{ minWidth: "3em", paddingRight: "1em", opacity: 0.4 }}
-            >
-              {content}
-            </SyntaxHighlighter>
-          </div>
+    // Use lazy-loaded SyntaxHighlighter component
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
+          <Code size={14} className="text-muted-foreground" />
+          <span className="text-xs font-medium text-foreground">{fileName}</span>
+          <span className="text-[10px] text-muted-foreground">{lines.length} lines</span>
+          <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground font-mono">{lang}</span>
         </div>
-      );
-    } catch {
-      // Fallback to plain text if import fails
-    }
+        <div className="flex-1 overflow-auto text-xs">
+          <HighlightedCode content={content} language={lang} />
+        </div>
+      </div>
+    );
   }
 
   // Plain text fallback with line numbers
