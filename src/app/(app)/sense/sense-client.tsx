@@ -6,6 +6,7 @@ import { getApiBaseUrl } from "@/lib/api-client"
 import {
   Eye, Upload, FileImage, Mic, FileText, Loader2,
   CheckCircle, AlertTriangle, Copy, Trash2, Volume2, Image as ImageIcon,
+  Video, Film,
 } from "lucide-react"
 
 interface SenseHealth {
@@ -41,7 +42,7 @@ interface ImageAnalysisResult {
   description: string
 }
 
-type ActiveTab = "ocr" | "asr" | "analyze"
+type ActiveTab = "ocr" | "asr" | "analyze" | "video"
 
 export function SenseClient() {
   const { t } = useTranslation()
@@ -71,9 +72,19 @@ export function SenseClient() {
   const [analyzeLoading, setAnalyzeLoading] = useState(false)
   const [analyzePreview, setAnalyzePreview] = useState<string | null>(null)
 
+  // Video analysis state
+  const [videoFile, setVideoFile] = useState<File | null>(null)
+  const [videoResult, setVideoResult] = useState<{ duration: number; width: number; height: number; fps: number; codec: string; file_size: number } | null>(null)
+  const [videoLoading, setVideoLoading] = useState(false)
+  const [videoFrames, setVideoFrames] = useState<Array<{ index: number; size_bytes: number; base64: string }>>([])
+  const [frameExtracting, setFrameExtracting] = useState(false)
+  const [frameInterval, setFrameInterval] = useState(2.0)
+  const [maxFrames, setMaxFrames] = useState(6)
+
   const ocrInputRef = useRef<HTMLInputElement>(null)
   const asrInputRef = useRef<HTMLInputElement>(null)
   const analyzeInputRef = useRef<HTMLInputElement>(null)
+  const videoInputRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     fetch(`${apiBase}/api/sense/health`)
@@ -139,6 +150,45 @@ export function SenseClient() {
     }
   }, [analyzeFile, apiBase])
 
+  const handleVideoAnalyze = useCallback(async () => {
+    if (!videoFile) return
+    setVideoLoading(true)
+    setVideoResult(null)
+    setVideoFrames([])
+    try {
+      const fd = new FormData()
+      fd.append("file", videoFile)
+      const res = await fetch(`${apiBase}/api/sense/analyze/video`, { method: "POST", body: fd })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      setVideoResult(await res.json())
+    } catch (e: any) {
+      setVideoResult(null)
+      alert(`视频分析失败: ${e.message}`)
+    } finally {
+      setVideoLoading(false)
+    }
+  }, [videoFile, apiBase])
+
+  const handleExtractFrames = useCallback(async () => {
+    if (!videoFile) return
+    setFrameExtracting(true)
+    setVideoFrames([])
+    try {
+      const fd = new FormData()
+      fd.append("file", videoFile)
+      fd.append("interval", String(frameInterval))
+      fd.append("max_frames", String(maxFrames))
+      const res = await fetch(`${apiBase}/api/sense/video/extract-frames`, { method: "POST", body: fd })
+      if (!res.ok) throw new Error(`HTTP ${res.status}`)
+      const data = await res.json()
+      setVideoFrames(data.frames || [])
+    } catch (e: any) {
+      alert(`帧提取失败: ${e.message}`)
+    } finally {
+      setFrameExtracting(false)
+    }
+  }, [videoFile, frameInterval, maxFrames, apiBase])
+
   const handleFileSelect = useCallback((
     file: File | null,
     setFile: (f: File | null) => void,
@@ -186,6 +236,7 @@ export function SenseClient() {
     { key: "ocr", label: "OCR 图文识别", icon: FileImage, available: ocrAvailable },
     { key: "asr", label: "ASR 语音转写", icon: Volume2, available: asrAvailable },
     { key: "analyze", label: "图像分析", icon: ImageIcon, available: multimodalAvailable },
+    { key: "video", label: "视频分析", icon: Video, available: true },
   ]
 
   return (
@@ -611,6 +662,157 @@ export function SenseClient() {
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                     <ImageIcon className="w-12 h-12 mb-2" />
                     <p className="text-sm">上传图片后点击"开始分析"</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Video Tab */}
+      {activeTab === "video" && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Upload Area */}
+            <div className="space-y-4">
+              <h3 className="font-semibold">上传视频</h3>
+              <div
+                className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5 transition-all"
+                onClick={() => videoInputRef.current?.click()}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={(e) => {
+                  e.preventDefault()
+                  const file = e.dataTransfer.files?.[0]
+                  if (file) setVideoFile(file)
+                }}
+              >
+                {videoFile ? (
+                  <div className="space-y-2">
+                    <Film className="w-10 h-10 mx-auto text-amber-500" />
+                    <p className="text-sm font-medium">{videoFile.name}</p>
+                    <p className="text-xs text-muted-foreground">{formatFileSize(videoFile.size)}</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    <Video className="w-10 h-10 mx-auto text-muted-foreground" />
+                    <p className="text-sm text-muted-foreground">拖拽或点击上传视频</p>
+                    <p className="text-xs text-muted-foreground/60">支持 MP4, WebM, AVI, MOV, MKV</p>
+                  </div>
+                )}
+              </div>
+              <input
+                ref={videoInputRef}
+                type="file"
+                accept="video/*"
+                className="hidden"
+                onChange={(e) => setVideoFile(e.target.files?.[0] || null)}
+              />
+              {videoFile && (
+                <div className="text-xs text-muted-foreground flex items-center gap-2">
+                  <Film className="w-3.5 h-3.5" />
+                  {videoFile.name} ({formatFileSize(videoFile.size)})
+                  <button onClick={() => { setVideoFile(null); setVideoResult(null); setVideoFrames([]) }} className="ml-auto text-red-400 hover:text-red-300">
+                    <Trash2 className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              )}
+
+              <button
+                onClick={handleVideoAnalyze}
+                disabled={!videoFile || videoLoading}
+                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
+              >
+                {videoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Film className="w-4 h-4" />}
+                {videoLoading ? "分析中..." : "分析视频元信息"}
+              </button>
+
+              {/* Frame extraction controls */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <h4 className="text-sm font-medium">帧提取</h4>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">间隔（秒）</label>
+                    <input
+                      type="number"
+                      min={0.5}
+                      step={0.5}
+                      value={frameInterval}
+                      onChange={(e) => setFrameInterval(Number(e.target.value))}
+                      className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">最大帧数</label>
+                    <input
+                      type="number"
+                      min={1}
+                      max={30}
+                      value={maxFrames}
+                      onChange={(e) => setMaxFrames(Number(e.target.value))}
+                      className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+                    />
+                  </div>
+                </div>
+                <button
+                  onClick={handleExtractFrames}
+                  disabled={!videoFile || frameExtracting}
+                  className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-orange-600 hover:to-red-600 transition-all flex items-center justify-center gap-2"
+                >
+                  {frameExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
+                  {frameExtracting ? "提取中..." : "提取视频帧"}
+                </button>
+              </div>
+            </div>
+
+            {/* Result Area */}
+            <div className="space-y-4">
+              <h3 className="font-semibold">分析结果</h3>
+              <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
+                {videoResult ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-2 gap-3">
+                      {[
+                        { label: "时长", value: formatDuration(videoResult.duration) },
+                        { label: "分辨率", value: `${videoResult.width} × ${videoResult.height}` },
+                        { label: "帧率", value: `${videoResult.fps} fps` },
+                        { label: "编码", value: videoResult.codec },
+                        { label: "文件大小", value: formatFileSize(videoResult.file_size) },
+                      ].map(item => (
+                        <div key={item.label} className="bg-muted/30 rounded-lg p-3">
+                          <div className="text-xs text-muted-foreground">{item.label}</div>
+                          <div className="text-sm font-semibold">{item.value}</div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
+                    <Video className="w-12 h-12 mb-2" />
+                    <p className="text-sm">上传视频后点击"分析视频元信息"</p>
+                  </div>
+                )}
+
+                {/* Extracted Frames */}
+                {videoFrames.length > 0 && (
+                  <div className="mt-4 pt-4 border-t border-border">
+                    <h4 className="text-xs font-medium text-muted-foreground mb-3">
+                      提取的帧 ({videoFrames.length} 张)
+                    </h4>
+                    <div className="grid grid-cols-3 gap-2">
+                      {videoFrames.map((frame) => (
+                        <div key={frame.index} className="rounded-lg overflow-hidden border border-border">
+                          <img
+                            src={`data:image/jpeg;base64,${frame.base64}`}
+                            alt={`Frame ${frame.index + 1}`}
+                            className="w-full h-auto"
+                          />
+                          <div className="text-[10px] text-muted-foreground text-center py-1 bg-muted/30">
+                            #{frame.index + 1} · {formatFileSize(frame.size_bytes)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 )}
               </div>
