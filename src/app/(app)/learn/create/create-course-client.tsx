@@ -53,6 +53,9 @@ export function CreateCourseClient() {
   const [knowledgeQuery, setKnowledgeQuery] = useState("");
   const [knowledgeItems, setKnowledgeItems] = useState<KnowledgeItem[]>([]);
   const [generating, setGenerating] = useState(false);
+  const [genMode, setGenMode] = useState<"manual" | "ai">("ai");
+  const [numChapters, setNumChapters] = useState(5);
+  const [difficulty, setDifficulty] = useState("intermediate");
   const [loadingKb, setLoadingKb] = useState(true);
 
   // Fetch knowledge base items from real API
@@ -105,44 +108,67 @@ export function CreateCourseClient() {
     setGenerating(true);
 
     try {
-      // Create course via real API
-      const res = await fetch(`${apiBase}/api/learn/courses`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title,
-          description: description || `A course about ${selectedTopics.join(", ")}`,
-          tags: selectedTopics.map((t) => t.toLowerCase().replace(/\s+/g, "-")),
-          topics: selectedTopics,
-          domain: selectedDomain,
-          knowledge_ids: selectedItems,
-          generated_by: "manual",
-        }),
-      });
-
-      if (res.ok) {
-        const course = await res.json();
-        // Add placeholder chapters based on topics
-        for (let i = 0; i < Math.max(3, selectedTopics.length); i++) {
-          const topicName = selectedTopics[i % selectedTopics.length];
-          await fetch(`${apiBase}/api/learn/courses/${course.id}/chapters`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              title: `${topicName} — Chapter ${i + 1}`,
-              content: `## ${topicName}\n\nThis chapter covers the fundamentals of ${topicName}.\n\n### Key Concepts\n\n- Concept 1\n- Concept 2\n- Concept 3\n\n> Start writing your notes here...`,
-              quiz: [
-                {
-                  question: `What is the main topic of this chapter?`,
-                  options: [topicName, "Something else", "Not sure", "Skip"],
-                  correct_index: 0,
-                  explanation: `This chapter focuses on ${topicName}.`,
-                },
-              ],
-            }),
-          });
+      if (genMode === "ai") {
+        // AI generation — use the new endpoint
+        const topic = title || selectedTopics.join(", ");
+        const res = await fetch(`${apiBase}/api/learn/courses/generate`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            topic,
+            num_chapters: numChapters,
+            language: "zh",
+            difficulty,
+          }),
+        });
+        if (res.ok) {
+          const course = await res.json();
+          router.push(`/learn/${course.id}`);
+        } else {
+          const err = await res.json();
+          console.error("AI generation failed:", err);
+          // Fallback to manual
+          alert(`AI生成失败: ${err.detail || "请检查Gland配置"}`);
         }
-        router.push(`/learn/${course.id}`);
+      } else {
+        // Manual generation
+        const res = await fetch(`${apiBase}/api/learn/courses`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            title,
+            description: description || `A course about ${selectedTopics.join(", ")}`,
+            tags: selectedTopics.map((t) => t.toLowerCase().replace(/\s+/g, "-")),
+            topics: selectedTopics,
+            domain: selectedDomain,
+            knowledge_ids: selectedItems,
+            generated_by: "manual",
+          }),
+        });
+
+        if (res.ok) {
+          const course = await res.json();
+          for (let i = 0; i < Math.max(3, selectedTopics.length); i++) {
+            const topicName = selectedTopics[i % selectedTopics.length];
+            await fetch(`${apiBase}/api/learn/courses/${course.id}/chapters`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                title: `${topicName} — Chapter ${i + 1}`,
+                content: `## ${topicName}\n\nThis chapter covers the fundamentals of ${topicName}.\n\n### Key Concepts\n\n- Concept 1\n- Concept 2\n- Concept 3\n\n> Start writing your notes here...`,
+                quiz: [
+                  {
+                    question: `What is the main topic of this chapter?`,
+                    options: [topicName, "Something else", "Not sure", "Skip"],
+                    correct_index: 0,
+                    explanation: `This chapter focuses on ${topicName}.`,
+                  },
+                ],
+              }),
+            });
+          }
+          router.push(`/learn/${course.id}`);
+        }
       }
     } catch (e) {
       console.error("Failed to create course", e);
@@ -340,6 +366,71 @@ export function CreateCourseClient() {
               </p>
             )}
           </section>
+
+          {/* Generation Mode */}
+          <section>
+            <label className="mb-2 block text-sm font-medium">生成方式</label>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setGenMode("ai")}
+                className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm transition-colors ${
+                  genMode === "ai"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/40"
+                }`}
+              >
+                <Sparkles size={16} />
+                <div className="text-left">
+                  <div className="font-medium">AI 自动生成</div>
+                  <div className="text-xs opacity-70">由LLM生成完整课程内容和测验</div>
+                </div>
+              </button>
+              <button
+                onClick={() => setGenMode("manual")}
+                className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm transition-colors ${
+                  genMode === "manual"
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border text-muted-foreground hover:border-primary/40"
+                }`}
+              >
+                <BookOpen size={16} />
+                <div className="text-left">
+                  <div className="font-medium">手动创建</div>
+                  <div className="text-xs opacity-70">创建课程框架，手动填充内容</div>
+                </div>
+              </button>
+            </div>
+          </section>
+
+          {/* AI Options */}
+          {genMode === "ai" && (
+            <section className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="mb-2 block text-sm font-medium">章节数量</label>
+                <select
+                  value={numChapters}
+                  onChange={(e) => setNumChapters(parseInt(e.target.value))}
+                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
+                >
+                  {[3, 4, 5, 6, 7, 8, 10].map((n) => (
+                    <option key={n} value={n}>{n} 章</option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="mb-2 block text-sm font-medium">难度</label>
+                <select
+                  value={difficulty}
+                  onChange={(e) => setDifficulty(e.target.value)}
+                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
+                >
+                  <option value="beginner">入门</option>
+                  <option value="intermediate">中级</option>
+                  <option value="advanced">高级</option>
+                </select>
+              </div>
+            </section>
+          )}
 
           {/* Generate button */}
           <div className="flex justify-end border-t border-border pt-6">
