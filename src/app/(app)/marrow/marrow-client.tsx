@@ -1,6 +1,13 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useEffect, useState, useCallback } from "react"
+import { getApiBaseUrl } from "@/lib/api-client"
+import { cn } from "@/lib/utils"
+import {
+  Bone, Plus, Trash2, RefreshCw, Download, Upload, HardDrive,
+  CheckCircle, XCircle, Loader2, Archive, RotateCcw, FileText,
+  Activity, ArrowUpDown,
+} from "lucide-react"
 
 interface MarrowHealth {
   status: string
@@ -10,108 +17,441 @@ interface MarrowHealth {
 }
 
 interface Backup {
-  id: string
+  backup_id: string
+  name: string
+  description: string
   created_at: string
   size_bytes: number
-  tables: string[]
+  file_count: number
+  checksum: string
+  tags: string[]
 }
 
-function getApiBaseUrl() {
-  if (typeof window !== "undefined") {
-    const envUrl = process.env.NEXT_PUBLIC_API_URL
-    if (envUrl) return envUrl
-    return `${window.location.protocol}//${window.location.hostname}:8090`
-  }
-  return "http://127.0.0.1:8090"
+interface ExportJob {
+  job_id: string
+  format: string
+  record_count: number
+  size_bytes: number
+  file_path: string
+  created_at: string
 }
 
-function formatSize(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-  return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-}
+type ActiveTab = "overview" | "backups" | "migration"
 
 export function MarrowClient() {
+  const apiBase = getApiBaseUrl()
+  const [activeTab, setActiveTab] = useState<ActiveTab>("overview")
   const [health, setHealth] = useState<MarrowHealth | null>(null)
   const [backups, setBackups] = useState<Backup[]>([])
+  const [exports, setExports] = useState<ExportJob[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
-  const apiBase = getApiBaseUrl()
+  const [restoring, setRestoring] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState<string | null>(null)
+  const [message, setMessage] = useState<{ type: "ok" | "err"; text: string } | null>(null)
 
-  const refresh = () => {
-    Promise.all([
-      fetch(`${apiBase}/api/marrow/health`).then(r => r.json()),
-      fetch(`${apiBase}/api/marrow/backups`).then(r => r.json()).catch(() => ({ backups: [] })),
-    ]).then(([h, b]) => {
+  // Create backup form
+  const [showCreateBackup, setShowCreateBackup] = useState(false)
+  const [backupForm, setBackupForm] = useState({ name: "", description: "", sourceDirs: "~/.opensoul/data", tags: "" })
+
+  // Import
+  const [importing, setImporting] = useState(false)
+  const [importFormat, setImportFormat] = useState("json")
+
+  const refresh = useCallback(async () => {
+    try {
+      const [h, b, e] = await Promise.all([
+        fetch(`${apiBase}/api/marrow/health`).then(r => r.json()),
+        fetch(`${apiBase}/api/marrow/backups`).then(r => r.json()).catch(() => ({ backups: [] })),
+        fetch(`${apiBase}/api/marrow/exports`).then(r => r.json()).catch(() => ({ exports: [] })),
+      ])
       setHealth(h)
-      setBackups(b.backups || b || [])
-    }).catch(() => {}).finally(() => setLoading(false))
+      setBackups(b.backups || [])
+      setExports(e.exports || [])
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }, [apiBase])
+
+  useEffect(() => { refresh() }, [refresh])
+
+  const showMsg = (type: "ok" | "err", text: string) => {
+    setMessage({ type, text })
+    setTimeout(() => setMessage(null), 4000)
   }
 
-  useEffect(() => { refresh() }, [apiBase])
-
-  const createBackup = async () => {
+  const handleCreateBackup = async () => {
     setCreating(true)
     try {
-      await fetch(`${apiBase}/api/marrow/backup`, { method: "POST" })
-      refresh()
-    } catch {}
+      const sourceDirs = backupForm.sourceDirs.split(",").map(s => s.trim()).filter(Boolean)
+      const res = await fetch(`${apiBase}/api/marrow/backup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          source_dirs: sourceDirs,
+          name: backupForm.name || undefined,
+          description: backupForm.description || undefined,
+          tags: backupForm.tags ? backupForm.tags.split(",").map(s => s.trim()) : [],
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        showMsg("ok", `备份创建成功: ${data.backup_id} (${data.file_count} 文件)`)
+        setShowCreateBackup(false)
+        setBackupForm({ name: "", description: "", sourceDirs: "~/.opensoul/data", tags: "" })
+        refresh()
+      } else {
+        const err = await res.json()
+        showMsg("err", err.detail || "备份创建失败")
+      }
+    } catch (e: any) {
+      showMsg("err", e.message || "网络错误")
+    }
     setCreating(false)
   }
 
-  if (loading) return <div style={{ padding: 24, color: "hsl(var(--muted-foreground))" }}>Loading...</div>
+  const handleRestore = async (backupId: string) => {
+    if (!confirm(`确认恢复备份 "${backupId}"？这将覆盖当前数据。`)) return
+    setRestoring(backupId)
+    try {
+      const res = await fetch(`${apiBase}/api/marrow/restore/${backupId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ backup_id: backupId, target_dir: "~/.opensoul/restore" }),
+      })
+      if (res.ok) {
+        showMsg("ok", "恢复成功")
+      } else {
+        const err = await res.json()
+        showMsg("err", err.detail || "恢复失败")
+      }
+    } catch (e: any) {
+      showMsg("err", e.message || "网络错误")
+    }
+    setRestoring(null)
+  }
+
+  const handleDeleteBackup = async (backupId: string) => {
+    if (!confirm(`确认删除备份 "${backupId}"？`)) return
+    setDeleting(backupId)
+    try {
+      await fetch(`${apiBase}/api/marrow/backups/${backupId}`, { method: "DELETE" })
+      showMsg("ok", "备份已删除")
+      refresh()
+    } catch (e: any) {
+      showMsg("err", e.message || "删除失败")
+    }
+    setDeleting(null)
+  }
+
+  const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setImporting(true)
+    try {
+      const formData = new FormData()
+      formData.append("file", file)
+      formData.append("format", importFormat)
+      const res = await fetch(`${apiBase}/api/marrow/import`, { method: "POST", body: formData })
+      if (res.ok) {
+        const data = await res.json()
+        showMsg("ok", `导入成功: ${data.records} 条记录`)
+      } else {
+        const err = await res.json()
+        showMsg("err", err.detail || "导入失败")
+      }
+    } catch (ex: any) {
+      showMsg("err", ex.message || "导入失败")
+    }
+    setImporting(false)
+    e.target.value = ""
+  }
+
+  const formatSize = (bytes: number) => {
+    if (bytes < 1024) return `${bytes} B`
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+    return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Bone }> = [
+    { key: "overview", label: "概览", icon: Activity },
+    { key: "backups", label: "备份管理", icon: Archive },
+    { key: "migration", label: "数据迁移", icon: ArrowUpDown },
+  ]
 
   return (
-    <div style={{ padding: 24 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 24 }}>
-        <h2 style={{ fontSize: 20, fontWeight: 600 }}>🦴 Marrow — 数据管道</h2>
-        <button
-          onClick={createBackup}
-          disabled={creating}
-          style={{
-            padding: "8px 16px", borderRadius: 6, border: "none",
-            background: "hsl(var(--primary))", color: "white", cursor: "pointer", fontSize: 13,
-            opacity: creating ? 0.6 : 1,
-          }}
-        >
-          {creating ? "创建中..." : "创建备份"}
-        </button>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16, marginBottom: 32 }}>
-        {[
-          { label: "总备份", value: health?.backup.total_backups ?? 0 },
-          { label: "总大小", value: formatSize(health?.backup.total_size_bytes ?? 0) },
-          { label: "状态", value: health?.status === "ok" ? "正常" : "异常" },
-        ].map(s => (
-          <div key={s.label} style={{ padding: 16, borderRadius: 8, border: "1px solid hsl(var(--border))" }}>
-            <div style={{ fontSize: 24, fontWeight: 700 }}>{s.value}</div>
-            <div style={{ fontSize: 13, color: "hsl(var(--muted-foreground))" }}>{s.label}</div>
+    <div className="flex flex-col h-full overflow-hidden">
+      {/* Header */}
+      <div className="shrink-0 px-6 pt-6 pb-4">
+        <div className="flex items-center gap-3 mb-1">
+          <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20">
+            <Bone className="w-5 h-5 text-amber-400" />
           </div>
-        ))}
+          <div>
+            <h1 className="text-lg font-semibold text-foreground">Marrow — 骨髓系统</h1>
+            <p className="text-sm text-muted-foreground">备份恢复、数据迁移、灾备管理</p>
+          </div>
+        </div>
+
+        {/* Tab Navigation */}
+        <div className="flex gap-2 border-b border-border pb-2 mt-4">
+          {tabs.map(tab => {
+            const Icon = tab.icon
+            return (
+              <button
+                key={tab.key}
+                onClick={() => setActiveTab(tab.key)}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-t-lg transition-colors",
+                  activeTab === tab.key
+                    ? "bg-card border border-b-0 border-border text-foreground"
+                    : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                )}
+              >
+                <Icon size={14} />
+                {tab.label}
+              </button>
+            )
+          })}
+        </div>
       </div>
 
-      <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>备份列表</h3>
-      {backups.length === 0 ? (
-        <p style={{ color: "hsl(var(--muted-foreground))" }}>暂无备份</p>
-      ) : (
-        <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {backups.map(b => (
-            <div key={b.id} style={{
-              padding: 12, borderRadius: 8, border: "1px solid hsl(var(--border))",
-              display: "flex", alignItems: "center", gap: 16,
-            }}>
-              <div style={{ flex: 1 }}>
-                <div style={{ fontWeight: 500, fontSize: 14 }}>{b.id}</div>
-                <div style={{ fontSize: 12, color: "hsl(var(--muted-foreground))" }}>
-                  {new Date(b.created_at).toLocaleString()}
-                </div>
-              </div>
-              <span style={{ fontSize: 13, color: "hsl(var(--muted-foreground))" }}>{formatSize(b.size_bytes)}</span>
-            </div>
-          ))}
+      {/* Message Toast */}
+      {message && (
+        <div className={cn(
+          "mx-6 mb-2 flex items-center gap-2 p-3 rounded-lg border text-sm",
+          message.type === "ok"
+            ? "border-green-500/30 bg-green-500/10 text-green-400"
+            : "border-red-500/30 bg-red-500/10 text-red-400"
+        )}>
+          {message.type === "ok" ? <CheckCircle className="w-4 h-4" /> : <XCircle className="w-4 h-4" />}
+          {message.text}
         </div>
       )}
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-6 pb-6">
+
+        {/* ── Overview Tab ── */}
+        {activeTab === "overview" && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: "总备份", value: health?.backup.total_backups ?? 0, icon: Archive, color: "text-blue-400", bg: "from-blue-500/20 to-blue-600/10" },
+                { label: "总大小", value: formatSize(health?.backup.total_size_bytes ?? 0), icon: HardDrive, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
+                { label: "导出任务", value: exports.length, icon: Download, color: "text-purple-400", bg: "from-purple-500/20 to-purple-600/10" },
+                { label: "状态", value: health?.status === "ok" ? "正常" : "异常", icon: CheckCircle, color: health?.status === "ok" ? "text-green-400" : "text-red-400", bg: health?.status === "ok" ? "from-green-500/20 to-green-600/10" : "from-red-500/20 to-red-600/10" },
+              ].map(s => (
+                <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-4", s.bg)}>
+                  <s.icon className={cn("w-4 h-4 mb-2", s.color)} />
+                  <div className={cn("text-2xl font-bold", s.color)}>{s.value}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Paths */}
+            <div className="p-4 rounded-xl border border-border bg-card space-y-2">
+              <h3 className="text-sm font-semibold text-foreground mb-2">存储路径</h3>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">备份目录:</span>
+                <code className="px-2 py-0.5 rounded bg-muted text-xs font-mono">{health?.backup.backup_dir || "~/.opensoul/backups"}</code>
+              </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">导出目录:</span>
+                <code className="px-2 py-0.5 rounded bg-muted text-xs font-mono">{health?.export_dir || "~/.opensoul/exports"}</code>
+              </div>
+            </div>
+
+            {/* Quick Actions */}
+            <div className="grid grid-cols-2 gap-4">
+              <button
+                onClick={() => { setActiveTab("backups"); setShowCreateBackup(true) }}
+                className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all text-left"
+              >
+                <Plus className="w-5 h-5 text-primary mb-2" />
+                <div className="text-sm font-semibold text-foreground">创建备份</div>
+                <div className="text-xs text-muted-foreground">快照当前系统数据</div>
+              </button>
+              <button
+                onClick={() => setActiveTab("migration")}
+                className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all text-left"
+              >
+                <ArrowUpDown className="w-5 h-5 text-purple-400 mb-2" />
+                <div className="text-sm font-semibold text-foreground">数据迁移</div>
+                <div className="text-xs text-muted-foreground">导入/导出数据</div>
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── Backups Tab ── */}
+        {activeTab === "backups" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-sm font-semibold text-foreground">备份列表</h3>
+              <div className="flex gap-2">
+                <button onClick={refresh} className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground">
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setShowCreateBackup(!showCreateBackup)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90"
+                >
+                  <Plus className="w-3.5 h-3.5" /> 创建备份
+                </button>
+              </div>
+            </div>
+
+            {/* Create Backup Form */}
+            {showCreateBackup && (
+              <div className="p-4 rounded-xl border border-border bg-card space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">备份名称</label>
+                    <input value={backupForm.name} onChange={e => setBackupForm({ ...backupForm, name: e.target.value })}
+                      placeholder="my-backup (可选)" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">标签 (逗号分隔)</label>
+                    <input value={backupForm.tags} onChange={e => setBackupForm({ ...backupForm, tags: e.target.value })}
+                      placeholder="daily, important" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-muted-foreground mb-1 block">源目录 (逗号分隔)</label>
+                    <input value={backupForm.sourceDirs} onChange={e => setBackupForm({ ...backupForm, sourceDirs: e.target.value })}
+                      placeholder="~/.opensoul/data" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-muted-foreground mb-1 block">描述</label>
+                    <input value={backupForm.description} onChange={e => setBackupForm({ ...backupForm, description: e.target.value })}
+                      placeholder="备份描述 (可选)" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setShowCreateBackup(false)} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">取消</button>
+                  <button onClick={handleCreateBackup} disabled={creating}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40">
+                    {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
+                    {creating ? "创建中..." : "创建"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Backup List */}
+            <div className="space-y-2">
+              {backups.map(b => (
+                <div key={b.backup_id} className="p-4 rounded-xl border border-border bg-card">
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <Archive className="w-5 h-5 text-amber-400" />
+                      <div>
+                        <div className="text-sm font-semibold text-foreground">{b.name || b.backup_id}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {new Date(b.created_at).toLocaleString("zh-CN")} · {b.file_count} 文件 · {formatSize(b.size_bytes)}
+                        </div>
+                        {b.description && <div className="text-xs text-muted-foreground mt-1">{b.description}</div>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleRestore(b.backup_id)} disabled={restoring === b.backup_id}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-40"
+                        title="恢复">
+                        {restoring === b.backup_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
+                        恢复
+                      </button>
+                      <button onClick={() => handleDeleteBackup(b.backup_id)} disabled={deleting === b.backup_id}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40"
+                        title="删除">
+                        {deleting === b.backup_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
+                        删除
+                      </button>
+                    </div>
+                  </div>
+                  {b.tags && b.tags.length > 0 && (
+                    <div className="flex gap-1.5 mt-2 ml-8">
+                      {b.tags.map(tag => (
+                        <span key={tag} className="px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {backups.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground text-sm">
+                  <Archive className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  暂无备份
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Migration Tab ── */}
+        {activeTab === "migration" && (
+          <div className="space-y-6">
+            {/* Import */}
+            <div className="p-4 rounded-xl border border-border bg-card">
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Upload className="w-4 h-4 text-blue-400" /> 数据导入
+              </h3>
+              <div className="flex items-center gap-3">
+                <select value={importFormat} onChange={e => setImportFormat(e.target.value)}
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                  <option value="json">JSON</option>
+                  <option value="jsonl">JSONL</option>
+                  <option value="csv">CSV</option>
+                </select>
+                <label className={cn(
+                  "flex items-center gap-2 px-4 py-2 rounded-lg border border-dashed cursor-pointer transition-colors text-sm",
+                  "border-border hover:border-primary/50 hover:bg-primary/5 text-muted-foreground hover:text-foreground"
+                )}>
+                  {importing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+                  {importing ? "导入中..." : "选择文件导入"}
+                  <input type="file" accept=".json,.jsonl,.csv" onChange={handleImport} className="hidden" disabled={importing} />
+                </label>
+              </div>
+            </div>
+
+            {/* Export History */}
+            <div>
+              <h3 className="text-sm font-semibold text-foreground mb-3 flex items-center gap-2">
+                <Download className="w-4 h-4 text-purple-400" /> 导出历史
+              </h3>
+              {exports.length > 0 ? (
+                <div className="space-y-2">
+                  {exports.map(ex => (
+                    <div key={ex.job_id} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card">
+                      <FileText className="w-4 h-4 text-purple-400" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-foreground">{ex.job_id}</div>
+                        <div className="text-xs text-muted-foreground">
+                          {ex.format.toUpperCase()} · {ex.record_count} 条 · {formatSize(ex.size_bytes)}
+                        </div>
+                      </div>
+                      {ex.created_at && (
+                        <span className="text-xs text-muted-foreground">
+                          {new Date(ex.created_at).toLocaleString("zh-CN")}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground text-sm">暂无导出记录</div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 }
