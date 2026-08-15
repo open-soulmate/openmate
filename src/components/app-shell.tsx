@@ -78,6 +78,7 @@ export function AppShell() {
         { href: "/ai-groups", label: t("nav.aiGroups") || "AI群", icon: Users },
         { href: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
         { href: "/body-map", label: "Body Map", icon: Activity },
+        { href: "/activity", label: "Activity", icon: Activity },
       ],
     },
     {
