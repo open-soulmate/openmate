@@ -311,8 +311,16 @@ export function BodyMapClient() {
 
   return (
     <div ref={containerRef} className="flex h-full flex-col overflow-hidden bg-background">
+      <style>{`
+        @media (max-width: 768px) {
+          .body-map-side { display: none !important; }
+          .body-map-header { padding: 12px 16px !important; }
+          .body-map-header h1 { font-size: 14px !important; }
+          .body-map-content { padding: 8px !important; }
+        }
+      `}</style>
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="body-map-header flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Activity size={20} className="text-primary" />
           <h1 className="text-lg font-semibold">System Body Map</h1>
@@ -359,7 +367,7 @@ export function BodyMapClient() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* SVG Body Map */}
-        <div className="flex-1 flex items-center justify-center p-6">
+        <div className="body-map-content flex-1 flex items-center justify-center p-6">
           <svg
             viewBox="0 0 100 100"
             className="w-full max-w-2xl h-auto"
@@ -435,7 +443,7 @@ export function BodyMapClient() {
         </div>
 
         {/* Side panel */}
-        <div className="w-72 border-l border-border overflow-y-auto p-4 space-y-4">
+        <div className="body-map-side w-72 border-l border-border overflow-y-auto p-4 space-y-4">
           {/* System legend */}
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Systems</h3>
