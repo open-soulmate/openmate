@@ -10,6 +10,10 @@ export type WorkflowNodeType =
   | "loop"
   | "code"
   | "knowledge"
+  | "http"
+  | "notify"
+  | "organ"
+  | "script"
   | "end";
 
 export interface WorkflowNodeData {
