@@ -82,6 +82,10 @@ export function NodeConfigPanel({ nodeId, data, onClose }: NodeConfigPanelProps)
         {data.type === "loop" && <LoopConfig data={data} update={update} />}
         {data.type === "code" && <CodeConfig data={data} update={update} />}
         {data.type === "knowledge" && <KnowledgeConfig data={data} update={update} />}
+        {data.type === "http" && <HTTPConfig data={data} update={update} />}
+        {data.type === "notify" && <NotifyConfig data={data} update={update} />}
+        {data.type === "organ" && <OrganConfig data={data} update={update} />}
+        {data.type === "script" && <ScriptConfig data={data} update={update} />}
         {data.type === "end" && <EndConfig data={data} update={update} />}
       </div>
     </div>
@@ -310,5 +314,196 @@ function EndConfig({ data, update }: ConfigProps) {
         className={cn(inputCls, "resize-none font-mono text-[11px]")}
       />
     </Field>
+  );
+}
+
+function HTTPConfig({ data, update }: ConfigProps) {
+  return (
+    <>
+      <Field label="请求方法">
+        <select
+          value={(data.httpMethod as string) || "GET"}
+          onChange={(e) => update("httpMethod", e.target.value)}
+          className={inputCls}
+        >
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+          <option value="PUT">PUT</option>
+          <option value="PATCH">PATCH</option>
+          <option value="DELETE">DELETE</option>
+        </select>
+      </Field>
+      <Field label="URL">
+        <input
+          value={(data.httpUrl as string) || ""}
+          onChange={(e) => update("httpUrl", e.target.value)}
+          placeholder="https://api.example.com/data，支持 ${var}"
+          className={inputCls}
+        />
+      </Field>
+      <Field label="请求头 (JSON)">
+        <textarea
+          value={data.httpHeaders ? JSON.stringify(data.httpHeaders, null, 2) : ""}
+          onChange={(e) => {
+            try { update("httpHeaders", JSON.parse(e.target.value)); } catch {}
+          }}
+          rows={3}
+          placeholder='{"Authorization": "Bearer ${token}"}'
+          className={cn(inputCls, "resize-none font-mono text-[11px]")}
+        />
+      </Field>
+      <Field label="请求体 (JSON)">
+        <textarea
+          value={data.httpBody ? JSON.stringify(data.httpBody, null, 2) : ""}
+          onChange={(e) => {
+            try { update("httpBody", JSON.parse(e.target.value)); } catch {}
+          }}
+          rows={4}
+          placeholder='{"key": "${variable}"}'
+          className={cn(inputCls, "resize-none font-mono text-[11px]")}
+        />
+      </Field>
+      <Field label="超时 (秒)">
+        <input
+          type="number"
+          min={1}
+          max={300}
+          value={(data.httpTimeout as number) ?? 30}
+          onChange={(e) => update("httpTimeout", Number(e.target.value))}
+          className={inputCls}
+        />
+      </Field>
+    </>
+  );
+}
+
+function NotifyConfig({ data, update }: ConfigProps) {
+  return (
+    <>
+      <Field label="通知渠道">
+        <select
+          value={(data.notifyChannel as string) || "webhook"}
+          onChange={(e) => update("notifyChannel", e.target.value)}
+          className={inputCls}
+        >
+          <option value="webhook">Webhook</option>
+          <option value="email">邮件</option>
+          <option value="dingtalk">钉钉</option>
+          <option value="wecom">企业微信</option>
+          <option value="sms">短信</option>
+        </select>
+      </Field>
+      <Field label="标题">
+        <input
+          value={(data.notifyTitle as string) || ""}
+          onChange={(e) => update("notifyTitle", e.target.value)}
+          placeholder="通知标题，支持 ${var}"
+          className={inputCls}
+        />
+      </Field>
+      <Field label="内容">
+        <textarea
+          value={(data.notifyContent as string) || ""}
+          onChange={(e) => update("notifyContent", e.target.value)}
+          rows={4}
+          placeholder="通知内容，支持 ${var}"
+          className={cn(inputCls, "resize-none")}
+        />
+      </Field>
+      <Field label="目标地址">
+        <input
+          value={(data.notifyTarget as string) || ""}
+          onChange={(e) => update("notifyTarget", e.target.value)}
+          placeholder="Webhook URL / 邮箱 / 手机号"
+          className={inputCls}
+        />
+      </Field>
+    </>
+  );
+}
+
+function OrganConfig({ data, update }: ConfigProps) {
+  const organs = [
+    { value: "/api/vein/stats", label: "🩸 Vein - 文件存储统计" },
+    { value: "/api/gland/health", label: "🧪 Gland - 模型网关状态" },
+    { value: "/api/gland/usage", label: "🧪 Gland - Token 用量" },
+    { value: "/api/immune/health", label: "🛡 Immune - 安全状态" },
+    { value: "/api/marrow/backups", label: "🦴 Marrow - 备份列表" },
+    { value: "/api/gene/templates", label: "🧬 Gene - 模板列表" },
+    { value: "/api/echo/history", label: "🔊 Echo - 消息历史" },
+    { value: "/api/mirror/sandboxes", label: "🪞 Mirror - 沙箱列表" },
+    { value: "/api/link/connectors", label: "🔗 Link - 连接器列表" },
+    { value: "/api/hippo/memories", label: "🧠 Hippo - 记忆列表" },
+    { value: "/api/vital/health", label: "📊 Vital - 体征状态" },
+    { value: "/api/cortex/health", label: "🧩 Cortex - 皮层状态" },
+    { value: "/api/nerve/events", label: "⚡ Nerve - 事件总线" },
+  ];
+  return (
+    <>
+      <Field label="目标器官">
+        <select
+          value={(data.organEndpoint as string) || ""}
+          onChange={(e) => update("organEndpoint", e.target.value)}
+          className={inputCls}
+        >
+          <option value="">选择器官 API...</option>
+          {organs.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+      </Field>
+      <Field label="自定义端点">
+        <input
+          value={(data.organEndpoint as string) || ""}
+          onChange={(e) => update("organEndpoint", e.target.value)}
+          placeholder="/api/xxx/yyy"
+          className={inputCls}
+        />
+      </Field>
+      <Field label="请求方法">
+        <select
+          value={(data.organMethod as string) || "GET"}
+          onChange={(e) => update("organMethod", e.target.value)}
+          className={inputCls}
+        >
+          <option value="GET">GET</option>
+          <option value="POST">POST</option>
+        </select>
+      </Field>
+    </>
+  );
+}
+
+function ScriptConfig({ data, update }: ConfigProps) {
+  return (
+    <>
+      <Field label="Shell 命令">
+        <textarea
+          value={(data.scriptCommand as string) || ""}
+          onChange={(e) => update("scriptCommand", e.target.value)}
+          rows={4}
+          placeholder="echo 'Hello ${name}'，支持 ${var}"
+          className={cn(inputCls, "resize-none font-mono text-[11px]")}
+        />
+      </Field>
+      <Field label="工作目录">
+        <input
+          value={(data.scriptCwd as string) || ""}
+          onChange={(e) => update("scriptCwd", e.target.value)}
+          placeholder="/home/user (可选)"
+          className={inputCls}
+        />
+      </Field>
+      <Field label="超时 (秒)">
+        <input
+          type="number"
+          min={1}
+          max={300}
+          value={(data.scriptTimeout as number) ?? 30}
+          onChange={(e) => update("scriptTimeout", Number(e.target.value))}
+          className={inputCls}
+        />
+      </Field>
+    </>
   );
 }

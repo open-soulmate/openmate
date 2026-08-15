@@ -14,6 +14,10 @@ import {
   Database,
   Square,
   Loader2,
+  Globe,
+  Bell,
+  Zap,
+  Terminal,
 } from "lucide-react";
 
 const nodeColors: Record<WorkflowNodeData["type"], { bg: string; border: string; icon: string }> = {
@@ -24,6 +28,10 @@ const nodeColors: Record<WorkflowNodeData["type"], { bg: string; border: string;
   loop: { bg: "bg-orange-500/10", border: "border-orange-500/40", icon: "text-orange-500" },
   code: { bg: "bg-pink-500/10", border: "border-pink-500/40", icon: "text-pink-500" },
   knowledge: { bg: "bg-teal-500/10", border: "border-teal-500/40", icon: "text-teal-500" },
+  http: { bg: "bg-blue-500/10", border: "border-blue-500/40", icon: "text-blue-500" },
+  notify: { bg: "bg-amber-500/10", border: "border-amber-500/40", icon: "text-amber-500" },
+  organ: { bg: "bg-pink-500/10", border: "border-pink-500/40", icon: "text-pink-500" },
+  script: { bg: "bg-orange-400/10", border: "border-orange-400/40", icon: "text-orange-400" },
   end: { bg: "bg-red-500/10", border: "border-red-500/40", icon: "text-red-500" },
 };
 
@@ -35,6 +43,10 @@ const nodeIcons: Record<WorkflowNodeData["type"], React.ElementType> = {
   loop: Repeat,
   code: Code2,
   knowledge: Database,
+  http: Globe,
+  notify: Bell,
+  organ: Zap,
+  script: Terminal,
   end: Square,
 };
 
@@ -197,6 +209,46 @@ export const KnowledgeNode = memo(function KnowledgeNode({ data, selected }: Nod
   );
 });
 
+export const HTTPNode = memo(function HTTPNode({ data, selected }: NodeProps) {
+  return (
+    <BaseNodeInner
+      data={data as unknown as WorkflowNodeData}
+      selected={selected}
+      sourceHandleCount={1}
+    />
+  );
+});
+
+export const NotifyNode = memo(function NotifyNode({ data, selected }: NodeProps) {
+  return (
+    <BaseNodeInner
+      data={data as unknown as WorkflowNodeData}
+      selected={selected}
+      sourceHandleCount={1}
+    />
+  );
+});
+
+export const OrganNode = memo(function OrganNode({ data, selected }: NodeProps) {
+  return (
+    <BaseNodeInner
+      data={data as unknown as WorkflowNodeData}
+      selected={selected}
+      sourceHandleCount={1}
+    />
+  );
+});
+
+export const ScriptNode = memo(function ScriptNode({ data, selected }: NodeProps) {
+  return (
+    <BaseNodeInner
+      data={data as unknown as WorkflowNodeData}
+      selected={selected}
+      sourceHandleCount={1}
+    />
+  );
+});
+
 export const EndNode = memo(function EndNode({ data, selected }: NodeProps) {
   return (
     <BaseNodeInner
@@ -216,5 +268,9 @@ export const nodeTypes = {
   loopNode: LoopNode,
   codeNode: CodeNode,
   knowledgeNode: KnowledgeNode,
+  httpNode: HTTPNode,
+  notifyNode: NotifyNode,
+  organNode: OrganNode,
+  scriptNode: ScriptNode,
   endNode: EndNode,
 };
