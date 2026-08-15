@@ -9,6 +9,7 @@ import {
   Image, FileText, Code, Paperclip, RefreshCw,
   Download, Trash2, Database, Zap, BarChart3,
   Layers, Database as CacheIcon, ArrowDownToLine, ArrowUpFromLine,
+  X, Copy, Hash, Clock, FileType, Tag, Eye,
 } from "lucide-react";
 
 interface FileItem {
@@ -158,6 +159,10 @@ export function VeinClient() {
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState<string>("");
   const [selectedFile, setSelectedFile] = useState<FileItem | null>(null);
+  const [previewContent, setPreviewContent] = useState<string | null>(null);
+  const [previewType, setPreviewType] = useState<"text" | "image" | "none">("none");
+  const [loadingPreview, setLoadingPreview] = useState(false);
+  const [copiedField, setCopiedField] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const apiBase = getApiBaseUrl();
@@ -359,6 +364,60 @@ export function VeinClient() {
       await fetch(`${apiBase}/api/vein/upload/chunked/${uploadId}`, { method: "DELETE" });
       fetchChunkedUploads();
     } catch {}
+  };
+
+  const loadPreview = useCallback(async (file: FileItem) => {
+    setLoadingPreview(true);
+    setPreviewContent(null);
+    setPreviewType("none");
+
+    try {
+      if (file.mime_type.startsWith("image/")) {
+        // Image preview — use download URL directly
+        setPreviewContent(`${apiBase}/api/vein/files/${file.file_id}/download`);
+        setPreviewType("image");
+      } else if (
+        file.mime_type.startsWith("text/") ||
+        file.mime_type.includes("json") ||
+        file.mime_type.includes("xml") ||
+        file.mime_type.includes("javascript") ||
+        file.mime_type.includes("html") ||
+        file.mime_type.includes("css") ||
+        file.mime_type.includes("yaml") ||
+        file.mime_type.includes("markdown")
+      ) {
+        // Text preview — fetch content
+        const res = await fetch(`${apiBase}/api/vein/files/${file.file_id}/download`);
+        if (res.ok) {
+          const text = await res.text();
+          setPreviewContent(text.length > 5000 ? text.slice(0, 5000) + "\n\n... (truncated)" : text);
+          setPreviewType("text");
+        }
+      } else {
+        setPreviewType("none");
+      }
+    } catch {
+      setPreviewType("none");
+    } finally {
+      setLoadingPreview(false);
+    }
+  }, [apiBase]);
+
+  const handleSelectFile = (file: FileItem) => {
+    if (selectedFile?.file_id === file.file_id) {
+      setSelectedFile(null);
+      setPreviewContent(null);
+      setPreviewType("none");
+    } else {
+      setSelectedFile(file);
+      loadPreview(file);
+    }
+  };
+
+  const copyToClipboard = (text: string, field: string) => {
+    navigator.clipboard.writeText(text);
+    setCopiedField(field);
+    setTimeout(() => setCopiedField(null), 1500);
   };
 
   const filteredFiles = files;
@@ -599,9 +658,9 @@ export function VeinClient() {
                             key={f.file_id}
                             className={cn(
                               "border-b border-border last:border-0 hover:bg-muted/30 transition-colors cursor-pointer",
-                              selectedFile?.file_id === f.file_id && "bg-muted/30"
+                              selectedFile?.file_id === f.file_id && "bg-primary/5 border-l-2 border-l-primary"
                             )}
-                            onClick={() => setSelectedFile(selectedFile?.file_id === f.file_id ? null : f)}
+                            onClick={() => handleSelectFile(f)}
                           >
                             <td className="px-4 py-2.5">
                               <div className="flex items-center gap-2">
@@ -643,6 +702,141 @@ export function VeinClient() {
                       })}
                     </tbody>
                   </table>
+                </div>
+              )}
+
+              {/* File Detail Panel */}
+              {selectedFile && (
+                <div className="rounded-xl border border-border bg-card overflow-hidden">
+                  <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {(() => { const Icon = getFileIcon(selectedFile.mime_type); return <Icon size={16} className="shrink-0 text-primary" />; })()}
+                      <h3 className="text-sm font-medium truncate">{selectedFile.name}</h3>
+                      <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
+                        {getFileTypeLabel(selectedFile.mime_type)}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => { setSelectedFile(null); setPreviewContent(null); }}
+                      className="rounded-md p-1 text-muted-foreground hover:bg-muted transition-colors"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+
+                  <div className="p-4 space-y-4">
+                    {/* Preview Area */}
+                    {loadingPreview ? (
+                      <div className="flex items-center justify-center py-12 text-muted-foreground">
+                        <RefreshCw size={16} className="animate-spin mr-2" />
+                        <span className="text-sm">加载预览...</span>
+                      </div>
+                    ) : previewType === "image" && previewContent ? (
+                      <div className="rounded-lg border border-border bg-muted/20 p-3 flex items-center justify-center">
+                        <img
+                          src={previewContent}
+                          alt={selectedFile.name}
+                          className="max-h-64 max-w-full object-contain rounded"
+                        />
+                      </div>
+                    ) : previewType === "text" && previewContent ? (
+                      <div className="rounded-lg border border-border bg-muted/20 p-3">
+                        <pre className="text-xs font-mono whitespace-pre-wrap break-words max-h-48 overflow-y-auto text-foreground/80">
+                          {previewContent}
+                        </pre>
+                      </div>
+                    ) : null}
+
+                    {/* Metadata Grid */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <HardDrive size={12} /> 大小
+                        </div>
+                        <p className="text-sm font-medium">{formatBytes(selectedFile.size)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <FileType size={12} /> MIME类型
+                        </div>
+                        <p className="text-sm font-medium">{selectedFile.mime_type}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Clock size={12} /> 上传时间
+                        </div>
+                        <p className="text-sm font-medium">{formatTime(selectedFile.created_at)}</p>
+                      </div>
+                      <div className="space-y-1">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Tag size={12} /> 标签
+                        </div>
+                        <p className="text-sm font-medium">
+                          {selectedFile.tags.length > 0 ? selectedFile.tags.join(", ") : "—"}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Hash with copy */}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Hash size={12} /> 内容哈希 (SHA-256)
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs font-mono text-foreground/70 truncate flex-1">
+                          {selectedFile.content_hash}
+                        </code>
+                        <button
+                          onClick={() => copyToClipboard(selectedFile.content_hash, "hash")}
+                          className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted transition-colors"
+                          title="复制哈希"
+                        >
+                          {copiedField === "hash" ? (
+                            <span className="text-xs text-emerald-500">✓</span>
+                          ) : (
+                            <Copy size={12} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* File ID with copy */}
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                        <Database size={12} /> 文件ID
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <code className="text-xs font-mono text-foreground/70">{selectedFile.file_id}</code>
+                        <button
+                          onClick={() => copyToClipboard(selectedFile.file_id, "id")}
+                          className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted transition-colors"
+                          title="复制ID"
+                        >
+                          {copiedField === "id" ? (
+                            <span className="text-xs text-emerald-500">✓</span>
+                          ) : (
+                            <Copy size={12} />
+                          )}
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="flex gap-2 pt-2 border-t border-border">
+                      <button
+                        onClick={() => handleDownload(selectedFile.file_id, selectedFile.name)}
+                        className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90 transition-colors"
+                      >
+                        <Download size={14} /> 下载文件
+                      </button>
+                      <button
+                        onClick={() => { if (confirm(`确定删除 ${selectedFile.name}？`)) handleDelete(selectedFile.file_id); }}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+                      >
+                        <Trash2 size={14} /> 删除
+                      </button>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
