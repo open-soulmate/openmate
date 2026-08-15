@@ -192,7 +192,7 @@ export function IntelligenceClient() {
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
                   <span className="text-3xl font-bold">{summary.health_score}</span>
-                  <span className="text-xs text-muted-foreground">Health Score</span>
+                  <span className="text-xs text-muted-foreground">{t("intelligence.healthScore") || "Health Score"}</span>
                 </div>
               </div>
             </div>
@@ -200,25 +200,25 @@ export function IntelligenceClient() {
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-card border border-border rounded-lg p-3">
-                <div className="text-xs text-muted-foreground mb-1">Components</div>
+                <div className="text-xs text-muted-foreground mb-1">{t("intelligence.totalComponents") || "Components"}</div>
                 <div className="text-2xl font-bold">{summary.components.healthy}<span className="text-sm text-muted-foreground">/{summary.components.total}</span></div>
                 {summary.components.unhealthy > 0 && (
-                  <div className="text-xs text-red-500 mt-1">{summary.components.unhealthy} unhealthy</div>
+                  <div className="text-xs text-red-500 mt-1">{summary.components.unhealthy} {t("intelligence.unhealthy") || "unhealthy"}</div>
                 )}
               </div>
               <div className="bg-card border border-border rounded-lg p-3">
-                <div className="text-xs text-muted-foreground mb-1">Avg Response</div>
+                <div className="text-xs text-muted-foreground mb-1">{t("intelligence.avgResponse") || "Avg Response"}</div>
                 <div className="text-2xl font-bold">{formatMs(summary.performance.avg_response_ms)}</div>
               </div>
               <div className="bg-card border border-border rounded-lg p-3">
-                <div className="text-xs text-muted-foreground mb-1">Insights (1h)</div>
+                <div className="text-xs text-muted-foreground mb-1">{t("intelligence.recentInsights") || "Insights (1h)"}</div>
                 <div className="text-2xl font-bold">{summary.insights.recent_hour}</div>
                 {Object.entries(summary.insights.by_severity).map(([k, v]) => (
                   <span key={k} className={cn("text-xs mr-1", severityColor(k))}>{k}: {v}</span>
                 ))}
               </div>
               <div className="bg-card border border-border rounded-lg p-3">
-                <div className="text-xs text-muted-foreground mb-1">Tracked Metrics</div>
+                <div className="text-xs text-muted-foreground mb-1">{t("intelligence.trackedMetrics") || "Tracked Metrics"}</div>
                 <div className="text-2xl font-bold">{summary.performance.tracked_metrics}</div>
               </div>
             </div>
@@ -231,7 +231,7 @@ export function IntelligenceClient() {
             {components.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p>No metrics collected yet. Click "Collect Metrics" to gather data.</p>
+                <p>{t("intelligence.noComponents") || "No metrics collected yet."} {t("intelligence.collectFirst") || 'Click "Collect Metrics" to gather data.'}</p>
               </div>
             ) : (
               components
@@ -258,9 +258,9 @@ export function IntelligenceClient() {
                     {expandedComponent === c.name && (
                       <div className="px-3 pb-3 border-t border-border pt-2">
                         <div className="grid grid-cols-2 gap-2 text-xs">
-                          <div><span className="text-muted-foreground">Requests:</span> {c.request_count}</div>
-                          <div><span className="text-muted-foreground">Errors:</span> {c.error_count}</div>
-                          <div><span className="text-muted-foreground">Last Check:</span> {new Date(c.last_check * 1000).toLocaleTimeString()}</div>
+                          <div><span className="text-muted-foreground">{t("intelligence.requestCount") || "Requests"}:</span> {c.request_count}</div>
+                          <div><span className="text-muted-foreground">{t("intelligence.errorCount") || "Errors"}:</span> {c.error_count}</div>
+                          <div><span className="text-muted-foreground">{t("intelligence.lastCheck") || "Last Check"}:</span> {new Date(c.last_check * 1000).toLocaleTimeString()}</div>
                         </div>
                         {Object.keys(c.custom).length > 0 && (
                           <div className="mt-2 p-2 bg-muted/30 rounded text-xs">
@@ -282,7 +282,7 @@ export function IntelligenceClient() {
             {insights.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <CheckCircle className="w-8 h-8 mx-auto mb-2 opacity-50 text-green-500" />
-                <p>No insights detected. System is running smoothly!</p>
+                <p>{t("intelligence.noInsights") || "No insights detected. System is running smoothly!"}</p>
               </div>
             ) : (
               insights.map((i) => (
@@ -308,7 +308,7 @@ export function IntelligenceClient() {
             {recommendations.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <Lightbulb className="w-8 h-8 mx-auto mb-2 opacity-50 text-yellow-500" />
-                <p>No optimization recommendations. System is well-configured!</p>
+                <p>{t("intelligence.noRecommendations") || "No optimization recommendations. System is well-configured!"}</p>
               </div>
             ) : (
               recommendations.map((r, idx) => (
