@@ -77,8 +77,8 @@ export function AppShell() {
         { href: "/chat", label: t("nav.chat"), icon: MessageSquare },
         { href: "/ai-groups", label: t("nav.aiGroups") || "AI群", icon: Users },
         { href: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
-        { href: "/body-map", label: "Body Map", icon: Activity },
-        { href: "/activity", label: "Activity", icon: Activity },
+        { href: "/body-map", label: t("nav.bodyMap") || "Body Map", icon: Activity },
+        { href: "/activity", label: t("nav.activity") || "Activity", icon: Activity },
       ],
     },
     {
@@ -147,7 +147,7 @@ export function AppShell() {
       label: t("nav.systemGroup") || "系统",
       items: [
         { href: "/trajectory", label: t("nav.trajectory") || "轨迹", icon: Activity },
-        { href: "/diagnostics", label: "系统诊断", icon: Stethoscope },
+        { href: "/diagnostics", label: t("nav.diagnostics") || "系统诊断", icon: Stethoscope },
         { href: "/download", label: t("nav.download"), icon: Download },
         { href: "/plugins", label: t("nav.plugins") || "插件", icon: Puzzle },
         { href: "/settings", label: t("nav.settings"), icon: Settings },
