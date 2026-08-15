@@ -324,7 +324,9 @@
     "noFiles": "暂无文件",
     "noMatch": "未找到匹配的文件",
     "uploadSuccess": "上传成功",
-    "uploadFailed": "上传失败"
+    "uploadFailed": "上传失败",
+    "filesTab": "文件列表",
+    "cacheTab": "缓存管理"
   },
   "sense": {
     "title": "感官 · 多模态解析",
@@ -523,7 +525,10 @@
     "time": "时间",
     "backingUp": "备份中...",
     "exporting": "导出中...",
-    "search": "搜索"
+    "search": "搜索",
+    "loading": "加载中...",
+    "add": "添加",
+    "create": "创建"
   },
   "gland": {
     "title": "腺体 · 模型网关",
@@ -596,7 +601,10 @@
     "components": "组件状态",
     "checking": "正在检查系统状态...",
     "lastUpdated": "最后更新",
-    "autoRefresh": "每 30 秒自动刷新"
+    "autoRefresh": "每 30 秒自动刷新",
+    "tabMetrics": "指标监控",
+    "tabHealth": "健康检查",
+    "tabAlerts": "告警管理"
   },
   "hippo": {
     "title": "海马体 · 记忆生命周期",
@@ -634,7 +642,8 @@
     "runSimulation": "运行模拟",
     "simulateDecay": "模拟衰减",
     "lifecycleCheck": "生命周期检查",
-    "totalAccesses": "总访问次数"
+    "totalAccesses": "总访问次数",
+    "entries": "记忆条目"
   },
   "reflex": {
     "title": "反射 · 高速应答引擎",
@@ -712,7 +721,8 @@
     "componentsCount": "组件数量",
     "major": "主版本",
     "minor": "次版本",
-    "patch": "补丁"
+    "patch": "补丁",
+    "changelogEntries": "变更日志"
   },
   "pulse": {
     "title": "脉搏 · 高精度时序节拍器",

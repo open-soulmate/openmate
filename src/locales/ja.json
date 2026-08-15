@@ -324,7 +324,9 @@
     "noFiles": "ファイルがありません",
     "noMatch": "一致するファイルが見つかりません",
     "uploadSuccess": "アップロード成功",
-    "uploadFailed": "アップロード失敗"
+    "uploadFailed": "アップロード失敗",
+    "filesTab": "ファイル一覧",
+    "cacheTab": "キャッシュ"
   },
   "sense": {
     "title": "感覚 · マルチモーダル解析",
@@ -523,7 +525,10 @@
     "time": "時刻",
     "backingUp": "バックアップ中...",
     "exporting": "エクスポート中...",
-    "search": "検索"
+    "search": "検索",
+    "loading": "読み込み中...",
+    "add": "追加",
+    "create": "作成"
   },
   "gland": {
     "title": "腺 · モデルゲートウェイ",
@@ -596,7 +601,10 @@
     "components": "コンポーネント状態",
     "checking": "システム状態を確認中...",
     "lastUpdated": "最終更新",
-    "autoRefresh": "30秒ごとに自動更新"
+    "autoRefresh": "30秒ごとに自動更新",
+    "tabMetrics": "メトリクス",
+    "tabHealth": "ヘルス",
+    "tabAlerts": "アラート"
   },
   "hippo": {
     "title": "海馬 · メモリライフサイクル",
@@ -634,7 +642,8 @@
     "runSimulation": "シミュレーション実行",
     "simulateDecay": "減衰シミュレーション",
     "lifecycleCheck": "ライフサイクルチェック",
-    "totalAccesses": "総アクセス数"
+    "totalAccesses": "総アクセス数",
+    "entries": "メモリエントリ"
   },
   "reflex": {
     "title": "反射 · 高速応答エンジン",
@@ -712,7 +721,8 @@
     "componentsCount": "コンポーネント数",
     "major": "メジャー",
     "minor": "マイナー",
-    "patch": "パッチ"
+    "patch": "パッチ",
+    "changelogEntries": "変更履歴"
   },
   "pulse": {
     "title": "脈拍 · 高精度タイマー",

@@ -324,7 +324,9 @@
     "noFiles": "No files yet",
     "noMatch": "No matching files found",
     "uploadSuccess": "Upload successful",
-    "uploadFailed": "Upload failed"
+    "uploadFailed": "Upload failed",
+    "filesTab": "Files",
+    "cacheTab": "Cache"
   },
   "sense": {
     "title": "Sense · Multimodal Parsing",
@@ -523,7 +525,10 @@
     "time": "Time",
     "backingUp": "Backing up...",
     "exporting": "Exporting...",
-    "search": "Search"
+    "search": "Search",
+    "loading": "Loading...",
+    "add": "Add",
+    "create": "Create"
   },
   "gland": {
     "title": "Gland · Model Gateway",
@@ -596,7 +601,10 @@
     "components": "Components",
     "checking": "Checking system status...",
     "lastUpdated": "Last updated",
-    "autoRefresh": "Auto-refreshes every 30 seconds"
+    "autoRefresh": "Auto-refreshes every 30 seconds",
+    "tabMetrics": "Metrics",
+    "tabHealth": "Health",
+    "tabAlerts": "Alerts"
   },
   "hippo": {
     "title": "Hippocampus · Memory Lifecycle",
@@ -634,7 +642,8 @@
     "runSimulation": "Run Simulation",
     "simulateDecay": "Simulate Decay",
     "lifecycleCheck": "Lifecycle Check",
-    "totalAccesses": "Total Accesses"
+    "totalAccesses": "Total Accesses",
+    "entries": "Memory Entries"
   },
   "reflex": {
     "title": "Reflex · High-Speed Response",
@@ -712,7 +721,8 @@
     "componentsCount": "Components Count",
     "major": "Major",
     "minor": "Minor",
-    "patch": "Patch"
+    "patch": "Patch",
+    "changelogEntries": "Changelog Entries"
   },
   "pulse": {
     "title": "Pulse · Precision Timer",
