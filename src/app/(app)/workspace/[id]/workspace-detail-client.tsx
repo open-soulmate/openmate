@@ -98,6 +98,83 @@ function FileViewer({
   const ext = path.split(".").pop()?.toLowerCase() ?? "";
   const fileName = path.split("/").pop() ?? path;
 
+  // Map file extensions to syntax highlighter language names
+  const extToLang: Record<string, string> = {
+    js: "javascript", jsx: "jsx", ts: "typescript", tsx: "tsx",
+    py: "python", rb: "ruby", go: "go", rs: "rust", java: "java",
+    c: "c", cpp: "cpp", h: "c", hpp: "cpp", cs: "csharp",
+    html: "html", htm: "html", css: "css", scss: "scss", less: "less",
+    json: "json", yaml: "yaml", yml: "yaml", toml: "toml", xml: "xml",
+    md: "markdown", sh: "bash", bash: "bash", zsh: "bash", fish: "bash",
+    sql: "sql", graphql: "graphql", dockerfile: "dockerfile",
+    makefile: "makefile", ini: "ini", conf: "nginx", nginx: "nginx",
+    php: "php", swift: "swift", kt: "kotlin", scala: "scala",
+    lua: "lua", r: "r", dart: "dart", vue: "vue", svelte: "svelte",
+  };
+  const lang = extToLang[ext] || "";
+
+  // Check if file is binary/image
+  const isImage = ["png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp"].includes(ext);
+  const isBinary = ["exe", "dll", "so", "dylib", "bin", "zip", "tar", "gz", "7z", "rar", "pdf", "woff", "woff2", "ttf", "eot"].includes(ext);
+
+  if (isBinary) {
+    return (
+      <div className="flex h-full flex-col">
+        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
+          <Code size={14} className="text-muted-foreground" />
+          <span className="text-xs font-medium text-foreground">{fileName}</span>
+        </div>
+        <div className="flex flex-1 items-center justify-center text-muted-foreground">
+          <div className="text-center">
+            <File size={32} className="mx-auto mb-2" />
+            <p className="text-sm">Binary file — cannot preview</p>
+            <p className="text-xs mt-1">{(content.length / 1024).toFixed(1)} KB</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Use syntax highlighter for known languages
+  if (lang && typeof window !== "undefined") {
+    try {
+      // Dynamic import to avoid SSR issues
+      const { Prism: SyntaxHighlighter } = require("react-syntax-highlighter");
+      const { oneDark } = require("react-syntax-highlighter/dist/cjs/styles/prism");
+      return (
+        <div className="flex h-full flex-col">
+          <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
+            <Code size={14} className="text-muted-foreground" />
+            <span className="text-xs font-medium text-foreground">{fileName}</span>
+            <span className="text-[10px] text-muted-foreground">{lines.length} lines</span>
+            <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground font-mono">{lang}</span>
+          </div>
+          <div className="flex-1 overflow-auto text-xs">
+            <SyntaxHighlighter
+              language={lang}
+              style={oneDark}
+              showLineNumbers
+              wrapLines
+              customStyle={{
+                margin: 0,
+                borderRadius: 0,
+                background: "transparent",
+                fontSize: "12px",
+                lineHeight: "1.5",
+              }}
+              lineNumberStyle={{ minWidth: "3em", paddingRight: "1em", opacity: 0.4 }}
+            >
+              {content}
+            </SyntaxHighlighter>
+          </div>
+        </div>
+      );
+    } catch {
+      // Fallback to plain text if import fails
+    }
+  }
+
+  // Plain text fallback with line numbers
   return (
     <div className="flex h-full flex-col">
       <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
