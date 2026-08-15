@@ -2,6 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { Bot, CheckCircle, XCircle, Loader2, Download, RefreshCw, Play, Pause, Trash2, ArrowUpCircle, Terminal, Monitor, Apple, ChevronDown, ChevronRight, Square, CheckSquare, RotateCcw } from 'lucide-react';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
+import { useTranslation } from 'react-i18next';
 
 interface AgentInfo {
   id: string; name: string; binary: string; description: string; icon: string;
@@ -17,6 +18,7 @@ interface InstallState {
 }
 
 export function AgentsClient() {
+  const { t } = useTranslation();
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [loading, setLoading] = useState(true);
   const [os, setOs] = useState('linux');
@@ -180,17 +182,17 @@ export function AgentsClient() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Bot className="w-6 h-6" /> Agent 管理</h1>
-          <p className="text-sm text-muted-foreground mt-1">自动检测本地安装的AI Agent，支持{agents.length}种Agent接入</p>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><Bot className="w-6 h-6" /> {t('agents.title')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t('agents.autoDetect')} · {agents.length} {t('agents.category')}</p>
         </div>
-        <button onClick={detect} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> 重新检测</button>
+        <button onClick={detect} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> {t('agents.autoDetect')}</button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-primary">{agents.length}</p><p className="text-sm text-muted-foreground">支持的Agent</p></div>
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-green-500">{availableCount}</p><p className="text-sm text-muted-foreground">已安装可用</p></div>
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-muted-foreground">{agents.length - availableCount}</p><p className="text-sm text-muted-foreground">未安装</p></div>
+        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-primary">{agents.length}</p><p className="text-sm text-muted-foreground">{t('agents.title')}</p></div>
+        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-green-500">{availableCount}</p><p className="text-sm text-muted-foreground">{t('agents.available')}</p></div>
+        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-muted-foreground">{agents.length - availableCount}</p><p className="text-sm text-muted-foreground">{t('agents.unavailable')}</p></div>
       </div>
 
       {/* Filter + Batch */}
@@ -198,22 +200,22 @@ export function AgentsClient() {
         <div className="flex gap-2">
           {(['all', 'available', 'unavailable'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'border hover:bg-muted'}`}>
-              {f === 'all' ? '全部' : f === 'available' ? '已安装' : '未安装'}
+              {f === 'all' ? t('agents.allAgents') : f === 'available' ? t('agents.onlyAvailable') : t('agents.onlyUnavailable')}
             </button>
           ))}
         </div>
         {selected.size > 0 && (
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">已选 {selected.size} 个</span>
+            <span className="text-xs text-muted-foreground">{t('agents.selectAll')} {selected.size}</span>
             <button onClick={batchInstall} disabled={!!batchAction}
               className="px-3 py-1.5 rounded-lg text-xs bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1 disabled:opacity-50">
-              {batchAction === 'install' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} 批量安装
+              {batchAction === 'install' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} {t('agents.batchInstall')}
             </button>
             <button onClick={batchUninstall} disabled={!!batchAction}
               className="px-3 py-1.5 rounded-lg text-xs border border-red-500/30 text-red-500 hover:bg-red-500/5 flex items-center gap-1 disabled:opacity-50">
-              {batchAction === 'uninstall' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} 批量卸载
+              {batchAction === 'uninstall' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} {t('agents.deleteAgent')}
             </button>
-            <button onClick={() => setSelected(new Set())} className="px-2 py-1.5 rounded-lg text-xs border hover:bg-muted">取消</button>
+            <button onClick={() => setSelected(new Set())} className="px-2 py-1.5 rounded-lg text-xs border hover:bg-muted">{t('agents.deselectAll')}</button>
           </div>
         )}
       </div>
@@ -222,7 +224,7 @@ export function AgentsClient() {
       <div className="flex items-center gap-2 mb-3">
         <button onClick={toggleSelectAll} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
           {filtered.length > 0 && filtered.every(a => selected.has(a.id)) ? <CheckSquare size={14} /> : <Square size={14} />}
-          全选
+          {t('agents.selectAll')}
         </button>
       </div>
 
@@ -254,27 +256,27 @@ export function AgentsClient() {
                 <div className="flex items-center justify-between">
                   <div className="text-xs text-muted-foreground">
                     {agent.available ? (
-                      <span className="text-green-500">● 已安装{agent.version ? ` v${agent.version}` : ''}</span>
+                      <span className="text-green-500">● {t('agents.installed')}{agent.version ? ` v${agent.version}` : ''}</span>
                     ) : (
-                      <span>● 未安装</span>
+                      <span>● {t('agents.unavailable')}</span>
                     )}
                   </div>
                   <div className="flex gap-1">
                     {agent.available ? (
                       <>
                         <button onClick={() => handleUpdate(agent)} disabled={!!isInstalling}
-                          className="px-2 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50" title="更新">
+                          className="px-2 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50" title={t('agents.restart')}>
                           <ArrowUpCircle className="w-3 h-3" />
                         </button>
                         <button onClick={() => handleUninstall(agent)}
-                          className="px-2 py-1 rounded-lg text-xs border border-red-500/30 text-red-500 hover:bg-red-500/5 flex items-center gap-1" title="卸载">
+                          className="px-2 py-1 rounded-lg text-xs border border-red-500/30 text-red-500 hover:bg-red-500/5 flex items-center gap-1" title={t('agents.deleteAgent')}>
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </>
                     ) : (
                       <button onClick={() => startInstall(agent)} disabled={!!isInstalling}
                         className="px-2.5 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50 transition-colors">
-                        {isInstalling ? <><Loader2 className="w-3 h-3 animate-spin" /> 安装中...</> : <><Download className="w-3 h-3" /> 安装</>}
+                        {isInstalling ? <><Loader2 className="w-3 h-3 animate-spin" /> {t('agents.installing')}</> : <><Download className="w-3 h-3" /> {t('agents.install')}</>}
                       </button>
                     )}
                   </div>
@@ -290,14 +292,14 @@ export function AgentsClient() {
                   </div>
                   <div className="px-4 py-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs">
-                      {install.status === 'done' && <span className="text-green-500 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> 完成</span>}
+                      {install.status === 'done' && <span className="text-green-500 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> {t('agents.installDone')}</span>}
                       {install.status === 'error' && <span className="text-red-500">{install.error}</span>}
                       {install.status === 'running' && <span className="text-muted-foreground flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> {install.progress}%</span>}
-                      {install.status === 'starting' && <span className="text-muted-foreground">准备中...</span>}
+                      {install.status === 'starting' && <span className="text-muted-foreground">{t('agents.detecting')}</span>}
                     </div>
                     {install.lines.length > 0 && (
                       <button onClick={() => setExpanded(prev => ({ ...prev, [agent.id]: !prev[agent.id] }))} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                        {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}日志
+                        {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}{t('agents.logs')}
                       </button>
                     )}
                   </div>
