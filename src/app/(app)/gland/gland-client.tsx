@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { getApiBaseUrl } from "@/lib/api-client"
+import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
 import {
   Zap, Plus, Trash2, RefreshCw, TestTube2, Key, Activity,
@@ -51,6 +52,7 @@ interface RecentRecord {
 type ActiveTab = "overview" | "providers" | "keys" | "usage"
 
 export function GlandClient() {
+  const { t } = useTranslation()
   const apiBase = getApiBaseUrl()
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview")
   const [health, setHealth] = useState<GlandHealth | null>(null)
@@ -170,10 +172,10 @@ export function GlandClient() {
   }
 
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Zap }> = [
-    { key: "overview", label: "概览", icon: Activity },
+    { key: "overview", label: t("gland.tabs.overview") || "概览", icon: Activity },
     { key: "providers", label: "Providers", icon: Server },
     { key: "keys", label: "API Keys", icon: Key },
-    { key: "usage", label: "用量统计", icon: BarChart3 },
+    { key: "usage", label: t("gland.tabs.usage") || "用量统计", icon: BarChart3 },
   ]
 
   return (
@@ -185,8 +187,8 @@ export function GlandClient() {
             <Zap className="w-5 h-5 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Gland — 模型网关</h1>
-            <p className="text-sm text-muted-foreground">多LLM统一调度、密钥管理、Token计量</p>
+            <h1 className="text-lg font-semibold text-foreground">Gland — {t("gland.subtitle") || "模型网关"}</h1>
+            <p className="text-sm text-muted-foreground">{t("gland.description") || "多LLM统一调度、密钥管理、Token计量"}</p>
           </div>
         </div>
 
@@ -223,9 +225,9 @@ export function GlandClient() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: "Providers", value: health?.providers.total ?? 0, icon: Server, color: "text-blue-400", bg: "from-blue-500/20 to-blue-600/10" },
-                { label: "已启用", value: health?.providers.enabled ?? 0, icon: CheckCircle, color: "text-green-400", bg: "from-green-500/20 to-green-600/10" },
+                { label: t("gland.enabled") || "已启用", value: health?.providers.enabled ?? 0, icon: CheckCircle, color: "text-green-400", bg: "from-green-500/20 to-green-600/10" },
                 { label: "API Keys", value: health?.keys.total ?? 0, icon: Key, color: "text-purple-400", bg: "from-purple-500/20 to-purple-600/10" },
-                { label: "总调用", value: health?.token_meter.call_count ?? 0, icon: Activity, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
+                { label: t("gland.totalCalls") || "总调用", value: health?.token_meter.call_count ?? 0, icon: Activity, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
               ].map(s => (
                 <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-4", s.bg)}>
                   <div className="flex items-center justify-between mb-2">
@@ -239,7 +241,7 @@ export function GlandClient() {
 
             {/* Provider Health */}
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3">Provider 状态</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-3">{t("gland.providerStatus") || "Provider 状态"}</h3>
               <div className="space-y-2">
                 {providers.map(p => (
                   <div key={p.name} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card">
@@ -285,7 +287,7 @@ export function GlandClient() {
             <div className="p-4 rounded-xl border border-border bg-card">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-amber-400" /> Token 预算
+                  <DollarSign className="w-4 h-4 text-amber-400" /> {t("gland.tokenBudget") || "Token 预算"}
                 </h3>
                 <span className="text-xs text-muted-foreground">
                   {health?.token_meter.budget_limit ? `限制: ${formatNumber(health.token_meter.budget_limit)} tokens` : "无限制"}
@@ -311,12 +313,12 @@ export function GlandClient() {
         {activeTab === "providers" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">Provider 管理</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("gland.providerManagement") || "Provider 管理"}</h3>
               <button
                 onClick={() => setShowAddProvider(!showAddProvider)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90"
               >
-                <Plus className="w-3.5 h-3.5" /> 添加 Provider
+                <Plus className="w-3.5 h-3.5" /> {t("gland.addProvider") || "添加 Provider"}
               </button>
             </div>
 
