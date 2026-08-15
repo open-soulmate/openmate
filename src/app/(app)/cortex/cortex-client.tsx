@@ -77,28 +77,23 @@ interface RecommendEntry {
   tags?: string[];
 }
 
-interface QualityDimension {
-  name: string;
-  score: number;
-  grade: string;
-  max_score: number;
-}
 
 interface QualityScore {
   knowledge_id: string;
   title: string;
-  overall_score: number;
+  total_score: number;
   grade: string;
-  dimensions: QualityDimension[];
+  scores: Record<string, number>;
 }
 
 interface QualityReport {
-  total_entries: number;
+  total: number;
   avg_score: number;
+  grade: string;
   distribution: Record<string, number>;
   dimension_averages: Record<string, number>;
-  top: QualityScore[];
-  bottom: QualityScore[];
+  top_5: QualityScore[];
+  bottom_5: QualityScore[];
 }
 
 type TabId = "plan" | "agent" | "think" | "graphrag" | "recommend" | "quality";
@@ -736,17 +731,17 @@ export function CortexClient() {
                       <p className="text-xs text-muted-foreground">新增关系</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-muted-foreground">{graphragBuildResult.entities_total || 0}</p>
-                      <p className="text-xs text-muted-foreground">总实体数</p>
+                      <p className="text-2xl font-bold text-muted-foreground">{graphragBuildResult.entities_extracted || 0}</p>
+                      <p className="text-xs text-muted-foreground">提取实体</p>
                     </div>
                     <div className="text-center">
-                      <p className="text-2xl font-bold text-muted-foreground">{graphragBuildResult.relations_total || 0}</p>
-                      <p className="text-xs text-muted-foreground">总关系数</p>
+                      <p className="text-2xl font-bold text-muted-foreground">{graphragBuildResult.relations_extracted || 0}</p>
+                      <p className="text-xs text-muted-foreground">提取关系</p>
                     </div>
                   </div>
-                  {graphragBuildResult.entries_scanned !== undefined && (
+                  {graphragBuildResult.knowledge_scanned !== undefined && (
                     <p className="mt-3 text-xs text-muted-foreground text-center">
-                      扫描了 {graphragBuildResult.entries_scanned} 个知识条目
+                      扫描了 {graphragBuildResult.knowledge_scanned} 个知识条目
                     </p>
                   )}
                 </div>
@@ -1064,26 +1059,26 @@ export function CortexClient() {
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-medium">{singleScore.title}</p>
                     <div className="flex items-center gap-2">
-                      <span className="text-2xl font-bold text-primary">{singleScore.overall_score?.toFixed(1)}</span>
+                      <span className="text-2xl font-bold text-primary">{singleScore.total_score?.toFixed(1)}</span>
                       <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", GRADE_COLORS[singleScore.grade] || "bg-muted text-foreground")}>
                         {singleScore.grade}
                       </span>
                     </div>
                   </div>
-                  {singleScore.dimensions && (
+                  {singleScore.scores && (
                     <div className="space-y-2">
-                      {singleScore.dimensions.map((dim, i) => (
+                      {Object.entries(singleScore.scores).map(([dimName, dimScore], i) => (
                         <div key={i} className="flex items-center gap-3">
-                          <span className="w-20 text-xs text-muted-foreground">{dim.name}</span>
+                          <span className="w-20 text-xs text-muted-foreground">{dimName}</span>
                           <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
                             <div
                               className="h-full rounded-full bg-primary transition-all"
-                              style={{ width: `${(dim.score / dim.max_score) * 100}%` }}
+                              style={{ width: `${dimScore * 100}%` }}
                             />
                           </div>
-                          <span className="w-8 text-xs font-medium text-right">{dim.score?.toFixed(1)}</span>
-                          <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold", GRADE_COLORS[dim.grade] || "bg-muted text-foreground")}>
-                            {dim.grade}
+                          <span className="w-8 text-xs font-medium text-right">{dimScore?.toFixed(2)}</span>
+                          <span className="text-[10px] text-muted-foreground">
+                            ({(dimScore * 100).toFixed(0)}%)
                           </span>
                         </div>
                       ))}
@@ -1102,7 +1097,7 @@ export function CortexClient() {
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                   <div className="text-center rounded-lg bg-background p-3">
-                    <p className="text-2xl font-bold text-primary">{qualityReport.total_entries}</p>
+                    <p className="text-2xl font-bold text-primary">{qualityReport.total}</p>
                     <p className="text-xs text-muted-foreground">总条目数</p>
                   </div>
                   <div className="text-center rounded-lg bg-background p-3">
@@ -1154,10 +1149,10 @@ export function CortexClient() {
 
                 {/* Top / Bottom */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {qualityReport.top && qualityReport.top.length > 0 && (
+                  {qualityReport.top_5 && qualityReport.top_5.length > 0 && (
                     <div>
                       <p className="text-xs font-medium text-emerald-500 mb-2">🏆 最高质量</p>
-                      {qualityReport.top.map((item, i) => (
+                      {qualityReport.top_5.map((item, i) => (
                         <div key={i} className="flex items-center gap-2 text-xs py-1.5">
                           <span className="font-medium truncate flex-1">{item.title}</span>
                           <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold", GRADE_COLORS[item.grade])}>{item.grade}</span>
@@ -1165,10 +1160,10 @@ export function CortexClient() {
                       ))}
                     </div>
                   )}
-                  {qualityReport.bottom && qualityReport.bottom.length > 0 && (
+                  {qualityReport.bottom_5 && qualityReport.bottom_5.length > 0 && (
                     <div>
                       <p className="text-xs font-medium text-red-500 mb-2">⚠️ 需改进</p>
-                      {qualityReport.bottom.map((item, i) => (
+                      {qualityReport.bottom_5.map((item, i) => (
                         <div key={i} className="flex items-center gap-2 text-xs py-1.5">
                           <span className="font-medium truncate flex-1">{item.title}</span>
                           <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold", GRADE_COLORS[item.grade])}>{item.grade}</span>
@@ -1195,18 +1190,18 @@ export function CortexClient() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">{item.title}</p>
-                        {item.dimensions && (
+                        {item.scores && (
                           <div className="flex gap-2 mt-1">
-                            {item.dimensions.slice(0, 3).map((dim, j) => (
+                            {Object.entries(item.scores).slice(0, 3).map(([dimName, dimScore], j) => (
                               <span key={j} className="text-[10px] text-muted-foreground">
-                                {dim.name}: {dim.score?.toFixed(1)}
+                                {dimName}: {(dimScore as number)?.toFixed(2)}
                               </span>
                             ))}
                           </div>
                         )}
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-sm font-bold text-primary">{item.overall_score?.toFixed(1)}</span>
+                        <span className="text-sm font-bold text-primary">{item.total_score?.toFixed(1)}</span>
                         <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", GRADE_COLORS[item.grade] || "bg-muted text-foreground")}>
                           {item.grade}
                         </span>
