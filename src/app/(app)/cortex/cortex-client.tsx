@@ -2,11 +2,13 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
-import { getApiBaseUrl } from "@/lib/api-client";
+import { getApiBaseUrl, getUserId } from "@/lib/api-client";
 import {
   Brain, GitBranch, Users, Lightbulb, Loader2,
   ChevronRight, Play, RotateCcw, Zap, Target,
   ArrowDown, CheckCircle2, Circle, AlertCircle,
+  Network, TrendingUp, Star, Award, Search,
+  RefreshCw, BookOpen, BarChart3,
 } from "lucide-react";
 
 // ── Types ────────────────────────────────────────────────
@@ -41,7 +43,65 @@ interface ThinkResult {
   confidence: number;
 }
 
-type TabId = "plan" | "agent" | "think";
+interface GraphEntity {
+  name: string;
+  type: string;
+  count: number;
+}
+
+interface GraphRelation {
+  source: string;
+  target: string;
+  type: string;
+}
+
+interface GraphQueryResult {
+  center_entity: string;
+  entities: GraphEntity[];
+  relations: GraphRelation[];
+  depth: number;
+}
+
+interface ExtractResult {
+  entities: { name: string; type: string }[];
+  relations: { source: string; target: string; type: string }[];
+  entity_count: number;
+  relation_count: number;
+}
+
+interface RecommendEntry {
+  id: string;
+  title: string;
+  score?: number;
+  snippet?: string;
+  tags?: string[];
+}
+
+interface QualityDimension {
+  name: string;
+  score: number;
+  grade: string;
+  max_score: number;
+}
+
+interface QualityScore {
+  knowledge_id: string;
+  title: string;
+  overall_score: number;
+  grade: string;
+  dimensions: QualityDimension[];
+}
+
+interface QualityReport {
+  total_entries: number;
+  avg_score: number;
+  distribution: Record<string, number>;
+  dimension_averages: Record<string, number>;
+  top: QualityScore[];
+  bottom: QualityScore[];
+}
+
+type TabId = "plan" | "agent" | "think" | "graphrag" | "recommend" | "quality";
 
 const PRIORITY_LABEL: Record<number, { label: string; color: string }> = {
   1: { label: "高", color: "text-red-500 bg-red-500/10" },
@@ -49,11 +109,22 @@ const PRIORITY_LABEL: Record<number, { label: string; color: string }> = {
   3: { label: "低", color: "text-green-500 bg-green-500/10" },
 };
 
+const GRADE_COLORS: Record<string, string> = {
+  "A+": "text-emerald-500 bg-emerald-500/10",
+  "A": "text-emerald-400 bg-emerald-400/10",
+  "B+": "text-blue-500 bg-blue-500/10",
+  "B": "text-blue-400 bg-blue-400/10",
+  "C+": "text-yellow-500 bg-yellow-500/10",
+  "C": "text-yellow-400 bg-yellow-400/10",
+  "D": "text-red-500 bg-red-500/10",
+};
+
 // ── Component ────────────────────────────────────────────
 
 export function CortexClient() {
   const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
+  const userId = getUserId() || "default";
   const [tab, setTab] = useState<TabId>("plan");
 
   // Plan state
@@ -72,9 +143,36 @@ export function CortexClient() {
   const [thinkResult, setThinkResult] = useState<ThinkResult | null>(null);
   const [thinkLoading, setThinkLoading] = useState(false);
 
+  // GraphRAG state
+  const [graphragLoading, setGraphragLoading] = useState(false);
+  const [graphragBuildResult, setGraphragBuildResult] = useState<any>(null);
+  const [graphQueryName, setGraphQueryName] = useState("");
+  const [graphQueryDepth, setGraphQueryDepth] = useState(2);
+  const [graphQueryResult, setGraphQueryResult] = useState<GraphQueryResult | null>(null);
+  const [graphQueryLoading, setGraphQueryLoading] = useState(false);
+  const [extractText, setExtractText] = useState("");
+  const [extractResult, setExtractResult] = useState<ExtractResult | null>(null);
+  const [extractLoading, setExtractLoading] = useState(false);
+
+  // Recommend state
+  const [recommendTab, setRecommendTab] = useState<"trending" | "recent" | "related">("trending");
+  const [recommendEntries, setRecommendEntries] = useState<RecommendEntry[]>([]);
+  const [recommendLoading, setRecommendLoading] = useState(false);
+  const [relatedId, setRelatedId] = useState("");
+  const [relatedResults, setRelatedResults] = useState<RecommendEntry[]>([]);
+
+  // Quality state
+  const [qualityReport, setQualityReport] = useState<QualityReport | null>(null);
+  const [qualityLoading, setQualityLoading] = useState(false);
+  const [qualityScores, setQualityScores] = useState<QualityScore[]>([]);
+  const [batchLoading, setBatchLoading] = useState(false);
+  const [singleId, setSingleId] = useState("");
+  const [singleScore, setSingleScore] = useState<QualityScore | null>(null);
+  const [singleLoading, setSingleLoading] = useState(false);
+
   const [error, setError] = useState("");
 
-  // ── API calls ────────────────────────────────────────
+  // ── Original API calls ─────────────────────────────────
 
   const handlePlan = useCallback(async () => {
     if (!planGoal.trim()) return;
@@ -145,12 +243,170 @@ export function CortexClient() {
     }
   }, [thinkQuestion, thinkContext, apiBase]);
 
+  // ── GraphRAG API calls ─────────────────────────────────
+
+  const handleGraphragBuild = useCallback(async () => {
+    setGraphragLoading(true);
+    setError("");
+    setGraphragBuildResult(null);
+    try {
+      const res = await fetch(`${apiBase}/api/cortex/graphrag/build?user_id=${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      setGraphragBuildResult(await res.json());
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setGraphragLoading(false);
+    }
+  }, [apiBase, userId]);
+
+  const handleGraphQuery = useCallback(async () => {
+    if (!graphQueryName.trim()) return;
+    setGraphQueryLoading(true);
+    setError("");
+    setGraphQueryResult(null);
+    try {
+      const res = await fetch(`${apiBase}/api/cortex/graphrag/query?user_id=${userId}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ entity_name: graphQueryName, depth: graphQueryDepth }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      setGraphQueryResult(await res.json());
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setGraphQueryLoading(false);
+    }
+  }, [graphQueryName, graphQueryDepth, apiBase, userId]);
+
+  const handleExtract = useCallback(async () => {
+    if (!extractText.trim()) return;
+    setExtractLoading(true);
+    setError("");
+    setExtractResult(null);
+    try {
+      const res = await fetch(`${apiBase}/api/cortex/graphrag/extract?text=${encodeURIComponent(extractText)}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      setExtractResult(await res.json());
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setExtractLoading(false);
+    }
+  }, [extractText, apiBase]);
+
+  // ── Recommend API calls ────────────────────────────────
+
+  const fetchRecommend = useCallback(async (type: "trending" | "recent") => {
+    setRecommendLoading(true);
+    setError("");
+    setRecommendEntries([]);
+    try {
+      const res = await fetch(`${apiBase}/api/cortex/recommend/${type}?user_id=${userId}&limit=20`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setRecommendEntries(data.entries || []);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setRecommendLoading(false);
+    }
+  }, [apiBase, userId]);
+
+  const handleRelatedRecommend = useCallback(async () => {
+    if (!relatedId.trim()) return;
+    setRecommendLoading(true);
+    setError("");
+    setRelatedResults([]);
+    try {
+      const res = await fetch(`${apiBase}/api/cortex/recommend/${relatedId}?user_id=${userId}&limit=10`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setRelatedResults(data.recommendations || []);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setRecommendLoading(false);
+    }
+  }, [relatedId, apiBase, userId]);
+
+  // ── Quality API calls ──────────────────────────────────
+
+  const fetchQualityReport = useCallback(async () => {
+    setQualityLoading(true);
+    setError("");
+    setQualityReport(null);
+    try {
+      const res = await fetch(`${apiBase}/api/cortex/quality/report?user_id=${userId}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      setQualityReport(await res.json());
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setQualityLoading(false);
+    }
+  }, [apiBase, userId]);
+
+  const fetchBatchScores = useCallback(async () => {
+    setBatchLoading(true);
+    setError("");
+    setQualityScores([]);
+    try {
+      const res = await fetch(`${apiBase}/api/cortex/quality/batch?user_id=${userId}&limit=50`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setQualityScores(data.scores || []);
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setBatchLoading(false);
+    }
+  }, [apiBase, userId]);
+
+  const handleSingleScore = useCallback(async () => {
+    if (!singleId.trim()) return;
+    setSingleLoading(true);
+    setError("");
+    setSingleScore(null);
+    try {
+      const res = await fetch(`${apiBase}/api/cortex/quality/score/${singleId}?user_id=${userId}`);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || `HTTP ${res.status}`);
+      }
+      setSingleScore(await res.json());
+    } catch (e: any) {
+      setError(e.message);
+    } finally {
+      setSingleLoading(false);
+    }
+  }, [singleId, apiBase, userId]);
+
   // ── Tab config ───────────────────────────────────────
 
   const tabs: { id: TabId; label: string; icon: React.ElementType; desc: string }[] = [
     { id: "plan", label: "任务规划", icon: GitBranch, desc: "将复杂目标分解为子任务" },
     { id: "agent", label: "多Agent协作", icon: Users, desc: "研究→分析→写作流水线" },
     { id: "think", label: "链式推理", icon: Lightbulb, desc: "深度思考与自我反思" },
+    { id: "graphrag", label: "GraphRAG", icon: Network, desc: "知识图谱自动构建与查询" },
+    { id: "recommend", label: "智能推荐", icon: TrendingUp, desc: "相关知识条目推荐" },
+    { id: "quality", label: "质量评分", icon: Award, desc: "多维度知识质量评估" },
   ];
 
   return (
@@ -162,22 +418,23 @@ export function CortexClient() {
         </div>
         <div>
           <h1 className="text-lg font-semibold">OpenCortex</h1>
-          <p className="text-xs text-muted-foreground">大脑皮层 · 高级认知、任务规划、多Agent协作推理</p>
+          <p className="text-xs text-muted-foreground">大脑皮层 · 高级认知、任务规划、多Agent协作推理、知识图谱、智能推荐、质量评估</p>
         </div>
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-border px-6 py-2">
+      <div className="flex gap-1 border-b border-border px-6 py-2 overflow-x-auto">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => { setTab(t.id); setError(""); }}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors",
+              "flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors whitespace-nowrap",
               tab === t.id
                 ? "bg-primary/10 text-primary font-medium"
                 : "text-muted-foreground hover:bg-muted/50 hover:text-foreground"
             )}
+            title={t.desc}
           >
             <t.icon size={15} />
             {t.label}
@@ -261,27 +518,6 @@ export function CortexClient() {
                     </div>
                   ))}
                 </div>
-                {/* Dependency graph visualization */}
-                {planResult.tasks.some(t => t.dependencies.length > 0) && (
-                  <div className="mt-4 rounded-lg border border-dashed border-border bg-muted/30 p-4">
-                    <p className="mb-3 text-xs font-medium text-muted-foreground uppercase tracking-wider">依赖关系</p>
-                    <div className="flex flex-wrap gap-3">
-                      {planResult.tasks.map((task, i) => (
-                        task.dependencies.length > 0 && (
-                          <div key={i} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                            {task.dependencies.map((dep) => (
-                              <span key={dep} className="flex items-center gap-1">
-                                <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary font-mono">#{dep + 1}</span>
-                                <ChevronRight size={12} />
-                              </span>
-                            ))}
-                            <span className="rounded bg-foreground/10 px-1.5 py-0.5 font-mono">#{i + 1}</span>
-                          </div>
-                        )
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
             )}
           </div>
@@ -329,7 +565,6 @@ export function CortexClient() {
                   <Zap size={15} className="text-primary" />
                   Agent流水线结果 · {agentResult.steps?.length || 0} 个步骤
                 </h3>
-                {/* Pipeline steps */}
                 {agentResult.steps?.map((step, i) => {
                   const roleColors: Record<string, string> = {
                     researcher: "bg-blue-500/10 text-blue-500 border-blue-500/30",
@@ -351,7 +586,6 @@ export function CortexClient() {
                     </div>
                   );
                 })}
-                {/* Final output */}
                 {agentResult.final_output && (
                   <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
                     <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-primary">
@@ -411,7 +645,6 @@ export function CortexClient() {
 
             {thinkResult && (
               <div className="space-y-4">
-                {/* Reasoning chain */}
                 <div className="rounded-xl border border-border bg-card p-5">
                   <h3 className="mb-4 flex items-center gap-2 text-sm font-medium">
                     <Lightbulb size={15} className="text-primary" />
@@ -434,7 +667,6 @@ export function CortexClient() {
                   </div>
                 </div>
 
-                {/* Final answer */}
                 <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
                   <div className="mb-3 flex items-center justify-between">
                     <h4 className="flex items-center gap-2 text-sm font-medium text-primary">
@@ -455,6 +687,532 @@ export function CortexClient() {
                     )}
                   </div>
                   <p className="whitespace-pre-wrap text-sm leading-relaxed">{thinkResult.answer}</p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── GraphRAG Tab ───────────────────────────── */}
+        {tab === "graphrag" && (
+          <div className="space-y-6">
+            {/* Build Graph */}
+            <div className="rounded-xl border border-border bg-card p-5">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
+                <Network size={15} className="text-primary" />
+                自动构建知识图谱
+              </h3>
+              <p className="text-xs text-muted-foreground mb-3">
+                扫描所有知识条目，自动提取实体和关系，构建知识图谱。
+              </p>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleGraphragBuild}
+                  disabled={graphragLoading}
+                  className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {graphragLoading ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
+                  {graphragLoading ? "构建中..." : "开始构建"}
+                </button>
+                {graphragBuildResult && (
+                  <button
+                    onClick={() => setGraphragBuildResult(null)}
+                    className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <RotateCcw size={15} />
+                    清除
+                  </button>
+                )}
+              </div>
+              {graphragBuildResult && (
+                <div className="mt-4 rounded-lg border border-border bg-background p-4">
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-primary">{graphragBuildResult.entities_new || 0}</p>
+                      <p className="text-xs text-muted-foreground">新增实体</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-primary">{graphragBuildResult.relations_new || 0}</p>
+                      <p className="text-xs text-muted-foreground">新增关系</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-muted-foreground">{graphragBuildResult.entities_total || 0}</p>
+                      <p className="text-xs text-muted-foreground">总实体数</p>
+                    </div>
+                    <div className="text-center">
+                      <p className="text-2xl font-bold text-muted-foreground">{graphragBuildResult.relations_total || 0}</p>
+                      <p className="text-xs text-muted-foreground">总关系数</p>
+                    </div>
+                  </div>
+                  {graphragBuildResult.entries_scanned !== undefined && (
+                    <p className="mt-3 text-xs text-muted-foreground text-center">
+                      扫描了 {graphragBuildResult.entries_scanned} 个知识条目
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Query Graph */}
+            <div className="rounded-xl border border-border bg-card p-5">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
+                <Search size={15} className="text-primary" />
+                图谱查询
+              </h3>
+              <div className="flex gap-2 mb-3">
+                <input
+                  value={graphQueryName}
+                  onChange={(e) => setGraphQueryName(e.target.value)}
+                  placeholder="输入实体名称..."
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <select
+                  value={graphQueryDepth}
+                  onChange={(e) => setGraphQueryDepth(Number(e.target.value))}
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+                >
+                  <option value={1}>深度 1</option>
+                  <option value={2}>深度 2</option>
+                  <option value={3}>深度 3</option>
+                </select>
+                <button
+                  onClick={handleGraphQuery}
+                  disabled={graphQueryLoading || !graphQueryName.trim()}
+                  className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {graphQueryLoading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+                  查询
+                </button>
+              </div>
+
+              {graphQueryResult && (
+                <div className="space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    以「{graphQueryResult.center_entity}」为中心，深度 {graphQueryResult.depth}，
+                    找到 {graphQueryResult.entities?.length || 0} 个实体、{graphQueryResult.relations?.length || 0} 个关系
+                  </p>
+                  {/* Entities */}
+                  {graphQueryResult.entities && graphQueryResult.entities.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">实体</p>
+                      <div className="flex flex-wrap gap-2">
+                        {graphQueryResult.entities.map((e, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary">
+                            <span className="font-medium">{e.name}</span>
+                            <span className="text-primary/60">({e.type})</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {/* Relations */}
+                  {graphQueryResult.relations && graphQueryResult.relations.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">关系</p>
+                      <div className="space-y-1.5">
+                        {graphQueryResult.relations.map((r, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs rounded bg-muted/30 px-3 py-1.5">
+                            <span className="font-medium">{r.source}</span>
+                            <ChevronRight size={12} className="text-muted-foreground" />
+                            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">{r.type}</span>
+                            <ChevronRight size={12} className="text-muted-foreground" />
+                            <span className="font-medium">{r.target}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Extract from Text */}
+            <div className="rounded-xl border border-border bg-card p-5">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
+                <BookOpen size={15} className="text-primary" />
+                文本实体提取
+              </h3>
+              <textarea
+                value={extractText}
+                onChange={(e) => setExtractText(e.target.value)}
+                placeholder="粘贴一段文本，自动提取其中的实体和关系..."
+                className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none mb-3"
+                rows={4}
+              />
+              <button
+                onClick={handleExtract}
+                disabled={extractLoading || !extractText.trim()}
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {extractLoading ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
+                {extractLoading ? "提取中..." : "提取实体"}
+              </button>
+
+              {extractResult && (
+                <div className="mt-4 space-y-3">
+                  <p className="text-xs text-muted-foreground">
+                    提取到 {extractResult.entity_count} 个实体、{extractResult.relation_count} 个关系
+                  </p>
+                  {extractResult.entities.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">实体</p>
+                      <div className="flex flex-wrap gap-2">
+                        {extractResult.entities.map((e, i) => (
+                          <span key={i} className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-500">
+                            {e.name} <span className="text-emerald-500/60">({e.type})</span>
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  {extractResult.relations.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">关系</p>
+                      <div className="space-y-1.5">
+                        {extractResult.relations.map((r, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs rounded bg-muted/30 px-3 py-1.5">
+                            <span className="font-medium">{r.source}</span>
+                            <ChevronRight size={12} className="text-muted-foreground" />
+                            <span className="rounded bg-primary/10 px-1.5 py-0.5 text-primary">{r.type}</span>
+                            <ChevronRight size={12} className="text-muted-foreground" />
+                            <span className="font-medium">{r.target}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Recommend Tab ──────────────────────────── */}
+        {tab === "recommend" && (
+          <div className="space-y-6">
+            {/* Sub-tabs */}
+            <div className="flex gap-1">
+              {(["trending", "recent", "related"] as const).map((st) => (
+                <button
+                  key={st}
+                  onClick={() => {
+                    setRecommendTab(st);
+                    setRecommendEntries([]);
+                    setRelatedResults([]);
+                    if (st === "trending") fetchRecommend("trending");
+                    if (st === "recent") fetchRecommend("recent");
+                  }}
+                  className={cn(
+                    "flex items-center gap-2 rounded-lg px-4 py-2 text-sm transition-colors",
+                    recommendTab === st
+                      ? "bg-primary/10 text-primary font-medium"
+                      : "text-muted-foreground hover:bg-muted/50"
+                  )}
+                >
+                  {st === "trending" && <><TrendingUp size={14} /> 热门</>}
+                  {st === "recent" && <><RefreshCw size={14} /> 最新</>}
+                  {st === "related" && <><Star size={14} /> 相关推荐</>}
+                </button>
+              ))}
+            </div>
+
+            {/* Trending / Recent */}
+            {(recommendTab === "trending" || recommendTab === "recent") && (
+              <div className="rounded-xl border border-border bg-card p-5">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-sm font-medium">
+                    {recommendTab === "trending" ? "热门知识条目" : "最新知识条目"}
+                  </h3>
+                  <button
+                    onClick={() => fetchRecommend(recommendTab)}
+                    disabled={recommendLoading}
+                    className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground border border-border transition-colors"
+                  >
+                    {recommendLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                    刷新
+                  </button>
+                </div>
+                {recommendEntries.length === 0 && !recommendLoading && (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    点击「刷新」加载{recommendTab === "trending" ? "热门" : "最新"}知识条目
+                  </p>
+                )}
+                <div className="space-y-2">
+                  {recommendEntries.map((entry, i) => (
+                    <div key={entry.id || i} className="flex items-start gap-3 rounded-lg border border-border bg-background p-3 hover:border-primary/30 transition-colors">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                        {i + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{entry.title}</p>
+                        {entry.snippet && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{entry.snippet}</p>}
+                        {entry.tags && entry.tags.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5">
+                            {entry.tags.map((tag, j) => (
+                              <span key={j} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{tag}</span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      {entry.score !== undefined && (
+                        <span className="text-xs font-medium text-primary">{(entry.score * 100).toFixed(0)}%</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Related */}
+            {recommendTab === "related" && (
+              <div className="rounded-xl border border-border bg-card p-5">
+                <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
+                  <Star size={15} className="text-primary" />
+                  相关知识推荐
+                </h3>
+                <div className="flex gap-2 mb-4">
+                  <input
+                    value={relatedId}
+                    onChange={(e) => setRelatedId(e.target.value)}
+                    placeholder="输入知识条目 ID..."
+                    className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                  />
+                  <button
+                    onClick={handleRelatedRecommend}
+                    disabled={recommendLoading || !relatedId.trim()}
+                    className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                  >
+                    {recommendLoading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
+                    推荐
+                  </button>
+                </div>
+                {relatedResults.length > 0 && (
+                  <div className="space-y-2">
+                    {relatedResults.map((entry, i) => (
+                      <div key={entry.id || i} className="flex items-start gap-3 rounded-lg border border-border bg-background p-3 hover:border-primary/30 transition-colors">
+                        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                          {i + 1}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{entry.title}</p>
+                          {entry.snippet && <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{entry.snippet}</p>}
+                        </div>
+                        {entry.score !== undefined && (
+                          <span className="text-xs font-medium text-primary">{(entry.score * 100).toFixed(0)}%</span>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {relatedResults.length === 0 && !recommendLoading && (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    输入知识条目 ID，获取相关推荐
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── Quality Tab ────────────────────────────── */}
+        {tab === "quality" && (
+          <div className="space-y-6">
+            {/* Actions */}
+            <div className="flex gap-2">
+              <button
+                onClick={fetchQualityReport}
+                disabled={qualityLoading}
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+              >
+                {qualityLoading ? <Loader2 size={15} className="animate-spin" /> : <BarChart3 size={15} />}
+                {qualityLoading ? "加载中..." : "质量报告"}
+              </button>
+              <button
+                onClick={fetchBatchScores}
+                disabled={batchLoading}
+                className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                {batchLoading ? <Loader2 size={15} className="animate-spin" /> : <Award size={15} />}
+                批量评分
+              </button>
+            </div>
+
+            {/* Single Score */}
+            <div className="rounded-xl border border-border bg-card p-5">
+              <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
+                <Search size={15} className="text-primary" />
+                单条评分
+              </h3>
+              <div className="flex gap-2">
+                <input
+                  value={singleId}
+                  onChange={(e) => setSingleId(e.target.value)}
+                  placeholder="输入知识条目 ID..."
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                />
+                <button
+                  onClick={handleSingleScore}
+                  disabled={singleLoading || !singleId.trim()}
+                  className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+                >
+                  {singleLoading ? <Loader2 size={15} className="animate-spin" /> : <Award size={15} />}
+                  评分
+                </button>
+              </div>
+              {singleScore && (
+                <div className="mt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-medium">{singleScore.title}</p>
+                    <div className="flex items-center gap-2">
+                      <span className="text-2xl font-bold text-primary">{singleScore.overall_score?.toFixed(1)}</span>
+                      <span className={cn("rounded-full px-2 py-0.5 text-xs font-bold", GRADE_COLORS[singleScore.grade] || "bg-muted text-foreground")}>
+                        {singleScore.grade}
+                      </span>
+                    </div>
+                  </div>
+                  {singleScore.dimensions && (
+                    <div className="space-y-2">
+                      {singleScore.dimensions.map((dim, i) => (
+                        <div key={i} className="flex items-center gap-3">
+                          <span className="w-20 text-xs text-muted-foreground">{dim.name}</span>
+                          <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full bg-primary transition-all"
+                              style={{ width: `${(dim.score / dim.max_score) * 100}%` }}
+                            />
+                          </div>
+                          <span className="w-8 text-xs font-medium text-right">{dim.score?.toFixed(1)}</span>
+                          <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold", GRADE_COLORS[dim.grade] || "bg-muted text-foreground")}>
+                            {dim.grade}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Quality Report */}
+            {qualityReport && (
+              <div className="rounded-xl border border-border bg-card p-5">
+                <h3 className="mb-4 flex items-center gap-2 text-sm font-medium">
+                  <BarChart3 size={15} className="text-primary" />
+                  质量报告
+                </h3>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                  <div className="text-center rounded-lg bg-background p-3">
+                    <p className="text-2xl font-bold text-primary">{qualityReport.total_entries}</p>
+                    <p className="text-xs text-muted-foreground">总条目数</p>
+                  </div>
+                  <div className="text-center rounded-lg bg-background p-3">
+                    <p className="text-2xl font-bold text-primary">{qualityReport.avg_score?.toFixed(1)}</p>
+                    <p className="text-xs text-muted-foreground">平均分</p>
+                  </div>
+                  <div className="text-center rounded-lg bg-background p-3">
+                    <p className="text-2xl font-bold text-primary">
+                      {Object.entries(qualityReport.distribution || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || "-"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">最常见等级</p>
+                  </div>
+                </div>
+
+                {/* Distribution */}
+                {qualityReport.distribution && Object.keys(qualityReport.distribution).length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">等级分布</p>
+                    <div className="flex gap-2">
+                      {Object.entries(qualityReport.distribution).sort().map(([grade, count]) => (
+                        <div key={grade} className="flex-1 text-center rounded-lg bg-background p-2">
+                          <span className={cn("inline-block rounded px-1.5 py-0.5 text-xs font-bold mb-1", GRADE_COLORS[grade] || "bg-muted text-foreground")}>
+                            {grade}
+                          </span>
+                          <p className="text-sm font-medium">{count}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Dimension Averages */}
+                {qualityReport.dimension_averages && Object.keys(qualityReport.dimension_averages).length > 0 && (
+                  <div className="mb-4">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">维度平均分</p>
+                    <div className="space-y-2">
+                      {Object.entries(qualityReport.dimension_averages).map(([dim, avg]) => (
+                        <div key={dim} className="flex items-center gap-3">
+                          <span className="w-20 text-xs text-muted-foreground">{dim}</span>
+                          <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${(avg / 10) * 100}%` }} />
+                          </div>
+                          <span className="w-8 text-xs font-medium text-right">{avg?.toFixed(1)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Top / Bottom */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {qualityReport.top && qualityReport.top.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-emerald-500 mb-2">🏆 最高质量</p>
+                      {qualityReport.top.map((item, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs py-1.5">
+                          <span className="font-medium truncate flex-1">{item.title}</span>
+                          <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold", GRADE_COLORS[item.grade])}>{item.grade}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {qualityReport.bottom && qualityReport.bottom.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-red-500 mb-2">⚠️ 需改进</p>
+                      {qualityReport.bottom.map((item, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs py-1.5">
+                          <span className="font-medium truncate flex-1">{item.title}</span>
+                          <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-bold", GRADE_COLORS[item.grade])}>{item.grade}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* Batch Scores */}
+            {qualityScores.length > 0 && (
+              <div className="rounded-xl border border-border bg-card p-5">
+                <h3 className="mb-4 flex items-center gap-2 text-sm font-medium">
+                  <Award size={15} className="text-primary" />
+                  批量评分结果 · {qualityScores.length} 条
+                </h3>
+                <div className="space-y-2">
+                  {qualityScores.map((item, i) => (
+                    <div key={i} className="flex items-center gap-3 rounded-lg border border-border bg-background p-3">
+                      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                        {i + 1}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{item.title}</p>
+                        {item.dimensions && (
+                          <div className="flex gap-2 mt-1">
+                            {item.dimensions.slice(0, 3).map((dim, j) => (
+                              <span key={j} className="text-[10px] text-muted-foreground">
+                                {dim.name}: {dim.score?.toFixed(1)}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-sm font-bold text-primary">{item.overall_score?.toFixed(1)}</span>
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-bold", GRADE_COLORS[item.grade] || "bg-muted text-foreground")}>
+                          {item.grade}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
