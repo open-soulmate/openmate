@@ -224,7 +224,7 @@ export function DiagnosticsClient() {
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">内存</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.memory")}</span>
                 <div className="rounded-lg p-1.5 bg-emerald-500/10"><MemoryStick size={14} className="text-emerald-500" /></div>
               </div>
               <p className="text-2xl font-bold">
