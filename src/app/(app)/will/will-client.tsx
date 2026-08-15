@@ -46,7 +46,7 @@ export function WillClient() {
     <div style={{ padding: 24 }}>
       <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 24 }}>⚡ Will — 工作流引擎</h2>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 24 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16, marginBottom: 24 }}>
         {[
           { label: "总工作流", value: eng?.total_workflows ?? 0, color: "#3b82f6" },
           { label: "活跃", value: eng?.active_workflows ?? 0, color: "#22c55e" },
@@ -63,7 +63,7 @@ export function WillClient() {
       </div>
 
       <h3 style={{ fontSize: 16, fontWeight: 600, marginBottom: 12 }}>执行统计</h3>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16 }}>
         {[
           { label: "成功", value: eng?.successful ?? 0, color: "#22c55e" },
           { label: "失败", value: eng?.failed ?? 0, color: "#ef4444" },
