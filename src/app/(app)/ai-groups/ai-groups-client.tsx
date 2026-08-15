@@ -60,6 +60,7 @@ export default function AIGroupsPage() {
   const [loading, setLoading] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(true);
+  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
 
   // Create group
   const [showCreate, setShowCreate] = useState(false);
@@ -111,6 +112,7 @@ export default function AIGroupsPage() {
 
   const selectGroup = async (group: AIGroup) => {
     setSelectedGroup(group);
+    setMobileView('chat');
     setMessages([]);
     try {
       const res = await fetch(`${API_BASE}/api/ai-groups/${group.id}`);
@@ -338,8 +340,16 @@ export default function AIGroupsPage() {
 
   return (
     <div className="flex h-full">
+      <style>{`
+        @media (max-width: 768px) {
+          .ai-groups-sidebar { display: ${mobileView === 'list' ? 'flex' : 'none'} !important; width: 100% !important; }
+          .ai-groups-chat { display: ${mobileView === 'chat' ? 'flex' : 'none'} !important; }
+          .ai-groups-right { display: none !important; }
+          .ai-groups-back { display: inline-flex !important; }
+        }
+      `}</style>
       {/* Left: Group List (264px) */}
-      <div className="w-64 shrink-0 flex flex-col border-r border-border bg-card">
+      <div className="ai-groups-sidebar w-64 shrink-0 flex flex-col border-r border-border bg-card">
         {/* Header */}
         <div className="p-3 border-b border-border">
           <div className="flex items-center justify-between mb-2">
@@ -430,10 +440,13 @@ export default function AIGroupsPage() {
       </div>
 
       {/* Center: Chat Messages (flex-1) */}
-      <div className="flex-1 flex flex-col min-w-0">
+      <div className="ai-groups-chat flex-1 flex flex-col min-w-0">
         {/* Chat header */}
         <div className="h-12 border-b border-border flex items-center px-4 justify-between shrink-0">
           <div className="flex items-center gap-2">
+            <button onClick={() => setMobileView('list')} className="ai-groups-back hidden mr-2 p-1 rounded hover:bg-muted">
+              ←
+            </button>
             <Users className="w-4 h-4 text-primary" />
             <span className="font-medium text-sm">{selectedGroup?.name || '选择一个群组'}</span>
             {selectedGroup && (
@@ -595,7 +608,7 @@ export default function AIGroupsPage() {
 
       {/* Right: Agent Management Panel (288px) */}
       {showRightPanel && selectedGroup && (
-        <div className="w-72 shrink-0 border-l border-border bg-card flex flex-col">
+        <div className="ai-groups-right w-72 shrink-0 border-l border-border bg-card flex flex-col">
           <div className="p-3 border-b border-border flex items-center justify-between">
             <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />群组管理</span>
             <button onClick={() => setShowRightPanel(false)} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
