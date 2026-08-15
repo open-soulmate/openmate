@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useTranslation } from "react-i18next";
 import {
   RefreshCw, Activity, Filter, Loader2,
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
@@ -52,19 +53,20 @@ const TYPE_COLORS: Record<string, string> = {
   cron_job: "text-cyan-500 bg-cyan-500/10",
 };
 
-function formatTimestamp(ts?: number): string {
+function formatTimestamp(ts?: number, t?: (key: string, opts?: Record<string, unknown>) => string): string {
   if (!ts) return "";
   const date = new Date(ts * 1000);
   const now = new Date();
   const diff = now.getTime() - date.getTime();
 
-  if (diff < 60000) return "just now";
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  if (diff < 60000) return t ? t('activity.justNow') : "just now";
+  if (diff < 3600000) return t ? t('activity.minutesAgo', { count: Math.floor(diff / 60000) }) : `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return t ? t('activity.hoursAgo', { count: Math.floor(diff / 3600000) }) : `${Math.floor(diff / 3600000)}h ago`;
   return date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 export function ActivityFeedClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [events, setEvents] = useState<StreamEvent[]>([]);
   const [summary, setSummary] = useState<StreamSummary | null>(null);
@@ -131,9 +133,9 @@ export function ActivityFeedClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Activity size={20} className="text-emerald-500" />
-          <h1 className="text-lg font-semibold">Activity Feed</h1>
+          <h1 className="text-lg font-semibold">{t('activity.title')}</h1>
           <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-500">
-            {events.length} events
+            {events.length} {t('activity.events')}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -147,7 +149,7 @@ export function ActivityFeedClient() {
             )}
           >
             <div className={cn("w-1.5 h-1.5 rounded-full", autoRefresh ? "bg-green-500 animate-pulse" : "bg-muted-foreground")} />
-            Live
+            {t('activity.live')}
           </button>
           <button
             onClick={() => setShowFilters(!showFilters)}
@@ -157,7 +159,7 @@ export function ActivityFeedClient() {
             )}
           >
             <Filter size={12} />
-            {selectedOrgan || "All Organs"}
+            {selectedOrgan || t('activity.allOrgans')}
             <ChevronDown size={10} />
           </button>
           <button
@@ -166,7 +168,7 @@ export function ActivityFeedClient() {
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted transition-colors disabled:opacity-50"
           >
             {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-            Refresh
+            {t('activity.refresh')}
           </button>
         </div>
       </div>
@@ -182,7 +184,7 @@ export function ActivityFeedClient() {
                 !selectedOrgan ? "bg-primary text-primary-foreground" : "border border-border hover:bg-muted"
               )}
             >
-              All
+              {t('activity.all')}
             </button>
             {uniqueOrgans.map((organ) => (
               <button
@@ -206,8 +208,8 @@ export function ActivityFeedClient() {
           {events.length === 0 && !loading ? (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <Activity size={48} className="mb-4 opacity-30" />
-              <p className="text-sm">No activity events yet</p>
-              <p className="text-xs mt-1">Events will appear as organs process data</p>
+              <p className="text-sm">{t('activity.noEvents')}</p>
+              <p className="text-xs mt-1">{t('activity.noEventsHint')}</p>
             </div>
           ) : (
             <div className="divide-y divide-border">
@@ -243,7 +245,7 @@ export function ActivityFeedClient() {
                           <span className="text-[10px] text-muted-foreground capitalize">{event.organ}</span>
                           {event.timestamp && (
                             <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
-                              <Clock size={9} /> {formatTimestamp(event.timestamp)}
+                              <Clock size={9} /> {formatTimestamp(event.timestamp, t)}
                             </span>
                           )}
                         </div>
@@ -260,7 +262,7 @@ export function ActivityFeedClient() {
 
                       {/* Timestamp */}
                       <span className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
-                        {formatTimestamp(event.collected_at)}
+                        {formatTimestamp(event.collected_at, t)}
                       </span>
                     </div>
                   </div>
@@ -273,17 +275,17 @@ export function ActivityFeedClient() {
         {/* Summary sidebar */}
         <div className="w-64 border-l border-border overflow-y-auto p-4 space-y-4">
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Activity Summary</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t('activity.summary')}</h3>
             {summary ? (
               <div className="space-y-3">
                 <div className="rounded-lg border border-border bg-card p-3">
                   <div className="text-2xl font-bold">{summary.total_events}</div>
-                  <div className="text-xs text-muted-foreground">Total Events</div>
+                  <div className="text-xs text-muted-foreground">{t('activity.totalEvents')}</div>
                 </div>
 
                 {summary.most_active_organ && (
                   <div className="rounded-lg border border-border bg-card p-3">
-                    <div className="text-xs text-muted-foreground mb-1">Most Active</div>
+                    <div className="text-xs text-muted-foreground mb-1">{t('activity.mostActive')}</div>
                     <div className="text-sm font-medium capitalize">{summary.most_active_organ}</div>
                   </div>
                 )}
@@ -298,7 +300,7 @@ export function ActivityFeedClient() {
           {/* By Organ */}
           {summary?.by_organ && Object.keys(summary.by_organ).length > 0 && (
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">By Organ</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t('activity.byOrgan')}</h3>
               <div className="space-y-1.5">
                 {Object.entries(summary.by_organ)
                   .sort(([, a], [, b]) => b - a)
@@ -318,7 +320,7 @@ export function ActivityFeedClient() {
           {/* By Type */}
           {summary?.by_type && Object.keys(summary.by_type).length > 0 && (
             <div>
-              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">By Type</h3>
+              <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t('activity.byType')}</h3>
               <div className="space-y-1.5">
                 {Object.entries(summary.by_type)
                   .sort(([, a], [, b]) => b - a)

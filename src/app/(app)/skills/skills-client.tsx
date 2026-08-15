@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, Download, Check, Trash2, Play, Loader2, CheckCircle2, XCircle, Puzzle, RefreshCw, ExternalLink, Package } from 'lucide-react';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
+import { useTranslation } from 'react-i18next';
 
 interface Skill {
   name: string;
@@ -13,6 +14,7 @@ interface Skill {
 }
 
 export function SkillsClient() {
+  const { t } = useTranslation();
   const [skills, setSkills] = useState<Skill[]>([]);
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState('');
@@ -65,12 +67,12 @@ export function SkillsClient() {
       });
       const data = await res.json();
       if (data.count > 0) {
-        setToast({ message: `已迁移 ${data.count} 个技能到共享目录`, type: "success" });
+        setToast({ message: `${t('skills.migrateDone')} (${data.count})`, type: "success" });
       } else {
-        setToast({ message: "没有需要迁移的技能", type: "success" });
+        setToast({ message: t('skills.migrateDone'), type: "success" });
       }
       fetchSkills();
-    } catch { setToast({ message: "迁移失败", type: "error" }); }
+    } catch { setToast({ message: t('skills.migrating'), type: "error" }); }
     setMigrating(false);
   };
 
@@ -82,12 +84,12 @@ export function SkillsClient() {
       });
       const data = await res.json();
       if (data.success) {
-        setToast({ message: `${skill.name} 安装成功`, type: 'success' });
+        setToast({ message: `${skill.name} ${t('skills.install')}`, type: 'success' });
         fetchSkills();
       } else {
-        setToast({ message: data.error || '安装失败', type: 'error' });
+        setToast({ message: data.error || t('skills.uninstall'), type: 'error' });
       }
-    } catch { setToast({ message: '网络错误', type: 'error' }); }
+    } catch { setToast({ message: 'Error', type: 'error' }); }
   };
 
   const handleUninstall = async (skill: Skill) => {
@@ -97,10 +99,10 @@ export function SkillsClient() {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.ok) {
-        setToast({ message: `${skill.name} 已卸载`, type: 'success' });
+        setToast({ message: `${skill.name} ${t('skills.uninstall')}`, type: 'success' });
         fetchSkills();
       }
-    } catch { setToast({ message: '网络错误', type: 'error' }); }
+    } catch { setToast({ message: 'Error', type: 'error' }); }
   };
 
   // Get unique categories
@@ -131,37 +133,37 @@ export function SkillsClient() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Puzzle className="w-6 h-6" /> 技能市场</h1>
-          <p className="text-sm text-muted-foreground mt-1">浏览和安装共享技能，所有本机 AI Agent 均可调用</p>
+          <h1 className="text-2xl font-bold flex items-center gap-2"><Puzzle className="w-6 h-6" /> {t('skills.title')}</h1>
+          <p className="text-sm text-muted-foreground mt-1">{t('skills.description')}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={handleMigrate} disabled={migrating}
             className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm disabled:opacity-50">
             {migrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
-            {migrating ? '迁移中...' : '一键迁移'}
+            {migrating ? t('skills.migrating') : t('skills.migrate')}
           </button>
-          <button onClick={fetchSkills} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> 刷新</button>
+          <button onClick={fetchSkills} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> {t('skills.refresh')}</button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-primary">{skills.length}</p><p className="text-sm text-muted-foreground">可用技能</p></div>
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-green-500">{installedCount}</p><p className="text-sm text-muted-foreground">已安装</p></div>
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-muted-foreground">{skills.length - installedCount}</p><p className="text-sm text-muted-foreground">未安装</p></div>
+        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-primary">{skills.length}</p><p className="text-sm text-muted-foreground">{t('skills.available')}</p></div>
+        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-green-500">{installedCount}</p><p className="text-sm text-muted-foreground">{t('skills.installed')}</p></div>
+        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-muted-foreground">{skills.length - installedCount}</p><p className="text-sm text-muted-foreground">{t('skills.available')}</p></div>
       </div>
 
       {/* Search & Filter */}
       <div className="flex flex-col sm:flex-row gap-3 mb-4">
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索技能..."
+          <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t('skills.searchPlaceholder')}
             className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-muted text-sm outline-none focus:ring-2 focus:ring-primary/30" />
         </div>
         <div className="flex gap-1.5">
           {(['all', 'installed', 'available'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'border hover:bg-muted'}`}>
-              {f === 'all' ? '全部' : f === 'installed' ? '已安装' : '未安装'}
+              {f === 'all' ? t('skills.all') : f === 'installed' ? t('skills.filterInstalled') : t('skills.filterAvailable')}
             </button>
           ))}
         </div>
@@ -172,7 +174,7 @@ export function SkillsClient() {
         <div className="flex gap-1.5 mb-4 flex-wrap">
           {categories.map(c => (
             <button key={c} onClick={() => setCategory(c)} className={`px-2.5 py-1 rounded-md text-xs transition-colors ${category === c ? 'bg-accent text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
-              {c === 'all' ? '全部分类' : c}
+              {c === 'all' ? t('skills.all') : c}
             </button>
           ))}
         </div>
@@ -182,8 +184,7 @@ export function SkillsClient() {
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <Package size={48} className="mb-4 opacity-30" />
-          <p className="text-sm">暂无技能</p>
-          <p className="text-xs mt-1">运行 <code className="px-1.5 py-0.5 rounded bg-muted">hermes skill install &lt;name&gt;</code> 安装技能</p>
+          <p className="text-sm">{t('skills.noSkills')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -202,19 +203,19 @@ export function SkillsClient() {
                 {skill.installed && <CheckCircle2 size={16} className="text-green-500 shrink-0" />}
               </div>
 
-              <p className="text-xs text-muted-foreground line-clamp-2 mb-3 min-h-[2rem]">{skill.description || '暂无描述'}</p>
+              <p className="text-xs text-muted-foreground line-clamp-2 mb-3 min-h-[2rem]">{skill.description || t('skills.description')}</p>
 
               <div className="flex items-center justify-between">
                 {skill.installed ? (
                   <div className="flex items-center gap-1.5">
                     {skill.version && <span className="text-[10px] text-muted-foreground">v{skill.version}</span>}
                     <button onClick={() => handleUninstall(skill)} className="px-2 py-1 rounded-lg text-xs border border-red-500/30 text-red-500 hover:bg-red-500/5 flex items-center gap-1">
-                      <Trash2 size={10} />卸载
+                      <Trash2 size={10} />{t('skills.uninstall')}
                     </button>
                   </div>
                 ) : (
                   <button onClick={() => handleInstall(skill)} className="px-2.5 py-1 rounded-lg text-xs bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1">
-                    <Download size={10} />安装
+                    <Download size={10} />{t('skills.install')}
                   </button>
                 )}
               </div>

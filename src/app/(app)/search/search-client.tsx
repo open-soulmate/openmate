@@ -3,6 +3,7 @@ import { useState, useCallback } from 'react';
 import { Search as SearchIcon, FileText, Tag, Loader2, Zap, BookOpen, Layers, RotateCcw, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getApiBaseUrl } from '@/lib/api-client';
+import { useTranslation } from 'react-i18next';
 
 interface SearchResult {
   id: string;
@@ -15,13 +16,8 @@ interface SearchResult {
   created_at?: string;
 }
 
-const MODES = [
-  { id: "hybrid", label: "混合搜索", icon: Layers, desc: "语义+全文" },
-  { id: "semantic", label: "语义搜索", icon: Zap, desc: "AI理解意图" },
-  { id: "fulltext", label: "全文搜索", icon: BookOpen, desc: "关键词匹配" },
-] as const;
-
 export function SearchClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [query, setQuery] = useState('');
   const [mode, setMode] = useState<"hybrid" | "semantic" | "fulltext">("hybrid");
@@ -29,6 +25,12 @@ export function SearchClient() {
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
   const [searchTime, setSearchTime] = useState(0);
+
+  const MODES = [
+    { id: "hybrid" as const, label: t('search.hybrid'), icon: Layers, desc: t('search.hybridDesc') },
+    { id: "semantic" as const, label: t('search.semantic'), icon: Zap, desc: t('search.semanticDesc') },
+    { id: "fulltext" as const, label: t('search.fulltext'), icon: BookOpen, desc: t('search.fulltextDesc') },
+  ];
 
   const handleSearch = useCallback(async () => {
     if (!query.trim()) return;
@@ -53,9 +55,9 @@ export function SearchClient() {
       <div className="border-b border-border px-6 py-4">
         <h1 className="flex items-center gap-2 text-lg font-semibold">
           <SearchIcon size={18} className="text-primary" />
-          统一搜索
+          {t('search.title')}
         </h1>
-        <p className="text-xs text-muted-foreground mt-0.5">跨知识库、文档、实体的统一检索</p>
+        <p className="text-xs text-muted-foreground mt-0.5">{t('search.subtitle')}</p>
       </div>
 
       {/* Search area */}
@@ -87,7 +89,7 @@ export function SearchClient() {
               value={query}
               onChange={e => setQuery(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              placeholder="搜索知识库、文档、实体..."
+              placeholder={t('search.inputPlaceholder')}
               className="w-full rounded-lg border border-border bg-background pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
             />
           </div>
@@ -97,7 +99,7 @@ export function SearchClient() {
             className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
           >
             {loading ? <Loader2 size={15} className="animate-spin" /> : <SearchIcon size={15} />}
-            搜索
+            {t('search.button')}
           </button>
         </div>
       </div>
@@ -107,15 +109,15 @@ export function SearchClient() {
         {loading && (
           <div className="flex flex-col items-center justify-center py-16">
             <Loader2 size={28} className="animate-spin text-primary mb-3" />
-            <p className="text-sm text-muted-foreground">搜索中...</p>
+            <p className="text-sm text-muted-foreground">{t('search.searching')}</p>
           </div>
         )}
 
         {!loading && searched && results.length === 0 && (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <SearchIcon size={40} className="mb-3 opacity-30" />
-            <p className="text-sm">未找到相关结果</p>
-            <p className="text-xs mt-1">尝试换个关键词或切换搜索模式</p>
+            <p className="text-sm">{t('search.noResultsGeneric')}</p>
+            <p className="text-xs mt-1">{t('search.tryDifferent')}</p>
           </div>
         )}
 
@@ -123,7 +125,7 @@ export function SearchClient() {
           <div className="space-y-2">
             <div className="flex items-center justify-between mb-4">
               <p className="text-sm text-muted-foreground">
-                找到 <span className="font-medium text-foreground">{results.length}</span> 个结果
+                {t('search.foundResults', { count: results.length })}
               </p>
               <span className="text-xs text-muted-foreground flex items-center gap-1">
                 <Clock size={11} />
@@ -152,7 +154,7 @@ export function SearchClient() {
                       )}
                       {r.score !== undefined && (
                         <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary">
-                          {(r.score * 100).toFixed(0)}% 匹配
+                          {t('search.matchScore', { score: (r.score * 100).toFixed(0) })}
                         </span>
                       )}
                       {r.tags?.map(t => (
@@ -162,7 +164,7 @@ export function SearchClient() {
                         </span>
                       ))}
                       {r.source && (
-                        <span className="text-[10px] text-muted-foreground">来源: {r.source}</span>
+                        <span className="text-[10px] text-muted-foreground">{t('search.source')}: {r.source}</span>
                       )}
                     </div>
                   </div>
@@ -175,9 +177,9 @@ export function SearchClient() {
         {!searched && (
           <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
             <SearchIcon size={40} className="mb-3 opacity-30" />
-            <p className="text-sm">输入关键词搜索你的知识库</p>
+            <p className="text-sm">{t('search.enterKeywords')}</p>
             <div className="mt-4 flex gap-2">
-              {["项目文档", "会议记录", "技术方案"].map(hint => (
+              {[t('search.hintDocs'), t('search.hintMeetings'), t('search.hintTech')].map(hint => (
                 <button
                   key={hint}
                   onClick={() => { setQuery(hint); }}
