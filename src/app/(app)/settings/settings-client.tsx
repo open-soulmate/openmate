@@ -13,7 +13,7 @@ import { type ThemeId, themes, getStoredTheme, persistTheme } from "@/lib/theme"
 import { useAppStore } from "@/stores/app-store";
 import { getApiBaseUrl, getToken, getUserId } from "@/lib/api-client";
 
-type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "account" | "about";
+type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "organs" | "account" | "about";
 
 interface SettingsState {
   theme: ThemeId; fontSize: string; language: string; sidebarPosition: string; animationEnabled: boolean;
@@ -29,6 +29,7 @@ const sections: { id: SectionId; label: string; icon: React.ElementType; group: 
   { id: "agent", label: "Agent", icon: Bot, group: "运行时" },
   { id: "tools", label: "工具权限", icon: Wrench, group: "运行时" },
   { id: "storage", label: "存储", icon: HardDrive, group: "运行时" },
+  { id: "organs", label: "器官管理", icon: Zap, group: "运行时" },
   { id: "account", label: "账户", icon: User, group: "账户" },
   { id: "about", label: "关于", icon: Info, group: "账户" },
 ];
@@ -435,6 +436,11 @@ export function SettingsClient() {
             </>
           )}
 
+          {/* ─── Organs ──────────────────────────────────────── */}
+          {active === "organs" && (
+            <OrgansSection apiBase={getApiBaseUrl()} />
+          )}
+
           {/* ─── Account ─────────────────────────────────────── */}
           {active === "account" && (
             <>
@@ -519,5 +525,96 @@ export function SettingsClient() {
         </div>
       </div>
     </div>
+  );
+}
+
+// ─── Organs Management Section ─────────────────────────────────────
+function OrgansSection({ apiBase }: { apiBase: string }) {
+  const [organs, setOrgans] = useState<Array<{ key: string; enabled: boolean; config: Record<string, unknown> }>>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch(`${apiBase}/api/organs`)
+      .then(r => r.json())
+      .then(data => setOrgans(data.organs || []))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [apiBase]);
+
+  const toggleOrgan = async (key: string, enabled: boolean) => {
+    try {
+      await fetch(`${apiBase}/api/organs/${key}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      setOrgans(prev => prev.map(o => o.key === key ? { ...o, enabled } : o));
+    } catch {}
+  };
+
+  const organLabels: Record<string, { label: string; emoji: string }> = {
+    cortex: { label: "皮层", emoji: "🧠" }, nerve: { label: "神经", emoji: "⚡" },
+    vein: { label: "血管", emoji: "🩸" }, sense: { label: "感官", emoji: "👁" },
+    will: { label: "意志", emoji: "✨" }, immune: { label: "免疫", emoji: "🛡" },
+    vital: { label: "体征", emoji: "📊" }, marrow: { label: "骨髓", emoji: "🦴" },
+    gland: { label: "腺体", emoji: "🧪" }, gene: { label: "基因", emoji: "🧬" },
+    echo: { label: "回声", emoji: "🔊" }, mirror: { label: "镜像", emoji: "🪞" },
+    link: { label: "突触", emoji: "🔗" }, hippo: { label: "海马体", emoji: "🧠" },
+    reflex: { label: "反射", emoji: "⚡" }, heredity: { label: "遗传链", emoji: "🔗" },
+    pulse: { label: "脉搏", emoji: "💓" }, nest: { label: "巢穴", emoji: "🏠" },
+    limb: { label: "四肢", emoji: "💪" }, voice: { label: "声带", emoji: "🎤" },
+    vision: { label: "视觉", emoji: "🎨" }, mind: { label: "心智", emoji: "💭" },
+    trajectory: { label: "轨迹", emoji: "📊" }, mcp: { label: "MCP", emoji: "🔌" },
+    learn: { label: "学习", emoji: "📚" },
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <RefreshCw size={16} className="animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  const enabledCount = organs.filter(o => o.enabled).length;
+
+  return (
+    <>
+      <div className="flex items-center gap-2.5 mb-2">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10"><Zap size={16} className="text-primary" /></div>
+        <div><h1 className="text-lg font-semibold">器官管理</h1><p className="text-xs text-muted-foreground">启用或禁用系统器官组件 ({enabledCount}/{organs.length} 已启用)</p></div>
+      </div>
+
+      <div className="rounded-xl border border-border bg-card p-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          {organs.map(organ => {
+            const info = organLabels[organ.key] || { label: organ.key, emoji: "⚙️" };
+            return (
+              <div key={organ.key} className="flex items-center justify-between p-3 rounded-lg border border-border hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-lg">{info.emoji}</span>
+                  <div>
+                    <div className="text-sm font-medium">{info.label}</div>
+                    <div className="text-[10px] text-muted-foreground font-mono">{organ.key}</div>
+                  </div>
+                </div>
+                <button
+                  onClick={() => toggleOrgan(organ.key, !organ.enabled)}
+                  className={cn(
+                    "relative inline-flex h-5 w-9 items-center rounded-full transition-colors",
+                    organ.enabled ? "bg-green-500" : "bg-muted-foreground/30"
+                  )}
+                >
+                  <span className={cn(
+                    "inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform",
+                    organ.enabled ? "translate-x-4" : "translate-x-0.5"
+                  )} />
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </>
   );
 }
