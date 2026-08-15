@@ -164,6 +164,7 @@ export function AppShell() {
     {
       label: t("nav.systemGroup") || "系统",
       items: [
+        { href: "/intelligence", label: t("nav.intelligence") || "智能分析", icon: Brain },
         { href: "/trajectory", label: t("nav.trajectory") || "轨迹", icon: Activity },
         { href: "/diagnostics", label: t("nav.diagnostics") || "系统诊断", icon: Stethoscope },
         { href: "/download", label: t("nav.download"), icon: Download },
