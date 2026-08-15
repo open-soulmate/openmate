@@ -50,7 +50,7 @@ export function GlandClient() {
     <div style={{ padding: 24 }}>
       <h2 style={{ fontSize: 20, fontWeight: 600, marginBottom: 24 }}>🧠 Gland — 模型网关</h2>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16, marginBottom: 32 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 16, marginBottom: 32 }}>
         {[
           { label: "Providers", value: health?.providers.total ?? 0, color: "#3b82f6" },
           { label: "Enabled", value: health?.providers.enabled ?? 0, color: "#22c55e" },

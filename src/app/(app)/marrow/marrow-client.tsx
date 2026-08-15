@@ -78,7 +78,7 @@ export function MarrowClient() {
         </button>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16, marginBottom: 32 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(220px, 1fr))", gap: 16, marginBottom: 32 }}>
         {[
           { label: "总备份", value: health?.backup.total_backups ?? 0 },
           { label: "总大小", value: formatSize(health?.backup.total_size_bytes ?? 0) },
