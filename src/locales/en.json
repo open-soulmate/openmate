@@ -60,7 +60,8 @@
     "soma": "Soma",
     "bodyMap": "Body Map",
     "activity": "Activity",
-    "diagnostics": "Diagnostics"
+    "diagnostics": "Diagnostics",
+    "intelligence": "Intelligence Analysis"
   },
   "dashboard": {
     "title": "System Overview",
