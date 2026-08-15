@@ -14,7 +14,7 @@ import {
   LayoutDashboard, FolderKanban, Share2, ChevronDown,
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
   Zap, Activity, Sparkles, Brain, Bolt, Heart, Home,
- MousePointer, Mic, ImageIcon, Smile, Stethoscope, Cpu, Bot,
+ MousePointer, Mic, ImageIcon, Smile, Stethoscope, Cpu, Bot, Store,
  } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getApiBaseUrl } from "@/lib/api-client";
@@ -168,6 +168,7 @@ export function AppShell() {
         { href: "/diagnostics", label: t("nav.diagnostics") || "系统诊断", icon: Stethoscope },
         { href: "/download", label: t("nav.download"), icon: Download },
         { href: "/plugins", label: t("nav.plugins") || "插件", icon: Puzzle },
+        { href: "/marketplace", label: t("nav.marketplace") || "市场", icon: Store },
         { href: "/settings", label: t("nav.settings"), icon: Settings },
       ],
     },
