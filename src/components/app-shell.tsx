@@ -45,9 +45,10 @@ export function AppShell() {
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { t } = useTranslation();
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["内部服务"]));
-  const [pluginGroups, setPluginGroups] = useState<NavGroup[]>([]);
-  const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["内部服务"]))
+  const [pluginGroups, setPluginGroups] = useState<NavGroup[]>([])
+  const [eventCount, setEventCount] = useState(0)
+  const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -68,6 +69,23 @@ export function AppShell() {
         );
       })
       .catch(() => {});
+  }, []);
+
+  // Fetch event count for notification badge
+  useEffect(() => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    const fetchEvents = () => {
+      fetch(`${apiBase}/api/events/summary`)
+        .then((res) => (res.ok ? res.json() : null))
+        .then((data) => {
+          if (data?.total_events) setEventCount(Math.min(data.total_events, 99));
+        })
+        .catch(() => {});
+    };
+    fetchEvents();
+    const interval = setInterval(fetchEvents, 30000); // refresh every 30s
+    return () => clearInterval(interval);
   }, []);
 
   const navGroups: NavGroup[] = [
@@ -291,8 +309,30 @@ export function AppShell() {
           })}
         </nav>
 
-        {/* Footer - User Account */}
-        <div className="border-t border-border px-2 py-2 relative" ref={menuRef}>
+        {/* Notification Bell + Footer - User Account */}
+        <div className="border-t border-border px-2 py-2 space-y-1">
+          {/* Notification Bell */}
+          <Link href="/activity" className="flex w-full items-center rounded-md py-1.5 text-sm transition-colors hover:bg-sidebar-accent">
+            <div className="flex w-8 shrink-0 items-center justify-center">
+              <div className="relative">
+                <Activity size={16} className="text-muted-foreground" />
+                {eventCount > 0 && (
+                  <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">
+                    {eventCount > 9 ? "9+" : eventCount}
+                  </span>
+                )}
+              </div>
+            </div>
+            <span className={cn(
+              "truncate whitespace-nowrap transition-all duration-150 text-xs text-muted-foreground",
+              isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
+            )} suppressHydrationWarning>
+              {t("nav.activity") || "活动流"}
+            </span>
+          </Link>
+
+          {/* User Account */}
+        <div className="relative" ref={menuRef}>
           <button onClick={() => setMenuOpen(!menuOpen)}
             className="flex w-full items-center rounded-md py-1.5 text-sm transition-colors hover:bg-sidebar-accent">
             {/* Fixed avatar column */}
@@ -353,6 +393,7 @@ export function AppShell() {
               </div>
             </div>
           )}
+        </div>
         </div>
       </aside>
 
