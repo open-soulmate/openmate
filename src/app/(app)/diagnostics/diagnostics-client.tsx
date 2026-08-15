@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useTranslation } from "react-i18next";
 import {
   Activity, CheckCircle, XCircle, Loader2, RefreshCw,
   Server, Clock, Cpu, HardDrive, MemoryStick, Settings,
@@ -94,6 +95,7 @@ function ResponseTimeBar({ ms }: { ms: number }) {
 }
 
 export function DiagnosticsClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [data, setData] = useState<CheckAllResult | null>(null);
   const [configChanges, setConfigChanges] = useState<ConfigChange[]>([]);
@@ -152,10 +154,10 @@ export function DiagnosticsClient() {
   }, {}) || {};
 
   const categoryLabels: Record<string, string> = {
-    core: "核心层",
-    platform: "平台层",
-    advanced: "高级层",
-    system: "系统层",
+    core: t("diagnostics.coreLayer"),
+    platform: t("diagnostics.platformLayer"),
+    advanced: t("diagnostics.advancedLayer"),
+    system: t("diagnostics.systemLayer"),
   };
 
   return (
@@ -164,9 +166,9 @@ export function DiagnosticsClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Activity size={20} className="text-orange-500" />
-          <h1 className="text-lg font-semibold">系统诊断</h1>
+          <h1 className="text-lg font-semibold">{t("diagnostics.title")}</h1>
           <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-xs font-medium text-orange-500">
-            Deep Inspection
+            {t("diagnostics.deepInspection")}
           </span>
         </div>
         <button
@@ -175,7 +177,7 @@ export function DiagnosticsClient() {
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors disabled:opacity-50"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          {loading ? "检测中..." : "重新检测"}
+          {loading ? (t("diagnostics.checking") || "检测中...") : t("diagnostics.refresh")}
         </button>
       </div>
 
@@ -191,22 +193,22 @@ export function DiagnosticsClient() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">总器官数</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.totalOrgans")}</span>
                 <div className="rounded-lg p-1.5 bg-blue-500/10"><Server size={14} className="text-blue-500" /></div>
               </div>
               <p className="text-2xl font-bold">{data.summary.total}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                <span className="text-emerald-500">{data.summary.healthy}</span> 正常 ·
-                <span className="text-red-500 ml-1">{data.summary.unhealthy}</span> 异常
+                <span className="text-emerald-500">{data.summary.healthy}</span> {t("diagnostics.healthy") || "正常"} ·
+                <span className="text-red-500 ml-1">{data.summary.unhealthy}</span> {t("diagnostics.unhealthy") || "异常"}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">平均响应</span>
+                <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.avgResponse")}</span>
                 <div className="rounded-lg p-1.5 bg-amber-500/10"><Clock size={14} className="text-amber-500" /></div>
               </div>
               <p className="text-2xl font-bold">{data.summary.avg_response_ms}<span className="text-sm font-normal ml-0.5">ms</span></p>
-              <p className="text-xs text-muted-foreground mt-0.5">最大 {data.summary.max_response_ms.toFixed(1)}ms</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t("diagnostics.max") || "最大"} {data.summary.max_response_ms.toFixed(1)}ms</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-2">
@@ -214,10 +216,10 @@ export function DiagnosticsClient() {
                 <div className="rounded-lg p-1.5 bg-violet-500/10"><Cpu size={14} className="text-violet-500" /></div>
               </div>
               <p className="text-2xl font-bold">
-                {data.system.cpu_percent !== undefined ? `${data.system.cpu_percent}%` : `${data.system.cpu_count}核`}
+                {data.system.cpu_percent !== undefined ? `${data.system.cpu_percent}%` : `${data.system.cpu_count}${t("diagnostics.cores") || "核"}`}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {data.system.has_psutil ? `${data.system.cpu_count} 核心` : `Load: ${data.system.load_avg_1m?.toFixed(2)}`}
+                {data.system.has_psutil ? `${data.system.cpu_count} ${t("diagnostics.cores") || "核心"}` : `Load: ${data.system.load_avg_1m?.toFixed(2)}`}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
@@ -240,20 +242,20 @@ export function DiagnosticsClient() {
           <div className="rounded-xl border border-border bg-card p-5">
             <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
               <Info size={14} className="text-blue-500" />
-              系统信息
+              {t("diagnostics.systemInfo")}
             </h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div><span className="text-muted-foreground">主机名:</span> <span className="font-mono">{data.system.hostname}</span></div>
-              <div><span className="text-muted-foreground">系统:</span> {data.system.os}</div>
-              <div><span className="text-muted-foreground">架构:</span> {data.system.arch}</div>
+              <div><span className="text-muted-foreground">{t("diagnostics.hostname")}:</span> <span className="font-mono">{data.system.hostname}</span></div>
+              <div><span className="text-muted-foreground">{t("diagnostics.os")}:</span> {data.system.os}</div>
+              <div><span className="text-muted-foreground">{t("diagnostics.arch")}:</span> {data.system.arch}</div>
               <div><span className="text-muted-foreground">Python:</span> <span className="font-mono">{data.system.python}</span></div>
               {data.system.disk_percent !== undefined && (
                 <>
-                  <div><span className="text-muted-foreground">磁盘:</span> {data.system.disk_percent}% ({data.system.disk_used_gb}G / {data.system.disk_total_gb}G)</div>
+                  <div><span className="text-muted-foreground">{t("diagnostics.disk")}:</span> {data.system.disk_percent}% ({data.system.disk_used_gb}G / {data.system.disk_total_gb}G)</div>
                 </>
               )}
               {data.system.uptime_seconds !== undefined && (
-                <div><span className="text-muted-foreground">运行时间:</span> {formatUptime(data.system.uptime_seconds)}</div>
+                <div><span className="text-muted-foreground">{t("diagnostics.uptime")}:</span> {formatUptime(data.system.uptime_seconds)}</div>
               )}
             </div>
           </div>
@@ -269,7 +271,7 @@ export function DiagnosticsClient() {
                   {categoryLabels[category] || category}
                 </h3>
                 <span className="text-[10px] text-muted-foreground">
-                  {organs.filter((o) => o.status === "ok").length}/{organs.length} 正常
+                  {organs.filter((o) => o.status === "ok").length}/{organs.length} {t("diagnostics.healthy") || "正常"}
                 </span>
               </div>
             </div>
@@ -296,12 +298,12 @@ export function DiagnosticsClient() {
                     <div className="px-5 pb-4 pt-0">
                       <div className="rounded-lg bg-muted/50 p-4 text-xs space-y-2">
                         <div className="grid grid-cols-3 gap-2">
-                          <div><span className="text-muted-foreground">状态码:</span> {organDetails[organ.key].status_code}</div>
-                          <div><span className="text-muted-foreground">响应时间:</span> {organDetails[organ.key].response_time_ms}ms</div>
-                          <div><span className="text-muted-foreground">分类:</span> {organDetails[organ.key].category}</div>
+                          <div><span className="text-muted-foreground">{t("diagnostics.statusCode") || "状态码"}:</span> {organDetails[organ.key].status_code}</div>
+                          <div><span className="text-muted-foreground">{t("diagnostics.responseTime") || "响应时间"}:</span> {organDetails[organ.key].response_time_ms}ms</div>
+                          <div><span className="text-muted-foreground">{t("diagnostics.category") || "分类"}:</span> {organDetails[organ.key].category}</div>
                         </div>
                         {organDetails[organ.key].error && (
-                          <div className="text-red-500">错误: {organDetails[organ.key].error}</div>
+                          <div className="text-red-500">{t("diagnostics.error") || "错误"}: {organDetails[organ.key].error}</div>
                         )}
                         {organDetails[organ.key].detail && (
                           <pre className="whitespace-pre-wrap rounded bg-background p-3 text-[11px] font-mono max-h-40 overflow-y-auto">
@@ -323,9 +325,9 @@ export function DiagnosticsClient() {
             <div className="px-5 py-3 border-b border-border bg-muted/30">
               <h3 className="text-sm font-semibold flex items-center gap-2">
                 <Settings size={14} className="text-violet-500" />
-                配置变更
+                {t("diagnostics.configChanges")}
                 <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500">
-                  {configChanges.length} 项
+                  {configChanges.length} {t("diagnostics.items") || "项"}
                 </span>
               </h3>
             </div>
@@ -334,10 +336,10 @@ export function DiagnosticsClient() {
                 <div key={change.key} className="flex items-center gap-4 px-5 py-3 text-xs">
                   <span className="font-mono font-medium text-foreground w-48 truncate">{change.key}</span>
                   <span className="text-muted-foreground flex-1 truncate">
-                    默认: <span className="font-mono">{JSON.stringify(change.default)}</span>
+                    {t("diagnostics.default") || "默认"}: <span className="font-mono">{JSON.stringify(change.default)}</span>
                   </span>
                   <span className="text-amber-500 font-mono truncate">
-                    当前: {JSON.stringify(change.current)}
+                    {t("diagnostics.current") || "当前"}: {JSON.stringify(change.current)}
                   </span>
                 </div>
               ))}
@@ -360,11 +362,11 @@ export function DiagnosticsClient() {
             )}
             <div>
               <p className="text-sm font-semibold">
-                {data.summary.overall === "ok" ? "所有系统正常运行" : "部分系统异常"}
+                {data.summary.overall === "ok" ? (t("diagnostics.allOk") || "所有系统正常运行") : (t("diagnostics.partialError") || "部分系统异常")}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {data.summary.healthy}/{data.summary.total} 器官健康 · 平均响应 {data.summary.avg_response_ms}ms ·
-                系统 {data.system.hostname} ({data.system.os})
+                {data.summary.healthy}/{data.summary.total} {t("diagnostics.organHealth") || "器官健康"} · {t("diagnostics.avgResponse")} {data.summary.avg_response_ms}ms ·
+                {t("diagnostics.system") || "系统"} {data.system.hostname} ({data.system.os})
               </p>
             </div>
           </div>
