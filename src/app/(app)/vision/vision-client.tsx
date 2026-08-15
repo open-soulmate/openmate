@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useEffect } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
@@ -24,6 +25,7 @@ function formatBytes(bytes: number): string {
 }
 
 export function VisionClient() {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<"chart" | "mindmap" | "outputs">("chart");
   const [chartType, setChartType] = useState<"bar" | "line" | "pie" | "scatter">("bar");
   const [loading, setLoading] = useState(false);
@@ -186,10 +188,10 @@ export function VisionClient() {
   };
 
   const chartTabs = [
-    { id: "bar" as const, label: "柱状图", icon: BarChart3 },
-    { id: "line" as const, label: "折线图", icon: TrendingUp },
-    { id: "pie" as const, label: "饼图", icon: PieChart },
-    { id: "scatter" as const, label: "散点图", icon: ScatterChart },
+    { id: "bar" as const, label: t("vision.barChart"), icon: BarChart3 },
+    { id: "line" as const, label: t("vision.lineChart"), icon: TrendingUp },
+    { id: "pie" as const, label: t("vision.pieChart"), icon: PieChart },
+    { id: "scatter" as const, label: t("vision.scatterChart"), icon: ScatterChart },
   ];
 
   return (
@@ -197,25 +199,29 @@ export function VisionClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <ImageIcon size={20} className="text-indigo-500" />
-          <h1 className="text-lg font-semibold">视觉 · 图表生成</h1>
+          <h1 className="text-lg font-semibold">{t("vision.title")}</h1>
           <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-500">
-            图表 · 思维导图
+            {t("vision.badge")}
           </span>
         </div>
+        <button onClick={() => { fetchOutputs(); }}
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+          <RefreshCw size={14} />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Main tabs */}
         <div className="flex gap-2">
           {[
-            { id: "chart" as const, label: "图表生成", icon: BarChart3 },
-            { id: "mindmap" as const, label: "思维导图", icon: Network },
-            { id: "outputs" as const, label: "输出文件", icon: FileImage },
-          ].map((t) => (
-            <button key={t.id} onClick={() => setTab(t.id)}
+            { id: "chart" as const, label: t("vision.charts"), icon: BarChart3 },
+            { id: "mindmap" as const, label: t("vision.mindmap"), icon: Network },
+            { id: "outputs" as const, label: t("vision.outputs"), icon: FileImage },
+          ].map((tabItem) => (
+            <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
               className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
-                tab === t.id ? "bg-indigo-500/10 text-indigo-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
-              <t.icon size={14} /> {t.label}
+                tab === tabItem.id ? "bg-indigo-500/10 text-indigo-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
+              <tabItem.icon size={14} /> {tabItem.label}
             </button>
           ))}
         </div>
@@ -239,18 +245,18 @@ export function VisionClient() {
               <div className="rounded-xl border border-border bg-card p-5 space-y-3">
                 {chartType === "bar" && (
                   <>
-                    <Field label="标题" value={barTitle} onChange={setBarTitle} placeholder="图表标题" />
-                    <Field label="标签 (逗号分隔)" value={barLabels} onChange={setBarLabels} placeholder="Q1,Q2,Q3,Q4" />
-                    <Field label="数值 (逗号分隔)" value={barValues} onChange={setBarValues} placeholder="120,150,180,200" />
-                    <Field label="颜色" value={barColor} onChange={setBarColor} placeholder="#e11d48" />
+                    <Field label={t("vision.chartTitle")} value={barTitle} onChange={setBarTitle} placeholder={t("vision.chartTitle")} />
+                    <Field label={`${t("vision.labels")} (${t("mind.chars")})`} value={barLabels} onChange={setBarLabels} placeholder="Q1,Q2,Q3,Q4" />
+                    <Field label={`${t("vision.values")} (${t("mind.chars")})`} value={barValues} onChange={setBarValues} placeholder="120,150,180,200" />
+                    <Field label={t("vision.color")} value={barColor} onChange={setBarColor} placeholder="#e11d48" />
                   </>
                 )}
                 {chartType === "line" && (
                   <>
-                    <Field label="标题" value={lineTitle} onChange={setLineTitle} placeholder="图表标题" />
-                    <Field label="X轴 (逗号分隔)" value={lineX} onChange={setLineX} placeholder="1月,2月,3月" />
+                    <Field label={t("vision.chartTitle")} value={lineTitle} onChange={setLineTitle} placeholder={t("vision.chartTitle")} />
+                    <Field label={`${t("vision.xlabel")} (${t("mind.chars")})`} value={lineX} onChange={setLineX} placeholder="1月,2月,3月" />
                     <div>
-                      <label className="text-xs text-muted-foreground">数据系列 (每行: 名称:值1,值2,...)</label>
+                      <label className="text-xs text-muted-foreground">{t("vision.seriesData")}</label>
                       <textarea value={lineSeries} onChange={(e) => setLineSeries(e.target.value)}
                         rows={3} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
                     </div>
@@ -258,16 +264,16 @@ export function VisionClient() {
                 )}
                 {chartType === "pie" && (
                   <>
-                    <Field label="标题" value={pieTitle} onChange={setPieTitle} placeholder="图表标题" />
-                    <Field label="标签 (逗号分隔)" value={pieLabels} onChange={setPieLabels} placeholder="A,B,C" />
-                    <Field label="数值 (逗号分隔)" value={pieValues} onChange={setPieValues} placeholder="30,40,30" />
+                    <Field label={t("vision.chartTitle")} value={pieTitle} onChange={setPieTitle} placeholder={t("vision.chartTitle")} />
+                    <Field label={`${t("vision.labels")} (${t("mind.chars")})`} value={pieLabels} onChange={setPieLabels} placeholder="A,B,C" />
+                    <Field label={`${t("vision.values")} (${t("mind.chars")})`} value={pieValues} onChange={setPieValues} placeholder="30,40,30" />
                   </>
                 )}
                 {chartType === "scatter" && (
                   <>
-                    <Field label="标题" value={scatterTitle} onChange={setScatterTitle} placeholder="图表标题" />
-                    <Field label="X值 (逗号分隔)" value={scatterX} onChange={setScatterX} placeholder="1,2,3" />
-                    <Field label="Y值 (逗号分隔)" value={scatterY} onChange={setScatterY} placeholder="10,20,30" />
+                    <Field label={t("vision.chartTitle")} value={scatterTitle} onChange={setScatterTitle} placeholder={t("vision.chartTitle")} />
+                    <Field label={`X (${t("mind.chars")})`} value={scatterX} onChange={setScatterX} placeholder="1,2,3" />
+                    <Field label={`Y (${t("mind.chars")})`} value={scatterY} onChange={setScatterY} placeholder="10,20,30" />
                   </>
                 )}
 
@@ -276,7 +282,7 @@ export function VisionClient() {
                 <button onClick={handleGenerateChart} disabled={loading}
                   className="flex items-center justify-center gap-2 w-full rounded-lg bg-indigo-500 px-4 py-2.5 text-sm text-white hover:bg-indigo-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                  {loading ? "生成中..." : "生成图表"}
+                  {loading ? t("vision.generating") : t("vision.generate")}
                 </button>
               </div>
             </div>
@@ -284,21 +290,21 @@ export function VisionClient() {
             {/* Preview */}
             <div className="space-y-4">
               <div className="rounded-xl border border-border bg-card p-5">
-                <h3 className="font-semibold text-sm mb-3">预览</h3>
+                <h3 className="font-semibold text-sm mb-3">{t("vision.resultPreview")}</h3>
                 {imageUrl ? (
                   <img src={imageUrl} alt="Chart" className="w-full rounded-lg border border-border" />
                 ) : (
                   <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                     <ImageIcon size={40} className="mb-3 opacity-30" />
-                    <p className="text-xs">生成图表后在此预览</p>
+                    <p className="text-xs">{t("vision.noPreview")}</p>
                   </div>
                 )}
               </div>
               {lastMeta && (
                 <div className="rounded-xl border border-border bg-card p-4 text-xs space-y-1">
-                  <div className="flex justify-between"><span className="text-muted-foreground">引擎</span><span className="font-mono">{lastMeta.engine}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">类型</span><span>{lastMeta.type}</span></div>
-                  {lastMeta.elapsed && <div className="flex justify-between"><span className="text-muted-foreground">耗时</span><span>{lastMeta.elapsed}ms</span></div>}
+                  <div className="flex justify-between"><span className="text-muted-foreground">Engine</span><span className="font-mono">{lastMeta.engine}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">Type</span><span>{lastMeta.type}</span></div>
+                  {lastMeta.elapsed && <div className="flex justify-between"><span className="text-muted-foreground">Ms</span><span>{lastMeta.elapsed}ms</span></div>}
                 </div>
               )}
             </div>
@@ -310,10 +316,10 @@ export function VisionClient() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-                <h3 className="font-semibold text-sm">思维导图数据</h3>
-                <Field label="标题" value={mindmapTitle} onChange={setMindmapTitle} placeholder="思维导图标题" />
+                <h3 className="font-semibold text-sm">{t("vision.mindmapData")}</h3>
+                <Field label={t("vision.chartTitle")} value={mindmapTitle} onChange={setMindmapTitle} placeholder={t("vision.mindmapPlaceholder")} />
                 <div>
-                  <label className="text-xs text-muted-foreground">JSON 数据结构</label>
+                  <label className="text-xs text-muted-foreground">JSON</label>
                   <textarea value={mindmapData} onChange={(e) => setMindmapData(e.target.value)}
                     rows={12}
                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs font-mono resize-none" />
@@ -322,18 +328,18 @@ export function VisionClient() {
                 <button onClick={handleGenerateMindmap} disabled={loading}
                   className="flex items-center justify-center gap-2 w-full rounded-lg bg-indigo-500 px-4 py-2.5 text-sm text-white hover:bg-indigo-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Network size={14} />}
-                  {loading ? "生成中..." : "生成思维导图"}
+                  {loading ? t("vision.generating") : t("vision.generate")}
                 </button>
               </div>
             </div>
             <div className="rounded-xl border border-border bg-card p-5">
-              <h3 className="font-semibold text-sm mb-3">预览</h3>
+              <h3 className="font-semibold text-sm mb-3">{t("vision.resultPreview")}</h3>
               {imageUrl ? (
                 <img src={imageUrl} alt="Mind Map" className="w-full rounded-lg border border-border" />
               ) : (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <Network size={40} className="mb-3 opacity-30" />
-                  <p className="text-xs">生成思维导图后在此预览</p>
+                  <p className="text-xs">{t("vision.noPreview")}</p>
                 </div>
               )}
             </div>
@@ -346,7 +352,7 @@ export function VisionClient() {
             {outputs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <FileImage size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">暂无输出文件</p>
+                <p className="text-sm">{t("vision.noOutputs")}</p>
               </div>
             ) : (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
