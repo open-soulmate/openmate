@@ -6,13 +6,14 @@ import { cn } from "@/lib/utils"
 import {
   Bone, Plus, Trash2, RefreshCw, Download, Upload, HardDrive,
   CheckCircle, XCircle, Loader2, Archive, RotateCcw, FileText,
-  Activity, ArrowUpDown,
+  Activity, ArrowUpDown, Clock, Play, Pause, CalendarClock,
 } from "lucide-react"
 
 interface MarrowHealth {
   status: string
   component: string
   backup: { total_backups: number; total_size_bytes: number; backup_dir: string }
+  scheduler: { active_schedules: number; total_schedules: number; running: boolean }
   export_dir: string
 }
 
@@ -36,7 +37,23 @@ interface ExportJob {
   created_at: string
 }
 
-type ActiveTab = "overview" | "backups" | "migration"
+interface ScheduledBackup {
+  schedule_id: string
+  name: string
+  source_dirs: string[]
+  cron_expr: string
+  interval_seconds: number
+  description: string
+  tags: string[]
+  enabled: boolean
+  created_at: number
+  last_run_at: number
+  next_run_at: number
+  run_count: number
+  last_backup_id: string
+}
+
+type ActiveTab = "overview" | "backups" | "schedules" | "migration"
 
 export function MarrowClient() {
   const apiBase = getApiBaseUrl()
@@ -44,6 +61,7 @@ export function MarrowClient() {
   const [health, setHealth] = useState<MarrowHealth | null>(null)
   const [backups, setBackups] = useState<Backup[]>([])
   const [exports, setExports] = useState<ExportJob[]>([])
+  const [schedules, setSchedules] = useState<ScheduledBackup[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
   const [restoring, setRestoring] = useState<string | null>(null)
@@ -54,20 +72,26 @@ export function MarrowClient() {
   const [showCreateBackup, setShowCreateBackup] = useState(false)
   const [backupForm, setBackupForm] = useState({ name: "", description: "", sourceDirs: "~/.opensoul/data", tags: "" })
 
+  // Create schedule form
+  const [showCreateSchedule, setShowCreateSchedule] = useState(false)
+  const [scheduleForm, setScheduleForm] = useState({ name: "", sourceDirs: "~/.opensoul/data", interval: "daily", description: "", tags: "" })
+
   // Import
   const [importing, setImporting] = useState(false)
   const [importFormat, setImportFormat] = useState("json")
 
   const refresh = useCallback(async () => {
     try {
-      const [h, b, e] = await Promise.all([
+      const [h, b, e, s] = await Promise.all([
         fetch(`${apiBase}/api/marrow/health`).then(r => r.json()),
         fetch(`${apiBase}/api/marrow/backups`).then(r => r.json()).catch(() => ({ backups: [] })),
         fetch(`${apiBase}/api/marrow/exports`).then(r => r.json()).catch(() => ({ exports: [] })),
+        fetch(`${apiBase}/api/marrow/schedules`).then(r => r.json()).catch(() => ({ schedules: [] })),
       ])
       setHealth(h)
       setBackups(b.backups || [])
       setExports(e.exports || [])
+      setSchedules(s.schedules || [])
     } catch { /* ignore */ }
     finally { setLoading(false) }
   }, [apiBase])
@@ -143,6 +167,74 @@ export function MarrowClient() {
     setDeleting(null)
   }
 
+  // ── Schedule handlers ──
+  const handleCreateSchedule = async () => {
+    setCreating(true)
+    try {
+      const sourceDirs = scheduleForm.sourceDirs.split(",").map(s => s.trim()).filter(Boolean)
+      const res = await fetch(`${apiBase}/api/marrow/schedules`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: scheduleForm.name,
+          source_dirs: sourceDirs,
+          interval: scheduleForm.interval,
+          description: scheduleForm.description || undefined,
+          tags: scheduleForm.tags ? scheduleForm.tags.split(",").map(s => s.trim()) : [],
+        }),
+      })
+      if (res.ok) {
+        const data = await res.json()
+        showMsg("ok", `定时备份已创建: ${data.name}`)
+        setShowCreateSchedule(false)
+        setScheduleForm({ name: "", sourceDirs: "~/.opensoul/data", interval: "daily", description: "", tags: "" })
+        refresh()
+      } else {
+        const err = await res.json()
+        showMsg("err", err.detail || "创建失败")
+      }
+    } catch (e: any) {
+      showMsg("err", e.message || "网络错误")
+    }
+    setCreating(false)
+  }
+
+  const handleToggleSchedule = async (scheduleId: string, enabled: boolean) => {
+    try {
+      await fetch(`${apiBase}/api/marrow/schedules/${scheduleId}/toggle`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      })
+      showMsg("ok", enabled ? "已启用" : "已暂停")
+      refresh()
+    } catch (e: any) {
+      showMsg("err", e.message || "操作失败")
+    }
+  }
+
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    if (!confirm("确认删除此定时备份？")) return
+    try {
+      await fetch(`${apiBase}/api/marrow/schedules/${scheduleId}`, { method: "DELETE" })
+      showMsg("ok", "定时备份已删除")
+      refresh()
+    } catch (e: any) {
+      showMsg("err", e.message || "删除失败")
+    }
+  }
+
+  const handleRunDue = async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/marrow/schedules/run-due`, { method: "POST" })
+      const data = await res.json()
+      showMsg("ok", `执行完成: ${data.count} 个任务`)
+      refresh()
+    } catch (e: any) {
+      showMsg("err", e.message || "执行失败")
+    }
+  }
+
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
@@ -172,6 +264,22 @@ export function MarrowClient() {
     return `${(bytes / 1024 / 1024).toFixed(1)} MB`
   }
 
+  const formatInterval = (expr: string, secs: number) => {
+    const map: Record<string, string> = { hourly: "每小时", daily: "每天", weekly: "每周" }
+    return map[expr] || `每 ${secs} 秒`
+  }
+
+  const formatNextRun = (ts: number) => {
+    if (!ts) return "—"
+    const d = new Date(ts * 1000)
+    const now = Date.now()
+    const diff = ts * 1000 - now
+    if (diff <= 0) return "即将执行"
+    if (diff < 3600000) return `${Math.round(diff / 60000)} 分钟后`
+    if (diff < 86400000) return `${Math.round(diff / 3600000)} 小时后`
+    return d.toLocaleString("zh-CN")
+  }
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full">
@@ -183,6 +291,7 @@ export function MarrowClient() {
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Bone }> = [
     { key: "overview", label: "概览", icon: Activity },
     { key: "backups", label: "备份管理", icon: Archive },
+    { key: "schedules", label: "定时备份", icon: CalendarClock },
     { key: "migration", label: "数据迁移", icon: ArrowUpDown },
   ]
 
@@ -196,7 +305,7 @@ export function MarrowClient() {
           </div>
           <div>
             <h1 className="text-lg font-semibold text-foreground">Marrow — 骨髓系统</h1>
-            <p className="text-sm text-muted-foreground">备份恢复、数据迁移、灾备管理</p>
+            <p className="text-sm text-muted-foreground">备份恢复、定时备份、数据迁移、灾备管理</p>
           </div>
         </div>
 
@@ -246,7 +355,7 @@ export function MarrowClient() {
               {[
                 { label: "总备份", value: health?.backup.total_backups ?? 0, icon: Archive, color: "text-blue-400", bg: "from-blue-500/20 to-blue-600/10" },
                 { label: "总大小", value: formatSize(health?.backup.total_size_bytes ?? 0), icon: HardDrive, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
-                { label: "导出任务", value: exports.length, icon: Download, color: "text-purple-400", bg: "from-purple-500/20 to-purple-600/10" },
+                { label: "定时任务", value: health?.scheduler.active_schedules ?? 0, icon: CalendarClock, color: "text-cyan-400", bg: "from-cyan-500/20 to-cyan-600/10" },
                 { label: "状态", value: health?.status === "ok" ? "正常" : "异常", icon: CheckCircle, color: health?.status === "ok" ? "text-green-400" : "text-red-400", bg: health?.status === "ok" ? "from-green-500/20 to-green-600/10" : "from-red-500/20 to-red-600/10" },
               ].map(s => (
                 <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-4", s.bg)}>
@@ -268,10 +377,16 @@ export function MarrowClient() {
                 <span className="text-muted-foreground">导出目录:</span>
                 <code className="px-2 py-0.5 rounded bg-muted text-xs font-mono">{health?.export_dir || "~/.opensoul/exports"}</code>
               </div>
+              <div className="flex items-center gap-2 text-sm">
+                <span className="text-muted-foreground">调度器:</span>
+                <span className={cn("text-xs font-medium", health?.scheduler.running ? "text-green-400" : "text-red-400")}>
+                  {health?.scheduler.running ? "运行中" : "已停止"}
+                </span>
+              </div>
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-3 gap-4">
               <button
                 onClick={() => { setActiveTab("backups"); setShowCreateBackup(true) }}
                 className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all text-left"
@@ -279,6 +394,14 @@ export function MarrowClient() {
                 <Plus className="w-5 h-5 text-primary mb-2" />
                 <div className="text-sm font-semibold text-foreground">创建备份</div>
                 <div className="text-xs text-muted-foreground">快照当前系统数据</div>
+              </button>
+              <button
+                onClick={() => { setActiveTab("schedules"); setShowCreateSchedule(true) }}
+                className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all text-left"
+              >
+                <CalendarClock className="w-5 h-5 text-cyan-400 mb-2" />
+                <div className="text-sm font-semibold text-foreground">定时备份</div>
+                <div className="text-xs text-muted-foreground">设置自动备份计划</div>
               </button>
               <button
                 onClick={() => setActiveTab("migration")}
@@ -389,6 +512,130 @@ export function MarrowClient() {
                 <div className="text-center py-12 text-muted-foreground text-sm">
                   <Archive className="w-8 h-8 mx-auto mb-2 opacity-40" />
                   暂无备份
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* ── Schedules Tab ── */}
+        {activeTab === "schedules" && (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-semibold text-foreground">定时备份计划</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  调度器: {health?.scheduler.running ? "运行中" : "已停止"} · {health?.scheduler.active_schedules ?? 0} 个活跃任务
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <button onClick={refresh} className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground">
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+                <button onClick={handleRunDue}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-cyan-500/30 text-cyan-400 text-sm hover:bg-cyan-500/10">
+                  <Play className="w-3.5 h-3.5" /> 立即执行
+                </button>
+                <button
+                  onClick={() => setShowCreateSchedule(!showCreateSchedule)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90"
+                >
+                  <Plus className="w-3.5 h-3.5" /> 新建计划
+                </button>
+              </div>
+            </div>
+
+            {/* Create Schedule Form */}
+            {showCreateSchedule && (
+              <div className="p-4 rounded-xl border border-border bg-card space-y-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">计划名称</label>
+                    <input value={scheduleForm.name} onChange={e => setScheduleForm({ ...scheduleForm, name: e.target.value })}
+                      placeholder="每日数据备份" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                  </div>
+                  <div>
+                    <label className="text-xs text-muted-foreground mb-1 block">执行频率</label>
+                    <select value={scheduleForm.interval} onChange={e => setScheduleForm({ ...scheduleForm, interval: e.target.value })}
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                      <option value="hourly">每小时</option>
+                      <option value="daily">每天</option>
+                      <option value="weekly">每周</option>
+                    </select>
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-muted-foreground mb-1 block">源目录 (逗号分隔)</label>
+                    <input value={scheduleForm.sourceDirs} onChange={e => setScheduleForm({ ...scheduleForm, sourceDirs: e.target.value })}
+                      placeholder="~/.opensoul/data" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
+                  </div>
+                  <div className="col-span-2">
+                    <label className="text-xs text-muted-foreground mb-1 block">标签 (逗号分隔)</label>
+                    <input value={scheduleForm.tags} onChange={e => setScheduleForm({ ...scheduleForm, tags: e.target.value })}
+                      placeholder="auto, daily" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                  </div>
+                </div>
+                <div className="flex gap-2 justify-end">
+                  <button onClick={() => setShowCreateSchedule(false)} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">取消</button>
+                  <button onClick={handleCreateSchedule} disabled={creating || !scheduleForm.name.trim()}
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40">
+                    {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CalendarClock className="w-3.5 h-3.5" />}
+                    {creating ? "创建中..." : "创建计划"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Schedule List */}
+            <div className="space-y-2">
+              {schedules.map(s => (
+                <div key={s.schedule_id} className={cn("p-4 rounded-xl border bg-card", s.enabled ? "border-cyan-500/20" : "border-border opacity-60")}>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className={cn("p-1.5 rounded-lg", s.enabled ? "bg-cyan-500/10" : "bg-muted")}>
+                        <CalendarClock className={cn("w-4 h-4", s.enabled ? "text-cyan-400" : "text-muted-foreground")} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm font-semibold text-foreground">{s.name}</span>
+                          <span className={cn("px-1.5 py-0.5 rounded text-[10px] font-medium",
+                            s.enabled ? "bg-cyan-500/10 text-cyan-400" : "bg-muted text-muted-foreground")}>
+                            {s.enabled ? "运行中" : "已暂停"}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {formatInterval(s.cron_expr, s.interval_seconds)} · {s.source_dirs.join(", ")} · 已执行 {s.run_count} 次
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          下次执行: {formatNextRun(s.next_run_at)}
+                          {s.last_run_at > 0 && ` · 上次: ${new Date(s.last_run_at * 1000).toLocaleString("zh-CN")}`}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => handleToggleSchedule(s.schedule_id, !s.enabled)}
+                        className={cn("flex items-center gap-1 px-2.5 py-1 rounded-md text-xs transition-colors",
+                          s.enabled ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20" : "bg-green-500/10 text-green-400 hover:bg-green-500/20")}>
+                        {s.enabled ? <><Pause className="w-3 h-3" /> 暂停</> : <><Play className="w-3 h-3" /> 启用</>}
+                      </button>
+                      <button onClick={() => handleDeleteSchedule(s.schedule_id)}
+                        className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
+                        <Trash2 className="w-3 h-3" /> 删除
+                      </button>
+                    </div>
+                  </div>
+                  {s.tags && s.tags.length > 0 && (
+                    <div className="flex gap-1.5 mt-2 ml-10">
+                      {s.tags.map(tag => (
+                        <span key={tag} className="px-1.5 py-0.5 rounded text-[10px] bg-muted text-muted-foreground">{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+              {schedules.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground text-sm">
+                  <CalendarClock className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                  暂无定时备份计划
                 </div>
               )}
             </div>
