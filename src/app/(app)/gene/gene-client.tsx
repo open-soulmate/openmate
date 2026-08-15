@@ -55,6 +55,7 @@ export function GeneClient() {
   const [loading, setLoading] = useState(true)
   const [activeTab, setActiveTab] = useState<ActiveTab>("browse")
   const [selectedCategory, setSelectedCategory] = useState<string>("")
+  const [searchQuery, setSearchQuery] = useState<string>("")
   const [expandedTemplate, setExpandedTemplate] = useState<string | null>(null)
 
   // Create state
@@ -138,9 +139,14 @@ export function GeneClient() {
     }
   }, [instTemplateId, instVariables, apiBase])
 
-  const filtered = selectedCategory
-    ? templates.filter(t => t.category === selectedCategory)
-    : templates
+  const filtered = templates.filter(t => {
+    if (selectedCategory && t.category !== selectedCategory) return false
+    if (searchQuery) {
+      const q = searchQuery.toLowerCase()
+      return t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.tags.some(tag => tag.toLowerCase().includes(q))
+    }
+    return true
+  })
 
   const categories = Object.keys(health?.by_category || {})
 
@@ -210,6 +216,26 @@ export function GeneClient() {
       {/* Browse Tab */}
       {activeTab === "browse" && (
         <div className="space-y-4">
+          {/* Search Bar */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="搜索模板名称、描述或标签..."
+              className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
           {/* Category Filter */}
           <div className="flex items-center gap-2">
             <button
