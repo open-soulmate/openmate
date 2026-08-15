@@ -6,6 +6,7 @@ import { getApiBaseUrl } from "@/lib/api-client"
 import {
   Dna, Loader2, Plus, Trash2, Play, Search, Tag, Package,
   ChevronDown, ChevronRight, Copy, CheckCircle, X, Settings,
+  Download, Upload, CopyPlus,
 } from "lucide-react"
 
 interface Template {
@@ -30,7 +31,7 @@ interface GeneHealth {
   by_category: Record<string, number>
 }
 
-type ActiveTab = "browse" | "create" | "instantiate"
+type ActiveTab = "browse" | "create" | "instantiate" | "import"
 
 const CATEGORY_COLORS: Record<string, string> = {
   agent: "#3b82f6",
@@ -72,6 +73,12 @@ export function GeneClient() {
   const [instVariables, setInstVariables] = useState("{}")
   const [instLoading, setInstLoading] = useState(false)
   const [instResult, setInstResult] = useState<Record<string, unknown> | null>(null)
+
+  // Import state
+  const [importJson, setImportJson] = useState("")
+  const [importLoading, setImportLoading] = useState(false)
+  const [importResult, setImportResult] = useState<Record<string, unknown> | null>(null)
+  const [importOverwrite, setImportOverwrite] = useState(false)
 
   const fetchAll = useCallback(async () => {
     try {
@@ -139,6 +146,77 @@ export function GeneClient() {
     }
   }, [instTemplateId, instVariables, apiBase])
 
+  const handleExport = useCallback(async (templateId: string) => {
+    try {
+      const res = await fetch(`${apiBase}/api/gene/templates/${templateId}/export`)
+      const data = await res.json()
+      const blob = new Blob([JSON.stringify(data.template, null, 2)], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `${templateId}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {}
+  }, [apiBase])
+
+  const handleExportAll = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/gene/export?include_builtin=true`)
+      const data = await res.json()
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement("a")
+      a.href = url
+      a.download = `gene-templates-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {}
+  }, [apiBase])
+
+  const handleClone = useCallback(async (templateId: string) => {
+    try {
+      const res = await fetch(`${apiBase}/api/gene/templates/${templateId}/clone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      })
+      if (res.ok) await fetchAll()
+    } catch {}
+  }, [apiBase, fetchAll])
+
+  const handleImport = useCallback(async () => {
+    setImportLoading(true)
+    setImportResult(null)
+    try {
+      let templates: Record<string, unknown>[] = []
+      try {
+        const parsed = JSON.parse(importJson)
+        // Support both single template and bundle format
+        if (Array.isArray(parsed)) {
+          templates = parsed
+        } else if (parsed.templates && Array.isArray(parsed.templates)) {
+          templates = parsed.templates
+        } else if (parsed.template_id || parsed.name) {
+          templates = [parsed]
+        }
+      } catch {
+        setImportResult({ error: "JSON解析失败" })
+        return
+      }
+      const res = await fetch(`${apiBase}/api/gene/import`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ templates, overwrite: importOverwrite }),
+      })
+      const data = await res.json()
+      setImportResult(data)
+      if (data.imported > 0) await fetchAll()
+    } catch {} finally {
+      setImportLoading(false)
+    }
+  }, [importJson, importOverwrite, apiBase, fetchAll])
+
   const filtered = templates.filter(t => {
     if (selectedCategory && t.category !== selectedCategory) return false
     if (searchQuery) {
@@ -162,6 +240,7 @@ export function GeneClient() {
     { key: "browse", label: "浏览模板", icon: Package },
     { key: "create", label: "创建模板", icon: Plus },
     { key: "instantiate", label: "实例化", icon: Play },
+    { key: "import", label: "导入/导出", icon: Download },
   ]
 
   return (
@@ -365,6 +444,18 @@ export function GeneClient() {
                           >
                             <Play className="w-3 h-3" /> 实例化
                           </button>
+                          <button
+                            onClick={() => handleExport(tmpl.template_id)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-medium hover:bg-blue-500/20 transition-colors"
+                          >
+                            <Download className="w-3 h-3" /> 导出
+                          </button>
+                          <button
+                            onClick={() => handleClone(tmpl.template_id)}
+                            className="flex items-center gap-1 px-3 py-1.5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg text-xs font-medium hover:bg-purple-500/20 transition-colors"
+                          >
+                            <CopyPlus className="w-3 h-3" /> 克隆
+                          </button>
                           {!tmpl.builtin && (
                             <button
                               onClick={() => handleDelete(tmpl.template_id)}
@@ -565,6 +656,95 @@ export function GeneClient() {
                   <p className="text-sm">选择模板后点击"开始实例化"</p>
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Import/Export Tab */}
+      {activeTab === "import" && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Import Section */}
+          <div className="space-y-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Upload className="w-4 h-4" /> 导入模板
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              支持导入单个模板对象、模板数组、或导出的bundle格式JSON
+            </p>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">模板 JSON</label>
+              <textarea
+                value={importJson}
+                onChange={(e) => setImportJson(e.target.value)}
+                rows={10}
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm font-mono resize-none"
+                placeholder={'{\n  "name": "My Template",\n  "category": "agent",\n  "description": "...",\n  "tags": ["custom"],\n  "config": {}\n}'}
+              />
+            </div>
+            <label className="flex items-center gap-2 text-sm cursor-pointer">
+              <input
+                type="checkbox"
+                checked={importOverwrite}
+                onChange={(e) => setImportOverwrite(e.target.checked)}
+                className="rounded"
+              />
+              覆盖已存在的模板
+            </label>
+            <button
+              onClick={handleImport}
+              disabled={!importJson.trim() || importLoading}
+              className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-blue-600 hover:to-indigo-600 transition-all flex items-center justify-center gap-2"
+            >
+              {importLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+              {importLoading ? "导入中..." : "导入模板"}
+            </button>
+            {importResult && (
+              <div className={`rounded-lg p-3 text-sm ${importResult.error ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>
+                {importResult.error ? (
+                  <span>{String(importResult.error)}</span>
+                ) : (
+                  <div className="space-y-1">
+                    <span>成功导入 {String(importResult.imported)}/{String(importResult.total)} 个模板</span>
+                    {Array.isArray(importResult.results) && (importResult.results as Array<Record<string, string>>).map((r, i) => (
+                      <div key={i} className="text-xs opacity-75">
+                        {r.success ? "✅" : "❌"} {r.template_id}: {r.message}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+
+          {/* Export Section */}
+          <div className="space-y-4">
+            <h3 className="font-semibold flex items-center gap-2">
+              <Download className="w-4 h-4" /> 导出模板
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              导出所有模板为JSON文件，可用于备份或迁移到其他实例
+            </p>
+            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="bg-muted/20 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold">{health?.total_templates ?? 0}</div>
+                  <div className="text-xs text-muted-foreground">总模板数</div>
+                </div>
+                <div className="bg-muted/20 rounded-lg p-4 text-center">
+                  <div className="text-2xl font-bold">{health?.user_count ?? 0}</div>
+                  <div className="text-xs text-muted-foreground">用户创建</div>
+                </div>
+              </div>
+              <button
+                onClick={handleExportAll}
+                className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-sm hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
+              >
+                <Download className="w-4 h-4" /> 导出全部模板
+              </button>
+              <p className="text-xs text-center text-muted-foreground">
+                导出格式: opensoul-gene-bundle-v1
+              </p>
             </div>
           </div>
         </div>
