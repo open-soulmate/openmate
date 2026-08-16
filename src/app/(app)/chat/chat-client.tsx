@@ -197,8 +197,9 @@ export function ChatClient() {
       sessionMap[key].push(s);
     }
 
-    // Build agent list from detect API data (official names)
+    // Build agent list from detect API data — only available (installed) agents
     const agentList: AgentInfo[] = detectedAgents
+      .filter(a => a.available)
       .map(a => ({
         id: a.id,
         name: a.name,
