@@ -29,6 +29,11 @@ interface VeinStats {
     unique_blobs: number;
     disk_usage_bytes: number;
     dedup_savings_bytes: number;
+    versioning?: {
+      total_versions: number;
+      total_versioned_files: number;
+      avg_versions_per_file: number;
+    };
   };
   cache: {
     entries: number;
@@ -522,6 +527,16 @@ export function VeinClient() {
               color="text-amber-500"
               bg="bg-amber-500/10"
             />
+            {stats.store.versioning && (
+              <StatCard
+                icon={Layers}
+                label="版本追踪"
+                value={stats.store.versioning.total_versions}
+                sub={`${stats.store.versioning.total_versioned_files} 个文件有版本历史`}
+                color="text-indigo-500"
+                bg="bg-indigo-500/10"
+              />
+            )}
             <StatCard
               icon={Zap}
               label="缓存命中率"
@@ -818,6 +833,33 @@ export function VeinClient() {
                             <Copy size={12} />
                           )}
                         </button>
+                      </div>
+                    </div>
+
+                    {/* Version History */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                          <Layers size={12} /> 版本历史
+                        </div>
+                        <button
+                          onClick={() => {
+                            const apiBase = getApiBaseUrl();
+                            if (!apiBase) return;
+                            fetch(`${apiBase}/api/vein/files/${selectedFile.file_id}/versions`)
+                              .then(r => r.json())
+                              .then(data => {
+                                alert(JSON.stringify(data, null, 2));
+                              })
+                              .catch(() => {});
+                          }}
+                          className="text-xs text-primary hover:underline"
+                        >
+                          查看详情
+                        </button>
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        文件支持版本追踪和回滚
                       </div>
                     </div>
 
