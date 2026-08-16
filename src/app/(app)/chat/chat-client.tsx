@@ -185,7 +185,7 @@ export function ChatClient() {
     // Load all sessions
     let sessions: Session[] = [];
     try {
-      const r = await fetch(`${getApiUrl()}/api/hermes/sessions?limit=100`, { headers: { Authorization: `Bearer ${getToken()}` } });
+      const r = await fetch(`${getApiUrl()}/api/sessions?limit=100`, { headers: { Authorization: `Bearer ${getToken()}` } });
       if (r.ok) { const d = await r.json(); sessions = d.sessions || []; }
     } catch {}
 
@@ -267,7 +267,7 @@ export function ChatClient() {
 
   const loadHistory = useCallback(async (sessionId: string) => {
     try {
-      const r = await fetch(`${getApiUrl()}/api/hermes/sessions/${sessionId}/messages`, { headers: { Authorization: `Bearer ${getToken()}` } });
+      const r = await fetch(`${getApiUrl()}/api/sessions/${sessionId}/messages`, { headers: { Authorization: `Bearer ${getToken()}` } });
       if (r.ok) {
         const d = await r.json();
         const msgs: Message[] = (d.messages || [])
