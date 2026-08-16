@@ -537,7 +537,13 @@ export function TrajectoryClient() {
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
   const [searchResults, setSearchResults] = useState<TrajectoryEvent[] | null>(null)
   const [loading, setLoading] = useState(true)
-  const [view, setView] = useState<"list" | "detail" | "search">("list")
+  const [view, setView] = useState<"list" | "detail" | "search" | "analytics">("list")
+
+  // Analytics state
+  const [toolAnalytics, setToolAnalytics] = useState<{tool_name: string; usage_count: number; success_rate: number; avg_duration_ms: number; total_tokens: number}[]>([])
+  const [agentAnalytics, setAgentAnalytics] = useState<{agent_id: string; event_count: number; success_rate: number; total_tokens: number; avg_duration_ms: number}[]>([])
+  const [tokenAnalytics, setTokenAnalytics] = useState<{daily: {day: string; tokens: number; events: number}[]; summary: {total_tokens: number; total_events: number; avg_daily_tokens: number; days_tracked: number}} | null>(null)
+  const [analyticsLoading, setAnalyticsLoading] = useState(false)
 
   // Search state
   const [query, setQuery] = useState("")
@@ -584,6 +590,20 @@ export function TrajectoryClient() {
         setEventTypes(d.types || [])
       }
     } catch {}
+  }, [apiBase])
+
+  const fetchAnalytics = useCallback(async () => {
+    setAnalyticsLoading(true)
+    try {
+      const [toolsR, agentsR, tokensR] = await Promise.all([
+        fetch(`${apiBase}/api/trajectory/analytics/tools`),
+        fetch(`${apiBase}/api/trajectory/analytics/agents`),
+        fetch(`${apiBase}/api/trajectory/analytics/tokens`),
+      ])
+      if (toolsR.ok) { const d = await toolsR.json(); setToolAnalytics(d.tools || []) }
+      if (agentsR.ok) { const d = await agentsR.json(); setAgentAnalytics(d.agents || []) }
+      if (tokensR.ok) { setTokenAnalytics(await tokensR.json()) }
+    } catch {} finally { setAnalyticsLoading(false) }
   }, [apiBase])
 
   const fetchEvents = useCallback(async (sessionId: string) => {
@@ -721,6 +741,22 @@ export function TrajectoryClient() {
         >
           <RefreshCw size={12} /> Refresh
         </button>
+        <button
+          onClick={() => {
+            if (view === "analytics") { setView("list") }
+            else { setView("analytics"); fetchAnalytics() }
+          }}
+          style={{
+            padding: "6px 12px", borderRadius: 6,
+            border: view === "analytics" ? "1px solid hsl(var(--primary))" : "1px solid hsl(var(--border))",
+            background: view === "analytics" ? "hsl(var(--primary) / 0.1)" : "transparent",
+            cursor: "pointer", fontSize: 12,
+            color: view === "analytics" ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
+            display: "flex", alignItems: "center", gap: 4,
+          }}
+        >
+          <BarChart3 size={12} /> Analytics
+        </button>
       </div>
 
       {/* Stats */}
@@ -737,6 +773,157 @@ export function TrajectoryClient() {
       />
 
       {/* Main content */}
+      {view === "analytics" ? (
+        <div style={{ padding: "0 0 20px" }}>
+          {analyticsLoading ? (
+            <div style={{ textAlign: "center", padding: 40, color: "hsl(var(--muted-foreground))" }}>
+              <RefreshCw size={24} style={{ animation: "spin 1s linear infinite", marginBottom: 8 }} />
+              <p style={{ fontSize: 14 }}>Loading analytics...</p>
+            </div>
+          ) : (
+            <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+              {/* Token Usage Summary */}
+              {tokenAnalytics && (
+                <div style={{
+                  padding: 16, borderRadius: 10,
+                  background: "linear-gradient(135deg, hsl(var(--primary) / 0.05), hsl(var(--primary) / 0.02))",
+                  border: "1px solid hsl(var(--border))",
+                }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 12px", color: "hsl(var(--foreground))", display: "flex", alignItems: "center", gap: 8 }}>
+                    <Zap size={16} style={{ color: "#f59e0b" }} /> Token Usage (Last {tokenAnalytics.summary.days_tracked} Days)
+                  </h3>
+                  <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
+                    {[
+                      { label: "Total Tokens", value: formatTokens(tokenAnalytics.summary.total_tokens), color: "#f59e0b" },
+                      { label: "Total Events", value: tokenAnalytics.summary.total_events, color: "#a855f7" },
+                      { label: "Avg Daily", value: formatTokens(tokenAnalytics.summary.avg_daily_tokens), color: "#3b82f6" },
+                    ].map(c => (
+                      <div key={c.label} style={{
+                        flex: 1, minWidth: 120, padding: "10px 14px", borderRadius: 8,
+                        background: `${c.color}11`, border: `1px solid ${c.color}33`,
+                      }}>
+                        <div style={{ fontSize: 10, color: "hsl(var(--muted-foreground))", textTransform: "uppercase", letterSpacing: "0.05em" }}>{c.label}</div>
+                        <div style={{ fontSize: 20, fontWeight: 700, color: c.color, lineHeight: 1.3 }}>{c.value}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* Daily chart (text-based bar chart) */}
+                  {tokenAnalytics.daily.length > 0 && (
+                    <div style={{ marginTop: 12 }}>
+                      <div style={{ display: "flex", alignItems: "flex-end", gap: 2, height: 60 }}>
+                        {tokenAnalytics.daily.slice(0, 14).reverse().map(d => {
+                          const maxTok = Math.max(...tokenAnalytics.daily.map(x => x.tokens), 1)
+                          const pct = (d.tokens / maxTok) * 100
+                          return (
+                            <div key={d.day} title={`${d.day}: ${d.tokens} tokens`} style={{
+                              flex: 1, height: `${Math.max(4, pct)}%`, borderRadius: "2px 2px 0 0",
+                              background: "hsl(var(--primary))", opacity: 0.7, minWidth: 4,
+                            }} />
+                          )
+                        })}
+                      </div>
+                      <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}>
+                        <span style={{ fontSize: 9, color: "hsl(var(--muted-foreground))" }}>{tokenAnalytics.daily[tokenAnalytics.daily.length - 1]?.day}</span>
+                        <span style={{ fontSize: 9, color: "hsl(var(--muted-foreground))" }}>{tokenAnalytics.daily[0]?.day}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* Tool Usage */}
+              {toolAnalytics.length > 0 && (
+                <div style={{
+                  padding: 16, borderRadius: 10,
+                  background: "hsl(var(--background))",
+                  border: "1px solid hsl(var(--border))",
+                }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 12px", color: "hsl(var(--foreground))", display: "flex", alignItems: "center", gap: 8 }}>
+                    <Wrench size={16} style={{ color: "#f59e0b" }} /> Tool Usage Frequency
+                  </h3>
+                  <div style={{ overflow: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+                          {["Tool", "Usage", "Success Rate", "Avg Duration", "Tokens"].map(h => (
+                            <th key={h} style={{ padding: "6px 8px", textAlign: "left", color: "hsl(var(--muted-foreground))", fontWeight: 500, fontSize: 10, textTransform: "uppercase" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {toolAnalytics.map(t => (
+                          <tr key={t.tool_name} style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)" }}>
+                            <td style={{ padding: "6px 8px", fontWeight: 500, color: "hsl(var(--foreground))" }}>{t.tool_name}</td>
+                            <td style={{ padding: "6px 8px", color: "hsl(var(--foreground))" }}>{t.usage_count}</td>
+                            <td style={{ padding: "6px 8px" }}>
+                              <span style={{
+                                padding: "1px 6px", borderRadius: 4, fontSize: 10,
+                                background: t.success_rate >= 90 ? "#22c55e22" : t.success_rate >= 70 ? "#f59e0b22" : "#ef444422",
+                                color: t.success_rate >= 90 ? "#22c55e" : t.success_rate >= 70 ? "#f59e0b" : "#ef4444",
+                              }}>{t.success_rate}%</span>
+                            </td>
+                            <td style={{ padding: "6px 8px", color: "hsl(var(--muted-foreground))" }}>{formatDuration(t.avg_duration_ms)}</td>
+                            <td style={{ padding: "6px 8px", color: "hsl(var(--muted-foreground))" }}>{formatTokens(t.total_tokens)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {/* Agent Performance */}
+              {agentAnalytics.length > 0 && (
+                <div style={{
+                  padding: 16, borderRadius: 10,
+                  background: "hsl(var(--background))",
+                  border: "1px solid hsl(var(--border))",
+                }}>
+                  <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 12px", color: "hsl(var(--foreground))", display: "flex", alignItems: "center", gap: 8 }}>
+                    <Bot size={16} style={{ color: "#a855f7" }} /> Agent Performance
+                  </h3>
+                  <div style={{ overflow: "auto" }}>
+                    <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
+                      <thead>
+                        <tr style={{ borderBottom: "1px solid hsl(var(--border))" }}>
+                          {["Agent", "Events", "Success Rate", "Tokens", "Avg Duration"].map(h => (
+                            <th key={h} style={{ padding: "6px 8px", textAlign: "left", color: "hsl(var(--muted-foreground))", fontWeight: 500, fontSize: 10, textTransform: "uppercase" }}>{h}</th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {agentAnalytics.map(a => (
+                          <tr key={a.agent_id} style={{ borderBottom: "1px solid hsl(var(--border) / 0.5)" }}>
+                            <td style={{ padding: "6px 8px", fontWeight: 500, color: "hsl(var(--foreground))" }}>{a.agent_id}</td>
+                            <td style={{ padding: "6px 8px", color: "hsl(var(--foreground))" }}>{a.event_count}</td>
+                            <td style={{ padding: "6px 8px" }}>
+                              <span style={{
+                                padding: "1px 6px", borderRadius: 4, fontSize: 10,
+                                background: a.success_rate >= 90 ? "#22c55e22" : a.success_rate >= 70 ? "#f59e0b22" : "#ef444422",
+                                color: a.success_rate >= 90 ? "#22c55e" : a.success_rate >= 70 ? "#f59e0b" : "#ef4444",
+                              }}>{a.success_rate}%</span>
+                            </td>
+                            <td style={{ padding: "6px 8px", color: "hsl(var(--muted-foreground))" }}>{formatTokens(a.total_tokens)}</td>
+                            <td style={{ padding: "6px 8px", color: "hsl(var(--muted-foreground))" }}>{formatDuration(a.avg_duration_ms)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
+
+              {toolAnalytics.length === 0 && agentAnalytics.length === 0 && !tokenAnalytics && (
+                <div style={{ textAlign: "center", padding: 40, color: "hsl(var(--muted-foreground))" }}>
+                  <BarChart3 size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
+                  <p style={{ fontSize: 14 }}>No analytics data yet</p>
+                  <p style={{ fontSize: 12, opacity: 0.7 }}>Analytics will appear as agents execute tasks</p>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      ) : (
       <div style={{ display: "flex", gap: 16, minHeight: 400 }}>
         {/* Left: Session List */}
         {(view === "list" || view === "detail") && (
@@ -893,6 +1080,7 @@ export function TrajectoryClient() {
           </div>
         )}
       </div>
+      )}
     </div>
   )
 }
