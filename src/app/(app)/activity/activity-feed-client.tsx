@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import { useTranslation } from "react-i18next";
@@ -75,6 +75,12 @@ export function ActivityFeedClient() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [showFilters, setShowFilters] = useState(false);
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
+  const [sseConnected, setSseConnected] = useState(false);
+  const sseRef = useRef<EventSource | null>(null);
+  const eventsRef = useRef<StreamEvent[]>([]);
+
+  // Keep eventsRef in sync
+  useEffect(() => { eventsRef.current = events; }, [events]);
 
   const fetchEvents = useCallback(async () => {
     setLoading(true);
@@ -101,19 +107,61 @@ export function ActivityFeedClient() {
     } catch {}
   }, [apiBase]);
 
+  // Initial load
   useEffect(() => {
     fetchEvents();
     fetchSummary();
   }, [fetchEvents, fetchSummary]);
 
+  // SSE real-time connection
   useEffect(() => {
-    if (!autoRefresh) return;
-    const timer = setInterval(() => {
-      fetchEvents();
-      fetchSummary();
-    }, 15000);
-    return () => clearInterval(timer);
-  }, [autoRefresh, fetchEvents, fetchSummary]);
+    if (!autoRefresh) {
+      // Disconnect SSE when live mode is off
+      if (sseRef.current) {
+        sseRef.current.close();
+        sseRef.current = null;
+        setSseConnected(false);
+      }
+      return;
+    }
+
+    const sseUrl = selectedOrgan
+      ? `${apiBase}/api/events/sse?organ=${selectedOrgan}`
+      : `${apiBase}/api/events/sse`;
+
+    const es = new EventSource(sseUrl);
+    sseRef.current = es;
+
+    es.addEventListener("connected", () => {
+      setSseConnected(true);
+    });
+
+    es.addEventListener("message", (e) => {
+      try {
+        const newEvent: StreamEvent = JSON.parse(e.data);
+        setEvents((prev) => {
+          // Deduplicate by id
+          if (prev.some((ev) => ev.id === newEvent.id)) return prev;
+          return [newEvent, ...prev].slice(0, 100);
+        });
+      } catch {}
+    });
+
+    es.onerror = () => {
+      setSseConnected(false);
+      // EventSource auto-reconnects, no action needed
+    };
+
+    // Refresh summary periodically (not via SSE)
+    const summaryTimer = setInterval(fetchSummary, 30000);
+
+    return () => {
+      es.close();
+      sseRef.current = null;
+      setSseConnected(false);
+      clearInterval(summaryTimer);
+    };
+  }, [autoRefresh, apiBase, selectedOrgan, fetchSummary]);
 
   const handleRefresh = async () => {
     setLoading(true);
@@ -149,7 +197,7 @@ export function ActivityFeedClient() {
             )}
           >
             <div className={cn("w-1.5 h-1.5 rounded-full", autoRefresh ? "bg-green-500 animate-pulse" : "bg-muted-foreground")} />
-            {t('activity.live')}
+            {autoRefresh && sseConnected ? "SSE Live" : t('activity.live')}
           </button>
           <button
             onClick={() => setShowFilters(!showFilters)}
