@@ -30,7 +30,7 @@ export function AgentsClient() {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchAction, setBatchAction] = useState<string | null>(null);
   const [configuringAgent, setConfiguringAgent] = useState<string | null>(null);
-  const [agentConfigs, setAgentConfigs] = useState<Record<string, {provider: string; model: string}>>({});
+  const [agentConfigs, setAgentConfigs] = useState<Record<string, {provider: string; model: string; custom?: boolean}>>({});
   const [providers, setProviders] = useState<Array<{name: string; base_url: string; models: Record<string, string>}>>([]);
   const eventSources = useRef<Record<string, EventSource>>({});
 
