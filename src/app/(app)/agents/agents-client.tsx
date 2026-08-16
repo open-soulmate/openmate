@@ -8,6 +8,7 @@ interface AgentInfo {
   id: string; name: string; binary: string; description: string; icon: string;
   available: boolean; version?: string; path?: string; installCommand?: string; os?: string;
   skillsManaged?: boolean;
+  provider?: string; model?: string;
 }
 
 interface InstallState {
@@ -28,6 +29,9 @@ export function AgentsClient() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [batchAction, setBatchAction] = useState<string | null>(null);
+  const [configuringAgent, setConfiguringAgent] = useState<string | null>(null);
+  const [agentConfigs, setAgentConfigs] = useState<Record<string, {provider: string; model: string}>>({});
+  const [providers, setProviders] = useState<Array<{name: string; base_url: string; models: Record<string, string>}>>([]);
   const eventSources = useRef<Record<string, EventSource>>({});
 
   const detect = useCallback(async () => {
@@ -43,7 +47,17 @@ export function AgentsClient() {
     setLoading(false);
   }, []);
 
-  useEffect(() => { detect(); }, [detect]);
+  useEffect(() => { 
+    detect();
+    // Load Gland providers
+    fetch(`${getApiBaseUrl()}/api/gland/providers`, { headers: { Authorization: `Bearer ${getToken()}` } })
+      .then(r => r.json()).then(d => setProviders(d.providers || [])).catch(() => {});
+    // Load saved agent configs from localStorage
+    try {
+      const saved = localStorage.getItem('openmate-agent-configs');
+      if (saved) setAgentConfigs(JSON.parse(saved));
+    } catch {}
+  }, [detect]);
   useEffect(() => { return () => { Object.values(eventSources.current).forEach(es => es.close()); }; }, []);
 
   // ─── Actions ──────────────────────────────────────────────────
@@ -264,6 +278,10 @@ export function AgentsClient() {
                   <div className="flex gap-1">
                     {agent.available ? (
                       <>
+                        <button onClick={() => setConfiguringAgent(configuringAgent === agent.id ? null : agent.id)}
+                          className="px-2 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1" title="模型配置">
+                          ⚙️
+                        </button>
                         <button onClick={() => handleUpdate(agent)} disabled={!!isInstalling}
                           className="px-2 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50" title={t('agents.restart')}>
                           <ArrowUpCircle className="w-3 h-3" />
@@ -315,6 +333,59 @@ export function AgentsClient() {
               {agent.installCommand && !agent.available && !install && (
                 <div className="px-4 pb-3">
                   <div className="p-2 rounded-lg bg-muted text-xs font-mono flex items-center gap-1.5 text-muted-foreground"><Terminal className="w-3 h-3 shrink-0" />{agent.installCommand}</div>
+                </div>
+              )}
+
+              {/* Model config panel */}
+              {agent.available && configuringAgent === agent.id && (
+                <div className="border-t border-border px-4 py-3 space-y-2">
+                  <div className="text-xs font-medium text-muted-foreground mb-2">模型配置</div>
+                  <div className="flex gap-2 items-center">
+                    <label className="text-xs text-muted-foreground w-16">Provider</label>
+                    <select
+                      value={agentConfigs[agent.id]?.provider || ''}
+                      onChange={e => {
+                        const cfg = { ...agentConfigs[agent.id], provider: e.target.value, model: agentConfigs[agent.id]?.model || '' };
+                        const newConfigs = { ...agentConfigs, [agent.id]: cfg };
+                        setAgentConfigs(newConfigs);
+                        localStorage.setItem('openmate-agent-configs', JSON.stringify(newConfigs));
+                      }}
+                      className="flex-1 px-2 py-1 rounded border border-border bg-background text-xs"
+                    >
+                      <option value="">选择Provider</option>
+                      {providers.map(p => (
+                        <option key={p.name} value={p.name}>{p.name} ({p.base_url})</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-2 items-center">
+                    <label className="text-xs text-muted-foreground w-16">Model</label>
+                    <select
+                      value={agentConfigs[agent.id]?.model || ''}
+                      onChange={e => {
+                        const cfg = { ...agentConfigs[agent.id], model: e.target.value };
+                        const newConfigs = { ...agentConfigs, [agent.id]: cfg };
+                        setAgentConfigs(newConfigs);
+                        localStorage.setItem('openmate-agent-configs', JSON.stringify(newConfigs));
+                      }}
+                      className="flex-1 px-2 py-1 rounded border border-border bg-background text-xs"
+                    >
+                      <option value="">选择模型</option>
+                      {(() => {
+                        const cfg = agentConfigs[agent.id];
+                        const prov = providers.find(p => p.name === cfg?.provider);
+                        if (!prov) return null;
+                        return Object.entries(prov.models).map(([type, model]) => (
+                          <option key={`${type}-${model}`} value={model}>{type}: {model}</option>
+                        ));
+                      })()}
+                    </select>
+                  </div>
+                  {agentConfigs[agent.id]?.provider && agentConfigs[agent.id]?.model && (
+                    <div className="text-xs text-green-500 flex items-center gap-1">
+                      ✓ 使用 {agentConfigs[agent.id].provider}/{agentConfigs[agent.id].model}
+                    </div>
+                  )}
                 </div>
               )}
             </div>
