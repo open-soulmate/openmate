@@ -236,6 +236,34 @@ export function AdminClient() {
             }}
           />
 
+          {/* System Report */}
+          <ActionCard
+            icon={<Download size={18} />}
+            title="Download System Report"
+            description="Generate and download a comprehensive system report with all component statuses and stats"
+            color="text-cyan-500"
+            bg="bg-cyan-500/10"
+            loading={actions["systemReport"]?.loading}
+            result={actions["systemReport"]?.result}
+            onRun={async () => {
+              setActions((prev) => ({ ...prev, systemReport: { loading: true, result: null } }));
+              try {
+                const res = await fetch(`${apiBase}/api/admin/report`, { signal: AbortSignal.timeout(15000) });
+                const data = await res.json();
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a");
+                a.href = url;
+                a.download = `opensoul-report-${new Date().toISOString().slice(0, 10)}.json`;
+                a.click();
+                URL.revokeObjectURL(url);
+                setActions((prev) => ({ ...prev, systemReport: { loading: false, result: { action: "systemReport", status: "ok", data: { healthy: data.summary?.healthy_organs, total: data.summary?.total_organs } } } }));
+              } catch (e: any) {
+                setActions((prev) => ({ ...prev, systemReport: { loading: false, result: { action: "systemReport", status: "error", error: e.message } } }));
+              }
+            }}
+          />
+
           {/* Health Check */}
           <ActionCard
             icon={<Activity size={18} />}
