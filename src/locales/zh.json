@@ -64,7 +64,8 @@
     "intelligence": "智能分析",
     "capture": "采集",
     "pipeline": "流水线",
-    "admin": "系统管理"
+    "admin": "系统管理",
+    "changelog": "版本日志"
   },
   "dashboard": {
     "title": "系统概览",
