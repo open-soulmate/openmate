@@ -1,0 +1,24 @@
+{
+  "name": "open-soulmate",
+  "version": "0.1.0",
+  "description": "CLI for the Open-Soulmate ecosystem — one command to start all services",
+  "license": "MIT",
+  "bin": {
+    "open-soulmate": "./bin/cli.mjs"
+  },
+  "type": "module",
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "open-soulmate",
+    "ai",
+    "agent",
+    "knowledge-base",
+    "cli"
+  ],
+  "files": [
+    "bin/",
+    "README.md"
+  ]
+}
