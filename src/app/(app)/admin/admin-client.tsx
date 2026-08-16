@@ -339,7 +339,7 @@ export function AdminClient() {
                   items={[
                     { label: "Total Tokens", value: (overview.stats.gland.total_tokens ?? 0).toLocaleString() },
                     { label: "Call Count", value: overview.stats.gland.call_count ?? 0 },
-                    { label: "Models Used", value: Object.keys(overview.stats.gland.by_model ?? {}).length },
+                    { label: "Providers", value: (overview.stats.gland.providers ?? []).length },
                   ]}
                 />
               )}
@@ -348,8 +348,9 @@ export function AdminClient() {
                   title="Immune 安全审计"
                   emoji="🛡"
                   items={[
-                    { label: "Audit Entries", value: overview.stats.immune.total_entries ?? 0 },
-                    { label: "Counters", value: Object.keys(overview.stats.immune.counters ?? {}).length },
+                    { label: "Audit Entries", value: overview.stats.immune.audit?.total_entries ?? 0 },
+                    { label: "Patterns", value: overview.stats.immune.moderator?.patterns ?? 0 },
+                    { label: "Blacklist", value: overview.stats.immune.access_control?.blacklist_count ?? 0 },
                   ]}
                 />
               )}
@@ -552,6 +553,30 @@ export function AdminClient() {
                   emoji="🔗"
                   items={[
                     { label: "Status", value: overview.stats.heredity.status ?? "ok" },
+                  ]}
+                />
+              )}
+              {overview.stats.cortex && (
+                <StatsCard
+                  title="Cortex 皮层"
+                  emoji="🧠"
+                  items={[
+                    { label: "Total Calls", value: overview.stats.cortex.usage?.total_calls ?? 0 },
+                    { label: "Plan Calls", value: overview.stats.cortex.usage?.plan_calls ?? 0 },
+                    { label: "Agent Calls", value: overview.stats.cortex.usage?.agent_calls ?? 0 },
+                    { label: "Think Calls", value: overview.stats.cortex.usage?.think_calls ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.voice && (
+                <StatsCard
+                  title="Voice 声带"
+                  emoji="🎤"
+                  items={[
+                    { label: "Synthesized", value: overview.stats.voice.engine?.total_synthesized ?? 0 },
+                    { label: "Characters", value: (overview.stats.voice.engine?.total_characters ?? 0).toLocaleString() },
+                    { label: "Profiles", value: overview.stats.voice.profiles?.total_profiles ?? 0 },
+                    { label: "Cache Size", value: `${((overview.stats.voice.engine?.cache?.size_bytes ?? 0) / 1024).toFixed(1)}KB` },
                   ]}
                 />
               )}
