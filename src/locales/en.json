@@ -1447,9 +1447,22 @@
   },
   "topology": {
     "title": "System Topology",
+    "catAll": "All",
     "catCore": "Core",
     "catPlatform": "Platform",
-    "catAdvanced": "Advanced"
+    "catAdvanced": "Advanced",
+    "components": "components",
+    "healthy": "Healthy",
+    "error": "Error",
+    "total": "Total",
+    "filter": "Filter",
+    "displayOptions": "Display Options",
+    "showDeps": "Show Dependencies",
+    "legend": "Legend",
+    "dependencies": "Dependencies",
+    "capabilities": "Capabilities",
+    "checking": "Checking...",
+    "goToPage": "Go to page"
   },
   "graph": {
     "title": "Knowledge Graph",
