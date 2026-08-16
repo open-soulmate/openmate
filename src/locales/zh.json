@@ -1447,9 +1447,22 @@
   },
   "topology": {
     "title": "系统拓扑",
+    "catAll": "全部",
     "catCore": "核心",
     "catPlatform": "平台",
-    "catAdvanced": "高级"
+    "catAdvanced": "高级",
+    "components": "组件",
+    "healthy": "健康",
+    "error": "异常",
+    "total": "总计",
+    "filter": "分类筛选",
+    "displayOptions": "显示选项",
+    "showDeps": "显示依赖连线",
+    "legend": "图例",
+    "dependencies": "依赖",
+    "capabilities": "能力",
+    "checking": "检查中...",
+    "goToPage": "跳转到页面"
   },
   "graph": {
     "title": "知识图谱",

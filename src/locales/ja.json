@@ -1447,9 +1447,22 @@
   },
   "topology": {
     "title": "システムトポロジー",
+    "catAll": "すべて",
     "catCore": "コア",
     "catPlatform": "プラットフォーム",
-    "catAdvanced": "アドバンスド"
+    "catAdvanced": "アドバンスド",
+    "components": "コンポーネント",
+    "healthy": "正常",
+    "error": "エラー",
+    "total": "合計",
+    "filter": "フィルター",
+    "displayOptions": "表示オプション",
+    "showDeps": "依存関係を表示",
+    "legend": "凡例",
+    "dependencies": "依存関係",
+    "capabilities": "機能",
+    "checking": "確認中...",
+    "goToPage": "ページへ移動"
   },
   "graph": {
     "title": "ナレッジグラフ",
