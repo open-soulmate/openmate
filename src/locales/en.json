@@ -61,7 +61,10 @@
     "bodyMap": "Body Map",
     "activity": "Activity",
     "diagnostics": "Diagnostics",
-    "intelligence": "Intelligence Analysis"
+    "intelligence": "Intelligence Analysis",
+    "capture": "Capture",
+    "pipeline": "Pipeline",
+    "admin": "Admin"
   },
   "dashboard": {
     "title": "System Overview",
@@ -1441,6 +1444,12 @@
       "isolation": "Isolation",
       "foundation": "Foundation"
     }
+  },
+  "topology": {
+    "title": "System Topology",
+    "catCore": "Core",
+    "catPlatform": "Platform",
+    "catAdvanced": "Advanced"
   },
   "graph": {
     "title": "Knowledge Graph",

@@ -61,7 +61,10 @@
     "bodyMap": "ボディマップ",
     "activity": "アクティビティ",
     "diagnostics": "システム診断",
-    "intelligence": "インテリジェンス分析"
+    "intelligence": "インテリジェンス分析",
+    "capture": "キャプチャ",
+    "pipeline": "パイプライン",
+    "admin": "管理"
   },
   "dashboard": {
     "title": "システム概要",
@@ -1441,6 +1444,12 @@
       "isolation": "隔離",
       "foundation": "基盤"
     }
+  },
+  "topology": {
+    "title": "システムトポロジー",
+    "catCore": "コア",
+    "catPlatform": "プラットフォーム",
+    "catAdvanced": "アドバンスド"
   },
   "graph": {
     "title": "ナレッジグラフ",
