@@ -168,6 +168,7 @@ export function AppShell() {
       label: t("nav.systemGroup") || "系统",
       items: [
         { href: "/intelligence", label: t("nav.intelligence") || "智能分析", icon: Brain },
+        { href: "/topology", label: t("nav.topology") || "系统拓扑", icon: Network },
         { href: "/trajectory", label: t("nav.trajectory") || "轨迹", icon: Activity },
         { href: "/diagnostics", label: t("nav.diagnostics") || "系统诊断", icon: Stethoscope },
         { href: "/admin", label: t("nav.admin") || "系统管理", icon: Shield },
