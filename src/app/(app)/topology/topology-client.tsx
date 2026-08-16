@@ -439,7 +439,7 @@ export function TopologyClient() {
   const selectedComp = components.find(c => c.id === selected);
 
   const categories = [
-    { key: "all", label: "全部", count: components.length },
+    { key: "all", label: t("topology.catAll") || "All", count: components.length },
     { key: "core", label: t("topology.catCore") || "核心", count: components.filter(c => c.category === "core").length },
     { key: "platform", label: t("topology.catPlatform") || "平台", count: components.filter(c => c.category === "platform").length },
     { key: "advanced", label: t("topology.catAdvanced") || "高级", count: components.filter(c => c.category === "advanced").length },
@@ -455,7 +455,7 @@ export function TopologyClient() {
             {t("topology.title") || "系统拓扑 · Topology"}
           </h1>
           <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-500">
-            {components.length} 组件
+            {components.length} {t("topology.components") || "components"}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -485,21 +485,21 @@ export function TopologyClient() {
           <div className="grid grid-cols-3 gap-2">
             <div className="rounded-lg border border-border bg-card p-2 text-center">
               <p className="text-lg font-bold text-emerald-500">{healthyCount}</p>
-              <p className="text-[10px] text-muted-foreground">健康</p>
+              <p className="text-[10px] text-muted-foreground">{t("topology.healthy") || "Healthy"}</p>
             </div>
             <div className="rounded-lg border border-border bg-card p-2 text-center">
               <p className="text-lg font-bold text-red-500">{errorCount}</p>
-              <p className="text-[10px] text-muted-foreground">异常</p>
+              <p className="text-[10px] text-muted-foreground">{t("topology.error") || "Error"}</p>
             </div>
             <div className="rounded-lg border border-border bg-card p-2 text-center">
               <p className="text-lg font-bold">{components.length}</p>
-              <p className="text-[10px] text-muted-foreground">总计</p>
+              <p className="text-[10px] text-muted-foreground">{t("topology.total") || "Total"}</p>
             </div>
           </div>
 
           {/* Category filter */}
           <div>
-            <h3 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">分类筛选</h3>
+            <h3 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("topology.filter") || "Filter"}</h3>
             <div className="space-y-1">
               {categories.map(cat => (
                 <button key={cat.key}
@@ -517,11 +517,11 @@ export function TopologyClient() {
 
           {/* Options */}
           <div>
-            <h3 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">显示选项</h3>
+            <h3 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("topology.displayOptions") || "Display"}</h3>
             <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
               <input type="checkbox" checked={showDeps} onChange={e => setShowDeps(e.target.checked)}
                 className="rounded border-border" />
-              显示依赖连线
+              {t("topology.showDeps") || "Show dependencies"}
             </label>
           </div>
 
@@ -538,7 +538,7 @@ export function TopologyClient() {
               <p className="text-xs text-muted-foreground">{selectedComp.description}</p>
               {selectedComp.dependencies.length > 0 && (
                 <div>
-                  <span className="text-[10px] text-muted-foreground uppercase">依赖</span>
+                  <span className="text-[10px] text-muted-foreground uppercase">{t("topology.dependencies") || "Dependencies"}</span>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {selectedComp.dependencies.map(dep => (
                       <span key={dep} className="rounded bg-muted px-1.5 py-0.5 text-[10px]">
@@ -550,7 +550,7 @@ export function TopologyClient() {
               )}
               {selectedComp.capabilities.length > 0 && (
                 <div>
-                  <span className="text-[10px] text-muted-foreground uppercase">能力</span>
+                  <span className="text-[10px] text-muted-foreground uppercase">{t("topology.capabilities") || "Capabilities"}</span>
                   <div className="flex flex-wrap gap-1 mt-1">
                     {selectedComp.capabilities.map(cap => (
                       <span key={cap} className="rounded bg-violet-500/10 px-1.5 py-0.5 text-[10px] text-violet-400">
@@ -563,7 +563,7 @@ export function TopologyClient() {
               {selectedComp.api_prefix && (
                 <Link href={selectedComp.api_prefix.replace("/api", "") || "/"}
                   className="inline-block text-xs text-violet-400 hover:underline">
-                  前往页面 →
+                  {t("topology.goToPage") || "Go to page"} →
                 </Link>
               )}
             </div>
@@ -571,16 +571,16 @@ export function TopologyClient() {
 
           {/* Legend */}
           <div>
-            <h3 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">图例</h3>
+            <h3 className="mb-2 text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("topology.legend") || "Legend"}</h3>
             <div className="space-y-1.5 text-xs text-muted-foreground">
               <div className="flex items-center gap-2">
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" /> 健康
+                <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" /> {t("topology.healthy") || "Healthy"}
               </div>
               <div className="flex items-center gap-2">
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" /> 异常
+                <span className="inline-block h-2.5 w-2.5 rounded-full bg-red-500" /> {t("topology.error") || "Error"}
               </div>
               <div className="flex items-center gap-2">
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" /> 检测中
+                <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" /> {t("topology.checking") || "Checking"}
               </div>
               <div className="flex items-center gap-2">
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-violet-500" /> 已选中
