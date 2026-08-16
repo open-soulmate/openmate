@@ -97,6 +97,7 @@ export function AppShell() {
         { href: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
         { href: "/body-map", label: t("nav.bodyMap") || "Body Map", icon: Activity },
         { href: "/activity", label: t("nav.activity") || "Activity", icon: Activity },
+        { href: "/gland", label: t("nav.gland") || "模型网关", icon: Zap },
       ],
     },
     {
@@ -153,7 +154,6 @@ export function AppShell() {
         { href: "/echo", label: t("nav.echo") || "回声", icon: Volume2 },
         { href: "/mirror", label: t("nav.mirror") || "镜像", icon: Layers },
         { href: "/link", label: t("nav.link") || "突触", icon: Link2 },
-        { href: "/gland", label: t("nav.gland") || "腺体", icon: Zap },
         { href: "/nest", label: t("nav.nest") || "巢穴", icon: Home },
         { href: "/limb", label: t("nav.limb") || "四肢", icon: MousePointer },
         { href: "/voice", label: t("nav.voice") || "声带", icon: Mic },
