@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 
-const soulApiUrl = process.env.SOUL_API_URL || "http://localhost:8000";
+const soulApiUrl = process.env.SOUL_API_URL || "http://localhost:8090";
 
 const nextConfig: NextConfig = {
   output: "standalone",
