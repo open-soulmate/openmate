@@ -156,6 +156,7 @@ export function AppShell() {
         { href: "/mirror", label: t("nav.mirror") || "镜像", icon: Layers },
         { href: "/link", label: t("nav.link") || "突触", icon: Link2 },
         { href: "/capture", label: t("nav.capture") || "采集", icon: Camera },
+        { href: "/pipeline", label: t("nav.pipeline") || "流水线", icon: Zap },
         { href: "/nest", label: t("nav.nest") || "巢穴", icon: Home },
         { href: "/limb", label: t("nav.limb") || "四肢", icon: MousePointer },
         { href: "/voice", label: t("nav.voice") || "声带", icon: Mic },
