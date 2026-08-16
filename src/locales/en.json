@@ -64,7 +64,8 @@
     "intelligence": "Intelligence Analysis",
     "capture": "Capture",
     "pipeline": "Pipeline",
-    "admin": "Admin"
+    "admin": "Admin",
+    "changelog": "Changelog"
   },
   "dashboard": {
     "title": "System Overview",
