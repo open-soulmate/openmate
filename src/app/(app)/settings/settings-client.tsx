@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Moon, Sun, Palette, Monitor, Save, Bot, Cpu, Globe, Key,
@@ -12,6 +12,7 @@ import { cn } from "@/lib/utils";
 import { type ThemeId, themes, getStoredTheme, persistTheme } from "@/lib/theme";
 import { useAppStore } from "@/stores/app-store";
 import { getApiBaseUrl, getToken, getUserId } from "@/lib/api-client";
+import { useToast } from "@/components/toast-provider";
 
 type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "organs" | "account" | "about";
 
@@ -223,6 +224,94 @@ export function SettingsClient() {
     window.location.href = "/login";
   }
 
+  // ── Export / Import / Clear Cache ───────────────────────────────────
+  const toast = useToast();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  function handleExportData() {
+    try {
+      const state = useAppStore.getState();
+      const data = {
+        version: "0.1.0",
+        exported_at: new Date().toISOString(),
+        settings: settings,
+        theme: getStoredTheme(),
+        api_url: getApiBaseUrl(),
+        user_id: getUserId(),
+        // Export store data
+        workspaces: state.workspaces,
+        conversations: state.conversations,
+        knowledgeItems: state.knowledgeItems,
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `openmate-export-${new Date().toISOString().slice(0, 10)}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success("导出成功", "设置和数据已导出为 JSON 文件");
+    } catch (e) {
+      toast.error("导出失败", e instanceof Error ? e.message : "未知错误");
+    }
+  }
+
+  function handleImportData() {
+    fileInputRef.current?.click();
+  }
+
+  async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      if (!data.version) {
+        toast.error("导入失败", "文件格式不正确，缺少版本信息");
+        return;
+      }
+      // Restore settings
+      if (data.settings) {
+        setSettings((prev) => ({ ...prev, ...data.settings }));
+      }
+      // Restore store data
+      const store = useAppStore.getState();
+      if (data.knowledgeItems && store.setKnowledgeItems) {
+        store.setKnowledgeItems(data.knowledgeItems);
+      }
+
+      toast.success("导入成功", `已从 ${file.name} 恢复设置数据`);
+    } catch (e) {
+      toast.error("导入失败", e instanceof Error ? e.message : "文件解析错误");
+    }
+    // Reset file input
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
+  async function handleClearCache() {
+    if (!confirm("确定要清除所有缓存数据吗？这不会删除你的知识库和设置。")) return;
+    try {
+      // Clear localStorage caches (not auth tokens)
+      const keysToKeep = ["openmate-token", "openmate-api-url", "openmate-user-id", "openmate-theme"];
+      const allKeys = Object.keys(localStorage);
+      for (const key of allKeys) {
+        if (!keysToKeep.includes(key)) {
+          localStorage.removeItem(key);
+        }
+      }
+      // Clear caches API if available
+      const apiBase = getApiBaseUrl();
+      try {
+        await fetch(`${apiBase}/api/admin/clear-cache`, { method: "POST" });
+      } catch {}
+      toast.success("缓存已清除", "本地缓存数据已清理完毕");
+    } catch (e) {
+      toast.error("清除失败", e instanceof Error ? e.message : "未知错误");
+    }
+  }
+
   async function handleTestConnection() {
     setTestStatus("testing");
     try {
@@ -428,9 +517,10 @@ export function SettingsClient() {
 
               <SettingCard title="数据管理" description="导出、导入或清除本地数据">
                 <div className="flex gap-2">
-                  <button className="px-3 py-2 rounded-lg border border-border text-xs hover:bg-muted flex items-center gap-1.5"><Download size={12} />导出数据</button>
-                  <button className="px-3 py-2 rounded-lg border border-border text-xs hover:bg-muted flex items-center gap-1.5"><Upload size={12} />导入数据</button>
-                  <button className="px-3 py-2 rounded-lg border border-red-500/30 text-xs text-red-500 hover:bg-red-500/5 flex items-center gap-1.5"><Trash2 size={12} />清除缓存</button>
+                  <button onClick={handleExportData} className="px-3 py-2 rounded-lg border border-border text-xs hover:bg-muted flex items-center gap-1.5"><Download size={12} />导出数据</button>
+                  <button onClick={handleImportData} className="px-3 py-2 rounded-lg border border-border text-xs hover:bg-muted flex items-center gap-1.5"><Upload size={12} />导入数据</button>
+                  <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportFile} className="hidden" />
+                  <button onClick={handleClearCache} className="px-3 py-2 rounded-lg border border-red-500/30 text-xs text-red-500 hover:bg-red-500/5 flex items-center gap-1.5"><Trash2 size={12} />清除缓存</button>
                 </div>
               </SettingCard>
             </>
