@@ -15,12 +15,12 @@ chrome.runtime.onInstalled.addListener(() => {
 chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   if (!tab?.id) return
 
-  const SOUL_API_BASE = "http://localhost:3000/api"
+  const SOUL_API_BASE = "http://localhost:8090/api/capture"
 
   if (info.menuItemId === "openmate-capture-page") {
     chrome.tabs.sendMessage(tab.id, { type: "GET_PAGE_INFO" }, async (response) => {
       if (response) {
-        await sendToSoulAPI("/capture/page", {
+        await sendToSoulAPI("/page", {
           title: response.title,
           url: response.url,
           description: response.description,
@@ -31,7 +31,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
   }
 
   if (info.menuItemId === "openmate-capture-selection" && info.selectionText) {
-    await sendToSoulAPI("/capture/selection", {
+    await sendToSoulAPI("/selection", {
       text: info.selectionText,
       url: tab.url || "",
       title: tab.title || ""
@@ -40,7 +40,7 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 })
 
 async function sendToSoulAPI(endpoint: string, data: Record<string, unknown>) {
-  const SOUL_API_BASE = "http://localhost:3000/api"
+  const SOUL_API_BASE = "http://localhost:8090/api/capture"
 
   try {
     const response = await fetch(`${SOUL_API_BASE}${endpoint}`, {
@@ -64,14 +64,14 @@ async function sendToSoulAPI(endpoint: string, data: Record<string, unknown>) {
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "CAPTURE_PAGE") {
-    sendToSoulAPI("/capture/page", message.data)
+    sendToSoulAPI("/page", message.data)
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }))
     return true
   }
 
   if (message.type === "CAPTURE_SELECTION") {
-    sendToSoulAPI("/capture/selection", message.data)
+    sendToSoulAPI("/selection", message.data)
       .then((result) => sendResponse({ success: true, data: result }))
       .catch((error) => sendResponse({ success: false, error: error.message }))
     return true

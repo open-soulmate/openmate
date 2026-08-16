@@ -39,6 +39,7 @@ const ORGAN_LAYOUT: Array<{
   // Eyes/Sense (face)
   { key: "sense", label: "Sense", emoji: "👁", category: "service", x: 42, y: 17, href: "/sense", system: "sensory" },
   { key: "vision", label: "Vision", emoji: "🎨", category: "organ", x: 58, y: 17, href: "/vision", system: "sensory" },
+  { key: "capture", label: "Capture", emoji: "📸", category: "service", x: 35, y: 19, href: "/capture", system: "sensory" },
 
   // Voice (throat)
   { key: "voice", label: "Voice", emoji: "🎤", category: "organ", x: 50, y: 22, href: "/voice", system: "sensory" },
