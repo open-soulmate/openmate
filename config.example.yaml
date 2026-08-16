@@ -1,0 +1,167 @@
+# ─────────────────────────────────────────────────────────────────
+# Open-Soulmate Configuration
+# "One Soul, Infinite Soma."
+#
+# This is the single source of truth for the entire Open-Soulmate
+# ecosystem. Edit this file to configure models, agents, plugins,
+# and organ behavior.
+#
+# Location: ~/.openmate/config.yaml
+# Docs: https://github.com/open-soulmate/openmate
+# ─────────────────────────────────────────────────────────────────
+
+version: "2.0"
+
+# ── Identity ───────────────────────────────────────────────────
+identity:
+  name: "OpenMate"
+  description: "AI操作系统 — 所有AI工具的入口，越用越懂你的大脑"
+  language: "zh"           # zh | en | ja
+  theme: "dark"            # dark | light | purple
+
+# ── Network ────────────────────────────────────────────────────
+network:
+  soul:
+    host: "0.0.0.0"
+    port: 8090
+  mate:
+    host: "0.0.0.0"
+    port: 3002
+
+# ── Models (via OpenGland) ─────────────────────────────────────
+models:
+  default: "deepseek-chat"
+  coding: "mimo-v2.5-pro"
+  vision: "gpt-4o"
+  fallback: "qwen-max"
+
+  providers:
+    - id: "deepseek"
+      name: "DeepSeek"
+      base_url: "https://api.deepseek.com/v1"
+      api_key: "${DEEPSEEK_API_KEY}"
+      models: ["deepseek-chat", "deepseek-coder", "deepseek-r1"]
+
+    - id: "mimo"
+      name: "MiMo (小米)"
+      base_url: "https://api.mimo.xiaomi.com/v1"
+      api_key: "${MIMO_API_KEY}"
+      models: ["mimo-v2.5-pro", "mimo-v2.5", "mimo-auto"]
+
+    - id: "openai"
+      name: "OpenAI"
+      base_url: "https://api.openai.com/v1"
+      api_key: "${OPENAI_API_KEY}"
+      models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"]
+
+    - id: "claude"
+      name: "Claude (Anthropic)"
+      base_url: "https://api.anthropic.com/v1"
+      api_key: "${ANTHROPIC_API_KEY}"
+      models: ["claude-sonnet-4-20250514", "claude-haiku-4-20250514"]
+
+    - id: "qwen"
+      name: "Qwen (通义)"
+      base_url: "https://dashscope.aliyuncs.com/compatible-mode/v1"
+      api_key: "${QWEN_API_KEY}"
+      models: ["qwen-max", "qwen-plus", "qwen-turbo"]
+
+    - id: "ollama"
+      name: "Ollama (本地)"
+      base_url: "http://localhost:11434/v1"
+      api_key: "ollama"
+      models: ["llama3.1", "qwen2.5", "deepseek-r1"]
+
+# ── Agents ─────────────────────────────────────────────────────
+agents:
+  - id: "default"
+    name: "默认助手"
+    model: "default"
+    tools: ["*"]
+    description: "通用AI助手，使用默认模型"
+
+  - id: "coder"
+    name: "编程助手"
+    model: "coding"
+    tools: ["file_read", "file_write", "code_exec", "terminal"]
+    description: "代码编写和调试专用"
+
+  - id: "researcher"
+    name: "研究助手"
+    model: "default"
+    tools: ["web_search", "knowledge_search", "doc_generate"]
+    description: "信息检索和文档生成"
+
+# ── Organs ─────────────────────────────────────────────────────
+organs:
+  # Core
+  soul:     { enabled: true }
+  cortex:   { enabled: true }
+  mate:     { enabled: true }
+  soma:     { enabled: true }
+
+  # Services
+  nerve:    { enabled: true, mode: "internal" }
+  vein:     { enabled: true }
+  sense:    { enabled: true, mode: "internal" }
+  will:     { enabled: true }
+  vital:    { enabled: true }
+  gland:    { enabled: true }
+
+  # Internal
+  immune:   { enabled: true }
+  marrow:   { enabled: true }
+  gene:     { enabled: true }
+  echo:     { enabled: true }
+  mirror:   { enabled: true }
+  link:     { enabled: true }
+
+  # Advanced
+  hippo:    { enabled: true }
+  reflex:   { enabled: true }
+  heredity: { enabled: true }
+  pulse:    { enabled: true }
+  nest:     { enabled: true }
+  limb:     { enabled: true }
+  voice:    { enabled: true }
+  vision:   { enabled: true }
+  mind:     { enabled: true }
+
+# ── Plugins ────────────────────────────────────────────────────
+plugins:
+  - id: "quick-notes"
+    enabled: true
+  - id: "pomodoro"
+    enabled: true
+  - id: "smart-calc"
+    enabled: true
+
+# ── Security ───────────────────────────────────────────────────
+security:
+  auth:
+    enabled: true
+    provider: "local"      # local | casdoor | oauth
+  rbac:
+    enabled: true
+  rate_limit:
+    enabled: true
+    requests_per_minute: 60
+
+# ── Storage ────────────────────────────────────────────────────
+storage:
+  database:
+    type: "postgresql"
+    host: "localhost"
+    port: 5432
+    name: "opensoul"
+  vector:
+    type: "qdrant"
+    host: "localhost"
+    port: 6333
+  search:
+    type: "meilisearch"
+    host: "localhost"
+    port: 7700
+  cache:
+    type: "memory"         # memory | redis
+    max_size_mb: 512
