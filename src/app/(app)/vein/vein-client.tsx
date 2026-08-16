@@ -10,6 +10,7 @@ import {
   Download, Trash2, Database, Zap, BarChart3,
   Layers, Database as CacheIcon, ArrowDownToLine, ArrowUpFromLine,
   X, Copy, Hash, Clock, FileType, Tag, Eye,
+  BookOpen,
 } from "lucide-react";
 
 interface FileItem {
@@ -485,6 +486,22 @@ export function VeinClient() {
     }
   };
 
+  const handlePromote = async (fileId: string) => {
+    try {
+      const res = await fetch(`${apiBase}/api/vein/files/${fileId}/promote`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: "default" }),
+      });
+      if (!res.ok) throw new Error(`Promote failed: ${res.status}`);
+      const data = await res.json();
+      alert(`已提升到知识库: ${data.filename}`);
+    } catch (e: any) {
+      console.error("Promote failed", e);
+      alert(`提升失败: ${e.message}`);
+    }
+  };
+
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -860,6 +877,13 @@ export function VeinClient() {
                                 >
                                   <Trash2 size={12} />
                                 </button>
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); handlePromote(f.file_id); }}
+                                  title="提升到知识库"
+                                  className="rounded-md border border-emerald-500/30 p-1.5 text-emerald-500 hover:bg-emerald-500/10 transition-colors"
+                                >
+                                  <BookOpen size={12} />
+                                </button>
                               </div>
                             </td>
                           </tr>
@@ -1029,6 +1053,12 @@ export function VeinClient() {
                         className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
                       >
                         <Trash2 size={14} /> 删除
+                      </button>
+                      <button
+                        onClick={() => { if (confirm(`将 ${selectedFile.name} 提升到知识库？`)) handlePromote(selectedFile.file_id); }}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500/30 px-3 py-2 text-sm text-emerald-500 hover:bg-emerald-500/10 transition-colors"
+                      >
+                        <BookOpen size={14} /> 提升到知识库
                       </button>
                     </div>
                   </div>
