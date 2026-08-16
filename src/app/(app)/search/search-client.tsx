@@ -31,6 +31,10 @@ const SOURCE_CONFIG: Record<string, { label: string; icon: React.ElementType; co
   events: { label: '事件', icon: Activity, color: 'text-amber-500 bg-amber-500/10' },
   agents: { label: 'Agent', icon: Bot, color: 'text-purple-500 bg-purple-500/10' },
   courses: { label: '课程', icon: GraduationCap, color: 'text-pink-500 bg-pink-500/10' },
+  trajectory: { label: '轨迹', icon: Clock, color: 'text-cyan-500 bg-cyan-500/10' },
+  cron: { label: '定时任务', icon: RotateCcw, color: 'text-orange-500 bg-orange-500/10' },
+  gene: { label: '模板', icon: Layers, color: 'text-lime-500 bg-lime-500/10' },
+  echo: { label: '消息', icon: Zap, color: 'text-rose-500 bg-rose-500/10' },
 };
 
 export function SearchClient() {
@@ -46,7 +50,7 @@ export function SearchClient() {
   const [activeSource, setActiveSource] = useState<string>('all');
 
   const MODES = [
-    { id: "unified" as const, label: "全局搜索", icon: Layers, desc: "跨知识库、文件、事件、Agent、课程搜索" },
+    { id: "unified" as const, label: "全局搜索", icon: Layers, desc: "跨知识库、文件、事件、Agent、课程、轨迹、定时任务、模板、消息搜索" },
     { id: "hybrid" as const, label: t('search.hybrid'), icon: Layers, desc: t('search.hybridDesc') },
     { id: "semantic" as const, label: t('search.semantic'), icon: Zap, desc: t('search.semanticDesc') },
     { id: "fulltext" as const, label: t('search.fulltext'), icon: BookOpen, desc: t('search.fulltextDesc') },
