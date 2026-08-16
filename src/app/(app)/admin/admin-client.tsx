@@ -312,6 +312,151 @@ export function AdminClient() {
             </div>
           </>
         )}
+
+        {/* Component Statistics */}
+        {overview?.stats && Object.keys(overview.stats).length > 0 && (
+          <>
+            <h2 className="mt-8 mb-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              Component Statistics ({Object.keys(overview.stats).length} monitored)
+            </h2>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {overview.stats.vein && (
+                <StatsCard
+                  title="Vein 文件存储"
+                  emoji="🩸"
+                  items={[
+                    { label: "Files", value: overview.stats.vein.store?.total_files ?? 0 },
+                    { label: "Dedup Savings", value: `${((overview.stats.vein.store?.dedup_savings_bytes ?? 0) / 1024).toFixed(1)}KB` },
+                    { label: "Cache Hit Rate", value: `${overview.stats.vein.cache?.hit_rate ?? 0}%` },
+                    { label: "Versions", value: overview.stats.vein.store?.versioning?.total_versions ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.gland && (
+                <StatsCard
+                  title="Gland 模型网关"
+                  emoji="🧪"
+                  items={[
+                    { label: "Total Tokens", value: (overview.stats.gland.total_tokens ?? 0).toLocaleString() },
+                    { label: "Call Count", value: overview.stats.gland.call_count ?? 0 },
+                    { label: "Models Used", value: Object.keys(overview.stats.gland.by_model ?? {}).length },
+                  ]}
+                />
+              )}
+              {overview.stats.immune && (
+                <StatsCard
+                  title="Immune 安全审计"
+                  emoji="🛡"
+                  items={[
+                    { label: "Audit Entries", value: overview.stats.immune.total_entries ?? 0 },
+                    { label: "Counters", value: Object.keys(overview.stats.immune.counters ?? {}).length },
+                  ]}
+                />
+              )}
+              {overview.stats.gene && (
+                <StatsCard
+                  title="Gene 模板库"
+                  emoji="🧬"
+                  items={[
+                    { label: "Templates", value: overview.stats.gene.total_templates ?? 0 },
+                    { label: "Built-in", value: overview.stats.gene.builtin_count ?? 0 },
+                    { label: "User", value: overview.stats.gene.user_count ?? 0 },
+                    { label: "Categories", value: Object.keys(overview.stats.gene.by_category ?? {}).length },
+                  ]}
+                />
+              )}
+              {overview.stats.hippo && (
+                <StatsCard
+                  title="Hippo 记忆管理"
+                  emoji="🧠"
+                  items={[
+                    { label: "Memories", value: overview.stats.hippo.memory?.total_memories ?? 0 },
+                    { label: "Active", value: overview.stats.hippo.memory?.active ?? 0 },
+                    { label: "Sessions", value: overview.stats.hippo.sessions?.total_sessions ?? 0 },
+                    { label: "Strategy", value: overview.stats.hippo.decay_config?.strategy ?? "N/A" },
+                  ]}
+                />
+              )}
+              {overview.stats.vital && (
+                <StatsCard
+                  title="Vital 系统监控"
+                  emoji="📊"
+                  items={[
+                    { label: "CPU", value: `${overview.stats.vital.system?.cpu_percent ?? 0}%` },
+                    { label: "Memory", value: `${overview.stats.vital.system?.memory_percent ?? 0}%` },
+                    { label: "Disk", value: `${overview.stats.vital.system?.disk_percent ?? 0}%` },
+                    { label: "Alerts", value: overview.stats.vital.alerts?.active ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.mind && (
+                <StatsCard
+                  title="Mind 人格系统"
+                  emoji="💭"
+                  items={[
+                    { label: "Personalities", value: overview.stats.mind.personality?.total_personalities ?? 0 },
+                    { label: "Active", value: overview.stats.mind.active_personality ?? "N/A" },
+                    { label: "Emotions Analyzed", value: overview.stats.mind.emotion?.total_analyzed ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.vision && (
+                <StatsCard
+                  title="Vision 视觉中枢"
+                  emoji="🎨"
+                  items={[
+                    { label: "Generated", value: overview.stats.vision.total_generated ?? 0 },
+                    { label: "Engine", value: overview.stats.vision.engine ?? "N/A" },
+                    { label: "Saved Outputs", value: overview.stats.vision.saved_outputs ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.pipeline && (
+                <StatsCard
+                  title="Pipeline 智能流水线"
+                  emoji="🔄"
+                  items={[
+                    { label: "Total Runs", value: overview.stats.pipeline.total_runs ?? 0 },
+                    { label: "Steps Executed", value: overview.stats.pipeline.total_steps_executed ?? 0 },
+                    { label: "Pipelines", value: overview.stats.pipeline.available_pipelines?.length ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.trajectory && (
+                <StatsCard
+                  title="Trajectory 轨迹"
+                  emoji="📈"
+                  items={[
+                    { label: "Sessions", value: overview.stats.trajectory.total_sessions ?? 0 },
+                    { label: "Events", value: overview.stats.trajectory.total_events ?? 0 },
+                    { label: "Tokens", value: (overview.stats.trajectory.total_tokens ?? 0).toLocaleString() },
+                  ]}
+                />
+              )}
+              {overview.stats.reflex && (
+                <StatsCard
+                  title="Reflex 高速反射"
+                  emoji="⚡"
+                  items={[
+                    { label: "Cache Entries", value: overview.stats.reflex.cache?.total_entries ?? 0 },
+                    { label: "Hit Rate", value: `${overview.stats.reflex.cache?.hit_rate_percent ?? 0}%` },
+                    { label: "Threshold", value: overview.stats.reflex.cache?.similarity_threshold ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.mirror && (
+                <StatsCard
+                  title="Mirror 沙箱"
+                  emoji="🪞"
+                  items={[
+                    { label: "Sandboxes", value: overview.stats.mirror.total_sandboxes ?? 0 },
+                    { label: "Active", value: overview.stats.mirror.active ?? 0 },
+                  ]}
+                />
+              )}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
@@ -377,6 +522,33 @@ function ActionCard({
             )}
           </span>
         )}
+      </div>
+    </div>
+  );
+}
+
+function StatsCard({
+  title,
+  emoji,
+  items,
+}: {
+  title: string;
+  emoji: string;
+  items: { label: string; value: string | number }[];
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-card p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <span className="text-lg">{emoji}</span>
+        <h3 className="text-sm font-medium">{title}</h3>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        {items.map((item, i) => (
+          <div key={i}>
+            <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</div>
+            <div className="text-sm font-semibold">{item.value}</div>
+          </div>
+        ))}
       </div>
     </div>
   );
