@@ -61,7 +61,10 @@
     "bodyMap": "躯体地图",
     "activity": "活动",
     "diagnostics": "系统诊断",
-    "intelligence": "智能分析"
+    "intelligence": "智能分析",
+    "capture": "采集",
+    "pipeline": "流水线",
+    "admin": "系统管理"
   },
   "dashboard": {
     "title": "系统概览",
@@ -1441,6 +1444,12 @@
       "isolation": "隔离",
       "foundation": "基础"
     }
+  },
+  "topology": {
+    "title": "系统拓扑",
+    "catCore": "核心",
+    "catPlatform": "平台",
+    "catAdvanced": "高级"
   },
   "graph": {
     "title": "知识图谱",

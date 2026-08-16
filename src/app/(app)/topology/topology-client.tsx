@@ -33,6 +33,8 @@ interface NodeState {
 // Category colors matching the body-map style
 const CATEGORY_COLORS: Record<string, { bg: string; border: string; text: string }> = {
   core: { bg: "bg-violet-500/20", border: "border-violet-500", text: "text-violet-400" },
+  platform: { bg: "bg-amber-500/20", border: "border-amber-500", text: "text-amber-400" },
+  advanced: { bg: "bg-cyan-500/20", border: "border-cyan-500", text: "text-cyan-400" },
   organ: { bg: "bg-cyan-500/20", border: "border-cyan-500", text: "text-cyan-400" },
   service: { bg: "bg-amber-500/20", border: "border-amber-500", text: "text-amber-400" },
   system: { bg: "bg-emerald-500/20", border: "border-emerald-500", text: "text-emerald-400" },
@@ -438,11 +440,9 @@ export function TopologyClient() {
 
   const categories = [
     { key: "all", label: "全部", count: components.length },
-    { key: "core", label: "核心", count: components.filter(c => c.category === "core").length },
-    { key: "organ", label: "器官", count: components.filter(c => c.category === "organ").length },
-    { key: "service", label: "服务", count: components.filter(c => c.category === "service").length },
-    { key: "system", label: "系统", count: components.filter(c => c.category === "system").length },
-    { key: "extension", label: "扩展", count: components.filter(c => c.category === "extension").length },
+    { key: "core", label: t("topology.catCore") || "核心", count: components.filter(c => c.category === "core").length },
+    { key: "platform", label: t("topology.catPlatform") || "平台", count: components.filter(c => c.category === "platform").length },
+    { key: "advanced", label: t("topology.catAdvanced") || "高级", count: components.filter(c => c.category === "advanced").length },
   ];
 
   return (
