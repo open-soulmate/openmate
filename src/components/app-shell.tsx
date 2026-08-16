@@ -15,6 +15,7 @@ import {
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
   Zap, Activity, Sparkles, Brain, Bolt, Heart, Home,
  MousePointer, Mic, ImageIcon, Smile, Stethoscope, Cpu, Bot, Store,
+ Camera,
  } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getApiBaseUrl } from "@/lib/api-client";
@@ -154,6 +155,7 @@ export function AppShell() {
         { href: "/echo", label: t("nav.echo") || "回声", icon: Volume2 },
         { href: "/mirror", label: t("nav.mirror") || "镜像", icon: Layers },
         { href: "/link", label: t("nav.link") || "突触", icon: Link2 },
+        { href: "/capture", label: t("nav.capture") || "采集", icon: Camera },
         { href: "/nest", label: t("nav.nest") || "巢穴", icon: Home },
         { href: "/limb", label: t("nav.limb") || "四肢", icon: MousePointer },
         { href: "/voice", label: t("nav.voice") || "声带", icon: Mic },
