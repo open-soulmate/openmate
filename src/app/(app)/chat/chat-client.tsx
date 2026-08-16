@@ -22,42 +22,20 @@ interface AgentInfo {
   icon: string; logo?: string;
   description: string;
   installed: boolean;
+  available?: boolean;
+  category?: string;
   path?: string;
   sessions: Session[];
   expanded: boolean;
 }
 
-const AGENT_DEFINITIONS = [
-  { id: 'hermes', name: 'Hermes Agent', icon: '🏛️', description: 'Nous Research Hermes Agent', logo: 'https://avatars.githubusercontent.com/u/143723048?s=48', cmd: 'hermes' },
-  { id: 'claude', name: 'Claude Code', icon: '🟣', description: 'Anthropic Claude Code', logo: 'https://avatars.githubusercontent.com/u/83906651?s=48', cmd: 'claude' },
-  { id: 'codex', name: 'Codex CLI', icon: '🟢', description: 'OpenAI Codex CLI', logo: 'https://avatars.githubusercontent.com/u/14957082?s=48', cmd: 'codex' },
-  { id: 'gemini', name: 'Gemini CLI', icon: '🔵', description: 'Google Gemini CLI', logo: 'https://avatars.githubusercontent.com/u/167475704?s=48', cmd: 'gemini' },
-  { id: 'mimo', name: 'MiMo Code', icon: '📱', description: '小米 MiMo Code', logo: 'https://avatars.githubusercontent.com/u/12345678?s=48', cmd: 'mimo' },
-  { id: 'opencode', name: 'OpenCode', icon: '⚡', description: 'OpenCode 开源编程助手', logo: 'https://avatars.githubusercontent.com/u/12345679?s=48', cmd: 'opencode' },
-  { id: 'aider', name: 'Aider', icon: '🤝', description: 'Aider AI 结对编程', logo: 'https://avatars.githubusercontent.com/u/12345680?s=48', cmd: 'aider' },
-  { id: 'copilot', name: 'GitHub Copilot', icon: '🐙', description: 'GitHub Copilot', cmd: 'gh' },
-  { id: 'cursor', name: 'Cursor', icon: '▶️', description: 'Cursor AI IDE', logo: 'https://avatars.githubusercontent.com/u/12345681?s=48', cmd: 'cursor' },
-  { id: 'windsurf', name: 'Windsurf', icon: '🏄', description: 'Codeium Windsurf IDE', logo: 'https://avatars.githubusercontent.com/u/12345682?s=48', cmd: 'windsurf' },
-  { id: 'cline', name: 'Cline', icon: '🔧', description: 'Cline VS Code AI', logo: 'https://avatars.githubusercontent.com/u/12345683?s=48', cmd: 'cline' },
-  { id: 'continue', name: 'Continue', icon: '🔄', description: 'Continue 开源AI助手', logo: 'https://avatars.githubusercontent.com/u/12345684?s=48', cmd: 'continue' },
-  { id: 'deepseek', name: 'DeepSeek', icon: '🐋', description: 'DeepSeek AI', logo: 'https://avatars.githubusercontent.com/u/12345685?s=48', cmd: 'deepseek' },
-  { id: 'qwen', name: 'Qwen Coder', icon: '🟠', description: '通义千问编程', logo: 'https://avatars.githubusercontent.com/u/12345686?s=48', cmd: 'qwen' },
-  { id: 'amazon-q', name: 'Amazon Q', icon: '☁️', description: 'Amazon Q Developer', logo: 'https://avatars.githubusercontent.com/u/12345687?s=48', cmd: 'q' },
-  { id: 'ollama', name: 'Ollama', icon: '🦙', description: 'Ollama 本地大模型', logo: 'https://avatars.githubusercontent.com/u/153379978?s=48', cmd: 'ollama' },
-  { id: 'wechat', name: '微信', icon: '💬', description: '企业微信/微信', cmd: '' },
-  { id: 'telegram', name: 'Telegram', icon: '✈️', description: 'Telegram Bot', cmd: '' },
-  { id: 'openclaw', name: 'OpenClaw', icon: '🦞', description: '开源AI Agent框架', logo: 'https://avatars.githubusercontent.com/u/12345702?s=48', cmd: 'openclaw' },
-  { id: 'pi-agent', name: 'Pi Agent', icon: '🥧', description: 'Inflection AI 个人助手', logo: 'https://avatars.githubusercontent.com/u/12345703?s=48', cmd: 'pi' },
-  { id: 'openai-agents', name: 'OpenAI Agents SDK', icon: '🤖', description: 'OpenAI多Agent编排SDK', logo: 'https://avatars.githubusercontent.com/u/14957082?s=48', cmd: 'agents' },
-  { id: 'smolagents', name: 'SmolAgents', icon: '🤗', description: 'HuggingFace轻量Agent框架', logo: 'https://avatars.githubusercontent.com/u/22679051?s=48', cmd: 'smolagents' },
-  { id: 'pydantic-ai', name: 'PydanticAI', icon: '📐', description: 'Pydantic类型安全Agent', logo: 'https://avatars.githubusercontent.com/u/12345704?s=48', cmd: 'pydantic-ai' },
-  { id: 'letta', name: 'Letta', icon: '🧬', description: 'Letta(原MemGPT)长期记忆Agent', logo: 'https://avatars.githubusercontent.com/u/12345705?s=48', cmd: 'letta' },
-  { id: 'browser-use', name: 'Browser Use', icon: '🌐', description: 'AI浏览器自动化Agent', logo: 'https://avatars.githubusercontent.com/u/12345706?s=48', cmd: 'browser-use' },
-  { id: 'mastra', name: 'Mastra', icon: '⚡', description: 'TypeScript AI Agent框架', logo: 'https://avatars.githubusercontent.com/u/12345707?s=48', cmd: 'mastra' },
-  { id: 'composio', name: 'Composio', icon: '🔌', description: 'Agent工具集成平台', logo: 'https://avatars.githubusercontent.com/u/12345708?s=48', cmd: 'composio' },
-  { id: 'agentstack', name: 'AgentStack', icon: '🏗️', description: 'AI Agent快速开发框架', logo: 'https://avatars.githubusercontent.com/u/12345709?s=48', cmd: 'agentstack' },
-  { id: 'phidata', name: 'Phidata', icon: '💎', description: 'Phidata多模态Agent框架', logo: 'https://avatars.githubusercontent.com/u/12345710?s=48', cmd: 'phi' },
-];
+// Known agent icons (fallback for detect API)
+const AGENT_ICONS: Record<string, string> = {
+  hermes: '🏛️', claude: '🟣', codex: '🟢', gemini: '🔵', mimo: '📱',
+  opencode: '⚡', aider: '🤝', copilot: '🐙', cursor: '▶️', windsurf: '🏄',
+  cline: '🔧', continue: '🔄', deepseek: '🐋', qwen: '🟠', 'amazon-q': '☁️',
+  ollama: '🦙', wechat: '💬', telegram: '✈️', openclaw: '🦞',
+};
 
 // Parse file changes from AI response content
 function parseFileChanges(content: string): FileChange[] {
@@ -197,11 +175,11 @@ export function ChatClient() {
 
   // Detect installed agents and load sessions
   const initAgents = useCallback(async () => {
-    // Detect installed agents via API
-    let detected: Record<string, string> = {};
+    // Detect installed agents via API — use full agent data from detect
+    let detectedAgents: Array<{id: string; name: string; icon: string; description: string; available: boolean; category?: string; path?: string; version?: string}> = [];
     try {
       const r = await fetch(`${getApiUrl()}/api/agents/detect`, { headers: { Authorization: `Bearer ${getToken()}` } });
-      if (r.ok) detected = await r.json();
+      if (r.ok) { const d = await r.json(); detectedAgents = d.agents || []; }
     } catch {}
 
     // Load all sessions
@@ -219,13 +197,17 @@ export function ChatClient() {
       sessionMap[key].push(s);
     }
 
-    // Build agent list
-    const agentList: AgentInfo[] = AGENT_DEFINITIONS
-      .filter(a => !!detected[a.cmd])
+    // Build agent list from detect API data (official names)
+    const agentList: AgentInfo[] = detectedAgents
       .map(a => ({
-        ...a,
-        installed: !!detected[a.cmd],
-        path: detected[a.cmd] ? detected[a.cmd] : undefined,
+        id: a.id,
+        name: a.name,
+        icon: a.icon || AGENT_ICONS[a.id] || '🤖',
+        description: a.description,
+        installed: a.available,
+        available: a.available,
+        category: a.category,
+        path: a.path,
         sessions: sessionMap[a.id] || [],
         expanded: a.id === 'hermes',
       }));
