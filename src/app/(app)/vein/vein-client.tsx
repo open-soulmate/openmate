@@ -154,6 +154,156 @@ function StatCard({ icon: Icon, label, value, sub, color, bg }: {
 
 type TabId = "files" | "cache";
 
+// ── Version History Panel ──────────────────────────────────────
+
+interface VersionInfo {
+  version_number: number;
+  content_hash: string;
+  size: number;
+  change_summary: string;
+  created_at: number;
+}
+
+function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
+  fileId: string;
+  apiBase: string;
+  onRollback: () => void;
+}) {
+  const [versions, setVersions] = useState<VersionInfo[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
+  const [rollingBack, setRollingBack] = useState<number | null>(null);
+
+  const fetchVersions = useCallback(async () => {
+    if (!apiBase || !fileId) return;
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/api/vein/files/${fileId}/versions?limit=50`);
+      if (res.ok) {
+        const data = await res.json();
+        setVersions(data.versions || []);
+      }
+    } catch {} finally {
+      setLoading(false);
+    }
+  }, [apiBase, fileId]);
+
+  useEffect(() => {
+    if (expanded) fetchVersions();
+  }, [expanded, fetchVersions]);
+
+  const handleRollback = async (versionNumber: number) => {
+    if (!confirm(`确定回滚到版本 ${versionNumber}？`)) return;
+    setRollingBack(versionNumber);
+    try {
+      const res = await fetch(`${apiBase}/api/vein/files/${fileId}/rollback/${versionNumber}`, { method: "POST" });
+      if (res.ok) {
+        fetchVersions();
+        onRollback();
+      }
+    } catch {} finally {
+      setRollingBack(null);
+    }
+  };
+
+  return (
+    <div className="space-y-2">
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center justify-between w-full"
+      >
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+          <Layers size={12} /> 版本历史
+          {versions.length > 0 && (
+            <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary font-medium">
+              v{versions[0]?.version_number || 0}
+            </span>
+          )}
+        </div>
+        <span className="text-xs text-primary">
+          {expanded ? "收起" : "展开"}
+        </span>
+      </button>
+
+      {expanded && (
+        <div className="rounded-lg border border-border bg-muted/20 overflow-hidden">
+          {loading ? (
+            <div className="flex items-center justify-center py-6 text-muted-foreground">
+              <RefreshCw size={14} className="animate-spin mr-2" />
+              <span className="text-xs">加载版本历史...</span>
+            </div>
+          ) : versions.length === 0 ? (
+            <div className="py-6 text-center text-xs text-muted-foreground">
+              暂无版本历史
+            </div>
+          ) : (
+            <div className="max-h-64 overflow-y-auto">
+              {versions.map((v, idx) => (
+                <div
+                  key={v.version_number}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-0",
+                    idx === 0 && "bg-primary/5"
+                  )}
+                >
+                  {/* Version badge */}
+                  <div className={cn(
+                    "shrink-0 w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold",
+                    idx === 0 ? "bg-primary text-white" : "bg-muted text-muted-foreground"
+                  )}>
+                    v{v.version_number}
+                  </div>
+
+                  {/* Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-medium">
+                        {v.change_summary || "内容更新"}
+                      </span>
+                      {idx === 0 && (
+                        <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-500 font-medium">
+                          当前
+                        </span>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mt-0.5">
+                      <span className="text-[10px] text-muted-foreground">
+                        {formatTime(v.created_at)}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground">
+                        {formatBytes(v.size)}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground font-mono">
+                        {v.content_hash.slice(0, 8)}...
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Rollback button */}
+                  {idx > 0 && (
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleRollback(v.version_number); }}
+                      disabled={rollingBack === v.version_number}
+                      className="shrink-0 rounded-md border border-border px-2 py-1 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
+                      title={`回滚到版本 ${v.version_number}`}
+                    >
+                      {rollingBack === v.version_number ? (
+                        <RefreshCw size={10} className="animate-spin" />
+                      ) : (
+                        "回滚"
+                      )}
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function VeinClient() {
   const { t } = useTranslation();
   const [tab, setTab] = useState<TabId>("files");
@@ -837,31 +987,11 @@ export function VeinClient() {
                     </div>
 
                     {/* Version History */}
-                    <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Layers size={12} /> 版本历史
-                        </div>
-                        <button
-                          onClick={() => {
-                            const apiBase = getApiBaseUrl();
-                            if (!apiBase) return;
-                            fetch(`${apiBase}/api/vein/files/${selectedFile.file_id}/versions`)
-                              .then(r => r.json())
-                              .then(data => {
-                                alert(JSON.stringify(data, null, 2));
-                              })
-                              .catch(() => {});
-                          }}
-                          className="text-xs text-primary hover:underline"
-                        >
-                          查看详情
-                        </button>
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        文件支持版本追踪和回滚
-                      </div>
-                    </div>
+                    <VersionHistoryPanel
+                      fileId={selectedFile.file_id}
+                      apiBase={getApiBaseUrl()}
+                      onRollback={() => { fetchFiles(); fetchStats(); }}
+                    />
 
                     {/* Actions */}
                     <div className="flex gap-2 pt-2 border-t border-border">
@@ -871,6 +1001,29 @@ export function VeinClient() {
                       >
                         <Download size={14} /> 下载文件
                       </button>
+                      <label className="flex items-center justify-center gap-1.5 rounded-lg border border-blue-500/30 px-3 py-2 text-sm text-blue-500 hover:bg-blue-500/10 transition-colors cursor-pointer">
+                        <Upload size={14} /> 更新版本
+                        <input
+                          type="file"
+                          className="hidden"
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (!file) return;
+                            const form = new FormData();
+                            form.append("file", file);
+                            form.append("change_summary", `Updated to ${file.name}`);
+                            try {
+                              const res = await fetch(`${apiBase}/api/vein/files/${selectedFile.file_id}/content`, { method: "PUT", body: form });
+                              if (res.ok) {
+                                fetchFiles();
+                                fetchStats();
+                                setSelectedFile(null);
+                              }
+                            } catch {}
+                            e.target.value = "";
+                          }}
+                        />
+                      </label>
                       <button
                         onClick={() => { if (confirm(`确定删除 ${selectedFile.name}？`)) handleDelete(selectedFile.file_id); }}
                         className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
