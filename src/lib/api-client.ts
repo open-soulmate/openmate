@@ -39,6 +39,35 @@ export const api = {
   createKnowledge: (userId: string, data: { title: string; content: string; tags?: string[] }) =>
     request(`/api/knowledge/?user_id=${userId}`, { method: 'POST', body: JSON.stringify(data) }),
   deleteKnowledge: (id: string) => request(`/api/knowledge/${id}`, { method: 'DELETE' }),
+  uploadKnowledge: async (userId: string, file: File, title?: string, tags?: string) => {
+    const base = getApiBaseUrl();
+    const form = new FormData();
+    form.append('file', file);
+    if (title) form.append('title', title);
+    if (tags) form.append('tags', tags);
+    const headers: Record<string, string> = {};
+    const token = getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${base}/api/knowledge/upload?user_id=${userId}`, {
+      method: 'POST', body: form, headers,
+    });
+    if (!res.ok) throw new Error(`Upload error: ${res.status}`);
+    return res.json();
+  },
+  uploadKnowledgeBulk: async (userId: string, files: File[], tags?: string) => {
+    const base = getApiBaseUrl();
+    const form = new FormData();
+    for (const f of files) form.append('files', f);
+    if (tags) form.append('tags', tags);
+    const headers: Record<string, string> = {};
+    const token = getToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const res = await fetch(`${base}/api/knowledge/upload/bulk?user_id=${userId}`, {
+      method: 'POST', body: form, headers,
+    });
+    if (!res.ok) throw new Error(`Upload error: ${res.status}`);
+    return res.json();
+  },
 
   // Knowledge Requests
   createKbRequest: (data: { kb_name: string; kb_description: string }) =>
