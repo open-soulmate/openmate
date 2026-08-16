@@ -454,6 +454,107 @@ export function AdminClient() {
                   ]}
                 />
               )}
+              {overview.stats.echo && (
+                <StatsCard
+                  title="Echo 消息推送"
+                  emoji="🔊"
+                  items={[
+                    { label: "Messages", value: overview.stats.echo.total_messages ?? 0 },
+                    { label: "Sent", value: overview.stats.echo.sent ?? 0 },
+                    { label: "Failed", value: overview.stats.echo.failed ?? 0 },
+                    { label: "Channels", value: overview.stats.echo.channels_enabled ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.link && (
+                <StatsCard
+                  title="Link 双向集成"
+                  emoji="🔗"
+                  items={[
+                    { label: "Connectors", value: overview.stats.link.total_connectors ?? 0 },
+                    { label: "Active", value: overview.stats.link.active ?? 0 },
+                    { label: "Events", value: overview.stats.link.total_events ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.marrow && (
+                <StatsCard
+                  title="Marrow 灾备"
+                  emoji="🦴"
+                  items={[
+                    { label: "Backups", value: overview.stats.marrow.backup?.total_backups ?? 0 },
+                    { label: "Size", value: `${((overview.stats.marrow.backup?.total_size_bytes ?? 0) / 1024).toFixed(1)}KB` },
+                    { label: "Schedules", value: overview.stats.marrow.scheduler?.total_schedules ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.sense && (
+                <StatsCard
+                  title="Sense 感官"
+                  emoji="👁"
+                  items={[
+                    { label: "OCR", value: overview.stats.sense.engines?.ocr?.available ? "✓" : "✗" },
+                    { label: "ASR", value: overview.stats.sense.engines?.asr?.available ? "✓" : "✗" },
+                    { label: "Multimodal", value: overview.stats.sense.engines?.multimodal?.available ? "✓" : "✗" },
+                  ]}
+                />
+              )}
+              {overview.stats.nerve && (
+                <StatsCard
+                  title="Nerve 神经"
+                  emoji="⚡"
+                  items={[
+                    { label: "Events", value: overview.stats.nerve.total_events ?? 0 },
+                    { label: "Nodes", value: overview.stats.nerve.total_nodes ?? 0 },
+                    { label: "Online", value: overview.stats.nerve.online_nodes ?? 0 },
+                    { label: "Subscriptions", value: overview.stats.nerve.total_subscriptions ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.will && (
+                <StatsCard
+                  title="Will 意志"
+                  emoji="✨"
+                  items={[
+                    { label: "Workflows", value: overview.stats.will.total_workflows ?? 0 },
+                    { label: "Active", value: overview.stats.will.active_workflows ?? 0 },
+                    { label: "Executions", value: overview.stats.will.total_executions ?? 0 },
+                    { label: "Success Rate", value: `${overview.stats.will.success_rate ?? 0}%` },
+                  ]}
+                />
+              )}
+              {overview.stats.limb && (
+                <StatsCard
+                  title="Limb 四肢"
+                  emoji="💪"
+                  items={[
+                    { label: "Tasks", value: overview.stats.limb.total_tasks ?? 0 },
+                    { label: "Executed", value: overview.stats.limb.total_executed ?? 0 },
+                    { label: "Running", value: overview.stats.limb.running ?? 0 },
+                    { label: "Templates", value: overview.stats.limb.templates ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.pulse && (
+                <StatsCard
+                  title="Pulse 脉搏"
+                  emoji="💓"
+                  items={[
+                    { label: "Uptime", value: `${Math.round((overview.stats.pulse.uptime_seconds ?? 0) / 60)}m` },
+                    { label: "Ticks", value: overview.stats.pulse.total_ticks ?? 0 },
+                    { label: "Signals", value: overview.stats.pulse.total_signals ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.heredity && (
+                <StatsCard
+                  title="Heredity 遗传"
+                  emoji="🔗"
+                  items={[
+                    { label: "Status", value: overview.stats.heredity.status ?? "ok" },
+                  ]}
+                />
+              )}
             </div>
           </>
         )}
