@@ -340,52 +340,77 @@ export function AgentsClient() {
               {agent.available && configuringAgent === agent.id && (
                 <div className="border-t border-border px-4 py-3 space-y-2">
                   <div className="text-xs font-medium text-muted-foreground mb-2">模型配置</div>
-                  <div className="flex gap-2 items-center">
-                    <label className="text-xs text-muted-foreground w-16">Provider</label>
-                    <select
-                      value={agentConfigs[agent.id]?.provider || ''}
-                      onChange={e => {
-                        const cfg = { ...agentConfigs[agent.id], provider: e.target.value, model: agentConfigs[agent.id]?.model || '' };
-                        const newConfigs = { ...agentConfigs, [agent.id]: cfg };
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input type="checkbox" checked={!agentConfigs[agent.id]?.custom}
+                      onChange={() => {
+                        const newConfigs = { ...agentConfigs };
+                        delete newConfigs[agent.id];
                         setAgentConfigs(newConfigs);
                         localStorage.setItem('openmate-agent-configs', JSON.stringify(newConfigs));
-                      }}
-                      className="flex-1 px-2 py-1 rounded border border-border bg-background text-xs"
-                    >
-                      <option value="">选择Provider</option>
-                      {providers.map(p => (
-                        <option key={p.name} value={p.name}>{p.name} ({p.base_url})</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="flex gap-2 items-center">
-                    <label className="text-xs text-muted-foreground w-16">Model</label>
-                    <select
-                      value={agentConfigs[agent.id]?.model || ''}
-                      onChange={e => {
-                        const cfg = { ...agentConfigs[agent.id], model: e.target.value };
-                        const newConfigs = { ...agentConfigs, [agent.id]: cfg };
+                      }} />
+                    使用全局默认（Gland配置）
+                  </label>
+                  <label className="flex items-center gap-2 text-xs cursor-pointer">
+                    <input type="checkbox" checked={!!agentConfigs[agent.id]?.custom}
+                      onChange={() => {
+                        const newConfigs = { ...agentConfigs, [agent.id]: { custom: true, provider: '', model: '' } };
                         setAgentConfigs(newConfigs);
                         localStorage.setItem('openmate-agent-configs', JSON.stringify(newConfigs));
-                      }}
-                      className="flex-1 px-2 py-1 rounded border border-border bg-background text-xs"
-                    >
-                      <option value="">选择模型</option>
-                      {(() => {
-                        const cfg = agentConfigs[agent.id];
-                        const prov = providers.find(p => p.name === cfg?.provider);
-                        if (!prov) return null;
-                        return Object.entries(prov.models).map(([type, model]) => (
-                          <option key={`${type}-${model}`} value={model}>{type}: {model}</option>
-                        ));
-                      })()}
-                    </select>
-                  </div>
-                  {agentConfigs[agent.id]?.provider && agentConfigs[agent.id]?.model && (
-                    <div className="text-xs text-green-500 flex items-center gap-1">
-                      ✓ 使用 {agentConfigs[agent.id].provider}/{agentConfigs[agent.id].model}
-                    </div>
+                      }} />
+                    自定义模型
+                  </label>
+                  {agentConfigs[agent.id]?.custom && (
+                    <>
+                      <div className="flex gap-2 items-center">
+                        <label className="text-xs text-muted-foreground w-16">Provider</label>
+                        <select
+                          value={agentConfigs[agent.id]?.provider || ''}
+                          onChange={e => {
+                            const cfg = { ...agentConfigs[agent.id], provider: e.target.value, model: '' };
+                            const newConfigs = { ...agentConfigs, [agent.id]: cfg };
+                            setAgentConfigs(newConfigs);
+                            localStorage.setItem('openmate-agent-configs', JSON.stringify(newConfigs));
+                          }}
+                          className="flex-1 px-2 py-1 rounded border border-border bg-background text-xs"
+                        >
+                          <option value="">选择Provider</option>
+                          {providers.map(p => (
+                            <option key={p.name} value={p.name}>{p.name}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="flex gap-2 items-center">
+                        <label className="text-xs text-muted-foreground w-16">Model</label>
+                        <select
+                          value={agentConfigs[agent.id]?.model || ''}
+                          onChange={e => {
+                            const cfg = { ...agentConfigs[agent.id], model: e.target.value };
+                            const newConfigs = { ...agentConfigs, [agent.id]: cfg };
+                            setAgentConfigs(newConfigs);
+                            localStorage.setItem('openmate-agent-configs', JSON.stringify(newConfigs));
+                          }}
+                          className="flex-1 px-2 py-1 rounded border border-border bg-background text-xs"
+                        >
+                          <option value="">选择模型</option>
+                          {(() => {
+                            const cfg = agentConfigs[agent.id];
+                            const prov = providers.find(p => p.name === cfg?.provider);
+                            if (!prov) return null;
+                            return Object.entries(prov.models).map(([type, model]) => (
+                              <option key={`${type}-${model}`} value={model}>{type}: {model}</option>
+                            ));
+                          })()}
+                        </select>
+                      </div>
+                    </>
                   )}
+                  <div className="text-xs text-muted-foreground">
+                    {agentConfigs[agent.id]?.custom 
+                      ? (agentConfigs[agent.id]?.provider && agentConfigs[agent.id]?.model 
+                          ? <span className="text-green-500">✓ {agentConfigs[agent.id].provider}/{agentConfigs[agent.id].model}</span>
+                          : '请选择provider和model')
+                      : '使用Gland全局配置'}
+                  </div>
                 </div>
               )}
             </div>
