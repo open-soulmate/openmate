@@ -14,9 +14,9 @@ import {
   LayoutDashboard, FolderKanban, Share2, ChevronDown,
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
   Zap, Activity, Sparkles, Brain, Bolt, Heart, Home,
- MousePointer, Mic, ImageIcon, Smile, Stethoscope, Cpu, Bot, Store,
- Camera,
- } from "lucide-react";
+  MousePointer, Mic, ImageIcon, Smile, Stethoscope, Cpu, Bot, Store,
+  Camera, ScrollText,
+} from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getApiBaseUrl } from "@/lib/api-client";
 import { type ThemeId, persistTheme } from "@/lib/theme";
@@ -170,6 +170,7 @@ export function AppShell() {
         { href: "/intelligence", label: t("nav.intelligence") || "智能分析", icon: Brain },
         { href: "/topology", label: t("nav.topology") || "系统拓扑", icon: Network },
         { href: "/trajectory", label: t("nav.trajectory") || "轨迹", icon: Activity },
+        { href: "/changelog", label: t("nav.changelog") || "版本日志", icon: ScrollText },
         { href: "/diagnostics", label: t("nav.diagnostics") || "系统诊断", icon: Stethoscope },
         { href: "/admin", label: t("nav.admin") || "系统管理", icon: Shield },
         { href: "/download", label: t("nav.download"), icon: Download },
