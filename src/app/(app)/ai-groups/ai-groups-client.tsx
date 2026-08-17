@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
+import { useTranslation } from "react-i18next";
   Users, Plus, Send, Bot, Shield, Zap, User, Trash2, ChevronDown,
   ChevronRight, Settings, X, Loader2, Search, UserPlus, Edit3, Check,
   MessageSquare, AtSign, PanelRightClose, PanelRightOpen,
@@ -53,6 +54,7 @@ function getAgentAvatarColor(index: number) {
 }
 
 export default function AIGroupsPage() {
+  const { t } = useTranslation();
   const [groups, setGroups] = useState<AIGroup[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<AIGroup | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
@@ -286,7 +288,7 @@ export default function AIGroupsPage() {
     } catch (e) {
       setMessages(prev => [...prev, {
         id: `err-${Date.now()}`, role: 'agent', agent_name: 'System',
-        agent_role: 'executor', content: '发送失败，请重试', timestamp: new Date(),
+        agent_role: 'executor', content: t("ai-groups.failed"), timestamp: new Date(),
       }]);
     }
     setSendingMessage(false);
@@ -354,27 +356,27 @@ export default function AIGroupsPage() {
         <div className="p-3 border-b border-border">
           <div className="flex items-center justify-between mb-2">
             <span className="text-sm font-medium flex items-center gap-1.5">
-              <Users className="w-4 h-4" /> AI群组
+              <Users className="w-4 h-4" /> AI{t("ai-groups.text1")}
             </span>
             <button onClick={() => setShowCreate(!showCreate)}
-              className="p-1 rounded hover:bg-muted transition-colors" title="新建群组">
+              className="p-1 rounded hover:bg-muted transition-colors" title={t("ai-groups.text2")}>
               <Plus className="w-4 h-4 text-muted-foreground" />
             </button>
           </div>
           {/* Create form inline */}
           {showCreate && (
             <div className="space-y-2 mt-2 p-2 rounded-lg bg-muted/50">
-              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="群组名称"
+              <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t("ai-groups.name")}
                 className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50" />
-              <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="描述（可选）"
+              <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder={t("ai-groups.description")}
                 className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50" />
               <div className="flex gap-1.5">
                 <button onClick={createGroup} disabled={loading}
                   className="flex-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90 disabled:opacity-50">
-                  {loading ? '创建中...' : '创建'}
+                  {loading ? t("ai-groups.create") : t("ai-groups.text3")}
                 </button>
                 <button onClick={() => setShowCreate(false)}
-                  className="px-2.5 py-1.5 bg-muted border border-border rounded text-xs hover:bg-accent">取消</button>
+                  className="px-2.5 py-1.5 bg-muted border border-border rounded text-xs hover:bg-accent">{t("ai-groups.cancel")}</button>
               </div>
             </div>
           )}
@@ -385,7 +387,7 @@ export default function AIGroupsPage() {
           {groups.length === 0 && (
             <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
               <Users className="w-8 h-8 mb-2 opacity-40" />
-              <p className="text-xs">暂无群组</p>
+              <p className="text-xs">{t("ai-groups.empty")}</p>
             </div>
           )}
           {groups.map(group => (
@@ -416,7 +418,7 @@ export default function AIGroupsPage() {
                       </div>
                     )}
                     <p className="text-[11px] text-muted-foreground truncate">
-                      {group.description || `${group.agents?.length || 0} 个Agent`}
+                      {group.description || `${group.agents?.length || 0} {t("ai-groups.text4")}`}
                     </p>
                   </div>
                 </div>
@@ -429,7 +431,7 @@ export default function AIGroupsPage() {
                     })}
                   </div>
                   <button className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity"
-                    onClick={(e) => deleteGroup(group.id, e)} title="删除">
+                    onClick={(e) => deleteGroup(group.id, e)} title={t("ai-groups.delete")}>
                     <Trash2 className="w-3 h-3" />
                   </button>
                 </div>
@@ -448,7 +450,7 @@ export default function AIGroupsPage() {
               ←
             </button>
             <Users className="w-4 h-4 text-primary" />
-            <span className="font-medium text-sm">{selectedGroup?.name || '选择一个群组'}</span>
+            <span className="font-medium text-sm">{selectedGroup?.name || t("ai-groups.select")}</span>
             {selectedGroup && (
               <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
                 {selectedGroup.agents?.length || 0} Agent
@@ -472,7 +474,7 @@ export default function AIGroupsPage() {
           {!selectedGroup && (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <MessageSquare className="w-12 h-12 mb-4 opacity-40" />
-              <p className="text-sm">选择或创建一个AI群组开始协作</p>
+              <p className="text-sm">{t("ai-groups.start")}</p>
             </div>
           )}
           {selectedGroup && messages.length === 0 && (
@@ -481,7 +483,7 @@ export default function AIGroupsPage() {
                 <Users className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-lg font-semibold mb-2">{selectedGroup.name}</h3>
-              <p className="text-sm text-muted-foreground mb-4">{selectedGroup.description || '多Agent协作群组'}</p>
+              <p className="text-sm text-muted-foreground mb-4">{selectedGroup.description || t("ai-groups.text5")}</p>
               <div className="flex flex-wrap gap-2 justify-center">
                 {(selectedGroup.agents || []).map((a, i) => {
                   const Icon = ROLE_ICONS[a.role] || Bot;
@@ -493,7 +495,7 @@ export default function AIGroupsPage() {
                   );
                 })}
               </div>
-              <p className="text-xs text-muted-foreground mt-6">输入消息开始对话，使用 @ 提及特定Agent</p>
+              <p className="text-xs text-muted-foreground mt-6">{t("ai-groups.message")} @ {t("ai-groups.text6")}</p>
             </div>
           )}
           {messages.map(msg => {
@@ -514,7 +516,7 @@ export default function AIGroupsPage() {
                         {msg.agent_role || 'executor'}
                       </span>
                       {msg.target && msg.target !== 'all' && (
-                        <span className="text-[10px] text-muted-foreground">回复 @{msg.target}</span>
+                        <span className="text-[10px] text-muted-foreground">{t("ai-groups.text7")} @{msg.target}</span>
                       )}
                     </div>
                   )}
@@ -549,10 +551,10 @@ export default function AIGroupsPage() {
           <div className="border-t border-border p-4 shrink-0">
             {/* Target selector */}
             <div className="flex items-center gap-2 mb-2 flex-wrap">
-              <span className="text-[11px] text-muted-foreground">发送给:</span>
+              <span className="text-[11px] text-muted-foreground">{t("ai-groups.send")}:</span>
               <button onClick={() => setSelectedTarget('all')}
                 className={`text-[11px] px-2 py-0.5 rounded-full transition-colors ${selectedTarget === 'all' ? 'bg-primary text-primary-foreground' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}>
-                @所有人
+                {t('aiGroups.tee5ae')}
               </button>
               {(selectedGroup.agents || []).map((a, i) => {
                 const Icon = ROLE_ICONS[a.role] || Bot;
@@ -568,7 +570,7 @@ export default function AIGroupsPage() {
             <div className="flex gap-2 items-end relative">
               <div className="flex-1 relative">
                 <textarea ref={inputRef} value={input} onChange={handleInputChange} onKeyDown={handleKeyDown}
-                  placeholder={selectedTarget === 'all' ? '输入消息... (@提及Agent)' : `@${getAgentById(selectedTarget)?.name || 'Agent'} ...`}
+                  placeholder={selectedTarget === 'all' ? t("ai-groups.text8") : `@${getAgentById(selectedTarget)?.name || 'Agent'} ...`}
                   rows={1}
                   className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
 
@@ -579,7 +581,7 @@ export default function AIGroupsPage() {
                       <button onClick={() => insertMention({ name: 'all', agent_id: 'all' })}
                         className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-sm hover:bg-muted transition-colors ${mentionIndex === 0 ? 'bg-muted' : ''}`}>
                         <AtSign className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span>所有人</span>
+                        <span>{t("ai-groups.text9")}</span>
                       </button>
                       {filteredAgents.map((a, i) => {
                         const Icon = ROLE_ICONS[a.role] || Bot;
@@ -610,7 +612,7 @@ export default function AIGroupsPage() {
       {showRightPanel && selectedGroup && (
         <div className="ai-groups-right w-72 shrink-0 border-l border-border bg-card flex flex-col">
           <div className="p-3 border-b border-border flex items-center justify-between">
-            <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />群组管理</span>
+            <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" /> {t("ai-groups.text10")}</span>
             <button onClick={() => setShowRightPanel(false)} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
           </div>
 
@@ -618,7 +620,7 @@ export default function AIGroupsPage() {
             {/* Group info */}
             <div className="p-3 border-b border-border">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-xs text-muted-foreground">群组信息</span>
+                <span className="text-xs text-muted-foreground">{t("ai-groups.text11")}</span>
                 <button onClick={() => {
                   setEditGroupName(selectedGroup.name);
                   setEditGroupDesc(selectedGroup.description || '');
@@ -627,13 +629,13 @@ export default function AIGroupsPage() {
               </div>
               {showGroupSettings ? (
                 <div className="space-y-2">
-                  <input value={editGroupName} onChange={e => setEditGroupName(e.target.value)} placeholder="群组名称"
+                  <input value={editGroupName} onChange={e => setEditGroupName(e.target.value)} placeholder={t("ai-groups.name")}
                     className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50" />
-                  <textarea value={editGroupDesc} onChange={e => setEditGroupDesc(e.target.value)} placeholder="描述"
+                  <textarea value={editGroupDesc} onChange={e => setEditGroupDesc(e.target.value)} placeholder={t("ai-groups.text12")}
                     rows={2} className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none" />
                   <div className="flex gap-1.5">
-                    <button onClick={saveGroupSettings} className="flex-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90">保存</button>
-                    <button onClick={() => setShowGroupSettings(false)} className="px-2.5 py-1.5 bg-muted border border-border rounded text-xs hover:bg-accent">取消</button>
+                    <button onClick={saveGroupSettings} className="flex-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90">{t("ai-groups.save")}</button>
+                    <button onClick={() => setShowGroupSettings(false)} className="px-2.5 py-1.5 bg-muted border border-border rounded text-xs hover:bg-accent">{t("ai-groups.cancel")}</button>
                   </div>
                 </div>
               ) : (
@@ -647,23 +649,23 @@ export default function AIGroupsPage() {
             {/* Agents list */}
             <div className="p-3">
               <div className="flex items-center justify-between mb-3">
-                <span className="text-xs text-muted-foreground">参与的Agent ({selectedGroup.agents?.length || 0})</span>
+                <span className="text-xs text-muted-foreground">{t("ai-groups.text13")} ({selectedGroup.agents?.length || 0})</span>
                 <button onClick={() => setShowAddAgent(!showAddAgent)}
                   className="flex items-center gap-1 text-[11px] text-primary hover:underline">
-                  <UserPlus className="w-3 h-3" /> 添加
+                  <UserPlus className="w-3 h-3" /> {t("ai-groups.add")}
                 </button>
               </div>
 
               {/* Add agent form */}
               {showAddAgent && (
                 <div className="mb-3 p-2.5 rounded-lg bg-muted/50 space-y-2">
-                  <input value={newAgent.name} onChange={e => setNewAgent({ ...newAgent, name: e.target.value })} placeholder="Agent名称"
+                  <input value={newAgent.name} onChange={e => setNewAgent({ ...newAgent, name: e.target.value })} placeholder={t("ai-groups.text14")}
                     className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50" />
                   <select value={newAgent.role} onChange={e => setNewAgent({ ...newAgent, role: e.target.value })}
                     className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none">
-                    <option value="advisor">Advisor (顾问)</option>
-                    <option value="executor">Executor (执行)</option>
-                    <option value="verifier">Verifier (验证)</option>
+                    <option value="advisor">Advisor ({t("ai-groups.text15")})</option>
+                    <option value="executor">Executor ({t("ai-groups.text16")})</option>
+                    <option value="verifier">Verifier ({t("ai-groups.text17")})</option>
                   </select>
                   <select value={newAgent.model} onChange={e => setNewAgent({ ...newAgent, model: e.target.value })}
                     className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none">
@@ -674,8 +676,8 @@ export default function AIGroupsPage() {
                     <option value="deepseek-r1">DeepSeek R1</option>
                   </select>
                   <div className="flex gap-1.5">
-                    <button onClick={addAgent} className="flex-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90">添加</button>
-                    <button onClick={() => setShowAddAgent(false)} className="px-2.5 py-1.5 bg-background border border-border rounded text-xs hover:bg-accent">取消</button>
+                    <button onClick={addAgent} className="flex-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90">{t("ai-groups.add")}</button>
+                    <button onClick={() => setShowAddAgent(false)} className="px-2.5 py-1.5 bg-background border border-border rounded text-xs hover:bg-accent">{t("ai-groups.cancel")}</button>
                   </div>
                 </div>
               )}
@@ -713,12 +715,12 @@ export default function AIGroupsPage() {
                           {isEditing ? (
                             <div className="space-y-2">
                               <div>
-                                <label className="text-[10px] text-muted-foreground mb-0.5 block">名称</label>
+                                <label className="text-[10px] text-muted-foreground mb-0.5 block">{t("ai-groups.text18")}</label>
                                 <input value={editAgentData.name} onChange={e => setEditAgentData({ ...editAgentData, name: e.target.value })}
                                   className="w-full px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none" />
                               </div>
                               <div>
-                                <label className="text-[10px] text-muted-foreground mb-0.5 block">角色</label>
+                                <label className="text-[10px] text-muted-foreground mb-0.5 block">{t("ai-groups.text19")}</label>
                                 <select value={editAgentData.role} onChange={e => setEditAgentData({ ...editAgentData, role: e.target.value })}
                                   className="w-full px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none">
                                   <option value="advisor">Advisor</option>
@@ -727,7 +729,7 @@ export default function AIGroupsPage() {
                                 </select>
                               </div>
                               <div>
-                                <label className="text-[10px] text-muted-foreground mb-0.5 block">模型</label>
+                                <label className="text-[10px] text-muted-foreground mb-0.5 block">{t("ai-groups.text20")}</label>
                                 <select value={editAgentData.model} onChange={e => setEditAgentData({ ...editAgentData, model: e.target.value })}
                                   className="w-full px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none">
                                   <option value="claude-opus">Claude Opus</option>
@@ -745,23 +747,23 @@ export default function AIGroupsPage() {
                               </div>
                               <div className="flex gap-1.5">
                                 <button onClick={() => saveEditAgent(agent.agent_id)}
-                                  className="flex-1 px-2 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90">保存</button>
+                                  className="flex-1 px-2 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90">{t("ai-groups.save")}</button>
                                 <button onClick={() => setEditingAgent(null)}
-                                  className="px-2 py-1.5 bg-background border border-border rounded text-xs hover:bg-accent">取消</button>
+                                  className="px-2 py-1.5 bg-background border border-border rounded text-xs hover:bg-accent">{t("ai-groups.cancel")}</button>
                               </div>
                             </div>
                           ) : (
                             <div className="space-y-2">
                               <div className="grid grid-cols-2 gap-2 text-xs">
-                                <div><span className="text-muted-foreground">模型:</span> <span className="font-medium">{agent.model}</span></div>
-                                <div><span className="text-muted-foreground">状态:</span> <span className={`font-medium ${agent.status === 'online' ? 'text-emerald-500' : 'text-zinc-500'}`}>{agent.status || 'offline'}</span></div>
-                                <div><span className="text-muted-foreground">温度:</span> <span className="font-medium">{agent.temperature || 0.7}</span></div>
+                                <div><span className="text-muted-foregroundt("ai-groups.text21")font-medium">{agent.model}</span></div>
+                                <div><span className="text-muted-foreground">{t("ai-groups.status")}:</span> <span className={`font-medium ${agent.status === 'online' ? 'text-emerald-500' : 'text-zinc-500'}`}>{agent.status || 'offline'}</span></div>
+                                <div><span className="text-muted-foregroundt("ai-groups.text22")font-medium">{agent.temperature || 0.7}</span></div>
                                 <div><span className="text-muted-foreground">ID:</span> <span className="font-medium truncate">{agent.agent_id}</span></div>
                               </div>
                               <div className="flex gap-1.5 pt-1">
                                 <button onClick={() => startEditAgent(agent)}
                                   className="flex items-center gap-1 px-2.5 py-1.5 bg-muted border border-border rounded text-xs hover:bg-accent transition-colors flex-1 justify-center">
-                                  <Edit3 className="w-3 h-3" /> 编辑
+                                  <Edit3 className="w-3 h-3" /> {t("ai-groups.edit")}
                                 </button>
                                 <button onClick={() => removeAgent(agent.agent_id)}
                                   className="flex items-center gap-1 px-2.5 py-1.5 text-red-400 bg-red-500/10 rounded text-xs hover:bg-red-500/20 transition-colors">
@@ -780,8 +782,8 @@ export default function AIGroupsPage() {
               {(selectedGroup.agents || []).length === 0 && (
                 <div className="text-center py-6 text-muted-foreground">
                   <Bot className="w-8 h-8 mx-auto mb-2 opacity-40" />
-                  <p className="text-xs">暂无Agent</p>
-                  <p className="text-[11px] mt-0.5">点击上方"添加"按钮添加Agent</p>
+                  <p className="text-xs">{t("ai-groups.text24")}</p>
+                  <p className="text-[11px] mt-0.5t("ai-groups.text25"){t("ai-groups.add")}"按钮添加Agent</p>
                 </div>
               )}
             </div>

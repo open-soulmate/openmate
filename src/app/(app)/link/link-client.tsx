@@ -158,7 +158,7 @@ export function LinkClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Link2 size={20} className="text-teal-500" />
-          <h1 className="text-lg font-semibold">{t("link.title") || "突触 · 双向集成"}</h1>
+          <h1 className="text-lg font-semibold">{t("link.title") }</h1>
           <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-500">
             双向集成
           </span>
@@ -289,7 +289,7 @@ export function LinkClient() {
                       {c.status}
                     </span>
                   </div>
-                  <div className="text-xs text-muted-foreground font-mono truncate">{c.endpoint || "无 endpoint"}</div>
+                  <div className="text-xs text-muted-foreground font-mono truncate">{c.endpoint }</div>
                   <div className="text-xs text-muted-foreground mt-1">事件: {c.event_count}</div>
                 </div>
               );
