@@ -5,7 +5,9 @@ const soulApiUrl = process.env.SOUL_API_URL || "http://localhost:8090";
 const nextConfig: NextConfig = {
   output: "standalone",
   devIndicators: false,
-  turbopack: {},
+  turbopack: {
+    root: '/home/climbing/openmate',
+  },
   async rewrites() {
     return [
       {
