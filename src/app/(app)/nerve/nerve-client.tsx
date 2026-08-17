@@ -224,11 +224,11 @@ export function NerveClient() {
   const bus = health?.bus
 
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Zap }> = [
-    { key: "overview", label: "总览", icon: Activity },
-    { key: "events", label: "事件流", icon: MessageSquare },
-    { key: "subscriptions", label: "订阅管理", icon: Radio },
-    { key: "nodes", label: "节点管理", icon: Server },
-    { key: "publish", label: "发布事件", icon: Send },
+    { key: "overview", label: t('nerve.overview2'), icon: Activity },
+    { key: "events", label: t('nerve.eventStream'), icon: MessageSquare },
+    { key: "subscriptions", label: t('nerve.subscriptionMgmt'), icon: Radio },
+    { key: "nodes", label: t('nerve.nodeMgmt'), icon: Server },
+    { key: "publish", label: t('nerve.publishEvent1'), icon: Send },
   ]
 
   return (
@@ -239,18 +239,18 @@ export function NerveClient() {
           <Zap className="w-6 h-6 text-blue-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">⚡ Nerve — 事件总线</h1>
-          <p className="text-sm text-muted-foreground">事件发布/订阅、节点管理、消息分发</p>
+          <h1 className="text-2xl font-bold">{t('nerve.event')}</h1>
+          <p className="text-sm text-muted-foreground">{t('nerve.nodeMgmteventpublish')}</p>
         </div>
       </div>
 
       {/* Stats Bar */}
       <div className="grid grid-cols-4 gap-4">
         {[
-          { label: "总事件", value: bus?.total_events ?? 0, icon: MessageSquare, color: "blue" },
-          { label: "总节点", value: bus?.total_nodes ?? 0, icon: Server, color: "purple" },
-          { label: "在线节点", value: bus?.online_nodes ?? 0, icon: Wifi, color: "green" },
-          { label: "订阅数", value: bus?.total_subscriptions ?? 0, icon: Radio, color: "yellow" },
+          { label: t('nerve.totalEvents1'), value: bus?.total_events ?? 0, icon: MessageSquare, color: "blue" },
+          { label: t('nerve.node'), value: bus?.total_nodes ?? 0, icon: Server, color: "purple" },
+          { label: t('nerve.nodeonline'), value: bus?.online_nodes ?? 0, icon: Wifi, color: "green" },
+          { label: t('nerve.subscribe1'), value: bus?.total_subscriptions ?? 0, icon: Radio, color: "yellow" },
         ].map(s => {
           const Icon = s.icon
           return (
@@ -293,7 +293,7 @@ export function NerveClient() {
           {bus?.topics && bus.topics.length > 0 && (
             <div className="bg-card border border-border rounded-xl p-5">
               <h3 className="font-semibold mb-3 flex items-center gap-2">
-                <Globe className="w-4 h-4" /> 活跃 Topics
+                <Globe className="w-4 h-4" /> {t('nerve.active1')}
               </h3>
               <div className="flex flex-wrap gap-2">
                 {bus.topics.map(topic => (
@@ -316,24 +316,24 @@ export function NerveClient() {
               className="bg-card border border-border rounded-xl p-5 text-left hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group"
             >
               <Send className="w-6 h-6 text-blue-400 mb-2 group-hover:scale-110 transition-transform" />
-              <h4 className="font-semibold text-sm">发布事件</h4>
-              <p className="text-xs text-muted-foreground mt-1">向事件总线发布新消息</p>
+              <h4 className="font-semibold text-sm">{t('nerve.publishEvent2')}</h4>
+              <p className="text-xs text-muted-foreground mt-1">{t('nerve.eventpublishmessage')}</p>
             </button>
             <button
               onClick={() => setActiveTab("subscriptions")}
               className="bg-card border border-border rounded-xl p-5 text-left hover:border-purple-500/30 hover:bg-purple-500/5 transition-all group"
             >
               <Radio className="w-6 h-6 text-purple-400 mb-2 group-hover:scale-110 transition-transform" />
-              <h4 className="font-semibold text-sm">管理订阅</h4>
-              <p className="text-xs text-muted-foreground mt-1">查看和管理事件订阅</p>
+              <h4 className="font-semibold text-sm">{t('nerve.subscribe2')}</h4>
+              <p className="text-xs text-muted-foreground mt-1">{t('nerve.eventsubscribe')}</p>
             </button>
             <button
               onClick={() => setActiveTab("nodes")}
               className="bg-card border border-border rounded-xl p-5 text-left hover:border-green-500/30 hover:bg-green-500/5 transition-all group"
             >
               <Server className="w-6 h-6 text-green-400 mb-2 group-hover:scale-110 transition-transform" />
-              <h4 className="font-semibold text-sm">节点管理</h4>
-              <p className="text-xs text-muted-foreground mt-1">注册和管理分布式节点</p>
+              <h4 className="font-semibold text-sm">{t('nerve.nodeMgmt1')}</h4>
+              <p className="text-xs text-muted-foreground mt-1">{t('nerve.node1')}</p>
             </button>
           </div>
 
@@ -341,7 +341,7 @@ export function NerveClient() {
           <div className="bg-card border border-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-3">
               <h3 className="font-semibold flex items-center gap-2">
-                <Clock className="w-4 h-4" /> 最近事件
+                <Clock className="w-4 h-4" /> {t('nerve.recentEvents')}
               </h3>
               <button
                 onClick={() => setActiveTab("events")}
@@ -351,7 +351,7 @@ export function NerveClient() {
               </button>
             </div>
             {events.length === 0 ? (
-              <p className="text-sm text-muted-foreground/50 text-center py-6">暂无事件</p>
+              <p className="text-sm text-muted-foreground/50 text-center py-6">{t('nerve.noDataevent')}</p>
             ) : (
               <div className="space-y-2">
                 {events.slice(-5).reverse().map(evt => (
@@ -382,7 +382,7 @@ export function NerveClient() {
                 type="text"
                 value={eventTopicFilter}
                 onChange={(e) => setEventTopicFilter(e.target.value)}
-                placeholder="按 topic 过滤 (如 soma.*)"
+                placeholder={t('nerve.filter1')}
                 className="flex-1 bg-card border border-border rounded-lg px-3 py-2 text-sm"
               />
             </div>
@@ -390,7 +390,7 @@ export function NerveClient() {
               onClick={fetchEvents}
               className="flex items-center gap-1 px-3 py-2 bg-muted/30 border border-border rounded-lg text-sm hover:bg-muted/50 transition-colors"
             >
-              <RefreshCw className="w-3.5 h-3.5" /> 刷新
+              <RefreshCw className="w-3.5 h-3.5" /> {t('nerve.refresh4')}
             </button>
             <span className="text-xs text-muted-foreground">共 {events.length} 条</span>
           </div>
@@ -400,7 +400,7 @@ export function NerveClient() {
               {events.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
                   <MessageSquare className="w-12 h-12 mb-2" />
-                  <p className="text-sm">暂无事件</p>
+                  <p className="text-sm">{t('nerve.noDataevent1')}</p>
                 </div>
               ) : (
                 <div className="divide-y divide-border/50">
@@ -429,7 +429,7 @@ export function NerveClient() {
                                 onClick={() => copyToClipboard(JSON.stringify(evt, null, 2))}
                                 className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
                               >
-                                <Copy className="w-3 h-3" /> 复制
+                                <Copy className="w-3 h-3" /> {t('nerve.copy5')}
                               </button>
                             </div>
                             <pre className="text-xs font-mono bg-background/50 rounded p-2 overflow-x-auto">
@@ -458,28 +458,28 @@ export function NerveClient() {
           {/* Add Subscription */}
           <div className="bg-card border border-border rounded-xl p-5">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <Plus className="w-4 h-4" /> 添加订阅
+              <Plus className="w-4 h-4" /> {t('nerve.subscribe3')}
             </h3>
             <div className="grid grid-cols-3 gap-3">
               <input
                 type="text"
                 value={newSubId}
                 onChange={(e) => setNewSubId(e.target.value)}
-                placeholder="订阅者 ID"
+                placeholder={t('nerve.subscribe4')}
                 className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm"
               />
               <input
                 type="text"
                 value={newSubPattern}
                 onChange={(e) => setNewSubPattern(e.target.value)}
-                placeholder="Topic 模式 (如 soma.*)"
+                placeholder={t('nerve.t29722')}
                 className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm"
               />
               <input
                 type="text"
                 value={newSubCallback}
                 onChange={(e) => setNewSubCallback(e.target.value)}
-                placeholder="回调 URL (可选)"
+                placeholder={t('nerve.t72353')}
                 className="bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm"
               />
             </div>
@@ -501,7 +501,7 @@ export function NerveClient() {
               </button>
             </div>
             {subscriptions.length === 0 ? (
-              <p className="text-sm text-muted-foreground/50 text-center py-6">暂无订阅</p>
+              <p className="text-sm text-muted-foreground/50 text-center py-6">{t('nerve.noDatasubscribe')}</p>
             ) : (
               <div className="space-y-2">
                 {subscriptions.map(sub => (
@@ -516,7 +516,7 @@ export function NerveClient() {
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         投递 {sub.delivery_count} 次
-                        {sub.last_delivery && ` · 最后: ${formatTime(sub.last_delivery)}`}
+                        {sub.last_delivery && t('nerve.t82425')}
                         {sub.callback_url && ` · ${sub.callback_url}`}
                       </div>
                     </div>
@@ -540,14 +540,14 @@ export function NerveClient() {
           {/* Register Node */}
           <div className="bg-card border border-border rounded-xl p-5">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
-              <Plus className="w-4 h-4" /> 注册节点
+              <Plus className="w-4 h-4" /> {t('nerve.node2')}
             </h3>
             <div className="flex gap-3">
               <input
                 type="text"
                 value={newNodeId}
                 onChange={(e) => setNewNodeId(e.target.value)}
-                placeholder="节点 ID"
+                placeholder={t('nerve.node3')}
                 className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm"
               />
               <select
@@ -580,7 +580,7 @@ export function NerveClient() {
               </button>
             </div>
             {nodes.length === 0 ? (
-              <p className="text-sm text-muted-foreground/50 text-center py-6">暂无注册节点</p>
+              <p className="text-sm text-muted-foreground/50 text-center py-6">{t('nerve.noDatanode')}</p>
             ) : (
               <div className="space-y-2">
                 {nodes.map(node => (
@@ -597,7 +597,7 @@ export function NerveClient() {
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
                         注册: {formatTime(node.registered_at)}
-                        {node.last_heartbeat && ` · 心跳: ${formatTime(node.last_heartbeat)}`}
+                        {node.last_heartbeat && t('nerve.heartbeat')}
                       </div>
                     </div>
                     <button
@@ -624,29 +624,29 @@ export function NerveClient() {
       {activeTab === "publish" && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="space-y-4">
-            <h3 className="font-semibold">发布事件</h3>
+            <h3 className="font-semibold">{t('nerve.publishEvent3')}</h3>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">Topic *</label>
               <input
                 type="text"
                 value={pubTopic}
                 onChange={(e) => setPubTopic(e.target.value)}
-                placeholder="如 soma.heartbeat, agent.task.complete"
+                placeholder={t('nerve.t62550')}
                 className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm font-mono"
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">来源</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('nerve.t62785')}</label>
               <input
                 type="text"
                 value={pubSource}
                 onChange={(e) => setPubSource(e.target.value)}
-                placeholder="发布者标识"
+                placeholder={t('nerve.publish')}
                 className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
               />
             </div>
             <div>
-              <label className="text-xs text-muted-foreground mb-1 block">数据 (JSON)</label>
+              <label className="text-xs text-muted-foreground mb-1 block">{t('nerve.data1')}</label>
               <textarea
                 value={pubData}
                 onChange={(e) => setPubData(e.target.value)}
@@ -660,18 +660,18 @@ export function NerveClient() {
               className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-blue-600 hover:to-purple-600 transition-all flex items-center justify-center gap-2"
             >
               {pubLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {pubLoading ? "发布中..." : "发布事件"}
+              {pubLoading ? "发布中..." : t('nerve.publishEvent4')}
             </button>
           </div>
 
           <div className="space-y-4">
-            <h3 className="font-semibold">发布结果</h3>
+            <h3 className="font-semibold">{t('nerve.resultpublish')}</h3>
             <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
               {pubResult ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-green-400">
                     <Activity className="w-4 h-4" />
-                    <span className="text-sm font-medium">事件已发布</span>
+                    <span className="text-sm font-medium">{t('nerve.eventpublishdone')}</span>
                   </div>
                   <div className="bg-muted/30 rounded-lg p-3 space-y-2 text-xs">
                     <div className="flex justify-between">
@@ -683,7 +683,7 @@ export function NerveClient() {
                       <span className="font-mono text-blue-400">{pubResult.topic}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">投递到</span>
+                      <span className="text-muted-foreground">{t('nerve.t81719')}</span>
                       <span>{pubResult.delivered_to.length} subscribers</span>
                     </div>
                   </div>
@@ -694,7 +694,7 @@ export function NerveClient() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                   <Send className="w-12 h-12 mb-2" />
-                  <p className="text-sm">填写信息后点击"发布事件"</p>
+                  <p className="text-smt('nerve.info4')e.publishEventinfo')}</p>
                 </div>
               )}
             </div>

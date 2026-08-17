@@ -99,9 +99,9 @@ interface QualityReport {
 type TabId = "plan" | "agent" | "think" | "graphrag" | "recommend" | "quality";
 
 const PRIORITY_LABEL: Record<number, { label: string; color: string }> = {
-  1: { label: "高", color: "text-red-500 bg-red-500/10" },
-  2: { label: "中", color: "text-yellow-500 bg-yellow-500/10" },
-  3: { label: "低", color: "text-green-500 bg-green-500/10" },
+  1: { label: t('cortex.high1'), color: "text-red-500 bg-red-500/10" },
+  2: { label: t('cortex.medium2'), color: "text-yellow-500 bg-yellow-500/10" },
+  3: { label: t('cortex.low1'), color: "text-green-500 bg-green-500/10" },
 };
 
 const GRADE_COLORS: Record<string, string> = {
@@ -396,12 +396,12 @@ export function CortexClient() {
   // ── Tab config ───────────────────────────────────────
 
   const tabs: { id: TabId; label: string; icon: React.ElementType; desc: string }[] = [
-    { id: "plan", label: "任务规划", icon: GitBranch, desc: "将复杂目标分解为子任务" },
-    { id: "agent", label: "多Agent协作", icon: Users, desc: "研究→分析→写作流水线" },
-    { id: "think", label: "链式推理", icon: Lightbulb, desc: "深度思考与自我反思" },
-    { id: "graphrag", label: "GraphRAG", icon: Network, desc: "知识图谱自动构建与查询" },
-    { id: "recommend", label: "智能推荐", icon: TrendingUp, desc: "相关知识条目推荐" },
-    { id: "quality", label: "质量评分", icon: Award, desc: "多维度知识质量评估" },
+    { id: "plan", label: t('cortex.taskPlanning'), icon: GitBranch, desc: t('cortex.task1') },
+    { id: "agent", label: t('cortex.t82879'), icon: Users, desc: t('cortex.analyze1') },
+    { id: "think", label: t('cortex.chainOfThought'), icon: Lightbulb, desc: t('cortex.t45025') },
+    { id: "graphrag", label: "GraphRAG", icon: Network, desc: t('cortex.query') },
+    { id: "recommend", label: t('cortex.smartRecommendation'), icon: TrendingUp, desc: t('cortex.entries1') },
+    { id: "quality", label: t('cortex.t19319'), icon: Award, desc: t('cortex.t09372') },
   ];
 
   return (
@@ -413,7 +413,7 @@ export function CortexClient() {
         </div>
         <div>
           <h1 className="text-lg font-semibold">OpenCortex</h1>
-          <p className="text-xs text-muted-foreground">大脑皮层 · 高级认知、任务规划、多Agent协作推理、知识图谱、智能推荐、质量评估</p>
+          <p className="text-xs text-muted-foreground">{t('cortex.taskPlanningsmartRecommendationadvanced')}</p>
         </div>
       </div>
 
@@ -457,7 +457,7 @@ export function CortexClient() {
               <textarea
                 value={planGoal}
                 onChange={(e) => setPlanGoal(e.target.value)}
-                placeholder="描述一个复杂目标，例如：搭建一个企业知识管理系统..."
+                placeholder={t('cortex.description1')}
                 className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 rows={3}
               />
@@ -468,7 +468,7 @@ export function CortexClient() {
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {planLoading ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
-                  {planLoading ? "规划中..." : "开始规划"}
+                  {planLoading ? "规划中..." : t('cortex.start1')}
                 </button>
                 {planResult && (
                   <button
@@ -529,7 +529,7 @@ export function CortexClient() {
               <textarea
                 value={agentTopic}
                 onChange={(e) => setAgentTopic(e.target.value)}
-                placeholder="输入一个研究主题，例如：大语言模型在企业中的应用趋势..."
+                placeholder={t('cortex.languageinputmedium')}
                 className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 rows={3}
               />
@@ -540,7 +540,7 @@ export function CortexClient() {
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {agentLoading ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
-                  {agentLoading ? "Agent协作中..." : "启动流水线"}
+                  {agentLoading ? "Agent协作中..." : t('cortex.t51458')}
                 </button>
                 {agentResult && (
                   <button
@@ -606,14 +606,14 @@ export function CortexClient() {
               <textarea
                 value={thinkQuestion}
                 onChange={(e) => setThinkQuestion(e.target.value)}
-                placeholder="输入一个需要深度思考的问题..."
+                placeholder={t('cortex.inputrequires')}
                 className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 rows={2}
               />
               <textarea
                 value={thinkContext}
                 onChange={(e) => setThinkContext(e.target.value)}
-                placeholder="可选：提供额外上下文信息..."
+                placeholder={t('cortex.info1')}
                 className="mt-2 w-full rounded-lg border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none"
                 rows={2}
               />
@@ -624,7 +624,7 @@ export function CortexClient() {
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {thinkLoading ? <Loader2 size={15} className="animate-spin" /> : <Lightbulb size={15} />}
-                  {thinkLoading ? "思考中..." : "深度推理"}
+                  {thinkLoading ? "思考中..." : t('cortex.t23008')}
                 </button>
                 {thinkResult && (
                   <button
@@ -670,7 +670,7 @@ export function CortexClient() {
                     </h4>
                     {thinkResult.confidence !== undefined && (
                       <div className="flex items-center gap-2">
-                        <span className="text-xs text-muted-foreground">置信度</span>
+                        <span className="text-xs text-muted-foreground">{t('cortex.t01892')}</span>
                         <div className="h-2 w-24 rounded-full bg-muted overflow-hidden">
                           <div
                             className="h-full rounded-full bg-primary transition-all"
@@ -707,7 +707,7 @@ export function CortexClient() {
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {graphragLoading ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
-                  {graphragLoading ? "构建中..." : "开始构建"}
+                  {graphragLoading ? "构建中..." : t('cortex.start2')}
                 </button>
                 {graphragBuildResult && (
                   <button
@@ -724,19 +724,19 @@ export function CortexClient() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     <div className="text-center">
                       <p className="text-2xl font-bold text-primary">{graphragBuildResult.entities_new || 0}</p>
-                      <p className="text-xs text-muted-foreground">新增实体</p>
+                      <p className="text-xs text-muted-foreground">{t('cortex.new')}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-2xl font-bold text-primary">{graphragBuildResult.relations_new || 0}</p>
-                      <p className="text-xs text-muted-foreground">新增关系</p>
+                      <p className="text-xs text-muted-foreground">{t('cortex.new1')}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-2xl font-bold text-muted-foreground">{graphragBuildResult.entities_extracted || 0}</p>
-                      <p className="text-xs text-muted-foreground">提取实体</p>
+                      <p className="text-xs text-muted-foreground">{t('cortex.t85672')}</p>
                     </div>
                     <div className="text-center">
                       <p className="text-2xl font-bold text-muted-foreground">{graphragBuildResult.relations_extracted || 0}</p>
-                      <p className="text-xs text-muted-foreground">提取关系</p>
+                      <p className="text-xs text-muted-foreground">{t('cortex.t78593')}</p>
                     </div>
                   </div>
                   {graphragBuildResult.knowledge_scanned !== undefined && (
@@ -758,7 +758,7 @@ export function CortexClient() {
                 <input
                   value={graphQueryName}
                   onChange={(e) => setGraphQueryName(e.target.value)}
-                  placeholder="输入实体名称..."
+                  placeholder={t('cortex.nameinput')}
                   className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
                 <select
@@ -766,9 +766,9 @@ export function CortexClient() {
                   onChange={(e) => setGraphQueryDepth(Number(e.target.value))}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
                 >
-                  <option value={1}>深度 1</option>
-                  <option value={2}>深度 2</option>
-                  <option value={3}>深度 3</option>
+                  <option value={1}>{t('cortex.t58912')}</option>
+                  <option value={2}>{t('cortex.t02526')}</option>
+                  <option value={3}>{t('cortex.t29482')}</option>
                 </select>
                 <button
                   onClick={handleGraphQuery}
@@ -789,7 +789,7 @@ export function CortexClient() {
                   {/* Entities */}
                   {graphQueryResult.entities && graphQueryResult.entities.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2">实体</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">{t('cortex.t47412')}</p>
                       <div className="flex flex-wrap gap-2">
                         {graphQueryResult.entities.map((e, i) => (
                           <span key={i} className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary">
@@ -803,7 +803,7 @@ export function CortexClient() {
                   {/* Relations */}
                   {graphQueryResult.relations && graphQueryResult.relations.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2">关系</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">{t('cortex.t06805')}</p>
                       <div className="space-y-1.5">
                         {graphQueryResult.relations.map((r, i) => (
                           <div key={i} className="flex items-center gap-2 text-xs rounded bg-muted/30 px-3 py-1.5">
@@ -830,7 +830,7 @@ export function CortexClient() {
               <textarea
                 value={extractText}
                 onChange={(e) => setExtractText(e.target.value)}
-                placeholder="粘贴一段文本，自动提取其中的实体和关系..."
+                placeholder={t('cortex.medium3')}
                 className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 resize-none mb-3"
                 rows={4}
               />
@@ -840,7 +840,7 @@ export function CortexClient() {
                 className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {extractLoading ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
-                {extractLoading ? "提取中..." : "提取实体"}
+                {extractLoading ? "提取中..." : t('cortex.t62190')}
               </button>
 
               {extractResult && (
@@ -850,7 +850,7 @@ export function CortexClient() {
                   </p>
                   {extractResult.entities.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2">实体</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">{t('cortex.t58644')}</p>
                       <div className="flex flex-wrap gap-2">
                         {extractResult.entities.map((e, i) => (
                           <span key={i} className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2.5 py-1 text-xs text-emerald-500">
@@ -862,7 +862,7 @@ export function CortexClient() {
                   )}
                   {extractResult.relations.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-2">关系</p>
+                      <p className="text-xs font-medium text-muted-foreground mb-2">{t('cortex.t77536')}</p>
                       <div className="space-y-1.5">
                         {extractResult.relations.map((r, i) => (
                           <div key={i} className="flex items-center gap-2 text-xs rounded bg-muted/30 px-3 py-1.5">
@@ -904,9 +904,9 @@ export function CortexClient() {
                       : "text-muted-foreground hover:bg-muted/50"
                   )}
                 >
-                  {st === "trending" && <><TrendingUp size={14} /> 热门</>}
-                  {st === "recent" && <><RefreshCw size={14} /> 最新</>}
-                  {st === "related" && <><Star size={14} /> 相关推荐</>}
+                  {st === "trending" && <><TrendingUp size={14} />{t('cortex.t83900')}</>}
+                  {st === "recent" && <><RefreshCw size={14} />{t('cortex.new2')}</>}
+                  {st === "related" && <><Star size={14} />{t('cortex.t18312')}</>}
                 </button>
               ))}
             </div>
@@ -916,7 +916,7 @@ export function CortexClient() {
               <div className="rounded-xl border border-border bg-card p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium">
-                    {recommendTab === "trending" ? "热门知识条目" : "最新知识条目"}
+                    {recommendTab === "trending" ? "热门知识条目" : t('cortex.newentries')}
                   </h3>
                   <button
                     onClick={() => fetchRecommend(recommendTab)}
@@ -929,7 +929,7 @@ export function CortexClient() {
                 </div>
                 {recommendEntries.length === 0 && !recommendLoading && (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    点击「刷新」加载{recommendTab === "trending" ? "热门" : "最新"}知识条目
+                    点击「刷新」加载{recommendTab === "trending" ? "热门" : t('cortex.new3')}知识条目
                   </p>
                 )}
                 <div className="space-y-2">
@@ -969,7 +969,7 @@ export function CortexClient() {
                   <input
                     value={relatedId}
                     onChange={(e) => setRelatedId(e.target.value)}
-                    placeholder="输入知识条目 ID..."
+                    placeholder={t('cortex.inputentries')}
                     className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                   <button
@@ -1020,7 +1020,7 @@ export function CortexClient() {
                 className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {qualityLoading ? <Loader2 size={15} className="animate-spin" /> : <BarChart3 size={15} />}
-                {qualityLoading ? "加载中..." : "质量报告"}
+                {qualityLoading ? "加载中..." : t('cortex.t87557')}
               </button>
               <button
                 onClick={fetchBatchScores}
@@ -1042,7 +1042,7 @@ export function CortexClient() {
                 <input
                   value={singleId}
                   onChange={(e) => setSingleId(e.target.value)}
-                  placeholder="输入知识条目 ID..."
+                  placeholder={t('cortex.inputentries1')}
                   className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                 />
                 <button
@@ -1098,24 +1098,24 @@ export function CortexClient() {
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                   <div className="text-center rounded-lg bg-background p-3">
                     <p className="text-2xl font-bold text-primary">{qualityReport.total}</p>
-                    <p className="text-xs text-muted-foreground">总条目数</p>
+                    <p className="text-xs text-muted-foreground">{t('cortex.entries2')}</p>
                   </div>
                   <div className="text-center rounded-lg bg-background p-3">
                     <p className="text-2xl font-bold text-primary">{qualityReport.avg_score?.toFixed(1)}</p>
-                    <p className="text-xs text-muted-foreground">平均分</p>
+                    <p className="text-xs text-muted-foreground">{t('cortex.average')}</p>
                   </div>
                   <div className="text-center rounded-lg bg-background p-3">
                     <p className="text-2xl font-bold text-primary">
                       {Object.entries(qualityReport.distribution || {}).sort((a, b) => b[1] - a[1])[0]?.[0] || "-"}
                     </p>
-                    <p className="text-xs text-muted-foreground">最常见等级</p>
+                    <p className="text-xs text-muted-foreground">{t('cortex.t22777')}</p>
                   </div>
                 </div>
 
                 {/* Distribution */}
                 {qualityReport.distribution && Object.keys(qualityReport.distribution).length > 0 && (
                   <div className="mb-4">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">等级分布</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">{t('cortex.t96994')}</p>
                     <div className="flex gap-2">
                       {Object.entries(qualityReport.distribution).sort().map(([grade, count]) => (
                         <div key={grade} className="flex-1 text-center rounded-lg bg-background p-2">
@@ -1132,7 +1132,7 @@ export function CortexClient() {
                 {/* Dimension Averages */}
                 {qualityReport.dimension_averages && Object.keys(qualityReport.dimension_averages).length > 0 && (
                   <div className="mb-4">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">维度平均分</p>
+                    <p className="text-xs font-medium text-muted-foreground mb-2">{t('cortex.average1')}</p>
                     <div className="space-y-2">
                       {Object.entries(qualityReport.dimension_averages).map(([dim, avg]) => (
                         <div key={dim} className="flex items-center gap-3">
@@ -1151,7 +1151,7 @@ export function CortexClient() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {qualityReport.top_5 && qualityReport.top_5.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-emerald-500 mb-2">🏆 最高质量</p>
+                      <p className="text-xs font-medium text-emerald-500 mb-2">{t('cortex.high2')}</p>
                       {qualityReport.top_5.map((item, i) => (
                         <div key={i} className="flex items-center gap-2 text-xs py-1.5">
                           <span className="font-medium truncate flex-1">{item.title}</span>
@@ -1162,7 +1162,7 @@ export function CortexClient() {
                   )}
                   {qualityReport.bottom_5 && qualityReport.bottom_5.length > 0 && (
                     <div>
-                      <p className="text-xs font-medium text-red-500 mb-2">⚠️ 需改进</p>
+                      <p className="text-xs font-medium text-red-500 mb-2">{t('cortex.t36522')}</p>
                       {qualityReport.bottom_5.map((item, i) => (
                         <div key={i} className="flex items-center gap-2 text-xs py-1.5">
                           <span className="font-medium truncate flex-1">{item.title}</span>

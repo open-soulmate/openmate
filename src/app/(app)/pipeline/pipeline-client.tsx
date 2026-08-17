@@ -152,8 +152,8 @@ export function PipelineClient() {
             <Zap size={18} className="text-indigo-500" />
           </div>
           <div>
-            <h1 className="text-base font-semibold">智能流水线 · Pipeline</h1>
-            <p className="text-xs text-muted-foreground">文件上传 → 安全扫描 → 内容提取 → 知识入库，一键自动化</p>
+            <h1 className="text-base font-semibold">{t("pipeline.331d9d")}<h1>
+            <p className="text-xs text-muted-foreground">{t("pipeline.2c3088")}<p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -165,7 +165,7 @@ export function PipelineClient() {
             )}
           >
             <History size={12} />
-            历史 ({history.length})
+            {t("pipeline.c827d8")} ({history.length})
           </button>
           <button
             onClick={() => setShowSettings(!showSettings)}
@@ -175,8 +175,8 @@ export function PipelineClient() {
             )}
           >
             <Settings size={12} />
-            配置
-          </button>
+            {t("pipeline.224e2c")}
+          <button>
         </div>
       </div>
 
@@ -185,7 +185,7 @@ export function PipelineClient() {
 
           {/* Pipeline Flow Visualization */}
           <div className="rounded-xl border border-border bg-card p-5">
-            <h2 className="text-sm font-medium mb-4">处理流水线</h2>
+            <h2 className="text-sm font-medium mb-4">{t("pipeline.eb2e88")}<h2>
             <div className="flex items-center justify-between gap-2">
               {stages.map((stage, i) => (
                 <div key={stage.key} className="flex items-center gap-2">
@@ -205,7 +205,7 @@ export function PipelineClient() {
 
           {/* Upload Area */}
           <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <h2 className="text-sm font-medium">上传文件</h2>
+            <h2 className="text-sm font-medium">{t("pipeline.a6fc9e")}<h2>
 
             {/* Pipeline type selector */}
             <div className="flex flex-wrap gap-2">
@@ -243,7 +243,7 @@ export function PipelineClient() {
                 ) : (
                   <Play size={14} />
                 )}
-                {uploading ? "处理中..." : "开始处理"}
+                {uploading ? t("pipeline.2fb90b") : t("pipeline.a18f88")}
               </button>
             </div>
 
@@ -252,7 +252,7 @@ export function PipelineClient() {
               <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">用户ID</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("pipeline.30acd2")}<label>
                     <input
                       value={userId}
                       onChange={e => setUserId(e.target.value)}
@@ -261,7 +261,7 @@ export function PipelineClient() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">标签（逗号分隔）</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("pipeline.04c16c")}<label>
                     <input
                       value={tags}
                       onChange={e => setTags(e.target.value)}
@@ -275,20 +275,14 @@ export function PipelineClient() {
                     <input
                       type="checkbox"
                       checked={skipImmune}
-                      onChange={e => setSkipImmune(e.target.checked)}
-                      className="rounded"
-                    />
-                    跳过安全扫描
-                  </label>
+                      onChange={e => {t("pipeline.177926")}
+                  <label>
                   <label className="flex items-center gap-2 text-xs cursor-pointer">
                     <input
                       type="checkbox"
                       checked={skipKnowledge}
-                      onChange={e => setSkipKnowledge(e.target.checked)}
-                      className="rounded"
-                    />
-                    跳过知识入库
-                  </label>
+                      onChange={e => {t("pipeline.a9b0d5")}
+                  <label>
                 </div>
               </div>
             )}
@@ -299,7 +293,7 @@ export function PipelineClient() {
             <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 flex items-start gap-3">
               <XCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-red-500">流水线执行失败</p>
+                <p className="text-sm font-medium text-red-500">{t("pipeline.4b1aec")}<p>
                 <p className="text-xs text-red-500/80 mt-1">{error}</p>
               </div>
             </div>
@@ -318,7 +312,7 @@ export function PipelineClient() {
           {/* History List */}
           {showHistory && history.length > 0 && (
             <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <h2 className="text-sm font-medium">执行历史</h2>
+              <h2 className="text-sm font-medium">{t("pipeline.e723c0")}<h2>
               <div className="space-y-2">
                 {history.map((h) => {
                   const cfg = STATUS_CONFIG[h.status] || STATUS_CONFIG.error;
@@ -341,7 +335,7 @@ export function PipelineClient() {
                           </span>
                         </div>
                         <span className="text-[10px] text-muted-foreground">
-                          {h.pipeline_id} · {h.elapsed_ms}ms · {h.steps.length} 步骤
+                          {h.pipeline_id} · {h.elapsed_ms}ms · {h.steps.length} {t("pipeline.52b365")}
                         </span>
                       </div>
                       <ChevronRight size={14} className="text-muted-foreground" />
@@ -355,8 +349,8 @@ export function PipelineClient() {
           {showHistory && history.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <History size={32} className="mb-3 opacity-50" />
-              <p className="text-sm">暂无执行历史</p>
-              <p className="text-xs mt-1">上传文件开始第一次智能处理</p>
+              <p className="text-sm">{t("pipeline.5ea62b")}<p>
+              <p className="text-xs mt-1">{t("pipeline.876b51")}<p>
             </div>
           )}
         </div>
@@ -377,7 +371,7 @@ function PipelineResultCard({ result, stages }: { result: PipelineResult; stages
           <Icon size={16} className={cfg.color} />
           <div>
             <span className="text-sm font-medium">
-              {result.status === "completed" ? "处理完成" : result.status === "blocked" ? "已阻止" : "部分完成"}
+              {result.status === "completed" ? t("pipeline.7be39b") : result.status === "blocked" ? t("pipeline.72db81") : t("pipeline.963e0a")}
             </span>
             <span className="text-xs text-muted-foreground ml-2">{result.pipeline_id}</span>
           </div>
@@ -422,18 +416,18 @@ function PipelineResultCard({ result, stages }: { result: PipelineResult; stages
 
                 {/* Step-specific details */}
                 <div className="mt-1 text-[11px] text-muted-foreground space-y-0.5">
-                  {step.file_id != null && <p>文件ID: {String(step.file_id).slice(0, 16)}...</p>}
-                  {step.name != null && <p>文件名: {String(step.name)}</p>}
-                  {step.size != null && <p>大小: {Number(step.size).toLocaleString()} bytes</p>}
-                  {step.text_length != null && <p>提取文本: {Number(step.text_length).toLocaleString()} 字符</p>}
-                  {step.confidence != null && <p>置信度: {(Number(step.confidence) * 100).toFixed(1)}%</p>}
-                  {step.engine != null && <p>引擎: {String(step.engine)}</p>}
+                  {step.file_id != null && <p>{t("pipeline.40c91a")} {String(step.file_id).slice(0, 16)}...</p>}
+                  {step.name != null && <p>{t("pipeline.aac13a")} {String(step.name)}</p>}
+                  {step.size != null && <p>{t("pipeline.0c0ebf")} {Number(step.size).toLocaleString()} bytes</p>}
+                  {step.text_length != null && <p>{t("pipeline.cd6041")}: {Number(step.text_length).toLocaleString()} {t("pipeline.9c0753")}</p>}
+                  {step.confidence != null && <p>{t("pipeline.8f3599")}: {(Number(step.confidence) * 100).toFixed(1)}%</p>}
+                  {step.engine != null && <p>{t("pipeline.6c1b19")}: {String(step.engine)}</p>}
                   {step.is_safe != null && (
                     <p className={step.is_safe ? "text-emerald-500" : "text-red-500"}>
-                      {step.is_safe ? "✓ 安全" : "⚠ 存在风险"} {step.risk_level != null && `(${String(step.risk_level)})`}
+                      {step.is_safe ? t("pipeline.630dfb") : t("pipeline.4b7278")} {step.risk_level != null && `(${String(step.risk_level)})`}
                     </p>
                   )}
-                  {step.error != null && <p className="text-red-500">错误: {String(step.error)}</p>}
+                  {step.error != null && <p className="text-red-500">{t("pipeline.7030ff")}: {String(step.error)}</p>}
                 </div>
               </div>
             </div>
