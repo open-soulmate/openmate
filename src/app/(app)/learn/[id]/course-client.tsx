@@ -15,6 +15,8 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useTranslation } from 'react-i18next';
+
 
 interface QuizQuestion {
   question: string;

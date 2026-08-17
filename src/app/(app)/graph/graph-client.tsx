@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Network, Loader2, Plus, Trash2, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Search } from 'lucide-react';
 import { api, getUserId, getApiBaseUrl } from '@/lib/api-client';
+import { useTranslation } from 'react-i18next';
+
 
 interface Entity { id: string; name: string; entity_type?: string; type?: string; description?: string; properties?: Record<string, unknown>; }
 interface Relation { id: string; source_entity_id?: string; source_id?: string; target_entity_id?: string; target_id?: string; relation_type?: string; type?: string; }
@@ -18,6 +20,7 @@ function getRelTarget(r: Relation): string { return r.target_entity_id || r.targ
 function getRelType(r: Relation): string { return r.relation_type || r.type || 'related'; }
 
 export function GraphClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -380,11 +383,11 @@ export function GraphClient() {
         {/* Toolbar */}
         <div className="absolute top-4 left-4 flex gap-2">
           <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 shadow-lg">
-            <Plus size={14} /> 添加实体
-          </button>
+            <Plus size={14} />  {t('graph.addEntity')}
+          <button>
           <button onClick={() => setShowRelCreate(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border text-sm hover:bg-muted shadow-lg">
-            <Plus size={14} /> 添加关系
-          </button>
+            <Plus size={14} />  {t('graph.addRelation')}
+          <button>
           <button onClick={loadGraph} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border text-sm hover:bg-muted shadow-lg">
             <RefreshCw size={14} />
           </button>
@@ -399,7 +402,7 @@ export function GraphClient() {
 
         {/* Stats */}
         <div className="absolute bottom-4 left-4 px-3 py-2 rounded-lg bg-card/90 border text-xs text-muted-foreground shadow-lg">
-          {entities.length} 实体 · {relations.length} 关系 · {Math.round(zoom * 100)}%
+          {entities.length} {t('graph.t49096')}{relations.length} {t('graph.t36665')}{Math.round(zoom * 100)}%
         </div>
 
         {/* Create entity dialog */}
@@ -407,16 +410,16 @@ export function GraphClient() {
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
             <div className="bg-card border rounded-xl p-6 w-96 shadow-2xl">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold">添加实体</h3>
+                <h3 className="font-semibold">{t('graph.addEntity')}<h3>
                 <button onClick={() => setShowCreate(false)}><X size={16} /></button>
               </div>
               <div className="space-y-3">
-                <input value={newName} onChange={e => setNewName(e.target.value)} placeholder="实体名称" className="w-full px-3 py-2 rounded-lg border bg-background text-sm" />
+                <input value={newName} onChange={e => setNewName(e.target.value)} placeholder=t('graph.entityName') className="w-full px-3 py-2 rounded-lg border bg-background text-sm" />
                 <select value={newType} onChange={e => setNewType(e.target.value)} className="w-full px-3 py-2 rounded-lg border bg-background text-sm">
                   {Object.keys(COLORS).filter(k => k !== 'default').map(k => <option key={k} value={k}>{k}</option>)}
                 </select>
-                <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder="描述（可选）" className="w-full px-3 py-2 rounded-lg border bg-background text-sm" />
-                <button onClick={handleCreateEntity} className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90">创建</button>
+                <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder=t('graph.t99111') className="w-full px-3 py-2 rounded-lg border bg-background text-sm" />
+                <button onClick={handleCreateEntity} className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90">{t('graph.create')}<button>
               </div>
             </div>
           </div>
@@ -427,20 +430,20 @@ export function GraphClient() {
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
             <div className="bg-card border rounded-xl p-6 w-96 shadow-2xl">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="font-semibold">添加关系</h3>
+                <h3 className="font-semibold">{t('graph.addRelation')}<h3>
                 <button onClick={() => setShowRelCreate(false)}><X size={16} /></button>
               </div>
               <div className="space-y-3">
                 <select value={relSource} onChange={e => setRelSource(e.target.value)} className="w-full px-3 py-2 rounded-lg border bg-background text-sm">
-                  <option value="">选择源实体</option>
+                  <option value="">{t('graph.t99673')}<option>
                   {entities.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </select>
                 <select value={relTarget} onChange={e => setRelTarget(e.target.value)} className="w-full px-3 py-2 rounded-lg border bg-background text-sm">
-                  <option value="">选择目标实体</option>
+                  <option value="">{t('graph.t20297')}<option>
                   {entities.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </select>
-                <input value={relType} onChange={e => setRelType(e.target.value)} placeholder="关系类型" className="w-full px-3 py-2 rounded-lg border bg-background text-sm" />
-                <button onClick={handleCreateRelation} className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90">创建关系</button>
+                <input value={relType} onChange={e => setRelType(e.target.value)} placeholder=t('graph.relationType') className="w-full px-3 py-2 rounded-lg border bg-background text-sm" />
+                <button onClick={handleCreateRelation} className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90">{t('graph.t76195')}<button>
               </div>
             </div>
           </div>
@@ -457,7 +460,7 @@ export function GraphClient() {
           <div className="p-4 space-y-3">
             {entityType(selected) !== 'default' && (
               <div className="flex items-center gap-2">
-                <span className="text-xs text-muted-foreground">类型</span>
+                <span className="text-xs text-muted-foreground">{t('vein.type')}<span>
                 <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: (COLORS[entityType(selected)] || COLORS.default) + '20', color: COLORS[entityType(selected)] || COLORS.default }}>{entityType(selected)}</span>
               </div>
             )}
@@ -470,23 +473,23 @@ export function GraphClient() {
             ))}
 
             <div className="pt-3 border-t">
-              <h3 className="text-xs font-medium text-muted-foreground mb-2">关联关系</h3>
+              <h3 className="text-xs font-medium text-muted-foreground mb-2">{t('graph.t26282')}<h3>
               {relations.filter(r => getRelSource(r) === selected.id || getRelTarget(r) === selected.id).map(r => {
                 const other = getRelSource(r) === selected.id ? entities.find(e => e.id === getRelTarget(r)) : entities.find(e => e.id === getRelSource(r));
                 return (
                   <div key={r.id} className="flex items-center gap-2 py-1 text-xs">
                     <span className="text-muted-foreground">{getRelSource(r) === selected.id ? '→' : '←'}</span>
                     <span className="px-1.5 py-0.5 rounded bg-muted">{getRelType(r)}</span>
-                    <span className="text-primary cursor-pointer hover:underline" onClick={() => { const ent = entities.find(e => e.id === (getRelSource(r) === selected.id ? getRelTarget(r) : getRelSource(r))); if (ent) setSelected(ent); }}>{other?.name || '未知'}</span>
+                    <span className="text-primary cursor-pointer hover:underline" onClick={() => { const ent = entities.find(e => e.id === (getRelSource(r) === selected.id ? getRelTarget(r) : getRelSource(r))); if (ent) setSelected(ent); }}>{other?.name || t('intelligence.unknown')}</span>
                   </div>
                 );
               })}
-              {relations.filter(r => getRelSource(r) === selected.id || getRelTarget(r) === selected.id).length === 0 && <p className="text-xs text-muted-foreground">暂无关系</p>}
+              {relations.filter(r => getRelSource(r) === selected.id || getRelTarget(r) === selected.id).length === 0 && <p className="text-xs text-muted-foreground">{t('graph.t42437')}<p>}
             </div>
 
             <button onClick={() => handleDeleteEntity(selected.id)} className="w-full mt-4 py-2 rounded-lg border border-destructive/50 text-destructive text-sm hover:bg-destructive/10 flex items-center justify-center gap-1.5">
-              <Trash2 size={14} /> 删除实体
-            </button>
+              <Trash2 size={14} />  {t('graph.t44501')}
+            <button>
           </div>
         </div>
       )}

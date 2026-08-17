@@ -37,34 +37,34 @@ export function VisionClient() {
   // Bar chart form
   const [barLabels, setBarLabels] = useState("Q1,Q2,Q3,Q4");
   const [barValues, setBarValues] = useState("120,150,180,200");
-  const [barTitle, setBarTitle] = useState("季度销售额");
+  const [barTitle, setBarTitle] = useState(t('vision.t13651'));
   const [barColor, setBarColor] = useState("#e11d48");
 
   // Line chart form
-  const [lineX, setLineX] = useState("1月,2月,3月,4月,5月,6月");
-  const [lineSeries, setLineSeries] = useState("产品A:100,120,140,160,180,200\n产品B:80,90,110,130,120,150");
-  const [lineTitle, setLineTitle] = useState("趋势对比");
+  const [lineX, setLineX] = useState(t('vision.t60525'));
+  const [lineSeries, setLineSeries] = useState(t('vision.t19587'));
+  const [lineTitle, setLineTitle] = useState(t('vision.t38378'));
 
   // Pie chart form
   const [pieLabels, setPieLabels] = useState("Python,JavaScript,Rust,Go,Other");
   const [pieValues, setPieValues] = useState("35,28,15,12,10");
-  const [pieTitle, setPieTitle] = useState("语言使用分布");
+  const [pieTitle, setPieTitle] = useState(t('vision.t36536'));
 
   // Scatter form
   const [scatterX, setScatterX] = useState("1,2,3,4,5,6,7,8,9,10");
   const [scatterY, setScatterY] = useState("2.1,3.9,6.2,7.8,10.1,12.3,13.8,16.2,18.1,20.5");
-  const [scatterTitle, setScatterTitle] = useState("散点图");
+  const [scatterTitle, setScatterTitle] = useState(t('vision.scatterChart'));
 
   // Mind map form
   const [mindmapData, setMindmapData] = useState(JSON.stringify({
-    label: "AI工程", children: [
+    label: t('vision.t64183'), children: [
       { label: "Prompt Engineering" },
-      { label: "RAG", children: [{ label: "向量检索" }, { label: "混合召回" }] },
-      { label: "Agent", children: [{ label: "工具调用" }, { label: "多Agent协作" }] },
+      { label: "RAG", children: [{ label: t('vision.t60378') }, { label: t('vision.t37406') }] },
+      { label: "Agent", children: [{ label: t('vision.t60786') }, { label: t('vision.multiAgentCollab') }] },
       { label: "Fine-tuning" },
     ],
   }, null, 2));
-  const [mindmapTitle, setMindmapTitle] = useState("AI工程知识图谱");
+  const [mindmapTitle, setMindmapTitle] = useState(t('vision.t93963'));
 
   const apiBase = getApiBaseUrl();
 
@@ -161,7 +161,7 @@ export function VisionClient() {
     setError("");
     try {
       let root;
-      try { root = JSON.parse(mindmapData); } catch { setError("JSON格式错误"); setLoading(false); return; }
+      try { root = JSON.parse(mindmapData); } catch { setError(t('vision.t84456')); setLoading(false); return; }
 
       const res = await fetch(`${apiBase}/api/vision/mindmap`, {
         method: "POST",
@@ -254,7 +254,7 @@ export function VisionClient() {
                 {chartType === "line" && (
                   <>
                     <Field label={t("vision.chartTitle")} value={lineTitle} onChange={setLineTitle} placeholder={t("vision.chartTitle")} />
-                    <Field label={`${t("vision.xlabel")} (${t("mind.chars")})`} value={lineX} onChange={setLineX} placeholder="1月,2月,3月" />
+                    <Field label={`${t("vision.xlabel")} (${t("mind.chars")})`} value={lineX} onChange={setLineX} placeholder=t('vision.t80047') />
                     <div>
                       <label className="text-xs text-muted-foreground">{t("vision.seriesData")}</label>
                       <textarea value={lineSeries} onChange={(e) => setLineSeries(e.target.value)}

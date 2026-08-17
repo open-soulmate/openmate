@@ -3,6 +3,8 @@
 import { useState, useEffect, useCallback } from "react";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
+import { useTranslation } from 'react-i18next';
+
   Shield,
   Trash2,
   Database,
@@ -39,6 +41,7 @@ interface SystemOverview {
 }
 
 export function AdminClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [overview, setOverview] = useState<SystemOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -322,7 +325,7 @@ export function AdminClient() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {overview.stats.vein && (
                 <StatsCard
-                  title="Vein 文件存储"
+                  title=t('admin.t35999')
                   emoji="🩸"
                   items={[
                     { label: "Files", value: overview.stats.vein.store?.total_files ?? 0 },
@@ -334,7 +337,7 @@ export function AdminClient() {
               )}
               {overview.stats.gland && (
                 <StatsCard
-                  title="Gland 模型网关"
+                  title=t('admin.t78718')
                   emoji="🧪"
                   items={[
                     { label: "Total Tokens", value: (overview.stats.gland.total_tokens ?? 0).toLocaleString() },
@@ -345,7 +348,7 @@ export function AdminClient() {
               )}
               {overview.stats.immune && (
                 <StatsCard
-                  title="Immune 安全审计"
+                  title=t('admin.t79317')
                   emoji="🛡"
                   items={[
                     { label: "Audit Entries", value: overview.stats.immune.audit?.total_entries ?? 0 },
@@ -356,7 +359,7 @@ export function AdminClient() {
               )}
               {overview.stats.gene && (
                 <StatsCard
-                  title="Gene 模板库"
+                  title=t('admin.t81756')
                   emoji="🧬"
                   items={[
                     { label: "Templates", value: overview.stats.gene.total_templates ?? 0 },
@@ -368,7 +371,7 @@ export function AdminClient() {
               )}
               {overview.stats.hippo && (
                 <StatsCard
-                  title="Hippo 记忆管理"
+                  title=t('admin.t00162')
                   emoji="🧠"
                   items={[
                     { label: "Memories", value: overview.stats.hippo.memory?.total_memories ?? 0 },
@@ -380,7 +383,7 @@ export function AdminClient() {
               )}
               {overview.stats.vital && (
                 <StatsCard
-                  title="Vital 系统监控"
+                  title=t('admin.t35364')
                   emoji="📊"
                   items={[
                     { label: "CPU", value: `${overview.stats.vital.system?.cpu_percent ?? 0}%` },
@@ -392,7 +395,7 @@ export function AdminClient() {
               )}
               {overview.stats.mind && (
                 <StatsCard
-                  title="Mind 人格系统"
+                  title=t('admin.t61308')
                   emoji="💭"
                   items={[
                     { label: "Personalities", value: overview.stats.mind.personality?.total_personalities ?? 0 },
@@ -403,7 +406,7 @@ export function AdminClient() {
               )}
               {overview.stats.vision && (
                 <StatsCard
-                  title="Vision 视觉中枢"
+                  title=t('admin.t94752')
                   emoji="🎨"
                   items={[
                     { label: "Generated", value: overview.stats.vision.total_generated ?? 0 },
@@ -414,7 +417,7 @@ export function AdminClient() {
               )}
               {overview.stats.pipeline && (
                 <StatsCard
-                  title="Pipeline 智能流水线"
+                  title=t('admin.t84468')
                   emoji="🔄"
                   items={[
                     { label: "Total Runs", value: overview.stats.pipeline.total_runs ?? 0 },
@@ -425,7 +428,7 @@ export function AdminClient() {
               )}
               {overview.stats.trajectory && (
                 <StatsCard
-                  title="Trajectory 轨迹"
+                  title=t('admin.t29589')
                   emoji="📈"
                   items={[
                     { label: "Sessions", value: overview.stats.trajectory.total_sessions ?? 0 },
@@ -436,7 +439,7 @@ export function AdminClient() {
               )}
               {overview.stats.reflex && (
                 <StatsCard
-                  title="Reflex 高速反射"
+                  title=t('admin.t19179')
                   emoji="⚡"
                   items={[
                     { label: "Cache Entries", value: overview.stats.reflex.cache?.total_entries ?? 0 },
@@ -447,7 +450,7 @@ export function AdminClient() {
               )}
               {overview.stats.mirror && (
                 <StatsCard
-                  title="Mirror 沙箱"
+                  title=t('admin.t28724')
                   emoji="🪞"
                   items={[
                     { label: "Sandboxes", value: overview.stats.mirror.total_sandboxes ?? 0 },
@@ -457,7 +460,7 @@ export function AdminClient() {
               )}
               {overview.stats.echo && (
                 <StatsCard
-                  title="Echo 消息推送"
+                  title=t('admin.t15353')
                   emoji="🔊"
                   items={[
                     { label: "Messages", value: overview.stats.echo.total_messages ?? 0 },
@@ -469,7 +472,7 @@ export function AdminClient() {
               )}
               {overview.stats.link && (
                 <StatsCard
-                  title="Link 双向集成"
+                  title=t('admin.t37467')
                   emoji="🔗"
                   items={[
                     { label: "Connectors", value: overview.stats.link.total_connectors ?? 0 },
@@ -480,7 +483,7 @@ export function AdminClient() {
               )}
               {overview.stats.marrow && (
                 <StatsCard
-                  title="Marrow 灾备"
+                  title=t('admin.t47190')
                   emoji="🦴"
                   items={[
                     { label: "Backups", value: overview.stats.marrow.backup?.total_backups ?? 0 },
@@ -491,7 +494,7 @@ export function AdminClient() {
               )}
               {overview.stats.sense && (
                 <StatsCard
-                  title="Sense 感官"
+                  title=t('admin.t68259')
                   emoji="👁"
                   items={[
                     { label: "OCR", value: overview.stats.sense.engines?.ocr?.available ? "✓" : "✗" },
@@ -502,7 +505,7 @@ export function AdminClient() {
               )}
               {overview.stats.nerve && (
                 <StatsCard
-                  title="Nerve 神经"
+                  title=t('admin.t43564')
                   emoji="⚡"
                   items={[
                     { label: "Events", value: overview.stats.nerve.total_events ?? 0 },
@@ -514,7 +517,7 @@ export function AdminClient() {
               )}
               {overview.stats.will && (
                 <StatsCard
-                  title="Will 意志"
+                  title=t('admin.t02460')
                   emoji="✨"
                   items={[
                     { label: "Workflows", value: overview.stats.will.total_workflows ?? 0 },
@@ -526,7 +529,7 @@ export function AdminClient() {
               )}
               {overview.stats.limb && (
                 <StatsCard
-                  title="Limb 四肢"
+                  title=t('admin.t43259')
                   emoji="💪"
                   items={[
                     { label: "Tasks", value: overview.stats.limb.total_tasks ?? 0 },
@@ -538,7 +541,7 @@ export function AdminClient() {
               )}
               {overview.stats.pulse && (
                 <StatsCard
-                  title="Pulse 脉搏"
+                  title=t('admin.t57106')
                   emoji="💓"
                   items={[
                     { label: "Uptime", value: `${Math.round((overview.stats.pulse.uptime_seconds ?? 0) / 60)}m` },
@@ -549,7 +552,7 @@ export function AdminClient() {
               )}
               {overview.stats.heredity && (
                 <StatsCard
-                  title="Heredity 遗传"
+                  title=t('admin.t59179')
                   emoji="🔗"
                   items={[
                     { label: "Status", value: overview.stats.heredity.status ?? "ok" },
@@ -558,7 +561,7 @@ export function AdminClient() {
               )}
               {overview.stats.cortex && (
                 <StatsCard
-                  title="Cortex 皮层"
+                  title=t('admin.t96071')
                   emoji="🧠"
                   items={[
                     { label: "Total Calls", value: overview.stats.cortex.usage?.total_calls ?? 0 },
@@ -570,7 +573,7 @@ export function AdminClient() {
               )}
               {overview.stats.voice && (
                 <StatsCard
-                  title="Voice 声带"
+                  title=t('admin.t58305')
                   emoji="🎤"
                   items={[
                     { label: "Synthesized", value: overview.stats.voice.engine?.total_synthesized ?? 0 },
@@ -582,7 +585,7 @@ export function AdminClient() {
               )}
               {overview.stats.nest && (
                 <StatsCard
-                  title="Nest 多租户"
+                  title=t('admin.t01905')
                   emoji="🏠"
                   items={[
                     { label: "Tenants", value: overview.stats.nest.tenants?.total_tenants ?? 0 },
@@ -594,7 +597,7 @@ export function AdminClient() {
               )}
               {overview.stats.knowledge && (
                 <StatsCard
-                  title="Knowledge 知识库"
+                  title=t('admin.t88391')
                   emoji="📚"
                   items={[
                     { label: "Entries", value: overview.stats.knowledge.total_entries ?? 0 },
@@ -605,7 +608,7 @@ export function AdminClient() {
               )}
               {overview.stats.agent && (
                 <StatsCard
-                  title="Agent 系统"
+                  title=t('admin.t07980')
                   emoji="🤖"
                   items={[
                     { label: "Agents", value: overview.stats.agent.total_agents ?? 0 },
@@ -615,7 +618,7 @@ export function AdminClient() {
               )}
               {overview.stats.graph && (
                 <StatsCard
-                  title="Graph 知识图谱"
+                  title=t('admin.t17548')
                   emoji="🌐"
                   items={[
                     { label: "Entities", value: overview.stats.graph.total_entities ?? 0 },
@@ -626,7 +629,7 @@ export function AdminClient() {
               )}
               {overview.stats.entity && (
                 <StatsCard
-                  title="Entity 实体"
+                  title=t('admin.t92578')
                   emoji="🏷"
                   items={[
                     { label: "Entities", value: overview.stats.entity.total_entities ?? 0 },
@@ -636,7 +639,7 @@ export function AdminClient() {
               )}
               {overview.stats.search && (
                 <StatsCard
-                  title="Search 搜索"
+                  title=t('admin.t78905')
                   emoji="🔍"
                   items={[
                     { label: "Searchable", value: overview.stats.search.searchable_entries ?? 0 },
@@ -646,7 +649,7 @@ export function AdminClient() {
               )}
               {overview.stats.capture && (
                 <StatsCard
-                  title="Capture 采集"
+                  title=t('admin.t79871')
                   emoji="📸"
                   items={[
                     { label: "Captures", value: overview.stats.capture.total_captures ?? 0 },
@@ -658,7 +661,7 @@ export function AdminClient() {
               )}
               {overview.stats.workflow && (
                 <StatsCard
-                  title="Workflow 工作流"
+                  title=t('admin.t08367')
                   emoji="⚙"
                   items={[
                     { label: "Tasks", value: overview.stats.workflow.total_tasks ?? 0 },
