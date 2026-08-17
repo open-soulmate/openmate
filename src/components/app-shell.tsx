@@ -18,6 +18,7 @@ import {
   Camera, ScrollText, Bell,
   Pill,
   History,
+  Gauge,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getApiBaseUrl } from "@/lib/api-client";
@@ -177,6 +178,7 @@ export function AppShell() {
         { href: "/timeline", label: t("nav.timeline") || "时间线", icon: History },
         { href: "/changelog", label: t("nav.changelog") || "版本日志", icon: ScrollText },
         { href: "/diagnostics", label: t("nav.diagnostics") || "系统诊断", icon: Stethoscope },
+        { href: "/benchmark", label: t("nav.benchmark") || "性能测试", icon: Gauge },
         { href: "/admin", label: t("nav.admin") || "系统管理", icon: Shield },
         { href: "/download", label: t("nav.download"), icon: Download },
         { href: "/plugins", label: t("nav.plugins") || "插件", icon: Puzzle },
