@@ -1582,5 +1582,18 @@
     "result": "Result"
   },
   "nav.topology": "Topology",
-  "topology.title": "System Topology"
+  "topology.title": "System Topology",
+  "nav.notifications": "Notifications",
+  "notifications": {
+    "title": "Notification Center",
+    "all": "All",
+    "unread": "Unread",
+    "empty": "No notifications",
+    "emptyDesc": "System events and organ activity will appear here",
+    "markRead": "Mark as read",
+    "markAllRead": "Mark all read",
+    "dismiss": "Dismiss",
+    "clearAll": "Clear all",
+    "viewAll": "View all activity"
+  }
 }

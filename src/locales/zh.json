@@ -1582,5 +1582,18 @@
     "result": "结果"
   },
   "nav.topology": "系统拓扑",
-  "topology.title": "系统拓扑 · Topology"
+  "topology.title": "系统拓扑 · Topology",
+  "nav.notifications": "通知中心",
+  "notifications": {
+    "title": "通知中心",
+    "all": "全部",
+    "unread": "未读",
+    "empty": "暂无通知",
+    "emptyDesc": "系统事件和器官活动将在此显示",
+    "markRead": "标记已读",
+    "markAllRead": "全部已读",
+    "dismiss": "移除",
+    "clearAll": "清空全部",
+    "viewAll": "查看全部活动"
+  }
 }

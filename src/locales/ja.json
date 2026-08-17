@@ -1582,5 +1582,18 @@
     "result": "結果"
   },
   "nav.topology": "トポロジー",
-  "topology.title": "システムトポロジー"
+  "topology.title": "システムトポロジー",
+  "nav.notifications": "通知センター",
+  "notifications": {
+    "title": "通知センター",
+    "all": "すべて",
+    "unread": "未読",
+    "empty": "通知はありません",
+    "emptyDesc": "システムイベントと器官アクティビティがここに表示されます",
+    "markRead": "既読にする",
+    "markAllRead": "すべて既読",
+    "dismiss": "削除",
+    "clearAll": "すべてクリア",
+    "viewAll": "すべてのアクティビティを見る"
+  }
 }
