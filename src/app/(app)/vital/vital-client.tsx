@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 import {
   Activity, RefreshCw, Loader2, CheckCircle2, XCircle, AlertCircle,
   Clock, Wifi, Cpu, HardDrive, MemoryStick, Network, AlertTriangle,
-  TrendingUp, TrendingDown, Server, Database, Zap, Shield,
+  TrendingUp, TrendingDown, Server, Database, Zap, Shield, BarChart3,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 
@@ -50,6 +50,20 @@ interface Alert {
   threshold: number;
   resolved: boolean;
   ts: number;
+}
+
+interface HistoryEntry {
+  ts: number;
+  cpu: number;
+  mem: number;
+  mem_mb: number;
+  disk: number;
+  qps: number;
+  p99: number;
+  err_rate: number;
+  requests: number;
+  errors: number;
+  knowledge: number;
 }
 
 const STATUS_CONFIG: Record<string, { color: string; bg: string; border: string; icon: typeof CheckCircle2; label: string }> = {
@@ -116,8 +130,13 @@ export function VitalClient() {
   const [alerts, setAlerts] = useState<Alert[]>([]);
   const [alertsLoading, setAlertsLoading] = useState(false);
 
+  // History state
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyMinutes, setHistoryMinutes] = useState(30);
+
   const [lastFetch, setLastFetch] = useState<Date | null>(null);
-  const [activeTab, setActiveTab] = useState<"health" | "metrics" | "alerts">("metrics");
+  const [activeTab, setActiveTab] = useState<"health" | "metrics" | "alerts" | "history">("metrics");
 
   const fetchHealth = useCallback(async () => {
     setHealthLoading(true);
@@ -171,10 +190,25 @@ export function VitalClient() {
     }
   }, [apiBase]);
 
+  const fetchHistory = useCallback(async (minutes?: number) => {
+    setHistoryLoading(true);
+    try {
+      const m = minutes ?? historyMinutes;
+      const res = await fetch(`${apiBase}/api/vital/history?minutes=${m}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      setHistory(data.data || []);
+    } catch {
+      // silent
+    } finally {
+      setHistoryLoading(false);
+    }
+  }, [apiBase, historyMinutes]);
+
   const fetchAll = useCallback(async () => {
-    await Promise.all([fetchHealth(), fetchMetrics(), fetchAlerts()]);
+    await Promise.all([fetchHealth(), fetchMetrics(), fetchAlerts(), fetchHistory()]);
     setLastFetch(new Date());
-  }, [fetchHealth, fetchMetrics, fetchAlerts]);
+  }, [fetchHealth, fetchMetrics, fetchAlerts, fetchHistory]);
 
   useEffect(() => {
     fetchAll();
@@ -192,6 +226,7 @@ export function VitalClient() {
   const tabs = [
     { key: "metrics" as const, label: t("vital.tabMetrics") || "系统指标", icon: Activity },
     { key: "health" as const, label: t("vital.tabHealth") || "组件健康", icon: Server, badge: downCount > 0 ? downCount : undefined },
+    { key: "history" as const, label: t("vital.tabHistory") || "历史趋势", icon: BarChart3 },
     { key: "alerts" as const, label: t("vital.tabAlerts") || "告警记录", icon: AlertTriangle, badge: activeAlerts > 0 ? activeAlerts : undefined },
   ];
 
@@ -415,6 +450,123 @@ export function VitalClient() {
           </div>
         )}
 
+        {/* History Tab */}
+        {activeTab === "history" && (
+          <div className="space-y-6">
+            {/* Time range selector */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">时间范围:</span>
+              {[10, 30, 60, 120].map(m => (
+                <button
+                  key={m}
+                  onClick={() => { setHistoryMinutes(m); fetchHistory(m); }}
+                  className={cn(
+                    "rounded-lg px-3 py-1.5 text-xs font-medium border transition-colors",
+                    historyMinutes === m
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {m < 60 ? `${m}分钟` : `${m / 60}小时`}
+                </button>
+              ))}
+              <button
+                onClick={() => fetchHistory()}
+                disabled={historyLoading}
+                className="ml-auto flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                {historyLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                刷新
+              </button>
+            </div>
+
+            {history.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                <BarChart3 size={32} className="mb-3 opacity-50" />
+                <p className="text-sm">暂无历史数据</p>
+                <p className="text-xs mt-1">系统每10秒采集一次指标，等待数据积累中...</p>
+              </div>
+            ) : (
+              <>
+                {/* CPU + Memory Chart */}
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                    <Cpu size={14} className="text-blue-500" />
+                    CPU & 内存使用率
+                  </h3>
+                  <MiniChart
+                    data={history}
+                    series={[
+                      { key: "cpu", label: "CPU %", color: "#3b82f6", max: 100 },
+                      { key: "mem", label: "内存 %", color: "#a855f7", max: 100 },
+                    ]}
+                    height={160}
+                  />
+                </div>
+
+                {/* Disk Chart */}
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                    <HardDrive size={14} className="text-amber-500" />
+                    磁盘使用率
+                  </h3>
+                  <MiniChart
+                    data={history}
+                    series={[
+                      { key: "disk", label: "磁盘 %", color: "#f59e0b", max: 100 },
+                    ]}
+                    height={120}
+                  />
+                </div>
+
+                {/* QPS + Latency Chart */}
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                    <Zap size={14} className="text-emerald-500" />
+                    请求 QPS & P99 延迟
+                  </h3>
+                  <MiniChart
+                    data={history}
+                    series={[
+                      { key: "qps", label: "QPS", color: "#10b981" },
+                      { key: "p99", label: "P99 ms", color: "#f97316" },
+                    ]}
+                    height={160}
+                  />
+                </div>
+
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <StatCard
+                    label="CPU 峰值"
+                    value={`${Math.max(...history.map(h => h.cpu)).toFixed(1)}%`}
+                    icon={Cpu}
+                    color="blue"
+                  />
+                  <StatCard
+                    label="内存峰值"
+                    value={`${Math.max(...history.map(h => h.mem)).toFixed(1)}%`}
+                    icon={MemoryStick}
+                    color="purple"
+                  />
+                  <StatCard
+                    label="QPS 峰值"
+                    value={Math.max(...history.map(h => h.qps)).toFixed(2)}
+                    icon={Zap}
+                    color="emerald"
+                  />
+                  <StatCard
+                    label="数据点"
+                    value={String(history.length)}
+                    icon={BarChart3}
+                    color="amber"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
         {/* Alerts Tab */}
         {activeTab === "alerts" && (
           <div className="space-y-4">
@@ -587,6 +739,127 @@ function OverviewCard({ label, value, icon: Icon, valueClass }: {
         <span className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</span>
       </div>
       <div className={cn("text-xl font-semibold", valueClass)}>{value}</div>
+    </div>
+  );
+}
+
+// ── SVG Mini Chart ────────────────────────────────────────
+
+interface SeriesConfig {
+  key: string;
+  label: string;
+  color: string;
+  max?: number;
+}
+
+function MiniChart({ data, series, height = 160 }: {
+  data: HistoryEntry[];
+  series: SeriesConfig[];
+  height?: number;
+}) {
+  if (data.length < 2) {
+    return (
+      <div className="flex items-center justify-center text-muted-foreground text-xs" style={{ height }}>
+        需要至少2个数据点才能显示图表
+      </div>
+    );
+  }
+
+  const W = 800;
+  const H = height;
+  const pad = { top: 20, right: 60, bottom: 30, left: 50 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  // Calculate global max for each series
+  const seriesMax = series.map(s => {
+    if (s.max) return s.max;
+    const vals = data.map(d => (d as Record<string, number>)[s.key] ?? 0);
+    return Math.max(...vals) * 1.2 || 1;
+  });
+
+  // Build path for each series
+  const paths = series.map((s, si) => {
+    const max = seriesMax[si];
+    const points = data.map((d, i) => {
+      const x = pad.left + (i / (data.length - 1)) * cw;
+      const v = (d as Record<string, number>)[s.key] ?? 0;
+      const y = pad.top + ch - (v / max) * ch;
+      return `${x},${y}`;
+    });
+    return { ...s, path: `M${points.join("L")}`, max };
+  });
+
+  // Y-axis ticks (5 ticks)
+  const yTicks = [0, 0.25, 0.5, 0.75, 1];
+
+  // X-axis labels (show ~6 evenly spaced)
+  const xLabelCount = Math.min(6, data.length);
+  const xStep = Math.floor((data.length - 1) / (xLabelCount - 1));
+  const xLabels = Array.from({ length: xLabelCount }, (_, i) => {
+    const idx = Math.min(i * xStep, data.length - 1);
+    const d = new Date(data[idx].ts * 1000);
+    return {
+      x: pad.left + (idx / (data.length - 1)) * cw,
+      label: d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+    };
+  });
+
+  return (
+    <div className="space-y-3">
+      <svg viewBox={`0 0 ${W} ${H}`} className="w-full" style={{ height }}>
+        {/* Grid lines */}
+        {yTicks.map(t => {
+          const y = pad.top + ch - t * ch;
+          return (
+            <g key={t}>
+              <line x1={pad.left} y1={y} x2={pad.left + cw} y2={y} stroke="currentColor" strokeOpacity={0.08} />
+              <text x={pad.left - 8} y={y + 4} textAnchor="end" fontSize={10} fill="currentColor" opacity={0.4}>
+                {Math.round(t * seriesMax[0])}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* X-axis labels */}
+        {xLabels.map((xl, i) => (
+          <text key={i} x={xl.x} y={H - 4} textAnchor="middle" fontSize={10} fill="currentColor" opacity={0.4}>
+            {xl.label}
+          </text>
+        ))}
+
+        {/* Data lines */}
+        {paths.map(p => (
+          <path
+            key={p.key}
+            d={p.path}
+            fill="none"
+            stroke={p.color}
+            strokeWidth={2}
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          />
+        ))}
+
+        {/* Area fill for first series */}
+        {paths.length > 0 && (
+          <path
+            d={`${paths[0].path}L${pad.left + cw},${pad.top + ch}L${pad.left},${pad.top + ch}Z`}
+            fill={paths[0].color}
+            fillOpacity={0.06}
+          />
+        )}
+      </svg>
+
+      {/* Legend */}
+      <div className="flex items-center gap-4 justify-center">
+        {series.map(s => (
+          <div key={s.key} className="flex items-center gap-1.5">
+            <div className="w-3 h-0.5 rounded-full" style={{ backgroundColor: s.color }} />
+            <span className="text-[11px] text-muted-foreground">{s.label}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
