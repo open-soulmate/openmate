@@ -42,9 +42,9 @@ const CATEGORY_COLORS: Record<string, string> = {
 
 const CATEGORY_LABELS: Record<string, string> = {
   agent: "Agent",
-  knowledge_base: "知识库",
-  workflow: "工作流",
-  skill: "技能",
+  knowledge_base: t('gene.knowledgeBase'),
+  workflow: t('gene.workflow'),
+  skill: t('gene.skill'),
 }
 
 export function GeneClient() {
@@ -201,85 +201,10 @@ export function GeneClient() {
           templates = [parsed]
         }
       } catch {
-        setImportResult({ error: "JSON解析失败" })
+        setImportResult({ error: t('gene.t06837') })
         return
       }
-      const res = await fetch(`${apiBase}/api/gene/import`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ templates, overwrite: importOverwrite }),
-      })
-      const data = await res.json()
-      setImportResult(data)
-      if (data.imported > 0) await fetchAll()
-    } catch {} finally {
-      setImportLoading(false)
-    }
-  }, [importJson, importOverwrite, apiBase, fetchAll])
-
-  const filtered = templates.filter(t => {
-    if (selectedCategory && t.category !== selectedCategory) return false
-    if (searchQuery) {
-      const q = searchQuery.toLowerCase()
-      return t.name.toLowerCase().includes(q) || t.description.toLowerCase().includes(q) || t.tags.some(tag => tag.toLowerCase().includes(q))
-    }
-    return true
-  })
-
-  const categories = Object.keys(health?.by_category || {})
-
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
-      </div>
-    )
-  }
-
-  const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Dna }> = [
-    { key: "browse", label: "浏览模板", icon: Package },
-    { key: "create", label: "创建模板", icon: Plus },
-    { key: "instantiate", label: "实例化", icon: Play },
-    { key: "import", label: "导入/导出", icon: Download },
-  ]
-
-  return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
-          <Dna className="w-6 h-6 text-emerald-400" />
-        </div>
-        <div>
-          <h1 className="text-2xl font-bold">🧬 Gene — 模板库</h1>
-          <p className="text-sm text-muted-foreground">行业预制模板、Agent配方、知识库模板、工作流一键配置</p>
-        </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
-        {[
-          { label: "总模板", value: health?.total_templates ?? 0 },
-          { label: "内置模板", value: health?.builtin_count ?? 0 },
-          { label: "用户创建", value: health?.user_count ?? 0 },
-          { label: "分类数", value: categories.length },
-        ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-4">
-            <div className="text-2xl font-bold">{s.value}</div>
-            <div className="text-xs text-muted-foreground">{s.label}</div>
-          </div>
-        ))}
-      </div>
-
-      {/* Tab Navigation */}
-      <div className="flex gap-2 border-b border-border pb-2">
-        {tabs.map(tab => {
-          const Icon = tab.icon
-          return (
-            <button
-              key={tab.key}
-              onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-medium transition-all ${
+      const res = await fetch(`${apiBase}/api/gene/importt('gene.t28998')flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-medium transition-all ${
                 activeTab === tab.key
                   ? "bg-card border border-b-0 border-border text-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -302,7 +227,7 @@ export function GeneClient() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="搜索模板名称、描述或标签..."
+              placeholder=t('gene.t76922')
               className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
             />
             {searchQuery && (
@@ -325,8 +250,8 @@ export function GeneClient() {
                   : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
               }`}
             >
-              全部
-            </button>
+              {t('gene.allCategories')}
+            <button>
             {categories.map(cat => {
               const color = CATEGORY_COLORS[cat] || "#6b7280"
               return (
@@ -354,7 +279,7 @@ export function GeneClient() {
           {filtered.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground/50">
               <Package className="w-12 h-12 mx-auto mb-2" />
-              <p className="text-sm">暂无模板</p>
+              <p className="text-sm">{t('gene.noTemplates')}<p>
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -375,337 +300,12 @@ export function GeneClient() {
                           <div className="flex items-center gap-2 mb-1">
                             <span
                               className="px-2 py-0.5 rounded text-xs font-medium"
-                              style={{ background: `${color}20`, color, border: `1px solid ${color}40` }}
-                            >
-                              {CATEGORY_LABELS[tmpl.category] || tmpl.category}
-                            </span>
-                            {tmpl.builtin && (
-                              <span className="text-xs text-muted-foreground bg-muted/30 px-2 py-0.5 rounded">内置</span>
-                            )}
-                            <span className="text-xs text-muted-foreground ml-auto">v{tmpl.version}</span>
-                          </div>
-                          <h4 className="font-semibold text-sm">{tmpl.name}</h4>
-                          <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{tmpl.description}</p>
-                        </div>
-                        {expanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
-                      </div>
-                    </button>
-
-                    {expanded && (
-                      <div className="border-t border-border p-4 space-y-3 bg-muted/10">
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>ID: <code className="font-mono">{tmpl.template_id}</code></span>
-                          <span>作者: {tmpl.author}</span>
-                          <span>使用: {tmpl.usage_count}次</span>
-                        </div>
-
-                        {tmpl.tags.length > 0 && (
-                          <div className="flex flex-wrap gap-1">
-                            {tmpl.tags.map(tag => (
-                              <span key={tag} className="px-2 py-0.5 bg-muted/30 rounded text-xs flex items-center gap-1">
-                                <Tag className="w-2.5 h-2.5" /> {tag}
-                              </span>
-                            ))}
-                          </div>
-                        )}
-
-                        {tmpl.variables.length > 0 && (
-                          <div>
-                            <h5 className="text-xs font-medium text-muted-foreground mb-2">变量</h5>
-                            <div className="space-y-1">
-                              {tmpl.variables.map((v, i) => (
-                                <div key={i} className="flex items-center gap-2 text-xs bg-muted/20 rounded p-2">
-                                  <code className="font-mono text-emerald-400">{v.name}</code>
-                                  <span className="text-muted-foreground">({v.type})</span>
-                                  {v.default && <span className="text-muted-foreground">= {v.default}</span>}
-                                  {v.description && <span className="text-muted-foreground ml-auto">{v.description}</span>}
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-
-                        {Object.keys(tmpl.config).length > 0 && (
-                          <div>
-                            <h5 className="text-xs font-medium text-muted-foreground mb-2">配置</h5>
-                            <pre className="text-xs font-mono bg-background/50 rounded p-2 overflow-x-auto max-h-40">
-                              {JSON.stringify(tmpl.config, null, 2)}
-                            </pre>
-                          </div>
-                        )}
-
-                        <div className="flex gap-2 pt-2">
-                          <button
-                            onClick={() => {
-                              setInstTemplateId(tmpl.template_id)
-                              setActiveTab("instantiate")
-                            }}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg text-xs font-medium hover:bg-emerald-500/20 transition-colors"
-                          >
-                            <Play className="w-3 h-3" /> 实例化
-                          </button>
-                          <button
-                            onClick={() => handleExport(tmpl.template_id)}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded-lg text-xs font-medium hover:bg-blue-500/20 transition-colors"
-                          >
-                            <Download className="w-3 h-3" /> 导出
-                          </button>
-                          <button
-                            onClick={() => handleClone(tmpl.template_id)}
-                            className="flex items-center gap-1 px-3 py-1.5 bg-purple-500/10 text-purple-400 border border-purple-500/20 rounded-lg text-xs font-medium hover:bg-purple-500/20 transition-colors"
-                          >
-                            <CopyPlus className="w-3 h-3" /> 克隆
-                          </button>
-                          {!tmpl.builtin && (
-                            <button
-                              onClick={() => handleDelete(tmpl.template_id)}
-                              className="flex items-center gap-1 px-3 py-1.5 bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg text-xs font-medium hover:bg-red-500/20 transition-colors"
-                            >
-                              <Trash2 className="w-3 h-3" /> 删除
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Create Tab */}
-      {activeTab === "create" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <h3 className="font-semibold">创建新模板</h3>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">模板名称 *</label>
-              <input
-                type="text"
-                value={newName}
-                onChange={(e) => setNewName(e.target.value)}
-                placeholder="如：客服助手Agent"
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">分类</label>
-              <select
-                value={newCategory}
-                onChange={(e) => setNewCategory(e.target.value)}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="agent">Agent</option>
-                <option value="knowledge_base">知识库</option>
-                <option value="workflow">工作流</option>
-                <option value="skill">技能</option>
-              </select>
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">描述</label>
-              <textarea
-                value={newDescription}
-                onChange={(e) => setNewDescription(e.target.value)}
-                placeholder="模板描述..."
-                rows={3}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm resize-none"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">标签（逗号分隔）</label>
-              <input
-                type="text"
-                value={newTags}
-                onChange={(e) => setNewTags(e.target.value)}
-                placeholder="rag, qa, knowledge"
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
-              />
-            </div>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">配置 (JSON)</label>
-              <textarea
-                value={newConfig}
-                onChange={(e) => setNewConfig(e.target.value)}
-                rows={6}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm font-mono resize-none"
-              />
-            </div>
-            <button
-              onClick={handleCreate}
-              disabled={!newName || createLoading}
-              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
-            >
-              {createLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              {createLoading ? "创建中..." : "创建模板"}
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="font-semibold">创建结果</h3>
-            <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
-              {createResult ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-green-400">
-                    <CheckCircle className="w-5 h-5" />
-                    <span className="font-medium">模板创建成功</span>
-                  </div>
-                  <div className="bg-muted/30 rounded-lg p-3 text-sm">
-                    <span className="text-muted-foreground">模板 ID: </span>
-                    <code className="font-mono text-emerald-400">{createResult.template_id}</code>
-                  </div>
-                  <button
-                    onClick={() => setActiveTab("browse")}
-                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    返回浏览 →
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
-                  <Settings className="w-12 h-12 mb-2" />
-                  <p className="text-sm">填写信息后点击"创建模板"</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Instantiate Tab */}
-      {activeTab === "instantiate" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="space-y-4">
-            <h3 className="font-semibold">从模板实例化</h3>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">选择模板</label>
-              <select
-                value={instTemplateId}
-                onChange={(e) => setInstTemplateId(e.target.value)}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
-              >
-                <option value="">-- 选择模板 --</option>
-                {templates.map(t => (
-                  <option key={t.template_id} value={t.template_id}>
-                    [{CATEGORY_LABELS[t.category] || t.category}] {t.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            {instTemplateId && (() => {
-              const tmpl = templates.find(t => t.template_id === instTemplateId)
-              if (!tmpl) return null
-              return (
-                <div className="bg-muted/20 rounded-xl p-4 space-y-2">
-                  <h4 className="font-medium text-sm">{tmpl.name}</h4>
-                  <p className="text-xs text-muted-foreground">{tmpl.description}</p>
-                  {tmpl.variables.length > 0 && (
-                    <div className="text-xs text-muted-foreground">
-                      需要变量: {tmpl.variables.map(v => v.name).join(", ")}
-                    </div>
-                  )}
-                </div>
-              )
-            })()}
-
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">变量 (JSON)</label>
-              <textarea
-                value={instVariables}
-                onChange={(e) => setInstVariables(e.target.value)}
-                rows={6}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm font-mono resize-none"
-                placeholder='{"key": "value"}'
-              />
-            </div>
-
-            <button
-              onClick={handleInstantiate}
-              disabled={!instTemplateId || instLoading}
-              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
-            >
-              {instLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-              {instLoading ? "实例化中..." : "开始实例化"}
-            </button>
-          </div>
-
-          <div className="space-y-4">
-            <h3 className="font-semibold">实例化结果</h3>
-            <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
-              {instResult ? (
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2 text-green-400">
-                    <CheckCircle className="w-5 h-5" />
-                    <span className="font-medium">实例化成功</span>
-                  </div>
-                  <pre className="text-xs font-mono bg-background/50 rounded p-3 overflow-x-auto max-h-[400px]">
-                    {JSON.stringify(instResult, null, 2)}
-                  </pre>
-                  <button
-                    onClick={() => navigator.clipboard.writeText(JSON.stringify(instResult, null, 2)).catch(() => {})}
-                    className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
-                  >
-                    <Copy className="w-3 h-3" /> 复制结果
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
-                  <Play className="w-12 h-12 mb-2" />
-                  <p className="text-sm">选择模板后点击"开始实例化"</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Import/Export Tab */}
-      {activeTab === "import" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Import Section */}
-          <div className="space-y-4">
-            <h3 className="font-semibold flex items-center gap-2">
-              <Upload className="w-4 h-4" /> 导入模板
-            </h3>
-            <p className="text-xs text-muted-foreground">
-              支持导入单个模板对象、模板数组、或导出的bundle格式JSON
-            </p>
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">模板 JSON</label>
-              <textarea
-                value={importJson}
-                onChange={(e) => setImportJson(e.target.value)}
-                rows={10}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm font-mono resize-none"
-                placeholder={'{\n  "name": "My Template",\n  "category": "agent",\n  "description": "...",\n  "tags": ["custom"],\n  "config": {}\n}'}
-              />
-            </div>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
-              <input
-                type="checkbox"
-                checked={importOverwrite}
-                onChange={(e) => setImportOverwrite(e.target.checked)}
-                className="rounded"
-              />
-              覆盖已存在的模板
-            </label>
-            <button
-              onClick={handleImport}
-              disabled={!importJson.trim() || importLoading}
-              className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-blue-600 hover:to-indigo-600 transition-all flex items-center justify-center gap-2"
-            >
-              {importLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              {importLoading ? "导入中..." : "导入模板"}
-            </button>
-            {importResult && (
-              <div className={`rounded-lg p-3 text-sm ${importResult.error ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>
+                              style={{ background: `${color}20`, color, border: `1px solid ${color}40t('gene.t33630')rounded-lg p-3 text-sm ${importResult.error ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>
                 {importResult.error ? (
                   <span>{String(importResult.error)}</span>
                 ) : (
                   <div className="space-y-1">
-                    <span>成功导入 {String(importResult.imported)}/{String(importResult.total)} 个模板</span>
+                    <span>{t('gene.t68220')}{String(importResult.imported)}/{String(importResult.total)} {t('gene.t06679')}</span>
                     {Array.isArray(importResult.results) && (importResult.results as Array<Record<string, string>>).map((r, i) => (
                       <div key={i} className="text-xs opacity-75">
                         {r.success ? "✅" : "❌"} {r.template_id}: {r.message}
@@ -720,31 +320,31 @@ export function GeneClient() {
           {/* Export Section */}
           <div className="space-y-4">
             <h3 className="font-semibold flex items-center gap-2">
-              <Download className="w-4 h-4" /> 导出模板
-            </h3>
+              <Download className="w-4 h-4" />  {t('gene.t71940')}
+            <h3>
             <p className="text-xs text-muted-foreground">
-              导出所有模板为JSON文件，可用于备份或迁移到其他实例
-            </p>
+              {t('gene.t48505')}
+            <p>
             <div className="bg-card border border-border rounded-xl p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div className="bg-muted/20 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold">{health?.total_templates ?? 0}</div>
-                  <div className="text-xs text-muted-foreground">总模板数</div>
+                  <div className="text-xs text-muted-foreground">{t('gene.t44357')}<div>
                 </div>
                 <div className="bg-muted/20 rounded-lg p-4 text-center">
                   <div className="text-2xl font-bold">{health?.user_count ?? 0}</div>
-                  <div className="text-xs text-muted-foreground">用户创建</div>
+                  <div className="text-xs text-muted-foreground">{t('gene.userCreated')}<div>
                 </div>
               </div>
               <button
                 onClick={handleExportAll}
                 className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-sm hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
               >
-                <Download className="w-4 h-4" /> 导出全部模板
-              </button>
+                <Download className="w-4 h-4" />  {t('gene.t95265')}
+              <button>
               <p className="text-xs text-center text-muted-foreground">
-                导出格式: opensoul-gene-bundle-v1
-              </p>
+                {t('gene.t14472')}
+              <p>
             </div>
           </div>
         </div>

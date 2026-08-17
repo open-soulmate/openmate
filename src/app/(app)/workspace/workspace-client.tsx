@@ -29,12 +29,12 @@ function formatBytes(bytes: number): string {
 function formatRelativeTime(timestamp: number): string {
   const diff = Date.now() - timestamp;
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "刚刚";
-  if (minutes < 60) return `${minutes} 分钟前`;
+  if (minutes < 1) return t('common.justNow');
+  if (minutes < 60) return t('workspace.t51244', { minutes: minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 24) return t('workspace.t30867', { hours: hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} 天前`;
+  if (days < 7) return t('workspace.t46814', { days: days });
   return new Date(timestamp).toLocaleDateString("zh-CN");
 }
 
@@ -49,195 +49,7 @@ function WorkspaceCard({
 
   return (
     <Link
-      href={`/workspace/${workspace.id}`}
-      className="group relative flex flex-col rounded-xl border border-border bg-card p-5 transition-all hover:border-primary/40 hover:shadow-md"
-    >
-      {/* Header */}
-      <div className="mb-3 flex items-start justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-            <FolderOpen size={20} className="text-primary" />
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-foreground">
-              {workspace.name}
-            </h3>
-            <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-              {workspace.path}
-            </p>
-          </div>
-        </div>
-
-        {/* Menu */}
-        <div className="relative">
-          <button
-            onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowMenu(!showMenu);
-            }}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-accent group-hover:opacity-100"
-          >
-            <MoreVertical size={14} />
-          </button>
-          {showMenu && (
-            <div
-              className="absolute right-0 top-8 z-10 w-36 rounded-lg border border-border bg-popover p-1 shadow-lg"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <button
-                onClick={(e) => {
-                  e.preventDefault();
-                  onDelete(workspace.id);
-                  setShowMenu(false);
-                }}
-                className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs text-destructive hover:bg-accent"
-              >
-                <Trash2 size={12} />
-                删除工作区
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
-
-      {/* Description */}
-      {workspace.description && (
-        <p className="mb-3 text-xs text-muted-foreground line-clamp-2">
-          {workspace.description}
-        </p>
-      )}
-
-      {/* Stats */}
-      <div className="mt-auto flex items-center gap-4 border-t border-border pt-3">
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Clock size={12} />
-          <span>{formatRelativeTime(workspace.lastModified)}</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Files size={12} />
-          <span>{workspace.fileCount} 文件</span>
-        </div>
-        <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <HardDrive size={12} />
-          <span>{formatBytes(workspace.size)}</span>
-        </div>
-      </div>
-
-      {/* Hover arrow */}
-      <div className="absolute bottom-5 right-5 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground opacity-0 transition-all group-hover:opacity-100">
-        <ArrowRight size={12} />
-      </div>
-    </Link>
-  );
-}
-
-function CreateWorkspaceDialog({
-  open,
-  onClose,
-  onCreate,
-}: {
-  open: boolean;
-  onClose: () => void;
-  onCreate: (name: string, path: string, description: string) => void;
-}) {
-  const [name, setName] = useState("");
-  const [path, setPath] = useState("");
-  const [description, setDescription] = useState("");
-
-  const handleSubmit = () => {
-    if (name.trim() && path.trim()) {
-      onCreate(name.trim(), path.trim(), description.trim());
-      setName("");
-      setPath("");
-      setDescription("");
-      onClose();
-    }
-  };
-
-  return (
-    <Dialog
-      open={open}
-      onClose={onClose}
-      title="创建工作区"
-      description="添加一个新的项目工作区"
-      footer={
-        <>
-          <button
-            onClick={onClose}
-            className="rounded-lg border border-border px-3 py-1.5 text-xs text-foreground hover:bg-accent"
-          >
-            取消
-          </button>
-          <button
-            onClick={handleSubmit}
-            disabled={!name.trim() || !path.trim()}
-            className="rounded-lg bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
-          >
-            创建
-          </button>
-        </>
-      }
-    >
-      <div className="space-y-4">
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-foreground">
-            名称
-          </label>
-          <input
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="我的项目"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-foreground">
-            路径
-          </label>
-          <input
-            type="text"
-            value={path}
-            onChange={(e) => setPath(e.target.value)}
-            placeholder="~/projects/my-project"
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
-          />
-        </div>
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-foreground">
-            描述（可选）
-          </label>
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            placeholder="项目描述..."
-            rows={2}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
-          />
-        </div>
-      </div>
-    </Dialog>
-  );
-}
-
-export function WorkspaceClient() {
-  const { t } = useTranslation();
-  const workspaces = useAppStore((s) => s.workspaces);
-  const removeWorkspace = useAppStore((s) => s.removeWorkspace);
-  const addWorkspace = useAppStore((s) => s.addWorkspace);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showCreate, setShowCreate] = useState(false);
-
-  const filteredWorkspaces = workspaces.filter(
-    (ws) =>
-      ws.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      ws.path.toLowerCase().includes(searchQuery.toLowerCase()),
-  );
-
-  const handleCreate = (name: string, path: string, description: string) => {
-    const newWs: Workspace = {
-      id: `ws-${Date.now()}`,
+      href={`/workspace/${workspace.id}t('workspace.t68366')ws-${Date.now()}`,
       name,
       path,
       description: description || undefined,
@@ -260,7 +72,7 @@ export function WorkspaceClient() {
             <p className="text-xs text-muted-foreground mt-0.5">
               {t(
                 "workspace.listDescription",
-                "管理你的项目工作区，快速访问代码和文件",
+                t('workspace.t76097'),
               )}
             </p>
           </div>
@@ -303,10 +115,10 @@ export function WorkspaceClient() {
             </h3>
             <p className="mt-1 text-xs text-muted-foreground">
               {searchQuery
-                ? t("workspace.tryDifferentSearch", "尝试不同的搜索词")
+                ? t("workspace.tryDifferentSearch", t('workspace.t07225'))
                 : t(
                     "workspace.createFirst",
-                    "创建你的第一个工作区开始使用",
+                    t('workspace.t20088'),
                   )}
             </p>
             {!searchQuery && (

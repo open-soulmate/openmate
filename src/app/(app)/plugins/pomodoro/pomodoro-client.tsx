@@ -2,6 +2,8 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
+import { useTranslation } from 'react-i18next';
+
   Timer, Play, Square, CheckCircle, XCircle, Clock,
   Settings, Trash2, Flame, Coffee, BarChart3, Loader2,
 } from "lucide-react";
@@ -36,6 +38,7 @@ interface Stats {
 type Tab = "timer" | "history" | "settings";
 
 export function PomodoroClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const pluginBase = `${apiBase}/api/plugins/pomodoro`;
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -178,7 +181,7 @@ export function PomodoroClient() {
         </div>
         <div>
           <h1 className="text-lg font-semibold">Pomodoro Timer</h1>
-          <p className="text-xs text-muted-foreground">番茄工作法 — 专注25分钟，休息5分钟</p>
+          <p className="text-xs text-muted-foreground">{t('plugins.t81483')}<p>
         </div>
       </div>
 
@@ -195,7 +198,7 @@ export function PomodoroClient() {
             {t === "timer" && <Timer size={13} />}
             {t === "history" && <Clock size={13} />}
             {t === "settings" && <Settings size={13} />}
-            {t === "timer" ? "计时" : t === "history" ? "历史" : "设置"}
+            {t === "timer" ? t('plugins.t21882') : t === "history" ? t('vital.tabHistory') : t('nav.settings')}
           </button>
         ))}
       </div>
@@ -220,13 +223,12 @@ export function PomodoroClient() {
                 <span className="text-5xl font-mono font-bold">{displayTime}</span>
                 {status.active && (
                   <span className="text-sm text-muted-foreground mt-1">
-                    {status.task || "专注中..."}
+                    {status.task || t('plugins.t45408')}
                   </span>
                 )}
                 {!status.active && (
                   <span className="text-sm text-muted-foreground mt-1">
-                    {stats?.today.sessions || 0} 个番茄 · {stats?.today.focus_minutes || 0} 分钟
-                  </span>
+                    {stats?.today.sessions || 0} {t('plugins.t59217')}{stats?.today.focus_minutes || 0} {t('plugins.t32535')}                  </span>
                 )}
               </div>
             </div>
@@ -237,18 +239,18 @@ export function PomodoroClient() {
                 <input
                   value={taskName}
                   onChange={(e) => setTaskName(e.target.value)}
-                  placeholder="任务名称（可选）"
+                  placeholder=t('plugins.t56651')
                   className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500/30"
                 />
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-muted-foreground">时长</label>
+                  <label className="text-xs text-muted-foreground">{t('sense.duration')}<label>
                   <select
                     value={duration}
                     onChange={(e) => setDuration(Number(e.target.value))}
                     className="rounded-lg border border-border bg-muted px-2 py-1.5 text-sm outline-none"
                   >
                     {[15, 20, 25, 30, 45, 60].map((m) => (
-                      <option key={m} value={m}>{m} 分钟</option>
+                      <option key={m} value={m}>{m} {t('plugins.t32535')}</option>
                     ))}
                   </select>
                 </div>
@@ -258,8 +260,7 @@ export function PomodoroClient() {
                   className="w-full flex items-center justify-center gap-2 rounded-lg bg-red-500 px-4 py-3 text-sm font-medium text-white hover:bg-red-600 disabled:opacity-50"
                 >
                   {loading ? <Loader2 size={16} className="animate-spin" /> : <Play size={16} />}
-                  开始专注
-                </button>
+                  {t('plugins.t27047')}                </button>
               </div>
             ) : (
               <div className="flex gap-3 w-full">
@@ -268,15 +269,15 @@ export function PomodoroClient() {
                   disabled={loading}
                   className="flex-1 flex items-center justify-center gap-2 rounded-lg bg-emerald-500 px-4 py-3 text-sm font-medium text-white hover:bg-emerald-600 disabled:opacity-50"
                 >
-                  <CheckCircle size={16} /> 完成
-                </button>
+                  <CheckCircle size={16} />  {t('plugins.t35971')}
+                <button>
                 <button
                   onClick={() => stopTimer(false)}
                   disabled={loading}
                   className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-border px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground disabled:opacity-50"
                 >
-                  <XCircle size={16} /> 取消
-                </button>
+                  <XCircle size={16} />  {t('common.cancel')}
+                <button>
               </div>
             )}
 
@@ -285,15 +286,15 @@ export function PomodoroClient() {
               <div className="grid grid-cols-3 gap-3 w-full">
                 <div className="rounded-lg border border-border bg-card p-3 text-center">
                   <div className="text-2xl font-bold text-red-500">{stats.today.sessions}</div>
-                  <div className="text-[10px] text-muted-foreground">今日番茄</div>
+                  <div className="text-[10px] text-muted-foreground">{t('plugins.t07614')}<div>
                 </div>
                 <div className="rounded-lg border border-border bg-card p-3 text-center">
                   <div className="text-2xl font-bold text-amber-500">{stats.today.focus_minutes}</div>
-                  <div className="text-[10px] text-muted-foreground">专注分钟</div>
+                  <div className="text-[10px] text-muted-foreground">{t('plugins.t29665')}<div>
                 </div>
                 <div className="rounded-lg border border-border bg-card p-3 text-center">
                   <div className="text-2xl font-bold text-blue-500">{stats.all_time.sessions}</div>
-                  <div className="text-[10px] text-muted-foreground">总计番茄</div>
+                  <div className="text-[10px] text-muted-foreground">{t('plugins.t29105')}<div>
                 </div>
               </div>
             )}
@@ -304,17 +305,17 @@ export function PomodoroClient() {
         {tab === "history" && (
           <div className="space-y-3 max-w-xl">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{sessions.length} 条记录</span>
+              <span className="text-xs text-muted-foreground">{sessions.length} {t('plugins.t35518')}</span>
               {sessions.length > 0 && (
                 <button onClick={clearSessions} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500">
-                  <Trash2 size={12} /> 清空
-                </button>
+                  <Trash2 size={12} />  {t('plugins.t41638')}
+                <button>
               )}
             </div>
             {sessions.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Timer size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm">暂无番茄记录</p>
+                <p className="text-sm">{t('plugins.t77843')}<p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -326,7 +327,7 @@ export function PomodoroClient() {
                       <XCircle size={16} className="text-muted-foreground shrink-0" />
                     )}
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{s.task || "无任务"}</div>
+                      <div className="text-sm font-medium truncate">{s.task || t('plugins.t70488')}</div>
                       <div className="text-[10px] text-muted-foreground">{formatTime(s.started_at)}</div>
                     </div>
                     <div className="text-right shrink-0">
@@ -344,10 +345,10 @@ export function PomodoroClient() {
         {tab === "settings" && (
           <div className="space-y-4 max-w-md">
             <div className="rounded-xl border border-border bg-card p-4 space-y-4">
-              <h3 className="text-sm font-medium">番茄配置</h3>
+              <h3 className="text-sm font-medium">{t('plugins.t01256')}<h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">工作时长</span>
+                  <span className="text-sm">{t('plugins.t11719')}<span>
                   <div className="flex items-center gap-2">
                     <input type="range" min={5} max={60} value={workMin}
                       onChange={(e) => setWorkMin(Number(e.target.value))}
@@ -356,7 +357,7 @@ export function PomodoroClient() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">短休息</span>
+                  <span className="text-sm">{t('plugins.t58085')}<span>
                   <div className="flex items-center gap-2">
                     <input type="range" min={1} max={15} value={shortBreak}
                       onChange={(e) => setShortBreak(Number(e.target.value))}
@@ -365,7 +366,7 @@ export function PomodoroClient() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">长休息</span>
+                  <span className="text-sm">{t('plugins.t91614')}<span>
                   <div className="flex items-center gap-2">
                     <input type="range" min={5} max={30} value={longBreak}
                       onChange={(e) => setLongBreak(Number(e.target.value))}
@@ -374,33 +375,33 @@ export function PomodoroClient() {
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm">长休息间隔</span>
+                  <span className="text-sm">{t('plugins.t92165')}<span>
                   <div className="flex items-center gap-2">
                     <input type="range" min={2} max={8} value={longInterval}
                       onChange={(e) => setLongInterval(Number(e.target.value))}
                       className="w-32 accent-amber-500" />
-                    <span className="text-sm font-mono w-12 text-right">{longInterval}个</span>
+                    <span className="text-sm font-mono w-12 text-right">{longInterval}{t('plugins.t33698')}</span>
                   </div>
                 </div>
               </div>
               <button onClick={saveConfig}
                 className="w-full rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">
-                保存配置
-              </button>
+                {t('plugins.t26162')}
+              <button>
             </div>
 
             {/* All-time stats */}
             {stats && (
               <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                <h3 className="text-sm font-medium">累计统计</h3>
+                <h3 className="text-sm font-medium">{t('plugins.t21147')}<h3>
                 <div className="grid grid-cols-2 gap-3">
                   <div className="text-center">
                     <div className="text-3xl font-bold text-red-500">{stats.all_time.sessions}</div>
-                    <div className="text-xs text-muted-foreground">完成番茄</div>
+                    <div className="text-xs text-muted-foreground">{t('plugins.t60037')}<div>
                   </div>
                   <div className="text-center">
                     <div className="text-3xl font-bold text-amber-500">{stats.all_time.focus_hours}h</div>
-                    <div className="text-xs text-muted-foreground">专注时间</div>
+                    <div className="text-xs text-muted-foreground">{t('plugins.t42917')}<div>
                   </div>
                 </div>
               </div>

@@ -22,6 +22,8 @@ import {
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
+import { useTranslation } from 'react-i18next';
+
 
 // ─── File Tree ──────────────────────────────────────────────────────────────
 
@@ -313,6 +315,7 @@ function TerminalPanel({
 // ─── Main Component ─────────────────────────────────────────────────────────
 
 export function WorkspaceDetailClient() {
+  const { t } = useTranslation();
   const params = useParams();
   const id = params.id as string;
   const workspace = useAppStore((s) => s.workspaces.find((w) => w.id === id));

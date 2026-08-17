@@ -26,15 +26,15 @@ interface UnifiedResults {
 }
 
 const SOURCE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  knowledge: { label: '知识库', icon: BookOpen, color: 'text-blue-500 bg-blue-500/10' },
-  files: { label: '文件', icon: FileCode, color: 'text-emerald-500 bg-emerald-500/10' },
-  events: { label: '事件', icon: Activity, color: 'text-amber-500 bg-amber-500/10' },
+  knowledge: { label: t('nav.knowledge'), icon: BookOpen, color: 'text-blue-500 bg-blue-500/10' },
+  files: { label: t('chat.files'), icon: FileCode, color: 'text-emerald-500 bg-emerald-500/10' },
+  events: { label: t('nerve.events'), icon: Activity, color: 'text-amber-500 bg-amber-500/10' },
   agents: { label: 'Agent', icon: Bot, color: 'text-purple-500 bg-purple-500/10' },
-  courses: { label: '课程', icon: GraduationCap, color: 'text-pink-500 bg-pink-500/10' },
-  trajectory: { label: '轨迹', icon: Clock, color: 'text-cyan-500 bg-cyan-500/10' },
-  cron: { label: '定时任务', icon: RotateCcw, color: 'text-orange-500 bg-orange-500/10' },
-  gene: { label: '模板', icon: Layers, color: 'text-lime-500 bg-lime-500/10' },
-  echo: { label: '消息', icon: Zap, color: 'text-rose-500 bg-rose-500/10' },
+  courses: { label: t('search.t98853'), icon: GraduationCap, color: 'text-pink-500 bg-pink-500/10' },
+  trajectory: { label: t('nav.trajectory'), icon: Clock, color: 'text-cyan-500 bg-cyan-500/10' },
+  cron: { label: t('nav.cron'), icon: RotateCcw, color: 'text-orange-500 bg-orange-500/10' },
+  gene: { label: t('limb.templates'), icon: Layers, color: 'text-lime-500 bg-lime-500/10' },
+  echo: { label: t('vital.message'), icon: Zap, color: 'text-rose-500 bg-rose-500/10' },
 };
 
 export function SearchClient() {
@@ -50,7 +50,7 @@ export function SearchClient() {
   const [activeSource, setActiveSource] = useState<string>('all');
 
   const MODES = [
-    { id: "unified" as const, label: "全局搜索", icon: Layers, desc: "跨知识库、文件、事件、Agent、课程、轨迹、定时任务、模板、消息搜索" },
+    { id: "unified" as const, label: t('search.t20339'), icon: Layers, desc: t('search.t25959') },
     { id: "hybrid" as const, label: t('search.hybrid'), icon: Layers, desc: t('search.hybridDesc') },
     { id: "semantic" as const, label: t('search.semantic'), icon: Zap, desc: t('search.semanticDesc') },
     { id: "fulltext" as const, label: t('search.fulltext'), icon: BookOpen, desc: t('search.fulltextDesc') },
@@ -181,7 +181,7 @@ export function SearchClient() {
                       : "border-border text-muted-foreground hover:bg-muted"
                   )}
                 >
-                  全部 ({unifiedResults.total})
+                  {t('common.all')}({unifiedResults.total})
                 </button>
                 {Object.entries(unifiedResults.by_source).map(([source, items]) => {
                   const config = SOURCE_CONFIG[source];

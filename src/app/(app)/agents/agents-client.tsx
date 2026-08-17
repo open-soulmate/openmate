@@ -96,7 +96,7 @@ export function AgentsClient() {
   };
 
   const handleUninstall = async (agent: AgentInfo) => {
-    if (!confirm(`确定卸载 ${agent.name}？`)) return;
+    if (!confirm(t('agents.confirmUninstall', { name: agent.name }))) return;
     try {
       const res = await fetch(`${getApiBaseUrl()}/api/agents/uninstall`, {
         method: 'POST',
@@ -167,7 +167,7 @@ export function AgentsClient() {
   };
 
   const batchUninstall = async () => {
-    if (!confirm(`确定批量卸载 ${selected.size} 个Agent？`)) return;
+    if (!confirm(t('agents.confirmBatchUninstall', { count: selected.size }))) return;
     setBatchAction('uninstall');
     const toUninstall = agents.filter(a => selected.has(a.id) && a.available);
     for (const agent of toUninstall) {
@@ -279,7 +279,7 @@ export function AgentsClient() {
                     {agent.available ? (
                       <>
                         <button onClick={() => setConfiguringAgent(configuringAgent === agent.id ? null : agent.id)}
-                          className="px-2 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1" title="模型配置">
+                          className="px-2 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1" title=t('agents.modelConfig')>
                           ⚙️
                         </button>
                         <button onClick={() => handleUpdate(agent)} disabled={!!isInstalling}
@@ -339,7 +339,7 @@ export function AgentsClient() {
               {/* Model config panel */}
               {agent.available && configuringAgent === agent.id && (
                 <div className="border-t border-border px-4 py-3 space-y-2">
-                  <div className="text-xs font-medium text-muted-foreground mb-2">模型配置</div>
+                  <div className="text-xs font-medium text-muted-foreground mb-2">{t('agents.modelConfig')}<div>
                   <label className="flex items-center gap-2 text-xs cursor-pointer">
                     <input type="checkbox" checked={!agentConfigs[agent.id]?.custom}
                       onChange={() => {
@@ -347,18 +347,18 @@ export function AgentsClient() {
                         delete newConfigs[agent.id];
                         setAgentConfigs(newConfigs);
                         localStorage.setItem('openmate-agent-configs', JSON.stringify(newConfigs));
-                      }} />
-                    使用全局默认（Gland配置）
-                  </label>
+                      }} /> 
+                    {t('agents.useGlobalDefault')}
+                  <label>
                   <label className="flex items-center gap-2 text-xs cursor-pointer">
                     <input type="checkbox" checked={!!agentConfigs[agent.id]?.custom}
                       onChange={() => {
                         const newConfigs = { ...agentConfigs, [agent.id]: { custom: true, provider: '', model: '' } };
                         setAgentConfigs(newConfigs);
                         localStorage.setItem('openmate-agent-configs', JSON.stringify(newConfigs));
-                      }} />
-                    自定义模型
-                  </label>
+                      }} /> 
+                    {t('agents.customModel')}
+                  <label>
                   {agentConfigs[agent.id]?.custom && (
                     <>
                       <div className="flex gap-2 items-center">
@@ -373,7 +373,7 @@ export function AgentsClient() {
                           }}
                           className="flex-1 px-2 py-1 rounded border border-border bg-background text-xs"
                         >
-                          <option value="">选择Provider</option>
+                          <option value="">{t('agents.selectProvider')}<option>
                           {providers.map(p => (
                             <option key={p.name} value={p.name}>{p.name}</option>
                           ))}
@@ -391,7 +391,7 @@ export function AgentsClient() {
                           }}
                           className="flex-1 px-2 py-1 rounded border border-border bg-background text-xs"
                         >
-                          <option value="">选择模型</option>
+                          <option value="">{t('agents.selectModel')}<option>
                           {(() => {
                             const cfg = agentConfigs[agent.id];
                             const prov = providers.find(p => p.name === cfg?.provider);
@@ -408,8 +408,8 @@ export function AgentsClient() {
                     {agentConfigs[agent.id]?.custom 
                       ? (agentConfigs[agent.id]?.provider && agentConfigs[agent.id]?.model 
                           ? <span className="text-green-500">✓ {agentConfigs[agent.id].provider}/{agentConfigs[agent.id].model}</span>
-                          : '请选择provider和model')
-                      : '使用Gland全局配置'}
+                          : t('agents.pleaseSelectProviderAndModel'))
+                      : t('agents.useGlandGlobalConfig')}
                   </div>
                 </div>
               )}
