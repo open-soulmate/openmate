@@ -49,7 +49,6 @@ export function GeneClient() {
     skill: t("gene.skill"),
   }
   const apiBase = getApiBaseUrl()
-
   const [health, setHealth] = useState<GeneHealth | null>(null)
   const [templates, setTemplates] = useState<Template[]>([])
   const [loading, setLoading] = useState(true)
