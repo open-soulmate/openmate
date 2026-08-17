@@ -29,18 +29,8 @@ export function detectLanguage() {
   if (saved && ["zh", "en", "ja"].includes(saved)) {
     // 用户手动设置过语言，尊重选择
     i18n.changeLanguage(saved);
-    return;
   }
-  // 自动检测系统语言（navigator.languages取第一个匹配的）
-  const langs = navigator.languages || [navigator.language];
-  for (const lang of langs) {
-    const code = lang.split("-")[0].toLowerCase();
-    if (["zh", "en", "ja"].includes(code)) {
-      i18n.changeLanguage(code);
-      return;
-    }
-  }
-  // 都不匹配，保持默认zh
+  // 没手动设置过，保持默认zh
 }
 
 export default i18n;
