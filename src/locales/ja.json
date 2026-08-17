@@ -65,7 +65,11 @@
     "capture": "キャプチャ",
     "pipeline": "パイプライン",
     "admin": "管理",
-    "changelog": "変更履歴"
+    "changelog": "変更履歴",
+    "healer": "ヒーラー",
+    "timeline": "タイムライン",
+    "topology": "トポロジー",
+    "notifications": "通知センター"
   },
   "dashboard": {
     "title": "システム概要",
