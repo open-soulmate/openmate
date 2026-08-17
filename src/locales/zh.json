@@ -108,7 +108,14 @@
     "records": "条记录",
     "totalCalls": "总调用次数",
     "noActivityHint": "使用 AI 对话或执行任务后，这里将显示活动记录",
-    "nextRun": "下次"
+    "nextRun": "下次",
+    "systemMetrics": "系统资源",
+    "systemMetricsDesc": "实时系统资源使用情况",
+    "memory": "内存",
+    "disk": "磁盘",
+    "latency": "延迟",
+    "totalRequests": "总请求",
+    "activeAlerts": "活跃告警"
   },
   "chat": {
     "newChat": "新建对话",
