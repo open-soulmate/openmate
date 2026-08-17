@@ -106,7 +106,7 @@ export function LinkClient() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t('link.t56760'))) return;
+    if (!confirm("确定删除此连接器？")) return;
     try {
       await fetch(`${apiBase}/api/link/connectors/${id}`, { method: "DELETE" });
       setSelected(null);
@@ -158,10 +158,10 @@ export function LinkClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Link2 size={20} className="text-teal-500" />
-          <h1 className="text-lg font-semibold">{t("link.title"))}</h1>
+          <h1 className="text-lg font-semibold">{t("link.title") || "突触 · 双向集成"}</h1>
           <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-500">
-            {t('link.t69735')}
-          <span>
+            双向集成
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowEvents(!showEvents)}
@@ -169,12 +169,12 @@ export function LinkClient() {
               "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
               showEvents ? "bg-teal-500 text-white" : "border border-border hover:bg-muted"
             )}>
-            <Activity size={14} />  {t('link.t65547')}
-          <button>
+            <Activity size={14} /> 事件日志
+          </button>
           <button onClick={() => setShowCreate(true)}
             className="flex items-center gap-1.5 rounded-lg bg-teal-500 px-3 py-1.5 text-sm text-white hover:bg-teal-600">
-            <Plus size={14} />  {t('link.t73119')}
-          <button>
+            <Plus size={14} /> 新建连接
+          </button>
           <button onClick={() => { fetchHealth(); fetchConnectors(); }}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
             <RefreshCw size={14} />
@@ -187,19 +187,19 @@ export function LinkClient() {
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('link.t81176')}<span>
+              <span className="text-xs text-muted-foreground">连接器</span>
               <p className="text-2xl font-bold">{health.total_connectors || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('link.active')}<span>
+              <span className="text-xs text-muted-foreground">活跃</span>
               <p className="text-2xl font-bold text-emerald-500">{health.active || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('link.t93835')}<span>
+              <span className="text-xs text-muted-foreground">总事件</span>
               <p className="text-2xl font-bold">{health.total_events || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('soma.typeDistribution')}<span>
+              <span className="text-xs text-muted-foreground">类型分布</span>
               <p className="text-xs font-mono mt-1">{Object.entries(health.by_type || {}).map(([k, v]) => `${k}:${v}`).join(" · ")}</p>
             </div>
           </div>
@@ -210,9 +210,9 @@ export function LinkClient() {
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-medium flex items-center gap-2">
-                <Activity size={14} className="text-teal-500" /> 
-                {t('link.t65547')}
-              <h3>
+                <Activity size={14} className="text-teal-500" />
+                事件日志
+              </h3>
               <div className="flex items-center gap-2">
                 <div className="flex items-center gap-1">
                   <Filter size={12} className="text-muted-foreground" />
@@ -221,7 +221,7 @@ export function LinkClient() {
                     onChange={(e) => setEventFilter(e.target.value)}
                     className="rounded border border-border bg-background px-2 py-1 text-xs"
                   >
-                    <option value="">{t('link.t32774')}<option>
+                    <option value="">全部连接器</option>
                     {connectors.map((c) => (
                       <option key={c.connector_id} value={c.connector_id}>{c.name}</option>
                     ))}
@@ -234,7 +234,7 @@ export function LinkClient() {
               </div>
             </div>
             {events.length === 0 ? (
-              <p className="text-xs text-muted-foreground text-center py-4">{t('nerve.noEvents')}<p>
+              <p className="text-xs text-muted-foreground text-center py-4">暂无事件</p>
             ) : (
               <div className="max-h-60 overflow-y-auto space-y-1">
                 {events.map((e) => (
@@ -243,7 +243,7 @@ export function LinkClient() {
                       "text-[10px] font-medium px-1.5 py-0.5 rounded",
                       e.direction === "inbound" ? "bg-blue-500/10 text-blue-500" : "bg-violet-500/10 text-violet-500"
                     )}>
-                      {e.direction === "inbound" ? t('link.t27996') : t('link.t65703')}
+                      {e.direction === "inbound" ? "入站" : "出站"}
                     </span>
                     <span className="text-xs font-medium">{e.connector_name || e.connector_id}</span>
                     <span className="text-xs text-muted-foreground truncate flex-1">{e.payload_summary}</span>
@@ -270,7 +270,7 @@ export function LinkClient() {
             {connectors.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Plug size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t('link.noConnectors')}<p>
+                <p className="text-sm">暂无连接器</p>
               </div>
             ) : connectors.map((c) => {
               const Icon = typeIcons[c.type] || Plug;
@@ -289,8 +289,8 @@ export function LinkClient() {
                       {c.status}
                     </span>
                   </div>
-                  <div className="text-xs text-muted-foreground font-mono truncate">{c.endpoint || t('link.t81292')}</div>
-                  <div className="text-xs text-muted-foreground mt-1">{t('link.t44128')}: {c.event_count}</div>
+                  <div className="text-xs text-muted-foreground font-mono truncate">{c.endpoint || "无 endpoint"}</div>
+                  <div className="text-xs text-muted-foreground mt-1">事件: {c.event_count}</div>
                 </div>
               );
             })}
@@ -304,27 +304,27 @@ export function LinkClient() {
                 <div className="flex gap-2">
                   <button onClick={() => handleTest(selected.connector_id)}
                     className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-                    <Activity size={12} />  {t('link.t33201')}
-                  <button>
+                    <Activity size={12} /> 测试
+                  </button>
                   {(selected.type === "webhook_out" || selected.type === "rest_api") && (
                     <button onClick={() => handleSend(selected.connector_id)}
                       className="flex items-center gap-1 rounded-lg border border-teal-500/30 px-3 py-1.5 text-xs text-teal-600 hover:bg-teal-500/10">
-                      <Send size={12} />  {t('link.t72588')}
-                    <button>
+                      <Send size={12} /> 发送
+                    </button>
                   )}
                   <button onClick={() => handleDelete(selected.connector_id)}
                     className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
-                    <Trash2 size={12} />  {t('common.delete')}
-                  <button>
+                    <Trash2 size={12} /> 删除
+                  </button>
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><span className="text-muted-foreground">{t('link.t10867')}<span> {selected.type}</div>
-                <div><span className="text-muted-foreground">{t('link.t50013')}<span> {selected.status}</div>
+                <div><span className="text-muted-foreground">类型:</span> {selected.type}</div>
+                <div><span className="text-muted-foreground">状态:</span> {selected.status}</div>
                 <div className="col-span-2"><span className="text-muted-foreground">Endpoint:</span> <span className="font-mono text-xs">{selected.endpoint}</span></div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">{t('link.t90867')}<label>
+                <label className="text-xs text-muted-foreground">测试 Payload (JSON)</label>
                 <textarea value={testPayload} onChange={(e) => setTestPayload(e.target.value)}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono min-h-[80px] mt-1" />
               </div>
@@ -341,27 +341,27 @@ export function LinkClient() {
         {showCreate && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4">
-              <h3 className="font-semibold">{t('link.t30523')}<h3>
+              <h3 className="font-semibold">新建连接器</h3>
               <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                placeholder=t('link.connectorName') className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder="连接器名称" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <select value={newType} onChange={(e) => setNewType(e.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                <option value="webhook_in">Webhook ({t('link.t27996')})</option>
-                <option value="webhook_out">Webhook ({t('link.t65703')})</option>
+                <option value="webhook_in">Webhook (入站)</option>
+                <option value="webhook_out">Webhook (出站)</option>
                 <option value="rest_api">REST API</option>
-                <option value="oa_system">OA {t('link.t57289')}</option>
-                <option value="custom">{t('link.custom')}<option>
+                <option value="oa_system">OA 系统</option>
+                <option value="custom">自定义</option>
               </select>
               <input value={newEndpoint} onChange={(e) => setNewEndpoint(e.target.value)}
                 placeholder="Endpoint URL" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <input value={newSecret} onChange={(e) => setNewSecret(e.target.value)}
-                placeholder=t('link.t09336') type="password" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder="Secret (可选)" type="password" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowCreate(false)}
-                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t('common.cancel')}<button>
+                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">取消</button>
                 <button onClick={handleCreate} disabled={loading}
                   className="rounded-lg bg-teal-500 px-4 py-2 text-sm text-white hover:bg-teal-600 disabled:opacity-50">
-                  {loading ? t('common.creating') : t('common.create')}
+                  {loading ? "创建中..." : "创建"}
                 </button>
               </div>
             </div>

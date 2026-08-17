@@ -6,8 +6,6 @@ import {
   ChevronDown, Edit3, Eye, ArrowUpRight, Download, Upload, Code2,
 } from 'lucide-react';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
-import { useTranslation } from 'react-i18next';
-
 
 interface Snippet {
   id: string;
@@ -42,10 +40,10 @@ const headers = () => ({
 
 function timeAgo(ts: number): string {
   const diff = Date.now() - ts * 1000;
-  if (diff < 60000) return t('common.justNow');
-  if (diff < 3600000) return t('plugins.t40479', { floordiff60000: Math.floor(diff / 60000) });
-  if (diff < 86400000) return t('plugins.t42408', { floordiff3600000: Math.floor(diff / 3600000) });
-  return t('plugins.t01212', { floordiff86400000: Math.floor(diff / 86400000) });
+  if (diff < 60000) return '刚刚';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}分钟前`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}小时前`;
+  return `${Math.floor(diff / 86400000)}天前`;
 }
 
 const LANG_COLORS: Record<string, string> = {
@@ -59,7 +57,6 @@ const LANG_COLORS: Record<string, string> = {
 };
 
 export function SnippetsClient() {
-  const { t } = useTranslation();
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -179,28 +176,28 @@ export function SnippetsClient() {
         });
       }
       if (res.ok) {
-        showToast(editingSnippet ? t('plugins.t78989') : t('plugins.t27945'));
+        showToast(editingSnippet ? '已更新' : '已创建');
         closeEditor();
         fetchSnippets();
         fetchTags();
         fetchStats();
       } else {
-        showToast(t('plugins.saveFailed'), 'error');
+        showToast('保存失败', 'error');
       }
-    } catch { showToast(t('common.networkError'), 'error'); }
+    } catch { showToast('网络错误', 'error'); }
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t('plugins.t41901'))) return;
+    if (!confirm('确定删除此代码片段？')) return;
     try {
       const res = await fetch(`${API()}/snippets/${id}`, { method: 'DELETE', headers: headers() });
       if (res.ok) {
-        showToast(t('plugins.t18660'));
+        showToast('已删除');
         fetchSnippets();
         fetchTags();
         fetchStats();
       }
-    } catch { showToast(t('common.deleteFailed'), 'error'); }
+    } catch { showToast('删除失败', 'error'); }
   };
 
   const handleStar = async (id: string) => {
@@ -232,9 +229,92 @@ export function SnippetsClient() {
 
   const handleExport = async () => {
     try {
-      const res = await fetch(`${API()}/exportt('plugins.t02775')flex items-center gap-1 rounded-lg border px-3 py-2 text-sm ${filterStarred ? 'border-yellow-500 bg-yellow-500/10 text-yellow-500' : 'border-border hover:bg-accent'}`}>
-          <Star className={`h-3.5 w-3.5 ${filterStarred ? 'fill-yellow-500' : ''}`} />  {t('plugins.t69600')}
-        <button>
+      const res = await fetch(`${API()}/export`, {
+        method: 'POST', headers: headers(), body: JSON.stringify({ format: 'json' }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const blob = new Blob([JSON.stringify(data.snippets, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'snippets-export.json'; a.click();
+        URL.revokeObjectURL(url);
+        showToast(`已导出 ${data.count} 个片段`);
+      }
+    } catch { showToast('导出失败', 'error'); }
+  };
+
+  const filteredSnippetList = snippets;
+
+  return (
+    <div className="flex h-full flex-col bg-background text-foreground">
+      {/* Toast */}
+      {toast && (
+        <div className="fixed right-4 top-4 z-50 flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 shadow-lg">
+          {toast.type === 'success' ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+          <span className="text-sm">{toast.msg}</span>
+        </div>
+      )}
+
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+            <FileCode className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-lg font-semibold">Code Snippets</h1>
+            <p className="text-xs text-muted-foreground">代码片段管理 · {stats?.total || 0} 个片段</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button onClick={handleExport} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-accent" title="导出">
+            <Download className="h-3.5 w-3.5" /> 导出
+          </button>
+          <button onClick={() => { fetchSnippets(); fetchTags(); fetchStats(); }} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-accent">
+            <RefreshCw className="h-3.5 w-3.5" />
+          </button>
+          <button onClick={openCreate} className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90">
+            <Plus className="h-3.5 w-3.5" /> 新建片段
+          </button>
+        </div>
+      </div>
+
+      {/* Stats bar */}
+      {stats && (
+        <div className="flex items-center gap-4 border-b border-border px-6 py-2 text-xs text-muted-foreground">
+          <span>总计 <strong className="text-foreground">{stats.total}</strong></span>
+          <span>收藏 <strong className="text-foreground">{stats.starred}</strong></span>
+          <span>置顶 <strong className="text-foreground">{stats.pinned}</strong></span>
+          <span>访问 <strong className="text-foreground">{stats.total_access_count}</strong></span>
+          <span>支持 <strong className="text-foreground">{stats.supported_languages}</strong> 种语言</span>
+        </div>
+      )}
+
+      {/* Filters */}
+      <div className="flex items-center gap-3 border-b border-border px-6 py-3">
+        <div className="relative flex-1 max-w-sm">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            type="text" placeholder="搜索标题、内容、标签..."
+            value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
+          />
+        </div>
+        <select value={filterLang} onChange={e => setFilterLang(e.target.value)}
+          className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
+          <option value="">所有语言</option>
+          {allLanguages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
+        </select>
+        <select value={filterTag} onChange={e => setFilterTag(e.target.value)}
+          className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
+          <option value="">所有标签</option>
+          {allTags.map(t => <option key={t.name} value={t.name}>{t.name} ({t.count})</option>)}
+        </select>
+        <button onClick={() => setFilterStarred(!filterStarred)}
+          className={`flex items-center gap-1 rounded-lg border px-3 py-2 text-sm ${filterStarred ? 'border-yellow-500 bg-yellow-500/10 text-yellow-500' : 'border-border hover:bg-accent'}`}>
+          <Star className={`h-3.5 w-3.5 ${filterStarred ? 'fill-yellow-500' : ''}`} /> 收藏
+        </button>
         <div className="flex rounded-lg border border-border">
           <button onClick={() => setViewMode('grid')} className={`px-2.5 py-2 text-xs ${viewMode === 'grid' ? 'bg-accent' : ''}`}>
             <div className="grid grid-cols-2 gap-0.5"><div className="h-1.5 w-1.5 bg-current"/><div className="h-1.5 w-1.5 bg-current"/><div className="h-1.5 w-1.5 bg-current"/><div className="h-1.5 w-1.5 bg-current"/></div>
@@ -252,8 +332,8 @@ export function SnippetsClient() {
         ) : filteredSnippetList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <FileCode className="mb-3 h-12 w-12 opacity-30" />
-            <p className="text-sm">{t('plugins.t78571')}<p>
-            <button onClick={openCreate} className="mt-3 text-xs text-primary hover:underline">{t('plugins.t95909')}<button>
+            <p className="text-sm">暂无代码片段</p>
+            <button onClick={openCreate} className="mt-3 text-xs text-primary hover:underline">创建第一个片段</button>
           </div>
         ) : viewMode === 'grid' ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -264,7 +344,7 @@ export function SnippetsClient() {
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       {s.pinned && <Pin className="h-3 w-3 text-primary fill-primary" />}
-                      <h3 className="truncate text-sm font-medium">{s.title || t('capture.untitled')}</h3>
+                      <h3 className="truncate text-sm font-medium">{s.title || '无标题'}</h3>
                     </div>
                     <div className="mt-0.5 flex items-center gap-2">
                       <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: (LANG_COLORS[s.language] || '#6e7681') + '20', color: LANG_COLORS[s.language] || '#6e7681' }}>
@@ -274,16 +354,16 @@ export function SnippetsClient() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={() => handleStar(s.id)} className="rounded p-1 hover:bg-accent" title=t('plugins.t69600')>
+                    <button onClick={() => handleStar(s.id)} className="rounded p-1 hover:bg-accent" title="收藏">
                       <Star className={`h-3.5 w-3.5 ${s.starred ? 'fill-yellow-500 text-yellow-500' : ''}`} />
                     </button>
-                    <button onClick={() => handleCopy(s)} className="rounded p-1 hover:bg-accent" title=t('common.copy')>
+                    <button onClick={() => handleCopy(s)} className="rounded p-1 hover:bg-accent" title="复制">
                       {copiedId === s.id ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                     </button>
-                    <button onClick={() => openEdit(s)} className="rounded p-1 hover:bg-accent" title=t('common.edit')>
+                    <button onClick={() => openEdit(s)} className="rounded p-1 hover:bg-accent" title="编辑">
                       <Edit3 className="h-3.5 w-3.5" />
                     </button>
-                    <button onClick={() => handleDelete(s.id)} className="rounded p-1 hover:bg-accent hover:text-red-500" title=t('common.delete')>
+                    <button onClick={() => handleDelete(s.id)} className="rounded p-1 hover:bg-accent hover:text-red-500" title="删除">
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -318,7 +398,7 @@ export function SnippetsClient() {
                   {s.language}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <span className="text-sm font-medium truncate">{s.title || t('capture.untitled')}</span>
+                  <span className="text-sm font-medium truncate">{s.title || '无标题'}</span>
                   {s.description && <span className="ml-2 text-xs text-muted-foreground truncate">{s.description}</span>}
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-1">
@@ -328,7 +408,7 @@ export function SnippetsClient() {
                 </div>
                 <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo(s.updated_at)}</span>
                 <div className="flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button onClick={() => handleCopy(s)} className="rounded p-1 hover:bg-accent" title=t('common.copy')>
+                  <button onClick={() => handleCopy(s)} className="rounded p-1 hover:bg-accent" title="复制">
                     {copiedId === s.id ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                   </button>
                   <button onClick={() => openEdit(s)} className="rounded p-1 hover:bg-accent"><Edit3 className="h-3.5 w-3.5" /></button>
@@ -346,19 +426,19 @@ export function SnippetsClient() {
           <div className="flex h-[85vh] w-full max-w-3xl flex-col rounded-xl border border-border bg-card shadow-2xl">
             {/* Modal header */}
             <div className="flex items-center justify-between border-b border-border px-6 py-3">
-              <h2 className="text-base font-semibold">{editingSnippet ? t('plugins.t99531') : t('plugins.t66914')}</h2>
+              <h2 className="text-base font-semibold">{editingSnippet ? '编辑片段' : '新建片段'}</h2>
               <button onClick={closeEditor} className="rounded-lg p-1.5 hover:bg-accent"><X className="h-4 w-4" /></button>
             </div>
             {/* Modal body */}
             <div className="flex-1 overflow-y-auto p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('echo.title_label')}<label>
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">标题</label>
                   <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" placeholder=t('plugins.t39199') />
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" placeholder="片段标题" />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('settings.language')}<label>
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">语言</label>
                   <select value={form.language} onChange={e => setForm({ ...form, language: e.target.value })}
                     className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
                     {allLanguages.length > 0 ? allLanguages.map(l => <option key={l} value={l}>{l}</option>) : (
@@ -369,18 +449,18 @@ export function SnippetsClient() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('vein.fileName')}<label>
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">文件名</label>
                   <input value={form.filename} onChange={e => setForm({ ...form, filename: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" placeholder=t('plugins.t84583') />
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" placeholder="例如: utils.py" />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('marrow.description')}<label>
+                  <label className="mb-1.5 block text-xs font-medium text-muted-foreground">描述</label>
                   <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" placeholder=t('plugins.t04780') />
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" placeholder="简短描述" />
                 </div>
               </div>
               <div>
-                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('knowledge.tags')}<label>
+                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">标签</label>
                 <div className="flex flex-wrap items-center gap-2">
                   {form.tags.map(tag => (
                     <span key={tag} className="flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-xs text-primary">
@@ -390,30 +470,30 @@ export function SnippetsClient() {
                   ))}
                   <input value={tagInput} onChange={e => setTagInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
-                    className="min-w-[120px] flex-1 bg-transparent text-sm outline-none" placeholder=t('plugins.t36851') />
+                    className="min-w-[120px] flex-1 bg-transparent text-sm outline-none" placeholder="输入标签后回车" />
                 </div>
               </div>
               <div className="flex-1">
-                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('plugins.t53067')}<label>
+                <label className="mb-1.5 block text-xs font-medium text-muted-foreground">代码内容</label>
                 <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })}
-                  className="h-64 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-primary resize-none" placeholder=t('plugins.t51328') />
+                  className="h-64 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-primary resize-none" placeholder="粘贴代码..." />
               </div>
               <div className="flex items-center gap-4">
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={form.starred} onChange={e => setForm({ ...form, starred: e.target.checked })} className="rounded" />
-                  <Star className="h-3.5 w-3.5" />  {t('plugins.t69600')}
-                <label>
+                  <Star className="h-3.5 w-3.5" /> 收藏
+                </label>
                 <label className="flex items-center gap-2 text-sm">
                   <input type="checkbox" checked={form.pinned} onChange={e => setForm({ ...form, pinned: e.target.checked })} className="rounded" />
-                  <Pin className="h-3.5 w-3.5" />  {t('plugins.t44706')}
-                <label>
+                  <Pin className="h-3.5 w-3.5" /> 置顶
+                </label>
               </div>
             </div>
             {/* Modal footer */}
             <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-3">
-              <button onClick={closeEditor} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent">{t('common.cancel')}<button>
+              <button onClick={closeEditor} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent">取消</button>
               <button onClick={handleSave} className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
-                <Save className="h-4 w-4" /> {editingSnippet ? t('common.save') : t('common.create')}
+                <Save className="h-4 w-4" /> {editingSnippet ? '保存' : '创建'}
               </button>
             </div>
           </div>

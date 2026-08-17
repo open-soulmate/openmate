@@ -6,8 +6,6 @@ import {
   Copy, Check, AlertCircle, ChevronRight, Calendar, Bot, Send, Zap,
 } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api-client';
-import { useTranslation } from 'react-i18next';
-
 
 const getApiUrl = () => getApiBaseUrl();
 
@@ -67,9 +65,9 @@ function formatSchedule(schedule: string): string {
   // Human-readable schedule description
   if (schedule.startsWith('every ')) {
     const parts = schedule.replace('every ', '').trim();
-    return t('cron.t04123', { parts: parts });
+    return `每 ${parts}`;
   }
-  if (schedule.includes(' * * *')) return t('cron.t50772', { schedule: schedule });
+  if (schedule.includes(' * * *')) return `定时: ${schedule}`;
   return schedule;
 }
 
@@ -152,8 +150,8 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
         <AlertCircle className="w-12 h-12 text-destructive" />
         <p className="text-muted-foreground">{error}</p>
         <button onClick={() => router.push('/cron')} className="px-4 py-2 rounded-lg border text-sm hover:bg-muted">
-          {t('cron.t72184')}
-        <button>
+          返回列表
+        </button>
       </div>
     );
   }
@@ -170,7 +168,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
         <button
           onClick={() => router.push('/cron')}
           className="p-2 rounded-lg hover:bg-muted transition-colors"
-          title=t('cron.t72184')
+          title="返回列表"
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -182,14 +180,167 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
               job.status === 'active'
                 ? 'bg-green-500/10 text-green-500'
                 : 'bg-amber-500/10 text-amber-500'
-            }t('cron.t37100')w-2 h-2 rounded-full ${
+            }`}>
+              {job.status === 'active' ? '运行中' : '已暂停'}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 mt-1">
+            <span className="text-xs text-muted-foreground font-mono">{taskId}</span>
+            <button onClick={copyId} className="p-0.5 rounded hover:bg-muted" title="复制ID">
+              {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
+            </button>
+          </div>
+        </div>
+
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2">
+          {job.status === 'active' ? (
+            <button
+              onClick={() => handleAction('pause')}
+              disabled={!!actionLoading}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-muted transition-colors text-amber-500"
+            >
+              {actionLoading === 'pause' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pause className="w-4 h-4" />}
+              暂停
+            </button>
+          ) : (
+            <button
+              onClick={() => handleAction('resume')}
+              disabled={!!actionLoading}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-muted transition-colors text-green-500"
+            >
+              {actionLoading === 'resume' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+              恢复
+            </button>
+          )}
+          <button
+            onClick={() => handleAction('run')}
+            disabled={!!actionLoading}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
+          >
+            {actionLoading === 'run' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
+            立即执行
+          </button>
+          <button
+            onClick={() => handleAction('delete')}
+            disabled={!!actionLoading}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-destructive/10 text-destructive transition-colors"
+          >
+            {actionLoading === 'delete' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+            删除
+          </button>
+        </div>
+      </div>
+
+      {/* Error banner */}
+      {error && (
+        <div className="mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-sm text-destructive flex items-center gap-2">
+          <AlertCircle className="w-4 h-4 shrink-0" />
+          {error}
+        </div>
+      )}
+
+      {/* Info Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div className="p-4 rounded-xl border bg-card">
+          <div className="flex items-center gap-2 mb-1">
+            <Calendar className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">调度规则</span>
+          </div>
+          <p className="text-sm font-mono">{job.schedule}</p>
+          <p className="text-xs text-muted-foreground mt-1">{formatSchedule(job.schedule)}</p>
+        </div>
+        <div className="p-4 rounded-xl border bg-card">
+          <div className="flex items-center gap-2 mb-1">
+            <Bot className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">执行Agent</span>
+          </div>
+          <p className="text-sm font-medium capitalize">{icon} {agent}</p>
+        </div>
+        <div className="p-4 rounded-xl border bg-card">
+          <div className="flex items-center gap-2 mb-1">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">下次执行</span>
+          </div>
+          <p className="text-sm">{job.next_run ? new Date(job.next_run).toLocaleString('zh-CN') : '—'}</p>
+        </div>
+        <div className="p-4 rounded-xl border bg-card">
+          <div className="flex items-center gap-2 mb-1">
+            <RefreshCw className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">上次执行</span>
+          </div>
+          <p className="text-sm">{job.last_run ? new Date(job.last_run).toLocaleString('zh-CN') : '—'}</p>
+        </div>
+      </div>
+
+      {/* Deliver Target */}
+      {job.deliver && (
+        <div className="mb-6 p-4 rounded-xl border bg-card">
+          <div className="flex items-center gap-2 mb-2">
+            <Send className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">投递目标</span>
+          </div>
+          <p className="text-sm font-mono bg-muted/50 rounded-lg px-3 py-2">{job.deliver}</p>
+        </div>
+      )}
+
+      {/* Prompt */}
+      {job.prompt && (
+        <div className="mb-6 p-4 rounded-xl border bg-card">
+          <div className="flex items-center gap-2 mb-2">
+            <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            <span className="text-xs text-muted-foreground">执行提示词</span>
+          </div>
+          <pre className="text-sm whitespace-pre-wrap bg-muted/50 rounded-lg px-3 py-2 font-mono max-h-60 overflow-y-auto">
+            {job.prompt}
+          </pre>
+        </div>
+      )}
+
+      {/* Last Error */}
+      {job.last_error && (
+        <div className="mb-6 p-4 rounded-xl border border-destructive/30 bg-destructive/5">
+          <div className="flex items-center gap-2 mb-2">
+            <AlertCircle className="w-4 h-4 text-destructive" />
+            <span className="text-xs text-destructive font-medium">最近错误</span>
+          </div>
+          <pre className="text-sm whitespace-pre-wrap text-destructive/80 font-mono">
+            {job.last_error}
+          </pre>
+        </div>
+      )}
+
+      {/* Run History */}
+      <div className="rounded-xl border bg-card overflow-hidden">
+        <div className="p-4 border-b flex items-center justify-between">
+          <h2 className="text-sm font-medium flex items-center gap-2">
+            <Clock className="w-4 h-4 text-muted-foreground" />
+            执行历史
+          </h2>
+          <button onClick={loadHistory} className="p-1.5 rounded-lg hover:bg-muted transition-colors" title="刷新">
+            <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
+          </button>
+        </div>
+        {history.length === 0 ? (
+          <div className="p-8 text-center text-muted-foreground text-sm">
+            <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
+            <p>暂无执行记录</p>
+            <p className="text-xs mt-1">点击「立即执行」触发一次手动运行</p>
+          </div>
+        ) : (
+          <div className="divide-y divide-border/50">
+            {history.map((entry) => (
+              <div key={entry.id} className="p-4 hover:bg-muted/20 transition-colors">
+                <div className="flex items-center justify-between mb-1">
+                  <div className="flex items-center gap-2">
+                    <span className={`w-2 h-2 rounded-full ${
                       entry.status === 'success' ? 'bg-green-500' :
                       entry.status === 'failed' ? 'bg-destructive' :
                       'bg-amber-500 animate-pulse'
                     }`} />
                     <span className="text-sm font-medium">
-                      {entry.status === 'success' ? t('common.success') :
-                       entry.status === 'failed' ? t('limb.failed') : t('common.running')}
+                      {entry.status === 'success' ? '成功' :
+                       entry.status === 'failed' ? '失败' : '运行中'}
                     </span>
                     <span className="text-xs text-muted-foreground font-mono">{entry.id.slice(0, 8)}</span>
                   </div>

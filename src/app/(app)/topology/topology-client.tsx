@@ -440,9 +440,9 @@ export function TopologyClient() {
 
   const categories = [
     { key: "all", label: t("topology.catAll") || "All", count: components.length },
-    { key: "core", label: t("topology.catCore"), count: components.filter(c => c.category === "core").length },
-    { key: "platform", label: t("topology.catPlatform"), count: components.filter(c => c.category === "platform").length },
-    { key: "advanced", label: t("topology.catAdvanced"), count: components.filter(c => c.category === "advanced").length },
+    { key: "core", label: t("topology.catCore") || "核心", count: components.filter(c => c.category === "core").length },
+    { key: "platform", label: t("topology.catPlatform") || "平台", count: components.filter(c => c.category === "platform").length },
+    { key: "advanced", label: t("topology.catAdvanced") || "高级", count: components.filter(c => c.category === "advanced").length },
   ];
 
   return (
@@ -452,7 +452,7 @@ export function TopologyClient() {
         <div className="flex items-center gap-3">
           <Network size={20} className="text-violet-500" />
           <h1 className="text-lg font-semibold">
-            {t("topology.title"))}
+            {t("topology.title") || "系统拓扑 · Topology"}
           </h1>
           <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-500">
             {components.length} {t("topology.components") || "components"}
@@ -473,7 +473,7 @@ export function TopologyClient() {
           </button>
           <button onClick={fetchComponents}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
-            <RefreshCw size={14} /> {t("common.refresh"))}
+            <RefreshCw size={14} /> {t("common.refresh") || "刷新"}
           </button>
         </div>
       </div>
@@ -583,8 +583,8 @@ export function TopologyClient() {
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" /> {t("topology.checking") || "Checking"}
               </div>
               <div className="flex items-center gap-2">
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-violet-500" />  {t('topology.t69854')}
-              <div>
+                <span className="inline-block h-2.5 w-2.5 rounded-full bg-violet-500" /> 已选中
+              </div>
             </div>
           </div>
         </div>

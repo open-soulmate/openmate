@@ -180,10 +180,10 @@ export function HeredityClient() {
   );
 
   const tabs = [
-    { id: "components" as const, label: t("heredity.components")), icon: Database },
-    { id: "migrations" as const, label: t("heredity.migrations")), icon: ArrowUpCircle },
-    { id: "changelog" as const, label: t("heredity.changelog")), icon: History },
-    { id: "platform" as const, label: t("heredity.platform")), icon: Settings },
+    { id: "components" as const, label: t("heredity.components") || "组件版本", icon: Database },
+    { id: "migrations" as const, label: t("heredity.migrations") || "迁移管理", icon: ArrowUpCircle },
+    { id: "changelog" as const, label: t("heredity.changelog") || "变更日志", icon: History },
+    { id: "platform" as const, label: t("heredity.platform") || "平台版本", icon: Settings },
   ];
 
   return (
@@ -191,9 +191,9 @@ export function HeredityClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <GitBranch size={20} className="text-teal-500" />
-          <h1 className="text-lg font-semibold">{t("heredity.title"))}</h1>
+          <h1 className="text-lg font-semibold">{t("heredity.title") || "遗传链 · 版本演化"}</h1>
           <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-500">
-            {t("heredity.subtitle"))}
+            {t("heredity.subtitle") || "版本管理 · 平滑升级 · 结构迁移"}
           </span>
           {platform && (
             <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
@@ -203,7 +203,7 @@ export function HeredityClient() {
         </div>
         <button onClick={() => { fetchPlatform(); tab === "migrations" && fetchMigrations(); tab === "changelog" && fetchChangelog(); }}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors">
-          <RefreshCw size={14} /> {t("common.refresh"))}
+          <RefreshCw size={14} /> {t("common.refresh") || "刷新"}
         </button>
       </div>
 
@@ -211,14 +211,14 @@ export function HeredityClient() {
         {/* Stats */}
         {platform && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard icon={Database} label={t("heredity.totalComponents") || t('intelligence.totalComponents')} value={String(platform.total_components)}
-              sub={t("heredity.registered"))} color="text-teal-500" bg="bg-teal-500/10" />
-            <StatCard icon={ArrowUpCircle} label={t("heredity.totalMigrations") || t('heredity.t84905')} value={String(platform.total_migrations)}
-              sub={t("heredity.plans"))} color="text-blue-500" bg="bg-blue-500/10" />
-            <StatCard icon={History} label={t("heredity.changelogEntries") || t('heredity.t39839')} value={String(platform.total_changelog_entries)}
-              sub={t("heredity.entries"))} color="text-violet-500" bg="bg-violet-500/10" />
-            <StatCard icon={Tag} label={t("heredity.platformVersion") || t('heredity.platformVersion')} value={`v${platform.platform_version}`}
-              sub={t("heredity.currentRelease") || t('heredity.currentRelease')} color="text-emerald-500" bg="bg-emerald-500/10" />
+            <StatCard icon={Database} label={t("heredity.totalComponents") || "组件总数"} value={String(platform.total_components)}
+              sub={t("heredity.registered") || "已注册"} color="text-teal-500" bg="bg-teal-500/10" />
+            <StatCard icon={ArrowUpCircle} label={t("heredity.totalMigrations") || "迁移总数"} value={String(platform.total_migrations)}
+              sub={t("heredity.plans") || "迁移计划"} color="text-blue-500" bg="bg-blue-500/10" />
+            <StatCard icon={History} label={t("heredity.changelogEntries") || "变更记录"} value={String(platform.total_changelog_entries)}
+              sub={t("heredity.entries") || "条记录"} color="text-violet-500" bg="bg-violet-500/10" />
+            <StatCard icon={Tag} label={t("heredity.platformVersion") || "平台版本"} value={`v${platform.platform_version}`}
+              sub={t("heredity.currentRelease") || "当前版本"} color="text-emerald-500" bg="bg-emerald-500/10" />
           </div>
         )}
 
@@ -240,10 +240,10 @@ export function HeredityClient() {
               <div className="relative flex-1 max-w-xs">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t("heredity.searchComponents") || t('heredity.searchComponents')}
+                  placeholder={t("heredity.searchComponents") || "搜索组件..."}
                   className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-teal-500/20" />
               </div>
-              <span className="text-xs text-muted-foreground">{filteredComponents.length} {t("heredity.componentsCount") || t('heredity.t55429')}</span>
+              <span className="text-xs text-muted-foreground">{filteredComponents.length} {t("heredity.componentsCount") || "个组件"}</span>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -268,8 +268,8 @@ export function HeredityClient() {
                     </div>
                     <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                       <span>ID: {c.component_id}</span>
-                      <span>{c.total_versions} {t("heredity.versions"))}</span>
-                      <span>{Object.keys(c.dependencies).length} {t("heredity.deps"))}</span>
+                      <span>{c.total_versions} {t("heredity.versions") || "版本"}</span>
+                      <span>{Object.keys(c.dependencies).length} {t("heredity.deps") || "依赖"}</span>
                     </div>
                   </button>
                 ))}
@@ -289,10 +289,10 @@ export function HeredityClient() {
                       compatCheck.compatible ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5")}>
                       <div className="flex items-center gap-2">
                         {compatCheck.compatible ? <CheckCircle size={14} className="text-emerald-500" /> : <XCircle size={14} className="text-red-500" />}
-                        <span className="font-medium">{compatCheck.compatible ? t('heredity.t69119') : t('heredity.t28492')}</span>
+                        <span className="font-medium">{compatCheck.compatible ? "依赖兼容" : "依赖冲突"}</span>
                       </div>
                       {compatCheck.issues?.map((issue: any, i: number) => (
-                        <p key={i} className="mt-1 text-xs text-red-400">{issue.dependency}: {issue.issue} ({t('heredity.t95992')}{issue.required}, {t('heredity.t18668')}{issue.actual})</p>
+                        <p key={i} className="mt-1 text-xs text-red-400">{issue.dependency}: {issue.issue} (需要 {issue.required}, 实际 {issue.actual})</p>
                       ))}
                     </div>
                   )}
@@ -300,7 +300,7 @@ export function HeredityClient() {
                   {/* Dependencies */}
                   {Object.keys(componentDetail.current.dependencies).length > 0 && (
                     <div>
-                      <h4 className="text-xs text-muted-foreground mb-2">{t("heredity.dependencies"))}</h4>
+                      <h4 className="text-xs text-muted-foreground mb-2">{t("heredity.dependencies") || "依赖"}</h4>
                       <div className="flex flex-wrap gap-2">
                         {Object.entries(componentDetail.current.dependencies).map(([dep, ver]) => (
                           <span key={dep} className="rounded-full bg-teal-500/10 px-3 py-1 text-xs text-teal-600">
@@ -313,7 +313,7 @@ export function HeredityClient() {
 
                   {/* Version History */}
                   <div>
-                    <h4 className="text-xs text-muted-foreground mb-2">{t("heredity.versionHistory") || t('heredity.versionHistory')}</h4>
+                    <h4 className="text-xs text-muted-foreground mb-2">{t("heredity.versionHistory") || "版本历史"}</h4>
                     <div className="space-y-1">
                       {componentDetail.versions?.map((v: any, i: number) => (
                         <div key={i} className="flex items-center gap-3 text-sm py-1">
@@ -330,7 +330,7 @@ export function HeredityClient() {
                   {/* Release Notes */}
                   {componentDetail.current.release_notes && (
                     <div>
-                      <h4 className="text-xs text-muted-foreground mb-2">{t("heredity.releaseNotes"))}</h4>
+                      <h4 className="text-xs text-muted-foreground mb-2">{t("heredity.releaseNotes") || "发布说明"}</h4>
                       <p className="text-sm text-muted-foreground">{componentDetail.current.release_notes}</p>
                     </div>
                   )}
@@ -345,25 +345,25 @@ export function HeredityClient() {
           <div className="space-y-4">
             {/* Create Migration */}
             <div className="rounded-xl border border-border p-4 space-y-3">
-              <h3 className="text-sm font-medium">{t("heredity.createMigration") || t('heredity.t45504')}</h3>
+              <h3 className="text-sm font-medium">{t("heredity.createMigration") || "创建迁移计划"}</h3>
               <div className="grid grid-cols-4 gap-3">
                 <select value={migComponentId} onChange={(e) => setMigComponentId(e.target.value)}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
-                  <option value="">{t("heredity.selectComponent") || t('heredity.t66360')}</option>
+                  <option value="">{t("heredity.selectComponent") || "选择组件..."}</option>
                   {components.map((c) => (
                     <option key={c.component_id} value={c.component_id}>{c.component_name} (v{c.current_version})</option>
                   ))}
                 </select>
                 <input value={migFrom} onChange={(e) => setMigFrom(e.target.value)}
-                  placeholder={t("heredity.fromVersion"))}
+                  placeholder={t("heredity.fromVersion") || "源版本 (如 0.1.0)"}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/20" />
                 <input value={migTo} onChange={(e) => setMigTo(e.target.value)}
-                  placeholder={t("heredity.toVersion"))}
+                  placeholder={t("heredity.toVersion") || "目标版本 (如 0.2.0)"}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/20" />
                 <button onClick={handleCreateMigration} disabled={loading}
                   className="flex items-center justify-center gap-1.5 rounded-lg bg-teal-500 px-4 py-2 text-sm text-white hover:bg-teal-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                  {t("common.create"))}
+                  {t("common.create") || "创建"}
                 </button>
               </div>
             </div>
@@ -372,7 +372,7 @@ export function HeredityClient() {
             {migrations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <ArrowUpCircle size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("heredity.noMigrations"))}</p>
+                <p className="text-sm">{t("heredity.noMigrations") || "暂无迁移计划"}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -393,22 +393,22 @@ export function HeredityClient() {
                         {(m.status === "pending") && (
                           <button onClick={() => handleExecuteMigration(m.migration_id)} disabled={loading}
                             className="flex items-center gap-1 rounded-lg bg-teal-500 px-3 py-1.5 text-xs text-white hover:bg-teal-600 disabled:opacity-50">
-                            <Play size={12} /> {t("heredity.execute"))}
+                            <Play size={12} /> {t("heredity.execute") || "执行"}
                           </button>
                         )}
                         {(m.status === "completed" || m.status === "failed") && (
                           <button onClick={() => handleRollbackMigration(m.migration_id)} disabled={loading}
                             className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted disabled:opacity-50">
-                            <RotateCcw size={12} /> {t("heredity.rollback"))}
+                            <RotateCcw size={12} /> {t("heredity.rollback") || "回滚"}
                           </button>
                         )}
                       </div>
                     </div>
                     <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
                       <span>ID: {m.migration_id}</span>
-                      {m.started_at && <span>{t("heredity.started"))}: {formatTime(m.started_at)}</span>}
-                      {m.completed_at && <span>{t("heredity.completed"))}: {formatTime(m.completed_at)}</span>}
-                      {m.error && <span className="text-red-400">{t("heredity.error"))}: {m.error}</span>}
+                      {m.started_at && <span>{t("heredity.started") || "开始"}: {formatTime(m.started_at)}</span>}
+                      {m.completed_at && <span>{t("heredity.completed") || "完成"}: {formatTime(m.completed_at)}</span>}
+                      {m.error && <span className="text-red-400">{t("heredity.error") || "错误"}: {m.error}</span>}
                     </div>
                   </div>
                 ))}
@@ -423,7 +423,7 @@ export function HeredityClient() {
             {changelog.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <History size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("heredity.noChangelog"))}</p>
+                <p className="text-sm">{t("heredity.noChangelog") || "暂无变更记录"}</p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -459,7 +459,7 @@ export function HeredityClient() {
             <div className="rounded-xl border border-border bg-card p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
-                  <h3 className="text-lg font-semibold">{t("heredity.platformVersion") || t('heredity.platformVersion')}</h3>
+                  <h3 className="text-lg font-semibold">{t("heredity.platformVersion") || "平台版本"}</h3>
                   <p className="text-3xl font-bold text-teal-500 mt-2">v{platform.platform_version}</p>
                 </div>
                 <div className="flex gap-2">
@@ -480,22 +480,22 @@ export function HeredityClient() {
               <div className="grid grid-cols-3 gap-4 text-center">
                 <div className="rounded-lg bg-muted p-4">
                   <p className="text-2xl font-bold">{platform.total_components}</p>
-                  <p className="text-xs text-muted-foreground">{t("heredity.components"))}</p>
+                  <p className="text-xs text-muted-foreground">{t("heredity.components") || "组件"}</p>
                 </div>
                 <div className="rounded-lg bg-muted p-4">
                   <p className="text-2xl font-bold">{platform.total_migrations}</p>
-                  <p className="text-xs text-muted-foreground">{t("heredity.migrations"))}</p>
+                  <p className="text-xs text-muted-foreground">{t("heredity.migrations") || "迁移"}</p>
                 </div>
                 <div className="rounded-lg bg-muted p-4">
                   <p className="text-2xl font-bold">{platform.total_changelog_entries}</p>
-                  <p className="text-xs text-muted-foreground">{t("heredity.changes"))}</p>
+                  <p className="text-xs text-muted-foreground">{t("heredity.changes") || "变更"}</p>
                 </div>
               </div>
             </div>
 
             {/* Dependency Graph */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <h3 className="text-sm font-semibold">{t("heredity.dependencyGraph") || t('heredity.t75585')}</h3>
+              <h3 className="text-sm font-semibold">{t("heredity.dependencyGraph") || "依赖关系图"}</h3>
               <div className="space-y-2">
                 {components.map((c) => (
                   <div key={c.component_id} className="flex items-center gap-3 text-sm">
@@ -503,7 +503,7 @@ export function HeredityClient() {
                     <ArrowUpCircle size={12} className="text-teal-500 shrink-0" />
                     <div className="flex flex-wrap gap-1">
                       {Object.keys(c.dependencies).length === 0 ? (
-                        <span className="text-xs text-muted-foreground">{t("heredity.noDeps"))}</span>
+                        <span className="text-xs text-muted-foreground">{t("heredity.noDeps") || "无依赖"}</span>
                       ) : (
                         Object.entries(c.dependencies).map(([dep, ver]) => (
                           <span key={dep} className="rounded bg-teal-500/10 px-2 py-0.5 text-xs text-teal-600">
