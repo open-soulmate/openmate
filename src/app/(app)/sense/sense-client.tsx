@@ -163,7 +163,7 @@ export function SenseClient() {
       setVideoResult(await res.json())
     } catch (e: any) {
       setVideoResult(null)
-      alert(`视频分析失败: ${e.message}`)
+      alert(t("sense.t64077", { message: e.message }))
     } finally {
       setVideoLoading(false)
     }
@@ -183,7 +183,7 @@ export function SenseClient() {
       const data = await res.json()
       setVideoFrames(data.frames || [])
     } catch (e: any) {
-      alert(`帧提取失败: ${e.message}`)
+      alert(t("sense.t10706", { message: e.message }))
     } finally {
       setFrameExtracting(false)
     }
@@ -233,10 +233,10 @@ export function SenseClient() {
   const multimodalAvailable = health?.engines?.multimodal?.available ?? false
 
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Eye; available: boolean }> = [
-    { key: "ocr", label: "OCR 图文识别", icon: FileImage, available: ocrAvailable },
-    { key: "asr", label: "ASR 语音转写", icon: Volume2, available: asrAvailable },
-    { key: "analyze", label: "图像分析", icon: ImageIcon, available: multimodalAvailable },
-    { key: "video", label: "视频分析", icon: Video, available: true },
+    { key: "ocr", label: t("sense.t90548"), icon: FileImage, available: ocrAvailable },
+    { key: "asr", label: t("sense.t29231"), icon: Volume2, available: asrAvailable },
+    { key: "analyze", label: t("sense.analyze"), icon: ImageIcon, available: multimodalAvailable },
+    { key: "video", label: t("sense.t72073"), icon: Video, available: true },
   ]
 
   return (
@@ -247,8 +247,8 @@ export function SenseClient() {
           <Eye className="w-6 h-6 text-amber-500" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">👁️ Sense — 感官感知</h1>
-          <p className="text-sm text-muted-foreground">多模态解析：OCR图像识别、ASR语音转写、图像分析</p>
+          <h1 className="text-2xl font-bold">👁️ Sense — {t("sense.text6")}</h1>
+          <p className="text-sm text-muted-foreground">{t("sense.t22285")}</p>
         </div>
       </div>
 
@@ -271,9 +271,9 @@ export function SenseClient() {
               Engine: {eng.engine as string}
             </div>
             {eng.available ? (
-              <div className="text-xs text-green-500 font-medium mt-1">✓ 可用</div>
+              <div className="text-xs text-green-500 font-medium mt-1">✓ {t("sense.text8")}</div>
             ) : (
-              <div className="text-xs text-muted-foreground mt-1">✗ 不可用</div>
+              <div className="text-xs text-muted-foreground mt-1">✗ {t("sense.text9")}</div>
             )}
           </div>
         ))}
@@ -298,7 +298,7 @@ export function SenseClient() {
             >
               <Icon className="w-4 h-4" />
               {tab.label}
-              {!tab.available && <span className="text-xs">(不可用)</span>}
+              {!tab.available && <span className="text-xs">({t("sense.text9")})</span>}
             </button>
           )
         })}
@@ -310,7 +310,7 @@ export function SenseClient() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Upload Area */}
             <div className="space-y-4">
-              <h3 className="font-semibold">上传图片</h3>
+              <h3 className="font-semibold">{t("sense.upload")}</h3>
               <div
                 className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5 transition-all"
                 onClick={() => ocrInputRef.current?.click()}
@@ -326,8 +326,8 @@ export function SenseClient() {
                 ) : (
                   <div className="space-y-2">
                     <Upload className="w-10 h-10 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">拖拽或点击上传图片</p>
-                    <p className="text-xs text-muted-foreground/60">支持 JPG, PNG, BMP, TIFF, WebP</p>
+                    <p className="text-sm text-muted-foreground">{t("sense.t15784")}</p>
+                    <p className="text-xs text-muted-foreground/60">{t("sense.t61542")}</p>
                   </div>
                 )}
               </div>
@@ -350,17 +350,17 @@ export function SenseClient() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">语言</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">{t("sense.text12")}</label>
                   <select
                     value={ocrLanguage}
                     onChange={(e) => setOcrLanguage(e.target.value)}
                     className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
                   >
-                    <option value="chi_sim+eng">中文简体 + English</option>
+                    <option value="chi_sim+eng">{t("sense.t14168")}</option>
                     <option value="eng">English</option>
-                    <option value="chi_sim">中文简体</option>
-                    <option value="chi_tra">中文繁體</option>
-                    <option value="jpn">日本語</option>
+                    <option value="chi_sim">{t("sense.t10852")}</option>
+                    <option value="chi_tra">{t("sense.t52961")}</option>
+                    <option value="jpn">{t("sense.t33558")}</option>
                     <option value="kor">한국어</option>
                   </select>
                 </div>
@@ -372,7 +372,7 @@ export function SenseClient() {
                       onChange={(e) => setOcrPreprocess(e.target.checked)}
                       className="rounded border-border"
                     />
-                    预处理（灰度+二值化）
+                    {t("sense.t82623")}
                   </label>
                 </div>
               </div>
@@ -383,20 +383,20 @@ export function SenseClient() {
                 className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {ocrLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                {ocrLoading ? "识别中..." : "开始 OCR 识别"}
+                {ocrLoading ? t("sense.t15992") : t("sense.t60548")}
               </button>
             </div>
 
             {/* Result Area */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">识别结果</h3>
+                <h3 className="font-semibold">{t("sense.text18")}</h3>
                 {ocrResult && ocrResult.text && (
                   <button
                     onClick={() => copyToClipboard(ocrResult.text)}
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    <Copy className="w-3.5 h-3.5" /> 复制
+                    <Copy className="w-3.5 h-3.5" /> {t("sense.copy")}
                   </button>
                 )}
               </div>
@@ -404,19 +404,19 @@ export function SenseClient() {
                 {ocrResult ? (
                   <div className="space-y-4">
                     <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>置信度: <b className="text-foreground">{ocrResult.confidence}%</b></span>
-                      <span>语言: <b className="text-foreground">{ocrResult.language}</b></span>
-                      <span>引擎: <b className="text-foreground">{ocrResult.engine}</b></span>
+                      <span>{t("sense.text19")}: <b className="text-foreground">{ocrResult.confidence}%</b></span>
+                      {t("sense.text12")}:<span> <b className="text-foreground">{ocrResult.language}</b></span>
+                      <span>{t("sense.text20")}: <b className="text-foreground">{ocrResult.engine}</b></span>
                     </div>
                     <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                      {ocrResult.text || "（未识别到文字）"}
+                      {ocrResult.text || t("sense.t97826")}
                     </div>
                     {ocrResult.pages.length > 1 && (
                       <div className="space-y-3 pt-4 border-t border-border">
-                        <h4 className="text-xs font-medium text-muted-foreground">按页结果</h4>
+                        <h4 className="text-xs font-medium text-muted-foreground">{t("sense.t10338")}</h4>
                         {ocrResult.pages.map((p) => (
                           <div key={p.page} className="bg-muted/30 rounded-lg p-3">
-                            <div className="text-xs text-muted-foreground mb-1">第 {p.page} 页 · 置信度 {p.confidence}%</div>
+                            <div className="text-xs text-muted-foreground mb-1">{t("sense.text23")} {p.page} {t("sense.text24")} {p.confidence}%</div>
                             <div className="text-sm whitespace-pre-wrap">{p.text}</div>
                           </div>
                         ))}
@@ -426,7 +426,7 @@ export function SenseClient() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                     <FileText className="w-12 h-12 mb-2" />
-                    <p className="text-sm">上传图片后点击"开始识别"</p>
+                    <p className="text-sm">{t("sense.t21375")}</p>
                   </div>
                 )}
               </div>
@@ -441,7 +441,7 @@ export function SenseClient() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Upload Area */}
             <div className="space-y-4">
-              <h3 className="font-semibold">上传音频</h3>
+              <h3 className="font-semibold">{t("sense.text27")}</h3>
               <div
                 className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5 transition-all"
                 onClick={() => asrInputRef.current?.click()}
@@ -454,8 +454,8 @@ export function SenseClient() {
               >
                 <div className="space-y-2">
                   <Mic className="w-10 h-10 mx-auto text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">拖拽或点击上传音频</p>
-                  <p className="text-xs text-muted-foreground/60">支持 WAV, MP3, OGG, FLAC, WebM, M4A</p>
+                  <p className="text-sm text-muted-foreground">{t("sense.t70266")}</p>
+                  <p className="text-xs text-muted-foreground/60">{t("sense.t98479")}</p>
                 </div>
               </div>
               <input
@@ -476,14 +476,14 @@ export function SenseClient() {
               )}
 
               <div>
-                <label className="text-xs text-muted-foreground mb-1 block">语言（留空自动检测）</label>
+                <label className="text-xs text-muted-foreground mb-1 block">{t("sense.auto")}</label>
                 <select
                   value={asrLanguage}
                   onChange={(e) => setAsrLanguage(e.target.value)}
                   className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
                 >
-                  <option value="">自动检测</option>
-                  <option value="zh">中文</option>
+                  <option value="">{t("sense.text30")}</option>
+                  <option value="zh">{t("sense.text31")}</option>
                   <option value="en">English</option>
                   <option value="ja">日本語</option>
                   <option value="ko">한국어</option>
@@ -496,20 +496,20 @@ export function SenseClient() {
                 className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {asrLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Volume2 className="w-4 h-4" />}
-                {asrLoading ? "转写中..." : "开始语音转写"}
+                {asrLoading ? t("sense.text32") : t("sense.text33")}
               </button>
             </div>
 
             {/* Result Area */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">转写结果</h3>
+                <h3 className="font-semibold">{t("sense.text34")}</h3>
                 {asrResult && asrResult.text && (
                   <button
                     onClick={() => copyToClipboard(asrResult.text)}
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    <Copy className="w-3.5 h-3.5" /> 复制
+                    <Copy className="w-3.5 h-3.5" /> {t("sense.copy")}
                   </button>
                 )}
               </div>
@@ -517,16 +517,16 @@ export function SenseClient() {
                 {asrResult ? (
                   <div className="space-y-4">
                     <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>时长: <b className="text-foreground">{formatDuration(asrResult.duration_seconds)}</b></span>
-                      <span>语言: <b className="text-foreground">{asrResult.language || "未知"}</b></span>
-                      <span>引擎: <b className="text-foreground">{asrResult.engine}</b></span>
+                      <span>{t("sense.text35")}: <b className="text-foreground">{formatDuration(asrResult.duration_seconds)}</b></span>
+                      {t("sense.text12")}:<span> <b className="text-foreground">{asrResult.language || t("sense.unknown")}</b></span>
+                      <span>{t("sense.text20")}: <b className="text-foreground">{asrResult.engine}</b></span>
                     </div>
                     <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                      {asrResult.text || "（未识别到语音）"}
+                      {asrResult.text || t("sense.t30307")}
                     </div>
                     {asrResult.segments.length > 0 && (
                       <div className="space-y-2 pt-4 border-t border-border">
-                        <h4 className="text-xs font-medium text-muted-foreground">时间轴</h4>
+                        <h4 className="text-xs font-medium text-muted-foreground">{t("sense.timeline")}</h4>
                         {asrResult.segments.map((seg, i) => (
                           <div key={i} className="flex gap-3 text-sm">
                             <span className="text-xs text-muted-foreground font-mono whitespace-nowrap">
@@ -541,7 +541,7 @@ export function SenseClient() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                     <Mic className="w-12 h-12 mb-2" />
-                    <p className="text-sm">上传音频后点击"开始转写"</p>
+                    <p className="text-sm">{t("sense.t81838")}</p>
                   </div>
                 )}
               </div>
@@ -556,7 +556,7 @@ export function SenseClient() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Upload Area */}
             <div className="space-y-4">
-              <h3 className="font-semibold">上传图片</h3>
+              <h3 className="font-semibold">{t("sense.upload")}</h3>
               <div
                 className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5 transition-all"
                 onClick={() => analyzeInputRef.current?.click()}
@@ -572,7 +572,7 @@ export function SenseClient() {
                 ) : (
                   <div className="space-y-2">
                     <ImageIcon className="w-10 h-10 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">拖拽或点击上传图片</p>
+                    <p className="text-sm text-muted-foreground">{t("sense.t15784")}</p>
                   </div>
                 )}
               </div>
@@ -599,22 +599,22 @@ export function SenseClient() {
                 className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {analyzeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
-                {analyzeLoading ? "分析中..." : "开始图像分析"}
+                {analyzeLoading ? t("sense.text39") : t("sense.text40")}
               </button>
             </div>
 
             {/* Result Area */}
             <div className="space-y-4">
-              <h3 className="font-semibold">分析结果</h3>
+              <h3 className="font-semibold">{t("sense.text41")}</h3>
               <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
                 {analyzeResult ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { label: "尺寸", value: `${analyzeResult.width} × ${analyzeResult.height}` },
-                        { label: "格式", value: analyzeResult.format },
-                        { label: "色彩模式", value: analyzeResult.mode },
-                        { label: "文件大小", value: formatFileSize(analyzeResult.file_size) },
+                        { label: t("sense.text42"), value: `${analyzeResult.width} × ${analyzeResult.height}` },
+                        { label: t("sense.text43"), value: analyzeResult.format },
+                        { label: t("sense.text44"), value: analyzeResult.mode },
+                        { label: t("sense.size"), value: formatFileSize(analyzeResult.file_size) },
                       ].map(item => (
                         <div key={item.label} className="bg-muted/30 rounded-lg p-3">
                           <div className="text-xs text-muted-foreground">{item.label}</div>
@@ -625,7 +625,7 @@ export function SenseClient() {
 
                     {analyzeResult.dominant_colors.length > 0 && (
                       <div>
-                        <div className="text-xs text-muted-foreground mb-2">主色调</div>
+                        <div className="text-xs text-muted-foreground mb-2">{t("sense.text45")}</div>
                         <div className="flex gap-2">
                           {analyzeResult.dominant_colors.map((color, i) => (
                             <div key={i} className="flex flex-col items-center gap-1">
@@ -642,7 +642,7 @@ export function SenseClient() {
 
                     {Object.keys(analyzeResult.exif).length > 0 && (
                       <div>
-                        <div className="text-xs text-muted-foreground mb-2">EXIF 信息</div>
+                        <div className="text-xs text-muted-foreground mb-2">EXIF {t("sense.text46")}</div>
                         <div className="max-h-48 overflow-y-auto space-y-1">
                           {Object.entries(analyzeResult.exif).slice(0, 20).map(([k, v]) => (
                             <div key={k} className="flex justify-between text-xs">
@@ -661,7 +661,7 @@ export function SenseClient() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                     <ImageIcon className="w-12 h-12 mb-2" />
-                    <p className="text-sm">上传图片后点击"开始分析"</p>
+                    <p className="text-sm">{t("sense.t71759")}</p>
                   </div>
                 )}
               </div>
@@ -676,7 +676,7 @@ export function SenseClient() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Upload Area */}
             <div className="space-y-4">
-              <h3 className="font-semibold">上传视频</h3>
+              <h3 className="font-semibold">{t("sense.text47")}</h3>
               <div
                 className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5 transition-all"
                 onClick={() => videoInputRef.current?.click()}
@@ -696,8 +696,8 @@ export function SenseClient() {
                 ) : (
                   <div className="space-y-2">
                     <Video className="w-10 h-10 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">拖拽或点击上传视频</p>
-                    <p className="text-xs text-muted-foreground/60">支持 MP4, WebM, AVI, MOV, MKV</p>
+                    <p className="text-sm text-muted-foreground">{t("sense.t00665")}</p>
+                    <p className="text-xs text-muted-foreground/60">{t("sense.t81283")}</p>
                   </div>
                 )}
               </div>
@@ -724,15 +724,15 @@ export function SenseClient() {
                 className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {videoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Film className="w-4 h-4" />}
-                {videoLoading ? "分析中..." : "分析视频元信息"}
+                {videoLoading ? t("sense.text39") : t("sense.text50")}
               </button>
 
               {/* Frame extraction controls */}
               <div className="border-t border-border pt-4 space-y-3">
-                <h4 className="text-sm font-medium">帧提取</h4>
+                <h4 className="text-sm font-medium">{t("sense.text51")}</h4>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">间隔（秒）</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("sense.text52")}</label>
                     <input
                       type="number"
                       min={0.5}
@@ -743,7 +743,7 @@ export function SenseClient() {
                     />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">最大帧数</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("sense.text53")}</label>
                     <input
                       type="number"
                       min={1}
@@ -760,24 +760,24 @@ export function SenseClient() {
                   className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-orange-600 hover:to-red-600 transition-all flex items-center justify-center gap-2"
                 >
                   {frameExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                  {frameExtracting ? "提取中..." : "提取视频帧"}
+                  {frameExtracting ? t("sense.text54") : t("sense.text55")}
                 </button>
               </div>
             </div>
 
             {/* Result Area */}
             <div className="space-y-4">
-              <h3 className="font-semibold">分析结果</h3>
+              <h3 className="font-semibold">{t("sense.text41")}</h3>
               <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
                 {videoResult ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-3">
                       {[
-                        { label: "时长", value: formatDuration(videoResult.duration) },
-                        { label: "分辨率", value: `${videoResult.width} × ${videoResult.height}` },
-                        { label: "帧率", value: `${videoResult.fps} fps` },
-                        { label: "编码", value: videoResult.codec },
-                        { label: "文件大小", value: formatFileSize(videoResult.file_size) },
+                        { label: t("sense.text35"), value: formatDuration(videoResult.duration) },
+                        { label: t("sense.text56"), value: `${videoResult.width} × ${videoResult.height}` },
+                        { label: t("sense.text57"), value: `${videoResult.fps} fps` },
+                        { label: t("sense.text58"), value: videoResult.codec },
+                        { label: t("sense.size"), value: formatFileSize(videoResult.file_size) },
                       ].map(item => (
                         <div key={item.label} className="bg-muted/30 rounded-lg p-3">
                           <div className="text-xs text-muted-foreground">{item.label}</div>
@@ -789,7 +789,7 @@ export function SenseClient() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                     <Video className="w-12 h-12 mb-2" />
-                    <p className="text-sm">上传视频后点击"分析视频元信息"</p>
+                    <p className="text-sm">{t("sense.t80833")}</p>
                   </div>
                 )}
 
@@ -797,7 +797,7 @@ export function SenseClient() {
                 {videoFrames.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-border">
                     <h4 className="text-xs font-medium text-muted-foreground mb-3">
-                      提取的帧 ({videoFrames.length} 张)
+                      {t("sense.text61")} ({videoFrames.length} {t("sense.text62")})
                     </h4>
                     <div className="grid grid-cols-3 gap-2">
                       {videoFrames.map((frame) => (
