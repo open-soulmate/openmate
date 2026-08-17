@@ -30,6 +30,8 @@ export function EchoClient() {
   const [tab, setTab] = useState<"send" | "channels" | "history" | "templates">("send");
   const [health, setHealth] = useState<any>(null);
   const [channels, setChannels] = useState<any[]>([]);
+  const [channelHealth, setChannelHealth] = useState<any>(null);
+  const [testingHealth, setTestingHealth] = useState(false);
   const [history, setHistory] = useState<any[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [sendTitle, setSendTitle] = useState("");
@@ -66,6 +68,16 @@ export function EchoClient() {
       const data = await res.json();
       setChannels(data.channels || []);
     } catch {}
+  }, [apiBase]);
+
+  const fetchChannelHealth = useCallback(async () => {
+    setTestingHealth(true);
+    try {
+      const res = await fetch(`${apiBase}/api/echo/channels/health`);
+      const data = await res.json();
+      setChannelHealth(data);
+    } catch {}
+    setTestingHealth(false);
   }, [apiBase]);
 
   const fetchHistory = useCallback(async () => {
@@ -513,27 +525,58 @@ export function EchoClient() {
                   placeholder='{"smtp_port":587,"username":"..."}'
                   className="block rounded-lg border border-border bg-background px-3 py-2 text-sm w-64" />
               </div>
+              <button onClick={fetchChannelHealth} disabled={testingHealth}
+                className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-sm text-white hover:bg-emerald-600 disabled:opacity-50">
+                {testingHealth ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
+                {t("echo.testHealth") || "测试连通性"}
+              </button>
             </div>
+            {/* Channel Health Summary */}
+            {channelHealth && (
+              <div className={cn("rounded-xl border p-3 text-sm",
+                channelHealth.status === "ok" ? "border-emerald-500/30 bg-emerald-500/5" : "border-yellow-500/30 bg-yellow-500/5")}>
+                <div className="flex items-center gap-2">
+                  {channelHealth.status === "ok" ? <CheckCircle size={14} className="text-emerald-500" /> : <XCircle size={14} className="text-yellow-500" />}
+                  <span className="font-medium">
+                    {channelHealth.healthy}/{channelHealth.total} {t("echo.channelsHealthy") || "渠道健康"}
+                  </span>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {channels.map((ch) => (
+              {channels.map((ch) => {
+                const healthInfo = channelHealth?.channels?.find((h: any) => h.channel === ch.channel);
+                return (
                 <div key={ch.channel} className="rounded-xl border border-border bg-card p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Radio size={16} className={ch.enabled ? "text-emerald-500" : "text-muted-foreground"} />
                       <span className="font-medium text-sm">{ch.channel}</span>
                     </div>
-                    <span className={cn("text-xs", ch.enabled ? "text-emerald-500" : "text-muted-foreground")}>
-                      {ch.enabled ? t("echo.enabled") || "已启用" : t("echo.t00979") || "未启用"}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {healthInfo && (
+                        <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full",
+                          healthInfo.status === "ok" ? "bg-emerald-500/20 text-emerald-500" :
+                          healthInfo.status === "unconfigured" ? "bg-yellow-500/20 text-yellow-500" :
+                          "bg-red-500/20 text-red-500")}>
+                          {healthInfo.status === "ok" ? `✓ ${healthInfo.latency_ms}ms` : healthInfo.status}
+                        </span>
+                      )}
+                      <span className={cn("text-xs", ch.enabled ? "text-emerald-500" : "text-muted-foreground")}>
+                        {ch.enabled ? t("echo.enabled") || "已启用" : t("echo.t00979") || "未启用"}
+                      </span>
+                    </div>
                   </div>
                   {ch.has_endpoint && <p className="text-xs text-muted-foreground font-mono">{t("echo.t53402") || "已配置Endpoint"}</p>}
                   {ch.has_token && <p className="text-xs text-muted-foreground">{t("echo.t36791") || "已配置Token"}</p>}
+                  {healthInfo?.error && <p className="text-xs text-red-400 mt-1">{healthInfo.error}</p>}
                   <button onClick={() => handleConfigure(ch.channel)}
                     className="mt-2 rounded-lg border border-border px-3 py-1 text-xs hover:bg-muted">
                     {t("echo.t45063") || "保存配置"}
                   </button>
                 </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         )}
