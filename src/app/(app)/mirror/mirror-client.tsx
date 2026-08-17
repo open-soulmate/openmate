@@ -6,7 +6,7 @@ import { getApiBaseUrl } from "@/lib/api-client";
 import {
   RefreshCw, Plus, Play, Pause, Trash2,
   Camera, Terminal, Settings, Box, Loader2, Layers,
-  Sparkles,
+  Sparkles, FileText, Zap, Copy,
 } from "lucide-react";
 
 interface Sandbox {
@@ -18,20 +18,37 @@ interface Sandbox {
   log_count: number;
 }
 
+interface SandboxTemplate {
+  template_id: string;
+  name: string;
+  description: string;
+  icon: string;
+  config: any;
+  variables: Record<string, string>;
+  tags: string[];
+  category: string;
+  usage_count: number;
+}
+
 export function MirrorClient() {
   const { t } = useTranslation();
+  const [tab, setTab] = useState<"sandboxes" | "templates">("sandboxes");
   const [sandboxes, setSandboxes] = useState<Sandbox[]>([]);
+  const [templates, setTemplates] = useState<SandboxTemplate[]>([]);
   const [health, setHealth] = useState<any>(null);
   const [selected, setSelected] = useState<Sandbox | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<SandboxTemplate | null>(null);
   const [logs, setLogs] = useState<any[]>([]);
   const [variables, setVariables] = useState<any>({});
   const [showCreate, setShowCreate] = useState(false);
+  const [showCreateFromTemplate, setShowCreateFromTemplate] = useState(false);
   const [newName, setNewName] = useState("");
   const [newDesc, setNewDesc] = useState("");
   const [loading, setLoading] = useState(false);
   const [logMessage, setLogMessage] = useState("");
   const [varKey, setVarKey] = useState("");
   const [varValue, setVarValue] = useState("");
+  const [templateVarOverrides, setTemplateVarOverrides] = useState<Record<string, string>>({});
   const apiBase = getApiBaseUrl();
 
   const fetchHealth = useCallback(async () => {
@@ -46,6 +63,14 @@ export function MirrorClient() {
       const res = await fetch(`${apiBase}/api/mirror/sandboxes`);
       const data = await res.json();
       setSandboxes(data.sandboxes || []);
+    } catch {}
+  }, [apiBase]);
+
+  const fetchTemplates = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/mirror/templates`);
+      const data = await res.json();
+      setTemplates(data.templates || []);
     } catch {}
   }, [apiBase]);
 
@@ -67,8 +92,9 @@ export function MirrorClient() {
 
   useEffect(() => {
     fetchHealth();
-    fetchSandboxes();
-  }, [fetchHealth, fetchSandboxes]);
+    if (tab === "sandboxes") fetchSandboxes();
+    if (tab === "templates") fetchTemplates();
+  }, [tab, fetchHealth, fetchSandboxes, fetchTemplates]);
 
   useEffect(() => {
     if (selected) {
@@ -95,6 +121,29 @@ export function MirrorClient() {
     } catch {} finally { setLoading(false); }
   };
 
+  const handleCreateFromTemplate = async (tpl: SandboxTemplate) => {
+    setLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/api/mirror/templates/${tpl.template_id}/instantiate`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          template_id: tpl.template_id,
+          variables: templateVarOverrides,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setShowCreateFromTemplate(false);
+        setSelectedTemplate(null);
+        setTemplateVarOverrides({});
+        setTab("sandboxes");
+        fetchSandboxes();
+        fetchHealth();
+      }
+    } catch {} finally { setLoading(false); }
+  };
+
   const handleSnapshot = async (id: string) => {
     try {
       await fetch(`${apiBase}/api/mirror/sandboxes/${id}/snapshot`, { method: "POST" });
@@ -106,9 +155,7 @@ export function MirrorClient() {
     try {
       await fetch(`${apiBase}/api/mirror/sandboxes/${id}/pause`, { method: "POST" });
       fetchSandboxes();
-      if (selected?.sandbox_id === id) {
-        setSelected({ ...selected, status: "paused" });
-      }
+      if (selected?.sandbox_id === id) setSelected({ ...selected, status: "paused" });
     } catch {}
   };
 
@@ -116,14 +163,12 @@ export function MirrorClient() {
     try {
       await fetch(`${apiBase}/api/mirror/sandboxes/${id}/resume`, { method: "POST" });
       fetchSandboxes();
-      if (selected?.sandbox_id === id) {
-        setSelected({ ...selected, status: "active" });
-      }
+      if (selected?.sandbox_id === id) setSelected({ ...selected, status: "active" });
     } catch {}
   };
 
   const handleDestroy = async (id: string) => {
-    if (!confirm(t("mirror.t91607"))) return;
+    if (!confirm(t("mirror.t91607") || "确定销毁此沙箱？")) return;
     try {
       await fetch(`${apiBase}/api/mirror/sandboxes/${id}`, { method: "DELETE" });
       setSelected(null);
@@ -172,6 +217,18 @@ export function MirrorClient() {
     return "text-muted-foreground";
   };
 
+  const categoryColor = (cat: string) => {
+    if (cat === "workflow") return "bg-blue-500/10 text-blue-500";
+    if (cat === "agent") return "bg-purple-500/10 text-purple-500";
+    if (cat === "connector") return "bg-amber-500/10 text-amber-500";
+    return "bg-muted text-muted-foreground";
+  };
+
+  const tabs = [
+    { id: "sandboxes" as const, label: t("mirror.t22079") || "沙箱", icon: Box },
+    { id: "templates" as const, label: "模板", icon: FileText },
+  ];
+
   return (
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
@@ -179,19 +236,23 @@ export function MirrorClient() {
           <Layers size={20} className="text-indigo-500" />
           <h1 className="text-lg font-semibold">{t("mirror.title") || "镜像 · 沙箱测试"}</h1>
           <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-500">
-            {t("mirror.t13347")}
+            {t("mirror.t13347") || "隔离环境"}
           </span>
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={handleCleanup}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted">
-            <Sparkles size={12} /> {t("mirror.cleanup")}
-          </button>
-          <button onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-1.5 text-sm text-white hover:bg-indigo-600">
-            <Plus size={14} /> {t("mirror.t40266")}
-          </button>
-          <button onClick={() => { fetchHealth(); fetchSandboxes(); }}
+          {tab === "sandboxes" && (
+            <>
+              <button onClick={handleCleanup}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted">
+                <Sparkles size={12} /> {t("mirror.cleanup") || "清理"}
+              </button>
+              <button onClick={() => setShowCreate(true)}
+                className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-1.5 text-sm text-white hover:bg-indigo-600">
+                <Plus size={14} /> {t("mirror.t40266") || "新建沙箱"}
+              </button>
+            </>
+          )}
+          <button onClick={() => { fetchHealth(); tab === "sandboxes" && fetchSandboxes(); tab === "templates" && fetchTemplates(); }}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
             <RefreshCw size={14} />
           </button>
@@ -201,164 +262,256 @@ export function MirrorClient() {
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
         {/* Stats */}
         {health && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("mirror.t22079")}</span>
+              <span className="text-xs text-muted-foreground">{t("mirror.t22079") || "总沙箱"}</span>
               <p className="text-2xl font-bold">{health.total_sandboxes || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("mirror.active")}</span>
+              <span className="text-xs text-muted-foreground">{t("mirror.active") || "活跃"}</span>
               <p className="text-2xl font-bold text-emerald-500">{health.active || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("mirror.paused")}</span>
+              <span className="text-xs text-muted-foreground">{t("mirror.paused") || "暂停"}</span>
               <p className="text-2xl font-bold text-amber-500">{health.paused || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("mirror.ttl")}</span>
+              <span className="text-xs text-muted-foreground">{t("mirror.ttl") || "存储目录"}</span>
               <p className="text-xs font-mono truncate mt-1">{health.sandbox_dir}</p>
+            </div>
+            <div className="rounded-xl border border-border bg-card p-4">
+              <span className="text-xs text-muted-foreground">模板</span>
+              <p className="text-2xl font-bold">{health.templates?.total_templates || 0}</p>
             </div>
           </div>
         )}
 
-        <div className="flex gap-6">
-          {/* Sandbox List */}
-          <div className="w-80 space-y-3">
-            {sandboxes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-                <Box size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("mirror.noSandboxes")}</p>
-              </div>
-            ) : sandboxes.map((sb) => (
-              <div key={sb.sandbox_id}
-                onClick={() => setSelected(sb)}
-                className={cn(
-                  "rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-md",
-                  selected?.sandbox_id === sb.sandbox_id && "ring-2 ring-indigo-500"
-                )}>
-                <div className="flex items-center justify-between mb-1">
-                  <span className="font-medium text-sm">{sb.name}</span>
-                  <span className={cn("text-xs", statusColor(sb.status))}>{sb.status}</span>
-                </div>
-                <div className="flex gap-3 text-xs text-muted-foreground">
-                  <span>{t("mirror.snapshot")}: {sb.snapshot_count}</span>
-                  <span>{t("mirror.log")}: {sb.log_count}</span>
-                </div>
-              </div>
-            ))}
-          </div>
+        {/* Tabs */}
+        <div className="flex gap-2">
+          {tabs.map((tabItem) => (
+            <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
+              className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm",
+                tab === tabItem.id ? "bg-indigo-500/10 text-indigo-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
+              <tabItem.icon size={14} /> {tabItem.label}
+            </button>
+          ))}
+        </div>
 
-          {/* Detail Panel */}
-          {selected && (
-            <div className="flex-1 space-y-4">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <h3 className="font-semibold">{selected.name}</h3>
-                  <span className={cn("text-xs px-2 py-0.5 rounded-full",
-                    selected.status === "active" ? "bg-emerald-500/10 text-emerald-500" :
-                    selected.status === "paused" ? "bg-amber-500/10 text-amber-500" :
-                    "bg-muted text-muted-foreground"
+        {/* Sandboxes Tab */}
+        {tab === "sandboxes" && (
+          <div className="flex gap-6">
+            {/* Sandbox List */}
+            <div className="w-80 space-y-3">
+              {sandboxes.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+                  <Box size={40} className="mb-3 opacity-30" />
+                  <p className="text-sm">{t("mirror.noSandboxes") || "暂无沙箱"}</p>
+                  <button onClick={() => setTab("templates")}
+                    className="mt-3 text-xs text-indigo-500 hover:underline">从模板创建 →</button>
+                </div>
+              ) : sandboxes.map((sb) => (
+                <div key={sb.sandbox_id}
+                  onClick={() => setSelected(sb)}
+                  className={cn(
+                    "rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-md",
+                    selected?.sandbox_id === sb.sandbox_id && "ring-2 ring-indigo-500"
                   )}>
-                    {selected.status}
-                  </span>
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="font-medium text-sm">{sb.name}</span>
+                    <span className={cn("text-xs", statusColor(sb.status))}>{sb.status}</span>
+                  </div>
+                  <div className="flex gap-3 text-xs text-muted-foreground">
+                    <span>{t("mirror.snapshot") || "快照"}: {sb.snapshot_count}</span>
+                    <span>{t("mirror.log") || "日志"}: {sb.log_count}</span>
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  {selected.status === "active" ? (
-                    <button onClick={() => handlePause(selected.sandbox_id)}
-                      className="flex items-center gap-1 rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs text-amber-600 hover:bg-amber-500/10">
-                      <Pause size={12} /> {t("mirror.pause")}
+              ))}
+            </div>
+
+            {/* Detail Panel */}
+            {selected && (
+              <div className="flex-1 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold">{selected.name}</h3>
+                    <span className={cn("text-xs px-2 py-0.5 rounded-full",
+                      selected.status === "active" ? "bg-emerald-500/10 text-emerald-500" :
+                      selected.status === "paused" ? "bg-amber-500/10 text-amber-500" :
+                      "bg-muted text-muted-foreground"
+                    )}>{selected.status}</span>
+                  </div>
+                  <div className="flex gap-2">
+                    {selected.status === "active" ? (
+                      <button onClick={() => handlePause(selected.sandbox_id)}
+                        className="flex items-center gap-1 rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs text-amber-600 hover:bg-amber-500/10">
+                        <Pause size={12} /> {t("mirror.pause") || "暂停"}
+                      </button>
+                    ) : selected.status === "paused" ? (
+                      <button onClick={() => handleResume(selected.sandbox_id)}
+                        className="flex items-center gap-1 rounded-lg border border-emerald-500/30 px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-500/10">
+                        <Play size={12} /> {t("mirror.resume") || "恢复"}
+                      </button>
+                    ) : null}
+                    <button onClick={() => handleSnapshot(selected.sandbox_id)}
+                      className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
+                      <Camera size={12} /> {t("mirror.snapshot") || "快照"}
                     </button>
-                  ) : selected.status === "paused" ? (
-                    <button onClick={() => handleResume(selected.sandbox_id)}
-                      className="flex items-center gap-1 rounded-lg border border-emerald-500/30 px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-500/10">
-                      <Play size={12} /> {t("mirror.resume")}
+                    <button onClick={() => handleDestroy(selected.sandbox_id)}
+                      className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
+                      <Trash2 size={12} /> {t("mirror.destroy") || "销毁"}
                     </button>
-                  ) : null}
-                  <button onClick={() => handleSnapshot(selected.sandbox_id)}
-                    className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-                    <Camera size={12} /> {t("mirror.snapshot")}
-                  </button>
-                  <button onClick={() => handleDestroy(selected.sandbox_id)}
-                    className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
-                    <Trash2 size={12} /> {t("mirror.destroy")}
-                  </button>
+                  </div>
+                </div>
+
+                {/* Variables */}
+                <div className="rounded-xl border border-border p-4">
+                  <h4 className="text-sm font-medium mb-2">{t("mirror.variables") || "变量"}</h4>
+                  {Object.keys(variables).length === 0 ? (
+                    <p className="text-xs text-muted-foreground">{t("mirror.t74225") || "暂无变量"}</p>
+                  ) : (
+                    <div className="space-y-1 mb-3">
+                      {Object.entries(variables).map(([k, v]) => (
+                        <div key={k} className="flex gap-2 text-xs">
+                          <span className="font-mono text-indigo-500">{k}</span>
+                          <span className="text-muted-foreground">=</span>
+                          <span className="font-mono">{String(v)}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  <div className="flex gap-2 mt-2">
+                    <input value={varKey} onChange={(e) => setVarKey(e.target.value)}
+                      placeholder={t("mirror.t13221") || "Key"} className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
+                    <input value={varValue} onChange={(e) => setVarValue(e.target.value)}
+                      placeholder={t("mirror.t13221") || "Value"} className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
+                    <button onClick={() => handleSetVariable(selected.sandbox_id)}
+                      className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
+                      {t("mirror.t85783") || "设置"}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Logs */}
+                <div className="rounded-xl border border-border p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-medium">{t("mirror.log") || "日志"} ({logs.length})</h4>
+                    <div className="flex gap-2">
+                      <input value={logMessage} onChange={(e) => setLogMessage(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleAddLog(selected.sandbox_id)}
+                        placeholder={t("mirror.t74580") || "输入日志消息"} className="rounded border border-border bg-background px-2 py-1 text-xs w-48" />
+                      <button onClick={() => handleAddLog(selected.sandbox_id)}
+                        className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
+                        {t("mirror.logAction") || "记录"}
+                      </button>
+                    </div>
+                  </div>
+                  <div className="max-h-60 overflow-y-auto space-y-1">
+                    {logs.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">{t("mirror.t59742") || "暂无日志"}</p>
+                    ) : logs.map((l, i) => (
+                      <div key={i} className="flex gap-2 text-xs">
+                        <span className="text-muted-foreground shrink-0">{new Date(l.ts * 1000).toLocaleTimeString("zh-CN")}</span>
+                        <span className={cn("font-mono", l.level === "error" ? "text-red-500" : l.level === "warn" ? "text-amber-500" : "text-foreground")}>
+                          {l.message}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
+            )}
+          </div>
+        )}
 
-              {/* Variables */}
-              <div className="rounded-xl border border-border p-4">
-                <h4 className="text-sm font-medium mb-2">{t("mirror.variables")}</h4>
-                {Object.keys(variables).length === 0 ? (
-                  <p className="text-xs text-muted-foreground">{t("mirror.t74225")}</p>
-                ) : (
-                  <div className="space-y-1 mb-3">
-                    {Object.entries(variables).map(([k, v]) => (
-                      <div key={k} className="flex gap-2 text-xs">
-                        <span className="font-mono text-indigo-500">{k}</span>
-                        <span className="text-muted-foreground">=</span>
-                        <span className="font-mono">{String(v)}</span>
+        {/* Templates Tab */}
+        {tab === "templates" && (
+          <div className="space-y-4">
+            <h3 className="text-sm font-medium">沙箱模板</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {templates.map((tpl) => (
+                <div key={tpl.template_id}
+                  className={cn(
+                    "rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-md",
+                    selectedTemplate?.template_id === tpl.template_id && "ring-2 ring-indigo-500"
+                  )}
+                  onClick={() => { setSelectedTemplate(tpl); setTemplateVarOverrides({}); }}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <span className="text-lg">{tpl.icon}</span>
+                    <span className="font-medium text-sm">{tpl.name}</span>
+                    <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full ml-auto", categoryColor(tpl.category))}>
+                      {tpl.category}
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mb-3">{tpl.description}</p>
+                  <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                    <span>变量: {Object.keys(tpl.variables).length}</span>
+                    <span>使用: {tpl.usage_count}</span>
+                    <span>TTL: {tpl.config?.ttl_seconds || 3600}s</span>
+                  </div>
+                  {tpl.tags.length > 0 && (
+                    <div className="flex gap-1 mt-2">
+                      {tpl.tags.map((tag) => (
+                        <span key={tag} className="rounded bg-muted px-1.5 py-0.5 text-[10px] text-muted-foreground">{tag}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Template Action Panel */}
+            {selectedTemplate && (
+              <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4 space-y-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-lg">{selectedTemplate.icon}</span>
+                    <h4 className="font-medium">从模板创建沙箱: {selectedTemplate.name}</h4>
+                  </div>
+                  <button onClick={() => setSelectedTemplate(null)} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
+                </div>
+
+                {/* Variable Overrides */}
+                {Object.keys(selectedTemplate.variables).length > 0 && (
+                  <div className="grid grid-cols-2 gap-3">
+                    {Object.entries(selectedTemplate.variables).map(([k, v]) => (
+                      <div key={k}>
+                        <label className="text-xs text-muted-foreground font-mono">{k}</label>
+                        <input
+                          value={templateVarOverrides[k] ?? v}
+                          onChange={(e) => setTemplateVarOverrides({ ...templateVarOverrides, [k]: e.target.value })}
+                          placeholder={k}
+                          className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs"
+                        />
                       </div>
                     ))}
                   </div>
                 )}
-                <div className="flex gap-2 mt-2">
-                  <input value={varKey} onChange={(e) => setVarKey(e.target.value)}
-                    placeholder={t("mirror.t13221")} className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
-                  <input value={varValue} onChange={(e) => setVarValue(e.target.value)}
-                    placeholder={t("mirror.t13221")} className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
-                  <button onClick={() => handleSetVariable(selected.sandbox_id)}
-                    className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
-                    {t("mirror.t85783")}
-                  </button>
-                </div>
-              </div>
 
-              {/* Logs */}
-              <div className="rounded-xl border border-border p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium">{t("mirror.log")} ({logs.length})</h4>
-                  <div className="flex gap-2">
-                    <input value={logMessage} onChange={(e) => setLogMessage(e.target.value)}
-                      onKeyDown={(e) => e.key === "Enter" && handleAddLog(selected.sandbox_id)}
-                      placeholder={t("mirror.t74580")} className="rounded border border-border bg-background px-2 py-1 text-xs w-48" />
-                    <button onClick={() => handleAddLog(selected.sandbox_id)}
-                      className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
-                      {t("mirror.logAction")}
-                    </button>
-                  </div>
-                </div>
-                <div className="max-h-60 overflow-y-auto space-y-1">
-                  {logs.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">{t("mirror.t59742")}</p>
-                  ) : logs.map((l, i) => (
-                    <div key={i} className="flex gap-2 text-xs">
-                      <span className="text-muted-foreground shrink-0">{new Date(l.ts * 1000).toLocaleTimeString("zh-CN")}</span>
-                      <span className={cn("font-mono", l.level === "error" ? "text-red-500" : l.level === "warn" ? "text-amber-500" : "text-foreground")}>
-                        {l.message}
-                      </span>
-                    </div>
-                  ))}
-                </div>
+                <button onClick={() => handleCreateFromTemplate(selectedTemplate)} disabled={loading}
+                  className="flex items-center gap-2 rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50">
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
+                  创建沙箱
+                </button>
               </div>
-            </div>
-          )}
-        </div>
+            )}
+          </div>
+        )}
 
         {/* Create Modal */}
         {showCreate && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4">
-              <h3 className="font-semibold">{t("mirror.t40266")}</h3>
+              <h3 className="font-semibold">{t("mirror.t40266") || "新建沙箱"}</h3>
               <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                placeholder={t("mirror.sandboxName")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("mirror.sandboxName") || "沙箱名称"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
-                placeholder={t("mirror.t65256")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("mirror.t65256") || "描述（可选）"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowCreate(false)}
-                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t("common.cancel")}</button>
+                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t("common.cancel") || "取消"}</button>
                 <button onClick={handleCreate} disabled={loading}
                   className="rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50">
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : t("mirror.create")}
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : t("mirror.create") || "创建"}
                 </button>
               </div>
             </div>
