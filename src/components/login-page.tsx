@@ -89,7 +89,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
         <div className="mb-4">
           <button onClick={() => setShowSettings(!showSettings)} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
             <Wifi className={`w-3 h-3 ${connStatus === 'ok' ? 'text-green-500' : connStatus === 'fail' ? 'text-red-500' : ''}`} />
-            <span className="truncate flex-1 text-left">{getApiBaseUrl()}</span>
+            <span suppressHydrationWarning className="truncate flex-1 text-left">{getApiBaseUrl()}</span>
             <Settings className="w-3 h-3" />
           </button>
           {showSettings && (
