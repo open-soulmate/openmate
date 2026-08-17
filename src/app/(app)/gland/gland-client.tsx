@@ -134,7 +134,7 @@ export function GlandClient() {
   }
 
   const handleDeleteProvider = async (name: string) => {
-    if (!confirm(`确认删除 Provider "${name}"？`)) return
+    if (!confirm(t("gland.confirmDeleteProvider", { name }))) return
     await fetch(`${apiBase}/api/gland/providers/${name}`, { method: "DELETE" })
     refresh()
   }
@@ -261,7 +261,7 @@ export function GlandClient() {
                       onClick={() => handleTest(p.name)}
                       disabled={testing === p.name}
                       className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                      title="测试连接"
+                      title={t("gland.testConnection")}
                     >
                       {testing === p.name ? <Loader2 className="w-4 h-4 animate-spin" /> : <TestTube2 className="w-4 h-4" />}
                     </button>
@@ -290,7 +290,7 @@ export function GlandClient() {
                   <DollarSign className="w-4 h-4 text-amber-400" /> {t("gland.tokenBudget") || "Token 预算"}
                 </h3>
                 <span className="text-xs text-muted-foreground">
-                  {health?.token_meter.budget_limit ? `限制: ${formatNumber(health.token_meter.budget_limit)} tokens` : "无限制"}
+                  {health?.token_meter.budget_limit ? t("gland.budgetLimit", { limit: formatNumber(health.token_meter.budget_limit) }) : t("gland.unlimited")}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -298,11 +298,11 @@ export function GlandClient() {
                   type="number"
                   value={budgetInput}
                   onChange={e => setBudgetInput(e.target.value)}
-                  placeholder="设置预算上限 (0=无限制)"
+                  placeholder={t("gland.budgetPlaceholder")}
                   className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
                 />
                 <button onClick={handleSetBudget} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
-                  设置
+                  {t("common.save")}
                 </button>
               </div>
             </div>
@@ -313,12 +313,12 @@ export function GlandClient() {
         {activeTab === "providers" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">{t("gland.providerManagement") || "Provider 管理"}</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("gland.providerManagement")}</h3>
               <button
                 onClick={() => setShowAddProvider(!showAddProvider)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90"
               >
-                <Plus className="w-3.5 h-3.5" /> {t("gland.addProvider") || "添加 Provider"}
+                <Plus className="w-3.5 h-3.5" /> {t("gland.addProvider")}
               </button>
             </div>
 
