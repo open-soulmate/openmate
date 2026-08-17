@@ -11,7 +11,6 @@ import {
 } from "@/stores/app-store";
 import { cn } from "@/lib/utils";
 import {
-import { useTranslation } from "react-i18next";
   Send,
   ArrowLeft,
   Users,
@@ -71,15 +70,15 @@ function generateAgentResponse(agent: AgentNode, userMessage: string): string {
   const responses: Record<string, string[]> = {
     soma: [
       `已从数据源采集相关信息。关于"${userMessage.slice(0, 20)}"，采集到 3 条相关数据记录。`,
-      {t('groups.ta1887')}
+      `数据采集完成。发现 2 个相关数据节点可供分析。`,
     ],
     ai: [
-      `{t("group-chat.text2")} ${agent.name}，我分析了您的问题。"${userMessage.slice(0, 20)}" 这个话题很有趣，以下是我的见解：这需要从多个角度来考虑。`,
-      {t('groups.t772fb')}
+      `作为 ${agent.name}，我分析了您的问题。"${userMessage.slice(0, 20)}" 这个话题很有趣，以下是我的见解：这需要从多个角度来考虑。`,
+      `我的分析结果：这个问题涉及多个层面，建议从技术和实践两个维度来探讨。`,
     ],
     mcp: [
-      `{t("group-chat.text4")} ${agent.tools?.length ?? 0} {t("group-chat.done")}。`,
-      {t('groups.tf3975')}
+      `通过 MCP 工具链处理完毕。已调用 ${agent.tools?.length ?? 0} 个工具完成任务。`,
+      `MCP 服务处理完成。返回结构化数据供参考。`,
     ],
   };
   const pool = responses[agent.type] ?? responses.ai;
@@ -108,11 +107,11 @@ function MemberList({
         <div className="flex items-center gap-2">
           <Users size={14} className="text-muted-foreground" />
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {t('groups.tc5828')}
+            群成员
           </span>
         </div>
         <p className="mt-1 text-[11px] text-muted-foreground">
-          {members.length} {t("group-chat.text5")} · {members.filter((m) => m.status === "online").length} {t("group-chat.online")}
+          {members.length} 成员 · {members.filter((m) => m.status === "online").length} 在线
         </p>
       </div>
 
@@ -121,7 +120,7 @@ function MemberList({
         {master && (
           <div className="mb-2">
             <p className="mb-1 px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              {t('groups.t32782')}
+              调度者
             </p>
             <MemberItem agent={master} isMaster meetingActive={meetingActive} />
           </div>
@@ -130,7 +129,7 @@ function MemberList({
         {/* Other members */}
         <div>
           <p className="mb-1 px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            {t('groups.tab5de')}
+            成员
           </p>
           {members
             .filter((m) => m.id !== group.masterAgentId)
@@ -143,7 +142,7 @@ function MemberList({
       {/* Group info */}
       <div className="border-t border-border px-3 py-2">
         <p className="text-[10px] text-muted-foreground">
-          {t("group-chat.text6")}: {group.dispatchMode === "auto" ? t("group-chat.auto") : t("group-chat.manual")}
+          调度模式: {group.dispatchMode === "auto" ? "自动调度" : "手动调度"}
         </p>
       </div>
     </div>
@@ -187,7 +186,7 @@ function MemberItem({
           {isMaster && <Crown size={10} className="shrink-0 text-amber-400" />}
         </div>
         <span className="text-[10px] text-muted-foreground">
-          {agent.status === "online" ? t("group-chat.online") : agent.status === "error" ? t("group-chat.error") : t("group-chat.offline")}
+          {agent.status === "online" ? "在线" : agent.status === "error" ? "错误" : "离线"}
         </span>
       </div>
     </div>
@@ -245,8 +244,7 @@ function MessageBubble({ msg }: { msg: GroupChatMessage }) {
 
 // ─── Main Component ──────────────────────────────────────────────────────────
 
-export function GroupChatClient({
-  const { t } = useTranslation(); groupIdPromise }: { groupIdPromise: Promise<{ id: string }> }) {
+export function GroupChatClient({ groupIdPromise }: { groupIdPromise: Promise<{ id: string }> }) {
   const { id: groupId } = use(groupIdPromise);
   const router = useRouter();
 
@@ -358,7 +356,7 @@ export function GroupChatClient({
             const masterMsg: GroupChatMessage = {
               id: uid(),
               role: "agent",
-              {t('groups.te8ced')}
+              content: `[调度中] 收到任务，正在分配给团队成员处理...`,
               agentId: master.id,
               agentName: master.name,
               agentType: master.type,
@@ -391,7 +389,7 @@ export function GroupChatClient({
                     const summaryMsg: GroupChatMessage = {
                       id: uid(),
                       role: "agent",
-                      {t('groups.tbb6a3')}
+                      content: `[汇总] 所有成员已完成分析。综合来看，建议从以下几点入手：\n1. 结合各方数据进行交叉验证\n2. 制定分阶段执行计划\n3. 定期同步进展`,
                       agentId: master.id,
                       agentName: master.name,
                       agentType: master.type,
@@ -412,7 +410,7 @@ export function GroupChatClient({
             const msg: GroupChatMessage = {
               id: uid(),
               role: "agent",
-              {t('groups.t73cf2')}
+              content: `[手动模式] 已收到您的消息。请使用 @Agent名称 来指定回复的Agent，或点击「开会」模式让所有成员依次发言。`,
               agentId: master.id,
               agentName: master.name,
               agentType: master.type,
@@ -459,7 +457,7 @@ export function GroupChatClient({
       const openMsg: GroupChatMessage = {
         id: uid(),
         role: "agent",
-        {t('groups.t45b13')}
+        content: `[开会模式] 会议开始。请各位成员依次发表意见。`,
         agentId: master.id,
         agentName: master.name,
         agentType: master.type,
@@ -473,11 +471,11 @@ export function GroupChatClient({
     otherMembers.forEach((agent, i) => {
       setTimeout(() => {
         const topics = [
-          t("group-chat.text7"),
-          t("group-chat.current"),
-          t("group-chat.user"),
-          t("group-chat.text8"),
-          t("group-chat.text9"),
+          "从数据角度看，我建议先收集更多样本再做判断。",
+          "技术实现上，当前架构可以支撑，但需要优化性能。",
+          "从用户体验角度，建议简化流程，降低使用门槛。",
+          "我已完成相关工具调用，结果符合预期。",
+          "建议增加监控告警，确保系统稳定性。",
         ];
         const msg: GroupChatMessage = {
           id: uid(),
@@ -497,7 +495,7 @@ export function GroupChatClient({
             const closeMsg: GroupChatMessage = {
               id: uid(),
               role: "agent",
-              {t('groups.tf7d21')}
+              content: `[开会模式] 会议结束。总结：各位成员从不同角度给出了建议，综合来看需要统筹考虑数据、技术、体验三个维度。后续将制定详细执行方案。`,
               agentId: master.id,
               agentName: master.name,
               agentType: master.type,
@@ -518,16 +516,16 @@ export function GroupChatClient({
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
           <Users className="h-7 w-7 text-muted-foreground" />
         </div>
-        <h3 className="mb-2 text-sm font-medium">{t("group-chat.text10")}</h3>
+        <h3 className="mb-2 text-sm font-medium">群组不存在</h3>
         <p className="mb-4 text-xs text-muted-foreground">
-          {t('groups.t79cf6')}
+          该群组可能已被删除
         </p>
         <Link
           href="/groups"
           className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
           <ArrowLeft size={14} />
-          {t('groups.t791f3')}
+          返回群列表
         </Link>
       </div>
     );
@@ -554,7 +552,7 @@ export function GroupChatClient({
             <div>
               <h2 className="text-sm font-medium">{group.name}</h2>
               <p className="text-[11px] text-muted-foreground">
-                {group.memberAgentIds.length} {t("group-chat.text5")} · {group.dispatchMode === "auto" ? t("group-chat.auto") : t("group-chat.manual")}
+                {group.memberAgentIds.length} 成员 · {group.dispatchMode === "auto" ? "自动调度" : "手动调度"}
               </p>
             </div>
           </div>
@@ -570,12 +568,12 @@ export function GroupChatClient({
               )}
             >
               <Play size={12} />
-              {meetingActive ? t("group-chat.text11") : t("group-chat.text12")}
+              {meetingActive ? "会议进行中..." : "开会"}
             </button>
             <button
               onClick={() => clearGroupMessages(groupId)}
               className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-              title={t("group-chat.message")}
+              title="清空消息"
             >
               <MessageSquare size={14} />
             </button>
@@ -593,21 +591,21 @@ export function GroupChatClient({
                 {group.name}
               </h2>
               <p className="max-w-sm text-sm text-muted-foreground mb-4">
-                {group.description || t("group-chat.start")}
+                {group.description || "在这里开始与 Agent 群组对话"}
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 <button
-                  onClick={() => setInput(t("group-chat.status"))}
+                  onClick={() => setInput("分析一下当前项目状态")}
                   className="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
                 >
-                  {t('groups.t1ae18')}
+                  分析一下当前项目状态
                 </button>
                 <button
                   onClick={startMeeting}
                   className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400 transition-colors hover:bg-amber-500/20"
                 >
                   <Play size={12} className="inline mr-1" />
-                  {t('groups.td67a7')}
+                  开始会议
                 </button>
               </div>
             </div>
@@ -637,7 +635,7 @@ export function GroupChatClient({
                       <Icon size={14} className={AGENT_COLORS[agent.type]} />
                       <span className="font-medium">{agent.name}</span>
                       <span className="text-[11px] text-muted-foreground">
-                        {agent.type} · {agent.status === "online" ? t("group-chat.online") : t("group-chat.offline")}
+                        {agent.type} · {agent.status === "online" ? "在线" : "离线"}
                       </span>
                     </button>
                   );
@@ -656,7 +654,7 @@ export function GroupChatClient({
                     handleSend();
                   }
                 }}
-                placeholder={t("group-chat.text13")}
+                placeholder="输入消息... 使用 @ 提及特定 Agent"
                 rows={1}
                 className="max-h-30 min-h-[36px] flex-1 resize-none bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
               />
@@ -676,11 +674,11 @@ export function GroupChatClient({
                 {meetingActive ? (
                   <span className="text-amber-400">
                     <Play size={10} className="inline mr-1" />
-                    {t('groups.t73f81')}
+                    会议进行中...
                   </span>
                 ) : (
                   <span>
-                    {t("group-chat.text14")}: {master?.name ?? t("group-chat.settings")} · {t("group-chat.text15")} @Agent{t("group-chat.name")}
+                    主Agent: {master?.name ?? "未设置"} · 使用 @Agent名称 提及特定成员
                   </span>
                 )}
               </p>
@@ -693,7 +691,7 @@ export function GroupChatClient({
                   className="flex items-center gap-1 text-[11px] text-primary hover:underline"
                 >
                   <X size={10} />
-                  {t('groups.t78f51')}
+                  清除@提及
                 </button>
               )}
             </div>

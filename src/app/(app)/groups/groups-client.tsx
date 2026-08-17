@@ -7,7 +7,6 @@ import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import {
-import { useTranslation } from "react-i18next";
   Users,
   Plus,
   Trash2,
@@ -36,9 +35,9 @@ function formatTime(ts: number) {
   const d = new Date(ts);
   const now = Date.now();
   const diff = now - ts;
-  if (diff < 60_000) return t("groups.text1");
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} {t("groups.text2")}`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} {t("groups.text3")}`;
+  if (diff < 60_000) return "刚刚";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
   return d.toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
 }
 
@@ -113,8 +112,8 @@ function GroupFormDialog({
     <Dialog
       open={open}
       onClose={handleClose}
-      title={editingGroup ? t("groups.edit") : t("groups.create")}
-      description={editingGroup ? t("groups.config") : t("groups.text4")}
+      title={editingGroup ? "编辑 Agent 群" : "创建 Agent 群"}
+      description={editingGroup ? "修改群配置" : "创建一个新的 Agent 协作群"}
       className="max-w-xl"
       footer={
         <>
@@ -122,14 +121,14 @@ function GroupFormDialog({
             onClick={handleClose}
             className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
           >
-            {t('groups.t625fb')}
+            取消
           </button>
           <button
             onClick={handleSubmit}
             disabled={!isValid}
             className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {editingGroup ? t("groups.save") : t("groups.text5")}
+            {editingGroup ? "保存" : "创建"}
           </button>
         </>
       }
@@ -137,24 +136,24 @@ function GroupFormDialog({
       <div className="space-y-4">
         {/* Name */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("groups.name")}</label>
+          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">群名称</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={t("groups.text6")}
+            placeholder="研究小组"
             className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
           />
         </div>
 
         {/* Description */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("groups.description")}</label>
+          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">描述</label>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder={t("groups.text7")}
+            placeholder="用于协作研究的 Agent 群"
             className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
           />
         </div>
@@ -162,14 +161,14 @@ function GroupFormDialog({
         {/* Master Agent */}
         <div>
           <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-            {t('groups.taee07')}
+            主 Agent（调度者）
           </label>
           <select
             value={masterAgentId}
             onChange={(e) => setMasterAgentId(e.target.value)}
             className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
           >
-            <option value="">{t("groups.select")}...</option>
+            <option value="">选择主 Agent...</option>
             {agents.map((a) => (
               <option key={a.id} value={a.id}>
                 {a.name} ({a.type})
@@ -181,11 +180,11 @@ function GroupFormDialog({
         {/* Member Agents */}
         <div>
           <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-            {t("groups.text8")} <span className="text-muted-foreground/60">（{t("groups.add")}）</span>
+            成员 Agent <span className="text-muted-foreground/60">（点击添加/移除）</span>
           </label>
           <div className="grid gap-2 max-h-48 overflow-y-auto rounded-lg border border-border p-2">
             {agents.length === 0 ? (
-              <p className="py-4 text-center text-xs text-muted-foreground">{t("groups.empty")}</p>
+              <p className="py-4 text-center text-xs text-muted-foreground">暂无可用 Agent</p>
             ) : (
               agents.map((a) => {
                 const isMaster = a.id === masterAgentId;
@@ -210,11 +209,11 @@ function GroupFormDialog({
                     {isMaster && (
                       <Badge variant="success">
                         <Crown size={10} className="mr-1" />
-                        {t('groups.t9d3bd')}
+                        主Agent
                       </Badge>
                     )}
                     {isMember && !isMaster && (
-                      <Badge variant="default">{t("groups.text9")}</Badge>
+                      <Badge variant="default">已选</Badge>
                     )}
                   </button>
                 );
@@ -225,9 +224,9 @@ function GroupFormDialog({
 
         {/* Dispatch Mode */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("groups.text10")}</label>
+          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">调度模式</label>
           <div className="flex gap-2">
-            {([["auto", t("groups.auto"), Zap, t("groups.text11")], ["manual", t("groups.manual"), Hand, t("groups.user")]] as const).map(([key, label, Icon, desc]) => (
+            {([["auto", "自动调度", Zap, "主Agent自动分配任务给成员"], ["manual", "手动调度", Hand, "用户手动选择哪个Agent回复"]] as const).map(([key, label, Icon, desc]) => (
               <button
                 key={key}
                 onClick={() => setDispatchMode(key)}
@@ -289,7 +288,7 @@ function GroupCard({
           </div>
         </div>
         <Badge variant={group.dispatchMode === "auto" ? "success" : "default"}>
-          {group.dispatchMode === "auto" ? t("groups.auto") : t("groups.manual")}
+          {group.dispatchMode === "auto" ? "自动调度" : "手动调度"}
         </Badge>
       </div>
 
@@ -298,16 +297,16 @@ function GroupCard({
         <div className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-1.5">
           <Users size={12} className="text-muted-foreground" />
           <span className="text-xs text-muted-foreground">
-            {memberCount} {t("groups.text12")}
+            {memberCount} 成员
           </span>
           <span className="text-[10px] text-emerald-400">
-            ({onlineMembers} {t("groups.online")})
+            ({onlineMembers} 在线)
           </span>
         </div>
         <div className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-1.5">
           <Crown size={12} className="text-amber-400" />
           <span className="text-xs text-muted-foreground truncate">
-            {master?.name ?? t("groups.settings")}
+            {master?.name ?? "未设置"}
           </span>
         </div>
       </div>
@@ -350,19 +349,19 @@ function GroupCard({
             className="flex h-7 items-center gap-1 rounded-md bg-primary px-2.5 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"
           >
             <MessageSquare size={12} />
-            {t('groups.t84b2b')}
+            进入
           </Link>
           <button
             onClick={() => onEdit(group)}
             className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-            title={t("groups.text13")}
+            title="编辑"
           >
             <Edit3 size={13} />
           </button>
           <button
             onClick={() => onDelete(group)}
             className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            title={t("groups.delete")}
+            title="删除"
           >
             <Trash2 size={13} />
           </button>
@@ -375,7 +374,6 @@ function GroupCard({
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export function GroupsClient() {
-  const { t } = useTranslation();
   const groups = useAppStore((s) => s.groups);
   const addGroup = useAppStore((s) => s.addGroup);
   const updateGroup = useAppStore((s) => s.updateGroup);
@@ -423,9 +421,9 @@ export function GroupsClient() {
             <Users size={18} />
           </div>
           <div>
-            <h2 className="text-sm font-medium">Agent {t("groups.text14")}</h2>
+            <h2 className="text-sm font-medium">Agent 群</h2>
             <p className="text-xs text-muted-foreground">
-              {groups.length} {t("groups.text15")}
+              {groups.length} 个群组
             </p>
           </div>
         </div>
@@ -434,7 +432,7 @@ export function GroupsClient() {
           className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
           <Plus size={14} />
-          {t('groups.t6b96a')}
+          创建群
         </button>
       </div>
 
@@ -446,7 +444,7 @@ export function GroupsClient() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("groups.search")}
+            placeholder="搜索群组..."
             className="w-full rounded-md border border-border bg-muted/50 pl-9 pr-3 py-1.5 text-xs outline-none focus:border-primary transition-colors"
           />
         </div>
@@ -459,9 +457,9 @@ export function GroupsClient() {
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
               <Users className="h-7 w-7 text-muted-foreground" />
             </div>
-            <h3 className="mb-2 text-sm font-medium">{t("groups.text16")}</h3>
+            <h3 className="mb-2 text-sm font-medium">暂无 Agent 群</h3>
             <p className="text-xs text-muted-foreground">
-              {t('groups.t0bf0d')}
+              点击「创建群」按钮创建你的第一个 Agent 协作群
             </p>
           </div>
         ) : (
@@ -500,21 +498,21 @@ export function GroupsClient() {
       <Dialog
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        title={t("groups.text17")}
-        description={`确定要{t("groups.delete")} "${deleteTarget?.name}" 吗？此操作不可撤销。`}
+        title="删除 Agent 群"
+        description={`确定要删除 "${deleteTarget?.name}" 吗？此操作不可撤销。`}
         footer={
           <>
             <button
               onClick={() => setDeleteTarget(null)}
               className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              {t('groups.t625fb')}
+              取消
             </button>
             <button
               onClick={handleDelete}
               className="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90"
             >
-              {t('groups.t2f4aa')}
+              删除
             </button>
           </>
         }
@@ -525,7 +523,7 @@ export function GroupsClient() {
             <span className="text-sm font-medium">{deleteTarget?.name}</span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            {t("groups.text20")}: {deleteTarget?.memberAgentIds.length ?? 0} · {t("groups.text10")}: {deleteTarget?.dispatchMode === "auto" ? t("groups.text18") : t("groups.text19")}
+            成员数: {deleteTarget?.memberAgentIds.length ?? 0} · 调度模式: {deleteTarget?.dispatchMode === "auto" ? "自动" : "手动"}
           </p>
         </div>
       </Dialog>
