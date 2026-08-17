@@ -3648,7 +3648,15 @@
     "t07225": "尝试不同的検索词",
     "t58357": "前往",
     "t43292": "查看アクティビティ流",
-    "justNow": "たった今"
+    "justNow": "たった今",
+    "echoForward": "Echo プッシュブリッジ",
+    "rules": "ルール",
+    "forwardOn": "有効",
+    "forwardOff": "無効",
+    "deleteRule": "ルール削除",
+    "noRules": "転送ルールなし。ルールを追加して通知を外部チャネルに自動プッシュします。",
+    "channelsPlaceholder": "console, dingtalk, telegram...",
+    "addRule": "追加"
   },
   "health": {
     "title": "システムヘルス",

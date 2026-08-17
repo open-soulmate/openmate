@@ -3648,7 +3648,15 @@
     "t07225": "尝试不同的搜索词",
     "t58357": "前往",
     "t43292": "查看活动流",
-    "justNow": "Just now"
+    "justNow": "Just now",
+    "echoForward": "Echo Push Bridge",
+    "rules": "rules",
+    "forwardOn": "Enabled",
+    "forwardOff": "Disabled",
+    "deleteRule": "Delete rule",
+    "noRules": "No forwarding rules. Add rules to auto-push notifications to external channels.",
+    "channelsPlaceholder": "console, dingtalk, telegram...",
+    "addRule": "Add"
   },
   "health": {
     "title": "System Health",

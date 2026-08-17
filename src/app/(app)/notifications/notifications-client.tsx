@@ -9,6 +9,7 @@ import {
   Bell, Check, CheckCheck, Trash2, X, Info, AlertTriangle,
   AlertCircle, CheckCircle, Loader2, Filter, RefreshCw,
   Search, ChevronDown, ExternalLink,
+  Radio, Settings, Send, Webhook,
 } from "lucide-react";
 
 interface Notification {
@@ -72,6 +73,12 @@ export function NotificationsClient() {
   const [sourceFilter, setSourceFilter] = useState<string>("");
   const [searchQuery, setSearchQuery] = useState("");
   const [showFilters, setShowFilters] = useState(false);
+  // Echo forwarding state
+  const [forwardRules, setForwardRules] = useState<Record<string, string[]>>({});
+  const [forwardEnabled, setForwardEnabled] = useState(true);
+  const [showForwardSettings, setShowForwardSettings] = useState(false);
+  const [newRuleLevel, setNewRuleLevel] = useState("error");
+  const [newRuleChannels, setNewRuleChannels] = useState("");
   const apiBase = getApiBaseUrl();
 
   const fetchNotifications = useCallback(async () => {
@@ -93,6 +100,20 @@ export function NotificationsClient() {
   }, [apiBase, filter, levelFilter, sourceFilter]);
 
   useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
+
+  const fetchForwardRules = useCallback(async () => {
+    if (!apiBase) return;
+    try {
+      const res = await fetch(`${apiBase}/api/notifications/forward/rules`);
+      if (res.ok) {
+        const data = await res.json();
+        setForwardRules(data.rules || {});
+        setForwardEnabled(data.enabled ?? true);
+      }
+    } catch {}
+  }, [apiBase]);
+
+  useEffect(() => { fetchForwardRules(); }, [fetchForwardRules]);
 
   const handleMarkRead = async (id: string) => {
     if (!apiBase) return;
@@ -136,6 +157,42 @@ export function NotificationsClient() {
     } catch {}
   };
 
+  const handleAddForwardRule = async () => {
+    if (!apiBase || !newRuleChannels) return;
+    const channels = newRuleChannels.split(",").map((s) => s.trim()).filter(Boolean);
+    if (channels.length === 0) return;
+    try {
+      const res = await fetch(`${apiBase}/api/notifications/forward/rules`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ level: newRuleLevel, channels }),
+      });
+      if (res.ok) {
+        fetchForwardRules();
+        setNewRuleChannels("");
+      }
+    } catch {}
+  };
+
+  const handleDeleteForwardRule = async (level: string) => {
+    if (!apiBase) return;
+    try {
+      await fetch(`${apiBase}/api/notifications/forward/rules/${level}`, { method: "DELETE" });
+      fetchForwardRules();
+    } catch {}
+  };
+
+  const handleToggleForward = async () => {
+    if (!apiBase) return;
+    try {
+      const res = await fetch(`${apiBase}/api/notifications/forward/enabled?enabled=${!forwardEnabled}`, { method: "PUT" });
+      if (res.ok) {
+        const data = await res.json();
+        setForwardEnabled(data.enabled);
+      }
+    } catch {}
+  };
+
   // Client-side search filter
   const filtered = notifications.filter((n) => {
     if (!searchQuery) return true;
@@ -174,6 +231,19 @@ export function NotificationsClient() {
             className="flex h-8 items-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors border border-border"
           >
             🧪 {t("notifications.test") || "测试通知"}
+          </button>
+          <button
+            onClick={() => setShowForwardSettings(!showForwardSettings)}
+            className={cn(
+              "flex h-8 items-center gap-1.5 rounded-md px-3 text-xs transition-colors border",
+              showForwardSettings
+                ? "border-primary bg-primary/10 text-primary"
+                : "border-border text-muted-foreground hover:text-foreground"
+            )}
+            title={t("notifications.echoForward") || "Echo 推送设置"}
+          >
+            <Radio size={14} />
+            Echo
           </button>
           <button
             onClick={fetchNotifications}
@@ -297,6 +367,99 @@ export function NotificationsClient() {
               {t("notifications.clearFilters") || "清除筛选"}
             </button>
           )}
+        </div>
+      )}
+
+      {/* Echo Forwarding Settings */}
+      {showForwardSettings && (
+        <div className="px-6 py-4 border-b border-border bg-muted/20 space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Radio size={14} className="text-primary" />
+              <span className="text-sm font-medium">{t("notifications.echoForward") || "Echo 推送桥接"}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
+                {Object.keys(forwardRules).length} {t("notifications.rules") || "规则"}
+              </span>
+            </div>
+            <button
+              onClick={handleToggleForward}
+              className={cn(
+                "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs transition-colors border",
+                forwardEnabled
+                  ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500"
+                  : "border-muted-foreground/30 bg-muted text-muted-foreground"
+              )}
+            >
+              {forwardEnabled ? "✅ " + (t("notifications.forwardOn") || "已开启") : "⏸ " + (t("notifications.forwardOff") || "已关闭")}
+            </button>
+          </div>
+
+          {/* Existing rules */}
+          <div className="space-y-1.5">
+            {Object.entries(forwardRules).map(([level, channels]) => (
+              <div key={level} className="flex items-center gap-2 rounded-lg border border-border bg-background px-3 py-2">
+                <span className={cn(
+                  "text-[10px] px-1.5 py-0.5 rounded font-medium",
+                  level === "error" ? "bg-red-500/10 text-red-500" :
+                  level === "warning" ? "bg-amber-500/10 text-amber-500" :
+                  level === "success" ? "bg-emerald-500/10 text-emerald-500" :
+                  "bg-blue-500/10 text-blue-500"
+                )}>
+                  {level.toUpperCase()}
+                </span>
+                <span className="text-xs text-muted-foreground">→</span>
+                <div className="flex flex-wrap gap-1 flex-1">
+                  {channels.map((ch) => (
+                    <span key={ch} className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono">
+                      {ch}
+                    </span>
+                  ))}
+                </div>
+                <button
+                  onClick={() => handleDeleteForwardRule(level)}
+                  className="text-muted-foreground hover:text-red-500 transition-colors"
+                  title={t("notifications.deleteRule") || "删除规则"}
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ))}
+            {Object.keys(forwardRules).length === 0 && (
+              <p className="text-xs text-muted-foreground py-2">
+                {t("notifications.noRules") || "暂无转发规则。添加规则以将通知自动推送到外部渠道。"}
+              </p>
+            )}
+          </div>
+
+          {/* Add new rule */}
+          <div className="flex items-center gap-2 pt-1">
+            <select
+              value={newRuleLevel}
+              onChange={(e) => setNewRuleLevel(e.target.value)}
+              className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground"
+            >
+              <option value="error">Error</option>
+              <option value="warning">Warning</option>
+              <option value="info">Info</option>
+              <option value="success">Success</option>
+            </select>
+            <span className="text-xs text-muted-foreground">→</span>
+            <input
+              type="text"
+              value={newRuleChannels}
+              onChange={(e) => setNewRuleChannels(e.target.value)}
+              placeholder={t("notifications.channelsPlaceholder") || "console, dingtalk, telegram..."}
+              className="flex-1 h-8 rounded-md border border-border bg-background px-3 text-xs text-foreground placeholder:text-muted-foreground"
+            />
+            <button
+              onClick={handleAddForwardRule}
+              disabled={!newRuleChannels.trim()}
+              className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
+            >
+              <Send size={12} />
+              {t("notifications.addRule") || "添加"}
+            </button>
+          </div>
         </div>
       )}
 

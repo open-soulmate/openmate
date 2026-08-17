@@ -3648,7 +3648,15 @@
     "t07225": "尝试不同的搜索词",
     "t58357": "前往",
     "t43292": "查看活动流",
-    "justNow": "刚刚"
+    "justNow": "刚刚",
+    "echoForward": "Echo 推送桥接",
+    "rules": "规则",
+    "forwardOn": "已开启",
+    "forwardOff": "已关闭",
+    "deleteRule": "删除规则",
+    "noRules": "暂无转发规则。添加规则以将通知自动推送到外部渠道。",
+    "channelsPlaceholder": "console, dingtalk, telegram...",
+    "addRule": "添加"
   },
   "health": {
     "title": "系统健康",
