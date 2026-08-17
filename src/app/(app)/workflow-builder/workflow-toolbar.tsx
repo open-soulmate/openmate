@@ -15,14 +15,12 @@ import {
   PanelBottomOpen,
 } from "lucide-react";
 import { cn } from "@//lib/utils";
-import { useTranslation } from "react-i18next";
 
 interface WorkflowToolbarProps {
   onCreateNew: () => void;
 }
 
 export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
-  const { t } = useTranslation();
   const isDirty = useWorkflowStore((s) => s.isDirty);
   const debugMode = useWorkflowStore((s) => s.debugMode);
   const setDebugMode = useWorkflowStore((s) => s.setDebugMode);
@@ -96,10 +94,10 @@ export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
       <button
         onClick={onCreateNew}
         className={toolbarBtnCls}
-        title={t('workflow.toolbar.newWorkflow')}
+        title="新建工作流"
       >
         <Plus size={14} />
-        <span className="text-xs">{t('workflow.toolbar.new')}</span>
+        <span className="text-xs">新建</span>
       </button>
 
       <div className="mx-1 h-5 w-px bg-border" />
@@ -113,17 +111,17 @@ export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
             ? "text-red-600 hover:bg-red-500/10"
             : "text-emerald-600 hover:bg-emerald-500/10",
         )}
-        title={isExecuting ? t('workflow.toolbar.cancelExecution') : t('workflow.toolbar.runWorkflow')}
+        title={isExecuting ? "取消执行" : "运行工作流"}
       >
         {isExecuting ? (
           <>
             <Loader2 size={14} className="animate-spin" />
-            <span className="text-xs">{t('workflow.toolbar.stop')}</span>
+            <span className="text-xs">停止</span>
           </>
         ) : (
           <>
             <Play size={14} />
-            <span className="text-xs">{t('workflow.toolbar.run')}</span>
+            <span className="text-xs">运行</span>
           </>
         )}
       </button>
@@ -137,10 +135,10 @@ export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
             ? "bg-amber-500/15 text-amber-600"
             : "text-amber-600 hover:bg-amber-500/10",
         )}
-        title={t('workflow.toolbar.debugMode')}
+        title="调试模式"
       >
         <Bug size={14} />
-        <span className="text-xs">{t('workflow.toolbar.debug')}</span>
+        <span className="text-xs">调试</span>
       </button>
 
       <div className="mx-1 h-5 w-px bg-border" />
@@ -149,25 +147,25 @@ export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
         onClick={saveWorkflow}
         disabled={!activeWorkflowId || !isDirty}
         className={cn(toolbarBtnCls, isDirty && "text-primary")}
-        title={t('workflow.toolbar.save')}
+        title="保存"
       >
         <Save size={14} />
-        <span className="text-xs">{t('workflow.toolbar.save')}{isDirty ? ' *' : ''}</span>
+        <span className="text-xs">保存{isDirty ? " *" : ""}</span>
       </button>
 
       <button
         onClick={handleExport}
         disabled={!activeWorkflowId}
         className={toolbarBtnCls}
-        title={t('workflow.toolbar.export')}
+        title="导出"
       >
         <Download size={14} />
-        <span className="text-xs">{t('workflow.toolbar.export')}</span>
+        <span className="text-xs">导出</span>
       </button>
 
-      <button onClick={handleImport} className={toolbarBtnCls} title={t('workflow.toolbar.import')}>
+      <button onClick={handleImport} className={toolbarBtnCls} title="导入">
         <Upload size={14} />
-        <span className="text-xs">{t('workflow.toolbar.import')}</span>
+        <span className="text-xs">导入</span>
       </button>
 
       <input
@@ -188,7 +186,7 @@ export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
             "flex items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-accent",
             execStatusColor,
           )}
-          title={t('workflow.toolbar.viewResult')}
+          title="查看执行结果"
         >
           {isExecuting ? (
             <Loader2 size={12} className="animate-spin" />
@@ -209,7 +207,7 @@ export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
           toolbarBtnCls,
           showExecutionPanel && "bg-accent text-foreground",
         )}
-        title={t('workflow.toolbar.executionPanel')}
+        title="执行面板"
       >
         <PanelBottomOpen size={14} />
       </button>

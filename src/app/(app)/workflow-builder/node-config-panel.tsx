@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback } from "react";
-import { useTranslation } from "react-i18next";
 import { useWorkflowStore, type WorkflowNodeData } from "@/stores/workflow-store";
 import { X, Trash2 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -13,7 +12,6 @@ interface NodeConfigPanelProps {
 }
 
 export function NodeConfigPanel({ nodeId, data, onClose }: NodeConfigPanelProps) {
-  const { t } = useTranslation();
   const updateNodeData = useWorkflowStore((s) => s.updateNodeData);
   const setNodes = useWorkflowStore((s) => s.setNodes);
   const setEdges = useWorkflowStore((s) => s.setEdges);
@@ -37,13 +35,13 @@ export function NodeConfigPanel({ nodeId, data, onClose }: NodeConfigPanelProps)
     <div className="flex h-full w-80 flex-col border-l border-border bg-card">
       {/* Header */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
-        <h3 className="text-xs font-medium text-foreground">{t('workflow.nodeConfig.nodeConfig')}</h3>
+        <h3 className="text-xs font-medium text-foreground">节点配置</h3>
         <div className="flex items-center gap-1">
           {data.type !== "start" && (
             <button
               onClick={handleDelete}
               className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-              title={t('workflow.nodeConfig.deleteNode')}
+              title="删除节点"
             >
               <Trash2 size={13} />
             </button>
@@ -60,14 +58,14 @@ export function NodeConfigPanel({ nodeId, data, onClose }: NodeConfigPanelProps)
       {/* Body */}
       <div className="flex-1 overflow-y-auto p-3 space-y-4">
         {/* Common: label + description */}
-        <Field label={t('workflow.nodeConfig.name')}>
+        <Field label="名称">
           <input
             value={data.label}
             onChange={(e) => update("label", e.target.value)}
             className={inputCls}
           />
         </Field>
-        <Field label={t('workflow.nodeConfig.description')}>
+        <Field label="描述">
           <textarea
             value={data.description || ""}
             onChange={(e) => update("description", e.target.value)}
@@ -115,18 +113,17 @@ const inputCls =
 type ConfigProps = { data: WorkflowNodeData; update: (key: string, value: unknown) => void };
 
 function StartConfig({ data, update }: ConfigProps) {
-  const { t } = useTranslation();
   return (
-    <Field label={t('workflow.nodeConfig.triggerType')}>
+    <Field label="触发方式">
       <select
         value={data.triggerType || "manual"}
         onChange={(e) => update("triggerType", e.target.value)}
         className={inputCls}
       >
-        <option value="manual">{t('workflow.nodeConfig.manualTrigger')}</option>
-        <option value="schedule">{t('workflow.nodeConfig.scheduleTrigger')}</option>
+        <option value="manual">手动触发</option>
+        <option value="schedule">定时触发</option>
         <option value="webhook">Webhook</option>
-        <option value="event">{t('workflow.nodeConfig.eventTrigger')}</option>
+        <option value="event">事件触发</option>
       </select>
     </Field>
   );
@@ -143,10 +140,9 @@ const models = [
 ];
 
 function LLMConfig({ data, update }: ConfigProps) {
-  const { t } = useTranslation();
   return (
     <>
-      <Field label={t('workflow.nodeConfig.model')}>
+      <Field label="模型">
         <select
           value={data.model || "gpt-4o"}
           onChange={(e) => update("model", e.target.value)}
@@ -157,16 +153,16 @@ function LLMConfig({ data, update }: ConfigProps) {
           ))}
         </select>
       </Field>
-      <Field label={t('workflow.nodeConfig.promptTemplate')}>
+      <Field label="Prompt 模板">
         <textarea
           value={data.prompt || ""}
           onChange={(e) => update("prompt", e.target.value)}
           rows={5}
-          placeholder={t('workflow.nodeConfig.promptPlaceholder')}
+          placeholder="输入 Prompt，支持 {{variable}} 变量引用"
           className={cn(inputCls, "resize-none font-mono text-[11px]")}
         />
       </Field>
-      <Field label={t('workflow.nodeConfig.temperature')}>
+      <Field label="温度">
         <input
           type="number"
           min={0}
@@ -177,7 +173,7 @@ function LLMConfig({ data, update }: ConfigProps) {
           className={inputCls}
         />
       </Field>
-      <Field label={t('workflow.nodeConfig.maxTokens')}>
+      <Field label="最大 Token 数">
         <input
           type="number"
           min={1}
@@ -192,18 +188,17 @@ function LLMConfig({ data, update }: ConfigProps) {
 }
 
 function ToolConfig({ data, update }: ConfigProps) {
-  const { t } = useTranslation();
   return (
     <>
-      <Field label={t('workflow.nodeConfig.toolName')}>
+      <Field label="工具名称">
         <input
           value={data.toolName || ""}
           onChange={(e) => update("toolName", e.target.value)}
-          placeholder={t('workflow.nodeConfig.toolNamePlaceholder')}
+          placeholder="例如: web_search, read_file"
           className={inputCls}
         />
       </Field>
-      <Field label={t('workflow.nodeConfig.paramMapping')}>
+      <Field label="参数映射 (JSON)">
         <textarea
           value={data.toolParams ? JSON.stringify(data.toolParams, null, 2) : "{}"}
           onChange={(e) => {
@@ -221,14 +216,13 @@ function ToolConfig({ data, update }: ConfigProps) {
 }
 
 function ConditionConfig({ data, update }: ConfigProps) {
-  const { t } = useTranslation();
   return (
-    <Field label={t('workflow.nodeConfig.conditionExpr')}>
+    <Field label="条件表达式">
       <textarea
         value={data.condition || ""}
         onChange={(e) => update("condition", e.target.value)}
         rows={4}
-        placeholder={t('workflow.nodeConfig.conditionPlaceholder')}
+        placeholder="例如: output.score > 0.8"
         className={cn(inputCls, "resize-none font-mono text-[11px]")}
       />
     </Field>
@@ -236,22 +230,21 @@ function ConditionConfig({ data, update }: ConfigProps) {
 }
 
 function LoopConfig({ data, update }: ConfigProps) {
-  const { t } = useTranslation();
   return (
     <>
-      <Field label={t('workflow.nodeConfig.listVariable')}>
+      <Field label="列表变量">
         <input
           value={data.listVariable || ""}
           onChange={(e) => update("listVariable", e.target.value)}
-          placeholder={t('workflow.nodeConfig.listVariablePlaceholder')}
+          placeholder="例如: items"
           className={inputCls}
         />
       </Field>
-      <Field label={t('workflow.nodeConfig.iterationVariable')}>
+      <Field label="迭代变量名">
         <input
           value={data.itemVariable || ""}
           onChange={(e) => update("itemVariable", e.target.value)}
-          placeholder={t('workflow.nodeConfig.iterationVariablePlaceholder')}
+          placeholder="例如: item"
           className={inputCls}
         />
       </Field>
@@ -260,10 +253,9 @@ function LoopConfig({ data, update }: ConfigProps) {
 }
 
 function CodeConfig({ data, update }: ConfigProps) {
-  const { t } = useTranslation();
   return (
     <>
-      <Field label={t('workflow.nodeConfig.language')}>
+      <Field label="语言">
         <select
           value={data.language || "javascript"}
           onChange={(e) => update("language", e.target.value)}
@@ -273,12 +265,12 @@ function CodeConfig({ data, update }: ConfigProps) {
           <option value="python">Python</option>
         </select>
       </Field>
-      <Field label={t('workflow.nodeConfig.code')}>
+      <Field label="代码">
         <textarea
           value={data.code || ""}
           onChange={(e) => update("code", e.target.value)}
           rows={10}
-          placeholder={t('workflow.nodeConfig.codePlaceholder')}
+          placeholder="// 输入变量通过 input 对象访问\nreturn input;"
           className={cn(inputCls, "resize-none font-mono text-[11px]")}
         />
       </Field>
@@ -287,14 +279,13 @@ function CodeConfig({ data, update }: ConfigProps) {
 }
 
 function KnowledgeConfig({ data, update }: ConfigProps) {
-  const { t } = useTranslation();
   return (
     <>
-      <Field label={t('workflow.nodeConfig.knowledgeBaseId')}>
+      <Field label="知识库 ID">
         <input
           value={data.knowledgeBaseId || ""}
           onChange={(e) => update("knowledgeBaseId", e.target.value)}
-          placeholder={t('workflow.nodeConfig.selectKnowledgeBase')}
+          placeholder="选择知识库"
           className={inputCls}
         />
       </Field>
@@ -313,14 +304,13 @@ function KnowledgeConfig({ data, update }: ConfigProps) {
 }
 
 function EndConfig({ data, update }: ConfigProps) {
-  const { t } = useTranslation();
   return (
-    <Field label={t('workflow.nodeConfig.outputMapping')}>
+    <Field label="输出映射">
       <textarea
         value={data.outputMapping || ""}
         onChange={(e) => update("outputMapping", e.target.value)}
         rows={3}
-        placeholder={t('workflow.nodeConfig.outputMappingPlaceholder')}
+        placeholder="定义输出字段映射"
         className={cn(inputCls, "resize-none font-mono text-[11px]")}
       />
     </Field>
@@ -328,10 +318,9 @@ function EndConfig({ data, update }: ConfigProps) {
 }
 
 function HTTPConfig({ data, update }: ConfigProps) {
-  const { t } = useTranslation();
   return (
     <>
-      <Field label={t('workflow.nodeConfig.requestMethod')}>
+      <Field label="请求方法">
         <select
           value={(data.httpMethod as string) || "GET"}
           onChange={(e) => update("httpMethod", e.target.value)}
@@ -348,11 +337,11 @@ function HTTPConfig({ data, update }: ConfigProps) {
         <input
           value={(data.httpUrl as string) || ""}
           onChange={(e) => update("httpUrl", e.target.value)}
-          placeholder={t('workflow.nodeConfig.httpUrlPlaceholder')}
+          placeholder="https://api.example.com/data，支持 ${var}"
           className={inputCls}
         />
       </Field>
-      <Field label={t('workflow.nodeConfig.requestHeaders')}>
+      <Field label="请求头 (JSON)">
         <textarea
           value={data.httpHeaders ? JSON.stringify(data.httpHeaders, null, 2) : ""}
           onChange={(e) => {
@@ -363,7 +352,7 @@ function HTTPConfig({ data, update }: ConfigProps) {
           className={cn(inputCls, "resize-none font-mono text-[11px]")}
         />
       </Field>
-      <Field label={t('workflow.nodeConfig.requestBody')}>
+      <Field label="请求体 (JSON)">
         <textarea
           value={data.httpBody ? JSON.stringify(data.httpBody, null, 2) : ""}
           onChange={(e) => {
@@ -374,7 +363,7 @@ function HTTPConfig({ data, update }: ConfigProps) {
           className={cn(inputCls, "resize-none font-mono text-[11px]")}
         />
       </Field>
-      <Field label={t('workflow.nodeConfig.timeoutSeconds')}>
+      <Field label="超时 (秒)">
         <input
           type="number"
           min={1}
@@ -389,44 +378,43 @@ function HTTPConfig({ data, update }: ConfigProps) {
 }
 
 function NotifyConfig({ data, update }: ConfigProps) {
-  const { t } = useTranslation();
   return (
     <>
-      <Field label={t('workflow.nodeConfig.notifyChannel')}>
+      <Field label="通知渠道">
         <select
           value={(data.notifyChannel as string) || "webhook"}
           onChange={(e) => update("notifyChannel", e.target.value)}
           className={inputCls}
         >
           <option value="webhook">Webhook</option>
-          <option value="email">{t('workflow.nodeConfig.email')}</option>
-          <option value="dingtalk">{t('workflow.nodeConfig.dingtalk')}</option>
-          <option value="wecom">{t('workflow.nodeConfig.wecom')}</option>
-          <option value="sms">{t('workflow.nodeConfig.sms')}</option>
+          <option value="email">邮件</option>
+          <option value="dingtalk">钉钉</option>
+          <option value="wecom">企业微信</option>
+          <option value="sms">短信</option>
         </select>
       </Field>
-      <Field label={t('workflow.nodeConfig.title')}>
+      <Field label="标题">
         <input
           value={(data.notifyTitle as string) || ""}
           onChange={(e) => update("notifyTitle", e.target.value)}
-          placeholder={t('workflow.nodeConfig.notifyTitlePlaceholder')}
+          placeholder="通知标题，支持 ${var}"
           className={inputCls}
         />
       </Field>
-      <Field label={t('workflow.nodeConfig.content')}>
+      <Field label="内容">
         <textarea
           value={(data.notifyContent as string) || ""}
           onChange={(e) => update("notifyContent", e.target.value)}
           rows={4}
-          placeholder={t('workflow.nodeConfig.notifyContentPlaceholder')}
+          placeholder="通知内容，支持 ${var}"
           className={cn(inputCls, "resize-none")}
         />
       </Field>
-      <Field label={t('workflow.nodeConfig.targetAddress')}>
+      <Field label="目标地址">
         <input
           value={(data.notifyTarget as string) || ""}
           onChange={(e) => update("notifyTarget", e.target.value)}
-          placeholder={t('workflow.nodeConfig.targetAddressPlaceholder')}
+          placeholder="Webhook URL / 邮箱 / 手机号"
           className={inputCls}
         />
       </Field>
@@ -435,37 +423,36 @@ function NotifyConfig({ data, update }: ConfigProps) {
 }
 
 function OrganConfig({ data, update }: ConfigProps) {
-  const { t } = useTranslation();
   const organs = [
-    { value: "/api/vein/stats", label: t('workflow.nodeConfig.organVein') },
-    { value: "/api/gland/health", label: t('workflow.nodeConfig.organGland') },
-    { value: "/api/gland/usage", label: t('workflow.nodeConfig.organGlandToken') },
-    { value: "/api/immune/health", label: t('workflow.nodeConfig.organImmune') },
-    { value: "/api/marrow/backups", label: t('workflow.nodeConfig.organMarrow') },
-    { value: "/api/gene/templates", label: t('workflow.nodeConfig.organGene') },
-    { value: "/api/echo/history", label: t('workflow.nodeConfig.organEcho') },
-    { value: "/api/mirror/sandboxes", label: t('workflow.nodeConfig.organMirror') },
-    { value: "/api/link/connectors", label: t('workflow.nodeConfig.organLink') },
-    { value: "/api/hippo/memories", label: t('workflow.nodeConfig.organHippo') },
-    { value: "/api/vital/health", label: t('workflow.nodeConfig.organVital') },
-    { value: "/api/cortex/health", label: t('workflow.nodeConfig.organCortex') },
-    { value: "/api/nerve/events", label: t('workflow.nodeConfig.organNerve') },
+    { value: "/api/vein/stats", label: "🩸 Vein - 文件存储统计" },
+    { value: "/api/gland/health", label: "🧪 Gland - 模型网关状态" },
+    { value: "/api/gland/usage", label: "🧪 Gland - Token 用量" },
+    { value: "/api/immune/health", label: "🛡 Immune - 安全状态" },
+    { value: "/api/marrow/backups", label: "🦴 Marrow - 备份列表" },
+    { value: "/api/gene/templates", label: "🧬 Gene - 模板列表" },
+    { value: "/api/echo/history", label: "🔊 Echo - 消息历史" },
+    { value: "/api/mirror/sandboxes", label: "🪞 Mirror - 沙箱列表" },
+    { value: "/api/link/connectors", label: "🔗 Link - 连接器列表" },
+    { value: "/api/hippo/memories", label: "🧠 Hippo - 记忆列表" },
+    { value: "/api/vital/health", label: "📊 Vital - 体征状态" },
+    { value: "/api/cortex/health", label: "🧩 Cortex - 皮层状态" },
+    { value: "/api/nerve/events", label: "⚡ Nerve - 事件总线" },
   ];
   return (
     <>
-      <Field label={t('workflow.nodeConfig.targetOrgan')}>
+      <Field label="目标器官">
         <select
           value={(data.organEndpoint as string) || ""}
           onChange={(e) => update("organEndpoint", e.target.value)}
           className={inputCls}
         >
-          <option value="">{t('workflow.nodeConfig.selectOrganApi')}</option>
+          <option value="">选择器官 API...</option>
           {organs.map((o) => (
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
       </Field>
-      <Field label={t('workflow.nodeConfig.customEndpoint')}>
+      <Field label="自定义端点">
         <input
           value={(data.organEndpoint as string) || ""}
           onChange={(e) => update("organEndpoint", e.target.value)}
@@ -473,7 +460,7 @@ function OrganConfig({ data, update }: ConfigProps) {
           className={inputCls}
         />
       </Field>
-      <Field label={t('workflow.nodeConfig.requestMethod')}>
+      <Field label="请求方法">
         <select
           value={(data.organMethod as string) || "GET"}
           onChange={(e) => update("organMethod", e.target.value)}
@@ -488,27 +475,26 @@ function OrganConfig({ data, update }: ConfigProps) {
 }
 
 function ScriptConfig({ data, update }: ConfigProps) {
-  const { t } = useTranslation();
   return (
     <>
-      <Field label={t('workflow.nodeConfig.shellCommand')}>
+      <Field label="Shell 命令">
         <textarea
           value={(data.scriptCommand as string) || ""}
           onChange={(e) => update("scriptCommand", e.target.value)}
           rows={4}
-          placeholder={t('workflow.nodeConfig.shellCommandPlaceholder')}
+          placeholder="echo 'Hello ${name}'，支持 ${var}"
           className={cn(inputCls, "resize-none font-mono text-[11px]")}
         />
       </Field>
-      <Field label={t('workflow.nodeConfig.workingDirectory')}>
+      <Field label="工作目录">
         <input
           value={(data.scriptCwd as string) || ""}
           onChange={(e) => update("scriptCwd", e.target.value)}
-          placeholder={t('workflow.nodeConfig.workingDirectoryPlaceholder')}
+          placeholder="/home/user (可选)"
           className={inputCls}
         />
       </Field>
-      <Field label={t('workflow.nodeConfig.timeoutSeconds')}>
+      <Field label="超时 (秒)">
         <input
           type="number"
           min={1}

@@ -129,39 +129,39 @@ export function McpClient() {
         headers,
       });
       if (res.ok) {
-        showToast(`${server.name} ${server.connected ? t("mcp.3842ba") : t("mcp.c5ea9c")}`, "success");
+        showToast(`${server.name} ${server.connected ? "已断开" : "已连接"}`, "success");
         fetchServers();
         fetchStats();
       } else {
         const data = await res.json();
-        showToast(data.detail || t("mcp.5fa802"), "error");
+        showToast(data.detail || "操作失败", "error");
       }
     } catch {
-      showToast(t("mcp.0bffc6"), "error");
+      showToast("网络错误", "error");
     }
     setActionLoading((prev) => ({ ...prev, [server.id]: "" }));
   };
 
   const handleDelete = async (server: McpServer) => {
-    if (!confirm(t("mcp.4299fd")) return;
+    if (!confirm(`确定删除 MCP 服务器 "${server.name}"？`)) return;
     try {
       const res = await fetch(`${apiBase}/api/mcp/servers/${server.id}`, {
         method: "DELETE",
         headers,
       });
       if (res.ok) {
-        showToast(t("mcp.9e5903"), "success");
+        showToast(`${server.name} 已删除`, "success");
         fetchServers();
         fetchStats();
       }
     } catch {
-      showToast(t("mcp.acf066"), "error");
+      showToast("删除失败", "error");
     }
   };
 
   const handleAdd = async () => {
     if (!newName || !newUrl) {
-      showToast(t("mcp.t68586"), "error");
+      showToast("名称和URL必填", "error");
       return;
     }
     try {
@@ -176,7 +176,7 @@ export function McpClient() {
         }),
       });
       if (res.ok) {
-        showToast(t("mcp.f8b11d"), "success");
+        showToast(`${newName} 已添加`, "success");
         setShowAdd(false);
         setNewName("");
         setNewUrl("");
@@ -186,10 +186,10 @@ export function McpClient() {
         fetchStats();
       } else {
         const data = await res.json();
-        showToast(data.detail || t("mcp.6452a0"), "error");
+        showToast(data.detail || "添加失败", "error");
       }
     } catch {
-      showToast(t("mcp.0bffc6"), "error");
+      showToast("网络错误", "error");
     }
   };
 
@@ -201,11 +201,11 @@ export function McpClient() {
         body: JSON.stringify({ enabled: !server.enabled }),
       });
       if (res.ok) {
-        showToast(t("mcp.b1b8b0")mcp.710ad0") : t("mcp.7854b5")}`, "success");
+        showToast(`${server.name} 已${server.enabled ? "禁用" : "启用"}`, "success");
         fetchServers();
       }
     } catch {
-      showToast(t("mcp.5fa802"), "error");
+      showToast("操作失败", "error");
     }
   };
 
@@ -231,17 +231,17 @@ export function McpClient() {
           </div>
           <div>
             <h1 className="text-lg font-semibold">MCP Servers</h1>
-            <p className="text-xs text-muted-foreground">{t("mcp.6a32d6")}<p>
+            <p className="text-xs text-muted-foreground">Model Context Protocol 服务管理</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           {/* Stats badges */}
           <div className="hidden md:flex items-center gap-2 mr-4">
             <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2.5 py-1 text-xs text-green-400">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-400" />{stats.connected} {t("mcp.c5ea9c")}
+              <span className="h-1.5 w-1.5 rounded-full bg-green-400" />{stats.connected} 已连接
             </span>
             <span className="flex items-center gap-1 rounded-full bg-muted px-2.5 py-1 text-xs text-muted-foreground">
-              <Wrench size={10} />{stats.total_tools} {t("mcp.20dce2")}
+              <Wrench size={10} />{stats.total_tools} 工具
             </span>
           </div>
           <button onClick={() => { fetchServers(); fetchStats(); }}
@@ -250,8 +250,8 @@ export function McpClient() {
           </button>
           <button onClick={() => setShowAdd(!showAdd)}
             className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 transition-colors">
-            <Plus size={14} /> {t("mcp.9fe510")}
-          <button>
+            <Plus size={14} /> 添加服务器
+          </button>
         </div>
       </div>
 
@@ -262,7 +262,7 @@ export function McpClient() {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder={t("mcp.ca16f1")}
+            placeholder="搜索服务器或工具..."
             className="w-full rounded-lg border border-border bg-muted/50 pl-9 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
           />
         </div>
@@ -271,15 +271,15 @@ export function McpClient() {
         {showAdd && (
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">
             <h3 className="text-sm font-medium flex items-center gap-2">
-              <Plus size={14} /> {t("mcp.f1a3bd")}
-            <h3>
+              <Plus size={14} /> 注册新 MCP 服务器
+            </h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
               <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                placeholder={t("mcp.f62e8c")} className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                placeholder="服务器名称 *" className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
               <input value={newUrl} onChange={(e) => setNewUrl(e.target.value)}
                 placeholder="URL (e.g. stdio://server-name) *" className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
               <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
-                placeholder={t("mcp.3bdd08")} className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                placeholder="描述" className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
               <select value={newTransport} onChange={(e) => setNewTransport(e.target.value)}
                 className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30">
                 <option value="stdio">stdio</option>
@@ -288,8 +288,8 @@ export function McpClient() {
               </select>
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => {t("mcp.14060d")}<button>
-              <button onClick={handleAdd} className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">{t("mcp.b58c75")}<button>
+              <button onClick={() => setShowAdd(false)} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent">取消</button>
+              <button onClick={handleAdd} className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">添加</button>
             </div>
           </div>
         )}
@@ -297,12 +297,12 @@ export function McpClient() {
         {/* Server List */}
         {loading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
-            <Loader2 size={20} className="animate-spin mr-2" /> {t("mcp.26b5bd")}
-          <div>
+            <Loader2 size={20} className="animate-spin mr-2" /> 加载中...
+          </div>
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Plug size={32} className="mb-3 opacity-30" />
-            <p className="text-sm">{query ? t("mcp.78c10c") : t("mcp.b7f151")}</p>
+            <p className="text-sm">{query ? "没有匹配的服务器" : "暂无 MCP 服务器"}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -328,22 +328,22 @@ export function McpClient() {
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{server.transport}</span>
                         {server.connected ? (
                           <span className="flex items-center gap-1 text-[10px] text-green-400">
-                            <span className="h-1.5 w-1.5 rounded-full bg-green-400" /> {t("mcp.c5ea9c")}
-                          <span>
+                            <span className="h-1.5 w-1.5 rounded-full bg-green-400" /> 已连接
+                          </span>
                         ) : (
-                          <span className="text-[10px] text-muted-foreground">{t("mcp.7f3a55")}<span>
+                          <span className="text-[10px] text-muted-foreground">未连接</span>
                         )}
                         {!server.enabled && (
-                          <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] text-yellow-400">{t("mcp.1c1ed9")}<span>
+                          <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] text-yellow-400">已禁用</span>
                         )}
                       </div>
                       <p className="text-xs text-muted-foreground truncate mt-0.5">{server.description || server.url}</p>
                     </div>
                     <div className="flex items-center gap-1">
-                      <span className="text-xs text-muted-foreground mr-2">{server.tools.length} {t("mcp.20dce2")}</span>
+                      <span className="text-xs text-muted-foreground mr-2">{server.tools.length} 工具</span>
                       <button onClick={() => handleToggleEnabled(server)}
                         className={`rounded-lg p-2 transition-colors ${server.enabled ? "text-yellow-400 hover:bg-yellow-500/10" : "text-green-400 hover:bg-green-500/10"}`}
-                        title={server.enabled ? t("mcp.710ad0") : t("mcp.7854b5")}>
+                        title={server.enabled ? "禁用" : "启用"}>
                         {server.enabled ? <Power size={14} /> : <PowerOff size={14} />}
                       </button>
                       <button onClick={() => handleConnect(server)}
@@ -353,8 +353,8 @@ export function McpClient() {
                             ? "border border-red-500/30 text-red-400 hover:bg-red-500/10"
                             : "bg-primary text-primary-foreground hover:bg-primary/90"
                         } ${busy ? "opacity-50" : ""}`}>
-                        {busy ? <Loader2 size={12} className="animate-spin" /> {t("mcp.0bc227")}
-                      <button>
+                        {busy ? <Loader2 size={12} className="animate-spin" /> : server.connected ? "断开" : "连接"}
+                      </button>
                       <button onClick={() => handleDelete(server)}
                         className="rounded-lg p-2 text-muted-foreground hover:text-red-400 hover:bg-red-500/10 transition-colors">
                         <Trash2 size={14} />
@@ -370,7 +370,7 @@ export function McpClient() {
                         <div><span className="text-muted-foreground">URL:</span> <span className="font-mono">{server.url}</span></div>
                         <div><span className="text-muted-foreground">Transport:</span> {server.transport}</div>
                         <div><span className="text-muted-foreground">ID:</span> <span className="font-mono">{server.id}</span></div>
-                        <div><span className="text-muted-foreground">{t("mcp.1b055c")}<span> {new Date(server.created_at * 1000).toLocaleDateString()}</div>
+                        <div><span className="text-muted-foreground">注册时间:</span> {new Date(server.created_at * 1000).toLocaleDateString()}</div>
                       </div>
 
                       {/* Error */}
@@ -383,10 +383,10 @@ export function McpClient() {
                       {/* Tools */}
                       <div>
                         <h4 className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1.5">
-                          <Wrench size={12} /> {t("mcp.99e7e0")} ({server.tools.length})
+                          <Wrench size={12} /> 可用工具 ({server.tools.length})
                         </h4>
                         {server.tools.length === 0 ? (
-                          <p className="text-xs text-muted-foreground">{t("mcp.e02f84")}<p>
+                          <p className="text-xs text-muted-foreground">暂无已注册工具。连接服务器后将自动发现工具。</p>
                         ) : (
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                             {server.tools.map((tool) => (

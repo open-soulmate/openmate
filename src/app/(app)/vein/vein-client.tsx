@@ -194,7 +194,7 @@ function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
   }, [expanded, fetchVersions]);
 
   const handleRollback = async (versionNumber: number) => {
-    if (!confirm(t('vein.rollbackconfirmversion'))) return;
+    if (!confirm(`确定回滚到版本 ${versionNumber}？`)) return;
     setRollingBack(versionNumber);
     try {
       const res = await fetch(`${apiBase}/api/vein/files/${fileId}/rollback/${versionNumber}`, { method: "POST" });
@@ -214,7 +214,7 @@ function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
         className="flex items-center justify-between w-full"
       >
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-          <Layers size={12} /> {t('vein.versionHistory1')}
+          <Layers size={12} /> 版本历史
           {versions.length > 0 && (
             <span className="rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] text-primary font-medium">
               v{versions[0]?.version_number || 0}
@@ -222,7 +222,7 @@ function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
           )}
         </div>
         <span className="text-xs text-primary">
-          {expanded ? t('vein.collapse') : t('vein.expand1')}
+          {expanded ? "收起" : "展开"}
         </span>
       </button>
 
@@ -231,11 +231,11 @@ function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
           {loading ? (
             <div className="flex items-center justify-center py-6 text-muted-foreground">
               <RefreshCw size={14} className="animate-spin mr-2" />
-              <span className="text-xs">{t('vein.versionHistoryloading')}</span>
+              <span className="text-xs">加载版本历史...</span>
             </div>
           ) : versions.length === 0 ? (
             <div className="py-6 text-center text-xs text-muted-foreground">
-              {t('vein.noVersionHistory')}
+              暂无版本历史
             </div>
           ) : (
             <div className="max-h-64 overflow-y-auto">
@@ -259,11 +259,11 @@ function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-medium">
-                        {v.change_summary || t('vein.contentUpdate1')}
+                        {v.change_summary || "内容更新"}
                       </span>
                       {idx === 0 && (
                         <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-500 font-medium">
-                          {t('vein.current')}
+                          当前
                         </span>
                       )}
                     </div>
@@ -286,12 +286,12 @@ function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
                       onClick={(e) => { e.stopPropagation(); handleRollback(v.version_number); }}
                       disabled={rollingBack === v.version_number}
                       className="shrink-0 rounded-md border border-border px-2 py-1 text-[10px] text-muted-foreground hover:bg-muted hover:text-foreground transition-colors disabled:opacity-50"
-                      title={t('vein.rollbackversion')}
+                      title={`回滚到版本 ${v.version_number}`}
                     >
                       {rollingBack === v.version_number ? (
                         <RefreshCw size={10} className="animate-spin" />
                       ) : (
-                        t('vein.rollback1')
+                        "回滚"
                       )}
                     </button>
                   )}
@@ -379,18 +379,18 @@ export function VeinClient() {
     if (file.size > CHUNK_THRESHOLD) {
       await handleChunkedUpload(file);
     } else {
-      setUploadProgress(t('vein.uploadmedium'));
+      setUploadProgress(`上传中: ${file.name} (${formatBytes(file.size)})`);
       try {
         const form = new FormData();
         form.append("file", file);
         const res = await fetch(`${apiBase}/api/vein/upload`, { method: "POST", body: form });
         if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
         const data = await res.json();
-        setUploadProgress(t('vein.uploadsuccess'));
+        setUploadProgress(`上传成功: ${data.name} (${formatBytes(data.size)})`);
         fetchFiles();
         fetchStats();
       } catch (e: any) {
-        setUploadProgress(t('vein.uploadfail'));
+        setUploadProgress(`上传失败: ${e.message}`);
       } finally {
         setUploading(false);
         setTimeout(() => setUploadProgress(""), 3000);
@@ -402,7 +402,7 @@ export function VeinClient() {
     const CHUNK_SIZE = 5 * 1024 * 1024; // 5MB chunks
     const totalChunks = Math.ceil(file.size / CHUNK_SIZE);
 
-    setUploadProgress(t('vein.upload1'));
+    setUploadProgress(`初始化分片上传: ${file.name} (${formatBytes(file.size)}, ${totalChunks} 片)`);
 
     try {
       // Init session
@@ -426,7 +426,7 @@ export function VeinClient() {
         const end = Math.min(start + CHUNK_SIZE, file.size);
         const chunk = file.slice(start, end);
 
-        setUploadProgress(t('vein.upload2'));
+        setUploadProgress(`上传分片 ${i + 1}/${totalChunks}: ${file.name}`);
 
         const formData = new FormData();
         formData.append("file", chunk, `chunk_${i}`);
@@ -439,19 +439,19 @@ export function VeinClient() {
       }
 
       // Complete
-      setUploadProgress(t('vein.medium1'));
+      setUploadProgress(`合并分片中...`);
       const completeRes = await fetch(`${apiBase}/api/vein/upload/chunked/${uploadId}/complete`, {
         method: "POST",
       });
       if (!completeRes.ok) throw new Error(`Complete failed: ${completeRes.status}`);
       const result = await completeRes.json();
 
-      setUploadProgress(t('vein.uploadsuccess1'));
+      setUploadProgress(`分片上传成功: ${result.name} (${formatBytes(result.size)})`);
       fetchFiles();
       fetchStats();
       fetchChunkedUploads();
     } catch (e: any) {
-      setUploadProgress(t('vein.uploadfail1'));
+      setUploadProgress(`分片上传失败: ${e.message}`);
     } finally {
       setUploading(false);
       setTimeout(() => setUploadProgress(""), 5000);
@@ -495,10 +495,10 @@ export function VeinClient() {
       });
       if (!res.ok) throw new Error(`Promote failed: ${res.status}`);
       const data = await res.json();
-      alert(t('vein.promoteSuccess', { name: data.filename }));
+      alert(`已提升到知识库: ${data.filename}`);
     } catch (e: any) {
       console.error("Promote failed", e);
-      alert(t('vein.promoteFailed', { msg: e.message }));
+      alert(`提升失败: ${e.message}`);
     }
   };
 
@@ -532,7 +532,7 @@ export function VeinClient() {
   };
 
   const handleBatchAutoProcess = async () => {
-    if (!confirm(t('vein.batchRecognizefiletime'))) return;
+    if (!confirm("批量识别所有图片/PDF/音频文件？这可能需要一些时间。")) return;
     setBatchProcessing(true);
     setBatchResult(null);
     try {
@@ -571,7 +571,7 @@ export function VeinClient() {
   };
 
   const handleCacheClear = async () => {
-    if (!confirm(t('vein.confirmclearcache'))) return;
+    if (!confirm("确定清除所有缓存？")) return;
     try {
       await fetch(`${apiBase}/api/vein/cache/clear`, { method: "POST" });
       fetchStats();
@@ -649,8 +649,8 @@ export function VeinClient() {
   const filteredFiles = files;
 
   const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
-    { id: "files", label: t("vein.filesTab"), icon: Folder },
-    { id: "cache", label: t("vein.cacheTab"), icon: CacheIcon },
+    { id: "files", label: t("vein.filesTab") || "文件管理", icon: Folder },
+    { id: "cache", label: t("vein.cacheTab") || "缓存管理", icon: CacheIcon },
   ];
 
   return (
@@ -659,7 +659,7 @@ export function VeinClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Folder size={20} className="text-red-500" />
-          <h1 className="text-lg font-semibold">{t("vein.title")}</h1>
+          <h1 className="text-lg font-semibold">{t("vein.title") || "文件管理"}</h1>
           <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500">
             Vein
           </span>
@@ -673,7 +673,7 @@ export function VeinClient() {
                 className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-sm text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Upload size={14} />
-                {uploading ? (t("vein.uploading")) : (t("vein.upload"))}
+                {uploading ? (t("vein.uploading") || "上传中...") : (t("vein.upload") || "上传文件")}
               </button>
               <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => handleUpload(e.target.files)} />
             </>
@@ -682,7 +682,7 @@ export function VeinClient() {
             onClick={() => { fetchFiles(); fetchStats(); fetchChunkedUploads(); }}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
           >
-            <RefreshCw size={14} /> {t("common.refresh")}
+            <RefreshCw size={14} /> {t("common.refresh") || "刷新"}
           </button>
         </div>
       </div>
@@ -711,9 +711,9 @@ export function VeinClient() {
         {uploadProgress && (
           <div className={cn(
             "rounded-lg px-4 py-2.5 text-sm",
-            uploadProgress.startsWith(t('vein.uploadsuccess3')) || uploadProgress.startsWith(t('vein.uploadsuccess2'))
+            uploadProgress.startsWith("上传成功") || uploadProgress.startsWith("分片上传成功")
               ? "bg-emerald-500/10 text-emerald-500"
-              : uploadProgress.startsWith(t('vein.uploadfail3')) || uploadProgress.startsWith(t('vein.uploadfail2'))
+              : uploadProgress.startsWith("上传失败") || uploadProgress.startsWith("分片上传失败")
                 ? "bg-red-500/10 text-red-500"
                 : "bg-blue-500/10 text-blue-500"
           )}>
@@ -726,43 +726,43 @@ export function VeinClient() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
               icon={Folder}
-              label={t("vein.totalFiles")}
+              label={t("vein.totalFiles") || "文件总数"}
               value={stats.store.total_files}
-              sub={t('vein.t59854')}
+              sub={`${stats.store.unique_blobs} 唯一blob`}
               color="text-blue-500"
               bg="bg-blue-500/10"
             />
             <StatCard
               icon={HardDrive}
-              label={t("vein.totalSize")}
+              label={t("vein.totalSize") || "存储大小"}
               value={formatBytes(stats.store.total_size_bytes)}
-              sub={t('vein.disk1')}
+              sub={`磁盘: ${formatBytes(stats.store.disk_usage_bytes)}`}
               color="text-emerald-500"
               bg="bg-emerald-500/10"
             />
             <StatCard
               icon={Database}
-              label={t('vein.t36813')}
+              label="去重节省"
               value={formatBytes(stats.store.dedup_savings_bytes)}
-              sub={t('vein.t48907')}
+              sub={`${stats.store.total_files - stats.store.unique_blobs} 个重复blob`}
               color="text-amber-500"
               bg="bg-amber-500/10"
             />
             {stats.store.versioning && (
               <StatCard
                 icon={Layers}
-                label={t('vein.version1')}
+                label="版本追踪"
                 value={stats.store.versioning.total_versions}
-                sub={t('vein.versionHistoryfile')}
+                sub={`${stats.store.versioning.total_versioned_files} 个文件有版本历史`}
                 color="text-indigo-500"
                 bg="bg-indigo-500/10"
               />
             )}
             <StatCard
               icon={Zap}
-              label={t('vein.hitRatecache')}
+              label="缓存命中率"
               value={`${stats.cache.hit_rate.toFixed(1)}%`}
-              sub={t('vein.hitsnotmedium')}
+              sub={`${stats.cache.hits}命中 / ${stats.cache.misses}未中`}
               color="text-purple-500"
               bg="bg-purple-500/10"
             />
@@ -788,10 +788,10 @@ export function VeinClient() {
             >
               <Upload size={32} className="mx-auto text-muted-foreground/50" />
               <p className="mt-2 text-sm font-medium">
-                {dragActive ? (t("vein.dropToUpload")) : (t("vein.dragOrClick"))}
+                {dragActive ? (t("vein.dropToUpload") || "释放文件以上传") : (t("vein.dragOrClick") || "拖拽文件到此处，或点击选择文件")}
               </p>
               <p className="text-xs text-muted-foreground">
-                {t("vein.supportAll")}
+                {t("vein.supportAll") || "支持任意文件类型，>10MB自动分片上传，自动去重存储"}
               </p>
             </div>
 
@@ -800,7 +800,7 @@ export function VeinClient() {
               <div className="rounded-xl border border-border bg-card p-4">
                 <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
                   <Layers size={14} className="text-blue-500" />
-                  {t('vein.chunkedUploads', { count: chunkedUploads.length })}
+                  进行中的分片上传 ({chunkedUploads.length})
                 </h3>
                 <div className="space-y-2">
                   {chunkedUploads.map((s: any) => (
@@ -838,7 +838,7 @@ export function VeinClient() {
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder={t("vein.searchPlaceholder")}
+                    placeholder={t("vein.searchPlaceholder") || "搜索文件名..."}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -849,7 +849,7 @@ export function VeinClient() {
                   onClick={handleSearch}
                   className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90 transition-colors"
                 >
-                  {t("common.search")}
+                  {t("common.search") || "搜索"}
                 </button>
                 <button
                   onClick={handleBatchAutoProcess}
@@ -857,10 +857,10 @@ export function VeinClient() {
                   className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-2 text-sm text-amber-600 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
                 >
                   {batchProcessing ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
-                  {batchProcessing ? t('vein.batchProcessing') : t('vein.batchRecognize1')}
+                  {batchProcessing ? "批量处理中..." : "批量识别"}
                 </button>
                 <span className="text-xs text-muted-foreground">
-                  {loading ? (t("common.loading")) : `${filteredFiles.length} ${(t("vein.files"))}`}
+                  {loading ? (t("common.loading") || "加载中...") : `${filteredFiles.length} ${(t("vein.files") || "个文件")}`}
                 </span>
               </div>
 
@@ -874,9 +874,10 @@ export function VeinClient() {
                     <div className="flex items-center gap-4">
                       <Zap size={16} className="text-amber-500 shrink-0" />
                       <div className="flex-1">
-                        <span className="font-medium">{t('vein.batchComplete')}</span>
+                        <span className="font-medium">批量识别完成</span>
                         <span className="ml-3 text-xs text-muted-foreground">
-                          {t('vein.scanResult', { total: batchResult.total_files, eligible: batchResult.eligible_files, processed: batchResult.processed, promoted: batchResult.promoted })}
+                          扫描 {batchResult.total_files} 个文件 · 匹配 {batchResult.eligible_files} 个 ·
+                          成功 {batchResult.processed} 个 · 入库 {batchResult.promoted} 个
                         </span>
                       </div>
                       <button onClick={() => setBatchResult(null)} className="text-muted-foreground hover:text-foreground">
@@ -895,9 +896,9 @@ export function VeinClient() {
               {filteredFiles.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <FolderOpen size={40} className="opacity-30 mb-3" />
-                  <p className="text-sm">{t("vein.noFiles")}</p>
+                  <p className="text-sm">{t("vein.noFiles") || "暂无文件"}</p>
                   <p className="text-xs mt-1">
-                    {search ? (t("vein.noMatch")) : (t("vein.startUpload"))}
+                    {search ? (t("vein.noMatch") || "未找到匹配的文件") : (t("vein.startUpload") || "上传文件开始使用")}
                   </p>
                 </div>
               ) : (
@@ -906,19 +907,19 @@ export function VeinClient() {
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
                         <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                          {t("vein.fileName")}
+                          {t("vein.fileName") || "文件名"}
                         </th>
                         <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
-                          {t("vein.size")}
+                          {t("vein.size") || "大小"}
                         </th>
                         <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
-                          {t("vein.type")}
+                          {t("vein.type") || "类型"}
                         </th>
                         <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-40">
-                          {t("vein.uploadTime")}
+                          {t("vein.uploadTime") || "上传时间"}
                         </th>
                         <th className="px-4 py-2.5 text-right font-medium text-muted-foreground w-28">
-                          {t("vein.actions")}
+                          {t("vein.actions") || "操作"}
                         </th>
                       </tr>
                     </thead>
@@ -955,21 +956,21 @@ export function VeinClient() {
                               <div className="flex gap-1 justify-end">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleDownload(f.file_id, f.name); }}
-                                  title={t("vein.download")}
+                                  title={t("vein.download") || "下载"}
                                   className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted transition-colors"
                                 >
                                   <Download size={12} />
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleDelete(f.file_id); }}
-                                  title={t("vein.delete")}
+                                  title={t("vein.delete") || "删除"}
                                   className="rounded-md border border-red-500/30 p-1.5 text-red-500 hover:bg-red-500/10 transition-colors"
                                 >
                                   <Trash2 size={12} />
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handlePromote(f.file_id); }}
-                                  title={t('vein.knowledgeBase1')}
+                                  title="提升到知识库"
                                   className="rounded-md border border-emerald-500/30 p-1.5 text-emerald-500 hover:bg-emerald-500/10 transition-colors"
                                 >
                                   <BookOpen size={12} />
@@ -1008,7 +1009,7 @@ export function VeinClient() {
                     {loadingPreview ? (
                       <div className="flex items-center justify-center py-12 text-muted-foreground">
                         <RefreshCw size={16} className="animate-spin mr-2" />
-                        <span className="text-sm">{t('vein.loadingpreview')}</span>
+                        <span className="text-sm">加载预览...</span>
                       </div>
                     ) : previewType === "image" && previewContent ? (
                       <div className="rounded-lg border border-border bg-muted/20 p-3 flex items-center justify-center">
@@ -1030,25 +1031,25 @@ export function VeinClient() {
                     <div className="grid grid-cols-2 gap-3">
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <HardDrive size={12} /> {t('vein.size1')}
+                          <HardDrive size={12} /> 大小
                         </div>
                         <p className="text-sm font-medium">{formatBytes(selectedFile.size)}</p>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <FileType size={12} /> {t('vein.mimeLabel')}
+                          <FileType size={12} /> MIME类型
                         </div>
                         <p className="text-sm font-medium">{selectedFile.mime_type}</p>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Clock size={12} /> {t('vein.uploadtime')}
+                          <Clock size={12} /> 上传时间
                         </div>
                         <p className="text-sm font-medium">{formatTime(selectedFile.created_at)}</p>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <Tag size={12} /> {t('vein.tag')}
+                          <Tag size={12} /> 标签
                         </div>
                         <p className="text-sm font-medium">
                           {selectedFile.tags.length > 0 ? selectedFile.tags.join(", ") : "—"}
@@ -1059,7 +1060,7 @@ export function VeinClient() {
                     {/* Hash with copy */}
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Hash size={12} /> {t('vein.content1')}
+                        <Hash size={12} /> 内容哈希 (SHA-256)
                       </div>
                       <div className="flex items-center gap-2">
                         <code className="text-xs font-mono text-foreground/70 truncate flex-1">
@@ -1068,7 +1069,7 @@ export function VeinClient() {
                         <button
                           onClick={() => copyToClipboard(selectedFile.content_hash, "hash")}
                           className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted transition-colors"
-                          title={t('vein.copy1')}
+                          title="复制哈希"
                         >
                           {copiedField === "hash" ? (
                             <span className="text-xs text-emerald-500">✓</span>
@@ -1082,14 +1083,14 @@ export function VeinClient() {
                     {/* File ID with copy */}
                     <div className="space-y-1">
                       <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                        <Database size={12} /> {t('vein.file')}
+                        <Database size={12} /> 文件ID
                       </div>
                       <div className="flex items-center gap-2">
                         <code className="text-xs font-mono text-foreground/70">{selectedFile.file_id}</code>
                         <button
                           onClick={() => copyToClipboard(selectedFile.file_id, "id")}
                           className="shrink-0 rounded-md p-1 text-muted-foreground hover:bg-muted transition-colors"
-                          title={t('vein.copy2')}
+                          title="复制ID"
                         >
                           {copiedField === "id" ? (
                             <span className="text-xs text-emerald-500">✓</span>
@@ -1113,10 +1114,10 @@ export function VeinClient() {
                         onClick={() => handleDownload(selectedFile.file_id, selectedFile.name)}
                         className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90 transition-colors"
                       >
-                        <Download size={14} /> {t('vein.filedownload')}
+                        <Download size={14} /> 下载文件
                       </button>
                       <label className="flex items-center justify-center gap-1.5 rounded-lg border border-blue-500/30 px-3 py-2 text-sm text-blue-500 hover:bg-blue-500/10 transition-colors cursor-pointer">
-                        <Upload size={14} /> {t('vein.versionupdate')}
+                        <Upload size={14} /> 更新版本
                         <input
                           type="file"
                           className="hidden"
@@ -1139,16 +1140,16 @@ export function VeinClient() {
                         />
                       </label>
                       <button
-                        onClick={() => { if (confirm(t('vein.confirmdelete'))) handleDelete(selectedFile.file_id); }}
+                        onClick={() => { if (confirm(`确定删除 ${selectedFile.name}？`)) handleDelete(selectedFile.file_id); }}
                         className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
                       >
-                        <Trash2 size={14} /> {t('vein.delete1')}
+                        <Trash2 size={14} /> 删除
                       </button>
                       <button
-                        onClick={() => { if (confirm(t('vein.knowledgeBase2'))) handlePromote(selectedFile.file_id); }}
+                        onClick={() => { if (confirm(`将 ${selectedFile.name} 提升到知识库？`)) handlePromote(selectedFile.file_id); }}
                         className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500/30 px-3 py-2 text-sm text-emerald-500 hover:bg-emerald-500/10 transition-colors"
                       >
-                        <BookOpen size={14} /> {t('vein.knowledgeBase3')}
+                        <BookOpen size={14} /> 提升到知识库
                       </button>
                       <button
                         onClick={() => handleAutoProcess(selectedFile.file_id)}
@@ -1156,7 +1157,7 @@ export function VeinClient() {
                         className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-2 text-sm text-amber-500 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
                       >
                         {autoProcessing ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
-                        {autoProcessing ? "处理中..." : t('vein.smartRecognize1')}
+                        {autoProcessing ? "处理中..." : "智能识别"}
                       </button>
                     </div>
                     {/* Auto-Process Result */}
@@ -1170,13 +1171,13 @@ export function VeinClient() {
                         {autoProcessResult.status === "ok" ? (
                           <div className="space-y-1.5">
                             <div className="flex items-center gap-2 font-medium text-emerald-600">
-                              <Zap size={12} /> {t('vein.smartRecognizecomplete')}
+                              <Zap size={12} /> 智能识别完成
                             </div>
                             <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
-                              <span>{t('vein.processingType')}<b className="text-foreground">{autoProcessResult.processing_type}</b></span>
-                              <span>{t('vein.engine1')}<b className="text-foreground">{autoProcessResult.engine}</b></span>
-                              <span>{t('vein.extractedText1')}<b className="text-foreground">{autoProcessResult.text_length} 字</b></span>
-                              <span>{t('vein.promotedToKB')}<b className={autoProcessResult.promoted_to_knowledge ? "text-emerald-500" : "text-muted-foreground"}>{autoProcessResult.promoted_to_knowledge ? "✅ 是" : t('vein.t35397')}</b></span>
+                              <span>处理类型: <b className="text-foreground">{autoProcessResult.processing_type}</b></span>
+                              <span>引擎: <b className="text-foreground">{autoProcessResult.engine}</b></span>
+                              <span>提取文本: <b className="text-foreground">{autoProcessResult.text_length} 字</b></span>
+                              <span>已入库: <b className={autoProcessResult.promoted_to_knowledge ? "text-emerald-500" : "text-muted-foreground"}>{autoProcessResult.promoted_to_knowledge ? "✅ 是" : "否"}</b></span>
                             </div>
                             {autoProcessResult.text_preview && (
                               <div className="mt-2 rounded bg-muted/50 p-2 max-h-24 overflow-y-auto">
@@ -1185,9 +1186,9 @@ export function VeinClient() {
                             )}
                           </div>
                         ) : autoProcessResult.status === "no_text_extracted" ? (
-                          <span className="text-amber-600">{t('vein.extractedTextfilenot')}</span>
+                          <span className="text-amber-600">⚠️ 未能从文件中提取文本</span>
                         ) : (
-                          <span className="text-red-500">❌ {autoProcessResult.error || t('vein.processFailed1')}</span>
+                          <span className="text-red-500">❌ {autoProcessResult.error || "处理失败"}</span>
                         )}
                       </div>
                     )}
@@ -1204,7 +1205,7 @@ export function VeinClient() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <StatCard
                 icon={CacheIcon}
-                label={t('vein.cacheentries')}
+                label="缓存条目"
                 value={stats.cache.entries}
                 sub={`${formatBytes(stats.cache.current_size_bytes)} / ${formatBytes(stats.cache.max_size_bytes)}`}
                 color="text-purple-500"
@@ -1212,7 +1213,7 @@ export function VeinClient() {
               />
               <StatCard
                 icon={BarChart3}
-                label={t('vein.usageRate')}
+                label="使用率"
                 value={`${stats.cache.usage_percent.toFixed(1)}%`}
                 sub={`TTL: ${stats.cache.default_ttl_seconds}s`}
                 color="text-blue-500"
@@ -1220,17 +1221,17 @@ export function VeinClient() {
               />
               <StatCard
                 icon={ArrowDownToLine}
-                label={t('vein.cachehits')}
+                label="缓存命中"
                 value={stats.cache.hits}
-                sub={t('vein.hitRate1')}
+                sub={`命中率: ${stats.cache.hit_rate.toFixed(1)}%`}
                 color="text-emerald-500"
                 bg="bg-emerald-500/10"
               />
               <StatCard
                 icon={ArrowUpFromLine}
-                label={t('vein.cachenotmedium')}
+                label="缓存未中"
                 value={stats.cache.misses}
-                sub={t('vein.totalquery')}
+                sub={`总计查询: ${stats.cache.hits + stats.cache.misses}`}
                 color="text-amber-500"
                 bg="bg-amber-500/10"
               />
@@ -1239,7 +1240,7 @@ export function VeinClient() {
             {/* Cache Usage Bar */}
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium">{t('vein.cacheempty')}</h3>
+                <h3 className="text-sm font-medium">缓存空间使用</h3>
                 <span className="text-xs text-muted-foreground">
                   {formatBytes(stats.cache.current_size_bytes)} / {formatBytes(stats.cache.max_size_bytes)}
                 </span>
@@ -1256,33 +1257,33 @@ export function VeinClient() {
               </div>
               <p className="text-xs text-muted-foreground mt-2">
                 {stats.cache.entries > 0
-                  ? t('vein.sizeaverageentries')
-                  : t('vein.cacheempty1')
+                  ? `平均条目大小: ${formatBytes(stats.cache.current_size_bytes / stats.cache.entries)}`
+                  : "缓存为空"
                 }
               </p>
             </div>
 
             {/* Cache Actions */}
             <div className="rounded-xl border border-border bg-card p-4">
-              <h3 className="text-sm font-medium mb-3">{t('vein.cacheaction')}</h3>
+              <h3 className="text-sm font-medium mb-3">缓存操作</h3>
               <div className="flex gap-3">
                 <button
                   onClick={handleCacheCleanup}
                   className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"
                 >
                   <RefreshCw size={14} />
-                  {t('vein.cleanExpired')}
+                  清理过期
                 </button>
                 <button
                   onClick={handleCacheClear}
                   className="flex items-center gap-1.5 rounded-lg border border-red-500/30 px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
                 >
                   <Trash2 size={14} />
-                  {t('vein.clearAllCache')}
+                  清除全部缓存
                 </button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                {t('vein.cleanExpired')}：仅删除TTL已过期的条目。清除全部：删除所有缓存条目，文件仍保留在磁盘。
+                清理过期：仅删除TTL已过期的条目。清除全部：删除所有缓存条目，文件仍保留在磁盘。
               </p>
             </div>
 
@@ -1290,26 +1291,26 @@ export function VeinClient() {
             <div className="rounded-xl border border-border bg-card p-4">
               <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
                 <Database size={14} className="text-amber-500" />
-                {t('vein.dedupStats')}
+                去重统计
               </h3>
               <div className="grid grid-cols-3 gap-4">
                 <div>
                   <p className="text-2xl font-bold">{stats.store.total_files}</p>
-                  <p className="text-xs text-muted-foreground">{t('vein.file1')}</p>
+                  <p className="text-xs text-muted-foreground">逻辑文件数</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{stats.store.unique_blobs}</p>
-                  <p className="text-xs text-muted-foreground">{t('vein.t59359')}</p>
+                  <p className="text-xs text-muted-foreground">唯一blob数</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold text-amber-500">{formatBytes(stats.store.dedup_savings_bytes)}</p>
-                  <p className="text-xs text-muted-foreground">{t('vein.empty1')}</p>
+                  <p className="text-xs text-muted-foreground">去重节省空间</p>
                 </div>
               </div>
               {stats.store.total_files > 0 && (
                 <div className="mt-3 pt-3 border-t border-border">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs text-muted-foreground">{t('vein.t46816')}</span>
+                    <span className="text-xs text-muted-foreground">去重效率</span>
                     <span className="text-xs font-medium">
                       {((1 - stats.store.unique_blobs / stats.store.total_files) * 100).toFixed(1)}%
                     </span>

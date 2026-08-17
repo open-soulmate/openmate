@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   BookOpen,
@@ -44,7 +43,6 @@ const availableDomains = [
 ];
 
 export function CreateCourseClient() {
-  const { t } = useTranslation();
   const router = useRouter();
   const apiBase = getApiBaseUrl();
   const [title, setTitle] = useState("");
@@ -130,7 +128,7 @@ export function CreateCourseClient() {
           const err = await res.json();
           console.error("AI generation failed:", err);
           // Fallback to manual
-          alert(t('learn.t87836', { detailGland: err.detail || t('learn.t75096') }));
+          alert(`AI生成失败: ${err.detail || "请检查Gland配置"}`);
         }
       } else {
         // Manual generation
@@ -371,7 +369,7 @@ export function CreateCourseClient() {
 
           {/* Generation Mode */}
           <section>
-            <label className="mb-2 block text-sm font-medium">{t('learn.t45549')}</label>
+            <label className="mb-2 block text-sm font-medium">生成方式</label>
             <div className="flex gap-3">
               <button
                 onClick={() => setGenMode("ai")}
@@ -383,8 +381,8 @@ export function CreateCourseClient() {
               >
                 <Sparkles size={16} />
                 <div className="text-left">
-                  <div className="font-medium">{t('learn.aiAutoGenerate')}</div>
-                  <div className="text-xs opacity-70">{t('learn.t30476')}</div>
+                  <div className="font-medium">AI 自动生成</div>
+                  <div className="text-xs opacity-70">由LLM生成完整课程内容和测验</div>
                 </div>
               </button>
               <button
@@ -397,8 +395,8 @@ export function CreateCourseClient() {
               >
                 <BookOpen size={16} />
                 <div className="text-left">
-                  <div className="font-medium">{t('learn.t91198')}</div>
-                  <div className="text-xs opacity-70">{t('learn.t22619')}</div>
+                  <div className="font-medium">手动创建</div>
+                  <div className="text-xs opacity-70">创建课程框架，手动填充内容</div>
                 </div>
               </button>
             </div>
@@ -408,27 +406,27 @@ export function CreateCourseClient() {
           {genMode === "ai" && (
             <section className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-2 block text-sm font-medium">{t('learn.t10672')}</label>
+                <label className="mb-2 block text-sm font-medium">章节数量</label>
                 <select
                   value={numChapters}
                   onChange={(e) => setNumChapters(parseInt(e.target.value))}
                   className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
                 >
                   {[3, 4, 5, 6, 7, 8, 10].map((n) => (
-                    <option key={n} value={n}>{n} {t('learn.t55143')}</option>
+                    <option key={n} value={n}>{n} 章</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">{t('learn.t76433')}</label>
+                <label className="mb-2 block text-sm font-medium">难度</label>
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
                   className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
                 >
-                  <option value="beginner">{t('learn.t03149')}</option>
-                  <option value="intermediate">{t('learn.t56231')}</option>
-                  <option value="advanced">{t('learn.t16459')}</option>
+                  <option value="beginner">入门</option>
+                  <option value="intermediate">中级</option>
+                  <option value="advanced">高级</option>
                 </select>
               </div>
             </section>

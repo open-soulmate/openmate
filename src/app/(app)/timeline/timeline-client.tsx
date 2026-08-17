@@ -190,7 +190,7 @@ export function TimelineClient() {
   }
 
   const handleClearOld = async (days: number) => {
-    if (!confirm(t("timeline.4b2c01")) return
+    if (!confirm(`清除 ${days} 天前的事件？`)) return
     try {
       await fetch(`${api}/api/timeline/clear`, {
         method: "POST",
@@ -209,10 +209,10 @@ export function TimelineClient() {
       <div className="flex items-center justify-between px-6 py-4 border-b border-border">
         <div className="flex items-center gap-3">
           <Clock className="w-5 h-5 text-primary" />
-          <h1 className="text-lg font-semibold">{t("timeline.4404a8")}<h1>
+          <h1 className="text-lg font-semibold">时间线</h1>
           {stats && (
             <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded-full">
-              {stats.total_events} {t("timeline.10b276")} · {stats.recent_24h} {t("timeline.c68a31")}24h
+              {stats.total_events} 事件 · {stats.recent_24h} 近24h
             </span>
           )}
         </div>
@@ -226,22 +226,22 @@ export function TimelineClient() {
             )}
           >
             <FolderSync className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
-            {t("timeline.19c5ae")}
-          <button>
+            同步事件流
+          </button>
           <button
             onClick={() => loadAll()}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-border hover:bg-accent transition-colors"
           >
             <RefreshCw className="w-3.5 h-3.5" />
-            {t("timeline.694fc5")}
-          <button>
+            刷新
+          </button>
           <button
             onClick={() => handleClearOld(30)}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg border border-destructive/30 text-destructive hover:bg-destructive/10 transition-colors"
           >
             <Trash2 className="w-3.5 h-3.5" />
-            {t("timeline.f2aa76")}
-          <button>
+            清理30天前
+          </button>
         </div>
       </div>
 
@@ -258,9 +258,9 @@ export function TimelineClient() {
                 : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
-            {tab === "events" && <><Activity className="w-3.5 h-3.5 inline mr-1" />{t("timeline.38c1fc")}<>}
-            {tab === "stats" && <><BarChart3 className="w-3.5 h-3.5 inline mr-1" />{t("timeline.d7656a")}<>}
-            {tab === "organs" && <><Layers className="w-3.5 h-3.5 inline mr-1" />{t("timeline.8f3b32")}<>}
+            {tab === "events" && <><Activity className="w-3.5 h-3.5 inline mr-1" />事件列表</>}
+            {tab === "stats" && <><BarChart3 className="w-3.5 h-3.5 inline mr-1" />统计</>}
+            {tab === "organs" && <><Layers className="w-3.5 h-3.5 inline mr-1" />器官</>}
           </button>
         ))}
       </div>
@@ -275,7 +275,7 @@ export function TimelineClient() {
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 onKeyDown={e => e.key === "Enter" && fetchEvents()}
-                placeholder={t("timeline.7b56c6")}
+                placeholder="搜索事件内容..."
                 className="w-full pl-8 pr-3 py-1.5 text-xs rounded-lg border border-border bg-background outline-none focus:ring-1 focus:ring-primary"
               />
             </div>
@@ -287,7 +287,7 @@ export function TimelineClient() {
               )}
             >
               <Filter className="w-3.5 h-3.5" />
-              {t("timeline.c2fe62")}
+              筛选
               {(filterOrgan || filterType) && (
                 <span className="w-1.5 h-1.5 rounded-full bg-primary" />
               )}
@@ -300,7 +300,7 @@ export function TimelineClient() {
                 onChange={e => { setFilterOrgan(e.target.value); }}
                 className="text-xs rounded-lg border border-border bg-background px-2 py-1.5 outline-none"
               >
-                <option value="">{t("timeline.e58183")}<option>
+                <option value="">全部器官</option>
                 {organs.map(o => (
                   <option key={o.organ} value={o.organ}>{o.emoji} {o.organ} ({o.count})</option>
                 ))}
@@ -310,7 +310,7 @@ export function TimelineClient() {
                 onChange={e => { setFilterType(e.target.value); }}
                 className="text-xs rounded-lg border border-border bg-background px-2 py-1.5 outline-none"
               >
-                <option value="">{t("timeline.c079e7")}<option>
+                <option value="">全部类型</option>
                 {types.map(t => (
                   <option key={t.event_type} value={t.event_type}>{t.event_type} ({t.count})</option>
                 ))}
@@ -320,8 +320,8 @@ export function TimelineClient() {
                   onClick={() => { setFilterOrgan(""); setFilterType(""); }}
                   className="text-xs text-muted-foreground hover:text-foreground"
                 >
-                  {t("timeline.a95500")}
-                <button>
+                  清除筛选
+                </button>
               )}
             </div>
           )}
@@ -332,13 +332,13 @@ export function TimelineClient() {
       <div className="flex-1 overflow-y-auto px-6 py-4">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-muted-foreground">
-            <RefreshCw className="w-4 h-4 animate-spin mr-2" /> {t("timeline.26b5bd")}
-          <div>
+            <RefreshCw className="w-4 h-4 animate-spin mr-2" /> 加载中...
+          </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20 text-destructive">
             <AlertCircle className="w-8 h-8 mb-2" />
             <p className="text-sm">{error}</p>
-            <button onClick={loadAll} className="mt-3 text-xs text-primary hover:underline">{t("timeline.132c5c")}<button>
+            <button onClick={loadAll} className="mt-3 text-xs text-primary hover:underline">重试</button>
           </div>
         ) : activeTab === "events" ? (
           <EventsList
@@ -371,8 +371,8 @@ function EventsList({
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
         <Clock className="w-10 h-10 mb-3 opacity-30" />
-        <p className="text-sm">{t("timeline.0b95b8")}<p>
-        <p className="text-xs mt-1">{t("timeline.282dec")}<p>
+        <p className="text-sm">暂无事件</p>
+        <p className="text-xs mt-1">点击「同步事件流」从内存缓冲区导入事件</p>
       </div>
     )
   }
@@ -392,7 +392,7 @@ function EventsList({
         <div key={date}>
           <div className="flex items-center gap-2 mb-3">
             <span className="text-xs font-medium text-muted-foreground bg-muted px-2 py-0.5 rounded-full">{date}</span>
-            <span className="text-xs text-muted-foreground">{evts.length} {t("timeline.10b276")}</span>
+            <span className="text-xs text-muted-foreground">{evts.length} 事件</span>
           </div>
           <div className="relative pl-6 border-l-2 border-border space-y-1">
             {evts.map(ev => {
@@ -439,8 +439,8 @@ function EventsList({
                       <div className="px-3 pb-3 border-t border-border pt-2 space-y-2">
                         <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
                           <span>ID: {ev.event_id}</span>
-                          <span>{t("timeline.374856")} {formatTimestamp(ev.timestamp)}</span>
-                          <span>{t("timeline.e753f9")} {formatTimestamp(ev.collected_at)}</span>
+                          <span>时间: {formatTimestamp(ev.timestamp)}</span>
+                          <span>收集: {formatTimestamp(ev.collected_at)}</span>
                         </div>
                         {Object.keys(ev.detail).length > 0 && (
                           <pre className="text-xs bg-muted rounded p-2 overflow-x-auto max-h-48">
@@ -463,7 +463,7 @@ function EventsList({
 // ── Stats Panel ────────────────────────────────────────────────
 
 function StatsPanel({ stats, types }: { stats: TimelineStats | null; types: TypeInfo[] }) {
-  if (!stats) return <p className="text-sm text-muted-foreground">{t("timeline.1bc091")}<p>
+  if (!stats) return <p className="text-sm text-muted-foreground">无统计数据</p>
 
   const maxHourly = Math.max(...stats.hourly_distribution.map(h => h.count), 1)
 
@@ -472,10 +472,10 @@ function StatsPanel({ stats, types }: { stats: TimelineStats | null; types: Type
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { label: t("timeline.66aeeb"), value: stats.total_events, icon: Database },
-          { label: t("timeline.ff8fe0"), value: stats.recent_24h, icon: Clock },
-          { label: t("timeline.35bc3f"), value: Object.keys(stats.by_organ).length, icon: Layers },
-          { label: t("timeline.f974c8"), value: Object.keys(stats.by_type).length, icon: Activity },
+          { label: "总事件数", value: stats.total_events, icon: Database },
+          { label: "近24小时", value: stats.recent_24h, icon: Clock },
+          { label: "器官数", value: Object.keys(stats.by_organ).length, icon: Layers },
+          { label: "事件类型", value: Object.keys(stats.by_type).length, icon: Activity },
         ].map(card => (
           <div key={card.label} className="rounded-lg border border-border p-3">
             <div className="flex items-center gap-2 text-muted-foreground mb-1">
@@ -489,7 +489,7 @@ function StatsPanel({ stats, types }: { stats: TimelineStats | null; types: Type
 
       {/* Hourly distribution */}
       <div className="rounded-lg border border-border p-4">
-        <h3 className="text-sm font-medium mb-3">{t("timeline.4a9182")}<h3>
+        <h3 className="text-sm font-medium mb-3">24小时事件分布</h3>
         <div className="flex items-end gap-1 h-24">
           {[...stats.hourly_distribution].reverse().map(h => (
             <div key={h.hours_ago} className="flex-1 flex flex-col items-center gap-1">
@@ -508,7 +508,7 @@ function StatsPanel({ stats, types }: { stats: TimelineStats | null; types: Type
       {/* By type */}
       {types.length > 0 && (
         <div className="rounded-lg border border-border p-4">
-          <h3 className="text-sm font-medium mb-3">{t("timeline.fd8670")}<h3>
+          <h3 className="text-sm font-medium mb-3">按类型分布</h3>
           <div className="space-y-2">
             {types.slice(0, 15).map(t => {
               const maxCount = types[0]?.count || 1
@@ -543,7 +543,7 @@ function OrgansPanel({ organs, onSelectOrgan }: { organs: OrganInfo[]; onSelectO
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
         <Layers className="w-10 h-10 mb-3 opacity-30" />
-        <p className="text-sm">{t("timeline.240dd3")}<p>
+        <p className="text-sm">暂无器官事件</p>
       </div>
     )
   }
@@ -559,7 +559,7 @@ function OrgansPanel({ organs, onSelectOrgan }: { organs: OrganInfo[]; onSelectO
           <span className="text-2xl">{o.emoji || "🔧"}</span>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-medium truncate">{o.organ}</p>
-            <p className="text-xs text-muted-foreground">{o.count} {t("timeline.10b276")} · {t("timeline.046c62")} {o.last_event_ago}</p>
+            <p className="text-xs text-muted-foreground">{o.count} 事件 · 最近 {o.last_event_ago}</p>
           </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground" />
         </button>

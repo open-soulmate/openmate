@@ -171,7 +171,7 @@ export function NestClient() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm(t('nest.confirmdelete1'))) return;
+    if (!confirm("确定删除此租户？")) return;
     try {
       await fetch(`${apiBase}/api/nest/tenants/${id}`, { method: "DELETE" });
       setSelected(null);
@@ -191,9 +191,9 @@ export function NestClient() {
   };
 
   const tabs = [
-    { id: "tenants" as const, label: t('nest.tenantMgmt'), icon: Users },
-    { id: "policies" as const, label: t('nest.isolationPolicy'), icon: Shield },
-    { id: "audit" as const, label: t('nest.accessAudit'), icon: BarChart3 },
+    { id: "tenants" as const, label: "租户管理", icon: Users },
+    { id: "policies" as const, label: "隔离策略", icon: Shield },
+    { id: "audit" as const, label: "访问审计", icon: BarChart3 },
   ];
 
   return (
@@ -201,7 +201,7 @@ export function NestClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Home size={20} className="text-rose-500" />
-          <h1 className="text-lg font-semibold">{t('nest.t98001')}</h1>
+          <h1 className="text-lg font-semibold">细胞巢穴 · 多租户隔离</h1>
           <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-500">
             SaaS隔离
           </span>
@@ -209,7 +209,7 @@ export function NestClient() {
         <div className="flex items-center gap-2">
           <button onClick={() => setShowCreate(true)}
             className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-sm text-white hover:bg-rose-600">
-            <Plus size={14} /> {t('nest.createTenant1')}
+            <Plus size={14} /> 新建租户
           </button>
           <button onClick={() => { fetchStats(); fetchTenants(); }}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
@@ -223,19 +223,19 @@ export function NestClient() {
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('nest.totalTenants1')}</span>
+              <span className="text-xs text-muted-foreground">总租户</span>
               <p className="text-2xl font-bold">{stats.tenants.total_tenants}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('nest.t65872')}</span>
+              <span className="text-xs text-muted-foreground">总存储</span>
               <p className="text-2xl font-bold text-indigo-500">{formatBytes(stats.tenants.total_storage_bytes)}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('nest.t02872')}</span>
+              <span className="text-xs text-muted-foreground">总文档</span>
               <p className="text-2xl font-bold text-emerald-500">{stats.tenants.total_documents.toLocaleString()}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('nest.t05928')}</span>
+              <span className="text-xs text-muted-foreground">访问拦截</span>
               <p className="text-2xl font-bold text-amber-500">{stats.isolation.blocked_attempts}</p>
               <span className="text-xs text-muted-foreground">拦截率 {stats.isolation.block_rate}%</span>
             </div>
@@ -260,7 +260,7 @@ export function NestClient() {
               {tenants.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <Users size={40} className="mb-3 opacity-30" />
-                  <p className="text-sm">{t('nest.noData5')}</p>
+                  <p className="text-sm">暂无租户</p>
                 </div>
               ) : tenants.map((tenant) => (
                 <div key={tenant.tenant_id}
@@ -317,17 +317,17 @@ export function NestClient() {
                     <div className="flex gap-1">
                       {selected.status === "active" ? (
                         <button onClick={() => handleSuspend(selected.tenant_id)}
-                          className="rounded-md p-1.5 text-amber-500 hover:bg-amber-500/10" title={t('nest.pause1')}>
+                          className="rounded-md p-1.5 text-amber-500 hover:bg-amber-500/10" title="暂停">
                           <AlertTriangle size={14} />
                         </button>
                       ) : (
                         <button onClick={() => handleReactivate(selected.tenant_id)}
-                          className="rounded-md p-1.5 text-emerald-500 hover:bg-emerald-500/10" title={t('nest.t14443')}>
+                          className="rounded-md p-1.5 text-emerald-500 hover:bg-emerald-500/10" title="激活">
                           <CheckCircle size={14} />
                         </button>
                       )}
                       <button onClick={() => handleDelete(selected.tenant_id)}
-                        className="rounded-md p-1.5 text-red-500 hover:bg-red-500/10" title={t('nest.delete3')}>
+                        className="rounded-md p-1.5 text-red-500 hover:bg-red-500/10" title="删除">
                         <Trash2 size={14} />
                       </button>
                     </div>
@@ -338,22 +338,22 @@ export function NestClient() {
                       <span className="font-mono">{selected.tenant_id}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('nest.empty3')}</span>
+                      <span className="text-muted-foreground">命名空间</span>
                       <span className="font-mono">{selected.namespace}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('nest.t26889')}</span>
+                      <span className="text-muted-foreground">层级</span>
                       <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", tierColor(selected.tier))}>
                         {selected.tier}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('nest.status1')}</span>
+                      <span className="text-muted-foreground">状态</span>
                       <span>{selected.status}</span>
                     </div>
                     {selected.description && (
                       <div className="flex justify-between">
-                        <span className="text-muted-foreground">{t('nest.description6')}</span>
+                        <span className="text-muted-foreground">描述</span>
                         <span className="text-right max-w-[160px] truncate">{selected.description}</span>
                       </div>
                     )}
@@ -362,13 +362,13 @@ export function NestClient() {
 
                 {/* Quota Check */}
                 <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                  <h4 className="text-sm font-medium">{t('nest.check')}</h4>
+                  <h4 className="text-sm font-medium">配额检查</h4>
                   <div className="flex gap-2">
                     <select value={quotaResource} onChange={(e) => setQuotaResource(e.target.value)}
                       className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs">
-                      <option value="storage">{t('nest.t42404')}</option>
-                      <option value="documents">{t('nest.t69598')}</option>
-                      <option value="api_calls">{t('nest.t28049')}</option>
+                      <option value="storage">存储</option>
+                      <option value="documents">文档</option>
+                      <option value="api_calls">API调用</option>
                       <option value="tokens">Token</option>
                       <option value="agents">Agent</option>
                     </select>
@@ -380,7 +380,7 @@ export function NestClient() {
                   {quotaResult && (
                     <div className={cn("rounded-lg p-3 text-xs",
                       quotaResult.allowed ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500")}>
-                      <p>{quotaResult.allowed ? "✓ 允许" : t('nest.t04982')}</p>
+                      <p>{quotaResult.allowed ? "✓ 允许" : "✗ 超出配额"}</p>
                       {quotaResult.current !== undefined && (
                         <p>当前: {quotaResult.current} / 上限: {quotaResult.limit} ({quotaResult.percent}%)</p>
                       )}
@@ -398,18 +398,18 @@ export function NestClient() {
             {policies.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Shield size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t('nest.noDatapolicy')}</p>
+                <p className="text-sm">暂无策略</p>
               </div>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('nest.type1')}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('nest.intervalempty')}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('nest.t96420')}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('nest.t46994')}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('nest.t38133')}</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">资源类型</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">命名空间隔离</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">跨租户</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">加密</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">审计</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -443,26 +443,26 @@ export function NestClient() {
             <div className="flex items-center gap-2">
               <button onClick={fetchAudit}
                 className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-                <RefreshCw size={12} /> {t('nest.refresh5')}
+                <RefreshCw size={12} /> 刷新
               </button>
               <span className="text-xs text-muted-foreground">{auditLog.length} 条记录</span>
             </div>
             {auditLog.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <BarChart3 size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t('nest.noData6')}</p>
+                <p className="text-sm">暂无审计记录</p>
               </div>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('nest.time4')}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('nest.t21564')}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('nest.t03969')}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('nest.action3')}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('nest.result5')}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('nest.t41268')}</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">时间</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">租户</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">资源</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">操作</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">结果</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">原因</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -489,25 +489,25 @@ export function NestClient() {
         {showCreate && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4">
-              <h3 className="font-semibold">{t('nest.createTenant2')}</h3>
+              <h3 className="font-semibold">新建租户</h3>
               <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                placeholder={t('nest.name2')} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder="租户名称" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <select value={newTier} onChange={(e) => setNewTier(e.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                <option value="free">{t('nest.t66744')}</option>
-                <option value="pro">{t('nest.t89656')}</option>
-                <option value="enterprise">{t('nest.t38911')}</option>
+                <option value="free">Free (免费)</option>
+                <option value="pro">Pro (专业)</option>
+                <option value="enterprise">Enterprise (企业)</option>
               </select>
               <input value={newOwner} onChange={(e) => setNewOwner(e.target.value)}
-                placeholder={t('nest.user1')} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder="所有者用户ID (可选)" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
-                placeholder={t('nest.description7')} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder="描述 (可选)" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowCreate(false)}
-                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t('nest.cancel5')}</button>
+                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">取消</button>
                 <button onClick={handleCreate} disabled={loading}
                   className="rounded-lg bg-rose-500 px-4 py-2 text-sm text-white hover:bg-rose-600 disabled:opacity-50">
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : t('nest.create2')}
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : "创建"}
                 </button>
               </div>
             </div>

@@ -46,13 +46,13 @@ function levelBadge(level: string) {
 function formatTime(ts: number): string {
   const diff = Date.now() - ts * 1000;
   const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) return t("notifications.4181f7");
+  if (seconds < 60) return "刚刚";
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return t("notifications.450055");
+  if (minutes < 60) return `${minutes}分钟前`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return t("notifications.687c18");
+  if (hours < 24) return `${hours}小时前`;
   const days = Math.floor(hours / 24);
-  return t("notifications.152629");
+  return `${days}天前`;
 }
 
 function formatFullTime(ts: number): string {
@@ -160,11 +160,11 @@ export function NotificationsClient() {
         <div className="flex items-center gap-3">
           <Bell size={20} className="text-foreground" />
           <h2 className="text-lg font-semibold text-foreground">
-            {t("notifications.title")}
+            {t("notifications.title") || "通知中心"}
           </h2>
           {unreadCount > 0 && (
             <span className="flex h-6 min-w-6 items-center justify-center rounded-full bg-red-500/10 px-2 text-xs font-medium text-red-500">
-              {unreadCount} {t("notifications.unread")}
+              {unreadCount} {t("notifications.unread") || "未读"}
             </span>
           )}
         </div>
@@ -173,12 +173,12 @@ export function NotificationsClient() {
             onClick={handlePushTest}
             className="flex h-8 items-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors border border-border"
           >
-            🧪 {t("notifications.test")}
+            🧪 {t("notifications.test") || "测试通知"}
           </button>
           <button
             onClick={fetchNotifications}
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-            title={t("notifications.refresh")}
+            title={t("notifications.refresh") || "刷新"}
           >
             <RefreshCw size={14} />
           </button>
@@ -188,7 +188,7 @@ export function NotificationsClient() {
               className="flex h-8 items-center gap-1.5 rounded-md px-3 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
             >
               <CheckCheck size={14} />
-              {t("notifications.markAllRead")}
+              {t("notifications.markAllRead") || "全部已读"}
             </button>
           )}
           {notifications.length > 0 && (
@@ -197,7 +197,7 @@ export function NotificationsClient() {
               className="flex h-8 items-center gap-1.5 rounded-md px-3 text-xs text-red-500 hover:bg-red-500/10 transition-colors"
             >
               <Trash2 size={14} />
-              {t("notifications.clearAll")}
+              {t("notifications.clearAll") || "清空"}
             </button>
           )}
         </div>
@@ -212,7 +212,7 @@ export function NotificationsClient() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("notifications.searchPlaceholder")}
+            placeholder={t("notifications.searchPlaceholder") || "搜索通知..."}
             className="w-full h-8 pl-9 pr-3 rounded-md border border-border bg-background text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
           />
           {searchQuery && (
@@ -236,7 +236,7 @@ export function NotificationsClient() {
           )}
         >
           <Filter size={14} />
-          {t("notifications.filters")}
+          {t("notifications.filters") || "筛选"}
           <ChevronDown size={12} className={cn("transition-transform", showFilters && "rotate-180")} />
         </button>
 
@@ -253,7 +253,7 @@ export function NotificationsClient() {
                   : "text-muted-foreground hover:bg-accent hover:text-foreground"
               )}
             >
-              {f === "all" ? (t("notifications.all")) : (t("notifications.unread"))}
+              {f === "all" ? (t("notifications.all") || "全部") : (t("notifications.unread") || "未读")}
             </button>
           ))}
         </div>
@@ -263,13 +263,13 @@ export function NotificationsClient() {
       {showFilters && (
         <div className="flex items-center gap-4 px-6 py-2 border-b border-border bg-muted/20">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{t("notifications.level")}:</span>
+            <span className="text-xs text-muted-foreground">{t("notifications.level") || "级别"}:</span>
             <select
               value={levelFilter}
               onChange={(e) => setLevelFilter(e.target.value)}
               className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground"
             >
-              <option value="">{t("notifications.all")}</option>
+              <option value="">{t("notifications.all") || "全部"}</option>
               <option value="info">Info</option>
               <option value="warning">Warning</option>
               <option value="error">Error</option>
@@ -277,13 +277,13 @@ export function NotificationsClient() {
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{t("notifications.source")}:</span>
+            <span className="text-xs text-muted-foreground">{t("notifications.source") || "来源"}:</span>
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
               className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground"
             >
-              <option value="">{t("notifications.all")}</option>
+              <option value="">{t("notifications.all") || "全部"}</option>
               {sources.map((s) => (
                 <option key={s} value={s}>{s}</option>
               ))}
@@ -294,7 +294,7 @@ export function NotificationsClient() {
               onClick={() => { setLevelFilter(""); setSourceFilter(""); }}
               className="text-xs text-primary hover:underline"
             >
-              {t("notifications.clearFilters")}
+              {t("notifications.clearFilters") || "清除筛选"}
             </button>
           )}
         </div>
@@ -311,13 +311,13 @@ export function NotificationsClient() {
             <Bell size={48} className="mb-4 opacity-20" />
             <p className="text-sm font-medium">
               {searchQuery
-                ? (t("notifications.noResults"))
-                : (t("notifications.empty"))}
+                ? (t("notifications.noResults") || "没有匹配的通知")
+                : (t("notifications.empty") || "暂无通知")}
             </p>
             <p className="text-xs mt-1">
               {searchQuery
-                ? (t("notifications.tryDifferentSearch"))
-                : (t("notifications.emptyDesc"))}
+                ? (t("notifications.tryDifferentSearch") || "尝试不同的搜索词")
+                : (t("notifications.emptyDesc") || "系统事件和器官活动将在此显示")}
             </p>
           </div>
         ) : (
@@ -365,7 +365,7 @@ export function NotificationsClient() {
                         <button
                           onClick={(e) => { e.stopPropagation(); handleMarkRead(notif.id); }}
                           className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                          title={t("notifications.markRead")}
+                          title={t("notifications.markRead") || "标记已读"}
                         >
                           <Check size={14} />
                         </button>
@@ -374,7 +374,7 @@ export function NotificationsClient() {
                         <button
                           onClick={(e) => { e.stopPropagation(); router.push(notif.action_url); }}
                           className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                          title={t("notifications.navigate")}
+                          title={t("notifications.navigate") || "前往"}
                         >
                           <ExternalLink size={14} />
                         </button>
@@ -382,7 +382,7 @@ export function NotificationsClient() {
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDismiss(notif.id); }}
                         className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-red-500 transition-colors"
-                        title={t("notifications.dismiss")}
+                        title={t("notifications.dismiss") || "移除"}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -418,13 +418,13 @@ export function NotificationsClient() {
       {/* Footer */}
       <div className="flex items-center justify-between px-6 py-3 border-t border-border bg-muted/30">
         <span className="text-xs text-muted-foreground">
-          {t("notifications.showing")} {filtered.length} / {notifications.length} {t("notifications.items")}
+          {t("notifications.showing") || "显示"} {filtered.length} / {notifications.length} {t("notifications.items") || "条"}
         </span>
         <button
           onClick={() => router.push("/activity")}
           className="text-xs text-primary hover:underline flex items-center gap-1"
         >
-          {t("notifications.viewActivity")} →
+          {t("notifications.viewActivity") || "查看活动流"} →
         </button>
       </div>
     </div>
