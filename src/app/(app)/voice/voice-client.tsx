@@ -59,10 +59,10 @@ function formatTime(ts: number): string {
 }
 
 const LANGUAGES = [
-  { code: '', label: t('voice.allLanguages') },
-  { code: 'zh', label: t('voice.chinese') },
+  { code: '', label: 'All' },
+  { code: 'zh', label: '中文' },
   { code: "en", label: "English" },
-  { code: 'ja', label: t('voice.t89176') },
+  { code: 'ja', label: '日本語' },
   { code: "ko", label: "한국어" },
 ];
 

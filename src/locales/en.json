@@ -1764,7 +1764,14 @@
     "t89293": "Normal",
     "high5": "Higher",
     "cancel1": "Cancel",
-    "create1": "Create"
+    "create1": "Create",
+    "cachehits1": "Cache Hits",
+    "characters": "Characters",
+    "engine2": "Engine",
+    "input2": "Input text",
+    "t84292": "Search profiles...",
+    "times1": "Synthesized",
+    "voiceProfile1": "Profiles"
   },
   "vision": {
     "title": "Vision · Image Visualization",
@@ -3152,6 +3159,13 @@
     "contentPlaceholder": "Paste code...",
     "cancel": "Cancel",
     "saveBtn": "Save",
-    "createBtn": "Create"
+    "createBtn": "Create",
+    "created": "Created",
+    "deleted": "Deleted",
+    "deleteFailed": "Delete failed",
+    "exportFailed": "Export failed",
+    "language5": "Language",
+    "networkError": "Network error",
+    "updated": "Updated"
   }
 }
