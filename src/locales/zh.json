@@ -1632,7 +1632,8 @@
     "stopped": "已停止",
     "justNow": "刚刚",
     "minutesAgo": "分钟前",
-    "hoursAgo": "小时前"
+    "hoursAgo": "小时前",
+    "daysAgo": "天前"
   },
   "gland": {
     "title": "腺体 · 模型网关",
@@ -1923,7 +1924,13 @@
     "text44": "⚠️ 应归档",
     "text45": "✓ 不需归档",
     "text46": "🗑️ 应遗忘",
-    "text47": "✓ 不需遗忘"
+    "text47": "✓ 不需遗忘",
+    "decayComplete": "衰减完成: 更新{{updated}}条, 归档{{archived}}条, 遗忘{{forgotten}}条",
+    "lifecycleResult": "生命周期检查: 检查{{checked}}个会话, 新闲置{{idle}}个, 新过期{{expired}}个",
+    "shouldArchive": "⚠️ 应归档",
+    "noArchiveNeeded": "✓ 不需归档",
+    "shouldForget": "🗑️ 应遗忘",
+    "noForgetNeeded": "✓ 不需遗忘"
   },
   "reflex": {
     "title": "反射 · 高速应答引擎",

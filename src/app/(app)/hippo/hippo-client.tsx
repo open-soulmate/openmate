@@ -84,9 +84,9 @@ function formatTime(ts: number): string {
 
 function formatAge(ts: number): string {
   const hours = (Date.now() / 1000 - ts) / 3600;
-  if (hours < 1) return `${Math.round(hours * 60)}分钟前`;
-  if (hours < 24) return `${Math.round(hours)}小时前`;
-  return `${Math.round(hours / 24)}天前`;
+  if (hours < 1) return `${Math.round(hours * 60)} {t("common.minutesAgo")}`;
+  if (hours < 24) return `${Math.round(hours)} {t("common.hoursAgo")}`;
+  return `${Math.round(hours / 24)} {t("common.daysAgo")}`;
 }
 
 export function HippoClient() {
@@ -189,7 +189,7 @@ export function HippoClient() {
     try {
       const res = await fetch(`${apiBase}/api/hippo/decay/run`, { method: "POST" });
       const data = await res.json();
-      alert(`衰减完成: 更新${data.updated}条, 归档${data.archived}条, 遗忘${data.forgotten}条`);
+      alert(`{t("hippo.decayComplete", {updated: data.updated, archived: data.archived, forgotten: data.forgotten})}`);
       fetchMemories();
       fetchStats();
     } catch {} finally { setLoading(false); }
@@ -211,16 +211,16 @@ export function HippoClient() {
     try {
       const res = await fetch(`${apiBase}/api/hippo/sessions/lifecycle-check`, { method: "POST" });
       const data = await res.json();
-      alert(`生命周期检查: 检查${data.checked}个会话, 新闲置${data.newly_idle}个, 新过期${data.newly_expired}个`);
+      alert(`{t("hippo.lifecycleResult", {checked: data.checked, idle: data.newly_idle, expired: data.newly_expired})}`);
       fetchSessions();
     } catch {}
   };
 
   const tabs = [
-    { id: "memories" as const, label: t("hippo.memories") || "记忆", icon: Brain },
-    { id: "sessions" as const, label: t("hippo.sessions") || "会话", icon: Clock },
-    { id: "decay" as const, label: t("hippo.decay") || "衰减", icon: TrendingDown },
-    { id: "simulate" as const, label: t("hippo.simulate") || "模拟", icon: BarChart3 },
+    { id: "memories" as const, label: t("hippo.memories"), icon: Brain },
+    { id: "sessions" as const, label: t("hippo.sessions"), icon: Clock },
+    { id: "decay" as const, label: t("hippo.decay"), icon: TrendingDown },
+    { id: "simulate" as const, label: t("hippo.simulate"), icon: BarChart3 },
   ];
 
   return (
@@ -229,14 +229,14 @@ export function HippoClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Brain size={20} className="text-indigo-500" />
-          <h1 className="text-lg font-semibold">{t("hippo.title") || "海马体 · 记忆生命周期"}</h1>
+          <h1 className="text-lg font-semibold">{t("hippo.title")}</h1>
           <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-500">
-            {t("hippo.subtitle") || "短期记忆 · 衰减 · 遗忘"}
+            {t("hippo.subtitle")}
           </span>
         </div>
         <button onClick={() => { fetchStats(); tab === "memories" && fetchMemories(); tab === "sessions" && fetchSessions(); }}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors">
-          <RefreshCw size={14} /> {t("common.refresh") || "刷新"}
+          <RefreshCw size={14} /> {t("common.refresh")}
         </button>
       </div>
 
@@ -244,14 +244,14 @@ export function HippoClient() {
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard icon={Brain} label={t("hippo.activeMemories") || "活跃记忆"} value={String(stats.memory.active)}
-              sub={`${stats.memory.total_memories} ${t("hippo.total") || "总数"}`} color="text-indigo-500" bg="bg-indigo-500/10" />
-            <StatCard icon={Archive} label={t("hippo.archived") || "已归档"} value={String(stats.memory.archived)}
-              sub={`${stats.memory.usage_percent}% ${t("hippo.usage") || "使用"}`} color="text-amber-500" bg="bg-amber-500/10" />
-            <StatCard icon={Clock} label={t("hippo.sessions") || "会话"} value={String(stats.sessions.total_sessions)}
-              sub={`${stats.sessions.by_status?.active || 0} ${t("hippo.active") || "活跃"}`} color="text-emerald-500" bg="bg-emerald-500/10" />
-            <StatCard icon={Activity} label={t("hippo.totalAccesses") || "总访问"} value={String(stats.memory.total_accesses)}
-              sub={`${t("hippo.strategy") || "策略"}: ${stats.memory.strategy}`} color="text-violet-500" bg="bg-violet-500/10" />
+            <StatCard icon={Brain} label={t("hippo.activeMemories")} value={String(stats.memory.active)}
+              sub={`${stats.memory.total_memories} ${t("hippo.total")}`} color="text-indigo-500" bg="bg-indigo-500/10" />
+            <StatCard icon={Archive} label={t("hippo.archived")} value={String(stats.memory.archived)}
+              sub={`${stats.memory.usage_percent}% ${t("hippo.usage")}`} color="text-amber-500" bg="bg-amber-500/10" />
+            <StatCard icon={Clock} label={t("hippo.sessions")} value={String(stats.sessions.total_sessions)}
+              sub={`${stats.sessions.by_status?.active || 0} ${t("hippo.active")}`} color="text-emerald-500" bg="bg-emerald-500/10" />
+            <StatCard icon={Activity} label={t("hippo.totalAccesses")} value={String(stats.memory.total_accesses)}
+              sub={`${t("hippo.strategy")}: ${stats.memory.strategy}`} color="text-violet-500" bg="bg-violet-500/10" />
           </div>
         )}
 
@@ -271,17 +271,17 @@ export function HippoClient() {
           <div className="space-y-4">
             {/* Create Memory */}
             <div className="rounded-xl border border-border p-4 space-y-3">
-              <h3 className="text-sm font-medium">{t("hippo.createMemory") || "创建记忆"}</h3>
+              <h3 className="text-sm font-medium">{t("hippo.createMemory")}</h3>
               <div className="flex gap-3">
                 <input value={newSessionId} onChange={(e) => setNewSessionId(e.target.value)}
-                  placeholder={t("hippo.sessionId") || "会话ID"}
+                  placeholder={t("hippo.sessionId")}
                   className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20" />
                 <input value={newContent} onChange={(e) => setNewContent(e.target.value)}
-                  placeholder={t("hippo.contentPlaceholder") || "输入记忆内容..."}
+                  placeholder={t("hippo.contentPlaceholder")}
                   className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
                   onKeyDown={(e) => e.key === "Enter" && handleCreateMemory()} />
                 <div className="flex items-center gap-2">
-                  <label className="text-xs text-muted-foreground">{t("hippo.importance") || "重要性"}</label>
+                  <label className="text-xs text-muted-foreground">{t("hippo.importance")}</label>
                   <input type="range" min="0" max="1" step="0.1" value={newImportance}
                     onChange={(e) => setNewImportance(parseFloat(e.target.value))}
                     className="w-20" />
@@ -300,21 +300,21 @@ export function HippoClient() {
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input value={searchSession} onChange={(e) => setSearchSession(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && fetchMemories()}
-                  placeholder={t("hippo.filterSession") || "按会话ID过滤..."}
+                  placeholder={t("hippo.filterSession")}
                   className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20" />
               </div>
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                 <input type="checkbox" checked={includeArchived} onChange={(e) => { setIncludeArchived(e.target.checked); fetchMemories(); }} />
-                {t("hippo.includeArchived") || "含已归档"}
+                {t("hippo.includeArchived")}
               </label>
-              <span className="text-xs text-muted-foreground">{memories.length} {t("hippo.entries") || "条"}</span>
+              <span className="text-xs text-muted-foreground">{memories.length} {t("hippo.entries")}</span>
             </div>
 
             {/* Memory List */}
             {memories.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Brain size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("hippo.noMemories") || "暂无记忆"}</p>
+                <p className="text-sm">{t("hippo.noMemories")}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -326,8 +326,8 @@ export function HippoClient() {
                         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                           <span className="font-mono">{m.session_id.slice(0, 8)}</span>
                           <span>{formatAge(m.created_at)}</span>
-                          <span>{t("hippo.accessed") || "访问"}: {m.access_count}</span>
-                          {m.archived && <span className="text-amber-500 font-medium">已归档</span>}
+                          <span>{t("hippo.accessed")}: {m.access_count}</span>
+                          {m.archived && <span className="text-amber-500 font-medium">{t("hippo.archived")}</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-4">
@@ -374,7 +374,7 @@ export function HippoClient() {
             <div className="flex items-center gap-3">
               <button onClick={handleLifecycleCheck}
                 className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-2 text-sm text-white hover:bg-indigo-600">
-                <Zap size={14} /> {t("hippo.lifecycleCheck") || "生命周期检查"}
+                <Zap size={14} /> {t("hippo.lifecycleCheck")}
               </button>
               <button onClick={fetchSessions}
                 className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted">
@@ -385,7 +385,7 @@ export function HippoClient() {
             {sessionList.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Clock size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("hippo.noSessions") || "暂无会话"}</p>
+                <p className="text-sm">{t("hippo.noSessions")}</p>
               </div>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
@@ -393,10 +393,10 @@ export function HippoClient() {
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
                       <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">ID</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.title") || "标题"}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.status") || "状态"}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.memories") || "记忆"}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.lastActive") || "最后活跃"}</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.title")}</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.status")}</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.memories")}</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.lastActive")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -425,35 +425,35 @@ export function HippoClient() {
               <button onClick={handleRunDecay} disabled={loading}
                 className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50">
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                {t("hippo.runDecay") || "执行衰减"}
+                {t("hippo.runDecay")}
               </button>
             </div>
 
             {decayConfig && (
               <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                <h3 className="text-sm font-semibold">{t("hippo.decayConfig") || "衰减配置"}</h3>
+                <h3 className="text-sm font-semibold">{t("hippo.decayConfig")}</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-muted-foreground">{t("hippo.strategy") || "策略"}</label>
+                    <label className="text-xs text-muted-foreground">{t("hippo.strategy")}</label>
                     <div className="mt-1 text-sm font-medium">{decayConfig.strategy}</div>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">{t("hippo.halfLife") || "半衰期"}</label>
+                    <label className="text-xs text-muted-foreground">{t("hippo.halfLife")}</label>
                     <div className="mt-1 text-sm font-medium">{decayConfig.half_life_hours}h</div>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">{t("hippo.archiveThreshold") || "归档阈值"}</label>
+                    <label className="text-xs text-muted-foreground">{t("hippo.archiveThreshold")}</label>
                     <div className="mt-1 text-sm font-medium">{Math.round(decayConfig.archive_threshold * 100)}%</div>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">{t("hippo.forgetThreshold") || "遗忘阈值"}</label>
+                    <label className="text-xs text-muted-foreground">{t("hippo.forgetThreshold")}</label>
                     <div className="mt-1 text-sm font-medium">{Math.round(decayConfig.forget_threshold * 100)}%</div>
                   </div>
                 </div>
 
                 {/* Decay curve visualization */}
                 <div className="mt-4">
-                  <h4 className="text-xs text-muted-foreground mb-2">{t("hippo.decayCurve") || "衰减曲线"}</h4>
+                  <h4 className="text-xs text-muted-foreground mb-2">{t("hippo.decayCurve")}</h4>
                   <div className="flex items-end gap-0.5 h-24">
                     {Array.from({ length: 48 }, (_, i) => {
                       const h = i;
@@ -477,21 +477,21 @@ export function HippoClient() {
         {tab === "simulate" && (
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <h3 className="text-sm font-semibold">{t("hippo.simulateDecay") || "模拟衰减"}</h3>
+              <h3 className="text-sm font-semibold">{t("hippo.simulateDecay")}</h3>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <label className="text-xs text-muted-foreground">{t("hippo.ageHours") || "年龄(小时)"}</label>
+                  <label className="text-xs text-muted-foreground">{t("hippo.ageHours")}</label>
                   <input type="number" value={simAge} onChange={(e) => setSimAge(parseFloat(e.target.value) || 0)}
                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">{t("hippo.importance") || "重要性"}</label>
+                  <label className="text-xs text-muted-foreground">{t("hippo.importance")}</label>
                   <input type="number" min="0" max="1" step="0.1" value={simImportance}
                     onChange={(e) => setSimImportance(parseFloat(e.target.value) || 0)}
                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">{t("hippo.accessCount") || "访问次数"}</label>
+                  <label className="text-xs text-muted-foreground">{t("hippo.accessCount")}</label>
                   <input type="number" value={simAccess} onChange={(e) => setSimAccess(parseInt(e.target.value) || 0)}
                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                 </div>
@@ -499,14 +499,14 @@ export function HippoClient() {
               <button onClick={handleSimulate}
                 className="rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600">
                 <BarChart3 size={14} className="inline mr-1" />
-                {t("hippo.runSimulation") || "运行模拟"}
+                {t("hippo.runSimulation")}
               </button>
 
               {simResult && (
                 <div className="mt-4 rounded-lg border border-border p-4 space-y-2">
                   <div className="flex items-center gap-4">
                     <div>
-                      <span className="text-xs text-muted-foreground">{t("hippo.retention") || "保留率"}: </span>
+                      <span className="text-xs text-muted-foreground">{t("hippo.retention")}: </span>
                       <span className={cn("text-lg font-bold", retentionColor(simResult.retention))}>
                         {Math.round(simResult.retention * 100)}%
                       </span>
@@ -518,10 +518,10 @@ export function HippoClient() {
                   </div>
                   <div className="flex gap-4 text-xs">
                     <span className={simResult.should_archive ? "text-amber-500" : "text-muted-foreground"}>
-                      {simResult.should_archive ? "⚠️ 应归档" : "✓ 不需归档"}
+                      {simResult.should_archive ? t("hippo.shouldArchive") : t("hippo.noArchiveNeeded")}
                     </span>
                     <span className={simResult.should_forget ? "text-red-500" : "text-muted-foreground"}>
-                      {simResult.should_forget ? "🗑️ 应遗忘" : "✓ 不需遗忘"}
+                      {simResult.should_forget ? t("hippo.shouldForget") : t("hippo.noForgetNeeded")}
                     </span>
                   </div>
                 </div>
