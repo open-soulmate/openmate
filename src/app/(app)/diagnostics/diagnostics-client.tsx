@@ -198,8 +198,8 @@ export function DiagnosticsClient() {
               </div>
               <p className="text-2xl font-bold">{data.summary.total}</p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                <span className="text-emerald-500">{data.summary.healthy}</span> {t("diagnostics.healthy") || "正常"} ·
-                <span className="text-red-500 ml-1">{data.summary.unhealthy}</span> {t("diagnostics.unhealthy") || "异常"}
+                <span className="text-emerald-500">{data.summary.healthy}</span> {t('diagnostics.healthyLabel')} ·
+                <span className="text-red-500 ml-1">{data.summary.unhealthy}</span> {t('diagnostics.unhealthyLabel')}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
@@ -208,7 +208,7 @@ export function DiagnosticsClient() {
                 <div className="rounded-lg p-1.5 bg-amber-500/10"><Clock size={14} className="text-amber-500" /></div>
               </div>
               <p className="text-2xl font-bold">{data.summary.avg_response_ms}<span className="text-sm font-normal ml-0.5">ms</span></p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("diagnostics.max") || "最大"} {data.summary.max_response_ms.toFixed(1)}ms</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{t('diagnostics.maxLabel')} {data.summary.max_response_ms.toFixed(1)}ms</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-2">
@@ -216,10 +216,10 @@ export function DiagnosticsClient() {
                 <div className="rounded-lg p-1.5 bg-violet-500/10"><Cpu size={14} className="text-violet-500" /></div>
               </div>
               <p className="text-2xl font-bold">
-                {data.system.cpu_percent !== undefined ? `${data.system.cpu_percent}%` : `${data.system.cpu_count}${t("diagnostics.cores") || "核"}`}
+                {data.system.cpu_percent !== undefined ? `${data.system.cpu_percent}%` : `${data.system.cpu_count}${t('diagnostics.cores')}`}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {data.system.has_psutil ? `${data.system.cpu_count} ${t("diagnostics.cores") || "核心"}` : `Load: ${data.system.load_avg_1m?.toFixed(2)}`}
+                {data.system.has_psutil ? `${data.system.cpu_count} ${t('diagnostics.coresLabel')}` : `Load: ${data.system.load_avg_1m?.toFixed(2)}`}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
@@ -271,7 +271,7 @@ export function DiagnosticsClient() {
                   {categoryLabels[category] || category}
                 </h3>
                 <span className="text-[10px] text-muted-foreground">
-                  {organs.filter((o) => o.status === "ok").length}/{organs.length} {t("diagnostics.healthy") || "正常"}
+                  {organs.filter((o) => o.status === "ok").length}/{organs.length} {t('diagnostics.healthyLabel')}
                 </span>
               </div>
             </div>
@@ -298,12 +298,12 @@ export function DiagnosticsClient() {
                     <div className="px-5 pb-4 pt-0">
                       <div className="rounded-lg bg-muted/50 p-4 text-xs space-y-2">
                         <div className="grid grid-cols-3 gap-2">
-                          <div><span className="text-muted-foreground">{t("diagnostics.statusCode") || "状态码"}:</span> {organDetails[organ.key].status_code}</div>
-                          <div><span className="text-muted-foreground">{t("diagnostics.responseTime") || "响应时间"}:</span> {organDetails[organ.key].response_time_ms}ms</div>
-                          <div><span className="text-muted-foreground">{t("diagnostics.category") || "分类"}:</span> {organDetails[organ.key].category}</div>
+                          <div><span className="text-muted-foreground">{t('diagnostics.statusCode')}:</span> {organDetails[organ.key].status_code}</div>
+                          <div><span className="text-muted-foreground">{t('diagnostics.responseTimeLabel')}:</span> {organDetails[organ.key].response_time_ms}ms</div>
+                          <div><span className="text-muted-foreground">{t('diagnostics.categoryLabel')}:</span> {organDetails[organ.key].category}</div>
                         </div>
                         {organDetails[organ.key].error && (
-                          <div className="text-red-500">{t("diagnostics.error") || "错误"}: {organDetails[organ.key].error}</div>
+                          <div className="text-red-500">{t('diagnostics.errorLabel')}: {organDetails[organ.key].error}</div>
                         )}
                         {organDetails[organ.key].detail && (
                           <pre className="whitespace-pre-wrap rounded bg-background p-3 text-[11px] font-mono max-h-40 overflow-y-auto">
@@ -327,7 +327,7 @@ export function DiagnosticsClient() {
                 <Settings size={14} className="text-violet-500" />
                 {t("diagnostics.configChanges")}
                 <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500">
-                  {configChanges.length} {t("diagnostics.items") || "项"}
+                  {configChanges.length} {t('diagnostics.itemsLabel')}
                 </span>
               </h3>
             </div>
@@ -336,10 +336,10 @@ export function DiagnosticsClient() {
                 <div key={change.key} className="flex items-center gap-4 px-5 py-3 text-xs">
                   <span className="font-mono font-medium text-foreground w-48 truncate">{change.key}</span>
                   <span className="text-muted-foreground flex-1 truncate">
-                    {t("diagnostics.default") || "默认"}: <span className="font-mono">{JSON.stringify(change.default)}</span>
+                    {t('diagnostics.defaultLabel')}: <span className="font-mono">{JSON.stringify(change.default)}</span>
                   </span>
                   <span className="text-amber-500 font-mono truncate">
-                    {t("diagnostics.current") || "当前"}: {JSON.stringify(change.current)}
+                    {t('diagnostics.currentLabel')}: {JSON.stringify(change.current)}
                   </span>
                 </div>
               ))}
@@ -365,8 +365,8 @@ export function DiagnosticsClient() {
                 {data.summary.overall === "ok" ? (t("diagnostics.allOk") || "所有系统正常运行") : (t("diagnostics.partialError") || "部分系统异常")}
               </p>
               <p className="text-xs text-muted-foreground mt-0.5">
-                {data.summary.healthy}/{data.summary.total} {t("diagnostics.organHealth") || "器官健康"} · {t("diagnostics.avgResponse")} {data.summary.avg_response_ms}ms ·
-                {t("diagnostics.system") || "系统"} {data.system.hostname} ({data.system.os})
+                {data.summary.healthy}/{data.summary.total} {t('diagnostics.organHealthLabel')} · {t("diagnostics.avgResponse")} {data.summary.avg_response_ms}ms ·
+                {t('diagnostics.systemLabel')} {data.system.hostname} ({data.system.os})
               </p>
             </div>
           </div>

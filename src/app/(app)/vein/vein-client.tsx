@@ -222,7 +222,7 @@ function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
           )}
         </div>
         <span className="text-xs text-primary">
-          {expanded ? "收起" : t('vein.expand1')}
+          {expanded ? t('vein.collapse') : t('vein.expand1')}
         </span>
       </button>
 
@@ -235,7 +235,7 @@ function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
             </div>
           ) : versions.length === 0 ? (
             <div className="py-6 text-center text-xs text-muted-foreground">
-              暂无版本历史
+              {t('vein.noVersionHistory')}
             </div>
           ) : (
             <div className="max-h-64 overflow-y-auto">
@@ -263,7 +263,7 @@ function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
                       </span>
                       {idx === 0 && (
                         <span className="rounded-full bg-emerald-500/10 px-1.5 py-0.5 text-[10px] text-emerald-500 font-medium">
-                          当前
+                          {t('vein.current')}
                         </span>
                       )}
                     </div>
@@ -495,10 +495,10 @@ export function VeinClient() {
       });
       if (!res.ok) throw new Error(`Promote failed: ${res.status}`);
       const data = await res.json();
-      alert(`已提升到知识库: ${data.filename}`);
+      alert(t('vein.promoteSuccess', { name: data.filename }));
     } catch (e: any) {
       console.error("Promote failed", e);
-      alert(`提升失败: ${e.message}`);
+      alert(t('vein.promoteFailed', { msg: e.message }));
     }
   };
 
@@ -800,7 +800,7 @@ export function VeinClient() {
               <div className="rounded-xl border border-border bg-card p-4">
                 <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
                   <Layers size={14} className="text-blue-500" />
-                  进行中的分片上传 ({chunkedUploads.length})
+                  {t('vein.chunkedUploads', { count: chunkedUploads.length })}
                 </h3>
                 <div className="space-y-2">
                   {chunkedUploads.map((s: any) => (
@@ -857,7 +857,7 @@ export function VeinClient() {
                   className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-2 text-sm text-amber-600 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
                 >
                   {batchProcessing ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
-                  {batchProcessing ? "批量处理中..." : t('vein.batchRecognize1')}
+                  {batchProcessing ? t('vein.batchProcessing') : t('vein.batchRecognize1')}
                 </button>
                 <span className="text-xs text-muted-foreground">
                   {loading ? (t("common.loading")) : `${filteredFiles.length} ${(t("vein.files"))}`}
@@ -874,10 +874,9 @@ export function VeinClient() {
                     <div className="flex items-center gap-4">
                       <Zap size={16} className="text-amber-500 shrink-0" />
                       <div className="flex-1">
-                        <span className="font-medium">{t('vein.batchRecognizecomplete')}</span>
+                        <span className="font-medium">{t('vein.batchComplete')}</span>
                         <span className="ml-3 text-xs text-muted-foreground">
-                          扫描 {batchResult.total_files} 个文件 · 匹配 {batchResult.eligible_files} 个 ·
-                          成功 {batchResult.processed} 个 · 入库 {batchResult.promoted} 个
+                          {t('vein.scanResult', { total: batchResult.total_files, eligible: batchResult.eligible_files, processed: batchResult.processed, promoted: batchResult.promoted })}
                         </span>
                       </div>
                       <button onClick={() => setBatchResult(null)} className="text-muted-foreground hover:text-foreground">
@@ -1037,7 +1036,7 @@ export function VeinClient() {
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                          <FileType size={12} /> MIME类型
+                          <FileType size={12} /> {t('vein.mimeLabel')}
                         </div>
                         <p className="text-sm font-medium">{selectedFile.mime_type}</p>
                       </div>
@@ -1272,18 +1271,18 @@ export function VeinClient() {
                   className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"
                 >
                   <RefreshCw size={14} />
-                  清理过期
+                  {t('vein.cleanExpired')}
                 </button>
                 <button
                   onClick={handleCacheClear}
                   className="flex items-center gap-1.5 rounded-lg border border-red-500/30 px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
                 >
                   <Trash2 size={14} />
-                  清除全部缓存
+                  {t('vein.clearAllCache')}
                 </button>
               </div>
               <p className="text-xs text-muted-foreground mt-2">
-                清理过期：仅删除TTL已过期的条目。清除全部：删除所有缓存条目，文件仍保留在磁盘。
+                {t('vein.cleanExpired')}：仅删除TTL已过期的条目。清除全部：删除所有缓存条目，文件仍保留在磁盘。
               </p>
             </div>
 
@@ -1291,7 +1290,7 @@ export function VeinClient() {
             <div className="rounded-xl border border-border bg-card p-4">
               <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
                 <Database size={14} className="text-amber-500" />
-                去重统计
+                {t('vein.dedupStats')}
               </h3>
               <div className="grid grid-cols-3 gap-4">
                 <div>

@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
   Calculator, ArrowRightLeft, History, Trash2, Loader2,
@@ -34,6 +35,7 @@ interface UnitsInfo {
 type Tab = "calc" | "convert" | "history";
 
 export function SmartCalcClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const pluginBase = `${apiBase}/api/plugins/smart-calc`;
   const [tab, setTab] = useState<Tab>("calc");
@@ -173,24 +175,24 @@ export function SmartCalcClient() {
         </div>
         <div>
           <h1 className="text-lg font-semibold">Smart Calculator</h1>
-          <p className="text-xs text-muted-foreground">数学表达式求解 · 单位转换 · 计算历史</p>
+          <p className="text-xs text-muted-foreground">{t('smartCalc.subtitle')}</p>
         </div>
       </div>
 
       {/* Tabs */}
       <div className="flex gap-1 px-6 pt-3">
-        {(["calc", "convert", "history"] as Tab[]).map((t) => (
+        {(["calc", "convert", "history"] as Tab[]).map((t2) => (
           <button
-            key={t}
-            onClick={() => { setTab(t); if (t === "history") fetchHistory(); }}
+            key={t2}
+            onClick={() => { setTab(t2); if (t === "history") fetchHistory(); }}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-              tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              tab === t2 ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
-            {t === "calc" && <Calculator size={13} />}
-            {t === "convert" && <ArrowRightLeft size={13} />}
-            {t === "history" && <History size={13} />}
-            {t === "calc" ? "计算" : t === "convert" ? "单位转换" : "历史"}
+            {t2 === "calc" && <Calculator size={13} />}
+            {t2 === "convert" && <ArrowRightLeft size={13} />}
+            {t2 === "history" && <History size={13} />}
+            {t2 === 'calc' ? t('smartCalc.calc') : t2 === 'convert' ? t('smartCalc.convert') : t('smartCalc.history')}
           </button>
         ))}
       </div>
@@ -201,13 +203,13 @@ export function SmartCalcClient() {
           <div className="space-y-4 max-w-2xl">
             {/* Input */}
             <div className="space-y-2">
-              <label className="text-xs font-medium text-muted-foreground">数学表达式</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('smartCalc.mathExpr')}</label>
               <div className="flex gap-2">
                 <input
                   value={expression}
                   onChange={(e) => setExpression(e.target.value)}
                   onKeyDown={handleKeyDown}
-                  placeholder="例: 2**10, sqrt(144), pi * 2, sin(radians(30))"
+                  placeholder={t('smartCalc.placeholder')}
                   className="flex-1 rounded-lg border border-border bg-muted px-3 py-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-primary/30"
                 />
                 <button
@@ -216,14 +218,14 @@ export function SmartCalcClient() {
                   className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   {calcLoading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                  求解
+                  {t('smartCalc.solve')}
                 </button>
               </div>
             </div>
 
             {/* Quick expressions */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">快捷表达式</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('smartCalc.quickExprs')}</label>
               <div className="flex flex-wrap gap-1.5">
                 {quickExprs.map((expr) => (
                   <button
@@ -257,7 +259,7 @@ export function SmartCalcClient() {
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <span className="flex items-center gap-1"><Clock size={11} /> {calcResult.elapsed_ms}ms</span>
                   {calcResult.result_int !== null && (
-                    <span className="font-mono">精确值: {calcResult.result}</span>
+                    <span className="font-mono">{t('smartCalc.exactValue')}: {calcResult.result}</span>
                   )}
                 </div>
               </div>
@@ -265,7 +267,7 @@ export function SmartCalcClient() {
 
             {/* Supported functions */}
             <div className="rounded-lg border border-border bg-card p-3 space-y-2">
-              <h3 className="text-xs font-medium text-muted-foreground">支持的函数和常量</h3>
+              <h3 className="text-xs font-medium text-muted-foreground">{t('smartCalc.supportedFuncs')}</h3>
               <div className="flex flex-wrap gap-1">
                 {["sin", "cos", "tan", "asin", "acos", "atan", "sqrt", "log", "log2", "log10",
                   "ceil", "floor", "factorial", "abs", "round", "min", "max", "pow",
@@ -284,7 +286,7 @@ export function SmartCalcClient() {
           <div className="space-y-4 max-w-2xl">
             {/* Category selector */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">类型</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('smartCalc.category')}</label>
               <div className="flex flex-wrap gap-1.5">
                 {units && Object.keys(units.categories).map((cat) => (
                   <button
@@ -298,8 +300,8 @@ export function SmartCalcClient() {
                       unitCategory === cat ? "bg-primary text-primary-foreground" : "border border-border text-muted-foreground hover:text-foreground"
                     }`}
                   >
-                    {cat === "length" ? "长度" : cat === "weight" ? "重量" : cat === "temperature" ? "温度" :
-                     cat === "speed" ? "速度" : cat === "area" ? "面积" : cat === "volume" ? "体积" : cat}
+                    {cat === 'length' ? t('smartCalc.length') : cat === 'weight' ? t('smartCalc.weight') : cat === 'temperature' ? t('smartCalc.temperature') :
+                     cat === 'speed' ? t('smartCalc.speed') : cat === 'area' ? t('smartCalc.area') : cat === 'volume' ? t('smartCalc.volume') : cat}
                   </button>
                 ))}
               </div>
@@ -307,7 +309,7 @@ export function SmartCalcClient() {
 
             {/* Value input */}
             <div className="space-y-1.5">
-              <label className="text-xs font-medium text-muted-foreground">数值</label>
+              <label className="text-xs font-medium text-muted-foreground">{t('smartCalc.value')}</label>
               <input
                 value={convValue}
                 onChange={(e) => setConvValue(e.target.value)}
@@ -320,7 +322,7 @@ export function SmartCalcClient() {
             {/* From/To selectors */}
             <div className="grid grid-cols-[1fr,auto,1fr] gap-2 items-end">
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">从</label>
+                <label className="text-xs font-medium text-muted-foreground">{t('smartCalc.from')}</label>
                 <select
                   value={convFrom}
                   onChange={(e) => setConvFrom(e.target.value)}
@@ -336,7 +338,7 @@ export function SmartCalcClient() {
                 <ArrowRightLeft size={16} className="text-muted-foreground" />
               </button>
               <div className="space-y-1.5">
-                <label className="text-xs font-medium text-muted-foreground">到</label>
+                <label className="text-xs font-medium text-muted-foreground">{t('smartCalc.to')}</label>
                 <select
                   value={convTo}
                   onChange={(e) => setConvTo(e.target.value)}
@@ -353,7 +355,7 @@ export function SmartCalcClient() {
               className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {convLoading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRightLeft size={14} />}
-              转换
+              {t('smartCalc.convertBtn')}
             </button>
 
             {/* Conversion result */}
@@ -381,17 +383,17 @@ export function SmartCalcClient() {
         {tab === "history" && (
           <div className="space-y-3 max-w-2xl">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{history.length} 条记录</span>
+              <span className="text-xs text-muted-foreground">{t('smartCalc.records', { count: history.length })}</span>
               {history.length > 0 && (
                 <button onClick={clearHistory} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500">
-                  <Trash2 size={12} /> 清空
+                  <Trash2 size={12} /> {t('smartCalc.clear')}
                 </button>
               )}
             </div>
             {history.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <History size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm">暂无计算历史</p>
+                <p className="text-sm">{t('smartCalc.noHistory')}</p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -403,7 +405,7 @@ export function SmartCalcClient() {
                     <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-medium ${
                       entry.type === "calculate" ? "bg-blue-500/10 text-blue-500" : "bg-amber-500/10 text-amber-500"
                     }`}>
-                      {entry.type === "calculate" ? "计算" : "转换"}
+                      {entry.type === 'calculate' ? t('smartCalc.calcType') : t('smartCalc.convertType')}
                     </span>
                     <span className="flex-1 font-mono text-sm truncate">{entry.input}</span>
                     <span className="font-mono text-sm font-medium text-primary">= {entry.output}</span>

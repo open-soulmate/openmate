@@ -280,7 +280,14 @@
     "content3": "知识内容",
     "knowledgeBasecreate1": "先申请创建知识库，审批通过后即可添加知识",
     "shareToEnterpriseKB": "共享到企业知识库",
-    "shareToEnterpriseKBdone": "已共享到企业知识库"
+    "shareToEnterpriseKBdone": "已共享到企业知识库",
+    "registerAccount": "Register Account",
+    "deduping": "Deduplicating...",
+    "shareSubmitted": "Share request submitted, awaiting admin approval",
+    "dedupResult": "Scanned {{total}}, found {{dup}} duplicates, cleaned {{removed}}",
+    "filesSelected": "{{count}} files selected",
+    "characters": "chars",
+    "clearAll": "Clear All"
   },
   "learn": {
     "title": "Learning Center",
@@ -305,8 +312,9 @@
     "t76433": "难度",
     "t03149": "入门",
     "t56231": "中级",
-    "t16459": "}\n              >\n                <Sparkles size={16} />\n                <div className=\"text-left\">\n                  <div className=\"font-medium\">AI 自动生成</div>\n                  <div className=\"text-xs opacity-70\">{t('learn.t30476')}<div>\n                </div>\n              </button>\n              <button\n                onClick={() => setGenMode(\"manual\")}\n                className={",
-    "t55143": "章"
+    "t16459": "Advanced",
+    "t55143": "章",
+    "aiAutoGenerate": "AI Auto Generate"
   },
   "agents": {
     "title": "Agent Management",
@@ -767,7 +775,20 @@
     "file1": "逻辑文件数",
     "t59359": "唯一blob数",
     "empty1": "去重节省空间",
-    "t46816": "去重效率"
+    "t46816": "去重效率",
+    "collapse": "Collapse",
+    "noVersionHistory": "No version history",
+    "current": "Current",
+    "promoteSuccess": "Promoted to knowledge base: {{name}}",
+    "promoteFailed": "Promote failed: {{msg}}",
+    "chunkedUploads": "Ongoing chunked uploads ({{count}})",
+    "batchComplete": "Batch recognition complete",
+    "scanResult": "Scanned {{total}} files · Matched {{eligible}} · Processed {{processed}} · Promoted {{promoted}}",
+    "mimeLabel": "MIME Type",
+    "cleanExpired": "Clean Expired",
+    "clearAllCache": "Clear All Cache",
+    "cacheCleanupDesc": "Clean expired: remove only TTL-expired entries. Clear all: remove all cache entries, files remain on disk.",
+    "dedupStats": "Dedup Stats"
   },
   "sense": {
     "title": "Sense · Multimodal Parsing",
@@ -916,7 +937,15 @@
     "t32222": "编码",
     "filesize1": "文件大小",
     "uploadinfoanalyze": "上传视频后点击\"分析视频元信息\"",
-    "upload14": ">上传视频后点击"
+    "upload14": ">上传视频后点击",
+    "videoAnalyzeFailed": "Video analysis failed: {error}",
+    "frameExtractFailed": "Frame extraction failed: {error}",
+    "preprocess": "Preprocess (grayscale + binarize)",
+    "recognizing": "Recognizing...",
+    "pageConfidence": "Page {page} · Confidence {confidence}%",
+    "transcribing": "Transcribing...",
+    "analyzing": "Analyzing...",
+    "extractedFrames": "Extracted Frames ({count})"
   },
   "immune": {
     "title": "Immune · Security",
@@ -1047,7 +1076,13 @@
     "time3": "时间",
     "action2": "操作",
     "detail1": "详情",
-    "t44032": "风险"
+    "t44032": "风险",
+    "updateConfig": "Update Config",
+    "moderateHint": "Enter text to detect sensitive information (PII, secrets, phone numbers, IDs, etc.)",
+    "moderating": "Moderating...",
+    "contentSafe": "Content Safe",
+    "resetCount": "Reset Count",
+    "records2": "{count} records"
   },
   "marrow": {
     "title": "Marrow · Backup & Recovery",
@@ -1266,7 +1301,22 @@
     "exporttemplate": "导出模板",
     "templatetotal": "总模板数",
     "createuser1": "用户创建",
-    "exportalltemplate": "导出全部模板"
+    "exportalltemplate": "导出全部模板",
+    "jsonParseFailed": "JSON parse failed",
+    "requiredVars": "Required variables:",
+    "backToBrowse": "Back to browse →",
+    "creating": "Creating...",
+    "instantiating": "Instantiating...",
+    "overwriteExisting": "Overwrite existing templates",
+    "importing": "Importing...",
+    "importResult": "Successfully imported {{imported}}/{{total}} templates",
+    "exportDesc": "Export all templates as JSON file for backup or migration",
+    "exportFormat": "Export format",
+    "all": "All",
+    "author": "Author",
+    "usage": "Used",
+    "times": "times",
+    "importDesc": "Supports single template, array, or exported bundle JSON format"
   },
   "echo": {
     "title": "Echo · Message Push",
@@ -1594,7 +1644,16 @@
     "t96343": "QPS 峰值",
     "data": "数据点",
     "noData": "暂无告警记录",
-    "run1": "系统运行正常，所有指标在阈值范围内"
+    "run1": "系统运行正常，所有指标在阈值范围内",
+    "refresh2": "Refresh",
+    "cpuMemoryUsage": "CPU & Memory Usage",
+    "diskUsage": "Disk Usage",
+    "qpsLatency": "Request QPS & P99 Latency",
+    "alertsSummary": "{total} alerts, {active} unresolved",
+    "critical": "Critical",
+    "recovered": "Recovered",
+    "currentValue": "Current: {value}",
+    "needDataPoints": "Need at least 2 data points to display chart"
   },
   "hippo": {
     "title": "Hippocampus · Memory Lifecycle",
@@ -1909,7 +1968,14 @@
     "user1": "所有者用户ID (可选)",
     "description7": "描述 (可选)",
     "cancel5": "取消",
-    "create2": "创建"
+    "create2": "创建",
+    "saasIsolation": "SaaS Isolation",
+    "blockRate": "Block Rate {rate}%",
+    "status2": "Status: {status}",
+    "check2": "Check",
+    "allowed": "✓ Allowed",
+    "quotaInfo": "Current: {current} / Limit: {limit} ({percent}%)",
+    "records": "{count} records"
   },
   "limb": {
     "title": "Limb · RPA Executor",
@@ -2086,7 +2152,16 @@
     "low3": "低沉",
     "t89293": "正常",
     "high5": "较高",
-    "cancel1": "取消"
+    "cancel1": "取消",
+    "textToSpeech": "Text to Speech",
+    "refresh3": "Refresh",
+    "charactersCount": "{count} / 10000 characters",
+    "saveFile": "Save File",
+    "usedTimes": "Used {count} times",
+    "synthesizing": "Synthesizing...",
+    "cacheHit": "Hit ✓",
+    "profileCount": "{count} profiles",
+    "create2": "Create"
   },
   "vision": {
     "title": "Vision · Image Visualization",
@@ -2136,7 +2211,28 @@
     "multiAgentCollab": "多Agent协作",
     "t93963": "AI工程知识图谱",
     "t84456": "JSON格式错误",
-    "t80047": "1月,2月,3月"
+    "t80047": "1月,2月,3月",
+    "quarterlySales": "Quarterly Sales",
+    "trendComparison": "Trend Comparison",
+    "langDist": "Language Usage Distribution",
+    "scatterPlot": "Scatter Plot",
+    "jsonError": "Invalid JSON format",
+    "defaultBarTitle": "Quarterly Sales",
+    "defaultLineTitle": "Trend Comparison",
+    "defaultPieTitle": "Language Usage Distribution",
+    "defaultScatterTitle": "Scatter Plot",
+    "defaultMindmapTitle": "AI Engineering Knowledge Graph",
+    "defaultLineX": "Jan,Feb,Mar,Apr,May,Jun",
+    "defaultLineSeries": "Product A:100,120,140,160,180,200\\nProduct B:80,90,110,130,120,150",
+    "defaultMindmapData": "AI Engineering",
+    "mindmapSub1": "Prompt Engineering",
+    "mindmapSub2": "RAG",
+    "mindmapSub2a": "Vector Search",
+    "mindmapSub2b": "Hybrid Retrieval",
+    "mindmapSub3": "Agent",
+    "mindmapSub3a": "Tool Calling",
+    "mindmapSub3b": "Multi-Agent Collaboration",
+    "mindmapSub4": "Fine-tuning"
   },
   "mind": {
     "title": "Mind · Personality Center",
@@ -2291,7 +2387,18 @@
     "eventpublishdone": "事件已发布",
     "t81719": "投递到",
     "publishEventinfo": "填写信息后点击\"发布事件\"",
-    "info4": ">填写信息后点击"
+    "info4": ">填写信息后点击",
+    "viewAll": "View All →",
+    "totalRecords": "{count} total",
+    "deliveredTo": "Delivered to: {targets}",
+    "subscribe5": "Subscribe",
+    "activeSubscriptions": "Active Subscriptions ({count})",
+    "deliveryCount": "Delivered {count} times",
+    "register2": "Register",
+    "nodeList": "Node List ({count})",
+    "registeredAt": "Registered: {time}",
+    "heartbeat2": "Heartbeat",
+    "publishing": "Publishing..."
   },
   "will": {
     "title": "Will · Workflow Engine",
@@ -2426,7 +2533,22 @@
     "max": "Max",
     "cores": "cores",
     "t39409": "{cpucount}{cores}",
-    "t17783": "{cpucount} {cores}"
+    "t17783": "{cpucount} {cores}",
+    "checkingShort": "Checking...",
+    "healthyLabel": "Normal",
+    "unhealthyLabel": "Error",
+    "maxLabel": "Max",
+    "coresLabel": "cores",
+    "responseTimeLabel": "Response Time",
+    "categoryLabel": "Category",
+    "errorLabel": "Error",
+    "itemsLabel": "items",
+    "defaultLabel": "Default",
+    "currentLabel": "Current",
+    "allOkLabel": "All systems running normally",
+    "partialErrorLabel": "Some systems have errors",
+    "organHealthLabel": "organ health",
+    "systemLabel": "System"
   },
   "cortex": {
     "title": "OpenCortex",
@@ -2582,7 +2704,13 @@
     "t96994": "等级分布",
     "average1": "维度平均分",
     "high2": "🏆 最高质量",
-    "t36522": "⚠️ 需改进"
+    "t36522": "⚠️ 需改进",
+    "inputKnowledgeId": "Enter knowledge ID for related recommendations",
+    "batchScore": "Batch Score",
+    "singleScore": "Single Score",
+    "score": "Score",
+    "qualityReport": "Quality Report",
+    "batchScoreResult": "Batch Score Result · {{count}} items"
   },
   "intelligence": {
     "title": "System Intelligence",
@@ -2745,7 +2873,8 @@
     "capabilities": "Capabilities",
     "checking": "Checking...",
     "goToPage": "Go to page",
-    "t69854": "已选中"
+    "t69854": "已选中",
+    "selected": "Selected"
   },
   "graph": {
     "title": "Knowledge Graph",
@@ -2780,7 +2909,16 @@
     "t42437": "暂无关系",
     "t44501": "删除实体",
     "t49096": "实体 ·",
-    "t36665": "关系 ·"
+    "t36665": "关系 ·",
+    "descriptionOptional": "Description (optional)",
+    "createRelation": "Create Relation",
+    "selectSource": "Select source entity",
+    "selectTarget": "Select target entity",
+    "type": "Type",
+    "relatedRelations": "Related Relations",
+    "unknown": "Unknown",
+    "noRelations": "No relations",
+    "deleteEntity": "Delete Entity"
   },
   "cron": {
     "title": "Cron Jobs",
@@ -2818,7 +2956,41 @@
     "t45616": "执行历史",
     "t37100": "}>\n              {job.status === 'active' ? t('common.running') : t('common.paused')}\n            </span>\n          </div>\n          <div className=\"flex items-center gap-2 mt-1\">\n            <span className=\"text-xs text-muted-foreground font-mono\">{taskId}</span>\n            <button onClick={copyId} className=\"p-0.5 rounded hover:bg-muted\" title=t('cron.copyId')>\n              {copied ? <Check className=\"w-3 h-3 text-green-500\" /> : <Copy className=\"w-3 h-3 text-muted-foreground\" />}\n            </button>\n          </div>\n        </div>\n\n        {/* Action Buttons */}\n        <div className=\"flex items-center gap-2\">\n          {job.status === 'active' ? (\n            <button\n              onClick={() => handleAction('pause')}\n              disabled={!!actionLoading}\n              className=\"flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-muted transition-colors text-amber-500\"\n            >\n              {actionLoading === 'pause' ? <Loader2 className=\"w-4 h-4 animate-spin\" /> : <Pause className=\"w-4 h-4\" />}\n              暂停\n            </button>\n          ) : (\n            <button\n              onClick={() => handleAction('resume')}\n              disabled={!!actionLoading}\n              className=\"flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-muted transition-colors text-green-500\"\n            >\n              {actionLoading === 'resume' ? <Loader2 className=\"w-4 h-4 animate-spin\" /> : <Play className=\"w-4 h-4\" />}\n              恢复\n            </button>\n          )}\n          <button\n            onClick={() => handleAction('run')}\n            disabled={!!actionLoading}\n            className=\"flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors\"\n          >\n            {actionLoading === 'run' ? <Loader2 className=\"w-4 h-4 animate-spin\" /> : <Zap className=\"w-4 h-4\" />}\n            立即执行\n          </button>\n          <button\n            onClick={() => handleAction('delete')}\n            disabled={!!actionLoading}\n            className=\"flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-destructive/10 text-destructive transition-colors\"\n          >\n            {actionLoading === 'delete' ? <Loader2 className=\"w-4 h-4 animate-spin\" /> : <Trash2 className=\"w-4 h-4\" />}\n            删除\n          </button>\n        </div>\n      </div>\n\n      {/* Error banner */}\n      {error && (\n        <div className=\"mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-sm text-destructive flex items-center gap-2\">\n          <AlertCircle className=\"w-4 h-4 shrink-0\" />\n          {error}\n        </div>\n      )}\n\n      {/* Info Cards */}\n      <div className=\"grid grid-cols-2 md:grid-cols-4 gap-4 mb-6\">\n        <div className=\"p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center gap-2 mb-1\">\n            <Calendar className=\"w-4 h-4 text-muted-foreground\" />\n            <span className=\"text-xs text-muted-foreground\">{t('cron.t65737')}<span>\n          </div>\n          <p className=\"text-sm font-mono\">{job.schedule}</p>\n          <p className=\"text-xs text-muted-foreground mt-1\">{formatSchedule(job.schedule)}</p>\n        </div>\n        <div className=\"p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center gap-2 mb-1\">\n            <Bot className=\"w-4 h-4 text-muted-foreground\" />\n            <span className=\"text-xs text-muted-foreground\">{t('cron.t23247')}<span>\n          </div>\n          <p className=\"text-sm font-medium capitalize\">{icon} {agent}</p>\n        </div>\n        <div className=\"p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center gap-2 mb-1\">\n            <Clock className=\"w-4 h-4 text-muted-foreground\" />\n            <span className=\"text-xs text-muted-foreground\">{t('cron.nextRun')}<span>\n          </div>\n          <p className=\"text-sm\">{job.next_run ? new Date(job.next_run).toLocaleString('zh-CN') : '—'}</p>\n        </div>\n        <div className=\"p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center gap-2 mb-1\">\n            <RefreshCw className=\"w-4 h-4 text-muted-foreground\" />\n            <span className=\"text-xs text-muted-foreground\">{t('cron.lastRun')}<span>\n          </div>\n          <p className=\"text-sm\">{job.last_run ? new Date(job.last_run).toLocaleString('zh-CN') : '—'}</p>\n        </div>\n      </div>\n\n      {/* Deliver Target */}\n      {job.deliver && (\n        <div className=\"mb-6 p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center gap-2 mb-2\">\n            <Send className=\"w-4 h-4 text-muted-foreground\" />\n            <span className=\"text-xs text-muted-foreground\">{t('cron.t07887')}<span>\n          </div>\n          <p className=\"text-sm font-mono bg-muted/50 rounded-lg px-3 py-2\">{job.deliver}</p>\n        </div>\n      )}\n\n      {/* Prompt */}\n      {job.prompt && (\n        <div className=\"mb-6 p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center gap-2 mb-2\">\n            <ChevronRight className=\"w-4 h-4 text-muted-foreground\" />\n            <span className=\"text-xs text-muted-foreground\">{t('cron.t59697')}<span>\n          </div>\n          <pre className=\"text-sm whitespace-pre-wrap bg-muted/50 rounded-lg px-3 py-2 font-mono max-h-60 overflow-y-auto\">\n            {job.prompt}\n          </pre>\n        </div>\n      )}\n\n      {/* Last Error */}\n      {job.last_error && (\n        <div className=\"mb-6 p-4 rounded-xl border border-destructive/30 bg-destructive/5\">\n          <div className=\"flex items-center gap-2 mb-2\">\n            <AlertCircle className=\"w-4 h-4 text-destructive\" />\n            <span className=\"text-xs text-destructive font-medium\">{t('soma.recentError')}<span>\n          </div>\n          <pre className=\"text-sm whitespace-pre-wrap text-destructive/80 font-mono\">\n            {job.last_error}\n          </pre>\n        </div>\n      )}\n\n      {/* Run History */}\n      <div className=\"rounded-xl border bg-card overflow-hidden\">\n        <div className=\"p-4 border-b flex items-center justify-between\">\n          <h2 className=\"text-sm font-medium flex items-center gap-2\">\n            <Clock className=\"w-4 h-4 text-muted-foreground\" /> \n            {t('cron.t45616')}\n          <h2>\n          <button onClick={loadHistory} className=\"p-1.5 rounded-lg hover:bg-muted transition-colors\" title=t('cron.refresh')>\n            <RefreshCw className=\"w-3.5 h-3.5 text-muted-foreground\" />\n          </button>\n        </div>\n        {history.length === 0 ? (\n          <div className=\"p-8 text-center text-muted-foreground text-sm\">\n            <Clock className=\"w-8 h-8 mx-auto mb-2 opacity-50\" />\n            <p>{t('will.noExecutions')}<p>\n            <p className=\"text-xs mt-1\">{t('cron.t02948')}<p>\n          </div>\n        ) : (\n          <div className=\"divide-y divide-border/50\">\n            {history.map((entry) => (\n              <div key={entry.id} className=\"p-4 hover:bg-muted/20 transition-colors\">\n                <div className=\"flex items-center justify-between mb-1\">\n                  <div className=\"flex items-center gap-2\">\n                    <span className={",
     "t57143": "下次",
-    "t54362": "上次"
+    "t54362": "上次",
+    "createJob": "New Job",
+    "totalJobs": "Total Jobs",
+    "running": "Running",
+    "paused": "Paused",
+    "createCronJob": "New Cron Job",
+    "jobName": "Job Name",
+    "optional": "Optional",
+    "scheduleRule": "Schedule Rule",
+    "execPrompt": "Execution Prompt",
+    "promptPlaceholder": "Task instructions...",
+    "deliverTarget": "Delivery Target",
+    "create": "Create",
+    "cancel": "Cancel",
+    "jobsCount": "{{count}} jobs · {{active}} running",
+    "pause": "Pause",
+    "resume": "Resume",
+    "runNow": "Run Now",
+    "backToList": "Back to List",
+    "active": "Active",
+    "scheduleRuleLabel": "Schedule Rule",
+    "execAgent": "Execution Agent",
+    "nextExec": "Next Run",
+    "lastExec": "Last Run",
+    "deliverTargetLabel": "Delivery Target",
+    "execPromptLabel": "Execution Prompt",
+    "recentError": "Recent Error",
+    "execHistory": "Execution History",
+    "refreshTitle": "Refresh",
+    "noExecRecords": "No execution records",
+    "clickRunToTrigger": "Click \"Run Now\" to trigger a manual run",
+    "success": "Success",
+    "failed": "Failed",
+    "formatSchedule": "Every {{parts}}",
+    "scheduleAt": "Schedule: {{schedule}}"
   },
   "team": {
     "title": "Team",
@@ -3059,7 +3231,23 @@
     "t37326": "同步全部",
     "t69554": "暂无",
     "t86110": "来源",
-    "t47626": "项"
+    "t47626": "项",
+    "syncAll": "Sync All",
+    "skillSources": "Skill Sources",
+    "agentSources": "Agent Sources",
+    "installedSkills": "Installed Skills",
+    "installedAgents": "Installed Agents",
+    "close": "Close",
+    "searchSources": "Search sources...",
+    "noSources": "No {{type}} sources",
+    "neverSynced": "Never synced",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago",
+    "items": "items",
+    "builtinSource": "Built-in Source",
+    "syncFailed": "Sync failed"
   },
   "aiGroups": {
     "title": "AI Groups",
@@ -3214,7 +3402,7 @@
     "offline": "Offline",
     "typeDistribution": "Type Distribution",
     "none": "None",
-    "platformDiscovery": "Platform Capability Discovery",
+    "platformDiscovery": "Platform Capabilities — {platform} v{version}",
     "apiEndpoints": "API Endpoints",
     "quickStartGuide": "Quick Start Guide",
     "quickStartDesc": "External components only need to implement 3 APIs to join the OpenSoul ecosystem:",
@@ -3298,7 +3486,12 @@
     "version3": "版本号",
     "tag5": "能力标签 (逗号分隔，如 file_watch,rss,feishu)",
     "cancel7": "取消",
-    "t66404": "注册"
+    "t66404": "注册",
+    "plugAndPlay": "Plug and Play",
+    "online3": "● Online",
+    "offline3": "○ Offline",
+    "pushCount": "Push: {count}",
+    "errorCount2": "Error: {count}"
   },
   "pipeline": {
     "title": "Pipeline · Smart Pipeline",
@@ -3364,7 +3557,17 @@
     "duplicate": "Duplicate",
     "promoted": "Promoted",
     "t13587": "{floordiff60}分钟前",
-    "t58929": "{floordiff3600}小时前"
+    "t58929": "{floordiff3600}小时前",
+    "justNow": "Just now",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "pageCaptures": "Page Captures",
+    "textCaptures": "Text Captures",
+    "noCaptures": "No captures",
+    "noCapturesDesc": "Use browser extension to capture web content",
+    "noTitle": "Untitled",
+    "promoteTitle": "Promote to Knowledge Base",
+    "deleteTitle": "Delete"
   },
   "ai-groups": {
     "t39013": "发送失败，请重试",
@@ -3433,7 +3636,10 @@
     "edit2": "编辑",
     "noData8": "暂无Agent",
     "t31503": "点击上方\"添加\"按钮添加Agent",
-    "t92692": ">点击上方"
+    "t92692": ">点击上方",
+    "aiGroups": "AI Groups",
+    "reply": "Reply",
+    "participatingAgents": "Participating Agents"
   },
   "graph-builder": {
     "t07386": "概念",
@@ -3551,7 +3757,8 @@
       "shellCommand": "Shell Command",
       "shellCommandPlaceholder": "echo 'Hello ${name}', supports ${var}",
       "workingDirectory": "Working Directory",
-      "workingDirectoryPlaceholder": "/home/user (optional)"
+      "workingDirectoryPlaceholder": "/home/user (optional)",
+      "codePlaceholder": "// Access input variables via input object\nreturn input;"
     },
     "nodePalette": {
       "nodes": "Nodes",
@@ -3621,7 +3828,8 @@
   "workflow-builder": {
     "t26433": "开始",
     "t37840": "选择或创建工作流",
-    "t88657": "从左侧列表选择，或点击工具栏「新建」"
+    "t88657": "从左侧列表选择，或点击工具栏「新建」",
+    "newWorkflow": "New Workflow"
   },
   "mcp": {
     "t32847": "{name} {connected}",
@@ -3737,7 +3945,10 @@
     "t44651": "器官",
     "t06105": "迭代",
     "success2": "成功",
-    "average3": "平均"
+    "average3": "平均",
+    "testing": "Testing...",
+    "subtitle": "Organ Performance Benchmark · {count} Testable Targets",
+    "testResults": "Test Results · {organs} Organs · {iterations} Iterations"
   },
   "admin": {
     "t35999": "Vein 文件存储",
@@ -3937,6 +4148,45 @@
     "t49522": "收藏",
     "t23883": "置顶",
     "cancel6": "取消",
-    "create6": "创建"
+    "create6": "创建",
+    "updated": "Updated",
+    "created": "Created",
+    "networkError": "Network Error",
+    "deleted": "Deleted",
+    "deleteFailed": "Delete Failed",
+    "exported": "Exported {count} snippets",
+    "exportFailed": "Export Failed",
+    "snippetsManage": "Code Snippets · {count} snippets",
+    "editSnippet": "Edit Snippet",
+    "save": "Save"
+  },
+  "smartCalc": {
+    "title": "Smart Calculator",
+    "subtitle": "Math expressions · Unit conversion · History",
+    "calc": "Calculate",
+    "convert": "Unit Convert",
+    "history": "History",
+    "mathExpr": "Math Expression",
+    "solve": "Solve",
+    "quickExprs": "Quick Expressions",
+    "exactValue": "Exact value",
+    "supportedFuncs": "Supported functions and constants",
+    "category": "Category",
+    "length": "Length",
+    "weight": "Weight",
+    "temperature": "Temperature",
+    "speed": "Speed",
+    "area": "Area",
+    "volume": "Volume",
+    "value": "Value",
+    "from": "From",
+    "to": "To",
+    "convertBtn": "Convert",
+    "records": "{{count}} records",
+    "clear": "Clear",
+    "noHistory": "No calculation history",
+    "calcType": "Calc",
+    "convertType": "Convert",
+    "placeholder": "e.g. 2**10, sqrt(144), pi * 2, sin(radians(30))"
   }
 }

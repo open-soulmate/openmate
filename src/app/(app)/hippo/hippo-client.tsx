@@ -189,7 +189,7 @@ export function HippoClient() {
     try {
       const res = await fetch(`${apiBase}/api/hippo/decay/run`, { method: "POST" });
       const data = await res.json();
-      alert(`衰减完成: 更新${data.updated}条, 归档${data.archived}条, 遗忘${data.forgotten}条`);
+      alert(t('hippo.t27634', { updated: data.updated, archived: data.archived, forgotten: data.forgotten }));
       fetchMemories();
       fetchStats();
     } catch {} finally { setLoading(false); }
@@ -211,7 +211,7 @@ export function HippoClient() {
     try {
       const res = await fetch(`${apiBase}/api/hippo/sessions/lifecycle-check`, { method: "POST" });
       const data = await res.json();
-      alert(`生命周期检查: 检查${data.checked}个会话, 新闲置${data.newly_idle}个, 新过期${data.newly_expired}个`);
+      alert(t('hippo.t79927', { checked: data.checked, newlyidle: data.newly_idle, newlyexpired: data.newly_expired }));
       fetchSessions();
     } catch {}
   };
@@ -518,10 +518,10 @@ export function HippoClient() {
                   </div>
                   <div className="flex gap-4 text-xs">
                     <span className={simResult.should_archive ? "text-amber-500" : "text-muted-foreground"}>
-                      {simResult.should_archive ? "⚠️ 应归档" : t('hippo.noArchiveNeeded')}
+                      {simResult.should_archive ? t('hippo.t38102') : t('hippo.noArchiveNeeded')}
                     </span>
                     <span className={simResult.should_forget ? "text-red-500" : "text-muted-foreground"}>
-                      {simResult.should_forget ? "🗑️ 应遗忘" : t('hippo.noForgetNeeded')}
+                      {simResult.should_forget ? t('hippo.t17561') : t('hippo.noForgetNeeded')}
                     </span>
                   </div>
                 </div>

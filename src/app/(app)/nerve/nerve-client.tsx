@@ -347,7 +347,7 @@ export function NerveClient() {
                 onClick={() => setActiveTab("events")}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                查看全部 →
+                {t('nerve.viewAll')}
               </button>
             </div>
             {events.length === 0 ? (
@@ -392,7 +392,7 @@ export function NerveClient() {
             >
               <RefreshCw className="w-3.5 h-3.5" /> {t('nerve.refresh4')}
             </button>
-            <span className="text-xs text-muted-foreground">共 {events.length} 条</span>
+            <span className="text-xs text-muted-foreground">{t('nerve.totalRecords', { count: events.length })}</span>
           </div>
 
           <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -437,7 +437,7 @@ export function NerveClient() {
                             </pre>
                             {evt.delivered_to.length > 0 && (
                               <div className="text-xs text-muted-foreground">
-                                投递到: {evt.delivered_to.join(", ")}
+                                {t('nerve.deliveredTo', { targets: evt.delivered_to.join(", ") })}
                               </div>
                             )}
                           </div>
@@ -488,14 +488,14 @@ export function NerveClient() {
               disabled={!newSubId || !newSubPattern}
               className="mt-3 px-4 py-2 bg-blue-500/10 text-blue-400 border border-blue-500/30 rounded-lg text-sm font-medium hover:bg-blue-500/20 transition-colors disabled:opacity-40"
             >
-              订阅
+              {t('nerve.subscribe5')}
             </button>
           </div>
 
           {/* Subscription List */}
           <div className="bg-card border border-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">活跃订阅 ({subscriptions.length})</h3>
+              <h3 className="font-semibold">{t('nerve.activeSubscriptions', { count: subscriptions.length })}</h3>
               <button onClick={fetchSubscriptions} className="text-xs text-muted-foreground hover:text-foreground">
                 <RefreshCw className="w-3 h-3" />
               </button>
@@ -515,7 +515,7 @@ export function NerveClient() {
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        投递 {sub.delivery_count} 次
+                        {t('nerve.deliveryCount', { count: sub.delivery_count })}
                         {sub.last_delivery && t('nerve.t82425')}
                         {sub.callback_url && ` · ${sub.callback_url}`}
                       </div>
@@ -566,7 +566,7 @@ export function NerveClient() {
                 disabled={!newNodeId}
                 className="px-4 py-2 bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg text-sm font-medium hover:bg-green-500/20 transition-colors disabled:opacity-40"
               >
-                注册
+                {t('nerve.register2')}
               </button>
             </div>
           </div>
@@ -574,7 +574,7 @@ export function NerveClient() {
           {/* Node List */}
           <div className="bg-card border border-border rounded-xl p-5">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold">节点列表 ({nodes.length})</h3>
+              <h3 className="font-semibold">{t('nerve.nodeList', { count: nodes.length })}</h3>
               <button onClick={fetchNodes} className="text-xs text-muted-foreground hover:text-foreground">
                 <RefreshCw className="w-3 h-3" />
               </button>
@@ -596,7 +596,7 @@ export function NerveClient() {
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground mt-1">
-                        注册: {formatTime(node.registered_at)}
+                        {t('nerve.registeredAt', { time: formatTime(node.registered_at) })}
                         {node.last_heartbeat && t('nerve.heartbeat')}
                       </div>
                     </div>
@@ -604,7 +604,7 @@ export function NerveClient() {
                       onClick={() => handleHeartbeat(node.node_id)}
                       className="px-2 py-1 text-xs bg-blue-500/10 text-blue-400 border border-blue-500/20 rounded hover:bg-blue-500/20 transition-colors"
                     >
-                      心跳
+                      {t('nerve.heartbeat2')}
                     </button>
                     <button
                       onClick={() => handleRemoveNode(node.node_id)}
@@ -660,7 +660,7 @@ export function NerveClient() {
               className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-purple-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-blue-600 hover:to-purple-600 transition-all flex items-center justify-center gap-2"
             >
               {pubLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              {pubLoading ? "发布中..." : t('nerve.publishEvent4')}
+              {pubLoading ? t('nerve.publishing') : t('nerve.publishEvent4')}
             </button>
           </div>
 

@@ -1,8 +1,8 @@
 import { CaptureClient } from "./capture-client";
 
 export const metadata = {
-  title: "采集管理 · OpenMate",
-  description: "浏览器采集内容管理、知识库提升",
+  title: "Capture · OpenMate",
+  description: "Browser capture content management and knowledge base enhancement",
 };
 
 export default function CapturePage() {

@@ -104,7 +104,7 @@ export function KnowledgeClient() {
     if (!confirm(t('knowledge.shareToEnterpriseKBrequestTo'))) return;
     try {
       await api.createSharingRequest({ kb_id: kbId, kb_name: kbName });
-      alert('共享申请已提交，等待管理员审批');
+      alert(t('knowledge.shareSubmitted'));
     } catch (e) { setError(`${t('common.error')}: ${(e as Error).message}`); }
   };
 
@@ -114,7 +114,7 @@ export function KnowledgeClient() {
       const uid = getUserId();
       const res = await fetch(`${getApiBaseUrl()}/api/dedup/deduplicate?user_id=${uid}`, { method: 'POST' });
       const data = await res.json();
-      setDedupResult(`扫描${data.total}条，发现${data.duplicates_found}条重复，已清理${data.duplicates_removed}条`);
+      setDedupResult(t('knowledge.dedupResult', { total: data.total, dup: data.duplicates_found, removed: data.duplicates_removed }));
       loadItems();
     } catch (e) { setError(`${t('common.error')}: ${(e as Error).message}`); }
     setDeduping(false);
@@ -196,13 +196,13 @@ export function KnowledgeClient() {
   if (showLogin) return (
     <div className="flex items-center justify-center h-full">
       <div className="p-6 rounded-lg border bg-card w-80">
-        <h2 className="text-lg font-bold mb-4">{isRegister ? '注册账号' : t('knowledge.login1')}</h2>
+        <h2 className="text-lg font-bold mb-4">{isRegister ? t('knowledge.registerAccount') : t('knowledge.login1')}</h2>
         <input value={loginUser} onChange={e => setLoginUser(e.target.value)} placeholder={t('knowledge.username1')} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
         <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder={t('knowledge.password1')} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
         {isRegister && <input value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder={t('knowledge.t05446')} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />}
         {error && <p className="text-xs text-destructive mb-2">{error}</p>}
-        <button onClick={handleLogin} className="w-full px-3 py-2 rounded bg-primary text-primary-foreground text-sm mb-2">{isRegister ? '注册' : t('knowledge.login2')}</button>
-        <button onClick={() => { setIsRegister(!isRegister); setError(''); }} className="w-full px-3 py-2 rounded border text-sm text-muted-foreground">{isRegister ? '已有账号？去登录' : t('knowledge.t71303')}</button>
+        <button onClick={handleLogin} className="w-full px-3 py-2 rounded bg-primary text-primary-foreground text-sm mb-2">{isRegister ? t('knowledge.registerAccount') : t('knowledge.login2')}</button>
+        <button onClick={() => { setIsRegister(!isRegister); setError(''); }} className="w-full px-3 py-2 rounded border text-sm text-muted-foreground">{isRegister ? t('knowledge.t71303') : t('knowledge.t71303')}</button>
       </div>
     </div>
   );
@@ -218,7 +218,7 @@ export function KnowledgeClient() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2"><BookOpen className="w-6 h-6" /> {t('knowledge.title')}</h1>
         <div className="flex gap-2">
-          {items.length > 0 && <button onClick={handleDedup} disabled={deduping} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Sparkles className="w-4 h-4" /> {deduping ? '去重中...' : t('knowledge.t81000')}</button>}
+          {items.length > 0 && <button onClick={handleDedup} disabled={deduping} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Sparkles className="w-4 h-4" /> {deduping ? t('knowledge.deduping') : t('knowledge.t81000')}</button>}
           <button onClick={() => setShowRequest(!showRequest)} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Send className="w-4 h-4" />{t('knowledge.knowledgeBase6')}</button>
           <button onClick={() => { setShowUpload(!showUpload); setShowCreate(false); }} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Upload className="w-4 h-4" />{t('knowledge.fileimport')}</button>
           <button onClick={() => { setShowCreate(!showCreate); setShowUpload(false); }} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm flex items-center gap-1"><Plus className="w-4 h-4" /> {t('knowledge.create')}</button>
@@ -281,8 +281,8 @@ export function KnowledgeClient() {
           {uploadFiles.length > 0 && (
             <div className="mb-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">{uploadFiles.length} 个文件已选择</span>
-                <button onClick={() =>{t('knowledge.clearAll1')}</button>
+                <span className="text-sm font-medium">{t('knowledge.filesSelected', { count: uploadFiles.length })}</span>
+                <button onClick={() => setUploadFiles([])} className="text-xs text-muted-foreground hover:text-destructive">{t('knowledge.clearAll')}</button>
               </div>
               <div className="max-h-40 overflow-y-auto space-y-1">
                 {uploadFiles.map((file, i) => (
@@ -369,7 +369,7 @@ export function KnowledgeClient() {
                     {isFileImport && (
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{String(meta.content_type || '')}</span>
-                        {meta.char_count != null && <span className="text-xs text-muted-foreground">{Number(meta.char_count).toLocaleString()} 字符</span>}
+                        {meta.char_count != null && <span className="text-xs text-muted-foreground">{Number(meta.char_count).toLocaleString()} {t('knowledge.characters')}</span>}
                       </div>
                     )}
                     {item.content && <p className="text-sm text-muted-foreground mt-1 line-clamp-3">{item.content}</p>}

@@ -280,7 +280,14 @@
     "content3": "知识内容",
     "knowledgeBasecreate1": "先申请创建知识库，审批通过后即可添加知识",
     "shareToEnterpriseKB": "共享到企业知识库",
-    "shareToEnterpriseKBdone": "已共享到企业知识库"
+    "shareToEnterpriseKBdone": "已共享到企业知识库",
+    "registerAccount": "アカウント登録",
+    "deduping": "重複除去中...",
+    "shareSubmitted": "共有申請を送信しました。管理者承認待ち",
+    "dedupResult": "{{total}}件スキャン、{{dup}}件の重複発見、{{removed}}件をクリーンアップ",
+    "filesSelected": "{{count}}ファイル選択済み",
+    "characters": "文字",
+    "clearAll": "クリア"
   },
   "learn": {
     "title": "学習センター",
@@ -305,8 +312,9 @@
     "t76433": "難易度",
     "t87836": "AI生成失敗: {detailGland}",
     "t91198": "手動作成",
-    "t16459": "}\n              >\n                <Sparkles size={16} />\n                <div className=\"text-left\">\n                  <div className=\"font-medium\">AI 自动生成</div>\n                  <div className=\"text-xs opacity-70\">{t('learn.t30476')}<div>\n                </div>\n              </button>\n              <button\n                onClick={() => setGenMode(\"manual\")}\n                className={",
-    "t55143": "章"
+    "t16459": "上級",
+    "t55143": "章",
+    "aiAutoGenerate": "AI自動生成"
   },
   "agents": {
     "title": "エージェント管理",
@@ -767,7 +775,20 @@
     "file1": "逻辑文件数",
     "t59359": "唯一blob数",
     "empty1": "去重节省空间",
-    "t46816": "去重效率"
+    "t46816": "去重效率",
+    "collapse": "折りたたむ",
+    "noVersionHistory": "バージョン履歴なし",
+    "current": "現在",
+    "promoteSuccess": "知識ベースに昇格: {{name}}",
+    "promoteFailed": "昇格失敗: {{msg}}",
+    "chunkedUploads": "進行中のチャンクアップロード ({{count}})",
+    "batchComplete": "一括認識完了",
+    "scanResult": "{{total}}ファイルスキャン · {{eligible}}マッチ · {{processed}}処理済み · {{promoted}}昇格",
+    "mimeLabel": "MIMEタイプ",
+    "cleanExpired": "期限切れをクリア",
+    "clearAllCache": "すべてのキャッシュをクリア",
+    "cacheCleanupDesc": "期限切れクリア：TTL期限切れエントリのみ削除。すべてクリア：すべてのキャッシュエントリを削除、ファイルはディスクに残ります。",
+    "dedupStats": "重複除去統計"
   },
   "sense": {
     "title": "感覚 · マルチモーダル解析",
@@ -916,7 +937,15 @@
     "t32222": "编码",
     "filesize1": "文件大小",
     "uploadinfoanalyze": "上传视频后点击\"分析视频元信息\"",
-    "upload14": ">上传视频后点击"
+    "upload14": ">上传视频后点击",
+    "videoAnalyzeFailed": "動画分析失敗: {error}",
+    "frameExtractFailed": "フレーム抽出失敗: {error}",
+    "preprocess": "前処理（グレースケール+二値化）",
+    "recognizing": "認識中...",
+    "pageConfidence": "ページ {page} · 信頼度 {confidence}%",
+    "transcribing": "文字起こし中...",
+    "analyzing": "分析中...",
+    "extractedFrames": "抽出フレーム ({count} 枚)"
   },
   "immune": {
     "title": "免疫 · セキュリティ",
@@ -1047,7 +1076,13 @@
     "time3": "时间",
     "action2": "操作",
     "detail1": "详情",
-    "t44032": "风险"
+    "t44032": "风险",
+    "updateConfig": "設定更新",
+    "moderateHint": "テキストを入力して機密情報（PII、シークレット、電話番号、IDなど）を検出",
+    "moderating": "審査中...",
+    "contentSafe": "コンテンツ安全",
+    "resetCount": "カウントリセット",
+    "records2": "{count} 件"
   },
   "marrow": {
     "title": "骨髄 · バックアップ復元",
@@ -1266,7 +1301,22 @@
     "exporttemplate": "导出模板",
     "templatetotal": "总模板数",
     "createuser1": "用户创建",
-    "exportalltemplate": "导出全部模板"
+    "exportalltemplate": "导出全部模板",
+    "jsonParseFailed": "JSON解析失敗",
+    "requiredVars": "必要な変数:",
+    "backToBrowse": "ブラウズに戻る →",
+    "creating": "作成中...",
+    "instantiating": "インスタンス化中...",
+    "overwriteExisting": "既存テンプレートを上書き",
+    "importing": "インポート中...",
+    "importResult": "{{imported}}/{{total}}テンプレートをインポート",
+    "exportDesc": "すべてのテンプレートをJSONファイルにエクスポート（バックアップ・移行用）",
+    "exportFormat": "エクスポート形式",
+    "all": "すべて",
+    "author": "作者",
+    "usage": "使用",
+    "times": "回",
+    "importDesc": "単一テンプレート、配列、またはエクスポート済みバンドルJSON形式に対応"
   },
   "echo": {
     "title": "エコー · メッセージプッシュ",
@@ -1589,7 +1639,16 @@
     "t96343": "QPS 峰值",
     "data": "数据点",
     "noData": "暂无告警记录",
-    "run1": "系统运行正常，所有指标在阈值范围内"
+    "run1": "系统运行正常，所有指标在阈值范围内",
+    "refresh2": "更新",
+    "cpuMemoryUsage": "CPU & メモリ使用率",
+    "diskUsage": "ディスク使用率",
+    "qpsLatency": "リクエスト QPS & P99 レイテンシ",
+    "alertsSummary": "合計 {total} 件のアラート、{active} 件未解決",
+    "critical": "重大",
+    "recovered": "回復済み",
+    "currentValue": "現在値: {value}",
+    "needDataPoints": "チャート表示には少なくとも2つのデータポイントが必要です"
   },
   "hippo": {
     "title": "海馬 · メモリライフサイクル",
@@ -1904,7 +1963,14 @@
     "user1": "所有者用户ID (可选)",
     "description7": "描述 (可选)",
     "cancel5": "取消",
-    "create2": "创建"
+    "create2": "创建",
+    "saasIsolation": "SaaS分離",
+    "blockRate": "ブロック率 {rate}%",
+    "status2": "ステータス: {status}",
+    "check2": "チェック",
+    "allowed": "✓ 許可",
+    "quotaInfo": "現在: {current} / 上限: {limit} ({percent}%)",
+    "records": "{count} 件"
   },
   "limb": {
     "title": "四肢 · RPAエグゼキュータ",
@@ -2080,7 +2146,16 @@
     "low3": "低沉",
     "t89293": "正常",
     "high5": "较高",
-    "cancel1": "取消"
+    "cancel1": "取消",
+    "textToSpeech": "テキスト読み上げ",
+    "refresh3": "更新",
+    "charactersCount": "{count} / 10000 文字",
+    "saveFile": "ファイル保存",
+    "usedTimes": "{count} 回使用",
+    "synthesizing": "合成中...",
+    "cacheHit": "ヒット ✓",
+    "profileCount": "{count} プロファイル",
+    "create2": "作成"
   },
   "vision": {
     "title": "視覚 · 画像可視化エンジン",
@@ -2130,7 +2205,28 @@
     "t64183": "AIエンジニアリング",
     "t80047": "1月,2月,3月",
     "t84456": "JSONフォーマットエラー",
-    "t93963": "AIエンジニアリングナレッジグラフ"
+    "t93963": "AIエンジニアリングナレッジグラフ",
+    "quarterlySales": "四半期売上",
+    "trendComparison": "トレンド比較",
+    "langDist": "言語使用分布",
+    "scatterPlot": "散布図",
+    "jsonError": "JSON形式エラー",
+    "defaultBarTitle": "四半期売上",
+    "defaultLineTitle": "トレンド比較",
+    "defaultPieTitle": "言語使用分布",
+    "defaultScatterTitle": "散布図",
+    "defaultMindmapTitle": "AIエンジニアリング知識グラフ",
+    "defaultLineX": "1月,2月,3月,4月,5月,6月",
+    "defaultLineSeries": "製品A:100,120,140,160,180,200\\n製品B:80,90,110,130,120,150",
+    "defaultMindmapData": "AIエンジニアリング",
+    "mindmapSub1": "Prompt Engineering",
+    "mindmapSub2": "RAG",
+    "mindmapSub2a": "ベクトル検索",
+    "mindmapSub2b": "ハイブリッド検索",
+    "mindmapSub3": "Agent",
+    "mindmapSub3a": "ツール呼び出し",
+    "mindmapSub3b": "マルチAgent連携",
+    "mindmapSub4": "ファインチューニング"
   },
   "mind": {
     "title": "心 · パーソナリティセンター",
@@ -2285,7 +2381,18 @@
     "eventpublishdone": "事件已发布",
     "t81719": "投递到",
     "publishEventinfo": "填写信息后点击\"发布事件\"",
-    "info4": ">填写信息后点击"
+    "info4": ">填写信息后点击",
+    "viewAll": "すべて表示 →",
+    "totalRecords": "合計 {count} 件",
+    "deliveredTo": "配信先: {targets}",
+    "subscribe5": "購読",
+    "activeSubscriptions": "アクティブ購読 ({count})",
+    "deliveryCount": "配信 {count} 回",
+    "register2": "登録",
+    "nodeList": "ノード一覧 ({count})",
+    "registeredAt": "登録: {time}",
+    "heartbeat2": "ハートビート",
+    "publishing": "公開中..."
   },
   "will": {
     "title": "意志 · ワークフローエンジン",
@@ -2420,7 +2527,22 @@
     "max": "最大",
     "cores": "コア",
     "t17783": "{cpucount} {cores}",
-    "t39409": "{cpucount}{cores}"
+    "t39409": "{cpucount}{cores}",
+    "checkingShort": "検出中...",
+    "healthyLabel": "正常",
+    "unhealthyLabel": "異常",
+    "maxLabel": "最大",
+    "coresLabel": "コア",
+    "responseTimeLabel": "レスポンスタイム",
+    "categoryLabel": "カテゴリ",
+    "errorLabel": "エラー",
+    "itemsLabel": "件",
+    "defaultLabel": "デフォルト",
+    "currentLabel": "現在",
+    "allOkLabel": "すべてのシステム正常",
+    "partialErrorLabel": "一部システム異常",
+    "organHealthLabel": "器官ヘルス",
+    "systemLabel": "システム"
   },
   "cortex": {
     "title": "OpenCortex",
@@ -2576,7 +2698,13 @@
     "t96994": "等级分布",
     "average1": "维度平均分",
     "high2": "🏆 最高质量",
-    "t36522": "⚠️ 需改进"
+    "t36522": "⚠️ 需改进",
+    "inputKnowledgeId": "知識エントリIDを入力して関連推薦を取得",
+    "batchScore": "一括スコア",
+    "singleScore": "単一スコア",
+    "score": "スコア",
+    "qualityReport": "品質レポート",
+    "batchScoreResult": "一括スコア結果 · {{count}}件"
   },
   "intelligence": {
     "title": "インテリジェンス分析",
@@ -2739,7 +2867,8 @@
     "capabilities": "機能",
     "checking": "確認中...",
     "goToPage": "ページへ移動",
-    "t69854": "已选中"
+    "t69854": "已选中",
+    "selected": "選択済み"
   },
   "graph": {
     "title": "ナレッジグラフ",
@@ -2774,7 +2903,16 @@
     "t99673": "ソースエンティティを選択",
     "t36665": "关系 ·",
     "t44501": "删除实体",
-    "t49096": "实体 ·"
+    "t49096": "实体 ·",
+    "descriptionOptional": "説明（任意）",
+    "createRelation": "リレーション作成",
+    "selectSource": "ソースエンティティを選択",
+    "selectTarget": "ターゲットエンティティを選択",
+    "type": "タイプ",
+    "relatedRelations": "関連リレーション",
+    "unknown": "不明",
+    "noRelations": "リレーションなし",
+    "deleteEntity": "エンティティ削除"
   },
   "cron": {
     "title": "Cronジョブ",
@@ -2812,7 +2950,41 @@
     "t45616": "执行历史",
     "t45800": ", e); }\n    setActionLoading(null);\n  };\n\n  const toggleAgent = (agent: string) => {\n    setExpandedAgents(prev => {\n      const next = new Set(prev);\n      next.has(agent) ? next.delete(agent) : next.add(agent);\n      return next;\n    });\n  };\n\n  const handleCreate = async () => {\n    if (!createSchedule.trim()) return;\n    setCreating(true);\n    setCreateError('');\n    try {\n      await apiRequest('/api/cron/create', 'POST', {\n        schedule: createSchedule.trim(),\n        prompt: createPrompt.trim(),\n        name: createName.trim(),\n        deliver: createDeliver.trim(),\n      });\n      setShowCreate(false);\n      setCreateName(''); setCreateSchedule('30m'); setCreatePrompt(''); setCreateDeliver('');\n      await loadJobs();\n    } catch (e: unknown) {\n      setCreateError(e instanceof Error ? e.message : 'Failed to create job');\n    }\n    setCreating(false);\n  };\n\n  // Group jobs by agent\n  const grouped = useMemo(() => {\n    const map: Record<string, CronJob[]> = {};\n    for (const job of jobs) {\n      const agent = getAgentFromJob(job);\n      if (!map[agent]) map[agent] = [];\n      map[agent].push(job);\n    }\n    return map;\n  }, [jobs]);\n\n  if (loading) return <div className=\"flex items-center justify-center h-full\"><Loader2 className=\"w-8 h-8 animate-spin text-primary\" /></div>;\n\n  const activeCount = jobs.filter(j => j.status === 'active').length;\n  const pausedCount = jobs.filter(j => j.status === 'paused').length;\n\n  return (\n    <div className=\"p-6 h-full overflow-y-auto\">\n      {/* Header */}\n      <div className=\"flex items-center justify-between mb-6\">\n        <div>\n          <h1 className=\"text-2xl font-bold flex items-center gap-2\"><Clock className=\"w-6 h-6 text-primary\" /> {t('cron.title')}<h1>\n          <p className=\"text-sm text-muted-foreground mt-1\">{t('cron.t13468')}<p>\n        </div>\n        <div className=\"flex gap-2\">\n          <button onClick={() => setShowCreate(!showCreate)} className=\"px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 text-sm\"><Plus className=\"w-4 h-4\" /> {t('cron.newJob')}<button>\n          <button onClick={loadJobs} className=\"px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm\"><RefreshCw className=\"w-4 h-4\" /> {t('cron.refresh')}<button>\n        </div>\n      </div>\n\n      {/* Stats */}\n      <div className=\"grid grid-cols-3 gap-4 mb-6\">\n        <div className=\"p-4 rounded-xl border bg-card\"><p className=\"text-2xl font-bold text-primary\">{jobs.length}</p><p className=\"text-sm text-muted-foreground\">{t('limb.totalTasks')}<p></div>\n        <div className=\"p-4 rounded-xl border bg-card\"><p className=\"text-2xl font-bold text-green-500\">{activeCount}</p><p className=\"text-sm text-muted-foreground\">{t('common.running')}<p></div>\n        <div className=\"p-4 rounded-xl border bg-card\"><p className=\"text-2xl font-bold text-amber-500\">{pausedCount}</p><p className=\"text-sm text-muted-foreground\">{t('common.paused')}<p></div>\n      </div>\n\n      {/* Create Dialog */}\n      {showCreate && (\n        <div className=\"mb-6 p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center justify-between mb-4\">\n            <h3 className=\"text-sm font-medium flex items-center gap-2\"><Zap className=\"w-4 h-4 text-primary\" /> {t('cron.t03413')}<h3>\n            <button onClick={() => { setShowCreate(false); setCreateError(''); }} className=\"p-1 rounded hover:bg-muted\"><X className=\"w-4 h-4\" /></button>\n          </div>\n          <div className=\"grid grid-cols-2 gap-4 mb-4\">\n            <div>\n              <label className=\"text-xs text-muted-foreground mb-1 block\">{t('marrow.scheduleName')}<label>\n              <input value={createName} onChange={e => setCreateName(e.target.value)} placeholder=t('cron.t36892')\n                className=\"w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-primary\" />\n            </div>\n            <div>\n              <label className=\"text-xs text-muted-foreground mb-1 block\">调度规则 <span className=\"text-destructive\">*</span></label>\n              <input value={createSchedule} onChange={e => setCreateSchedule(e.target.value)} placeholder=\"30m / every 2h / 0 9 * * *\"\n                className=\"w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-primary\" />\n            </div>\n          </div>\n          <div className=\"mb-4\">\n            <label className=\"text-xs text-muted-foreground mb-1 block\">{t('cron.t59697')}<label>\n            <textarea value={createPrompt} onChange={e => setCreatePrompt(e.target.value)} rows={3} placeholder=t('cron.t35780')\n              className=\"w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-primary resize-none\" />\n          </div>\n          <div className=\"mb-4\">\n            <label className=\"text-xs text-muted-foreground mb-1 block\">{t('cron.t07887')}<label>\n            <input value={createDeliver} onChange={e => setCreateDeliver(e.target.value)} placeholder=\"origin / local / telegram:chat_id\"\n              className=\"w-full px-3 py-2 rounded-lg border bg-background text-sm outline-none focus:border-primary\" />\n          </div>\n          {createError && (\n            <p className=\"text-xs text-destructive mb-3\">{createError}</p>\n          )}\n          <div className=\"flex gap-2\">\n            <button onClick={handleCreate} disabled={creating || !createSchedule.trim()}\n              className=\"px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 disabled:opacity-50 flex items-center gap-1\">\n              {creating ? <Loader2 className=\"w-3 h-3 animate-spin\" /> : <Zap className=\"w-3 h-3\" />} 创建\n            </button>\n            <button onClick={() => { setShowCreate(false); setCreateError(''); }}\n              className=\"px-4 py-2 rounded-lg border text-sm hover:bg-muted\">{t('common.cancel')}<button>\n          </div>\n        </div>\n      )}\n\n      {/* Agent Groups */}\n      {Object.keys(grouped).length === 0 ? (\n        <div className=\"text-center py-12 text-muted-foreground\"><AlertCircle className=\"w-8 h-8 mx-auto mb-2\" /><p>{t('cron.noJobs')}<p></div>\n      ) : (\n        <div className=\"space-y-4\">\n          {Object.entries(grouped).map(([agent, agentJobs]) => {\n            const isExpanded = expandedAgents.has(agent);\n            const icon = agentIcons[agent] || agentIcons.default;\n            const agentActive = agentJobs.filter(j => j.status === 'active').length;\n\n            return (\n              <div key={agent} className=\"rounded-xl border bg-card overflow-hidden\">\n                {/* Agent header */}\n                <button onClick={() => toggleAgent(agent)}\n                  className=\"flex items-center justify-between w-full p-4 hover:bg-muted/30 transition-colors\">\n                  <div className=\"flex items-center gap-3\">\n                    <span className=\"text-xl\">{icon}</span>\n                    <div className=\"text-left\">\n                      <h3 className=\"font-medium capitalize\">{agent}</h3>\n                      <p className=\"text-xs text-muted-foreground\">{agentJobs.length} 个任务 · {agentActive} 运行中</p>\n                    </div>\n                  </div>\n                  <div className=\"flex items-center gap-2\">\n                    <span className=\"text-xs px-2 py-0.5 rounded-full bg-muted text-muted-foreground\">{agentJobs.length}</span>\n                    {isExpanded ? <ChevronDown size={16} className=\"text-muted-foreground\" /> : <ChevronRight size={16} className=\"text-muted-foreground\" />}\n                  </div>\n                </button>\n\n                {/* Job list */}\n                {isExpanded && (\n                  <div className=\"border-t border-border\">\n                    {agentJobs.map((job, idx) => (\n                      <div key={job.id} className={",
     "t54362": "上次",
-    "t57143": "下次"
+    "t57143": "下次",
+    "createJob": "新規タスク",
+    "totalJobs": "総タスク数",
+    "running": "実行中",
+    "paused": "一時停止",
+    "createCronJob": "新規定時タスク",
+    "jobName": "タスク名",
+    "optional": "任意",
+    "scheduleRule": "スケジュールルール",
+    "execPrompt": "実行プロンプト",
+    "promptPlaceholder": "タスク指示...",
+    "deliverTarget": "配信先",
+    "create": "作成",
+    "cancel": "キャンセル",
+    "jobsCount": "{{count}}タスク · {{active}}実行中",
+    "pause": "一時停止",
+    "resume": "再開",
+    "runNow": "今すぐ実行",
+    "backToList": "リストに戻る",
+    "active": "実行中",
+    "scheduleRuleLabel": "スケジュールルール",
+    "execAgent": "実行Agent",
+    "nextExec": "次回実行",
+    "lastExec": "前回実行",
+    "deliverTargetLabel": "配信先",
+    "execPromptLabel": "実行プロンプト",
+    "recentError": "最近のエラー",
+    "execHistory": "実行履歴",
+    "refreshTitle": "更新",
+    "noExecRecords": "実行記録なし",
+    "clickRunToTrigger": "「今すぐ実行」をクリックして手動実行を開始",
+    "success": "成功",
+    "failed": "失敗",
+    "formatSchedule": "{{parts}}ごと",
+    "scheduleAt": "スケジュール: {{schedule}}"
   },
   "team": {
     "title": "チーム",
@@ -3045,7 +3217,23 @@
     "t37326": "同步全部",
     "t47626": "项",
     "t69554": "暂无",
-    "t86110": "来源"
+    "t86110": "来源",
+    "syncAll": "すべて同期",
+    "skillSources": "スキルソース",
+    "agentSources": "Agentソース",
+    "installedSkills": "インストール済みスキル",
+    "installedAgents": "インストール済みAgent",
+    "close": "閉じる",
+    "searchSources": "ソースを検索...",
+    "noSources": "{{type}}のソースなし",
+    "neverSynced": "未同期",
+    "justNow": "たった今",
+    "minutesAgo": "{{count}}分前",
+    "hoursAgo": "{{count}}時間前",
+    "daysAgo": "{{count}}日前",
+    "items": "件",
+    "builtinSource": "組み込みソース",
+    "syncFailed": "同期失敗"
   },
   "aiGroups": {
     "title": "AIグループ",
@@ -3188,7 +3376,17 @@
     "total": "合計",
     "untitled": "無題",
     "t13587": "{floordiff60}分前",
-    "t58929": "{floordiff3600}時間前"
+    "t58929": "{floordiff3600}時間前",
+    "justNow": "たった今",
+    "minutesAgo": "{{count}}分前",
+    "hoursAgo": "{{count}}時間前",
+    "pageCaptures": "ページキャプチャ",
+    "textCaptures": "テキストキャプチャ",
+    "noCaptures": "キャプチャなし",
+    "noCapturesDesc": "ブラウザ拡張でウェブコンテンツをキャプチャ",
+    "noTitle": "無題",
+    "promoteTitle": "知識ベースに昇格",
+    "deleteTitle": "削除"
   },
   "login": {
     "connectionError": "接続エラー",
@@ -3263,7 +3461,7 @@
     "offline": "オフライン",
     "online": "オンライン",
     "platformCapabilities": "プラットフォーム機能",
-    "platformDiscovery": "プラットフォーム検出",
+    "platformDiscovery": "プラットフォーム機能 — {platform} v{version}",
     "processor": "プロセッサー",
     "push": "プッシュ",
     "quickStartDesc": "外部コンポーネントをOpenSoulに接続する手順",
@@ -3335,7 +3533,12 @@
     "version3": "版本号",
     "tag5": "能力标签 (逗号分隔，如 file_watch,rss,feishu)",
     "cancel7": "取消",
-    "t66404": "注册"
+    "t66404": "注册",
+    "plugAndPlay": "プラグアンドプレイ",
+    "online3": "● オンライン",
+    "offline3": "○ オフライン",
+    "pushCount": "プッシュ: {count}",
+    "errorCount2": "エラー: {count}"
   },
   "admin": {
     "t00162": "Hippo メモリ管理",
@@ -3437,7 +3640,10 @@
     "edit2": "编辑",
     "noData8": "暂无Agent",
     "t31503": "点击上方\"添加\"按钮添加Agent",
-    "t92692": ">点击上方"
+    "t92692": ">点击上方",
+    "aiGroups": "AIグループ",
+    "reply": "返信",
+    "participatingAgents": "参加Agent"
   },
   "benchmark": {
     "t06084": "テスト設定",
@@ -3505,7 +3711,10 @@
     "t44651": "器官",
     "t06105": "迭代",
     "success2": "成功",
-    "average3": "平均"
+    "average3": "平均",
+    "testing": "テスト中...",
+    "subtitle": "器官性能ベンチマーク · {count} テスト対象",
+    "testResults": "テスト結果 · {organs} 器官 · {iterations} 反復"
   },
   "graph-builder": {
     "t01309": "タイプ：",
@@ -3723,7 +3932,17 @@
     "t49522": "收藏",
     "t23883": "置顶",
     "cancel6": "取消",
-    "create6": "创建"
+    "create6": "创建",
+    "updated": "更新済み",
+    "created": "作成済み",
+    "networkError": "ネットワークエラー",
+    "deleted": "削除済み",
+    "deleteFailed": "削除失敗",
+    "exported": "{count} 件のスニペットをエクスポート",
+    "exportFailed": "エクスポート失敗",
+    "snippetsManage": "コードスニペット · {count} 件",
+    "editSnippet": "スニペット編集",
+    "save": "保存"
   },
   "timeline": {
     "t06009": "イベントリスト",
@@ -3747,7 +3966,8 @@
   "workflow-builder": {
     "t26433": "開始",
     "t37840": "选择或创建工作流",
-    "t88657": "从左侧列表选择，或点击工具栏「新建」"
+    "t88657": "从左侧列表选择，或点击工具栏「新建」",
+    "newWorkflow": "新しいワークフロー"
   },
   "workflow": {
     "t19031": "名前は必須です",
@@ -3826,7 +4046,8 @@
       "shellCommand": "Shell 命令",
       "shellCommandPlaceholder": "echo 'Hello ${name}'，支持 ${var}",
       "workingDirectory": "工作目录",
-      "workingDirectoryPlaceholder": "/home/user (可选)"
+      "workingDirectoryPlaceholder": "/home/user (可选)",
+      "codePlaceholder": "// inputオブジェクトで入力変数にアクセス\nreturn input;"
     },
     "nodePalette": {
       "nodes": "节点",
@@ -3888,5 +4109,34 @@
       "confirmDelete": "确认删除？",
       "cancel": "取消"
     }
+  },
+  "smartCalc": {
+    "title": "スマート計算機",
+    "subtitle": "数式計算 · 単位変換 · 履歴",
+    "calc": "計算",
+    "convert": "単位変換",
+    "history": "履歴",
+    "mathExpr": "数式",
+    "solve": "求解",
+    "quickExprs": "クイック式",
+    "exactValue": "正確値",
+    "supportedFuncs": "対応する関数と定数",
+    "category": "カテゴリ",
+    "length": "長さ",
+    "weight": "重量",
+    "temperature": "温度",
+    "speed": "速度",
+    "area": "面積",
+    "volume": "体積",
+    "value": "値",
+    "from": "から",
+    "to": "へ",
+    "convertBtn": "変換",
+    "records": "{{count}}件の記録",
+    "clear": "クリア",
+    "noHistory": "計算履歴なし",
+    "calcType": "計算",
+    "convertType": "変換",
+    "placeholder": "例: 2**10, sqrt(144), pi * 2, sin(radians(30))"
   }
 }
