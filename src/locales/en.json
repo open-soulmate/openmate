@@ -1631,8 +1631,9 @@
     "running": "Running",
     "stopped": "Stopped",
     "justNow": "just now",
-    "minutesAgo": "min ago",
-    "hoursAgo": "h ago"
+    "minutesAgo": "minutes ago",
+    "hoursAgo": "hours ago",
+    "daysAgo": "days ago"
   },
   "gland": {
     "title": "Gland · Model Gateway",
@@ -1923,7 +1924,13 @@
     "text44": "⚠️ 应归档",
     "text45": "✓ 不需归档",
     "text46": "🗑️ 应遗忘",
-    "text47": "✓ 不需遗忘"
+    "text47": "✓ 不需遗忘",
+    "decayComplete": "Decay complete: {{updated}} updated, {{archived}} archived, {{forgotten}} forgotten",
+    "lifecycleResult": "Lifecycle check: {{checked}} sessions checked, {{idle}} newly idle, {{expired}} newly expired",
+    "shouldArchive": "⚠️ Should Archive",
+    "noArchiveNeeded": "✓ No Archive Needed",
+    "shouldForget": "🗑️ Should Forget",
+    "noForgetNeeded": "✓ No Forget Needed"
   },
   "reflex": {
     "title": "Reflex · High-Speed Response",

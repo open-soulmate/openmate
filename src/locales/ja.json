@@ -1632,7 +1632,8 @@
     "stopped": "停止",
     "justNow": "たった今",
     "minutesAgo": "分前",
-    "hoursAgo": "時間前"
+    "hoursAgo": "時間前",
+    "daysAgo": "日前"
   },
   "gland": {
     "title": "腺 · モデルゲートウェイ",
@@ -1923,7 +1924,13 @@
     "t38102": "⚠️ 应归档",
     "t90923": "✓ 不需归档",
     "t17561": "🗑️ 应遗忘",
-    "t35088": "✓ 不需遗忘"
+    "t35088": "✓ 不需遗忘",
+    "decayComplete": "減衰完了: {{updated}}件更新、{{archived}}件アーカイブ、{{forgotten}}件忘却",
+    "lifecycleResult": "ライフサイクルチェック: {{checked}}セッション確認、{{idle}}件新規アイドル、{{expired}}件新規期限切れ",
+    "shouldArchive": "⚠️ アーカイブ推奨",
+    "noArchiveNeeded": "✓ アーカイブ不要",
+    "shouldForget": "🗑️ 忘却推奨",
+    "noForgetNeeded": "✓ 忘却不要"
   },
   "reflex": {
     "title": "反射 · 高速応答エンジン",
