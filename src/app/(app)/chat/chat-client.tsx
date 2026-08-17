@@ -14,7 +14,21 @@ interface TokenUsage { input: number; output: number; }
 interface Checkpoint { id: string; messageId: string; timestamp: Date; messages: Message[]; label: string; }
 type AgentMode = 'plan' | 'act';
 interface Message { id: string; role: 'user' | 'agent'; parts: MessagePart[]; timestamp: Date; source?: string; fileChanges?: FileChange[]; tokenUsage?: TokenUsage; }
-interface Session { id: string; name: string; platform: string; chat_id?: string; last_message?: string; unread?: number; workspace?: string; last_active?: string; }
+interface Session { id: string; name?: string; title?: string; platform: string; chat_id?: string; last_message?: string; unread?: number; workspace?: string; last_active?: string; updated_at?: string; created_at?: string; message_count?: number; source?: string; }
+
+function formatRelativeTime(dateStr: string): string {
+  const date = new Date(dateStr);
+  const now = new Date();
+  const diffMs = now.getTime() - date.getTime();
+  const diffMin = Math.floor(diffMs / 60000);
+  if (diffMin < 1) return 'just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  const diffH = Math.floor(diffMin / 60);
+  if (diffH < 24) return `${diffH}h ago`;
+  const diffD = Math.floor(diffH / 24);
+  if (diffD < 7) return `${diffD}d ago`;
+  return date.toLocaleDateString();
+}
 
 // Agent definitions with detection
 interface AgentInfo {
@@ -194,6 +208,8 @@ export function ChatClient() {
     // Group sessions by platform/source
     const sessionMap: Record<string, Session[]> = {};
     for (const s of sessions) {
+      // API returns 'source', map to 'platform' for grouping
+      if (!s.platform && s.source) s.platform = s.source;
       const key = s.platform || 'hermes';
       if (!sessionMap[key]) sessionMap[key] = [];
       sessionMap[key].push(s);
@@ -491,10 +507,10 @@ export function ChatClient() {
                   className={`group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer ${selectedSession?.id === session.id ? 'bg-muted' : ''}`}>
                   <div className="flex items-center gap-1.5">
                     <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="text-xs truncate text-foreground flex-1">{session.name}</span>
+                    <span className="text-xs truncate text-foreground flex-1">{session.name || session.title || "Untitled"}</span>
                     <button onClick={(e) => { e.stopPropagation(); deleteSession(session.id, e); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
                   </div>
-                  {session.last_active && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{session.last_active}</div>}
+                  {(session.last_active || session.updated_at) && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{formatRelativeTime(session.last_active || session.updated_at!)}</div>}
                 </div>
               ))}
 
