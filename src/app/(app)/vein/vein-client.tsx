@@ -502,6 +502,33 @@ export function VeinClient() {
     }
   };
 
+  const [autoProcessing, setAutoProcessing] = useState(false);
+  const [autoProcessResult, setAutoProcessResult] = useState<any>(null);
+
+  const handleAutoProcess = async (fileId: string) => {
+    setAutoProcessing(true);
+    setAutoProcessResult(null);
+    try {
+      const res = await fetch(`${apiBase}/api/vein/files/${fileId}/auto-process`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: "default", auto_promote: true }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        throw new Error(err.detail || `Auto-process failed: ${res.status}`);
+      }
+      const data = await res.json();
+      setAutoProcessResult(data);
+      if (data.promoted_to_knowledge) fetchFiles();
+    } catch (e: any) {
+      console.error("Auto-process failed", e);
+      setAutoProcessResult({ status: "error", error: e.message });
+    } finally {
+      setAutoProcessing(false);
+    }
+  };
+
   const handleDrag = (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -1060,7 +1087,47 @@ export function VeinClient() {
                       >
                         <BookOpen size={14} /> 提升到知识库
                       </button>
+                      <button
+                        onClick={() => handleAutoProcess(selectedFile.file_id)}
+                        disabled={autoProcessing}
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-2 text-sm text-amber-500 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
+                      >
+                        {autoProcessing ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
+                        {autoProcessing ? "处理中..." : "智能识别"}
+                      </button>
                     </div>
+                    {/* Auto-Process Result */}
+                    {autoProcessResult && (
+                      <div className={cn(
+                        "mt-3 rounded-lg border p-3 text-xs",
+                        autoProcessResult.status === "ok" ? "border-emerald-500/30 bg-emerald-500/5" :
+                        autoProcessResult.status === "no_text_extracted" ? "border-amber-500/30 bg-amber-500/5" :
+                        "border-red-500/30 bg-red-500/5"
+                      )}>
+                        {autoProcessResult.status === "ok" ? (
+                          <div className="space-y-1.5">
+                            <div className="flex items-center gap-2 font-medium text-emerald-600">
+                              <Zap size={12} /> 智能识别完成
+                            </div>
+                            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-muted-foreground">
+                              <span>处理类型: <b className="text-foreground">{autoProcessResult.processing_type}</b></span>
+                              <span>引擎: <b className="text-foreground">{autoProcessResult.engine}</b></span>
+                              <span>提取文本: <b className="text-foreground">{autoProcessResult.text_length} 字</b></span>
+                              <span>已入库: <b className={autoProcessResult.promoted_to_knowledge ? "text-emerald-500" : "text-muted-foreground"}>{autoProcessResult.promoted_to_knowledge ? "✅ 是" : "否"}</b></span>
+                            </div>
+                            {autoProcessResult.text_preview && (
+                              <div className="mt-2 rounded bg-muted/50 p-2 max-h-24 overflow-y-auto">
+                                <p className="text-[11px] text-muted-foreground whitespace-pre-wrap">{autoProcessResult.text_preview}</p>
+                              </div>
+                            )}
+                          </div>
+                        ) : autoProcessResult.status === "no_text_extracted" ? (
+                          <span className="text-amber-600">⚠️ 未能从文件中提取文本</span>
+                        ) : (
+                          <span className="text-red-500">❌ {autoProcessResult.error || "处理失败"}</span>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
