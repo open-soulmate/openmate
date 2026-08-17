@@ -580,6 +580,93 @@ export function AdminClient() {
                   ]}
                 />
               )}
+              {overview.stats.nest && (
+                <StatsCard
+                  title="Nest 多租户"
+                  emoji="🏠"
+                  items={[
+                    { label: "Tenants", value: overview.stats.nest.tenants?.total_tenants ?? 0 },
+                    { label: "Documents", value: overview.stats.nest.tenants?.total_documents ?? 0 },
+                    { label: "Access Checks", value: overview.stats.nest.isolation?.total_access_checks ?? 0 },
+                    { label: "Policies", value: overview.stats.nest.isolation?.policies_count ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.knowledge && (
+                <StatsCard
+                  title="Knowledge 知识库"
+                  emoji="📚"
+                  items={[
+                    { label: "Entries", value: overview.stats.knowledge.total_entries ?? 0 },
+                    { label: "Recent 24h", value: overview.stats.knowledge.recent_24h ?? 0 },
+                    { label: "Top Users", value: (overview.stats.knowledge.top_users ?? []).length },
+                  ]}
+                />
+              )}
+              {overview.stats.agent && (
+                <StatsCard
+                  title="Agent 系统"
+                  emoji="🤖"
+                  items={[
+                    { label: "Agents", value: overview.stats.agent.total_agents ?? 0 },
+                    { label: "Types", value: Object.keys(overview.stats.agent.by_type ?? {}).length },
+                  ]}
+                />
+              )}
+              {overview.stats.graph && (
+                <StatsCard
+                  title="Graph 知识图谱"
+                  emoji="🌐"
+                  items={[
+                    { label: "Entities", value: overview.stats.graph.total_entities ?? 0 },
+                    { label: "Relations", value: overview.stats.graph.total_relations ?? 0 },
+                    { label: "Types", value: Object.keys(overview.stats.graph.by_type ?? {}).length },
+                  ]}
+                />
+              )}
+              {overview.stats.entity && (
+                <StatsCard
+                  title="Entity 实体"
+                  emoji="🏷"
+                  items={[
+                    { label: "Entities", value: overview.stats.entity.total_entities ?? 0 },
+                    { label: "Types", value: Object.keys(overview.stats.entity.by_type ?? {}).length },
+                  ]}
+                />
+              )}
+              {overview.stats.search && (
+                <StatsCard
+                  title="Search 搜索"
+                  emoji="🔍"
+                  items={[
+                    { label: "Searchable", value: overview.stats.search.searchable_entries ?? 0 },
+                    { label: "Modes", value: (overview.stats.search.modes ?? []).length },
+                  ]}
+                />
+              )}
+              {overview.stats.capture && (
+                <StatsCard
+                  title="Capture 采集"
+                  emoji="📸"
+                  items={[
+                    { label: "Captures", value: overview.stats.capture.total_captures ?? 0 },
+                    { label: "Pages", value: overview.stats.capture.page_captures ?? 0 },
+                    { label: "Selections", value: overview.stats.capture.selection_captures ?? 0 },
+                    { label: "Recent 24h", value: overview.stats.capture.recent_24h ?? 0 },
+                  ]}
+                />
+              )}
+              {overview.stats.workflow && (
+                <StatsCard
+                  title="Workflow 工作流"
+                  emoji="⚙"
+                  items={[
+                    { label: "Tasks", value: overview.stats.workflow.total_tasks ?? 0 },
+                    { label: "Active", value: overview.stats.workflow.active_tasks ?? 0 },
+                    { label: "Types", value: Object.keys(overview.stats.workflow.by_type ?? {}).length },
+                  ]}
+                />
+              )}
             </div>
           </>
         )}
