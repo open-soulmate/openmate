@@ -36,8 +36,13 @@ interface OverviewData {
   organs: {
     organs: OrganStatus;
     healthy_count: number;
+    error_count?: number;
     total_count: number;
     status: string;
+    latency?: {
+      avg_ms: number;
+      slowest: Array<{ organ: string; ms: number }>;
+    };
   };
   metrics: SystemMetrics | { error: string };
   knowledge: { total_entries: number };
@@ -386,6 +391,41 @@ export function SystemOverviewClient() {
                 </div>
               ))}
             </div>
+          </div>
+        )}
+
+        {/* Latency Report */}
+        {data?.organs?.latency && (
+          <div className="rounded-xl border border-border bg-card p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Clock size={16} className="text-amber-500" />
+              <h2 className="text-sm font-semibold">Organ Response Latency</h2>
+              <span className="ml-auto text-xs text-muted-foreground">
+                avg {data.organs.latency.avg_ms}ms
+              </span>
+            </div>
+            <div className="space-y-2">
+              {data.organs.latency.slowest.map((item) => {
+                const maxMs = data.organs.latency!.slowest[0]?.ms || 1;
+                const pct = (item.ms / maxMs) * 100;
+                return (
+                  <div key={item.organ} className="flex items-center gap-3">
+                    <span className="text-sm w-5 text-center">{ORGAN_EMOJI[item.organ] || "🔧"}</span>
+                    <span className="text-xs font-medium w-32 truncate capitalize">{item.organ}</span>
+                    <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                      <div
+                        className={cn("h-full rounded-full transition-all",
+                          item.ms > 300 ? "bg-red-500" : item.ms > 150 ? "bg-amber-500" : "bg-emerald-500"
+                        )}
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground w-16 text-right">{item.ms}ms</span>
+                  </div>
+                );
+              })}
+            </div>
+            <p className="mt-2 text-[10px] text-muted-foreground">Top 5 slowest organs</p>
           </div>
         )}
 
