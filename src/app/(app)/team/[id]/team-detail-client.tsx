@@ -26,9 +26,9 @@ function uid() {
 function formatTime(ts: number) {
   if (!ts) return '—';
   const diff = Date.now() - ts;
-  if (diff < 60_000) return '刚刚';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
+  if (diff < 60_000) return t('team.justNow2');
+  if (diff < 3_600_000) return t('team.minutesAgo2');
+  if (diff < 86_400_000) return t('team.hoursAgo2');
   return new Date(ts).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
 }
 
@@ -47,7 +47,7 @@ const STATUS_COLORS: Record<TaskStatus, string> = {
 };
 
 const STATUS_LABELS: Record<TaskStatus, string> = {
-  todo: '待办', in_progress: '进行中', done: '已完成',
+  todo: t('team.pending'), in_progress: t('team.inProgress1'), done: t('team.completedone'),
 };
 
 const PRIORITY_COLORS: Record<TaskPriority, string> = {
@@ -92,38 +92,38 @@ function AddTaskDialog({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title="创建任务" className="max-w-lg"
+    <Dialog open={open} onClose={onClose} title={t('team.createTask1')} className="max-w-lg"
       footer={<>
-        <button onClick={onClose} className="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent">取消</button>
+        <button onClick={onClose} className="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent">{t('team.cancel2')}</button>
         <button onClick={handleSubmit} disabled={!title.trim()}
-          className="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50">创建</button>
+          className="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{t('team.create1')}</button>
       </>
     }>
       <div className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">任务标题</label>
-          <input value={title} onChange={e => setTitle(e.target.value)} placeholder="任务描述..."
+          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('team.taskTitle')}</label>
+          <input value={title} onChange={e => setTitle(e.target.value)} placeholder={t('team.taskDescription')}
             className="w-full rounded-md border bg-muted/50 px-3 py-2 text-sm outline-none focus:border-primary" />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">详细描述</label>
-          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder="可选..."
+          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('team.description5')}</label>
+          <textarea value={description} onChange={e => setDescription(e.target.value)} rows={3} placeholder={t('team.t38829')}
             className="w-full rounded-md border bg-muted/50 px-3 py-2 text-sm outline-none focus:border-primary resize-none" />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">优先级</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('team.priority1')}</label>
             <select value={priority} onChange={e => setPriority(e.target.value as TaskPriority)}
               className="w-full rounded-md border bg-muted/50 px-3 py-2 text-sm outline-none">
-              <option value="low">低</option><option value="medium">中</option>
-              <option value="high">高</option><option value="urgent">紧急</option>
+              <option value="lowt('team.low6')<option value="medium">{t('team.medium5')}</option>
+              <option value="hight('team.high8')><option value="urgent">{t('team.t89921')}</option>
             </select>
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">指派给</label>
+            <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('team.t86423')}</label>
             <select value={assigneeId} onChange={e => setAssigneeId(e.target.value)}
               className="w-full rounded-md border bg-muted/50 px-3 py-2 text-sm outline-none">
-              <option value="">未指派</option>
+              <option value="">{t('team.not1')}</option>
               {members.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
             </select>
           </div>
@@ -166,17 +166,17 @@ function AddMemberDialog({
   }
 
   return (
-    <Dialog open={open} onClose={onClose} title="添加成员" className="max-w-md"
+    <Dialog open={open} onClose={onClose} title={t('team.addMember')} className="max-w-md"
       footer={<>
-        <button onClick={onClose} className="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent">取消</button>
+        <button onClick={onClose} className="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent">{t('team.cancel3')}</button>
         <button onClick={handleSubmit} disabled={!selected}
-          className="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50">添加</button>
+          className="rounded-md bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50">{t('team.t83689')}</button>
       </>
     }>
       <div>
-        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">选择 Agent</label>
+        <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('team.select1')}</label>
         {available.length === 0 ? (
-          <p className="text-sm text-muted-foreground py-4 text-center">所有 Agent 已在团队中</p>
+          <p className="text-sm text-muted-foreground py-4 text-center">{t('team.teamdonemedium')}</p>
         ) : (
           <div className="space-y-1 max-h-48 overflow-y-auto rounded-lg border p-2">
             {available.map(a => {
@@ -188,7 +188,7 @@ function AddMemberDialog({
                   )}>
                   <Icon size={14} className={cn(AGENT_COLORS[a.type], 'shrink-0')} />
                   <span className="flex-1 truncate">{a.name}</span>
-                  {selected === a.id && <Badge variant="default">已选</Badge>}
+                  {selected === a.id && <Badge variant="default">{t('team.done1')}</Badge>}
                 </button>
               );
             })}
@@ -210,9 +210,9 @@ function TaskBoard({
   onDelete: (taskId: string) => void;
 }) {
   const columns: { status: TaskStatus; label: string }[] = [
-    { status: 'todo', label: '待办' },
-    { status: 'in_progress', label: '进行中' },
-    { status: 'done', label: '已完成' },
+    { status: 'todo', label: t('team.pending1') },
+    { status: 'in_progress', label: t('team.inProgress2') },
+    { status: 'done', label: t('team.completedone1') },
   ];
 
   return (
@@ -249,7 +249,7 @@ function TaskBoard({
                       {columns.filter(c => c.status !== col.status).map(c => (
                         <button key={c.status} onClick={() => onMove(task.id, c.status)}
                           className="text-[9px] px-1.5 py-0.5 rounded bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                          title={`移至${c.label}`}>
+                          title={t('team.t10509')}>
                           {c.label}
                         </button>
                       ))}
@@ -258,7 +258,7 @@ function TaskBoard({
                 </div>
               ))}
               {colTasks.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-6">空</p>
+                <p className="text-xs text-muted-foreground text-center py-6">{t('team.empty2')}</p>
               )}
             </div>
           </div>
@@ -294,8 +294,8 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
     return (
       <div className="flex flex-col items-center justify-center h-full gap-4">
         <Users className="w-12 h-12 text-muted-foreground opacity-50" />
-        <p className="text-muted-foreground">团队未找到</p>
-        <Link href="/team" className="px-4 py-2 rounded-lg border text-sm hover:bg-muted">返回团队列表</Link>
+        <p className="text-muted-foreground">{t('team.teamnot')}</p>
+        <Link href="/team" className="px-4 py-2 rounded-lg border text-sm hover:bg-muted">{t('team.backlistteam')}</Link>
       </div>
     );
   }
@@ -310,8 +310,8 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
   function handleAddTask(task: TeamTask) {
     addTeamTask(t.id, task);
     addTeamActivity(t.id, {
-      id: uid(), type: 'task_created', actorId: 'user', actorName: '用户',
-      description: `创建了任务「${task.title}」`, taskId: task.id, timestamp: Date.now(),
+      id: uid(), type: 'task_created', actorId: 'user', actorName: t('team.user'),
+      description: t('team.createtask'), taskId: task.id, timestamp: Date.now(),
     });
   }
 
@@ -320,8 +320,8 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
     const task = t.tasks.find(t => t.id === taskId);
     if (task && status === 'done') {
       addTeamActivity(t.id, {
-        id: uid(), type: 'task_completed', actorId: task.assigneeId || '', actorName: task.assigneeName || '系统',
-        description: `完成了任务「${task.title}」`, taskId, timestamp: Date.now(),
+        id: uid(), type: 'task_completed', actorId: task.assigneeId || '', actorName: task.assigneeName || t('team.t88396'),
+        description: t('team.completetask'), taskId, timestamp: Date.now(),
       });
     }
   }
@@ -330,7 +330,7 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
     addTeamMember(t.id, member);
     addTeamActivity(t.id, {
       id: uid(), type: 'member_joined', actorId: member.agentId, actorName: member.name,
-      description: `${member.name} 加入了团队`, timestamp: Date.now(),
+      description: t('team.team1'), timestamp: Date.now(),
     });
   }
 
@@ -339,15 +339,15 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
     removeTeamMember(t.id, deleteMemberTarget.id);
     addTeamActivity(t.id, {
       id: uid(), type: 'member_left', actorId: deleteMemberTarget.agentId, actorName: deleteMemberTarget.name,
-      description: `${deleteMemberTarget.name} 离开了团队`, timestamp: Date.now(),
+      description: t('team.team2'), timestamp: Date.now(),
     });
     setDeleteMemberTarget(null);
   }
 
   const tabs = [
-    { key: 'tasks' as const, label: '任务看板', icon: CheckSquare, count: t.tasks.length },
-    { key: 'members' as const, label: '团队成员', icon: Users, count: t.members.length },
-    { key: 'activity' as const, label: '动态', icon: Activity, count: t.activities.length },
+    { key: 'tasks' as const, label: t('team.task2'), icon: CheckSquare, count: t.tasks.length },
+    { key: 'members' as const, label: t('team.teammember'), icon: Users, count: t.members.length },
+    { key: 'activity' as const, label: t('team.t11714'), icon: Activity, count: t.activities.length },
   ];
 
   return (
@@ -372,18 +372,18 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
           <div className="flex items-center gap-2 text-sm">
             <Users size={14} className="text-muted-foreground" />
             <span className="font-medium">{t.members.length}</span>
-            <span className="text-xs text-muted-foreground">成员</span>
+            <span className="text-xs text-muted-foreground">{t('team.member')}</span>
             <span className="text-xs text-emerald-400">{onlineCount}在线</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <CheckSquare size={14} className="text-muted-foreground" />
             <span className="font-medium">{pendingTasks}</span>
-            <span className="text-xs text-muted-foreground">待办</span>
+            <span className="text-xs text-muted-foreground">{t('team.pending2')}</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <Circle size={14} className="text-green-500 fill-green-500" />
             <span className="font-medium">{doneTasks}</span>
-            <span className="text-xs text-muted-foreground">已完成</span>
+            <span className="text-xs text-muted-foreground">{t('team.completedone2')}</span>
           </div>
           {leader && (
             <div className="flex items-center gap-2 text-sm">
@@ -420,10 +420,10 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
         {activeTab === 'tasks' && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-medium">任务看板</h2>
+              <h2 className="text-sm font-medium">{t('team.task3')}</h2>
               <button onClick={() => setShowAddTask(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs hover:bg-primary/90">
-                <Plus size={14} /> 创建任务
+                <Plus size={14} /> {t('team.createTask2')}
               </button>
             </div>
             <TaskBoard
@@ -439,10 +439,10 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
         {activeTab === 'members' && (
           <div>
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-sm font-medium">团队成员</h2>
+              <h2 className="text-sm font-medium">{t('team.teammember1')}</h2>
               <button onClick={() => setShowAddMember(true)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-primary text-primary-foreground text-xs hover:bg-primary/90">
-                <UserPlus size={14} /> 添加成员
+                <UserPlus size={14} /> {t('team.addMember1')}
               </button>
             </div>
             <div className="space-y-2">
@@ -467,7 +467,7 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
                           member.status === 'busy' ? 'bg-amber-500/10 text-amber-500' :
                           'bg-muted text-muted-foreground'
                         )}>
-                          {member.status === 'online' ? '在线' : member.status === 'busy' ? '忙碌' : '离线'}
+                          {member.status === 'online' ? '在线' : member.status === 'busy' ? '忙碌' : t('team.offline1')}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
@@ -479,7 +479,7 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
                     {member.role !== 'leader' && (
                       <button onClick={() => setDeleteMemberTarget(member)}
                         className="p-1.5 rounded-md opacity-0 group-hover:opacity-100 hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
-                        title="移除">
+                        title={t('team.removed')}>
                         <Trash2 size={14} />
                       </button>
                     )}
@@ -493,11 +493,11 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
         {/* Activity Tab */}
         {activeTab === 'activity' && (
           <div>
-            <h2 className="text-sm font-medium mb-4">团队动态</h2>
+            <h2 className="text-sm font-medium mb-4">{t('team.team3')}</h2>
             {t.activities.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                <p className="text-sm">暂无动态</p>
+                <p className="text-sm">{t('team.noData4')}</p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -527,16 +527,16 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
 
       {/* Delete Member Confirmation */}
       <Dialog open={!!deleteMemberTarget} onClose={() => setDeleteMemberTarget(null)}
-        title="移除成员" description={`确定要将「${deleteMemberTarget?.name}」移出团队吗？`}
+        title={t('team.memberremoved')} description={t('team.confirmteam')}
         footer={<>
           <button onClick={() => setDeleteMemberTarget(null)}
-            className="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent">取消</button>
+            className="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent">{t('team.cancel4')}</button>
           <button onClick={handleRemoveMember}
-            className="rounded-md bg-destructive px-3 py-1.5 text-xs text-destructive-foreground hover:bg-destructive/90">移除</button>
+            className="rounded-md bg-destructive px-3 py-1.5 text-xs text-destructive-foreground hover:bg-destructive/90">{t('team.removed1')}</button>
         </>
       }>
         <div className="rounded-lg border bg-muted/50 p-3">
-          <p className="text-sm text-muted-foreground">该成员将从团队中移除，但不会被删除。</p>
+          <p className="text-sm text-muted-foreground">{t('team.deleteteammember')}</p>
         </div>
       </Dialog>
     </div>

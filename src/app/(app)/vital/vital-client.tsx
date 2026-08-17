@@ -82,10 +82,10 @@ function formatBytes(bytes: number): string {
 
 function formatRelativeTime(ts: number): string {
   const diff = Date.now() - ts * 1000;
-  if (diff < 60_000) return "刚刚";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
-  return `${Math.floor(diff / 86_400_000)} 天前`;
+  if (diff < 60_000) return t('vital.justNow1');
+  if (diff < 3_600_000) return t('vital.minutesAgo1');
+  if (diff < 86_400_000) return t('vital.hoursAgo1');
+  return t('vital.daysAgo');
 }
 
 function GaugeBar({ value, max = 100, color = "emerald", label, detail }: {
@@ -224,10 +224,10 @@ export function VitalClient() {
   const criticalAlerts = alerts.filter(a => !a.resolved && a.severity === "critical").length;
 
   const tabs = [
-    { key: "metrics" as const, label: t("vital.tabMetrics") || "系统指标", icon: Activity },
-    { key: "health" as const, label: t("vital.tabHealth") || "组件健康", icon: Server, badge: downCount > 0 ? downCount : undefined },
-    { key: "history" as const, label: t("vital.tabHistory") || "历史趋势", icon: BarChart3 },
-    { key: "alerts" as const, label: t("vital.tabAlerts") || "告警记录", icon: AlertTriangle, badge: activeAlerts > 0 ? activeAlerts : undefined },
+    { key: "metrics" as const, label: t("vital.tabMetrics"), icon: Activity },
+    { key: "health" as const, label: t("vital.tabHealth"), icon: Server, badge: downCount > 0 ? downCount : undefined },
+    { key: "history" as const, label: t("vital.tabHistory"), icon: BarChart3 },
+    { key: "alerts" as const, label: t("vital.tabAlerts"), icon: AlertTriangle, badge: activeAlerts > 0 ? activeAlerts : undefined },
   ];
 
   return (
@@ -239,8 +239,8 @@ export function VitalClient() {
             <Activity size={18} className="text-emerald-500" />
           </div>
           <div>
-            <h1 className="text-base font-semibold">{t("vital.title") || "生命体征 · 系统监控"}</h1>
-            <p className="text-xs text-muted-foreground">{t("vital.subtitle") || "实时监控系统健康、性能指标与告警"}</p>
+            <h1 className="text-base font-semibold">{t("vital.title")}</h1>
+            <p className="text-xs text-muted-foreground">{t("vital.subtitle")}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -259,7 +259,7 @@ export function VitalClient() {
             ) : (
               <RefreshCw size={12} />
             )}
-            {t("common.refresh") || "刷新"}
+            {t("common.refresh")}
           </button>
         </div>
       </div>
@@ -276,21 +276,21 @@ export function VitalClient() {
             />
             <MetricCard
               icon={MemoryStick}
-              label="内存"
+              label={t('vital.memory1')}
               value={`${(metrics.memory_percent || 0).toFixed(1)}%`}
               detail={`${((metrics.memory_used_mb || 0) / 1024).toFixed(1)} / ${((metrics.memory_total_mb || 0) / 1024).toFixed(1)} GB`}
               status={(metrics.memory_percent || 0) > 90 ? "critical" : (metrics.memory_percent || 0) > 70 ? "warning" : "ok"}
             />
             <MetricCard
               icon={HardDrive}
-              label="磁盘"
+              label={t('vital.disk2')}
               value={`${(metrics.disk_percent || 0).toFixed(1)}%`}
               detail={`${(metrics.disk_used_gb || 0).toFixed(0)} / ${(metrics.disk_total_gb || 0).toFixed(0)} GB`}
               status={(metrics.disk_percent || 0) > 95 ? "critical" : (metrics.disk_percent || 0) > 85 ? "warning" : "ok"}
             />
             <MetricCard
               icon={Network}
-              label="网络"
+              label={t('vital.network1')}
               value={`${formatBytes(metrics.net_sent_bytes || 0)} ↑`}
               detail={`${formatBytes(metrics.net_recv_bytes || 0)} ↓`}
               status="ok"
@@ -332,7 +332,7 @@ export function VitalClient() {
         {healthError && activeTab === "health" && (
           <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500 flex items-center gap-2">
             <XCircle size={16} />
-            {t("vital.fetchError") || "获取健康数据失败"}: {healthError}
+            {t("vital.fetchError")}: {healthError}
           </div>
         )}
 
@@ -340,39 +340,39 @@ export function VitalClient() {
         {activeTab === "metrics" && metrics && (
           <div className="space-y-6">
             {/* Resource Gauges */}
-            <Section title="资源使用" icon={Server}>
+            <Section title={t('vital.t35314')} icon={Server}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                  <GaugeBar value={metrics.cpu_percent || 0} label="CPU 使用率" color="blue" />
-                  <GaugeBar value={metrics.memory_percent || 0} label="内存使用率" color="purple" detail={`${((metrics.memory_used_mb || 0) / 1024).toFixed(1)} / ${((metrics.memory_total_mb || 0) / 1024).toFixed(1)} GB`} />
-                  <GaugeBar value={metrics.disk_percent || 0} label="磁盘使用率" color="amber" detail={`${(metrics.disk_used_gb || 0).toFixed(0)} / ${(metrics.disk_total_gb || 0).toFixed(0)} GB`} />
+                  <GaugeBar value={metrics.cpu_percent || 0} label={t('vital.usageRate1')} color="blue" />
+                  <GaugeBar value={metrics.memory_percent || 0} label={t('vital.usageRatememory')} color="purple" detail={`${((metrics.memory_used_mb || 0) / 1024).toFixed(1)} / ${((metrics.memory_total_mb || 0) / 1024).toFixed(1)} GB`} />
+                  <GaugeBar value={metrics.disk_percent || 0} label={t('vital.usageRatedisk')} color="amber" detail={`${(metrics.disk_used_gb || 0).toFixed(0)} / ${(metrics.disk_total_gb || 0).toFixed(0)} GB`} />
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <MiniStat label="请求 QPS" value={(metrics.request_qps || 0).toFixed(1)} icon={Zap} />
-                    <MiniStat label="P99 延迟" value={`${(metrics.latency_p99_ms || 0).toFixed(0)}ms`} icon={Clock} />
-                    <MiniStat label="总请求数" value={String(metrics.requests_total || 0)} icon={TrendingUp} />
-                    <MiniStat label="错误率" value={`${((metrics.error_rate || 0) * 100).toFixed(2)}%`} icon={AlertCircle} danger={(metrics.error_rate || 0) > 0.01} />
+                    <MiniStat label={t('vital.t29208')} value={(metrics.request_qps || 0).toFixed(1)} icon={Zap} />
+                    <MiniStat label={t('vital.latency1')} value={`${(metrics.latency_p99_ms || 0).toFixed(0)}ms`} icon={Clock} />
+                    <MiniStat label={t('vital.t33103')} value={String(metrics.requests_total || 0)} icon={TrendingUp} />
+                    <MiniStat label={t('vital.error1')} value={`${((metrics.error_rate || 0) * 100).toFixed(2)}%`} icon={AlertCircle} danger={(metrics.error_rate || 0) > 0.01} />
                   </div>
                 </div>
               </div>
             </Section>
 
             {/* Business Metrics */}
-            <Section title="业务指标" icon={Database}>
+            <Section title={t('vital.t18023')} icon={Database}>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard label="知识条目" value={String(metrics.knowledge_entries || 0)} icon={Database} color="blue" />
-                <StatCard label="在线 Agent" value={String(metrics.agents_online || 0)} icon={Server} color="emerald" />
-                <StatCard label="搜索次数" value={String(metrics.search_count || 0)} icon={Activity} color="purple" />
-                <StatCard label="错误总数" value={String(metrics.errors_total || 0)} icon={AlertCircle} color={Number(metrics.errors_total) > 0 ? "red" : "emerald"} />
+                <StatCard label={t('vital.entries3')} value={String(metrics.knowledge_entries || 0)} icon={Database} color="blue" />
+                <StatCard label={t('vital.online1')} value={String(metrics.agents_online || 0)} icon={Server} color="emerald" />
+                <StatCard label={t('vital.searchtimes')} value={String(metrics.search_count || 0)} icon={Activity} color="purple" />
+                <StatCard label={t('vital.errortotal')} value={String(metrics.errors_total || 0)} icon={AlertCircle} color={Number(metrics.errors_total) > 0 ? "red" : "emerald"} />
               </div>
             </Section>
 
             {/* Network */}
-            <Section title="网络流量" icon={Network}>
+            <Section title={t('vital.network2')} icon={Network}>
               <div className="grid grid-cols-2 gap-3">
-                <StatCard label="上行流量" value={formatBytes(metrics.net_sent_bytes || 0)} icon={TrendingUp} color="blue" />
-                <StatCard label="下行流量" value={formatBytes(metrics.net_recv_bytes || 0)} icon={TrendingDown} color="emerald" />
+                <StatCard label={t('vital.t37159')} value={formatBytes(metrics.net_sent_bytes || 0)} icon={TrendingUp} color="blue" />
+                <StatCard label={t('vital.t37324')} value={formatBytes(metrics.net_recv_bytes || 0)} icon={TrendingDown} color="emerald" />
               </div>
             </Section>
           </div>
@@ -384,25 +384,25 @@ export function VitalClient() {
             {/* Summary */}
             <div className="grid grid-cols-4 gap-3">
               <OverviewCard
-                label={t("vital.overallStatus") || "整体状态"}
+                label={t("vital.overallStatus")}
                 value={health.status.toUpperCase()}
                 icon={health.status === "ok" ? CheckCircle2 : XCircle}
                 valueClass={health.status === "ok" ? "text-emerald-500" : "text-red-500"}
               />
               <OverviewCard
-                label={t("vital.healthyNodes") || "健康节点"}
+                label={t("vital.healthyNodes")}
                 value={`${upCount}/${totalCount}`}
                 icon={Wifi}
                 valueClass="text-emerald-500"
               />
               <OverviewCard
-                label={t("vital.errorNodes") || "异常节点"}
+                label={t("vital.errorNodes")}
                 value={String(downCount)}
                 icon={XCircle}
                 valueClass={downCount > 0 ? "text-red-500" : "text-emerald-500"}
               />
               <OverviewCard
-                label={t("vital.avgLatency") || "平均延迟"}
+                label={t("vital.avgLatency")}
                 value={`${avgLatency}ms`}
                 icon={Clock}
                 valueClass="text-muted-foreground"
@@ -412,7 +412,7 @@ export function VitalClient() {
             {/* Component list */}
             <div className="space-y-2">
               <h2 className="text-sm font-medium text-muted-foreground mb-3">
-                {t("vital.components") || "组件状态"} ({totalCount})
+                {t("vital.components")} ({totalCount})
               </h2>
               {health.components.map((comp) => {
                 const cfg = STATUS_CONFIG[comp.status] || STATUS_CONFIG.down;
@@ -455,7 +455,7 @@ export function VitalClient() {
           <div className="space-y-6">
             {/* Time range selector */}
             <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">时间范围:</span>
+              <span className="text-sm text-muted-foreground">{t('vital.time2')}</span>
               {[10, 30, 60, 120].map(m => (
                 <button
                   key={m}
@@ -467,7 +467,7 @@ export function VitalClient() {
                       : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
                   )}
                 >
-                  {m < 60 ? `${m}分钟` : `${m / 60}小时`}
+                  {m < 60 ? t('vital.t47492') : t('vital.t01106')}
                 </button>
               ))}
               <button
@@ -483,8 +483,8 @@ export function VitalClient() {
             {history.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <BarChart3 size={32} className="mb-3 opacity-50" />
-                <p className="text-sm">暂无历史数据</p>
-                <p className="text-xs mt-1">系统每10秒采集一次指标，等待数据积累中...</p>
+                <p className="text-sm">{t('vital.noDatadatahistory')}</p>
+                <p className="text-xs mt-1">{t('vital.datapendingmedium')}</p>
               </div>
             ) : (
               <>
@@ -498,7 +498,7 @@ export function VitalClient() {
                     data={history}
                     series={[
                       { key: "cpu", label: "CPU %", color: "#3b82f6", max: 100 },
-                      { key: "mem", label: "内存 %", color: "#a855f7", max: 100 },
+                      { key: "mem", label: t('vital.memory2'), color: "#a855f7", max: 100 },
                     ]}
                     height={160}
                   />
@@ -513,7 +513,7 @@ export function VitalClient() {
                   <MiniChart
                     data={history}
                     series={[
-                      { key: "disk", label: "磁盘 %", color: "#f59e0b", max: 100 },
+                      { key: "disk", label: t('vital.disk3'), color: "#f59e0b", max: 100 },
                     ]}
                     height={120}
                   />
@@ -538,25 +538,25 @@ export function VitalClient() {
                 {/* Summary Stats */}
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                   <StatCard
-                    label="CPU 峰值"
+                    label={t('vital.t07938')}
                     value={`${Math.max(...history.map(h => h.cpu)).toFixed(1)}%`}
                     icon={Cpu}
                     color="blue"
                   />
                   <StatCard
-                    label="内存峰值"
+                    label={t('vital.memory3')}
                     value={`${Math.max(...history.map(h => h.mem)).toFixed(1)}%`}
                     icon={MemoryStick}
                     color="purple"
                   />
                   <StatCard
-                    label="QPS 峰值"
+                    label={t('vital.t96343')}
                     value={Math.max(...history.map(h => h.qps)).toFixed(2)}
                     icon={Zap}
                     color="emerald"
                   />
                   <StatCard
-                    label="数据点"
+                    label={t('vital.data')}
                     value={String(history.length)}
                     icon={BarChart3}
                     color="amber"
@@ -573,8 +573,8 @@ export function VitalClient() {
             {alerts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <Shield size={32} className="mb-3 opacity-50" />
-                <p className="text-sm">暂无告警记录</p>
-                <p className="text-xs mt-1">系统运行正常，所有指标在阈值范围内</p>
+                <p className="text-sm">{t('vital.noData')}</p>
+                <p className="text-xs mt-1">{t('vital.run1')}</p>
               </div>
             ) : (
               <>
@@ -651,7 +651,7 @@ export function VitalClient() {
         {!health && !metrics && !healthError && (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 size={28} className="animate-spin text-primary mb-3" />
-            <p className="text-sm text-muted-foreground">{t("vital.checking") || "正在检查系统状态..."}</p>
+            <p className="text-sm text-muted-foreground">{t("vital.checking")}</p>
           </div>
         )}
 
@@ -659,9 +659,9 @@ export function VitalClient() {
         {lastFetch && (
           <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-4 mt-6 border-t border-border">
             <span>
-              {t("vital.lastUpdated") || "最后更新"}: {lastFetch.toLocaleString("zh-CN")}
+              {t("vital.lastUpdated")}: {lastFetch.toLocaleString("zh-CN")}
             </span>
-            <span>{t("vital.autoRefresh") || "每 30 秒自动刷新"}</span>
+            <span>{t("vital.autoRefresh")}</span>
           </div>
         )}
       </div>

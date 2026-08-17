@@ -177,7 +177,7 @@ export function DailyDigestClient() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">Daily Digest</h1>
-            <p className="text-sm text-muted-foreground">跨器官数据聚合 · 系统健康趋势 · 每日洞察</p>
+            <p className="text-sm text-muted-foreground">{t("plugins.456891")}<p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -187,7 +187,7 @@ export function DailyDigestClient() {
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-sm font-medium hover:from-violet-500 hover:to-fuchsia-500 transition-all disabled:opacity-50"
           >
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-            {generating ? '生成中...' : '生成今日摘要'}
+            {generating ? t("plugins.4d020b") : t("plugins.ae23a9")}
           </button>
         </div>
       </div>
@@ -195,9 +195,9 @@ export function DailyDigestClient() {
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-muted/30 rounded-lg w-fit">
         {[
-          { key: 'today', label: '今日摘要', icon: Newspaper },
-          { key: 'history', label: '历史记录', icon: Calendar },
-          { key: 'trends', label: '趋势分析', icon: TrendingUp },
+          { key: 'today', label: t("plugins.ae1d6e"), icon: Newspaper },
+          { key: 'history', label: t("plugins.ba9dc6"), icon: Calendar },
+          { key: 'trends', label: t("plugins.516476"), icon: TrendingUp },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -240,35 +240,35 @@ export function DailyDigestClient() {
             <div className="p-6 rounded-2xl border border-border bg-card">
               <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-2">
                 <Activity className="w-3.5 h-3.5" />
-                活跃器官
-              </div>
+                {t("plugins.bba62a")}
+              <div>
               <div className="text-3xl font-bold text-foreground">
                 <span className="text-emerald-400">{healthyOrgans}</span>
                 <span className="text-muted-foreground text-lg">/{Object.keys(digest.organ_summary).length}</span>
               </div>
-              <div className="text-xs text-muted-foreground mt-1">在线运行</div>
+              <div className="text-xs text-muted-foreground mt-1">{t("plugins.60d380")}<div>
             </div>
 
             {/* Events */}
             <div className="p-6 rounded-2xl border border-border bg-card">
               <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-2">
                 <Flame className="w-3.5 h-3.5" />
-                24h 事件
-              </div>
+                {t("plugins.d89a6c")}
+              <div>
               <div className="text-3xl font-bold text-foreground">{digest.total_events}</div>
-              <div className="text-xs text-muted-foreground mt-1">跨器官事件</div>
+              <div className="text-xs text-muted-foreground mt-1">{t("plugins.179f83")}<div>
             </div>
 
             {/* Avg Response */}
             <div className="p-6 rounded-2xl border border-border bg-card">
               <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-2">
                 <Clock className="w-3.5 h-3.5" />
-                平均响应
-              </div>
+                {t("plugins.f05868")}
+              <div>
               <div className={cn('text-3xl font-bold', avgResponse > 300 ? 'text-amber-400' : 'text-emerald-400')}>
                 {avgResponse.toFixed(0)}<span className="text-lg text-muted-foreground">ms</span>
               </div>
-              <div className="text-xs text-muted-foreground mt-1">跨器官平均</div>
+              <div className="text-xs text-muted-foreground mt-1">{t("plugins.27b453")}<div>
             </div>
           </div>
 
@@ -278,8 +278,8 @@ export function DailyDigestClient() {
               <div className="p-5 rounded-2xl border border-emerald-500/20 bg-emerald-500/5">
                 <div className="flex items-center gap-2 text-sm font-semibold text-emerald-400 mb-3">
                   <Star className="w-4 h-4" />
-                  亮点
-                </div>
+                  {t("plugins.f51cd8")}
+                <div>
                 <div className="space-y-2">
                   {digest.highlights.map((h, i) => (
                     <div key={i} className="text-sm text-foreground/80">{h}</div>
@@ -291,8 +291,8 @@ export function DailyDigestClient() {
               <div className="p-5 rounded-2xl border border-amber-500/20 bg-amber-500/5">
                 <div className="flex items-center gap-2 text-sm font-semibold text-amber-400 mb-3">
                   <AlertTriangle className="w-4 h-4" />
-                  告警
-                </div>
+                  {t("plugins.aa0eab")}
+                <div>
                 <div className="space-y-2">
                   {digest.warnings.map((w, i) => (
                     <div key={i} className="text-sm text-foreground/80">{w}</div>
@@ -302,14 +302,14 @@ export function DailyDigestClient() {
             )}
             {digest.highlights.length === 0 && digest.warnings.length === 0 && (
               <div className="col-span-2 p-8 rounded-2xl border border-border bg-card text-center text-muted-foreground">
-                暂无亮点或告警 — 生成今日摘要以查看分析结果
-              </div>
+                {t("plugins.53e6d6")}
+              <div>
             )}
           </div>
 
           {/* Organ Grid */}
           <div>
-            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">器官状态</h3>
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("plugins.173c52")}<h3>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 lg:grid-cols-6 gap-2">
               {Object.entries(digest.organ_summary).sort(([, a], [, b]) => (b.response_time_ms || 0) - (a.response_time_ms || 0)).map(([name, info]) => (
                 <div
@@ -333,11 +333,11 @@ export function DailyDigestClient() {
           {/* Timeline Breakdown */}
           {digest.timeline_summary.by_organ && Object.keys(digest.timeline_summary.by_organ).length > 0 && (
             <div>
-              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">活动分布</h3>
+              <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider mb-3">{t("plugins.a17b67")}<h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 {/* By Organ */}
                 <div className="p-5 rounded-2xl border border-border bg-card">
-                  <div className="text-xs text-muted-foreground mb-3">按器官</div>
+                  <div className="text-xs text-muted-foreground mb-3">{t("plugins.c8a0a4")}<div>
                   <div className="space-y-2">
                     {Object.entries(digest.timeline_summary.by_organ)
                       .sort(([, a], [, b]) => b - a)
@@ -362,7 +362,7 @@ export function DailyDigestClient() {
 
                 {/* By Type */}
                 <div className="p-5 rounded-2xl border border-border bg-card">
-                  <div className="text-xs text-muted-foreground mb-3">按类型</div>
+                  <div className="text-xs text-muted-foreground mb-3">{t("plugins.dce41e")}<div>
                   <div className="space-y-2">
                     {Object.entries(digest.timeline_summary.by_type)
                       .sort(([, a], [, b]) => b - a)
@@ -392,19 +392,19 @@ export function DailyDigestClient() {
           {digest.metrics_summary && (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="p-4 rounded-xl border border-border bg-card">
-                <div className="text-xs text-muted-foreground mb-1">📚 知识条目</div>
+                <div className="text-xs text-muted-foreground mb-1">{t("plugins.f062a1")}<div>
                 <div className="text-xl font-bold">{digest.metrics_summary.knowledge_entries || 0}</div>
               </div>
               <div className="p-4 rounded-xl border border-border bg-card">
-                <div className="text-xs text-muted-foreground mb-1">📊 轨迹会话</div>
+                <div className="text-xs text-muted-foreground mb-1">{t("plugins.45172b")}<div>
                 <div className="text-xl font-bold">{digest.metrics_summary.trajectory_sessions || 0}</div>
               </div>
               <div className="p-4 rounded-xl border border-border bg-card">
-                <div className="text-xs text-muted-foreground mb-1">📝 轨迹事件</div>
+                <div className="text-xs text-muted-foreground mb-1">{t("plugins.edf1ef")}<div>
                 <div className="text-xl font-bold">{digest.metrics_summary.trajectory_events || 0}</div>
               </div>
               <div className="p-4 rounded-xl border border-border bg-card">
-                <div className="text-xs text-muted-foreground mb-1">🔤 Token用量</div>
+                <div className="text-xs text-muted-foreground mb-1">{t("plugins.17abc5")}<div>
                 <div className="text-xl font-bold">{(digest.metrics_summary.trajectory_tokens || 0).toLocaleString()}</div>
               </div>
             </div>
@@ -412,9 +412,9 @@ export function DailyDigestClient() {
 
           {/* Generated timestamp */}
           <div className="text-xs text-muted-foreground text-center">
-            生成于 {new Date(digest.generated_at * 1000).toLocaleString('zh-CN')}
+            {t("plugins.589a83") + " " + new Date(digest.generated_at * 1000).toLocaleString()}
             {selectedDate && selectedDate !== new Date().toISOString().slice(0, 10) && (
-              <span className="ml-2 text-violet-400">· 查看历史: {selectedDate}</span>
+              <span className="ml-2 text-violet-400">{t("plugins.37f10e")} {selectedDate}</span>
             )}
           </div>
         </div>
@@ -426,8 +426,8 @@ export function DailyDigestClient() {
           {history.length === 0 ? (
             <div className="p-12 rounded-2xl border border-border bg-card text-center">
               <Calendar className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">暂无历史记录</p>
-              <p className="text-sm text-muted-foreground mt-1">点击「生成今日摘要」开始记录</p>
+              <p className="text-muted-foreground">{t("plugins.44de5c")}<p>
+              <p className="text-sm text-muted-foreground mt-1">{t("plugins.c50855")}<p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -453,10 +453,10 @@ export function DailyDigestClient() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span>{item.active_organs} 器官在线</span>
-                      <span>{item.total_events} 事件</span>
+                      <span>{item.active_organs} {t("plugins.faae67")}</span>
+                      <span>{item.total_events} {t("plugins.10b276")}</span>
                       {item.warnings.length > 0 && (
-                        <span className="text-amber-400">{item.warnings.length} 告警</span>
+                        <span className="text-amber-400">{item.warnings.length} {t("plugins.aa0eab")}</span>
                       )}
                     </div>
                     {item.highlights.length > 0 && (
@@ -476,10 +476,10 @@ export function DailyDigestClient() {
         <div className="space-y-6">
           <div className="flex gap-2">
             {[
-              { key: 'health_score', label: '健康分' },
-              { key: 'total_events', label: '事件数' },
-              { key: 'active_organs', label: '活跃器官' },
-              { key: 'avg_response_ms', label: '响应时间' },
+              { key: 'health_score', label: t("plugins.1661a7") },
+              { key: 'total_events', label: t("plugins.4dd50b") },
+              { key: 'active_organs', label: t("plugins.bba62a") },
+              { key: 'avg_response_ms', label: t("plugins.207c26") },
             ].map(({ key, label }) => (
               <button
                 key={key}
@@ -494,14 +494,14 @@ export function DailyDigestClient() {
           {trends.length === 0 ? (
             <div className="p-12 rounded-2xl border border-border bg-card text-center">
               <BarChart3 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">暂无趋势数据</p>
-              <p className="text-sm text-muted-foreground mt-1">生成多个日期的摘要后可查看趋势</p>
+              <p className="text-muted-foreground">{t("plugins.3502b0")}<p>
+              <p className="text-sm text-muted-foreground mt-1">{t("plugins.54058a")}<p>
             </div>
           ) : (
             <div className="p-6 rounded-2xl border border-border bg-card">
               <div className="flex items-center gap-3 mb-4">
-                <h3 className="text-sm font-semibold">趋势图</h3>
-                <span className="text-xs text-muted-foreground">{trends.length} 个数据点</span>
+                <h3 className="text-sm font-semibold">{t("plugins.1a57bc")}<h3>
+                <span className="text-xs text-muted-foreground">{trends.length} {t("plugins.3f14be")}</span>
               </div>
               {/* Simple bar chart */}
               <div className="flex items-end gap-1 h-40">

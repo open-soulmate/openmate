@@ -134,7 +134,7 @@ export function GlandClient() {
   }
 
   const handleDeleteProvider = async (name: string) => {
-    if (!confirm(`确认删除 Provider "${name}"？`)) return
+    if (!confirm(t("gland.adc20f")) return
     await fetch(`${apiBase}/api/gland/providers/${name}`, { method: "DELETE" })
     refresh()
   }
@@ -172,10 +172,10 @@ export function GlandClient() {
   }
 
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Zap }> = [
-    { key: "overview", label: t("gland.tabs.overview") || "概览", icon: Activity },
+    { key: "overview", label: t("gland.tabs.overview"), icon: Activity },
     { key: "providers", label: "Providers", icon: Server },
     { key: "keys", label: "API Keys", icon: Key },
-    { key: "usage", label: t("gland.tabs.usage") || "用量统计", icon: BarChart3 },
+    { key: "usage", label: t("gland.tabs.usage"), icon: BarChart3 },
   ]
 
   return (
@@ -187,8 +187,8 @@ export function GlandClient() {
             <Zap className="w-5 h-5 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">Gland — {t("gland.subtitle") || "模型网关"}</h1>
-            <p className="text-sm text-muted-foreground">{t("gland.description") || "多LLM统一调度、密钥管理、Token计量"}</p>
+            <h1 className="text-lg font-semibold text-foreground">Gland — {t("gland.subtitle")}</h1>
+            <p className="text-sm text-muted-foreground">{t("gland.description")}</p>
           </div>
         </div>
 
@@ -225,9 +225,9 @@ export function GlandClient() {
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: "Providers", value: health?.providers.total ?? 0, icon: Server, color: "text-blue-400", bg: "from-blue-500/20 to-blue-600/10" },
-                { label: t("gland.enabled") || "已启用", value: health?.providers.enabled ?? 0, icon: CheckCircle, color: "text-green-400", bg: "from-green-500/20 to-green-600/10" },
+                { label: t("gland.enabled"), value: health?.providers.enabled ?? 0, icon: CheckCircle, color: "text-green-400", bg: "from-green-500/20 to-green-600/10" },
                 { label: "API Keys", value: health?.keys.total ?? 0, icon: Key, color: "text-purple-400", bg: "from-purple-500/20 to-purple-600/10" },
-                { label: t("gland.totalCalls") || "总调用", value: health?.token_meter.call_count ?? 0, icon: Activity, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
+                { label: t("gland.totalCalls"), value: health?.token_meter.call_count ?? 0, icon: Activity, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
               ].map(s => (
                 <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-4", s.bg)}>
                   <div className="flex items-center justify-between mb-2">
@@ -241,7 +241,7 @@ export function GlandClient() {
 
             {/* Provider Health */}
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3">{t("gland.providerStatus") || "Provider 状态"}</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-3">{t("gland.providerStatus")}</h3>
               <div className="space-y-2">
                 {providers.map(p => (
                   <div key={p.name} className="flex items-center gap-3 p-3 rounded-lg border border-border bg-card">
@@ -261,7 +261,7 @@ export function GlandClient() {
                       onClick={() => handleTest(p.name)}
                       disabled={testing === p.name}
                       className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
-                      title="测试连接"
+                      title={t("gland.69e747")}
                     >
                       {testing === p.name ? <Loader2 className="w-4 h-4 animate-spin" /> : <TestTube2 className="w-4 h-4" />}
                     </button>
@@ -287,10 +287,10 @@ export function GlandClient() {
             <div className="p-4 rounded-xl border border-border bg-card">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-amber-400" /> {t("gland.tokenBudget") || "Token 预算"}
+                  <DollarSign className="w-4 h-4 text-amber-400" /> {t("gland.tokenBudget")}
                 </h3>
                 <span className="text-xs text-muted-foreground">
-                  {health?.token_meter.budget_limit ? `限制: ${formatNumber(health.token_meter.budget_limit)} tokens` : "无限制"}
+                  {health?.token_meter.budget_limit ? t("gland.4ac074") : t("gland.bc4364")}
                 </span>
               </div>
               <div className="flex gap-2">
@@ -298,12 +298,12 @@ export function GlandClient() {
                   type="number"
                   value={budgetInput}
                   onChange={e => setBudgetInput(e.target.value)}
-                  placeholder="设置预算上限 (0=无限制)"
+                  placeholder={t("gland.80aac3")}
                   className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
                 />
                 <button onClick={handleSetBudget} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90">
-                  设置
-                </button>
+                  {t("gland.e366cc")}
+                <button>
               </div>
             </div>
           </div>
@@ -313,12 +313,12 @@ export function GlandClient() {
         {activeTab === "providers" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">{t("gland.providerManagement") || "Provider 管理"}</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("gland.providerManagement")}</h3>
               <button
                 onClick={() => setShowAddProvider(!showAddProvider)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90"
               >
-                <Plus className="w-3.5 h-3.5" /> {t("gland.addProvider") || "添加 Provider"}
+                <Plus className="w-3.5 h-3.5" /> {t("gland.addProvider")}
               </button>
             </div>
 
@@ -327,7 +327,7 @@ export function GlandClient() {
               <div className="p-4 rounded-xl border border-border bg-card space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">名称 *</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("gland.456f3a")}<label>
                     <input value={newProvider.name} onChange={e => setNewProvider({ ...newProvider, name: e.target.value })}
                       placeholder="openai" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
@@ -337,12 +337,12 @@ export function GlandClient() {
                       placeholder="https://api.openai.com/v1" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Chat 模型</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("gland.e98480")}<label>
                     <input value={newProvider.chat_model} onChange={e => setNewProvider({ ...newProvider, chat_model: e.target.value })}
                       placeholder="gpt-4o" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">Embedding 模型</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("gland.092134")}<label>
                     <input value={newProvider.embed_model} onChange={e => setNewProvider({ ...newProvider, embed_model: e.target.value })}
                       placeholder="text-embedding-3-small" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
@@ -352,15 +352,15 @@ export function GlandClient() {
                       type="password" placeholder="sk-..." className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">优先级 (越小越优先)</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("gland.7c8d1f")}<label>
                     <input value={newProvider.priority} onChange={e => setNewProvider({ ...newProvider, priority: parseInt(e.target.value) || 0 })}
                       type="number" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => setShowAddProvider(false)} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">取消</button>
+                  <button onClick={() => {t("gland.8eaa6c")}<button>
                   <button onClick={handleAddProvider} disabled={!newProvider.name || !newProvider.base_url}
-                    className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40">添加</button>
+                    className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40">{t("gland.b58c75")}<button>
                 </div>
               </div>
             )}
@@ -378,13 +378,13 @@ export function GlandClient() {
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground">优先级: {p.priority}</span>
+                      <span className="text-xs text-muted-foreground">{t("gland.2e637c")} {p.priority}</span>
                       <button onClick={() => handleTest(p.name)} disabled={testing === p.name}
-                        className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground" title="测试连接">
+                        className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground" title={t("gland.69e747")}>
                         {testing === p.name ? <Loader2 className="w-4 h-4 animate-spin" /> : <TestTube2 className="w-4 h-4" />}
                       </button>
                       <button onClick={() => handleDeleteProvider(p.name)}
-                        className="p-1.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-400" title="删除">
+                        className="p-1.5 rounded-md hover:bg-red-500/10 text-muted-foreground hover:text-red-400" title={t("gland.2f4aad")}>
                         <Trash2 className="w-4 h-4" />
                       </button>
                     </div>
@@ -399,7 +399,7 @@ export function GlandClient() {
                 </div>
               ))}
               {providers.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-sm">暂无 Provider</div>
+                <div className="text-center py-8 text-muted-foreground text-sm">{t("gland.275e3f")}<div>
               )}
             </div>
           </div>
@@ -409,13 +409,13 @@ export function GlandClient() {
         {activeTab === "keys" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">API Key 管理</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("gland.1319ac")}<h3>
               <button
                 onClick={() => setShowAddKey(!showAddKey)}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90"
               >
-                <Plus className="w-3.5 h-3.5" /> 添加 Key
-              </button>
+                <Plus className="w-3.5 h-3.5" /> {t("gland.1c996f")}
+              <button>
             </div>
 
             {/* Add Key Form */}
@@ -426,7 +426,7 @@ export function GlandClient() {
                     <label className="text-xs text-muted-foreground mb-1 block">Provider *</label>
                     <select value={newKey.provider} onChange={e => setNewKey({ ...newKey, provider: e.target.value })}
                       className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                      <option value="">选择 Provider</option>
+                      <option value="">{t("gland.64ff05")}<option>
                       {providers.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
                     </select>
                   </div>
@@ -437,9 +437,9 @@ export function GlandClient() {
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => setShowAddKey(false)} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">取消</button>
+                  <button onClick={() => {t("gland.2f64a1")}<button>
                   <button onClick={handleAddKey} disabled={!newKey.provider || !newKey.api_key}
-                    className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40">添加</button>
+                    className="px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40">{t("gland.b58c75")}<button>
                 </div>
               </div>
             )}
@@ -456,7 +456,7 @@ export function GlandClient() {
                   <span className="text-xs text-muted-foreground">{k.keys.length} key(s)</span>
                 </div>
               )) : (
-                <div className="text-center py-8 text-muted-foreground text-sm">暂无 API Key</div>
+                <div className="text-center py-8 text-muted-foreground text-sm">{t("gland.a4efe0")}<div>
               )}
             </div>
           </div>
@@ -467,7 +467,7 @@ export function GlandClient() {
           <div className="space-y-6">
             {/* Usage by Model */}
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3">按模型统计</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-3">{t("gland.49666b")}<h3>
               {health?.token_meter.by_model && Object.keys(health.token_meter.by_model).length > 0 ? (
                 <div className="space-y-2">
                   {Object.entries(health.token_meter.by_model)
@@ -489,14 +489,14 @@ export function GlandClient() {
                     })}
                 </div>
               ) : (
-                <div className="text-center py-6 text-muted-foreground text-sm">暂无使用记录</div>
+                <div className="text-center py-6 text-muted-foreground text-sm">{t("gland.97faae")}<div>
               )}
             </div>
 
             {/* Usage by Provider */}
             {health?.token_meter.by_provider && Object.keys(health.token_meter.by_provider).length > 0 && (
               <div>
-                <h3 className="text-sm font-semibold text-foreground mb-3">按 Provider 统计</h3>
+                <h3 className="text-sm font-semibold text-foreground mb-3">{t("gland.f929f1")}<h3>
                 <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
                   {Object.entries(health.token_meter.by_provider).map(([provider, tokens]) => (
                     <div key={provider} className="p-3 rounded-lg border border-border bg-card">
@@ -511,7 +511,7 @@ export function GlandClient() {
 
             {/* Recent Records */}
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3">最近调用</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-3">{t("gland.1a2119")}<h3>
               {recentRecords.length > 0 ? (
                 <div className="rounded-xl border border-border overflow-hidden">
                   <table className="w-full text-sm">
@@ -522,7 +522,7 @@ export function GlandClient() {
                         <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Prompt</th>
                         <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Completion</th>
                         <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">Total</th>
-                        <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">时间</th>
+                        <th className="text-right px-3 py-2 text-xs font-medium text-muted-foreground">{t("gland.19fcb9")}<th>
                       </tr>
                     </thead>
                     <tbody>
@@ -542,7 +542,7 @@ export function GlandClient() {
                   </table>
                 </div>
               ) : (
-                <div className="text-center py-6 text-muted-foreground text-sm">暂无调用记录</div>
+                <div className="text-center py-6 text-muted-foreground text-sm">{t("gland.6a9bbc")}<div>
               )}
             </div>
           </div>

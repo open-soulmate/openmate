@@ -153,9 +153,9 @@ export function HealerClient() {
   };
 
   const tabs = [
-    { id: "dashboard" as const, label: "诊断面板", icon: Stethoscope },
-    { id: "history" as const, label: "诊断历史", icon: History },
-    { id: "stats" as const, label: "统计分析", icon: Activity },
+    { id: "dashboard" as const, label: t("healer.c99828"), icon: Stethoscope },
+    { id: "history" as const, label: t("healer.e1d1f5"), icon: History },
+    { id: "stats" as const, label: t("healer.5c70d8"), icon: Activity },
   ];
 
   return (
@@ -163,25 +163,24 @@ export function HealerClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Stethoscope size={20} className="text-teal-500" />
-          <h1 className="text-lg font-semibold">{t("healer.title") || "自愈 · 器官诊断"}</h1>
+          <h1 className="text-lg font-semibold">{t("healer.title")}</h1>
           <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-500">
-            自动诊断与修复
-          </span>
+            {t("healer.d226ff")}
+          <span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={handleDiagnoseAll} disabled={loading}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted disabled:opacity-50">
-            {loading ? <Loader2 size={14} className="animate-spin" /> : <Stethoscope size={14} />}
-            诊断全部
-          </button>
+            {loading ? <Loader2 size={14} className="animate-spin" /> : <Stethoscope size={14} />{t("healer.f4f719")}
+          <button>
           <button onClick={handleHealAll} disabled={loading}
             className="flex items-center gap-1.5 rounded-lg border border-teal-500/30 px-3 py-1.5 text-sm text-teal-600 hover:bg-teal-500/10 disabled:opacity-50">
-            <Wrench size={14} /> 修复全部
-          </button>
+            <Wrench size={14} /> {t("healer.2abc9c")}
+          <button>
           <button onClick={handleFullCycle} disabled={loading}
             className="flex items-center gap-1.5 rounded-lg bg-teal-500 px-3 py-1.5 text-sm text-white hover:bg-teal-600 disabled:opacity-50">
-            <Zap size={14} /> 完整循环
-          </button>
+            <Zap size={14} /> {t("healer.1a3c97")}
+          <button>
           <button onClick={() => { fetchHealth(); }}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
             <RefreshCw size={14} />
@@ -194,19 +193,19 @@ export function HealerClient() {
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">监控器官</span>
+              <span className="text-xs text-muted-foreground">{t("healer.2409c0")}<span>
               <p className="text-2xl font-bold">{health.monitored_organs || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">总诊断次数</span>
+              <span className="text-xs text-muted-foreground">{t("healer.84d2f3")}<span>
               <p className="text-2xl font-bold">{health.stats?.total_diagnoses || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">修复成功率</span>
+              <span className="text-xs text-muted-foreground">{t("healer.c73f69")}<span>
               <p className="text-2xl font-bold text-teal-500">{health.stats?.success_rate || 0}%</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">近期健康率</span>
+              <span className="text-xs text-muted-foreground">{t("healer.bbc033")}<span>
               <p className={cn("text-2xl font-bold", (health.stats?.recent_healthy_rate || 100) >= 90 ? "text-emerald-500" : "text-amber-500")}>
                 {health.stats?.recent_healthy_rate || 100}%
               </p>
@@ -231,15 +230,15 @@ export function HealerClient() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Zap size={16} className="text-teal-500" />
-                <span className="font-medium text-sm">完整诊断循环完成</span>
+                <span className="font-medium text-sm">{t("healer.44b4c6")}<span>
               </div>
               <span className="text-xs text-muted-foreground">{cycleResult.elapsed_seconds}s</span>
             </div>
             <div className="mt-2 flex gap-4 text-sm">
-              <span>✅ 健康: {cycleResult.healthy}</span>
-              <span className="text-red-500">❌ 异常: {cycleResult.unhealthy}</span>
-              <span className="text-teal-500">💊 修复: {cycleResult.healed}</span>
-              {cycleResult.notified?.notified && <span>📨 已通知</span>}
+              <span>{t("healer.532d87")} {cycleResult.healthy}</span>
+              <span className="text-red-500">{t("healer.7e4027")} {cycleResult.unhealthy}</span>
+              <span className="text-teal-500">{t("healer.b4f795")} {cycleResult.healed}</span>
+              {cycleResult.notified?.notified && <span>{t("healer.fde97a")}<span>}
             </div>
           </div>
         )}
@@ -250,8 +249,8 @@ export function HealerClient() {
             {results.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Heart size={48} className="mb-3 opacity-30" />
-                <p className="text-sm">点击上方按钮开始诊断</p>
-                <p className="text-xs mt-1">将检查所有器官的健康状态并提供修复建议</p>
+                <p className="text-sm">{t("healer.d1a1af")}<p>
+                <p className="text-xs mt-1">{t("healer.0be541")}<p>
               </div>
             ) : results.map((r) => (
               <div key={r.organ} className={cn("rounded-xl border bg-card overflow-hidden",
@@ -281,9 +280,8 @@ export function HealerClient() {
                       <button onClick={(e) => { e.stopPropagation(); handleHealSingle(r.organ); }}
                         disabled={healingOrg === r.organ}
                         className="flex items-center gap-1 rounded-lg bg-teal-500 px-2.5 py-1 text-xs text-white hover:bg-teal-600 disabled:opacity-50">
-                        {healingOrg === r.organ ? <Loader2 size={12} className="animate-spin" /> : <Wrench size={12} />}
-                        修复
-                      </button>
+                        {healingOrg === r.organ ? <Loader2 size={12} className="animate-spin" /> : <Wrench size={12} />{t("healer.ac2cac")}
+                      <button>
                     )}
                   </div>
                 </div>
@@ -292,7 +290,7 @@ export function HealerClient() {
                   <div className="border-t border-border px-4 pb-4 pt-2 space-y-2">
                     {r.symptoms.length > 0 && (
                       <div>
-                        <span className="text-xs font-medium text-muted-foreground">症状</span>
+                        <span className="text-xs font-medium text-muted-foreground">{t("healer.0b00b0")}<span>
                         <div className="flex flex-wrap gap-1.5 mt-1">
                           {r.symptoms.map((s, i) => (
                             <span key={i} className="rounded bg-muted px-2 py-0.5 text-xs">{s}</span>
@@ -302,15 +300,15 @@ export function HealerClient() {
                     )}
                     {r.root_cause && (
                       <div>
-                        <span className="text-xs font-medium text-muted-foreground">根因</span>
+                        <span className="text-xs font-medium text-muted-foreground">{t("healer.0c9e28")}<span>
                         <p className="text-xs mt-1">{r.root_cause}</p>
                       </div>
                     )}
                     {r.action_taken !== "none" && (
                       <div>
-                        <span className="text-xs font-medium text-muted-foreground">修复动作</span>
+                        <span className="text-xs font-medium text-muted-foreground">{t("healer.f9f2b2")}<span>
                         <p className="text-xs mt-1">
-                          {r.action_taken} → {r.action_success ? "✅ 成功" : "❌ 失败"}
+                          {r.action_taken} → {r.action_success ? t("healer.8a28fd") : t("healer.1f21be")}
                         </p>
                       </div>
                     )}
@@ -325,7 +323,7 @@ export function HealerClient() {
         {tab === "history" && (
           <div className="space-y-2">
             {history.length === 0 ? (
-              <p className="text-center text-muted-foreground text-sm py-8">暂无诊断历史</p>
+              <p className="text-center text-muted-foreground text-sm py-8">{t("healer.472c8a")}<p>
             ) : history.map((h, i) => (
               <div key={i} className="flex items-center justify-between rounded-lg border border-border bg-card p-3">
                 <div className="flex items-center gap-3">
@@ -357,27 +355,27 @@ export function HealerClient() {
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
-                <span className="text-xs text-muted-foreground">总诊断</span>
+                <span className="text-xs text-muted-foreground">{t("healer.0fe4e7")}<span>
                 <p className="text-2xl font-bold">{stats.total_diagnoses}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
-                <span className="text-xs text-muted-foreground">已修复</span>
+                <span className="text-xs text-muted-foreground">{t("healer.ddfcb2")}<span>
                 <p className="text-2xl font-bold text-emerald-500">{stats.healed}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
-                <span className="text-xs text-muted-foreground">失败</span>
+                <span className="text-xs text-muted-foreground">{t("healer.acd5cb")}<span>
                 <p className="text-2xl font-bold text-red-500">{stats.failed}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
-                <span className="text-xs text-muted-foreground">执行动作</span>
+                <span className="text-xs text-muted-foreground">{t("healer.d1d904")}<span>
                 <p className="text-2xl font-bold">{stats.actions_taken}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
-                <span className="text-xs text-muted-foreground">动作成功</span>
+                <span className="text-xs text-muted-foreground">{t("healer.979370")}<span>
                 <p className="text-2xl font-bold text-emerald-500">{stats.actions_succeeded}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
-                <span className="text-xs text-muted-foreground">成功率</span>
+                <span className="text-xs text-muted-foreground">{t("healer.b66435")}<span>
                 <p className="text-2xl font-bold text-teal-500">{stats.success_rate}%</p>
               </div>
             </div>
@@ -385,7 +383,7 @@ export function HealerClient() {
             {/* Organ failure frequency */}
             {stats.organ_failure_frequency && Object.keys(stats.organ_failure_frequency).length > 0 && (
               <div className="rounded-xl border border-border bg-card p-4">
-                <h3 className="text-sm font-medium mb-3">器官故障频率 (Top 10)</h3>
+                <h3 className="text-sm font-medium mb-3">{t("healer.cb5c0a")}<h3>
                 <div className="space-y-2">
                   {Object.entries(stats.organ_failure_frequency).map(([organ, count]) => (
                     <div key={organ} className="flex items-center gap-3">
