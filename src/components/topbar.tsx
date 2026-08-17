@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import { Search } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { NotificationCenter } from "@/components/notification-center";
+import { HealthWidget } from "@/components/health-widget";
 
 export function Topbar() {
   const pathname = usePathname();
@@ -43,6 +44,9 @@ export function Topbar() {
       <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
 
       <div className="flex items-center gap-2">
+        {/* System Health Widget */}
+        <HealthWidget />
+
         {/* Notification Center */}
         <NotificationCenter />
 

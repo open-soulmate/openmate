@@ -1595,5 +1595,9 @@
     "dismiss": "削除",
     "clearAll": "すべてクリア",
     "viewAll": "すべてのアクティビティを見る"
+  },
+  "health": {
+    "title": "システムヘルス",
+    "viewDiagnostics": "完全な診断を見る"
   }
 }

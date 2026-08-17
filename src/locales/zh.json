@@ -1595,5 +1595,9 @@
     "dismiss": "移除",
     "clearAll": "清空全部",
     "viewAll": "查看全部活动"
+  },
+  "health": {
+    "title": "系统健康",
+    "viewDiagnostics": "查看完整诊断"
   }
 }

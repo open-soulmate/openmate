@@ -1595,5 +1595,9 @@
     "dismiss": "Dismiss",
     "clearAll": "Clear all",
     "viewAll": "View all activity"
+  },
+  "health": {
+    "title": "System Health",
+    "viewDiagnostics": "View full diagnostics"
   }
 }
