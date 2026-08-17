@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react';
 import { LogIn, UserPlus, Loader2, Settings, ChevronDown, Check, Wifi, Eye, EyeOff } from 'lucide-react';
 import { setApiBaseUrl, getApiBaseUrl, setUserId, setToken } from '@/lib/api-client';
+import { useTranslation } from 'react-i18next';
 
 function api() {
   const base = getApiBaseUrl();
@@ -26,6 +27,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [showSettings, setShowSettings] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [connStatus, setConnStatus] = useState<'idle' | 'ok' | 'fail'>('idle');
+  const { t } = useTranslation();
 
   useEffect(() => {
     const saved = getApiBaseUrl();
@@ -52,7 +54,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
   };
 
   const handleSubmit = async () => {
-    if (!username.trim() || !password.trim()) { setError('用户名和密码不能为空'); return; }
+    if (!username.trim() || !password.trim()) { setError(t('login.usernamePasswordRequired')); return; }
     setLoading(true); setError('');
     try {
       const a = api();
@@ -62,14 +64,14 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
       } else {
         const res = await a.login(username, password);
         if (res.user_id) { setUserId(username); setToken(res.access_token); }
-        else throw new Error('登录失败');
+        else throw new Error(t('login.loginFailed'));
       }
       onLogin();
     } catch (e) {
       const msg = (e as Error).message;
-      if (mode === 'login' && msg.includes('401')) setError('用户名或密码错误');
-      else if (mode === 'register' && msg.includes('400')) setError('用户名已存在');
-      else if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) setError('无法连接到服务器，请检查地址');
+      if (mode === 'login' && msg.includes('401')) setError(t('login.invalidCredentials'));
+      else if (mode === 'register' && msg.includes('400')) setError(t('login.usernameExists'));
+      else if (msg.includes('Failed to fetch') || msg.includes('NetworkError')) setError(t('login.connectionError'));
       else setError(msg);
     }
     setLoading(false);
@@ -83,7 +85,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
             {mode === 'register' ? <UserPlus className="w-8 h-8 text-primary" /> : <LogIn className="w-8 h-8 text-primary" />}
           </div>
           <h1 className="text-2xl font-bold">OpenMate</h1>
-          <p className="text-sm text-muted-foreground mt-1">{mode === 'register' ? '创建账号以开始使用' : '登录以继续'}</p>
+          <p className="text-sm text-muted-foreground mt-1">{mode === 'register' ? t('login.createAccount') : t('login.loginToContinue')}</p>
         </div>
 
         {/* Server Address */}
@@ -104,24 +106,24 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
           )}
         </div>
 
-        <input value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="用户名" className="w-full mb-3 px-4 py-3 rounded-lg border bg-background text-sm" autoFocus />
+        <input value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder={t('login.username')} className="w-full mb-3 px-4 py-3 rounded-lg border bg-background text-sm" autoFocus />
         <div className="relative w-full mb-3">
-          <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="密码" className="w-full px-4 py-3 pr-10 rounded-lg border bg-background text-sm" />
+          <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder={t('login.password')} className="w-full px-4 py-3 pr-10 rounded-lg border bg-background text-sm" />
           <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
           </button>
         </div>
-        {mode === 'register' && <input value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="邮箱（可选）" className="w-full mb-3 px-4 py-3 rounded-lg border bg-background text-sm" />}
+        {mode === 'register' && <input value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder={t('login.emailOptional')} className="w-full mb-3 px-4 py-3 rounded-lg border bg-background text-sm" />}
 
         {error && <p className="text-xs text-destructive mb-3 text-center">{error}</p>}
 
         <button onClick={handleSubmit} disabled={loading} className="w-full px-4 py-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 flex items-center justify-center gap-2 mb-3">
           {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : mode === 'register' ? <UserPlus className="w-4 h-4" /> : <LogIn className="w-4 h-4" />}
-          {loading ? '请稍候...' : mode === 'register' ? '注册' : '登录'}
+          {loading ? t('login.pleaseWait') : mode === 'register' ? t('login.register') : t('login.login')}
         </button>
 
         <button onClick={() => { setMode(mode === 'register' ? 'login' : 'register'); setError(''); }} className="w-full px-4 py-2 rounded-lg border text-sm text-muted-foreground hover:bg-muted">
-          {mode === 'register' ? '已有账号？去登录' : '没有账号？去注册'}
+          {mode === 'register' ? t('login.hasAccountLogin') : t('login.noAccountRegister')}
         </button>
       </div>
     </div>
