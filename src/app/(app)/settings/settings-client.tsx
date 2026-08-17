@@ -13,6 +13,7 @@ import { type ThemeId, themes, getStoredTheme, persistTheme } from "@/lib/theme"
 import { useAppStore } from "@/stores/app-store";
 import { getApiBaseUrl, getToken, getUserId } from "@/lib/api-client";
 import { useToast } from "@/components/toast-provider";
+import i18n from "@/lib/i18n";
 
 type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "organs" | "account" | "about";
 
@@ -180,6 +181,8 @@ export function SettingsClient() {
     // Save local settings
     persistTheme(settings.theme);
     setStoreTheme(settings.theme);
+    i18n.changeLanguage(settings.language);
+    localStorage.setItem("openmate-language", settings.language);
     setLLMConfig({ provider: settings.llmProvider, apiKey: settings.apiKey, model: settings.model });
 
     // Save to backend config
