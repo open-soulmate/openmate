@@ -49,7 +49,7 @@ export function AppShell() {
   const [hoverExpanded, setHoverExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { t } = useTranslation();
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set(["内部服务"]))
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set([t("nav.internalServices")]))
   const [pluginGroups, setPluginGroups] = useState<NavGroup[]>([])
   const [eventCount, setEventCount] = useState(0)
   const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
@@ -94,95 +94,95 @@ export function AppShell() {
 
   const navGroups: NavGroup[] = [
     {
-      label: t("nav.core") || "核心",
+      label: t("nav.core"),
       items: [
         { href: "/chat", label: t("nav.chat"), icon: MessageSquare },
-        { href: "/ai-groups", label: t("nav.aiGroups") || "AI群", icon: Users },
+        { href: "/ai-groups", label: t("nav.aiGroups"), icon: Users },
         { href: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
-        { href: "/body-map", label: t("nav.bodyMap") || "Body Map", icon: Activity },
-        { href: "/activity", label: t("nav.activity") || "Activity", icon: Activity },
-        { href: "/notifications", label: t("nav.notifications") || "通知中心", icon: Bell },
-        { href: "/gland", label: t("nav.gland") || "模型网关", icon: Zap },
+        { href: "/body-map", label: t("nav.bodyMap"), icon: Activity },
+        { href: "/activity", label: t("nav.activity"), icon: Activity },
+        { href: "/notifications", label: t("nav.notifications"), icon: Bell },
+        { href: "/gland", label: t("nav.gland"), icon: Zap },
       ],
     },
     {
-      label: t("nav.knowledgeGroup") || "知识",
+      label: t("nav.knowledgeGroup"),
       items: [
         { href: "/knowledge", label: t("nav.knowledge"), icon: BookOpen },
         { href: "/learn", label: t("nav.learn"), icon: GraduationCap },
         { href: "/graph", label: t("nav.graph"), icon: Network },
-        { href: "/graph-builder", label: t("nav.graphBuilder") || "图谱编排", icon: Share2 },
+        { href: "/graph-builder", label: t("nav.graphBuilder"), icon: Share2 },
         { href: "/search", label: t("nav.search"), icon: Search },
       ],
     },
     {
-      label: t("nav.toolsGroup") || "工具",
+      label: t("nav.toolsGroup"),
       items: [
         { href: "/skills", label: t("nav.skills"), icon: Puzzle },
         { href: "/mcp", label: t("nav.mcp"), icon: Plug },
         { href: "/agents", label: t("nav.agents"), icon: Server },
         { href: "/groups", label: t("nav.groups"), icon: Users },
-        { href: "/team", label: t("nav.team") || "团队", icon: Users },
-        { href: "/workspace", label: t("nav.workspace") || "工作区", icon: FolderKanban },
+        { href: "/team", label: t("nav.team"), icon: Users },
+        { href: "/workspace", label: t("nav.workspace"), icon: FolderKanban },
       ],
     },
     {
-      label: t("nav.automationGroup") || "自动化",
+      label: t("nav.automationGroup"),
       items: [
         { href: "/cron", label: t("nav.cron"), icon: Clock },
         { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
         { href: "/workflow-builder", label: t("nav.workflowBuilder"), icon: GitBranch },
-        { href: "/will", label: t("nav.will") || "意志", icon: Sparkles },
+        { href: "/will", label: t("nav.will"), icon: Sparkles },
       ],
     },
     {
-      label: t("nav.organsGroup") || "器官",
+      label: t("nav.organsGroup"),
       items: [
-        { href: "/soma", label: t("nav.soma") || "躯体", icon: Bot },
-        { href: "/cortex", label: t("nav.cortex") || "皮层", icon: Cpu },
-        { href: "/vein", label: t("nav.vein") || "血管", icon: Droplets },
-        { href: "/gene", label: t("nav.gene") || "基因", icon: Dna },
-        { href: "/vital", label: t("nav.vital") || "体征", icon: Activity },
-        { href: "/hippo", label: t("nav.hippo") || "海马体", icon: Brain },
-        { href: "/reflex", label: t("nav.reflex") || "反射", icon: Bolt },
-        { href: "/heredity", label: t("nav.heredity") || "遗传链", icon: GitBranch },
-        { href: "/pulse", label: t("nav.pulse") || "脉搏", icon: Heart },
+        { href: "/soma", label: t("nav.soma"), icon: Bot },
+        { href: "/cortex", label: t("nav.cortex"), icon: Cpu },
+        { href: "/vein", label: t("nav.vein"), icon: Droplets },
+        { href: "/gene", label: t("nav.gene"), icon: Dna },
+        { href: "/vital", label: t("nav.vital"), icon: Activity },
+        { href: "/hippo", label: t("nav.hippo"), icon: Brain },
+        { href: "/reflex", label: t("nav.reflex"), icon: Bolt },
+        { href: "/heredity", label: t("nav.heredity"), icon: GitBranch },
+        { href: "/pulse", label: t("nav.pulse"), icon: Heart },
       ],
     },
     {
-      label: t("nav.internalServices") || "内部服务",
+      label: t("nav.internalServices"),
       items: [
-        { href: "/nerve", label: t("nav.nerve") || "神经", icon: Zap },
-        { href: "/sense", label: t("nav.sense") || "感官", icon: Eye },
-        { href: "/immune", label: t("nav.immune") || "免疫", icon: Shield },
-        { href: "/marrow", label: t("nav.marrow") || "骨髓", icon: Bone },
-        { href: "/echo", label: t("nav.echo") || "回声", icon: Volume2 },
-        { href: "/mirror", label: t("nav.mirror") || "镜像", icon: Layers },
-        { href: "/link", label: t("nav.link") || "突触", icon: Link2 },
-        { href: "/capture", label: t("nav.capture") || "采集", icon: Camera },
-        { href: "/pipeline", label: t("nav.pipeline") || "流水线", icon: Zap },
-        { href: "/nest", label: t("nav.nest") || "巢穴", icon: Home },
-        { href: "/limb", label: t("nav.limb") || "四肢", icon: MousePointer },
-        { href: "/voice", label: t("nav.voice") || "声带", icon: Mic },
-        { href: "/vision", label: t("nav.vision") || "视觉", icon: ImageIcon },
-        { href: "/mind", label: t("nav.mind") || "心智", icon: Smile },
+        { href: "/nerve", label: t("nav.nerve"), icon: Zap },
+        { href: "/sense", label: t("nav.sense"), icon: Eye },
+        { href: "/immune", label: t("nav.immune"), icon: Shield },
+        { href: "/marrow", label: t("nav.marrow"), icon: Bone },
+        { href: "/echo", label: t("nav.echo"), icon: Volume2 },
+        { href: "/mirror", label: t("nav.mirror"), icon: Layers },
+        { href: "/link", label: t("nav.link"), icon: Link2 },
+        { href: "/capture", label: t("nav.capture"), icon: Camera },
+        { href: "/pipeline", label: t("nav.pipeline"), icon: Zap },
+        { href: "/nest", label: t("nav.nest"), icon: Home },
+        { href: "/limb", label: t("nav.limb"), icon: MousePointer },
+        { href: "/voice", label: t("nav.voice"), icon: Mic },
+        { href: "/vision", label: t("nav.vision"), icon: ImageIcon },
+        { href: "/mind", label: t("nav.mind"), icon: Smile },
       ],
     },
     {
-      label: t("nav.systemGroup") || "系统",
+      label: t("nav.systemGroup"),
       items: [
-        { href: "/healer", label: t("nav.healer") || "自愈系统", icon: Pill },
-        { href: "/intelligence", label: t("nav.intelligence") || "智能分析", icon: Brain },
-        { href: "/topology", label: t("nav.topology") || "系统拓扑", icon: Network },
-        { href: "/trajectory", label: t("nav.trajectory") || "轨迹", icon: Activity },
-        { href: "/timeline", label: t("nav.timeline") || "时间线", icon: History },
-        { href: "/changelog", label: t("nav.changelog") || "版本日志", icon: ScrollText },
-        { href: "/diagnostics", label: t("nav.diagnostics") || "系统诊断", icon: Stethoscope },
-        { href: "/benchmark", label: t("nav.benchmark") || "性能测试", icon: Gauge },
-        { href: "/admin", label: t("nav.admin") || "系统管理", icon: Shield },
+        { href: "/healer", label: t("nav.healer"), icon: Pill },
+        { href: "/intelligence", label: t("nav.intelligence"), icon: Brain },
+        { href: "/topology", label: t("nav.topology"), icon: Network },
+        { href: "/trajectory", label: t("nav.trajectory"), icon: Activity },
+        { href: "/timeline", label: t("nav.timeline"), icon: History },
+        { href: "/changelog", label: t("nav.changelog"), icon: ScrollText },
+        { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope },
+        { href: "/benchmark", label: t("nav.benchmark"), icon: Gauge },
+        { href: "/admin", label: t("nav.admin"), icon: Shield },
         { href: "/download", label: t("nav.download"), icon: Download },
-        { href: "/plugins", label: t("nav.plugins") || "插件", icon: Puzzle },
-        { href: "/marketplace", label: t("nav.marketplace") || "市场", icon: Store },
+        { href: "/plugins", label: t("nav.plugins"), icon: Puzzle },
+        { href: "/marketplace", label: t("nav.marketplace"), icon: Store },
         { href: "/settings", label: t("nav.settings"), icon: Settings },
       ],
     },
@@ -194,7 +194,7 @@ export function AppShell() {
     const result: NavGroup[] = [];
     for (const group of navGroups) {
       result.push(group);
-      if (group.label === (t("nav.internalServices") || "内部服务")) {
+      if (group.label === (t("nav.internalServices"))) {
         result.push(...pluginGroups);
       }
     }
@@ -342,7 +342,7 @@ export function AppShell() {
               "truncate whitespace-nowrap transition-all duration-150 text-xs text-muted-foreground",
               isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
             )} suppressHydrationWarning>
-              {t("nav.activity") || "活动流"}
+              {t("nav.activity")}
             </span>
           </Link>
 
@@ -376,23 +376,23 @@ export function AppShell() {
                   </div>
                   <div className="min-w-0">
                     <div className="text-sm font-medium truncate">{userId}</div>
-                    <div className="text-xs text-muted-foreground">已登录</div>
+                    <div className="text-xs text-muted-foreground">{t("account.loggedIn")}</div>
                   </div>
                 </div>
               </div>
               <div className="py-1">
-                <MenuItem icon={User} label="查看资料" description="查看你的活动和使用记录" onClick={() => { router.push("/settings#account"); setMenuOpen(false); }} />
-                <MenuItem icon={Settings} label="编辑资料" description="更新显示名称和头像" onClick={() => { router.push("/settings#account"); setMenuOpen(false); }} />
-                <MenuItem icon={FileText} label="使用文档" description="打开 OpenMate 文档" onClick={() => window.open("https://github.com/open-soulmate/openmate", "_blank")} />
-                <MenuItem icon={MessageCircle} label="反馈" description="分享反馈或报告问题" onClick={() => window.open("https://github.com/open-soulmate/openmate/issues", "_blank")} />
+                <MenuItem icon={User} label={t("account.viewProfile")} description={t("account.viewProfileDesc")} onClick={() => { router.push("/settings#account"); setMenuOpen(false); }} />
+                <MenuItem icon={Settings} label={t("account.editProfile")} description={t("account.editProfileDesc")} onClick={() => { router.push("/settings#account"); setMenuOpen(false); }} />
+                <MenuItem icon={FileText} label={t("account.documentation")} description={t("account.documentationDesc")} onClick={() => window.open("https://github.com/open-soulmate/openmate", "_blank")} />
+                <MenuItem icon={MessageCircle} label={t("account.feedback")} description={t("account.feedbackDesc")} onClick={() => window.open("https://github.com/open-soulmate/openmate/issues", "_blank")} />
                 <button onClick={toggleTheme}
                   className="flex w-full items-start gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left">
                   <div className="mt-0.5 text-muted-foreground">
                     {storeTheme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="text-sm">{storeTheme === "dark" ? "切换到浅色模式" : storeTheme === "light" ? "切换到紫色模式" : "切换到深色模式"}</div>
-                    <div className="text-xs text-muted-foreground">切换界面外观</div>
+                    <div className="text-sm">{storeTheme === "dark" ? t("account.switchToLight") : storeTheme === "light" ? t("account.switchToPurple") : t("account.switchToDark")}</div>
+                    <div className="text-xs text-muted-foreground">{t("account.switchTheme")}</div>
                   </div>
                 </button>
               </div>
@@ -401,8 +401,8 @@ export function AppShell() {
                   className="flex w-full items-start gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left">
                   <div className="mt-0.5 text-muted-foreground"><LogOut size={16} /></div>
                   <div>
-                    <div className="text-sm">退出登录</div>
-                    <div className="text-xs text-muted-foreground">结束本次会话</div>
+                    <div className="text-sm">{t("account.logout")}</div>
+                    <div className="text-xs text-muted-foreground">{t("account.logoutDesc")}</div>
                   </div>
                 </button>
               </div>

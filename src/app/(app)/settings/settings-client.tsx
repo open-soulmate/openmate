@@ -14,6 +14,7 @@ import { useAppStore } from "@/stores/app-store";
 import { getApiBaseUrl, getToken, getUserId } from "@/lib/api-client";
 import { useToast } from "@/components/toast-provider";
 import i18n from "@/lib/i18n";
+import { useTranslation } from "react-i18next";
 
 type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "organs" | "account" | "about";
 
@@ -25,25 +26,16 @@ interface SettingsState {
   knowledgePath: string; cacheLimit: number;
 }
 
-const sections: { id: SectionId; label: string; icon: React.ElementType; group: string }[] = [
-  { id: "appearance", label: "外观", icon: Monitor, group: "界面设置" },
-  { id: "model", label: "模型配置", icon: Cpu, group: "界面设置" },
-  { id: "agent", label: "Agent", icon: Bot, group: "运行时" },
-  { id: "tools", label: "工具权限", icon: Wrench, group: "运行时" },
-  { id: "storage", label: "存储", icon: HardDrive, group: "运行时" },
-  { id: "organs", label: "器官管理", icon: Zap, group: "运行时" },
-  { id: "account", label: "账户", icon: User, group: "账户" },
-  { id: "about", label: "关于", icon: Info, group: "账户" },
-];
+// sections defined inside SettingsClient for i18n
 
 const llmProviders = [
   { value: "openai", label: "OpenAI", models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"] },
   { value: "claude", label: "Claude (Anthropic)", models: ["claude-sonnet-4-20250514", "claude-haiku-4-20250514"] },
-  { value: "mimo", label: "MiMo (小米)", models: ["mimo-v2.5-pro", "mimo-v2.5", "mimo-auto"] },
+  { value: "mimo", label: "MiMo", models: ["mimo-v2.5-pro", "mimo-v2.5", "mimo-auto"] },
   { value: "deepseek", label: "DeepSeek", models: ["deepseek-chat", "deepseek-coder", "deepseek-r1"] },
-  { value: "qwen", label: "Qwen (通义)", models: ["qwen-max", "qwen-plus", "qwen-turbo"] },
-  { value: "ollama", label: "Ollama (本地)", models: ["llama3.1", "qwen2.5", "deepseek-r1"] },
-  { value: "custom", label: "自定义", models: [] },
+  { value: "qwen", label: "Qwen", models: ["qwen-max", "qwen-plus", "qwen-turbo"] },
+  { value: "ollama", label: "Ollama (Local)", models: ["llama3.1", "qwen2.5", "deepseek-r1"] },
+  { value: "custom", label: "Custom", models: [] },
 ];
 
 // ─── Reusable Components ─────────────────────────────────────────────
@@ -119,6 +111,19 @@ function TextInput({ value, onChange, placeholder, type = "text" }: { value: str
 
 export function SettingsClient() {
   const router = useRouter();
+  const { t } = useTranslation();
+
+  const sections: { id: SectionId; label: string; icon: React.ElementType; group: string }[] = [
+    { id: "appearance", label: t("settings.appearance"), icon: Monitor, group: t("settings.uiSettings") },
+    { id: "model", label: t("settings.modelConfig"), icon: Cpu, group: t("settings.uiSettings") },
+    { id: "agent", label: "Agent", icon: Bot, group: t("settings.runtime") },
+    { id: "tools", label: t("settings.toolPermissions"), icon: Wrench, group: t("settings.runtime") },
+    { id: "storage", label: t("settings.storage"), icon: HardDrive, group: t("settings.runtime") },
+    { id: "organs", label: t("settings.organManagement"), icon: Zap, group: t("settings.runtime") },
+    { id: "account", label: t("settings.account"), icon: User, group: t("settings.account") },
+    { id: "about", label: t("settings.about"), icon: Info, group: t("settings.account") },
+  ];
+
   const storeTheme = useAppStore((s) => s.theme);
   const setStoreTheme = useAppStore((s) => s.setTheme);
   const llmConfig = useAppStore((s) => s.llmConfig);
@@ -255,9 +260,9 @@ export function SettingsClient() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
-      toast.success("导出成功", "设置和数据已导出为 JSON 文件");
+      toast.success(t("settings.exportSuccess"), t("settings.exportSuccessDesc"));
     } catch (e) {
-      toast.error("导出失败", e instanceof Error ? e.message : "未知错误");
+      toast.error(t("settings.exportFailed"), e instanceof Error ? e.message : t("settings.unknownError"));
     }
   }
 
@@ -272,7 +277,7 @@ export function SettingsClient() {
       const text = await file.text();
       const data = JSON.parse(text);
       if (!data.version) {
-        toast.error("导入失败", "文件格式不正确，缺少版本信息");
+        toast.error(t("settings.importFailed"), t("settings.importFailedDesc"));
         return;
       }
       // Restore settings
@@ -285,16 +290,16 @@ export function SettingsClient() {
         store.setKnowledgeItems(data.knowledgeItems);
       }
 
-      toast.success("导入成功", `已从 ${file.name} 恢复设置数据`);
+      toast.success(t("settings.importSuccess"), `${file.name}`);
     } catch (e) {
-      toast.error("导入失败", e instanceof Error ? e.message : "文件解析错误");
+      toast.error(t("settings.importFailed"), e instanceof Error ? e.message : t("settings.fileParseError"));
     }
     // Reset file input
     if (fileInputRef.current) fileInputRef.current.value = "";
   }
 
   async function handleClearCache() {
-    if (!confirm("确定要清除所有缓存数据吗？这不会删除你的知识库和设置。")) return;
+    if (!confirm(t("settings.confirmClearCache"))) return;
     try {
       // Clear localStorage caches (not auth tokens)
       const keysToKeep = ["openmate-token", "openmate-api-url", "openmate-user-id", "openmate-theme"];
@@ -309,9 +314,9 @@ export function SettingsClient() {
       try {
         await fetch(`${apiBase}/api/admin/clear-cache`, { method: "POST" });
       } catch {}
-      toast.success("缓存已清除", "本地缓存数据已清理完毕");
+      toast.success(t("settings.cacheCleared"), t("settings.cacheClearedDesc"));
     } catch (e) {
-      toast.error("清除失败", e instanceof Error ? e.message : "未知错误");
+      toast.error(t("settings.clearFailed"), e instanceof Error ? e.message : t("settings.unknownError"));
     }
   }
 
@@ -332,7 +337,7 @@ export function SettingsClient() {
   }
 
   const currentProvider = llmProviders.find((p) => p.value === settings.llmProvider);
-  const modelOptions = currentProvider?.models.length ? currentProvider.models.map((m) => ({ value: m, label: m })) : [{ value: settings.model, label: settings.model || "输入模型名称" }];
+  const modelOptions = currentProvider?.models.length ? currentProvider.models.map((m) => ({ value: m, label: m })) : [{ value: settings.model, label: settings.model || t("settings.inputModelName") }];
 
   // Group sections
   const groups = sections.reduce<Record<string, typeof sections>>((acc, s) => {
@@ -348,7 +353,7 @@ export function SettingsClient() {
         <div className="mb-4">
           <div className="flex items-center gap-2 mb-1">
             <Settings size={14} className="text-muted-foreground" />
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">设置</span>
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("settings.title")}</span>
           </div>
         </div>
         <nav className="flex-1 space-y-4">
@@ -378,7 +383,7 @@ export function SettingsClient() {
         <div className="max-w-2xl mx-auto px-8 py-8 space-y-6">
           {/* Breadcrumb */}
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <span>设置</span><ChevronRight size={10} />
+            <span>{t("settings.title")}</span><ChevronRight size={10} />
             <span>{sections.find(s => s.id === active)?.group}</span><ChevronRight size={10} />
             <span className="text-foreground">{sections.find(s => s.id === active)?.label}</span>
           </div>
@@ -388,25 +393,25 @@ export function SettingsClient() {
             <>
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10"><Monitor size={16} className="text-primary" /></div>
-                <div><h1 className="text-lg font-semibold">外观设置</h1><p className="text-xs text-muted-foreground">自定义界面外观和显示偏好</p></div>
+                <div><h1 className="text-lg font-semibold">{t("settings.appearanceSettings")}</h1><p className="text-xs text-muted-foreground">{t("settings.appearanceDesc")}</p></div>
               </div>
 
-              <SettingCard title="主题" description="选择界面配色方案">
+              <SettingCard title={t("settings.theme")} description={t("settings.themeDesc")}>
                 <ButtonGroup value={settings.theme} onChange={(v) => update("theme", v as ThemeId)}
                   options={themes.map((t) => ({ value: t.id, label: t.label, icon: t.id === "dark" ? Moon : t.id === "light" ? Sun : Palette }))} />
               </SettingCard>
 
-              <SettingCard title="字体大小" description="调整全局文字大小">
+              <SettingCard title={t("settings.fontSize")} description={t("settings.fontSizeDesc")}>
                 <ButtonGroup value={settings.fontSize} onChange={(v) => update("fontSize", v)}
-                  options={[{ value: "small", label: "小" }, { value: "medium", label: "中" }, { value: "large", label: "大" }]} />
+                  options={[{ value: "small", label: t("settings.small") }, { value: "medium", label: t("settings.medium") }, { value: "large", label: t("settings.large") }]} />
               </SettingCard>
 
-              <SettingCard title="语言" description="切换界面语言">
+              <SettingCard title={t("settings.language")} description={t("settings.languageDesc")}>
                 <SelectInput value={settings.language} onChange={(v) => update("language", v)}
                   options={[{ value: "zh", label: "中文" }, { value: "en", label: "English" }, { value: "ja", label: "日本語" }]} />
               </SettingCard>
 
-              <SettingCard title="动画效果" description="启用或禁用界面过渡动画">
+              <SettingCard title={t("settings.animationEffects")} description={t("settings.animationDesc")}>
                 <Toggle checked={settings.animationEnabled} onChange={(v) => update("animationEnabled", v)} />
               </SettingCard>
             </>
@@ -417,34 +422,34 @@ export function SettingsClient() {
             <>
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10"><Cpu size={16} className="text-primary" /></div>
-                <div><h1 className="text-lg font-semibold">模型配置</h1><p className="text-xs text-muted-foreground">配置 LLM 提供商和模型参数</p></div>
+                <div><h1 className="text-lg font-semibold">{t("settings.modelConfig")}</h1><p className="text-xs text-muted-foreground">{t("settings.modelConfigDesc")}</p></div>
               </div>
 
-              <SettingCard title="LLM 提供商" description="选择 AI 模型提供商">
+              <SettingCard title={t("settings.llmProvider")} description={t("settings.llmProviderDesc")}>
                 <SelectInput value={settings.llmProvider} onChange={(v) => { update("llmProvider", v); const p = llmProviders.find(p => p.value === v); if (p?.models[0]) update("model", p.models[0]); }}
                   options={llmProviders.map(p => ({ value: p.value, label: p.label }))} />
               </SettingCard>
 
-              <SettingCard title="模型" description="选择具体的模型版本">
+              <SettingCard title={t("settings.model")} description={t("settings.modelDesc")}>
                 <SelectInput value={settings.model} onChange={(v) => update("model", v)} options={modelOptions} />
               </SettingCard>
 
-              <SettingCard title="API Key" description="输入你的 API 密钥">
+              <SettingCard title={t("settings.apiKey")} description={t("settings.apiKeyDesc")}>
                 <TextInput value={settings.apiKey} onChange={(v) => update("apiKey", v)} placeholder="sk-..." type="password" />
                 <div className="flex gap-2 mt-2">
                   <button onClick={handleTestConnection}
                     className="px-3 py-1.5 rounded-lg border border-border text-xs hover:bg-muted flex items-center gap-1.5">
                     {testStatus === "testing" ? <RefreshCw size={12} className="animate-spin" /> : testStatus === "success" ? <CheckCircle2 size={12} className="text-green-500" /> : testStatus === "error" ? <AlertCircle size={12} className="text-red-500" /> : <Wifi size={12} />}
-                    测试连接
+                    {t("settings.testConnection")}
                   </button>
                 </div>
               </SettingCard>
 
-              <SettingCard title="Temperature" description={`控制输出随机性: ${settings.temperature}`}>
+              <SettingCard title="Temperature" description={`${t("settings.temperatureDesc")}: ${settings.temperature}`}>
                 <Slider value={settings.temperature} onChange={(v) => update("temperature", v)} min={0} max={2} step={0.1} />
               </SettingCard>
 
-              <SettingCard title="Max Tokens" description="单次回复最大 token 数">
+              <SettingCard title="Max Tokens" description={t("settings.maxTokensDesc")}>
                 <Slider value={settings.maxTokens} onChange={(v) => update("maxTokens", v)} min={256} max={16384} step={256} />
               </SettingCard>
             </>
@@ -455,24 +460,24 @@ export function SettingsClient() {
             <>
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10"><Bot size={16} className="text-primary" /></div>
-                <div><h1 className="text-lg font-semibold">Agent 设置</h1><p className="text-xs text-muted-foreground">配置 Agent 运行时参数和行为策略</p></div>
+                <div><h1 className="text-lg font-semibold">{t("settings.defaultAgent")}</h1><p className="text-xs text-muted-foreground">{t("settings.agentTimeoutDesc")}</p></div>
               </div>
 
-              <SettingCard title="默认 Agent" description="系统默认使用的 Agent">
+              <SettingCard title={t("settings.defaultAgent")} description={t("settings.defaultAgentDesc")}>
                 <SelectInput value={settings.defaultAgent} onChange={(v) => update("defaultAgent", v)}
-                  options={[{ value: "auto", label: "自动选择" }, { value: "hermes", label: "Hermes" }, { value: "mimo", label: "MiMo" }]} />
+                  options={[{ value: "auto", label: t("settings.autoSelect") }, { value: "hermes", label: "Hermes" }, { value: "mimo", label: "MiMo" }]} />
               </SettingCard>
 
-              <SettingCard title="Agent 超时" description={`单次执行最大等待时间: ${settings.agentTimeout}s`}>
+              <SettingCard title={t("settings.agentTimeout")} description={`${t("settings.agentTimeoutDesc")}: ${settings.agentTimeout}s`}>
                 <Slider value={settings.agentTimeout} onChange={(v) => update("agentTimeout", v)} min={5} max={300} step={5} unit="s" />
               </SettingCard>
 
-              <SettingCard title="重试策略" description="请求失败时的重试方式">
+              <SettingCard title={t("settings.retryStrategy")} description={t("settings.retryStrategyDesc")}>
                 <ButtonGroup value={settings.retryStrategy} onChange={(v) => update("retryStrategy", v)}
-                  options={[{ value: "none", label: "不重试" }, { value: "linear", label: "线性" }, { value: "exponential", label: "指数退避" }]} />
+                  options={[{ value: "none", label: t("settings.noRetry") }, { value: "linear", label: t("settings.linear") }, { value: "exponential", label: t("settings.exponential") }]} />
               </SettingCard>
 
-              <SettingCard title="日志级别" description="控制日志输出详细程度">
+              <SettingCard title={t("settings.logLevel")} description={t("settings.logLevelDesc")}>
                 <ButtonGroup value={settings.logLevel} onChange={(v) => update("logLevel", v)}
                   options={[{ value: "debug", label: "Debug" }, { value: "info", label: "Info" }, { value: "warn", label: "Warn" }, { value: "error", label: "Error" }]} />
               </SettingCard>
@@ -484,19 +489,19 @@ export function SettingsClient() {
             <>
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10"><Wrench size={16} className="text-primary" /></div>
-                <div><h1 className="text-lg font-semibold">工具权限</h1><p className="text-xs text-muted-foreground">控制 Agent 可以使用的工具和权限范围</p></div>
+                <div><h1 className="text-lg font-semibold">{t("settings.toolPermissions")}</h1><p className="text-xs text-muted-foreground">{t("settings.toolPermissionsDesc")}</p></div>
               </div>
 
-              <SettingCard title="Shell 白名单" description="允许 Agent 执行的命令（逗号分隔）">
+              <SettingCard title={t("settings.shellWhitelist")} description={t("settings.shellWhitelistDesc")}>
                 <TextInput value={settings.shellWhitelist} onChange={(v) => update("shellWhitelist", v)} placeholder="ls, cat, grep" />
               </SettingCard>
 
-              <SettingCard title="文件访问" description="Agent 的文件系统访问权限">
+              <SettingCard title={t("settings.fileAccess")} description={t("settings.fileAccessDesc")}>
                 <ButtonGroup value={settings.fileAccess} onChange={(v) => update("fileAccess", v)}
-                  options={[{ value: "full", label: "完全访问" }, { value: "restricted", label: "受限" }, { value: "readonly", label: "只读" }]} />
+                  options={[{ value: "full", label: t("settings.fullAccess") }, { value: "restricted", label: t("settings.restricted") }, { value: "readonly", label: t("settings.readonly") }]} />
               </SettingCard>
 
-              <SettingCard title="网络访问" description="允许 Agent 访问外部网络">
+              <SettingCard title={t("settings.networkAccess")} description={t("settings.networkAccessDesc")}>
                 <Toggle checked={settings.networkAccess} onChange={(v) => update("networkAccess", v)} />
               </SettingCard>
             </>
@@ -507,23 +512,23 @@ export function SettingsClient() {
             <>
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10"><HardDrive size={16} className="text-primary" /></div>
-                <div><h1 className="text-lg font-semibold">存储管理</h1><p className="text-xs text-muted-foreground">管理知识库路径和缓存设置</p></div>
+                <div><h1 className="text-lg font-semibold">{t("settings.storageManagement")}</h1><p className="text-xs text-muted-foreground">{t("settings.storageDesc")}</p></div>
               </div>
 
-              <SettingCard title="知识库路径" description="本地知识库存储位置">
+              <SettingCard title={t("settings.knowledgePath")} description={t("settings.knowledgePathDesc")}>
                 <TextInput value={settings.knowledgePath} onChange={(v) => update("knowledgePath", v)} placeholder="~/.openmate/knowledge" />
               </SettingCard>
 
-              <SettingCard title="缓存限制" description={`最大缓存空间: ${settings.cacheLimit}MB`}>
+              <SettingCard title={t("settings.cacheLimit")} description={`${t("settings.cacheLimitDesc")}: ${settings.cacheLimit}MB`}>
                 <Slider value={settings.cacheLimit} onChange={(v) => update("cacheLimit", v)} min={64} max={4096} step={64} unit="MB" />
               </SettingCard>
 
-              <SettingCard title="数据管理" description="导出、导入或清除本地数据">
+              <SettingCard title={t("settings.dataManagement")} description={t("settings.dataManagementDesc")}>
                 <div className="flex gap-2">
-                  <button onClick={handleExportData} className="px-3 py-2 rounded-lg border border-border text-xs hover:bg-muted flex items-center gap-1.5"><Download size={12} />导出数据</button>
-                  <button onClick={handleImportData} className="px-3 py-2 rounded-lg border border-border text-xs hover:bg-muted flex items-center gap-1.5"><Upload size={12} />导入数据</button>
+                  <button onClick={handleExportData} className="px-3 py-2 rounded-lg border border-border text-xs hover:bg-muted flex items-center gap-1.5"><Download size={12} />{t("settings.exportData")}</button>
+                  <button onClick={handleImportData} className="px-3 py-2 rounded-lg border border-border text-xs hover:bg-muted flex items-center gap-1.5"><Upload size={12} />{t("settings.importData")}</button>
                   <input ref={fileInputRef} type="file" accept=".json" onChange={handleImportFile} className="hidden" />
-                  <button onClick={handleClearCache} className="px-3 py-2 rounded-lg border border-red-500/30 text-xs text-red-500 hover:bg-red-500/5 flex items-center gap-1.5"><Trash2 size={12} />清除缓存</button>
+                  <button onClick={handleClearCache} className="px-3 py-2 rounded-lg border border-red-500/30 text-xs text-red-500 hover:bg-red-500/5 flex items-center gap-1.5"><Trash2 size={12} />{t("settings.clearCache")}</button>
                 </div>
               </SettingCard>
             </>
@@ -539,28 +544,28 @@ export function SettingsClient() {
             <>
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10"><User size={16} className="text-primary" /></div>
-                <div><h1 className="text-lg font-semibold">账户</h1><p className="text-xs text-muted-foreground">管理你的账户信息和登录状态</p></div>
+                <div><h1 className="text-lg font-semibold">{t("settings.account")}</h1><p className="text-xs text-muted-foreground">{t("settings.accountDesc")}</p></div>
               </div>
 
-              <SettingCard title="用户信息">
+              <SettingCard title={t("settings.userInfo")}>
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
                     {(getUserId() || "U")[0].toUpperCase()}
                   </div>
                   <div>
                     <div className="text-sm font-medium">{getUserId() || "User"}</div>
-                    <div className="text-xs text-muted-foreground">已登录</div>
+                    <div className="text-xs text-muted-foreground">{t("settings.signedIn")}</div>
                   </div>
                 </div>
               </SettingCard>
 
-              <SettingCard title="API 地址" description="当前连接的 OpenSoul 后端地址">
+              <SettingCard title={t("settings.apiAddress")} description={t("settings.apiAddressDesc")}>
                 <div className="text-sm font-mono text-muted-foreground p-2 rounded bg-muted/50">{getApiBaseUrl()}</div>
               </SettingCard>
 
-              <SettingCard title="退出登录" description="清除本地登录状态，返回登录页面">
+              <SettingCard title={t("settings.logout")} description={t("settings.logoutDesc")}>
                 <button onClick={handleLogout} className="px-4 py-2 rounded-lg border border-red-500/30 text-sm text-red-500 hover:bg-red-500/5 flex items-center gap-2">
-                  <LogOut size={14} />退出登录
+                  <LogOut size={14} />{t("settings.logout")}
                 </button>
               </SettingCard>
             </>
@@ -571,20 +576,20 @@ export function SettingsClient() {
             <>
               <div className="flex items-center gap-2.5 mb-2">
                 <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10"><Info size={16} className="text-primary" /></div>
-                <div><h1 className="text-lg font-semibold">关于</h1><p className="text-xs text-muted-foreground">OpenMate 版本和项目信息</p></div>
+                <div><h1 className="text-lg font-semibold">{t("settings.about")}</h1><p className="text-xs text-muted-foreground">{t("settings.aboutDesc")}</p></div>
               </div>
 
               <SettingCard title="OpenMate">
                 <div className="space-y-2 text-sm">
-                  <div className="flex justify-between"><span className="text-muted-foreground">前端版本</span><span className="font-mono">v0.1.0</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">后端版本</span><span className="font-mono">{backendVersion || "检测中..."}</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">框架</span><span>Next.js + Tauri</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">后端</span><span>OpenSoul (FastAPI)</span></div>
-                  <div className="flex justify-between"><span className="text-muted-foreground">许可证</span><span>MIT</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{t("settings.frontendVersion")}</span><span className="font-mono">v0.1.0</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{t("settings.backendVersion")}</span><span className="font-mono">{backendVersion || t("settings.detecting")}</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{t("settings.framework")}</span><span>Next.js + Tauri</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{t("settings.backend")}</span><span>OpenSoul (FastAPI)</span></div>
+                  <div className="flex justify-between"><span className="text-muted-foreground">{t("settings.license")}</span><span>MIT</span></div>
                 </div>
               </SettingCard>
 
-              <SettingCard title="25组件生态">
+              <SettingCard title={t("settings.ecosystem")}>
                 <div className="grid grid-cols-2 gap-1.5 text-xs">
                   {["OpenSoul", "OpenMate", "OpenSoma", "OpenCortex", "OpenNerve", "OpenVein", "OpenSense", "OpenWill", "OpenVital", "OpenGland", "OpenImmune", "OpenMarrow", "OpenGene", "OpenEcho", "OpenMirror", "OpenLink", "OpenHippo", "OpenReflex", "OpenHeredity", "OpenNest", "OpenPulse", "OpenLimb", "OpenVoice", "OpenVision", "OpenMind"].map(name => (
                     <div key={name} className="flex items-center gap-1.5 p-1.5 rounded bg-muted/50">
@@ -595,13 +600,13 @@ export function SettingsClient() {
                 </div>
               </SettingCard>
 
-              <SettingCard title="链接">
+              <SettingCard title={t("settings.links")}>
                 <div className="space-y-2">
                   <a href="https://github.com/open-soulmate" target="_blank" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-                    <ExternalLink size={14} />GitHub 仓库
+                    <ExternalLink size={14} />GitHub
                   </a>
                   <a href="#" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-                    <ExternalLink size={14} />使用文档
+                    <ExternalLink size={14} />Documentation
                   </a>
                 </div>
               </SettingCard>
@@ -612,7 +617,7 @@ export function SettingsClient() {
           <div className="sticky bottom-0 pt-4 pb-6 bg-background/80 backdrop-blur-sm">
             <button onClick={handleSave} className={cn("w-full px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all",
               saved ? "bg-green-500 text-white" : "bg-primary text-primary-foreground hover:bg-primary/90")}>
-              {saved ? <><Check size={16} />已保存</> : <><Save size={16} />保存设置</>}
+              {saved ? <><Check size={16} />{t("settings.saved")}</> : <><Save size={16} />{t("settings.saveSettings")}</>}
             </button>
           </div>
         </div>
@@ -623,6 +628,7 @@ export function SettingsClient() {
 
 // ─── Organs Management Section ─────────────────────────────────────
 function OrgansSection({ apiBase }: { apiBase: string }) {
+  const { t } = useTranslation();
   const [organs, setOrgans] = useState<Array<{ key: string; enabled: boolean; config: Record<string, unknown> }>>([]);
   const [loading, setLoading] = useState(true);
 
@@ -646,19 +652,19 @@ function OrgansSection({ apiBase }: { apiBase: string }) {
   };
 
   const organLabels: Record<string, { label: string; emoji: string }> = {
-    cortex: { label: "皮层", emoji: "🧠" }, nerve: { label: "神经", emoji: "⚡" },
-    vein: { label: "血管", emoji: "🩸" }, sense: { label: "感官", emoji: "👁" },
-    will: { label: "意志", emoji: "✨" }, immune: { label: "免疫", emoji: "🛡" },
-    vital: { label: "体征", emoji: "📊" }, marrow: { label: "骨髓", emoji: "🦴" },
-    gland: { label: "腺体", emoji: "🧪" }, gene: { label: "基因", emoji: "🧬" },
-    echo: { label: "回声", emoji: "🔊" }, mirror: { label: "镜像", emoji: "🪞" },
-    link: { label: "突触", emoji: "🔗" }, hippo: { label: "海马体", emoji: "🧠" },
-    reflex: { label: "反射", emoji: "⚡" }, heredity: { label: "遗传链", emoji: "🔗" },
-    pulse: { label: "脉搏", emoji: "💓" }, nest: { label: "巢穴", emoji: "🏠" },
-    limb: { label: "四肢", emoji: "💪" }, voice: { label: "声带", emoji: "🎤" },
-    vision: { label: "视觉", emoji: "🎨" }, mind: { label: "心智", emoji: "💭" },
-    trajectory: { label: "轨迹", emoji: "📊" }, mcp: { label: "MCP", emoji: "🔌" },
-    learn: { label: "学习", emoji: "📚" },
+    cortex: { label: t("nav.cortex"), emoji: "🧠" }, nerve: { label: t("nav.nerve"), emoji: "⚡" },
+    vein: { label: t("nav.vein"), emoji: "🩸" }, sense: { label: t("nav.sense"), emoji: "👁" },
+    will: { label: t("nav.will"), emoji: "✨" }, immune: { label: t("nav.immune"), emoji: "🛡" },
+    vital: { label: t("nav.vital"), emoji: "📊" }, marrow: { label: t("nav.marrow"), emoji: "🦴" },
+    gland: { label: t("nav.gland"), emoji: "🧪" }, gene: { label: t("nav.gene"), emoji: "🧬" },
+    echo: { label: t("nav.echo"), emoji: "🔊" }, mirror: { label: t("nav.mirror"), emoji: "🪞" },
+    link: { label: t("nav.link"), emoji: "🔗" }, hippo: { label: t("nav.hippo"), emoji: "🧠" },
+    reflex: { label: t("nav.reflex"), emoji: "⚡" }, heredity: { label: t("nav.heredity"), emoji: "🔗" },
+    pulse: { label: t("nav.pulse"), emoji: "💓" }, nest: { label: t("nav.nest"), emoji: "🏠" },
+    limb: { label: t("nav.limb"), emoji: "💪" }, voice: { label: t("nav.voice"), emoji: "🎤" },
+    vision: { label: t("nav.vision"), emoji: "🎨" }, mind: { label: t("nav.mind"), emoji: "💭" },
+    trajectory: { label: t("nav.trajectory"), emoji: "📊" }, mcp: { label: "MCP", emoji: "🔌" },
+    learn: { label: t("nav.learn"), emoji: "📚" },
   };
 
   if (loading) {
@@ -675,7 +681,7 @@ function OrgansSection({ apiBase }: { apiBase: string }) {
     <>
       <div className="flex items-center gap-2.5 mb-2">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10"><Zap size={16} className="text-primary" /></div>
-        <div><h1 className="text-lg font-semibold">器官管理</h1><p className="text-xs text-muted-foreground">启用或禁用系统器官组件 ({enabledCount}/{organs.length} 已启用)</p></div>
+        <div><h1 className="text-lg font-semibold">{t("settings.organManagement")}</h1><p className="text-xs text-muted-foreground">{t("settings.organManagementDesc")} ({enabledCount}/{organs.length} {t("settings.enabledCount")})</p></div>
       </div>
 
       <div className="rounded-xl border border-border bg-card p-5">

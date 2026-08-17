@@ -197,36 +197,36 @@ export function DashboardClient() {
 
   const stats = [
     {
-      label: t("dashboard.agents") || "Agent 数量",
+      label: t("dashboard.agents"),
       value: agentNodes.length,
-      sub: `${onlineAgents} ${t("dashboard.online") || "在线"}`,
+      sub: `${onlineAgents} ${t("dashboard.online")}`,
       icon: Server,
       href: "/agents",
       color: "text-blue-500",
       bg: "bg-blue-500/10",
     },
     {
-      label: t("dashboard.skills") || "技能数量",
+      label: t("dashboard.skills"),
       value: skills.length,
-      sub: `${enabledSkills} ${t("dashboard.enabled") || "已启用"}`,
+      sub: `${enabledSkills} ${t("dashboard.enabled")}`,
       icon: Puzzle,
       href: "/skills",
       color: "text-violet-500",
       bg: "bg-violet-500/10",
     },
     {
-      label: t("dashboard.conversations") || "会话数量",
+      label: t("dashboard.conversations"),
       value: conversations.length,
-      sub: `${totalMessages} ${t("dashboard.messages") || "条消息"}`,
+      sub: `${totalMessages} ${t("dashboard.messages")}`,
       icon: MessageSquare,
       href: "/chat",
       color: "text-emerald-500",
       bg: "bg-emerald-500/10",
     },
     {
-      label: t("dashboard.cronJobs") || "定时任务",
+      label: t("dashboard.cronJobs"),
       value: cronCount,
-      sub: t("dashboard.managed") || "由 Cron 管理",
+      sub: t("dashboard.managed"),
       icon: Clock,
       href: "/cron",
       color: "text-amber-500",
@@ -270,12 +270,12 @@ export function DashboardClient() {
   };
 
   const quickLinks = [
-    { label: t("nav.knowledge") || "知识库", icon: BookOpen, href: "/knowledge", count: knowledgeItems.length },
-    { label: t("nav.groups") || "Agent 分组", icon: Users, href: "/groups", count: groups.length },
-    { label: t("nav.team") || "团队", icon: Users, href: "/team", count: teams.length },
-    { label: t("nav.graph") || "知识图谱", icon: Network, href: "/graph", count: 0 },
-    { label: t("nav.workflow") || "工作流", icon: Workflow, href: "/workflow", count: 0 },
-    { label: t("nav.workspace") || "工作区", icon: Activity, href: "/workspace", count: workspaces.length },
+    { label: t("nav.knowledge"), icon: BookOpen, href: "/knowledge", count: knowledgeItems.length },
+    { label: t("nav.groups"), icon: Users, href: "/groups", count: groups.length },
+    { label: t("nav.team"), icon: Users, href: "/team", count: teams.length },
+    { label: t("nav.graph"), icon: Network, href: "/graph", count: 0 },
+    { label: t("nav.workflow"), icon: Workflow, href: "/workflow", count: 0 },
+    { label: t("nav.workspace"), icon: Activity, href: "/workspace", count: workspaces.length },
   ];
 
   return (
@@ -284,10 +284,10 @@ export function DashboardClient() {
         {/* Header */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold tracking-tight">
-            {t("dashboard.title") || "系统概览"}
+            {t("dashboard.title")}
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            {t("dashboard.subtitle") || "OpenMate 平台运行状态一览"}
+            {t("dashboard.subtitle")}
           </p>
         </div>
 
@@ -320,15 +320,15 @@ export function DashboardClient() {
             <div>
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <DollarSign className="w-5 h-5 text-yellow-500" />
-                {t("dashboard.costStats") || "费用统计"}
+                {t("dashboard.costStats")}
               </h3>
               <p className="text-sm text-muted-foreground mt-1">
-                {t("dashboard.costStatsDesc") || "Token 使用量与估算费用"}
+                {t("dashboard.costStatsDesc")}
               </p>
             </div>
             <div className="text-right">
               <div className="text-2xl font-bold text-yellow-500">${costStats.estimatedCost.toFixed(2)}</div>
-              <div className="text-xs text-muted-foreground">{t("dashboard.totalCost") || "总费用"}</div>
+              <div className="text-xs text-muted-foreground">{t("dashboard.totalCost")}</div>
             </div>
           </div>
 
@@ -336,40 +336,40 @@ export function DashboardClient() {
             <div className="p-4 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2 mb-2">
                 <Cpu className="w-4 h-4 text-blue-500" />
-                <span className="text-sm font-medium">{t("dashboard.totalTokens") || "总 Token"}</span>
+                <span className="text-sm font-medium">{t("dashboard.totalTokens")}</span>
               </div>
               <div className="text-2xl font-bold">{(costStats.totalTokens / 1000000).toFixed(1)}M</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {t("dashboard.input") || "输入"}: {(costStats.inputTokens / 1000000).toFixed(1)}M | 
-                {t("dashboard.output") || "输出"}: {(costStats.outputTokens / 1000000).toFixed(1)}M
+                {t("dashboard.input")}: {(costStats.inputTokens / 1000000).toFixed(1)}M | 
+                {t("dashboard.output")}: {(costStats.outputTokens / 1000000).toFixed(1)}M
               </div>
             </div>
 
             <div className="p-4 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="w-4 h-4 text-green-500" />
-                <span className="text-sm font-medium">{t("dashboard.todayCost") || "今日费用"}</span>
+                <span className="text-sm font-medium">{t("dashboard.todayCost")}</span>
               </div>
               <div className="text-2xl font-bold text-green-500">${costStats.todayCost.toFixed(2)}</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {t("dashboard.vsYesterday") || "较昨日 -12%"}
+                {t("dashboard.vsYesterday")}
               </div>
             </div>
 
             <div className="p-4 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-4 h-4 text-violet-500" />
-                <span className="text-sm font-medium">{t("dashboard.avgCostPerMsg") || "每消息平均费用"}</span>
+                <span className="text-sm font-medium">{t("dashboard.avgCostPerMsg")}</span>
               </div>
               <div className="text-2xl font-bold">${(costStats.estimatedCost / Math.max(totalMessages, 1)).toFixed(4)}</div>
               <div className="text-xs text-muted-foreground mt-1">
-                {totalMessages} {t("dashboard.messages") || "条消息"}
+                {totalMessages} {t("dashboard.messages")}
               </div>
             </div>
           </div>
 
           <div>
-            <h4 className="text-sm font-medium mb-3">{t("dashboard.modelBreakdown") || "模型费用分布"}</h4>
+            <h4 className="text-sm font-medium mb-3">{t("dashboard.modelBreakdown")}</h4>
             <div className="space-y-2">
               {costStats.modelBreakdown.map((model) => (
                 <div key={model.model} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
@@ -399,14 +399,14 @@ export function DashboardClient() {
               <div>
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Activity className="w-5 h-5 text-emerald-500" />
-                  {t("dashboard.systemMetrics") || "系统资源"}
+                  {t("dashboard.systemMetrics")}
                 </h3>
                 <p className="text-sm text-muted-foreground mt-1">
-                  {t("dashboard.systemMetricsDesc") || "实时系统资源使用情况"}
+                  {t("dashboard.systemMetricsDesc")}
                 </p>
               </div>
               <button onClick={fetchSysMetrics} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                ↻ {t("common.refresh") || "刷新"}
+                ↻ {t("common.refresh")}
               </button>
             </div>
 
@@ -435,7 +435,7 @@ export function DashboardClient() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <HardDrive className="w-4 h-4 text-violet-500" />
-                    <span className="text-sm font-medium">{t("dashboard.memory") || "内存"}</span>
+                    <span className="text-sm font-medium">{t("dashboard.memory")}</span>
                   </div>
                   <span className={cn("text-lg font-bold", sysMetrics.system.memory_percent > 85 ? "text-red-500" : sysMetrics.system.memory_percent > 60 ? "text-amber-500" : "text-emerald-500")}>
                     {sysMetrics.system.memory_percent.toFixed(1)}%
@@ -457,7 +457,7 @@ export function DashboardClient() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <HardDrive className="w-4 h-4 text-amber-500" />
-                    <span className="text-sm font-medium">{t("dashboard.disk") || "磁盘"}</span>
+                    <span className="text-sm font-medium">{t("dashboard.disk")}</span>
                   </div>
                   <span className={cn("text-lg font-bold", sysMetrics.system.disk_percent > 90 ? "text-red-500" : sysMetrics.system.disk_percent > 75 ? "text-amber-500" : "text-emerald-500")}>
                     {sysMetrics.system.disk_percent.toFixed(1)}%
@@ -487,21 +487,21 @@ export function DashboardClient() {
               <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
                 <Clock className="w-4 h-4 text-amber-500" />
                 <div>
-                  <div className="text-xs text-muted-foreground">P99 {t("dashboard.latency") || "延迟"}</div>
+                  <div className="text-xs text-muted-foreground">P99 {t("dashboard.latency")}</div>
                   <div className="text-sm font-bold">{sysMetrics.app.latency_p99_ms.toFixed(0)}ms</div>
                 </div>
               </div>
               <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
                 <Activity className="w-4 h-4 text-emerald-500" />
                 <div>
-                  <div className="text-xs text-muted-foreground">{t("dashboard.totalRequests") || "总请求"}</div>
+                  <div className="text-xs text-muted-foreground">{t("dashboard.totalRequests")}</div>
                   <div className="text-sm font-bold">{sysMetrics.app.total_requests.toLocaleString()}</div>
                 </div>
               </div>
               <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
                 <AlertTriangle className="w-4 h-4 text-red-500" />
                 <div>
-                  <div className="text-xs text-muted-foreground">{t("dashboard.activeAlerts") || "活跃告警"}</div>
+                  <div className="text-xs text-muted-foreground">{t("dashboard.activeAlerts")}</div>
                   <div className={cn("text-sm font-bold", sysMetrics.alerts.active > 0 ? "text-red-500" : "text-emerald-500")}>{sysMetrics.alerts.active}</div>
                 </div>
               </div>
@@ -512,7 +512,7 @@ export function DashboardClient() {
         {/* Quick links */}
         <div className="mb-8">
           <h3 className="mb-4 text-sm font-medium text-muted-foreground">
-            {t("dashboard.quickLinks") || "快速访问"}
+            {t("dashboard.quickLinks")}
           </h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {quickLinks.map((link) => (
@@ -527,7 +527,7 @@ export function DashboardClient() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium">{link.label}</p>
                   <p className="text-xs text-muted-foreground">
-                    {link.count} {t("dashboard.items") || "项"}
+                    {link.count} {t("dashboard.items")}
                   </p>
                 </div>
                 <ArrowRight size={14} className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
@@ -540,13 +540,13 @@ export function DashboardClient() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-muted-foreground">
-              {t("dashboard.organHealth") || "器官健康状态"}
+              {t("dashboard.organHealth")}
             </h3>
             <button
               onClick={checkOrganHealth}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              ↻ {t("dashboard.refreshHealth") || "刷新"}
+              ↻ {t("dashboard.refreshHealth")}
             </button>
           </div>
           <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-8">
@@ -576,11 +576,11 @@ export function DashboardClient() {
           <div className="mt-2 flex items-center gap-4 text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1">
               <CheckCircle size={10} className="text-emerald-500" />
-              {Object.values(organHealth).filter((s) => s === "ok").length} {t("dashboard.healthy") || "正常"}
+              {Object.values(organHealth).filter((s) => s === "ok").length} {t("dashboard.healthy")}
             </span>
             <span className="flex items-center gap-1">
               <XCircle size={10} className="text-red-500" />
-              {Object.values(organHealth).filter((s) => s === "error").length} {t("dashboard.unhealthy") || "异常"}
+              {Object.values(organHealth).filter((s) => s === "error").length} {t("dashboard.unhealthy")}
             </span>
           </div>
         </div>
@@ -589,13 +589,13 @@ export function DashboardClient() {
         <div>
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium text-muted-foreground">
-              {t("dashboard.recentActivity") || "近期活动"}
+              {t("dashboard.recentActivity")}
             </h3>
             <button
               onClick={() => { fetchRecentUsage(); fetchCronJobs(); }}
               className="text-xs text-muted-foreground hover:text-foreground transition-colors"
             >
-              ↻ {t("common.refresh") || "刷新"}
+              ↻ {t("common.refresh")}
             </button>
           </div>
           {recentRecords.length > 0 ? (
@@ -603,10 +603,10 @@ export function DashboardClient() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.time") || "时间"}</th>
-                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.model") || "模型"}</th>
-                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.provider") || "提供商"}</th>
-                    <th className="px-4 py-2.5 text-right font-medium text-muted-foreground text-xs">{t("dashboard.tokens") || "Tokens"}</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.time")}</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.model")}</th>
+                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.provider")}</th>
+                    <th className="px-4 py-2.5 text-right font-medium text-muted-foreground text-xs">{t("dashboard.tokens")}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -629,13 +629,13 @@ export function DashboardClient() {
                 </tbody>
               </table>
               <div className="px-4 py-2 text-[10px] text-muted-foreground bg-muted/20 border-t border-border">
-                {t("dashboard.showingRecent") || "显示最近"} 10 / {recentRecords.length} {t("dashboard.records") || "条记录"} · {callCount} {t("dashboard.totalCalls") || "总调用次数"}
+                {t("dashboard.showingRecent")} 10 / {recentRecords.length} {t("dashboard.records")} · {callCount} {t("dashboard.totalCalls")}
               </div>
             </div>
           ) : cronJobs.length > 0 ? (
             <div className="rounded-xl border border-border bg-card overflow-hidden">
               <div className="px-4 py-3 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.cronJobs") || "定时任务"}</p>
+                <p className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.cronJobs")}</p>
                 {cronJobs.slice(0, 5).map((job, i) => (
                   <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                     <div className="flex items-center gap-2">
@@ -645,7 +645,7 @@ export function DashboardClient() {
                     </div>
                     {job.next_run && (
                       <span className="text-[10px] text-muted-foreground">
-                        {t("dashboard.nextRun") || "下次"}: {new Date(job.next_run).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        {t("dashboard.nextRun")}: {new Date(job.next_run).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </span>
                     )}
                   </div>
@@ -656,10 +656,10 @@ export function DashboardClient() {
             <div className="rounded-xl border border-border bg-card p-8 text-center">
               <TrendingUp size={32} className="mx-auto mb-3 text-muted-foreground/50" />
               <p className="text-sm text-muted-foreground">
-                {t("dashboard.noActivity") || "暂无近期活动记录"}
+                {t("dashboard.noActivity")}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {t("dashboard.noActivityHint") || "使用 AI 对话或执行任务后，这里将显示活动记录"}
+                {t("dashboard.noActivityHint")}
               </p>
             </div>
           )}
