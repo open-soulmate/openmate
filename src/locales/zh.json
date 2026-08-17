@@ -555,9 +555,18 @@
     "hintDocs": "项目文档",
     "hintMeetings": "会议记录",
     "hintTech": "技术方案",
-    "t98853": "课程",
-    "t20339": "全局搜索",
-    "t25959": "跨知识库、文件、事件、Agent、课程、轨迹、定时任务、模板、消息搜索"
+    "unified": "全局搜索",
+    "unifiedDesc": "跨知识库、文件、事件、Agent、课程、轨迹、定时任务、模板、消息搜索",
+    "sourceKnowledge": "知识库",
+    "sourceFiles": "文件",
+    "sourceEvents": "事件",
+    "sourceCourses": "课程",
+    "sourceTrajectory": "轨迹",
+    "sourceCron": "定时任务",
+    "sourceGene": "模板",
+    "sourceEcho": "消息",
+    "all": "全部",
+    "sourceAgents": "Agent"
   },
   "command": {
     "searchCommands": "搜索命令...",
@@ -2616,7 +2625,15 @@
     "multiAgentCollab": "多Agent协作",
     "t93963": "AI工程知识图谱",
     "t84456": "JSON格式错误",
-    "t80047": "1月,2月,3月"
+    "t80047": "1月,2月,3月",
+    "jsonError": "JSON格式错误",
+    "defaultBarTitle": "季度销售额",
+    "defaultLineTitle": "趋势对比",
+    "defaultPieTitle": "语言使用分布",
+    "defaultScatterTitle": "散点图",
+    "defaultMindmapTitle": "AI工程知识图谱",
+    "defaultLineX": "1月,2月,3月,4月,5月,6月",
+    "defaultLineSeries": "产品A:100,120,140,160,180,200\n产品B:80,90,110,130,120,150"
   },
   "mind": {
     "title": "心智 · 人格调节层",
@@ -3301,13 +3318,16 @@
     "loading": "加载中...",
     "properties": "属性",
     "relatedTo": "关联",
-    "t99111": "描述（可选）",
-    "t99673": "选择源实体",
-    "t20297": "选择目标实体",
-    "t76195": "创建关系",
-    "t26282": "关联关系",
-    "t42437": "暂无关系",
-    "t44501": "删除实体"
+    "selectSource": "选择源实体",
+    "selectTarget": "选择目标实体",
+    "relatedRelations": "关联关系",
+    "noRelations": "暂无关系",
+    "deleteEntity": "删除实体",
+    "createRelation": "创建关系",
+    "descriptionOptional": "描述（可选）",
+    "type": "类型",
+    "unknown": "未知",
+    "entityCount": "{entities} 实体 · {relations} 关系 · {zoom}"
   },
   "cron": {
     "title": "定时任务",
