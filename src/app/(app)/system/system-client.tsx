@@ -7,7 +7,7 @@ import { getApiBaseUrl } from "@/lib/api-client";
 import {
   Activity, Cpu, HardDrive, MemoryStick, Database,
   Puzzle, Zap, CheckCircle, XCircle, AlertTriangle,
-  RefreshCw, Loader2, Server, Clock,
+  RefreshCw, Loader2, Server, Clock, Rocket,
 } from "lucide-react";
 
 interface OrganStatus {
@@ -97,6 +97,8 @@ export function SystemOverviewClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastRefresh, setLastRefresh] = useState(0);
+  const [bootstrapState, setBootstrapState] = useState<any>(null);
+  const [bootstrapping, setBootstrapping] = useState(false);
 
   const fetchOverview = useCallback(async () => {
     setLoading(true);
@@ -115,6 +117,28 @@ export function SystemOverviewClient() {
   }, [apiBase]);
 
   useEffect(() => { fetchOverview(); }, [fetchOverview]);
+
+  // Fetch bootstrap status
+  useEffect(() => {
+    fetch(`${apiBase}/api/system/bootstrap/status`)
+      .then(r => r.ok ? r.json() : null)
+      .then(data => { if (data) setBootstrapState(data); })
+      .catch(() => {});
+  }, [apiBase, lastRefresh]);
+
+  const handleBootstrap = async (force = false) => {
+    setBootstrapping(true);
+    try {
+      const res = await fetch(`${apiBase}/api/system/bootstrap/run`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force }),
+      });
+      const data = await res.json();
+      setBootstrapState(data);
+      fetchOverview();
+    } catch {} finally { setBootstrapping(false); }
+  };
 
   const metrics = data?.metrics && !("error" in data.metrics) ? data.metrics as SystemMetrics : null;
 
@@ -204,6 +228,50 @@ export function SystemOverviewClient() {
               </div>
               <p className="text-2xl font-bold">{data.gland.call_count}</p>
             </div>
+          </div>
+        )}
+
+        {/* Bootstrap Status */}
+        {bootstrapState && (
+          <div className={cn("rounded-xl border p-4",
+            bootstrapState.bootstrapped ? "border-emerald-500/20 bg-emerald-500/5" : "border-amber-500/20 bg-amber-500/5")}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Rocket size={20} className={bootstrapState.bootstrapped ? "text-emerald-500" : "text-amber-500"} />
+                <div>
+                  <p className="font-medium">System Bootstrap</p>
+                  <p className="text-xs text-muted-foreground">
+                    {bootstrapState.bootstrapped
+                      ? `Initialized at ${new Date(bootstrapState.bootstrapped_at * 1000).toLocaleString()}`
+                      : "Not initialized — click to auto-configure default integrations"}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => handleBootstrap(!bootstrapState.bootstrapped)}
+                disabled={bootstrapping}
+                className={cn(
+                  "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50",
+                  bootstrapState.bootstrapped
+                    ? "border border-border hover:bg-accent"
+                    : "bg-primary text-primary-foreground hover:bg-primary/90"
+                )}
+              >
+                {bootstrapping ? <Loader2 className="h-4 w-4 animate-spin" /> : <Rocket className="h-4 w-4" />}
+                {bootstrapState.bootstrapped ? "Re-run" : "Initialize"}
+              </button>
+            </div>
+            {bootstrapState.items && Object.keys(bootstrapState.items).length > 0 && (
+              <div className="mt-3 flex flex-wrap gap-2">
+                {Object.entries(bootstrapState.items).map(([key, ok]) => (
+                  <span key={key} className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
+                    ok ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500")}>
+                    {ok ? <CheckCircle className="h-2.5 w-2.5" /> : <XCircle className="h-2.5 w-2.5" />}
+                    {key.replace(/_/g, " ")}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         )}
 
