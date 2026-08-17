@@ -71,7 +71,8 @@
     "dailyDigest": "デイリーダイジェスト",
     "timeline": "タイムライン",
     "topology": "トポロジー",
-    "notifications": "通知センター"
+    "notifications": "通知センター",
+    "system": "システム概要"
   },
   "dashboard": {
     "title": "システム概要",
