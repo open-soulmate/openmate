@@ -65,7 +65,11 @@
     "capture": "Capture",
     "pipeline": "Pipeline",
     "admin": "Admin",
-    "changelog": "Changelog"
+    "changelog": "Changelog",
+    "healer": "Healer",
+    "timeline": "Timeline",
+    "topology": "Topology",
+    "notifications": "Notifications"
   },
   "dashboard": {
     "title": "System Overview",
