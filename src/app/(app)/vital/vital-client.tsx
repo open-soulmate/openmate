@@ -771,10 +771,16 @@ function MiniChart({ data, series, height = 160 }: {
   const cw = W - pad.left - pad.right;
   const ch = H - pad.top - pad.bottom;
 
+  // Helper to get value from entry by key
+  const val = (d: HistoryEntry, key: string): number => {
+    const rec = d as unknown as Record<string, number>;
+    return rec[key] ?? 0;
+  };
+
   // Calculate global max for each series
   const seriesMax = series.map(s => {
     if (s.max) return s.max;
-    const vals = data.map(d => (d as Record<string, number>)[s.key] ?? 0);
+    const vals = data.map(d => val(d, s.key));
     return Math.max(...vals) * 1.2 || 1;
   });
 
@@ -783,7 +789,7 @@ function MiniChart({ data, series, height = 160 }: {
     const max = seriesMax[si];
     const points = data.map((d, i) => {
       const x = pad.left + (i / (data.length - 1)) * cw;
-      const v = (d as Record<string, number>)[s.key] ?? 0;
+      const v = val(d, s.key);
       const y = pad.top + ch - (v / max) * ch;
       return `${x},${y}`;
     });
