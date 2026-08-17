@@ -539,7 +539,10 @@
     "every": "Every",
     "seconds": "seconds",
     "minutesLater": "minutes later",
-    "hoursLater": "hours later"
+    "hoursLater": "hours later",
+    "interval": "Interval",
+    "nextRun": "Next run",
+    "runCount": "Run count"
   },
   "gene": {
     "title": "Gene · Template Library",
@@ -661,7 +664,24 @@
     "download": "Download",
     "upload": "Upload",
     "import": "Import",
-    "export": "Export"
+    "export": "Export",
+    "abnormal": "Abnormal",
+    "actionFailed": "Action failed",
+    "add": "Add",
+    "commaSeparated": "Comma separated",
+    "createFailed": "Create failed",
+    "creating": "Creating...",
+    "deleteFailed": "Delete failed",
+    "enable": "Enable",
+    "enabled": "Enabled",
+    "executeFailed": "Execution failed",
+    "importing": "Importing...",
+    "networkError": "Network error",
+    "normal": "Normal",
+    "pause": "Pause",
+    "paused": "Paused",
+    "running": "Running",
+    "stopped": "Stopped"
   },
   "gland": {
     "title": "Gland · Model Gateway",
@@ -746,7 +766,8 @@
     "autoRefresh": "Auto-refreshes every 30 seconds",
     "tabMetrics": "Metrics",
     "tabHealth": "Health",
-    "tabAlerts": "Alerts"
+    "tabAlerts": "Alerts",
+    "tabHistory": "History"
   },
   "hippo": {
     "title": "Hippocampus · Memory Lifecycle",
@@ -1605,10 +1626,26 @@
     "markAllRead": "Mark all read",
     "dismiss": "Dismiss",
     "clearAll": "Clear all",
-    "viewAll": "View all activity"
+    "viewAll": "View all activity",
+    "clearFilters": "Clear filters",
+    "filters": "Filters",
+    "items": "items",
+    "level": "Level",
+    "navigate": "Navigate",
+    "noResults": "No results",
+    "refresh": "Refresh",
+    "searchPlaceholder": "Search notifications...",
+    "showing": "Showing",
+    "source": "Source",
+    "test": "Test",
+    "tryDifferentSearch": "Try a different search",
+    "viewActivity": "View activity"
   },
   "health": {
     "title": "System Health",
     "viewDiagnostics": "View full diagnostics"
+  },
+  "healer": {
+    "title": "Self-Healing"
   }
 }

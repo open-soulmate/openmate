@@ -539,7 +539,10 @@
     "every": "毎",
     "seconds": "秒",
     "minutesLater": "分後",
-    "hoursLater": "時間後"
+    "hoursLater": "時間後",
+    "interval": "間隔",
+    "nextRun": "次回実行",
+    "runCount": "実行回数"
   },
   "gene": {
     "title": "遺伝子 · テンプレートライブラリ",
@@ -661,7 +664,24 @@
     "download": "ダウンロード",
     "upload": "アップロード",
     "import": "インポート",
-    "export": "エクスポート"
+    "export": "エクスポート",
+    "abnormal": "異常",
+    "actionFailed": "操作失敗",
+    "add": "追加",
+    "commaSeparated": "カンマ区切り",
+    "createFailed": "作成失敗",
+    "creating": "作成中...",
+    "deleteFailed": "削除失敗",
+    "enable": "有効化",
+    "enabled": "有効",
+    "executeFailed": "実行失敗",
+    "importing": "インポート中...",
+    "networkError": "ネットワークエラー",
+    "normal": "正常",
+    "pause": "一時停止",
+    "paused": "一時停止中",
+    "running": "実行中",
+    "stopped": "停止"
   },
   "gland": {
     "title": "腺 · モデルゲートウェイ",
@@ -746,7 +766,8 @@
     "autoRefresh": "30秒ごとに自動更新",
     "tabMetrics": "メトリクス",
     "tabHealth": "ヘルス",
-    "tabAlerts": "アラート"
+    "tabAlerts": "アラート",
+    "tabHistory": "履歴"
   },
   "hippo": {
     "title": "海馬 · メモリライフサイクル",
@@ -1605,10 +1626,26 @@
     "markAllRead": "すべて既読",
     "dismiss": "削除",
     "clearAll": "すべてクリア",
-    "viewAll": "すべてのアクティビティを見る"
+    "viewAll": "すべてのアクティビティを見る",
+    "clearFilters": "フィルタークリア",
+    "filters": "フィルター",
+    "items": "件",
+    "level": "レベル",
+    "navigate": "移動",
+    "noResults": "結果なし",
+    "refresh": "更新",
+    "searchPlaceholder": "通知を検索...",
+    "showing": "表示",
+    "source": "ソース",
+    "test": "テスト",
+    "tryDifferentSearch": "別の検索を試してください",
+    "viewActivity": "アクティビティ表示"
   },
   "health": {
     "title": "システムヘルス",
     "viewDiagnostics": "完全な診断を見る"
+  },
+  "healer": {
+    "title": "自己修復"
   }
 }
