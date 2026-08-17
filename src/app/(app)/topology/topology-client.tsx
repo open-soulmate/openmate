@@ -440,9 +440,9 @@ export function TopologyClient() {
 
   const categories = [
     { key: "all", label: t("topology.catAll") || "All", count: components.length },
-    { key: "core", label: t("topology.catCore")), count: components.filter(c => c.category === "core").length },
-    { key: "platform", label: t("topology.catPlatform")), count: components.filter(c => c.category === "platform").length },
-    { key: "advanced", label: t("topology.catAdvanced")), count: components.filter(c => c.category === "advanced").length },
+    { key: "core", label: t("topology.catCore"), count: components.filter(c => c.category === "core").length },
+    { key: "platform", label: t("topology.catPlatform"), count: components.filter(c => c.category === "platform").length },
+    { key: "advanced", label: t("topology.catAdvanced"), count: components.filter(c => c.category === "advanced").length },
   ];
 
   return (

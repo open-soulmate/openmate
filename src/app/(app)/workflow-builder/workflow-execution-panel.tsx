@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
+import { useTranslation } from "react-i18next";
 
 function statusIcon(status: string) {
   switch (status) {
@@ -134,6 +135,7 @@ function StepCard({
 }
 
 export function WorkflowExecutionPanel() {
+  const { t } = useTranslation();
   const showExecutionPanel = useWorkflowStore((s) => s.showExecutionPanel);
   const toggleExecutionPanel = useWorkflowStore((s) => s.toggleExecutionPanel);
   const currentExecution = useWorkflowStore((s) => s.currentExecution);
@@ -157,7 +159,7 @@ export function WorkflowExecutionPanel() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-medium">工作流执行</h3>
+          <h3 className="text-sm font-medium">{t('workflow.execution.workflowExecution')}</h3>
           <div className="flex gap-1">
             <button
               onClick={() => setTab("current")}
@@ -190,13 +192,13 @@ export function WorkflowExecutionPanel() {
               className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-500/10 transition-colors"
             >
               <StopCircle size={12} />
-              取消
+              {t('workflow.execution.cancel')}
             </button>
           )}
           <button
             onClick={fetchExecutionHistory}
             className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            title="刷新"
+            title={t('workflow.execution.refresh')}
           >
             <RefreshCw size={14} />
           </button>
@@ -216,8 +218,8 @@ export function WorkflowExecutionPanel() {
             {!currentExecution ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                 <Clock size={32} className="mb-2 opacity-30" />
-                <p className="text-sm">尚未执行工作流</p>
-                <p className="text-xs mt-1">点击工具栏的「运行」按钮开始执行</p>
+                <p className="text-sm">{t('workflow.execution.notExecuted')}</p>
+                <p className="text-xs mt-1">{t('workflow.execution.clickRunHint')}</p>
               </div>
             ) : (
               <>
@@ -241,7 +243,7 @@ export function WorkflowExecutionPanel() {
                         )}
                       >
                         {currentExecution.status === "running"
-                          ? "执行中..."
+                          ? t("workflow.execution.executing")
                           : currentExecution.status === "completed"
                             ? "执行完成"
                             : currentExecution.status === "failed"
@@ -312,7 +314,7 @@ export function WorkflowExecutionPanel() {
             {executionHistory.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                 <Clock size={32} className="mb-2 opacity-30" />
-                <p className="text-sm">暂无执行历史</p>
+                <p className="text-sm">{t('workflow.execution.noHistory')}</p>
               </div>
             ) : (
               executionHistory.map((exec) => (
@@ -344,7 +346,7 @@ export function WorkflowExecutionPanel() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>{exec.steps.length} 步</span>
+                    <span>{exec.steps.length} {t("workflow.execution.steps")}</span>
                     <span className="font-mono">
                       {new Date(exec.started_at).toLocaleString("zh-CN")}
                     </span>
