@@ -442,7 +442,7 @@ export function Onboarding() {
   const [themeId, setThemeId] = useState<ThemeId>("dark");
   const [selectedAgent, setSelectedAgent] = useState("gpt-4o");
   const [apiKey, setApiKey] = useState("");
-  const [soulApiUrl, setSoulApiUrl] = useState("http://localhost:8080");
+  const [soulApiUrl, setSoulApiUrl] = useState("http://localhost:8090");
   const [connectionStatus, setConnectionStatus] = useState<
     "idle" | "testing" | "success" | "error"
   >("idle");
@@ -461,16 +461,28 @@ export function Onboarding() {
     applyTheme(theme);
   };
 
-  const handleTestConnection = () => {
+  const handleTestConnection = async () => {
     setConnectionStatus("testing");
-    setTimeout(() => {
-      setConnectionStatus(Math.random() > 0.3 ? "success" : "error");
-    }, 1500);
+    try {
+      const url = soulApiUrl.replace(/\/+$/, "");
+      const res = await fetch(`${url}/api/health`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        setConnectionStatus("success");
+      } else {
+        setConnectionStatus("error");
+      }
+    } catch {
+      setConnectionStatus("error");
+    }
   };
 
   const handleEnter = () => {
     if (apiKey) {
       setLLMConfig({ apiKey });
+    }
+    // Save the API URL so the rest of the app uses it
+    if (soulApiUrl) {
+      localStorage.setItem("openmate-api-url", soulApiUrl.replace(/\/+$/, ""));
     }
     completeOnboarding();
   };

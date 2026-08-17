@@ -9,7 +9,7 @@ import {
   DollarSign, Cpu, Zap,
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
   Brain, Bolt, Heart, Home, MousePointer, Mic, ImageIcon, Smile,
-  CheckCircle, XCircle, Loader2,
+  CheckCircle, XCircle, Loader2, HardDrive, AlertTriangle,
 } from "lucide-react";
 import { useState, useEffect, useCallback } from "react";
 import { getApiBaseUrl } from "@/lib/api-client";
@@ -44,6 +44,29 @@ interface CronJob {
   next_run: string | null;
 }
 
+interface SystemMetrics {
+  system: {
+    cpu_percent: number;
+    memory_percent: number;
+    memory_used_mb: number;
+    memory_total_mb: number;
+    disk_percent: number;
+    disk_used_gb: number;
+    disk_total_gb: number;
+  };
+  app: {
+    request_qps: number;
+    latency_p99_ms: number;
+    error_rate: number;
+    total_requests: number;
+    total_errors: number;
+  };
+  alerts: {
+    total: number;
+    active: number;
+  };
+}
+
 export function DashboardClient() {
   const apiBase = getApiBaseUrl();
   const [organHealth, setOrganHealth] = useState<Record<string, "ok" | "error" | "loading">>({});
@@ -51,6 +74,7 @@ export function DashboardClient() {
   const [recentRecords, setRecentRecords] = useState<RecentRecord[]>([]);
   const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
   const [cronCount, setCronCount] = useState(0);
+  const [sysMetrics, setSysMetrics] = useState<SystemMetrics | null>(null);
 
   const organs = [
     { key: "soul", label: "🧠 Soul", endpoint: "/api/health" },
@@ -139,12 +163,24 @@ export function DashboardClient() {
     }
   }, [apiBase]);
 
+  const fetchSysMetrics = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/vital/stats`, { signal: AbortSignal.timeout(5000) });
+      if (res.ok) {
+        setSysMetrics(await res.json());
+      }
+    } catch {}
+  }, [apiBase]);
+
   useEffect(() => {
     checkOrganHealth();
     fetchUsage();
     fetchRecentUsage();
     fetchCronJobs();
-  }, [checkOrganHealth, fetchUsage, fetchRecentUsage, fetchCronJobs]);
+    fetchSysMetrics();
+    const metricsInterval = setInterval(fetchSysMetrics, 10000);
+    return () => clearInterval(metricsInterval);
+  }, [checkOrganHealth, fetchUsage, fetchRecentUsage, fetchCronJobs, fetchSysMetrics]);
 
   const { t } = useTranslation();
   const agentNodes = useAppStore((s) => s.agentNodes);
@@ -355,6 +391,123 @@ export function DashboardClient() {
             </div>
           </div>
         </div>
+
+        {/* System Metrics */}
+        {sysMetrics && (
+          <div className="mb-8 rounded-xl border border-border bg-card p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-emerald-500" />
+                  {t("dashboard.systemMetrics") || "系统资源"}
+                </h3>
+                <p className="text-sm text-muted-foreground mt-1">
+                  {t("dashboard.systemMetricsDesc") || "实时系统资源使用情况"}
+                </p>
+              </div>
+              <button onClick={fetchSysMetrics} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
+                ↻ {t("common.refresh") || "刷新"}
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              {/* CPU */}
+              <div className="p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="w-4 h-4 text-blue-500" />
+                    <span className="text-sm font-medium">CPU</span>
+                  </div>
+                  <span className={cn("text-lg font-bold", sysMetrics.system.cpu_percent > 80 ? "text-red-500" : sysMetrics.system.cpu_percent > 50 ? "text-amber-500" : "text-emerald-500")}>
+                    {sysMetrics.system.cpu_percent.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full transition-all duration-500", sysMetrics.system.cpu_percent > 80 ? "bg-red-500" : sysMetrics.system.cpu_percent > 50 ? "bg-amber-500" : "bg-emerald-500")}
+                    style={{ width: `${Math.min(sysMetrics.system.cpu_percent, 100)}%` }}
+                  />
+                </div>
+              </div>
+
+              {/* Memory */}
+              <div className="p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="w-4 h-4 text-violet-500" />
+                    <span className="text-sm font-medium">{t("dashboard.memory") || "内存"}</span>
+                  </div>
+                  <span className={cn("text-lg font-bold", sysMetrics.system.memory_percent > 85 ? "text-red-500" : sysMetrics.system.memory_percent > 60 ? "text-amber-500" : "text-emerald-500")}>
+                    {sysMetrics.system.memory_percent.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full transition-all duration-500", sysMetrics.system.memory_percent > 85 ? "bg-red-500" : sysMetrics.system.memory_percent > 60 ? "bg-amber-500" : "bg-emerald-500")}
+                    style={{ width: `${Math.min(sysMetrics.system.memory_percent, 100)}%` }}
+                  />
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-1">
+                  {(sysMetrics.system.memory_used_mb / 1024).toFixed(1)} / {(sysMetrics.system.memory_total_mb / 1024).toFixed(1)} GB
+                </div>
+              </div>
+
+              {/* Disk */}
+              <div className="p-4 rounded-lg bg-muted/50">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <HardDrive className="w-4 h-4 text-amber-500" />
+                    <span className="text-sm font-medium">{t("dashboard.disk") || "磁盘"}</span>
+                  </div>
+                  <span className={cn("text-lg font-bold", sysMetrics.system.disk_percent > 90 ? "text-red-500" : sysMetrics.system.disk_percent > 75 ? "text-amber-500" : "text-emerald-500")}>
+                    {sysMetrics.system.disk_percent.toFixed(1)}%
+                  </span>
+                </div>
+                <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
+                  <div
+                    className={cn("h-full rounded-full transition-all duration-500", sysMetrics.system.disk_percent > 90 ? "bg-red-500" : sysMetrics.system.disk_percent > 75 ? "bg-amber-500" : "bg-emerald-500")}
+                    style={{ width: `${Math.min(sysMetrics.system.disk_percent, 100)}%` }}
+                  />
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-1">
+                  {sysMetrics.system.disk_used_gb.toFixed(0)} / {sysMetrics.system.disk_total_gb.toFixed(0)} GB
+                </div>
+              </div>
+            </div>
+
+            {/* App metrics row */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
+                <Zap className="w-4 h-4 text-blue-500" />
+                <div>
+                  <div className="text-xs text-muted-foreground">QPS</div>
+                  <div className="text-sm font-bold">{sysMetrics.app.request_qps.toFixed(1)}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
+                <Clock className="w-4 h-4 text-amber-500" />
+                <div>
+                  <div className="text-xs text-muted-foreground">P99 {t("dashboard.latency") || "延迟"}</div>
+                  <div className="text-sm font-bold">{sysMetrics.app.latency_p99_ms.toFixed(0)}ms</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
+                <Activity className="w-4 h-4 text-emerald-500" />
+                <div>
+                  <div className="text-xs text-muted-foreground">{t("dashboard.totalRequests") || "总请求"}</div>
+                  <div className="text-sm font-bold">{sysMetrics.app.total_requests.toLocaleString()}</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
+                <AlertTriangle className="w-4 h-4 text-red-500" />
+                <div>
+                  <div className="text-xs text-muted-foreground">{t("dashboard.activeAlerts") || "活跃告警"}</div>
+                  <div className={cn("text-sm font-bold", sysMetrics.alerts.active > 0 ? "text-red-500" : "text-emerald-500")}>{sysMetrics.alerts.active}</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* Quick links */}
         <div className="mb-8">
