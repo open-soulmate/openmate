@@ -1,10 +1,9 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from 'react-i18next';
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
-import { useTranslation } from 'react-i18next';
-
   Camera, RefreshCw, Trash2, ExternalLink, Search,
   FileText, Type, CheckCircle, Loader2, ArrowUpCircle,
   Globe, Clock, Hash,
@@ -34,11 +33,11 @@ function TypeBadge({ type }: { type: string }) {
   return type === "page" ? (
     <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-500">
       <Globe size={10} />  {t('capture.page')}
-    <span>
+    </span>
   ) : (
     <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium text-purple-500">
       <Type size={10} />  {t('capture.selection')}
-    <span>
+    </span>
   );
 }
 
