@@ -1,5 +1,4 @@
 'use client';
-import { useTranslation } from 'react-i18next';
 import { useState, useMemo } from 'react';
 import { use } from 'react';
 import Link from 'next/link';
@@ -17,6 +16,7 @@ import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import {
   Users, ArrowLeft, Plus, Trash2, Bot, Server, Plug, Crown,
+  Activity, CheckSquare, Clock, Circle, ChevronRight, UserPlus,
 } from 'lucide-react';
 
 function uid() {
