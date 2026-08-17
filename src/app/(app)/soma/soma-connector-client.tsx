@@ -75,7 +75,6 @@ export function SomaConnectorClient() {
   const [regType, setRegType] = useState("collector");
   const [regVersion, setRegVersion] = useState("0.1.0");
   const [regCaps, setRegCaps] = useState("");
-  const [nerveNodes, setNerveNodes] = useState<any[]>([]);
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -92,14 +91,6 @@ export function SomaConnectorClient() {
     } catch {}
   }, [apiBase]);
 
-  const fetchNerveNodes = useCallback(async () => {
-    try {
-      const res = await fetch(`${apiBase}/api/nerve/nodes`);
-      const data = await res.json();
-      setNerveNodes(data.nodes || []);
-    } catch {}
-  }, [apiBase]);
-
   const fetchCapabilities = useCallback(async () => {
     try {
       const res = await fetch(`${apiBase}/api/soma/capabilities`);
@@ -110,9 +101,8 @@ export function SomaConnectorClient() {
   useEffect(() => {
     fetchHealth();
     fetchComponents();
-    fetchNerveNodes();
     fetchCapabilities();
-  }, [fetchHealth, fetchComponents, fetchNerveNodes, fetchCapabilities]);
+  }, [fetchHealth, fetchComponents, fetchCapabilities]);
 
   const handleRegister = async () => {
     if (!regId.trim() || !regName.trim()) return;
@@ -295,37 +285,6 @@ export function SomaConnectorClient() {
                 </div>
               </div>
             ))}
-
-            {/* Nerve Bus Nodes */}
-            {nerveNodes.length > 0 && (
-              <>
-                <div className="pt-3 border-t border-border">
-                  <p className="text-xs font-medium text-muted-foreground mb-2">⚡ Nerve Bus Nodes</p>
-                </div>
-                {nerveNodes.map((n: any) => (
-                  <div key={n.node_id}
-                    className="rounded-xl border border-border bg-card p-4 transition-all hover:shadow-md">
-                    <div className="flex items-center justify-between mb-1">
-                      <div className="flex items-center gap-2">
-                        <div className="rounded-lg p-1.5 text-emerald-500 bg-emerald-500/10">
-                          <Server size={14} />
-                        </div>
-                        <span className="font-medium text-sm">{n.node_id}</span>
-                      </div>
-                      <span className={cn("text-xs font-medium", n.status === "online" ? "text-emerald-500" : "text-red-500")}>
-                        {n.status === "online" ? "● 在线" : "○ 离线"}
-                      </span>
-                    </div>
-                    <div className="text-xs text-muted-foreground font-mono">{n.node_type}</div>
-                    <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
-                      {n.metadata?.runtime && <span>🔧 {n.metadata.runtime}</span>}
-                      {n.metadata?.version && <span>v{n.metadata.version}</span>}
-                      <span>事件: {n.event_count || 0}</span>
-                    </div>
-                  </div>
-                ))}
-              </>
-            )}
           </div>
 
           {/* Detail Panel */}

@@ -25,28 +25,16 @@ interface UnifiedResults {
   sources_searched: string[];
 }
 
-const SOURCE_ICONS: Record<string, { icon: React.ElementType; color: string }> = {
-  knowledge: { icon: BookOpen, color: 'text-blue-500 bg-blue-500/10' },
-  files: { icon: FileCode, color: 'text-emerald-500 bg-emerald-500/10' },
-  events: { icon: Activity, color: 'text-amber-500 bg-amber-500/10' },
-  agents: { icon: Bot, color: 'text-purple-500 bg-purple-500/10' },
-  courses: { icon: GraduationCap, color: 'text-pink-500 bg-pink-500/10' },
-  trajectory: { icon: Clock, color: 'text-cyan-500 bg-cyan-500/10' },
-  cron: { icon: RotateCcw, color: 'text-orange-500 bg-orange-500/10' },
-  gene: { icon: Layers, color: 'text-lime-500 bg-lime-500/10' },
-  echo: { icon: Zap, color: 'text-rose-500 bg-rose-500/10' },
-};
-
-const SOURCE_LABEL_KEYS: Record<string, string> = {
-  knowledge: 'search.sourceKnowledge',
-  files: 'search.sourceFiles',
-  events: 'search.sourceEvents',
-  agents: 'search.sourceAgents',
-  courses: 'search.sourceCourses',
-  trajectory: 'search.sourceTrajectory',
-  cron: 'search.sourceCron',
-  gene: 'search.sourceGene',
-  echo: 'search.sourceEcho',
+const SOURCE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+  knowledge: { label: '知识库', icon: BookOpen, color: 'text-blue-500 bg-blue-500/10' },
+  files: { label: '文件', icon: FileCode, color: 'text-emerald-500 bg-emerald-500/10' },
+  events: { label: '事件', icon: Activity, color: 'text-amber-500 bg-amber-500/10' },
+  agents: { label: 'Agent', icon: Bot, color: 'text-purple-500 bg-purple-500/10' },
+  courses: { label: '课程', icon: GraduationCap, color: 'text-pink-500 bg-pink-500/10' },
+  trajectory: { label: '轨迹', icon: Clock, color: 'text-cyan-500 bg-cyan-500/10' },
+  cron: { label: '定时任务', icon: RotateCcw, color: 'text-orange-500 bg-orange-500/10' },
+  gene: { label: '模板', icon: Layers, color: 'text-lime-500 bg-lime-500/10' },
+  echo: { label: '消息', icon: Zap, color: 'text-rose-500 bg-rose-500/10' },
 };
 
 export function SearchClient() {
@@ -62,7 +50,7 @@ export function SearchClient() {
   const [activeSource, setActiveSource] = useState<string>('all');
 
   const MODES = [
-    { id: "unified" as const, label: t('search.unified'), icon: Layers, desc: t('search.unifiedDesc') },
+    { id: "unified" as const, label: "全局搜索", icon: Layers, desc: "跨知识库、文件、事件、Agent、课程、轨迹、定时任务、模板、消息搜索" },
     { id: "hybrid" as const, label: t('search.hybrid'), icon: Layers, desc: t('search.hybridDesc') },
     { id: "semantic" as const, label: t('search.semantic'), icon: Zap, desc: t('search.semanticDesc') },
     { id: "fulltext" as const, label: t('search.fulltext'), icon: BookOpen, desc: t('search.fulltextDesc') },
@@ -193,10 +181,10 @@ export function SearchClient() {
                       : "border-border text-muted-foreground hover:bg-muted"
                   )}
                 >
-                  {t('search.all')} ({unifiedResults.total})
+                  全部 ({unifiedResults.total})
                 </button>
                 {Object.entries(unifiedResults.by_source).map(([source, items]) => {
-                  const config = SOURCE_ICONS[source];
+                  const config = SOURCE_CONFIG[source];
                   if (!config || items.length === 0) return null;
                   const Icon = config.icon;
                   return (
@@ -211,7 +199,7 @@ export function SearchClient() {
                       )}
                     >
                       <Icon size={12} />
-                      {SOURCE_LABEL_KEYS[source] ? t(SOURCE_LABEL_KEYS[source]) : source} ({items.length})
+                      {config.label} ({items.length})
                     </button>
                   );
                 })}
@@ -228,7 +216,7 @@ export function SearchClient() {
               </span>
             </div>
             {displayResults.map((r, i) => {
-              const sourceConfig = r.source ? SOURCE_ICONS[r.source] : null;
+              const sourceConfig = r.source ? SOURCE_CONFIG[r.source] : null;
               return (
                 <div
                   key={r.id || i}
@@ -255,7 +243,7 @@ export function SearchClient() {
                       <div className="flex items-center gap-2 mt-2 flex-wrap">
                         {r.source && sourceConfig && (
                           <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", sourceConfig.color)}>
-                            {r.source && SOURCE_LABEL_KEYS[r.source] ? t(SOURCE_LABEL_KEYS[r.source]) : r.source}
+                            {sourceConfig.label}
                           </span>
                         )}
                         {r.type && (

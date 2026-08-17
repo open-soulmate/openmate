@@ -163,7 +163,7 @@ export function SenseClient() {
       setVideoResult(await res.json())
     } catch (e: any) {
       setVideoResult(null)
-      alert(t("sense.t64077", { message: e.message }))
+      alert(`视频分析失败: ${e.message}`)
     } finally {
       setVideoLoading(false)
     }
@@ -183,7 +183,7 @@ export function SenseClient() {
       const data = await res.json()
       setVideoFrames(data.frames || [])
     } catch (e: any) {
-      alert(t("sense.t10706", { message: e.message }))
+      alert(`帧提取失败: ${e.message}`)
     } finally {
       setFrameExtracting(false)
     }
@@ -233,10 +233,10 @@ export function SenseClient() {
   const multimodalAvailable = health?.engines?.multimodal?.available ?? false
 
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Eye; available: boolean }> = [
-    { key: "ocr", label: t("sense.t90548"), icon: FileImage, available: ocrAvailable },
-    { key: "asr", label: t("sense.t29231"), icon: Volume2, available: asrAvailable },
-    { key: "analyze", label: t("sense.analyze"), icon: ImageIcon, available: multimodalAvailable },
-    { key: "video", label: t("sense.t72073"), icon: Video, available: true },
+    { key: "ocr", label: "OCR 图文识别", icon: FileImage, available: ocrAvailable },
+    { key: "asr", label: "ASR 语音转写", icon: Volume2, available: asrAvailable },
+    { key: "analyze", label: "图像分析", icon: ImageIcon, available: multimodalAvailable },
+    { key: "video", label: "视频分析", icon: Video, available: true },
   ]
 
   return (
@@ -247,8 +247,8 @@ export function SenseClient() {
           <Eye className="w-6 h-6 text-amber-500" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">👁️ Sense — {t("sense.text6")}</h1>
-          <p className="text-sm text-muted-foreground">{t("sense.t22285")}</p>
+          <h1 className="text-2xl font-bold">👁️ Sense — 感官感知</h1>
+          <p className="text-sm text-muted-foreground">多模态解析：OCR图像识别、ASR语音转写、图像分析</p>
         </div>
       </div>
 
@@ -271,9 +271,9 @@ export function SenseClient() {
               Engine: {eng.engine as string}
             </div>
             {eng.available ? (
-              <div className="text-xs text-green-500 font-medium mt-1">✓ {t("sense.text8")}</div>
+              <div className="text-xs text-green-500 font-medium mt-1">✓ 可用</div>
             ) : (
-              <div className="text-xs text-muted-foreground mt-1">✗ {t("sense.text9")}</div>
+              <div className="text-xs text-muted-foreground mt-1">✗ 不可用</div>
             )}
           </div>
         ))}
@@ -298,7 +298,7 @@ export function SenseClient() {
             >
               <Icon className="w-4 h-4" />
               {tab.label}
-              {!tab.available && <span className="text-xs">({t("sense.text9")})</span>}
+              {!tab.available && <span className="text-xs">(不可用)</span>}
             </button>
           )
         })}
@@ -310,7 +310,7 @@ export function SenseClient() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             {/* Upload Area */}
             <div className="space-y-4">
-              <h3 className="font-semibold">{t("sense.upload")}</h3>
+              <h3 className="font-semibold">上传图片</h3>
               <div
                 className="border-2 border-dashed border-border rounded-xl p-8 text-center cursor-pointer hover:border-amber-500/50 hover:bg-amber-500/5 transition-all"
                 onClick={() => ocrInputRef.current?.click()}
@@ -326,8 +326,8 @@ export function SenseClient() {
                 ) : (
                   <div className="space-y-2">
                     <Upload className="w-10 h-10 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">{t("sense.t15784")}</p>
-                    <p className="text-xs text-muted-foreground/60">{t("sense.t61542")}</p>
+                    <p className="text-sm text-muted-foreground">拖拽或点击上传图片</p>
+                    <p className="text-xs text-muted-foreground/60">支持 JPG, PNG, BMP, TIFF, WebP</p>
                   </div>
                 )}
               </div>
@@ -350,17 +350,17 @@ export function SenseClient() {
 
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="text-xs text-muted-foreground mb-1 block">{t("sense.text12")}</label>
+                  <label className="text-xs text-muted-foreground mb-1 block">语言</label>
                   <select
                     value={ocrLanguage}
                     onChange={(e) => setOcrLanguage(e.target.value)}
                     className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
                   >
-                    <option value="chi_sim+eng">{t("sense.t14168")}</option>
+                    <option value="chi_sim+eng">中文简体 + English</option>
                     <option value="eng">English</option>
-                    <option value="chi_sim">{t("sense.t10852")}</option>
-                    <option value="chi_tra">{t("sense.t52961")}</option>
-                    <option value="jpn">{t("sense.t33558")}</option>
+                    <option value="chi_sim">中文简体</option>
+                    <option value="chi_tra">中文繁體</option>
+                    <option value="jpn">日本語</option>
                     <option value="kor">한국어</option>
                   </select>
                 </div>
@@ -372,7 +372,7 @@ export function SenseClient() {
                       onChange={(e) => setOcrPreprocess(e.target.checked)}
                       className="rounded border-border"
                     />
-                    {t("sense.t82623")}
+                    预处理（灰度+二值化）
                   </label>
                 </div>
               </div>
@@ -383,20 +383,20 @@ export function SenseClient() {
                 className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {ocrLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                {ocrLoading ? t("sense.t15992") : t("sense.t60548")}
+                {ocrLoading ? "识别中..." : "开始 OCR 识别"}
               </button>
             </div>
 
             {/* Result Area */}
             <div className="space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">{t("sense.text18")}</h3>
+                <h3 className="font-semibold">识别结果</h3>
                 {ocrResult && ocrResult.text && (
                   <button
                     onClick={() => copyToClipboard(ocrResult.text)}
                     className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    <Copy className="w-3.5 h-3.5" /> {t("sense.copy")}
+                    <Copy className="w-3.5 h-3.5" /> 复制
                   </button>
                 )}
               </div>
@@ -404,19 +404,19 @@ export function SenseClient() {
                 {ocrResult ? (
                   <div className="space-y-4">
                     <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span>{t("sense.text19")}: <b className="text-foreground">{ocrResult.confidence}%</b></span>
-                      <span>{t("sense.text12")}: <b className="text-foreground">{ocrResult.language}</b></span>
-                      <span>{t("sense.text20")}: <b className="text-foreground">{ocrResult.engine}</b></span>
+                      <span>置信度: <b className="text-foreground">{ocrResult.confidence}%</b></span>
+                      <span>语言: <b className="text-foreground">{ocrResult.language}</b></span>
+                      <span>引擎: <b className="text-foreground">{ocrResult.engine}</b></span>
                     </div>
                     <div className="whitespace-pre-wrap text-sm leading-relaxed">
-                      {ocrResult.text || t("sense.t97826")}
+                      {ocrResult.text || "（未识别到文字）"}
                     </div>
                     {ocrResult.pages.length > 1 && (
                       <div className="space-y-3 pt-4 border-t border-border">
-                        <h4 className="text-xs font-medium text-muted-foreground">{t("sense.t10338")}</h4>
+                        <h4 className="text-xs font-medium text-muted-foreground">按页结果</h4>
                         {ocrResult.pages.map((p) => (
                           <div key={p.page} className="bg-muted/30 rounded-lg p-3">
-                            <div className="text-xs text-muted-foreground mb-1">{t("sense.text23")} {p.page} {t("sense.text24")} {p.confidence}%</div>
+                            <div className="text-xs text-muted-foreground mb-1">第 {p.page} 页 · 置信度 {p.confidence}%</div>
                             <div className="text-sm whitespace-pre-wrap">{p.text}</div>
                           </div>
                         ))}
@@ -426,7 +426,7 @@ export function SenseClient() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                     <FileText className="w-12 h-12 mb-2" />
-                    <p className="text-sm">{t("sense.t21375")}</p>
+                    <p className="text-sm">上传图片后点击"开始识别"</p>
                   </div>
                 )}
               </div>
