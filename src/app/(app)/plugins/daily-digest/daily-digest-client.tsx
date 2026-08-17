@@ -246,14 +246,14 @@ export function DailyDigestClient() {
                 <span className="text-emerald-400">{healthyOrgans}</span>
                 <span className="text-muted-foreground text-lg">/{Object.keys(digest.organ_summary).length}</span>
               </div>
-              <div className="text-xs text-muted-foreground mt-1">在线运行</div>
+              <div className="text-xs text-muted-foreground mt-1">{t('plugins.online') || '在线运行'}</div>
             </div>
 
             {/* Events */}
             <div className="p-6 rounded-2xl border border-border bg-card">
               <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-2">
                 <Flame className="w-3.5 h-3.5" />
-                24h 事件
+                24h {t('plugins.text19') || '事件'}
               </div>
               <div className="text-3xl font-bold text-foreground">{digest.total_events}</div>
               <div className="text-xs text-muted-foreground mt-1">跨器官事件</div>
