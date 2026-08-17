@@ -27,13 +27,20 @@ export function detectLanguage() {
   if (typeof window === "undefined") return;
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved && ["zh", "en", "ja"].includes(saved)) {
+    // 用户手动设置过语言，尊重选择
     i18n.changeLanguage(saved);
-  } else {
-    const nav = navigator.language.split("-")[0];
-    if (["zh", "en", "ja"].includes(nav)) {
-      i18n.changeLanguage(nav);
+    return;
+  }
+  // 自动检测系统语言（navigator.languages取第一个匹配的）
+  const langs = navigator.languages || [navigator.language];
+  for (const lang of langs) {
+    const code = lang.split("-")[0].toLowerCase();
+    if (["zh", "en", "ja"].includes(code)) {
+      i18n.changeLanguage(code);
+      return;
     }
   }
+  // 都不匹配，保持默认zh
 }
 
 export default i18n;
