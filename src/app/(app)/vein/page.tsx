@@ -1,8 +1,8 @@
 import { VeinClient } from "./vein-client";
 
 export const metadata = {
-  title: "文件管理 · OpenMate",
-  description: "Vein 文件管理、存储统计",
+  title: "Vein · OpenMate",
+  description: "Vein file management and storage statistics",
 };
 
 export default function VeinPage() {

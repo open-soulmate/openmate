@@ -280,7 +280,14 @@
     "content3": "知识内容",
     "knowledgeBasecreate1": "先申请创建知识库，审批通过后即可添加知识",
     "shareToEnterpriseKB": "共享到企业知识库",
-    "shareToEnterpriseKBdone": "已共享到企业知识库"
+    "shareToEnterpriseKBdone": "已共享到企业知识库",
+    "registerAccount": "注册账号",
+    "deduping": "去重中...",
+    "shareSubmitted": "共享申请已提交，等待管理员审批",
+    "dedupResult": "扫描{{total}}条，发现{{dup}}条重复，已清理{{removed}}条",
+    "filesSelected": "{{count}} 个文件已选择",
+    "characters": "字符",
+    "clearAll": "清空"
   },
   "learn": {
     "title": "学习中心",
@@ -305,8 +312,9 @@
     "t76433": "难度",
     "t03149": "入门",
     "t56231": "中级",
-    "t16459": "}\n              >\n                <Sparkles size={16} />\n                <div className=\"text-left\">\n                  <div className=\"font-medium\">AI 自动生成</div>\n                  <div className=\"text-xs opacity-70\">{t('learn.t30476')}<div>\n                </div>\n              </button>\n              <button\n                onClick={() => setGenMode(\"manual\")}\n                className={",
-    "t55143": "章"
+    "t16459": "高级",
+    "t55143": "章",
+    "aiAutoGenerate": "AI 自动生成"
   },
   "agents": {
     "title": "Agent管理",
@@ -767,7 +775,20 @@
     "file1": "逻辑文件数",
     "t59359": "唯一blob数",
     "empty1": "去重节省空间",
-    "t46816": "去重效率"
+    "t46816": "去重效率",
+    "collapse": "收起",
+    "noVersionHistory": "暂无版本历史",
+    "current": "当前",
+    "promoteSuccess": "已提升到知识库: {{name}}",
+    "promoteFailed": "提升失败: {{msg}}",
+    "chunkedUploads": "进行中的分片上传 ({{count}})",
+    "batchComplete": "批量识别完成",
+    "scanResult": "扫描 {{total}} 个文件 · 匹配 {{eligible}} 个 · 成功 {{processed}} 个 · 入库 {{promoted}} 个",
+    "mimeLabel": "MIME类型",
+    "cleanExpired": "清理过期",
+    "clearAllCache": "清除全部缓存",
+    "cacheCleanupDesc": "清理过期：仅删除TTL已过期的条目。清除全部：删除所有缓存条目，文件仍保留在磁盘。",
+    "dedupStats": "去重统计"
   },
   "sense": {
     "title": "感官 · 多模态解析",
@@ -916,7 +937,15 @@
     "t32222": "编码",
     "filesize1": "文件大小",
     "uploadinfoanalyze": "上传视频后点击\"分析视频元信息\"",
-    "upload14": ">上传视频后点击"
+    "upload14": ">上传视频后点击",
+    "videoAnalyzeFailed": "视频分析失败: {error}",
+    "frameExtractFailed": "帧提取失败: {error}",
+    "preprocess": "预处理（灰度+二值化）",
+    "recognizing": "识别中...",
+    "pageConfidence": "第 {page} 页 · 置信度 {confidence}%",
+    "transcribing": "转写中...",
+    "analyzing": "分析中...",
+    "extractedFrames": "提取的帧 ({count} 张)"
   },
   "immune": {
     "title": "免疫 · 安全防护",
@@ -1047,7 +1076,13 @@
     "time3": "时间",
     "action2": "操作",
     "detail1": "详情",
-    "t44032": "风险"
+    "t44032": "风险",
+    "updateConfig": "更新配置",
+    "moderateHint": "输入文本，检测敏感信息（PII、密钥、手机号、身份证等）",
+    "moderating": "审核中...",
+    "contentSafe": "内容安全",
+    "resetCount": "重置计数",
+    "records2": "共 {count} 条记录"
   },
   "marrow": {
     "title": "骨髓 · 备份恢复",
@@ -1266,7 +1301,22 @@
     "exporttemplate": "导出模板",
     "templatetotal": "总模板数",
     "createuser1": "用户创建",
-    "exportalltemplate": "导出全部模板"
+    "exportalltemplate": "导出全部模板",
+    "jsonParseFailed": "JSON解析失败",
+    "requiredVars": "需要变量:",
+    "backToBrowse": "返回浏览 →",
+    "creating": "创建中...",
+    "instantiating": "实例化中...",
+    "overwriteExisting": "覆盖已存在的模板",
+    "importing": "导入中...",
+    "importResult": "成功导入 {{imported}}/{{total}} 个模板",
+    "exportDesc": "导出所有模板为JSON文件，可用于备份或迁移到其他实例",
+    "exportFormat": "导出格式",
+    "all": "全部",
+    "author": "作者",
+    "usage": "使用",
+    "times": "次",
+    "importDesc": "支持导入单个模板对象、模板数组、或导出的bundle格式JSON"
   },
   "echo": {
     "title": "回声 · 消息推送",
@@ -1594,7 +1644,16 @@
     "t96343": "QPS 峰值",
     "data": "数据点",
     "noData": "暂无告警记录",
-    "run1": "系统运行正常，所有指标在阈值范围内"
+    "run1": "系统运行正常，所有指标在阈值范围内",
+    "refresh2": "刷新",
+    "cpuMemoryUsage": "CPU & 内存使用率",
+    "diskUsage": "磁盘使用率",
+    "qpsLatency": "请求 QPS & P99 延迟",
+    "alertsSummary": "共 {total} 条告警，{active} 条未解决",
+    "critical": "严重",
+    "recovered": "已恢复",
+    "currentValue": "当前值: {value}",
+    "needDataPoints": "需要至少2个数据点才能显示图表"
   },
   "hippo": {
     "title": "海马体 · 记忆生命周期",
@@ -1909,7 +1968,14 @@
     "user1": "所有者用户ID (可选)",
     "description7": "描述 (可选)",
     "cancel5": "取消",
-    "create2": "创建"
+    "create2": "创建",
+    "saasIsolation": "SaaS隔离",
+    "blockRate": "拦截率 {rate}%",
+    "status2": "状态: {status}",
+    "check2": "检查",
+    "allowed": "✓ 允许",
+    "quotaInfo": "当前: {current} / 上限: {limit} ({percent}%)",
+    "records": "{count} 条记录"
   },
   "limb": {
     "title": "四肢 · RPA执行器",
@@ -2086,7 +2152,16 @@
     "low3": "低沉",
     "t89293": "正常",
     "high5": "较高",
-    "cancel1": "取消"
+    "cancel1": "取消",
+    "textToSpeech": "文字转语音",
+    "refresh3": "刷新",
+    "charactersCount": "{count} / 10000 字符",
+    "saveFile": "保存文件",
+    "usedTimes": "用过 {count} 次",
+    "synthesizing": "合成中...",
+    "cacheHit": "命中 ✓",
+    "profileCount": "{count} 个角色",
+    "create2": "创建"
   },
   "vision": {
     "title": "视觉 · 图像可视化引擎",
@@ -2136,7 +2211,28 @@
     "multiAgentCollab": "多Agent协作",
     "t93963": "AI工程知识图谱",
     "t84456": "JSON格式错误",
-    "t80047": "1月,2月,3月"
+    "t80047": "1月,2月,3月",
+    "quarterlySales": "季度销售额",
+    "trendComparison": "趋势对比",
+    "langDist": "语言使用分布",
+    "scatterPlot": "散点图",
+    "jsonError": "JSON格式错误",
+    "defaultBarTitle": "季度销售额",
+    "defaultLineTitle": "趋势对比",
+    "defaultPieTitle": "语言使用分布",
+    "defaultScatterTitle": "散点图",
+    "defaultMindmapTitle": "AI工程知识图谱",
+    "defaultLineX": "1月,2月,3月,4月,5月,6月",
+    "defaultLineSeries": "产品A:100,120,140,160,180,200\\n产品B:80,90,110,130,120,150",
+    "defaultMindmapData": "AI工程",
+    "mindmapSub1": "Prompt Engineering",
+    "mindmapSub2": "RAG",
+    "mindmapSub2a": "向量检索",
+    "mindmapSub2b": "混合召回",
+    "mindmapSub3": "Agent",
+    "mindmapSub3a": "工具调用",
+    "mindmapSub3b": "多Agent协作",
+    "mindmapSub4": "Fine-tuning"
   },
   "mind": {
     "title": "心智 · 人格调节层",
@@ -2291,7 +2387,18 @@
     "eventpublishdone": "事件已发布",
     "t81719": "投递到",
     "publishEventinfo": "填写信息后点击\"发布事件\"",
-    "info4": ">填写信息后点击"
+    "info4": ">填写信息后点击",
+    "viewAll": "查看全部 →",
+    "totalRecords": "共 {count} 条",
+    "deliveredTo": "投递到: {targets}",
+    "subscribe5": "订阅",
+    "activeSubscriptions": "活跃订阅 ({count})",
+    "deliveryCount": "投递 {count} 次",
+    "register2": "注册",
+    "nodeList": "节点列表 ({count})",
+    "registeredAt": "注册: {time}",
+    "heartbeat2": "心跳",
+    "publishing": "发布中..."
   },
   "will": {
     "title": "意志 · 工作流引擎",
@@ -2426,7 +2533,22 @@
     "max": "最大",
     "cores": "核心",
     "t39409": "{cpucount}{cores}",
-    "t17783": "{cpucount} {cores}"
+    "t17783": "{cpucount} {cores}",
+    "checkingShort": "检测中...",
+    "healthyLabel": "正常",
+    "unhealthyLabel": "异常",
+    "maxLabel": "最大",
+    "coresLabel": "核心",
+    "responseTimeLabel": "响应时间",
+    "categoryLabel": "分类",
+    "errorLabel": "错误",
+    "itemsLabel": "项",
+    "defaultLabel": "默认",
+    "currentLabel": "当前",
+    "allOkLabel": "所有系统正常运行",
+    "partialErrorLabel": "部分系统异常",
+    "organHealthLabel": "器官健康",
+    "systemLabel": "系统"
   },
   "cortex": {
     "title": "OpenCortex",
@@ -2582,7 +2704,13 @@
     "t96994": "等级分布",
     "average1": "维度平均分",
     "high2": "🏆 最高质量",
-    "t36522": "⚠️ 需改进"
+    "t36522": "⚠️ 需改进",
+    "inputKnowledgeId": "输入知识条目 ID，获取相关推荐",
+    "batchScore": "批量评分",
+    "singleScore": "单条评分",
+    "score": "评分",
+    "qualityReport": "质量报告",
+    "batchScoreResult": "批量评分结果 · {{count}} 条"
   },
   "intelligence": {
     "title": "智能分析",
@@ -2745,7 +2873,8 @@
     "capabilities": "能力",
     "checking": "检查中...",
     "goToPage": "跳转到页面",
-    "t69854": "已选中"
+    "t69854": "已选中",
+    "selected": "已选中"
   },
   "graph": {
     "title": "知识图谱",
@@ -2780,7 +2909,16 @@
     "t42437": "暂无关系",
     "t44501": "删除实体",
     "t49096": "实体 ·",
-    "t36665": "关系 ·"
+    "t36665": "关系 ·",
+    "descriptionOptional": "描述（可选）",
+    "createRelation": "创建关系",
+    "selectSource": "选择源实体",
+    "selectTarget": "选择目标实体",
+    "type": "类型",
+    "relatedRelations": "关联关系",
+    "unknown": "未知",
+    "noRelations": "暂无关系",
+    "deleteEntity": "删除实体"
   },
   "cron": {
     "title": "定时任务",
@@ -2818,7 +2956,41 @@
     "t45616": "执行历史",
     "t37100": "}>\n              {job.status === 'active' ? t('common.running') : t('common.paused')}\n            </span>\n          </div>\n          <div className=\"flex items-center gap-2 mt-1\">\n            <span className=\"text-xs text-muted-foreground font-mono\">{taskId}</span>\n            <button onClick={copyId} className=\"p-0.5 rounded hover:bg-muted\" title=t('cron.copyId')>\n              {copied ? <Check className=\"w-3 h-3 text-green-500\" /> : <Copy className=\"w-3 h-3 text-muted-foreground\" />}\n            </button>\n          </div>\n        </div>\n\n        {/* Action Buttons */}\n        <div className=\"flex items-center gap-2\">\n          {job.status === 'active' ? (\n            <button\n              onClick={() => handleAction('pause')}\n              disabled={!!actionLoading}\n              className=\"flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-muted transition-colors text-amber-500\"\n            >\n              {actionLoading === 'pause' ? <Loader2 className=\"w-4 h-4 animate-spin\" /> : <Pause className=\"w-4 h-4\" />}\n              暂停\n            </button>\n          ) : (\n            <button\n              onClick={() => handleAction('resume')}\n              disabled={!!actionLoading}\n              className=\"flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-muted transition-colors text-green-500\"\n            >\n              {actionLoading === 'resume' ? <Loader2 className=\"w-4 h-4 animate-spin\" /> : <Play className=\"w-4 h-4\" />}\n              恢复\n            </button>\n          )}\n          <button\n            onClick={() => handleAction('run')}\n            disabled={!!actionLoading}\n            className=\"flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors\"\n          >\n            {actionLoading === 'run' ? <Loader2 className=\"w-4 h-4 animate-spin\" /> : <Zap className=\"w-4 h-4\" />}\n            立即执行\n          </button>\n          <button\n            onClick={() => handleAction('delete')}\n            disabled={!!actionLoading}\n            className=\"flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-destructive/10 text-destructive transition-colors\"\n          >\n            {actionLoading === 'delete' ? <Loader2 className=\"w-4 h-4 animate-spin\" /> : <Trash2 className=\"w-4 h-4\" />}\n            删除\n          </button>\n        </div>\n      </div>\n\n      {/* Error banner */}\n      {error && (\n        <div className=\"mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-sm text-destructive flex items-center gap-2\">\n          <AlertCircle className=\"w-4 h-4 shrink-0\" />\n          {error}\n        </div>\n      )}\n\n      {/* Info Cards */}\n      <div className=\"grid grid-cols-2 md:grid-cols-4 gap-4 mb-6\">\n        <div className=\"p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center gap-2 mb-1\">\n            <Calendar className=\"w-4 h-4 text-muted-foreground\" />\n            <span className=\"text-xs text-muted-foreground\">{t('cron.t65737')}<span>\n          </div>\n          <p className=\"text-sm font-mono\">{job.schedule}</p>\n          <p className=\"text-xs text-muted-foreground mt-1\">{formatSchedule(job.schedule)}</p>\n        </div>\n        <div className=\"p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center gap-2 mb-1\">\n            <Bot className=\"w-4 h-4 text-muted-foreground\" />\n            <span className=\"text-xs text-muted-foreground\">{t('cron.t23247')}<span>\n          </div>\n          <p className=\"text-sm font-medium capitalize\">{icon} {agent}</p>\n        </div>\n        <div className=\"p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center gap-2 mb-1\">\n            <Clock className=\"w-4 h-4 text-muted-foreground\" />\n            <span className=\"text-xs text-muted-foreground\">{t('cron.nextRun')}<span>\n          </div>\n          <p className=\"text-sm\">{job.next_run ? new Date(job.next_run).toLocaleString('zh-CN') : '—'}</p>\n        </div>\n        <div className=\"p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center gap-2 mb-1\">\n            <RefreshCw className=\"w-4 h-4 text-muted-foreground\" />\n            <span className=\"text-xs text-muted-foreground\">{t('cron.lastRun')}<span>\n          </div>\n          <p className=\"text-sm\">{job.last_run ? new Date(job.last_run).toLocaleString('zh-CN') : '—'}</p>\n        </div>\n      </div>\n\n      {/* Deliver Target */}\n      {job.deliver && (\n        <div className=\"mb-6 p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center gap-2 mb-2\">\n            <Send className=\"w-4 h-4 text-muted-foreground\" />\n            <span className=\"text-xs text-muted-foreground\">{t('cron.t07887')}<span>\n          </div>\n          <p className=\"text-sm font-mono bg-muted/50 rounded-lg px-3 py-2\">{job.deliver}</p>\n        </div>\n      )}\n\n      {/* Prompt */}\n      {job.prompt && (\n        <div className=\"mb-6 p-4 rounded-xl border bg-card\">\n          <div className=\"flex items-center gap-2 mb-2\">\n            <ChevronRight className=\"w-4 h-4 text-muted-foreground\" />\n            <span className=\"text-xs text-muted-foreground\">{t('cron.t59697')}<span>\n          </div>\n          <pre className=\"text-sm whitespace-pre-wrap bg-muted/50 rounded-lg px-3 py-2 font-mono max-h-60 overflow-y-auto\">\n            {job.prompt}\n          </pre>\n        </div>\n      )}\n\n      {/* Last Error */}\n      {job.last_error && (\n        <div className=\"mb-6 p-4 rounded-xl border border-destructive/30 bg-destructive/5\">\n          <div className=\"flex items-center gap-2 mb-2\">\n            <AlertCircle className=\"w-4 h-4 text-destructive\" />\n            <span className=\"text-xs text-destructive font-medium\">{t('soma.recentError')}<span>\n          </div>\n          <pre className=\"text-sm whitespace-pre-wrap text-destructive/80 font-mono\">\n            {job.last_error}\n          </pre>\n        </div>\n      )}\n\n      {/* Run History */}\n      <div className=\"rounded-xl border bg-card overflow-hidden\">\n        <div className=\"p-4 border-b flex items-center justify-between\">\n          <h2 className=\"text-sm font-medium flex items-center gap-2\">\n            <Clock className=\"w-4 h-4 text-muted-foreground\" /> \n            {t('cron.t45616')}\n          <h2>\n          <button onClick={loadHistory} className=\"p-1.5 rounded-lg hover:bg-muted transition-colors\" title=t('cron.refresh')>\n            <RefreshCw className=\"w-3.5 h-3.5 text-muted-foreground\" />\n          </button>\n        </div>\n        {history.length === 0 ? (\n          <div className=\"p-8 text-center text-muted-foreground text-sm\">\n            <Clock className=\"w-8 h-8 mx-auto mb-2 opacity-50\" />\n            <p>{t('will.noExecutions')}<p>\n            <p className=\"text-xs mt-1\">{t('cron.t02948')}<p>\n          </div>\n        ) : (\n          <div className=\"divide-y divide-border/50\">\n            {history.map((entry) => (\n              <div key={entry.id} className=\"p-4 hover:bg-muted/20 transition-colors\">\n                <div className=\"flex items-center justify-between mb-1\">\n                  <div className=\"flex items-center gap-2\">\n                    <span className={",
     "t57143": "下次",
-    "t54362": "上次"
+    "t54362": "上次",
+    "createJob": "新建任务",
+    "totalJobs": "总任务数",
+    "running": "运行中",
+    "paused": "已暂停",
+    "createCronJob": "新建定时任务",
+    "jobName": "任务名称",
+    "optional": "可选",
+    "scheduleRule": "调度规则",
+    "execPrompt": "执行提示词",
+    "promptPlaceholder": "任务指令...",
+    "deliverTarget": "投递目标",
+    "create": "创建",
+    "cancel": "取消",
+    "jobsCount": "{{count}} 个任务 · {{active}} 运行中",
+    "pause": "暂停",
+    "resume": "恢复",
+    "runNow": "立即执行",
+    "backToList": "返回列表",
+    "active": "运行中",
+    "scheduleRuleLabel": "调度规则",
+    "execAgent": "执行Agent",
+    "nextExec": "下次执行",
+    "lastExec": "上次执行",
+    "deliverTargetLabel": "投递目标",
+    "execPromptLabel": "执行提示词",
+    "recentError": "最近错误",
+    "execHistory": "执行历史",
+    "refreshTitle": "刷新",
+    "noExecRecords": "暂无执行记录",
+    "clickRunToTrigger": "点击「立即执行」触发一次手动运行",
+    "success": "成功",
+    "failed": "失败",
+    "formatSchedule": "每 {{parts}}",
+    "scheduleAt": "定时: {{schedule}}"
   },
   "team": {
     "title": "团队",
@@ -3059,7 +3231,23 @@
     "t37326": "同步全部",
     "t69554": "暂无",
     "t86110": "来源",
-    "t47626": "项"
+    "t47626": "项",
+    "syncAll": "同步全部",
+    "skillSources": "技能来源",
+    "agentSources": "Agent来源",
+    "installedSkills": "已安装技能",
+    "installedAgents": "已安装Agent",
+    "close": "关闭",
+    "searchSources": "搜索来源...",
+    "noSources": "暂无{{type}}来源",
+    "neverSynced": "从未同步",
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}}分钟前",
+    "hoursAgo": "{{count}}小时前",
+    "daysAgo": "{{count}}天前",
+    "items": "项",
+    "builtinSource": "内置来源",
+    "syncFailed": "同步失败"
   },
   "aiGroups": {
     "title": "AI群",
@@ -3214,7 +3402,7 @@
     "offline": "离线",
     "typeDistribution": "类型分布",
     "none": "无",
-    "platformDiscovery": "平台能力发现",
+    "platformDiscovery": "平台能力发现 — {platform} v{version}",
     "apiEndpoints": "API 端点",
     "quickStartGuide": "快速接入指南",
     "quickStartDesc": "外部组件只需实现3个API即可接入OpenSoul生态系统：",
@@ -3298,7 +3486,12 @@
     "version3": "版本号",
     "tag5": "能力标签 (逗号分隔，如 file_watch,rss,feishu)",
     "cancel7": "取消",
-    "t66404": "注册"
+    "t66404": "注册",
+    "plugAndPlay": "即插即用",
+    "online3": "● 在线",
+    "offline3": "○ 离线",
+    "pushCount": "推送: {count}",
+    "errorCount2": "错误: {count}"
   },
   "pipeline": {
     "title": "智能流水线 · Pipeline",
@@ -3364,7 +3557,17 @@
     "duplicate": "重复",
     "promoted": "已入库",
     "t13587": "{floordiff60}分钟前",
-    "t58929": "{floordiff3600}小时前"
+    "t58929": "{floordiff3600}小时前",
+    "justNow": "刚刚",
+    "minutesAgo": "{{count}}分钟前",
+    "hoursAgo": "{{count}}小时前",
+    "pageCaptures": "页面采集",
+    "textCaptures": "文本采集",
+    "noCaptures": "暂无采集内容",
+    "noCapturesDesc": "使用浏览器扩展采集网页内容",
+    "noTitle": "无标题",
+    "promoteTitle": "提升到知识库",
+    "deleteTitle": "删除"
   },
   "ai-groups": {
     "t39013": "发送失败，请重试",
@@ -3433,7 +3636,10 @@
     "edit2": "编辑",
     "noData8": "暂无Agent",
     "t31503": "点击上方\"添加\"按钮添加Agent",
-    "t92692": ">点击上方"
+    "t92692": ">点击上方",
+    "aiGroups": "AI群组",
+    "reply": "回复",
+    "participatingAgents": "参与的Agent"
   },
   "graph-builder": {
     "t07386": "概念",
@@ -3551,7 +3757,8 @@
       "shellCommand": "Shell 命令",
       "shellCommandPlaceholder": "echo 'Hello ${name}'，支持 ${var}",
       "workingDirectory": "工作目录",
-      "workingDirectoryPlaceholder": "/home/user (可选)"
+      "workingDirectoryPlaceholder": "/home/user (可选)",
+      "codePlaceholder": "// 输入变量通过 input 对象访问\nreturn input;"
     },
     "nodePalette": {
       "nodes": "节点",
@@ -3621,7 +3828,8 @@
   "workflow-builder": {
     "t26433": "开始",
     "t37840": "选择或创建工作流",
-    "t88657": "从左侧列表选择，或点击工具栏「新建」"
+    "t88657": "从左侧列表选择，或点击工具栏「新建」",
+    "newWorkflow": "新建工作流"
   },
   "mcp": {
     "t32847": "{name} {connected}",
@@ -3737,7 +3945,10 @@
     "t44651": "器官",
     "t06105": "迭代",
     "success2": "成功",
-    "average3": "平均"
+    "average3": "平均",
+    "testing": "测试中...",
+    "subtitle": "器官性能基准测试 · {count} 个可测目标",
+    "testResults": "测试结果 · {organs} 个器官 · {iterations} 次迭代"
   },
   "admin": {
     "t35999": "Vein 文件存储",
@@ -3937,6 +4148,45 @@
     "t49522": "收藏",
     "t23883": "置顶",
     "cancel6": "取消",
-    "create6": "创建"
+    "create6": "创建",
+    "updated": "已更新",
+    "created": "已创建",
+    "networkError": "网络错误",
+    "deleted": "已删除",
+    "deleteFailed": "删除失败",
+    "exported": "已导出 {count} 个片段",
+    "exportFailed": "导出失败",
+    "snippetsManage": "代码片段管理 · {count} 个片段",
+    "editSnippet": "编辑片段",
+    "save": "保存"
+  },
+  "smartCalc": {
+    "title": "Smart Calculator",
+    "subtitle": "数学表达式求解 · 单位转换 · 计算历史",
+    "calc": "计算",
+    "convert": "单位转换",
+    "history": "历史",
+    "mathExpr": "数学表达式",
+    "solve": "求解",
+    "quickExprs": "快捷表达式",
+    "exactValue": "精确值",
+    "supportedFuncs": "支持的函数和常量",
+    "category": "类型",
+    "length": "长度",
+    "weight": "重量",
+    "temperature": "温度",
+    "speed": "速度",
+    "area": "面积",
+    "volume": "体积",
+    "value": "数值",
+    "from": "从",
+    "to": "到",
+    "convertBtn": "转换",
+    "records": "{{count}} 条记录",
+    "clear": "清空",
+    "noHistory": "暂无计算历史",
+    "calcType": "计算",
+    "convertType": "转换",
+    "placeholder": "例: 2**10, sqrt(144), pi * 2, sin(radians(30))"
   }
 }

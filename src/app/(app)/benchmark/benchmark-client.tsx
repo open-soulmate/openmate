@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
   Zap, Play, Square, Clock, BarChart3, TrendingUp, Trash2,
@@ -69,6 +70,7 @@ type ComparisonItem = HistoryEntry;
 type TabId = "run" | "comparison" | "history";
 
 export function BenchmarkClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [tab, setTab] = useState<TabId>("run");
   const [targets, setTargets] = useState<BenchmarkTarget[]>([]);
@@ -221,7 +223,7 @@ export function BenchmarkClient() {
           </div>
           <div>
             <h1 className="text-lg font-semibold">OpenBenchmark</h1>
-            <p className="text-xs text-muted-foreground">器官性能基准测试 · {targets.length} 个可测目标</p>
+            <p className="text-xs text-muted-foreground">{t('benchmark.subtitle', { count: targets.length })}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -302,7 +304,7 @@ export function BenchmarkClient() {
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                  {running ? "测试中..." : t('benchmark.runTestorgans')}
+                  {running ? t('benchmark.testing') : t('benchmark.runTestorgans')}
                 </button>
               </div>
             </div>
@@ -312,7 +314,7 @@ export function BenchmarkClient() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-semibold">
-                    测试结果 · {currentRun.organs_benchmarked} 个器官 · {currentRun.iterations} 次迭代
+                    {t('benchmark.testResults', { organs: currentRun.organs_benchmarked, iterations: currentRun.iterations })}
                   </h2>
                   <span className="text-xs text-muted-foreground">Run ID: {currentRun.run_id}</span>
                 </div>

@@ -163,7 +163,7 @@ export function SenseClient() {
       setVideoResult(await res.json())
     } catch (e: any) {
       setVideoResult(null)
-      alert(`视频分析失败: ${e.message}`)
+      alert(t('sense.videoAnalyzeFailed', { error: e.message }))
     } finally {
       setVideoLoading(false)
     }
@@ -183,7 +183,7 @@ export function SenseClient() {
       const data = await res.json()
       setVideoFrames(data.frames || [])
     } catch (e: any) {
-      alert(`帧提取失败: ${e.message}`)
+      alert(t('sense.frameExtractFailed', { error: e.message }))
     } finally {
       setFrameExtracting(false)
     }
@@ -372,7 +372,7 @@ export function SenseClient() {
                       onChange={(e) => setOcrPreprocess(e.target.checked)}
                       className="rounded border-border"
                     />
-                    预处理（灰度+二值化）
+                    {t('sense.preprocess')}
                   </label>
                 </div>
               </div>
@@ -383,7 +383,7 @@ export function SenseClient() {
                 className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {ocrLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
-                {ocrLoading ? "识别中..." : t('sense.startrecognize')}
+                {ocrLoading ? t('sense.recognizing') : t('sense.startrecognize')}
               </button>
             </div>
 
@@ -416,7 +416,7 @@ export function SenseClient() {
                         <h4 className="text-xs font-medium text-muted-foreground">{t('sense.result2')}</h4>
                         {ocrResult.pages.map((p) => (
                           <div key={p.page} className="bg-muted/30 rounded-lg p-3">
-                            <div className="text-xs text-muted-foreground mb-1">第 {p.page} 页 · 置信度 {p.confidence}%</div>
+                            <div className="text-xs text-muted-foreground mb-1">{t('sense.pageConfidence', { page: p.page, confidence: p.confidence })}</div>
                             <div className="text-sm whitespace-pre-wrap">{p.text}</div>
                           </div>
                         ))}
@@ -496,7 +496,7 @@ export function SenseClient() {
                 className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {asrLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Volume2 className="w-4 h-4" />}
-                {asrLoading ? "转写中..." : t('sense.startvoice')}
+                {asrLoading ? t('sense.transcribing') : t('sense.startvoice')}
               </button>
             </div>
 
@@ -599,7 +599,7 @@ export function SenseClient() {
                 className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {analyzeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
-                {analyzeLoading ? "分析中..." : t('sense.imageAnalysisstart')}
+                {analyzeLoading ? t('sense.analyzing') : t('sense.imageAnalysisstart')}
               </button>
             </div>
 
@@ -724,7 +724,7 @@ export function SenseClient() {
                 className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {videoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Film className="w-4 h-4" />}
-                {videoLoading ? "分析中..." : t('sense.infoanalyze')}
+                {videoLoading ? t('sense.analyzing') : t('sense.infoanalyze')}
               </button>
 
               {/* Frame extraction controls */}
@@ -760,7 +760,7 @@ export function SenseClient() {
                   className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-orange-600 hover:to-red-600 transition-all flex items-center justify-center gap-2"
                 >
                   {frameExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
-                  {frameExtracting ? "提取中..." : t('sense.t74001')}
+                  {frameExtracting ? t('sense.recognizing') : t('sense.t74001')}
                 </button>
               </div>
             </div>
@@ -797,7 +797,7 @@ export function SenseClient() {
                 {videoFrames.length > 0 && (
                   <div className="mt-4 pt-4 border-t border-border">
                     <h4 className="text-xs font-medium text-muted-foreground mb-3">
-                      提取的帧 ({videoFrames.length} 张)
+                      {t('sense.extractedFrames', { count: videoFrames.length })}
                     </h4>
                     <div className="grid grid-cols-3 gap-2">
                       {videoFrames.map((frame) => (

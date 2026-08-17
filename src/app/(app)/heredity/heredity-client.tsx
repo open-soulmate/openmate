@@ -289,10 +289,10 @@ export function HeredityClient() {
                       compatCheck.compatible ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5")}>
                       <div className="flex items-center gap-2">
                         {compatCheck.compatible ? <CheckCircle size={14} className="text-emerald-500" /> : <XCircle size={14} className="text-red-500" />}
-                        <span className="font-medium">{compatCheck.compatible ? "依赖兼容" : t('heredity.depsConflict')}</span>
+                        <span className="font-medium">{compatCheck.compatible ? t('heredity.t69119') : t('heredity.depsConflict')}</span>
                       </div>
                       {compatCheck.issues?.map((issue: any, i: number) => (
-                        <p key={i} className="mt-1 text-xs text-red-400">{issue.dependency}: {issue.issue} (需要 {issue.required}, 实际 {issue.actual})</p>
+                        <p key={i} className="mt-1 text-xs text-red-400">{issue.dependency}: {issue.issue} ({t('heredity.t95992')} {issue.required}, {t('heredity.t18668')} {issue.actual})</p>
                       ))}
                     </div>
                   )}

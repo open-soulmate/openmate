@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import {
   FileCode, Plus, Search, Tag, Star, Trash2, Save, X, Check,
   Loader2, CheckCircle2, XCircle, Hash, RefreshCw, Copy, Pin,

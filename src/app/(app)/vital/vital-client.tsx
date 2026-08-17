@@ -476,7 +476,7 @@ export function VitalClient() {
                 className="ml-auto flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted transition-colors disabled:opacity-50"
               >
                 {historyLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                刷新
+                {t("vital.refresh2")}
               </button>
             </div>
 
@@ -492,7 +492,7 @@ export function VitalClient() {
                 <div className="rounded-xl border border-border bg-card p-5">
                   <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
                     <Cpu size={14} className="text-blue-500" />
-                    CPU & 内存使用率
+                    {t('vital.cpuMemoryUsage')}
                   </h3>
                   <MiniChart
                     data={history}
@@ -508,7 +508,7 @@ export function VitalClient() {
                 <div className="rounded-xl border border-border bg-card p-5">
                   <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
                     <HardDrive size={14} className="text-amber-500" />
-                    磁盘使用率
+                    {t('vital.diskUsage')}
                   </h3>
                   <MiniChart
                     data={history}
@@ -523,7 +523,7 @@ export function VitalClient() {
                 <div className="rounded-xl border border-border bg-card p-5">
                   <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
                     <Zap size={14} className="text-emerald-500" />
-                    请求 QPS & P99 延迟
+                    {t('vital.qpsLatency')}
                   </h3>
                   <MiniChart
                     data={history}
@@ -580,11 +580,11 @@ export function VitalClient() {
               <>
                 <div className="flex items-center gap-3 mb-2">
                   <span className="text-sm text-muted-foreground">
-                    共 {alerts.length} 条告警，{activeAlerts} 条未解决
+                    {t('vital.alertsSummary', { total: alerts.length, active: activeAlerts })}
                   </span>
                   {criticalAlerts > 0 && (
                     <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-500">
-                      {criticalAlerts} 严重
+                      {criticalAlerts} {t('vital.critical')}
                     </span>
                   )}
                 </div>
@@ -629,14 +629,14 @@ export function VitalClient() {
                         <span className="text-xs text-muted-foreground font-mono">{alert.rule}</span>
                         {alert.resolved && (
                           <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-500">
-                            已恢复
+                            {t('vital.recovered')}
                           </span>
                         )}
                       </div>
                       <p className="text-sm">{alert.message}</p>
                       <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
-                        <span>当前值: {alert.value}</span>
-                        <span>阈值: {alert.threshold}</span>
+                        <span>{t('vital.currentValue', { value: alert.value })}</span>
+                        <span>{t('vital.threshold')}: {alert.threshold}</span>
                         <span>{formatRelativeTime(alert.ts)}</span>
                       </div>
                     </div>
@@ -757,10 +757,11 @@ function MiniChart({ data, series, height = 160 }: {
   series: SeriesConfig[];
   height?: number;
 }) {
+  const { t } = useTranslation();
   if (data.length < 2) {
     return (
       <div className="flex items-center justify-center text-muted-foreground text-xs" style={{ height }}>
-        需要至少2个数据点才能显示图表
+        {t('vital.needDataPoints')}
       </div>
     );
   }

@@ -2,6 +2,7 @@
 import { useState, useMemo } from 'react';
 import { use } from 'react';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 import {
   useAppStore,
   type Team,
@@ -272,6 +273,7 @@ function TaskBoard({
 
 export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ id: string }> }) {
   const { id } = use(paramsPromise);
+  const { t: $t } = useTranslation();
   const teams = useAppStore(s => s.teams);
   const updateTeam = useAppStore(s => s.updateTeam);
   const addTeamMember = useAppStore(s => s.addTeamMember);
@@ -373,7 +375,7 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
             <Users size={14} className="text-muted-foreground" />
             <span className="font-medium">{t.members.length}</span>
             <span className="text-xs text-muted-foreground">{t('team.member')}</span>
-            <span className="text-xs text-emerald-400">{onlineCount}在线</span>
+            <span className="text-xs text-emerald-400">{onlineCount}{$t('team.t50749')}</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <CheckSquare size={14} className="text-muted-foreground" />
@@ -467,13 +469,13 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
                           member.status === 'busy' ? 'bg-amber-500/10 text-amber-500' :
                           'bg-muted text-muted-foreground'
                         )}>
-                          {member.status === 'online' ? '在线' : member.status === 'busy' ? '忙碌' : t('team.offline1')}
+                          {member.status === 'online' ? $t('team.t50749') : member.status === 'busy' ? $t('team.t38178') : t('team.offline1')}
                         </span>
                       </div>
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[10px] text-muted-foreground capitalize">{member.type}</span>
                         <span className="text-[10px] text-muted-foreground">·</span>
-                        <span className="text-[10px] text-muted-foreground">加入于 {formatTime(member.joinedAt)}</span>
+                        <span className="text-[10px] text-muted-foreground">{$t('team.t74852')} {formatTime(member.joinedAt)}</span>
                       </div>
                     </div>
                     {member.role !== 'leader' && (

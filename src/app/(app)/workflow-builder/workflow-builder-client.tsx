@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useRef, useState } from "react";
+import { useTranslation } from "react-i18next";
 import {
   ReactFlow,
   Background,
@@ -25,16 +26,19 @@ import { WorkflowToolbar } from "./workflow-toolbar";
 import { WorkflowListPanel } from "./workflow-list-panel";
 import { WorkflowExecutionPanel } from "./workflow-execution-panel";
 
-const defaultNodes: Node<WorkflowNodeData>[] = [
-  {
-    id: "start-1",
-    type: "startNode",
-    position: { x: 400, y: 80 },
-    data: { label: "开始", type: "start", triggerType: "manual" },
-  },
-];
+function getDefaultNodes(t: (key: string) => string): Node<WorkflowNodeData>[] {
+  return [
+    {
+      id: "start-1",
+      type: "startNode",
+      position: { x: 400, y: 80 },
+      data: { label: t("workflow-builder.t26433"), type: "start", triggerType: "manual" },
+    },
+  ];
+}
 
 export function WorkflowBuilderClient() {
+  const { t } = useTranslation();
   const storeNodes = useWorkflowStore((s) => s.nodes);
   const storeEdges = useWorkflowStore((s) => s.edges);
   const setStoreNodes = useWorkflowStore((s) => s.setNodes);
@@ -46,7 +50,7 @@ export function WorkflowBuilderClient() {
   const showExecutionPanel = useWorkflowStore((s) => s.showExecutionPanel);
 
   const [nodes, setNodes, onNodesChange] = useNodesState(
-    storeNodes.length > 0 ? storeNodes : defaultNodes,
+    storeNodes.length > 0 ? storeNodes : getDefaultNodes(t),
   );
   const [edges, setEdges, onEdgesChange] = useEdgesState(storeEdges);
   const [showList, setShowList] = useState(true);
@@ -142,16 +146,16 @@ export function WorkflowBuilderClient() {
   // Load workflow nodes/edges when switching
   const handleLoadWorkflow = useCallback(
     (wfNodes: Node<WorkflowNodeData>[], wfEdges: Edge[]) => {
-      setNodes(wfNodes.length > 0 ? wfNodes : defaultNodes);
+      setNodes(wfNodes.length > 0 ? wfNodes : getDefaultNodes(t));
       setEdges(wfEdges);
-      setStoreNodes(wfNodes.length > 0 ? wfNodes : defaultNodes);
+      setStoreNodes(wfNodes.length > 0 ? wfNodes : getDefaultNodes(t));
       setStoreEdges(wfEdges);
     },
     [setNodes, setEdges, setStoreNodes, setStoreEdges],
   );
 
   const handleCreateNew = useCallback(() => {
-    const id = useWorkflowStore.getState().createWorkflow("新建工作流");
+    const id = useWorkflowStore.getState().createWorkflow(t("workflow-builder.newWorkflow"));
     if (id) {
       const wf = useWorkflowStore.getState().workflows.find((w) => w.id === id);
       if (wf) {
@@ -221,10 +225,10 @@ export function WorkflowBuilderClient() {
               <div className="text-center">
                 <div className="mb-3 text-4xl opacity-20">⚡</div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  选择或创建工作流
+                  {t("workflow-builder.t37840")}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  从左侧列表选择，或点击工具栏「新建」
+                  {t("workflow-builder.t88657")}
                 </p>
               </div>
             </div>

@@ -278,7 +278,7 @@ function CodeConfig({ data, update }: ConfigProps) {
           value={data.code || ""}
           onChange={(e) => update("code", e.target.value)}
           rows={10}
-          placeholder="// 输入变量通过 input 对象访问\nreturn input;"
+          placeholder={t('workflow.nodeConfig.codePlaceholder')}
           className={cn(inputCls, "resize-none font-mono text-[11px]")}
         />
       </Field>

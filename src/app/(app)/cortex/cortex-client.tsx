@@ -452,7 +452,7 @@ export function CortexClient() {
             <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
                 <Target size={15} className="text-primary" />
-                输入目标
+                t('cortex.inputGoal')
               </h3>
               <textarea
                 value={planGoal}
@@ -468,7 +468,7 @@ export function CortexClient() {
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {planLoading ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
-                  {planLoading ? "规划中..." : t('cortex.start1')}
+                  {planLoading ? t('cortex.planning') : t('cortex.start1')}
                 </button>
                 {planResult && (
                   <button
@@ -476,7 +476,7 @@ export function CortexClient() {
                     className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <RotateCcw size={15} />
-                    清除
+                    {t('cortex.clear')}
                   </button>
                 )}
               </div>
@@ -486,7 +486,7 @@ export function CortexClient() {
               <div className="rounded-xl border border-border bg-card p-5">
                 <h3 className="mb-4 flex items-center gap-2 text-sm font-medium">
                   <GitBranch size={15} className="text-primary" />
-                  任务分解 · {planResult.tasks.length} 个子任务
+                  {t('cortex.taskBreakdown', { count: planResult.tasks.length })}
                 </h3>
                 <div className="space-y-3">
                   {planResult.tasks.map((task, i) => (
@@ -505,7 +505,7 @@ export function CortexClient() {
                           </span>
                           {task.dependencies.length > 0 && (
                             <span className="text-[11px] text-muted-foreground">
-                              依赖: {task.dependencies.map(d => `#${d + 1}`).join(", ")}
+                              {t('cortex.deps')}: {task.dependencies.map(d => `#${d + 1}`).join(', ')}
                             </span>
                           )}
                         </div>
@@ -524,7 +524,7 @@ export function CortexClient() {
             <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
                 <Users size={15} className="text-primary" />
-                输入研究主题
+                t('cortex.inputResearchTopic')
               </h3>
               <textarea
                 value={agentTopic}
@@ -540,7 +540,7 @@ export function CortexClient() {
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {agentLoading ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
-                  {agentLoading ? "Agent协作中..." : t('cortex.t51458')}
+                  {agentLoading ? t('cortex.agentCollab') : t('cortex.t51458')}
                 </button>
                 {agentResult && (
                   <button
@@ -548,7 +548,7 @@ export function CortexClient() {
                     className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <RotateCcw size={15} />
-                    清除
+                    {t('cortex.clear')}
                   </button>
                 )}
               </div>
@@ -558,7 +558,7 @@ export function CortexClient() {
               <div className="space-y-4">
                 <h3 className="flex items-center gap-2 text-sm font-medium">
                   <Zap size={15} className="text-primary" />
-                  Agent流水线结果 · {agentResult.steps?.length || 0} 个步骤
+                  {t('cortex.agentPipelineResult', { count: agentResult.steps?.length || 0 })}
                 </h3>
                 {agentResult.steps?.map((step, i) => {
                   const roleColors: Record<string, string> = {
@@ -585,7 +585,7 @@ export function CortexClient() {
                   <div className="rounded-xl border border-primary/30 bg-primary/5 p-5">
                     <h4 className="mb-3 flex items-center gap-2 text-sm font-medium text-primary">
                       <CheckCircle2 size={15} />
-                      最终输出
+                      t('cortex.finalOutput')
                     </h4>
                     <p className="whitespace-pre-wrap text-sm leading-relaxed">{agentResult.final_output}</p>
                   </div>
@@ -601,7 +601,7 @@ export function CortexClient() {
             <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
                 <Lightbulb size={15} className="text-primary" />
-                输入问题
+                t('cortex.inputQuestion')
               </h3>
               <textarea
                 value={thinkQuestion}
@@ -624,7 +624,7 @@ export function CortexClient() {
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {thinkLoading ? <Loader2 size={15} className="animate-spin" /> : <Lightbulb size={15} />}
-                  {thinkLoading ? "思考中..." : t('cortex.t23008')}
+                  {thinkLoading ? t('cortex.thinking') : t('cortex.t23008')}
                 </button>
                 {thinkResult && (
                   <button
@@ -632,7 +632,7 @@ export function CortexClient() {
                     className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <RotateCcw size={15} />
-                    清除
+                    {t('cortex.clear')}
                   </button>
                 )}
               </div>
@@ -643,7 +643,7 @@ export function CortexClient() {
                 <div className="rounded-xl border border-border bg-card p-5">
                   <h3 className="mb-4 flex items-center gap-2 text-sm font-medium">
                     <Lightbulb size={15} className="text-primary" />
-                    推理链 · {thinkResult.reasoning_steps?.length || 0} 步
+                    {t('cortex.reasoningChain', { count: thinkResult.reasoning_steps?.length || 0 })}
                   </h3>
                   <div className="space-y-3">
                     {thinkResult.reasoning_steps?.map((step, i) => (
@@ -666,7 +666,7 @@ export function CortexClient() {
                   <div className="mb-3 flex items-center justify-between">
                     <h4 className="flex items-center gap-2 text-sm font-medium text-primary">
                       <CheckCircle2 size={15} />
-                      结论
+                      {t('cortex.conclusion')}
                     </h4>
                     {thinkResult.confidence !== undefined && (
                       <div className="flex items-center gap-2">
@@ -695,10 +695,10 @@ export function CortexClient() {
             <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
                 <Network size={15} className="text-primary" />
-                自动构建知识图谱
+                {t('cortex.buildKnowledgeGraph')}
               </h3>
               <p className="text-xs text-muted-foreground mb-3">
-                扫描所有知识条目，自动提取实体和关系，构建知识图谱。
+                {t('cortex.buildGraphDesc')}
               </p>
               <div className="flex gap-2">
                 <button
@@ -707,7 +707,7 @@ export function CortexClient() {
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {graphragLoading ? <Loader2 size={15} className="animate-spin" /> : <Play size={15} />}
-                  {graphragLoading ? "构建中..." : t('cortex.start2')}
+                  {graphragLoading ? t('cortex.building') : t('cortex.start2')}
                 </button>
                 {graphragBuildResult && (
                   <button
@@ -715,7 +715,7 @@ export function CortexClient() {
                     className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
                   >
                     <RotateCcw size={15} />
-                    清除
+                    {t('cortex.clear')}
                   </button>
                 )}
               </div>
@@ -741,7 +741,7 @@ export function CortexClient() {
                   </div>
                   {graphragBuildResult.knowledge_scanned !== undefined && (
                     <p className="mt-3 text-xs text-muted-foreground text-center">
-                      扫描了 {graphragBuildResult.knowledge_scanned} 个知识条目
+                      {t('cortex.scannedKnowledge', { count: graphragBuildResult.knowledge_scanned })}
                     </p>
                   )}
                 </div>
@@ -752,7 +752,7 @@ export function CortexClient() {
             <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
                 <Search size={15} className="text-primary" />
-                图谱查询
+                {t('cortex.graphQuery')}
               </h3>
               <div className="flex gap-2 mb-3">
                 <input
@@ -776,15 +776,14 @@ export function CortexClient() {
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {graphQueryLoading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
-                  查询
+                  {t('cortex.query')}
                 </button>
               </div>
 
               {graphQueryResult && (
                 <div className="space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    以「{graphQueryResult.center_entity}」为中心，深度 {graphQueryResult.depth}，
-                    找到 {graphQueryResult.entities?.length || 0} 个实体、{graphQueryResult.relations?.length || 0} 个关系
+                    {t('cortex.queryResult', { name: graphQueryResult.center_entity, depth: graphQueryResult.depth, entities: graphQueryResult.entities?.length || 0, relations: graphQueryResult.relations?.length || 0 })}
                   </p>
                   {/* Entities */}
                   {graphQueryResult.entities && graphQueryResult.entities.length > 0 && (
@@ -825,7 +824,7 @@ export function CortexClient() {
             <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
                 <BookOpen size={15} className="text-primary" />
-                文本实体提取
+                {t('cortex.textEntityExtract')}
               </h3>
               <textarea
                 value={extractText}
@@ -840,13 +839,13 @@ export function CortexClient() {
                 className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
               >
                 {extractLoading ? <Loader2 size={15} className="animate-spin" /> : <Zap size={15} />}
-                {extractLoading ? "提取中..." : t('cortex.t62190')}
+                {extractLoading ? t('cortex.extracting') : t('cortex.t62190')}
               </button>
 
               {extractResult && (
                 <div className="mt-4 space-y-3">
                   <p className="text-xs text-muted-foreground">
-                    提取到 {extractResult.entity_count} 个实体、{extractResult.relation_count} 个关系
+                    {t('cortex.extractedResult', { entities: extractResult.entity_count, relations: extractResult.relation_count })}
                   </p>
                   {extractResult.entities.length > 0 && (
                     <div>
@@ -916,7 +915,7 @@ export function CortexClient() {
               <div className="rounded-xl border border-border bg-card p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h3 className="text-sm font-medium">
-                    {recommendTab === "trending" ? "热门知识条目" : t('cortex.newentries')}
+                    {recommendTab === "trending" ? t('cortex.hotKnowledge') : t('cortex.newentries')}
                   </h3>
                   <button
                     onClick={() => fetchRecommend(recommendTab)}
@@ -924,12 +923,12 @@ export function CortexClient() {
                     className="flex items-center gap-1 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground border border-border transition-colors"
                   >
                     {recommendLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
-                    刷新
+                    {t('cortex.refresh')}
                   </button>
                 </div>
                 {recommendEntries.length === 0 && !recommendLoading && (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    点击「刷新」加载{recommendTab === "trending" ? "热门" : t('cortex.new3')}知识条目
+                    {t('cortex.clickRefreshToLoad', { type: recommendTab === 'trending' ? '热门' : t('cortex.new3') })}
                   </p>
                 )}
                 <div className="space-y-2">
@@ -963,13 +962,13 @@ export function CortexClient() {
               <div className="rounded-xl border border-border bg-card p-5">
                 <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
                   <Star size={15} className="text-primary" />
-                  相关知识推荐
+                  {t('cortex.relatedKnowledgeRec')}
                 </h3>
                 <div className="flex gap-2 mb-4">
                   <input
                     value={relatedId}
                     onChange={(e) => setRelatedId(e.target.value)}
-                    placeholder={t('cortex.inputentries')}
+                    placeholder={t('cortex.inputKnowledgeId')}
                     className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
                   />
                   <button
@@ -978,7 +977,7 @@ export function CortexClient() {
                     className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                   >
                     {recommendLoading ? <Loader2 size={15} className="animate-spin" /> : <Search size={15} />}
-                    推荐
+                    {t('cortex.recommend')}
                   </button>
                 </div>
                 {relatedResults.length > 0 && (
@@ -1001,7 +1000,7 @@ export function CortexClient() {
                 )}
                 {relatedResults.length === 0 && !recommendLoading && (
                   <p className="text-sm text-muted-foreground text-center py-8">
-                    输入知识条目 ID，获取相关推荐
+                    {t('cortex.inputKnowledgeId')}
                   </p>
                 )}
               </div>
@@ -1028,7 +1027,7 @@ export function CortexClient() {
                 className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
               >
                 {batchLoading ? <Loader2 size={15} className="animate-spin" /> : <Award size={15} />}
-                批量评分
+                {t('cortex.batchScore')}
               </button>
             </div>
 
@@ -1036,7 +1035,7 @@ export function CortexClient() {
             <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 flex items-center gap-2 text-sm font-medium">
                 <Search size={15} className="text-primary" />
-                单条评分
+                {t('cortex.singleScore')}
               </h3>
               <div className="flex gap-2">
                 <input
@@ -1051,7 +1050,7 @@ export function CortexClient() {
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
                 >
                   {singleLoading ? <Loader2 size={15} className="animate-spin" /> : <Award size={15} />}
-                  评分
+                  {t('cortex.score')}
                 </button>
               </div>
               {singleScore && (
@@ -1093,7 +1092,7 @@ export function CortexClient() {
               <div className="rounded-xl border border-border bg-card p-5">
                 <h3 className="mb-4 flex items-center gap-2 text-sm font-medium">
                   <BarChart3 size={15} className="text-primary" />
-                  质量报告
+                  {t('cortex.qualityReport')}
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
                   <div className="text-center rounded-lg bg-background p-3">
@@ -1180,7 +1179,7 @@ export function CortexClient() {
               <div className="rounded-xl border border-border bg-card p-5">
                 <h3 className="mb-4 flex items-center gap-2 text-sm font-medium">
                   <Award size={15} className="text-primary" />
-                  批量评分结果 · {qualityScores.length} 条
+                  {t('cortex.batchScore')}结果 · {qualityScores.length} 条
                 </h3>
                 <div className="space-y-2">
                   {qualityScores.map((item, i) => (

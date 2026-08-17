@@ -201,7 +201,7 @@ export function GeneClient() {
           templates = [parsed]
         }
       } catch {
-        setImportResult({ error: "JSON解析失败" })
+        setImportResult({ error: t('gene.jsonParseFailed') })
         return
       }
       const res = await fetch(`${apiBase}/api/gene/import`, {
@@ -325,7 +325,7 @@ export function GeneClient() {
                   : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
               }`}
             >
-              全部
+              {t('gene.all')}
             </button>
             {categories.map(cat => {
               const color = CATEGORY_COLORS[cat] || "#6b7280"
@@ -395,8 +395,8 @@ export function GeneClient() {
                       <div className="border-t border-border p-4 space-y-3 bg-muted/10">
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
                           <span>ID: <code className="font-mono">{tmpl.template_id}</code></span>
-                          <span>作者: {tmpl.author}</span>
-                          <span>使用: {tmpl.usage_count}次</span>
+                          <span>{t('gene.author')}: {tmpl.author}</span>
+                          <span>{t('gene.usage')}: {tmpl.usage_count}{t('gene.times')}</span>
                         </div>
 
                         {tmpl.tags.length > 0 && (
@@ -538,7 +538,7 @@ export function GeneClient() {
               className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
             >
               {createLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-              {createLoading ? "创建中..." : t('gene.createTemplate1')}
+              {createLoading ? t('gene.creating') : t('gene.createTemplate1')}
             </button>
           </div>
 
@@ -559,7 +559,7 @@ export function GeneClient() {
                     onClick={() => setActiveTab("browse")}
                     className="text-xs text-muted-foreground hover:text-foreground transition-colors"
                   >
-                    返回浏览 →
+                    {t('gene.backToBrowse')}
                   </button>
                 </div>
               ) : (
@@ -603,7 +603,7 @@ export function GeneClient() {
                   <p className="text-xs text-muted-foreground">{tmpl.description}</p>
                   {tmpl.variables.length > 0 && (
                     <div className="text-xs text-muted-foreground">
-                      需要变量: {tmpl.variables.map(v => v.name).join(", ")}
+                      {t('gene.requiredVars')} {tmpl.variables.map(v => v.name).join(', ')}
                     </div>
                   )}
                 </div>
@@ -627,7 +627,7 @@ export function GeneClient() {
               className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
             >
               {instLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-              {instLoading ? "实例化中..." : t('gene.instantiatestart')}
+              {instLoading ? t('gene.instantiating') : t('gene.instantiatestart')}
             </button>
           </div>
 
@@ -670,7 +670,7 @@ export function GeneClient() {
               <Upload className="w-4 h-4" /> {t('gene.importtemplate')}
             </h3>
             <p className="text-xs text-muted-foreground">
-              支持导入单个模板对象、模板数组、或导出的bundle格式JSON
+              {t('gene.importDesc')}
             </p>
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">{t('gene.template4')}</label>
@@ -689,7 +689,7 @@ export function GeneClient() {
                 onChange={(e) => setImportOverwrite(e.target.checked)}
                 className="rounded"
               />
-              覆盖已存在的模板
+              {t('gene.overwriteExisting')}
             </label>
             <button
               onClick={handleImport}
@@ -697,7 +697,7 @@ export function GeneClient() {
               className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-blue-600 hover:to-indigo-600 transition-all flex items-center justify-center gap-2"
             >
               {importLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-              {importLoading ? "导入中..." : t('gene.importtemplate1')}
+              {importLoading ? t('gene.importing') : t('gene.importtemplate1')}
             </button>
             {importResult && (
               <div className={`rounded-lg p-3 text-sm ${importResult.error ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>
@@ -705,7 +705,7 @@ export function GeneClient() {
                   <span>{String(importResult.error)}</span>
                 ) : (
                   <div className="space-y-1">
-                    <span>成功导入 {String(importResult.imported)}/{String(importResult.total)} 个模板</span>
+                    <span>{t('gene.importResult', { imported: String(importResult.imported), total: String(importResult.total) })}</span>
                     {Array.isArray(importResult.results) && (importResult.results as Array<Record<string, string>>).map((r, i) => (
                       <div key={i} className="text-xs opacity-75">
                         {r.success ? "✅" : "❌"} {r.template_id}: {r.message}
@@ -723,7 +723,7 @@ export function GeneClient() {
               <Download className="w-4 h-4" /> {t('gene.exporttemplate')}
             </h3>
             <p className="text-xs text-muted-foreground">
-              导出所有模板为JSON文件，可用于备份或迁移到其他实例
+              {t('gene.exportDesc')}
             </p>
             <div className="bg-card border border-border rounded-xl p-6 space-y-4">
               <div className="grid grid-cols-2 gap-4">
@@ -743,7 +743,7 @@ export function GeneClient() {
                 <Download className="w-4 h-4" /> {t('gene.exportalltemplate')}
               </button>
               <p className="text-xs text-center text-muted-foreground">
-                导出格式: opensoul-gene-bundle-v1
+                {t('gene.exportFormat')}: opensoul-gene-bundle-v1
               </p>
             </div>
           </div>
