@@ -16,6 +16,7 @@ import {
   Zap, Activity, Sparkles, Brain, Bolt, Heart, Home,
   MousePointer, Mic, ImageIcon, Smile, Stethoscope, Cpu, Bot, Store,
   Camera, ScrollText, Bell,
+  Pill,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getApiBaseUrl } from "@/lib/api-client";
@@ -168,6 +169,7 @@ export function AppShell() {
     {
       label: t("nav.systemGroup") || "系统",
       items: [
+        { href: "/healer", label: t("nav.healer") || "自愈系统", icon: Pill },
         { href: "/intelligence", label: t("nav.intelligence") || "智能分析", icon: Brain },
         { href: "/topology", label: t("nav.topology") || "系统拓扑", icon: Network },
         { href: "/trajectory", label: t("nav.trajectory") || "轨迹", icon: Activity },
