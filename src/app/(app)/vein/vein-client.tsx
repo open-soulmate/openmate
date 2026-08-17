@@ -504,6 +504,8 @@ export function VeinClient() {
 
   const [autoProcessing, setAutoProcessing] = useState(false);
   const [autoProcessResult, setAutoProcessResult] = useState<any>(null);
+  const [batchProcessing, setBatchProcessing] = useState(false);
+  const [batchResult, setBatchResult] = useState<any>(null);
 
   const handleAutoProcess = async (fileId: string) => {
     setAutoProcessing(true);
@@ -526,6 +528,31 @@ export function VeinClient() {
       setAutoProcessResult({ status: "error", error: e.message });
     } finally {
       setAutoProcessing(false);
+    }
+  };
+
+  const handleBatchAutoProcess = async () => {
+    if (!confirm("批量识别所有图片/PDF/音频文件？这可能需要一些时间。")) return;
+    setBatchProcessing(true);
+    setBatchResult(null);
+    try {
+      const res = await fetch(`${apiBase}/api/vein/auto-process/batch`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: "default", auto_promote: true, limit: 100 }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ detail: `HTTP ${res.status}` }));
+        throw new Error(err.detail || `Batch process failed: ${res.status}`);
+      }
+      const data = await res.json();
+      setBatchResult(data);
+      fetchFiles();
+      fetchStats();
+    } catch (e: any) {
+      setBatchResult({ status: "error", error: e.message });
+    } finally {
+      setBatchProcessing(false);
     }
   };
 
@@ -824,10 +851,47 @@ export function VeinClient() {
                 >
                   {t("common.search") || "搜索"}
                 </button>
+                <button
+                  onClick={handleBatchAutoProcess}
+                  disabled={batchProcessing}
+                  className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-2 text-sm text-amber-600 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
+                >
+                  {batchProcessing ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
+                  {batchProcessing ? "批量处理中..." : "批量识别"}
+                </button>
                 <span className="text-xs text-muted-foreground">
                   {loading ? (t("common.loading") || "加载中...") : `${filteredFiles.length} ${(t("vein.files") || "个文件")}`}
                 </span>
               </div>
+
+              {/* Batch Auto-Process Result */}
+              {batchResult && (
+                <div className={cn(
+                  "rounded-xl border p-4 text-sm",
+                  batchResult.status === "ok" ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"
+                )}>
+                  {batchResult.status === "ok" ? (
+                    <div className="flex items-center gap-4">
+                      <Zap size={16} className="text-amber-500 shrink-0" />
+                      <div className="flex-1">
+                        <span className="font-medium">批量识别完成</span>
+                        <span className="ml-3 text-xs text-muted-foreground">
+                          扫描 {batchResult.total_files} 个文件 · 匹配 {batchResult.eligible_files} 个 ·
+                          成功 {batchResult.processed} 个 · 入库 {batchResult.promoted} 个
+                        </span>
+                      </div>
+                      <button onClick={() => setBatchResult(null)} className="text-muted-foreground hover:text-foreground">
+                        <X size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-red-500">
+                      <span>❌ {batchResult.error}</span>
+                      <button onClick={() => setBatchResult(null)} className="ml-auto"><X size={14} /></button>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {filteredFiles.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
