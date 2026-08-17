@@ -202,11 +202,11 @@ export function ImmuneClient() {
   const modStats = modules.moderator as Record<string, unknown> || {}
 
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Shield }> = [
-    { key: "overview", label: t('immune.overview1'), icon: Activity },
-    { key: "moderate", label: t('immune.contentModeration'), icon: Eye },
-    { key: "ratelimit", label: t('immune.rateLimit1'), icon: Clock },
-    { key: "ip", label: t('immune.t21173'), icon: Globe },
-    { key: "audit", label: t('immune.auditLog1'), icon: FileText },
+    { key: "overview", label: "总览", icon: Activity },
+    { key: "moderate", label: "内容审核", icon: Eye },
+    { key: "ratelimit", label: "限流管理", icon: Clock },
+    { key: "ip", label: "IP管控", icon: Globe },
+    { key: "audit", label: "审计日志", icon: FileText },
   ]
 
   return (
@@ -217,8 +217,8 @@ export function ImmuneClient() {
           <Shield className="w-6 h-6 text-red-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">{t('immune.t05460')}</h1>
-          <p className="text-sm text-muted-foreground">{t('immune.contentrateLimit')}</p>
+          <h1 className="text-2xl font-bold">🛡️ Immune — 安全防护</h1>
+          <p className="text-sm text-muted-foreground">内容风控、限流管理、IP管控、安全审计</p>
         </div>
       </div>
 
@@ -248,10 +248,10 @@ export function ImmuneClient() {
         <div className="space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
-              { label: t('immune.auditRules'), value: String(modStats.patterns ?? 0), icon: Eye },
-              { label: t('immune.t24575'), value: String((acStats.blacklist_count as number) ?? 0), icon: Ban },
-              { label: t('immune.t96396'), value: String((acStats.whitelist_count as number) ?? 0), icon: Unlock },
-              { label: t('immune.entries4'), value: String((auditModStats.total_entries as number) ?? 0), icon: FileText },
+              { label: "审核规则", value: String(modStats.patterns ?? 0), icon: Eye },
+              { label: "黑名单IP", value: String((acStats.blacklist_count as number) ?? 0), icon: Ban },
+              { label: "白名单IP", value: String((acStats.whitelist_count as number) ?? 0), icon: Unlock },
+              { label: "审计条目", value: String((auditModStats.total_entries as number) ?? 0), icon: FileText },
             ].map(item => {
               const Icon = item.icon
               return (
@@ -270,11 +270,11 @@ export function ImmuneClient() {
             {/* Rate Limiter Config */}
             <div className="bg-card border border-border rounded-xl p-5 space-y-4">
               <h3 className="font-semibold flex items-center gap-2">
-                <Clock className="w-4 h-4" /> {t('immune.rateLimitConfig')}
+                <Clock className="w-4 h-4" /> 限流配置
               </h3>
               <div className="grid grid-cols-3 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground">{t('immune.t70683')}</label>
+                  <label className="text-xs text-muted-foreground">每分钟请求数</label>
                   <input
                     type="number"
                     value={rpm}
@@ -283,7 +283,7 @@ export function ImmuneClient() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">{t('immune.t02202')}</label>
+                  <label className="text-xs text-muted-foreground">每小时请求数</label>
                   <input
                     type="number"
                     value={rph}
@@ -292,7 +292,7 @@ export function ImmuneClient() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">{t('immune.t22418')}</label>
+                  <label className="text-xs text-muted-foreground">突发容量</label>
                   <input
                     type="number"
                     value={burst}
@@ -312,7 +312,7 @@ export function ImmuneClient() {
             {/* Quick Stats */}
             <div className="bg-card border border-border rounded-xl p-5 space-y-4">
               <h3 className="font-semibold flex items-center gap-2">
-                <Activity className="w-4 h-4" /> {t('immune.rateLimitStats')}
+                <Activity className="w-4 h-4" /> 限流统计
               </h3>
               <div className="space-y-3">
                 {rlStats && Object.entries(rlStats).filter(([k]) => !["config"].includes(k)).map(([k, v]) => (
@@ -326,7 +326,7 @@ export function ImmuneClient() {
                 onClick={fetchRateLimitStats}
                 className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                <RefreshCw className="w-3 h-3" /> {t('immune.refresh1')}
+                <RefreshCw className="w-3 h-3" /> 刷新
               </button>
             </div>
           </div>
@@ -338,14 +338,14 @@ export function ImmuneClient() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
-              <h3 className="font-semibold">{t('immune.contentModerationtest')}</h3>
+              <h3 className="font-semibold">内容审核测试</h3>
               <p className="text-xs text-muted-foreground">
                 输入文本，检测敏感信息（PII、密钥、手机号、身份证等）
               </p>
               <textarea
                 value={moderateText}
                 onChange={(e) => setModerateText(e.target.value)}
-                placeholder={t('immune.contentinput')}
+                placeholder="输入要审核的文本内容..."
                 rows={8}
                 className="w-full bg-card border border-border rounded-xl p-4 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500/30"
               />
@@ -355,12 +355,12 @@ export function ImmuneClient() {
                 className="w-full py-2.5 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-red-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2"
               >
                 {moderateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
-                {moderateLoading ? "审核中..." : t('immune.start4')}
+                {moderateLoading ? "审核中..." : "开始审核"}
               </button>
             </div>
 
             <div className="space-y-4">
-              <h3 className="font-semibold">{t('immune.result4')}</h3>
+              <h3 className="font-semibold">审核结果</h3>
               <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
                 {moderateResult ? (
                   <div className="space-y-4">
@@ -371,7 +371,7 @@ export function ImmuneClient() {
                     }`}>
                       {moderateResult.is_safe ? <CheckCircle className="w-5 h-5" /> : <XCircle className="w-5 h-5" />}
                       <span className="font-semibold">
-                        {moderateResult.is_safe ? "内容安全" : t('immune.contentfound')}
+                        {moderateResult.is_safe ? "内容安全" : "发现风险内容"}
                       </span>
                       <span className={`ml-auto text-xs px-2 py-0.5 rounded border ${getRiskColor(moderateResult.risk_level)}`}>
                         {moderateResult.risk_level}
@@ -380,7 +380,7 @@ export function ImmuneClient() {
 
                     {moderateResult.findings.length > 0 && (
                       <div className="space-y-2">
-                        <h4 className="text-xs font-medium text-muted-foreground">{t('immune.found')}</h4>
+                        <h4 className="text-xs font-medium text-muted-foreground">发现项</h4>
                         {moderateResult.findings.map((f, i) => (
                           <div key={i} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
                             <AlertTriangle className="w-3.5 h-3.5 text-yellow-400" />
@@ -395,7 +395,7 @@ export function ImmuneClient() {
 
                     {moderateResult.redacted_text && (
                       <div>
-                        <h4 className="text-xs font-medium text-muted-foreground mb-2">{t('immune.t40441')}</h4>
+                        <h4 className="text-xs font-medium text-muted-foreground mb-2">脱敏后文本</h4>
                         <div className="bg-muted/30 rounded-lg p-3 text-sm whitespace-pre-wrap">
                           {moderateResult.redacted_text}
                         </div>
@@ -405,7 +405,7 @@ export function ImmuneClient() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                     <Eye className="w-12 h-12 mb-2" />
-                    <p className="text-smt('immune.inputText2')ne.inputTextstart')}</p>
+                    <p className="text-sm">输入文本后点击"开始审核"</p>
                   </div>
                 )}
               </div>
@@ -419,10 +419,10 @@ export function ImmuneClient() {
         <div className="space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="bg-card border border-border rounded-xl p-5 space-y-4">
-              <h3 className="font-semibold">{t('immune.rateLimitConfig1')}</h3>
+              <h3 className="font-semibold">限流配置</h3>
               <div className="space-y-3">
                 <div>
-                  <label className="text-xs text-muted-foreground">{t('immune.max2')}</label>
+                  <label className="text-xs text-muted-foreground">每分钟最大请求数</label>
                   <input
                     type="number"
                     value={rpm}
@@ -431,7 +431,7 @@ export function ImmuneClient() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">{t('immune.max3')}</label>
+                  <label className="text-xs text-muted-foreground">每小时最大请求数</label>
                   <input
                     type="number"
                     value={rph}
@@ -440,7 +440,7 @@ export function ImmuneClient() {
                   />
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">{t('immune.t11521')}</label>
+                  <label className="text-xs text-muted-foreground">突发容量</label>
                   <input
                     type="number"
                     value={burst}
@@ -470,9 +470,9 @@ export function ImmuneClient() {
 
             <div className="bg-card border border-border rounded-xl p-5 space-y-4">
               <div className="flex items-center justify-between">
-                <h3 className="font-semibold">{t('immune.stats1')}</h3>
+                <h3 className="font-semibold">实时统计</h3>
                 <button onClick={fetchRateLimitStats} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3" /> {t('immune.refresh2')}
+                  <RefreshCw className="w-3 h-3" /> 刷新
                 </button>
               </div>
               {rateLimitStats ? (
@@ -488,7 +488,7 @@ export function ImmuneClient() {
                     if (!cfg) return null
                     return (
                       <div className="pt-2 border-t border-border">
-                        <div className="text-xs text-muted-foreground mb-2">{t('immune.currentconfig')}</div>
+                        <div className="text-xs text-muted-foreground mb-2">当前配置</div>
                         {Object.entries(cfg).map(([k, v]) => (
                           <div key={k} className="flex justify-between text-xs">
                             <span className="text-muted-foreground">{k}</span>
@@ -500,7 +500,7 @@ export function ImmuneClient() {
                   })()}
                 </div>
               ) : (
-                <div className="text-center text-muted-foreground/50 py-8">{t('immune.loadingmedium')}</div>
+                <div className="text-center text-muted-foreground/50 py-8">加载中...</div>
               )}
             </div>
           </div>
@@ -512,33 +512,33 @@ export function ImmuneClient() {
         <div className="space-y-6">
           {/* Add IP */}
           <div className="bg-card border border-border rounded-xl p-5">
-            <h3 className="font-semibold mb-4">{t('immune.t16203')}</h3>
+            <h3 className="font-semibold mb-4">添加 IP</h3>
             <div className="flex gap-3">
               <input
                 type="text"
                 value={newIp}
                 onChange={(e) => setNewIp(e.target.value)}
-                placeholder={t('immune.t90780')}
+                placeholder="IP地址 (如 192.168.1.100)"
                 className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm"
               />
               <input
                 type="text"
                 value={newIpReason}
                 onChange={(e) => setNewIpReason(e.target.value)}
-                placeholder={t('immune.t20127')}
+                placeholder="原因"
                 className="w-48 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm"
               />
               <button
                 onClick={() => handleAddIp("blacklist")}
                 className="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors flex items-center gap-1"
               >
-                <Ban className="w-3.5 h-3.5" /> {t('immune.t47066')}
+                <Ban className="w-3.5 h-3.5" /> 拉黑
               </button>
               <button
                 onClick={() => handleAddIp("whitelist")}
                 className="px-4 py-2 bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg text-sm font-medium hover:bg-green-500/20 transition-colors flex items-center gap-1"
               >
-                <Unlock className="w-3.5 h-3.5" /> {t('immune.t82007')}
+                <Unlock className="w-3.5 h-3.5" /> 放行
               </button>
             </div>
           </div>
@@ -548,7 +548,7 @@ export function ImmuneClient() {
             <div className="bg-card border border-border rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold flex items-center gap-2">
-                  <Ban className="w-4 h-4 text-red-400" /> {t('immune.t96112')}
+                  <Ban className="w-4 h-4 text-red-400" /> 黑名单 ({ipLists.blacklist.length})
                 </h3>
                 <button onClick={fetchIpLists} className="text-xs text-muted-foreground hover:text-foreground">
                   <RefreshCw className="w-3 h-3" />
@@ -556,7 +556,7 @@ export function ImmuneClient() {
               </div>
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {ipLists.blacklist.length === 0 ? (
-                  <p className="text-sm text-muted-foreground/50 text-center py-4">{t('immune.noData1')}</p>
+                  <p className="text-sm text-muted-foreground/50 text-center py-4">暂无黑名单IP</p>
                 ) : (
                   ipLists.blacklist.map((entry, i) => (
                     <div key={i} className="flex items-center gap-2 p-2 bg-red-500/5 border border-red-500/20 rounded-lg">
@@ -578,12 +578,12 @@ export function ImmuneClient() {
             <div className="bg-card border border-border rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold flex items-center gap-2">
-                  <Unlock className="w-4 h-4 text-green-400" /> {t('immune.t39404')}
+                  <Unlock className="w-4 h-4 text-green-400" /> 白名单 ({ipLists.whitelist.length})
                 </h3>
               </div>
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {ipLists.whitelist.length === 0 ? (
-                  <p className="text-sm text-muted-foreground/50 text-center py-4">{t('immune.noData2')}</p>
+                  <p className="text-sm text-muted-foreground/50 text-center py-4">暂无白名单IP</p>
                 ) : (
                   ipLists.whitelist.map((entry, i) => (
                     <div key={i} className="flex items-center gap-2 p-2 bg-green-500/5 border border-green-500/20 rounded-lg">
@@ -613,16 +613,16 @@ export function ImmuneClient() {
               onChange={(e) => { setAuditFilter(e.target.value); }}
               className="bg-card border border-border rounded-lg px-3 py-2 text-sm"
             >
-              <option value="">{t('immune.all1')}</option>
-              <option value="high">{t('immune.high6')}</option>
-              <option value="medium">{t('immune.medium4')}</option>
-              <option value="low">{t('immune.low4')}</option>
+              <option value="">全部级别</option>
+              <option value="high">高风险</option>
+              <option value="medium">中风险</option>
+              <option value="low">低风险</option>
             </select>
             <button
               onClick={fetchAuditLog}
               className="flex items-center gap-1 px-3 py-2 bg-muted/30 border border-border rounded-lg text-sm hover:bg-muted/50 transition-colors"
             >
-              <RefreshCw className="w-3.5 h-3.5" /> {t('immune.refresh3')}
+              <RefreshCw className="w-3.5 h-3.5" /> 刷新
             </button>
             <span className="text-xs text-muted-foreground ml-auto">
               共 {auditEntries.length} 条记录
@@ -634,17 +634,17 @@ export function ImmuneClient() {
               {auditEntries.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
                   <FileText className="w-12 h-12 mb-2" />
-                  <p className="text-sm">{t('immune.noData3')}</p>
+                  <p className="text-sm">暂无审计记录</p>
                 </div>
               ) : (
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted/50">
                     <tr className="text-xs text-muted-foreground">
-                      <th className="text-left p-3 font-medium">{t('immune.time3')}</th>
-                      <th className="text-left p-3 font-medium">{t('immune.action2')}</th>
+                      <th className="text-left p-3 font-medium">时间</th>
+                      <th className="text-left p-3 font-medium">操作</th>
                       <th className="text-left p-3 font-medium">IP</th>
-                      <th className="text-left p-3 font-medium">{t('immune.detail1')}</th>
-                      <th className="text-left p-3 font-medium">{t('immune.t44032')}</th>
+                      <th className="text-left p-3 font-medium">详情</th>
+                      <th className="text-left p-3 font-medium">风险</th>
                     </tr>
                   </thead>
                   <tbody>

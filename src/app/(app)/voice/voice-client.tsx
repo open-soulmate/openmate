@@ -59,10 +59,10 @@ function formatTime(ts: number): string {
 }
 
 const LANGUAGES = [
-  { code: "", label: t('voice.allLanguages') },
-  { code: "zh", label: t('voice.chinese') },
+  { code: "", label: "全部语言" },
+  { code: "zh", label: "中文" },
   { code: "en", label: "English" },
-  { code: "ja", label: t('voice.t89176') },
+  { code: "ja", label: "日本語" },
   { code: "ko", label: "한국어" },
 ];
 
@@ -234,9 +234,9 @@ export function VoiceClient() {
   };
 
   const tabs = [
-    { id: "synthesize" as const, label: t('voice.speechSynthesis'), icon: Mic },
-    { id: "profiles" as const, label: t('voice.voiceProfile'), icon: Settings },
-    { id: "outputs" as const, label: t('voice.outputFiles1'), icon: FileAudio },
+    { id: "synthesize" as const, label: "语音合成", icon: Mic },
+    { id: "profiles" as const, label: "声音角色", icon: Settings },
+    { id: "outputs" as const, label: "输出文件", icon: FileAudio },
   ];
 
   const selectedProfileData = profiles.find(p => p.profile_id === selectedProfile);
@@ -247,7 +247,7 @@ export function VoiceClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Volume2 size={20} className="text-rose-500" />
-          <h1 className="text-lg font-semibold">{t('voice.speechSynthesis1')}</h1>
+          <h1 className="text-lg font-semibold">声带 · TTS语音合成</h1>
           <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-500">
             文字转语音
           </span>
@@ -263,11 +263,11 @@ export function VoiceClient() {
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
-            <StatCard label={t('voice.times1')} value={String(stats.total_synthesized)} color="text-rose-500" />
-            <StatCard label={t('voice.characters')} value={String(stats.total_characters)} color="text-blue-500" />
-            <StatCard label={t('voice.cachehits1')} value={String(stats.cache_hits)} color="text-emerald-500" />
-            <StatCard label={t('voice.engine2')} value={stats.preferred_backend} color="text-violet-500" />
-            <StatCard label={t('voice.voiceProfile1')} value={String(stats.total_profiles)} color="text-amber-500" />
+            <StatCard label="合成次数" value={String(stats.total_synthesized)} color="text-rose-500" />
+            <StatCard label="总字符数" value={String(stats.total_characters)} color="text-blue-500" />
+            <StatCard label="缓存命中" value={String(stats.cache_hits)} color="text-emerald-500" />
+            <StatCard label="引擎" value={stats.preferred_backend} color="text-violet-500" />
+            <StatCard label="声音角色" value={String(stats.total_profiles)} color="text-amber-500" />
           </div>
         )}
 
@@ -288,11 +288,11 @@ export function VoiceClient() {
             {/* Left: Input */}
             <div className="lg:col-span-2 space-y-4">
               <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                <h3 className="font-semibold text-sm">{t('voice.inputText1')}</h3>
+                <h3 className="font-semibold text-sm">输入文本</h3>
                 <textarea
                   value={text}
                   onChange={(e) => setText(e.target.value)}
-                  placeholder={t('voice.input1')}
+                  placeholder="输入要合成的文字..."
                   rows={6}
                   className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-rose-500/20 resize-none"
                 />
@@ -310,7 +310,7 @@ export function VoiceClient() {
 
               {/* Voice selector */}
               <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                <h3 className="font-semibold text-sm">{t('voice.select')}</h3>
+                <h3 className="font-semibold text-sm">选择声音</h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
                   {profiles.slice(0, 8).map((p) => (
                     <button key={p.profile_id}
@@ -335,7 +335,7 @@ export function VoiceClient() {
                   <input
                     value={voiceId}
                     onChange={(e) => { setVoiceId(e.target.value); setSelectedProfile(""); }}
-                    placeholder={t('voice.input2')}
+                    placeholder="或输入 voice ID (如 zh-CN-XiaoxiaoNeural)"
                     className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs outline-none focus:ring-2 focus:ring-rose-500/20"
                   />
                 </div>
@@ -343,28 +343,28 @@ export function VoiceClient() {
 
               {/* Speed & Pitch controls */}
               <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-                <h3 className="font-semibold text-sm">{t('voice.t79207')}</h3>
+                <h3 className="font-semibold text-sm">参数调节</h3>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-xs text-muted-foreground">{t('voice.t69116')}</label>
+                    <label className="text-xs text-muted-foreground">语速</label>
                     <select value={rate} onChange={(e) => setRate(e.target.value)}
                       className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                      <option value="-30%">{t('voice.t46095')}</option>
-                      <option value="-15%">{t('voice.t68279')}</option>
-                      <option value="+0%">{t('voice.t72596')}</option>
-                      <option value="+15%">{t('voice.t61601')}</option>
-                      <option value="+30%">{t('voice.t79620')}</option>
-                      <option value="+50%">{t('voice.t69766')}</option>
+                      <option value="-30%">慢速 (-30%)</option>
+                      <option value="-15%">较慢 (-15%)</option>
+                      <option value="+0%">正常</option>
+                      <option value="+15%">较快 (+15%)</option>
+                      <option value="+30%">快速 (+30%)</option>
+                      <option value="+50%">极快 (+50%)</option>
                     </select>
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground">{t('voice.t31129')}</label>
+                    <label className="text-xs text-muted-foreground">音调</label>
                     <select value={pitch} onChange={(e) => setPitch(e.target.value)}
                       className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                      <option value="-10Hz">{t('voice.low2')}</option>
-                      <option value="+0Hz">{t('voice.t00367')}</option>
-                      <option value="+10Hz">{t('voice.high3')}</option>
-                      <option value="+20Hz">{t('voice.high4')}</option>
+                      <option value="-10Hz">低沉 (-10Hz)</option>
+                      <option value="+0Hz">正常</option>
+                      <option value="+10Hz">较高 (+10Hz)</option>
+                      <option value="+20Hz">高音 (+20Hz)</option>
                     </select>
                   </div>
                 </div>
@@ -384,7 +384,7 @@ export function VoiceClient() {
                 className="flex items-center justify-center gap-2 w-full rounded-xl bg-rose-500 px-4 py-3 text-sm font-medium text-white hover:bg-rose-600 disabled:opacity-50 transition-colors"
               >
                 {loading ? <Loader2 size={16} className="animate-spin" /> : <Zap size={16} />}
-                {loading ? "合成中..." : t('voice.start3')}
+                {loading ? "合成中..." : "开始合成"}
               </button>
             </div>
 
@@ -392,7 +392,7 @@ export function VoiceClient() {
             <div className="space-y-4">
               {/* Audio Player */}
               <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                <h3 className="font-semibold text-sm">{t('voice.play1')}</h3>
+                <h3 className="font-semibold text-sm">播放器</h3>
                 {audioUrl ? (
                   <>
                     <audio ref={audioRef} src={audioUrl} onEnded={() => setIsPlaying(false)} />
@@ -410,7 +410,7 @@ export function VoiceClient() {
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                     <Volume2 size={32} className="mb-2 opacity-30" />
-                    <p className="text-xs">{t('voice.play2')}</p>
+                    <p className="text-xs">合成后在此播放</p>
                   </div>
                 )}
               </div>
@@ -418,27 +418,27 @@ export function VoiceClient() {
               {/* Result info */}
               {lastResult && (
                 <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-                  <h3 className="font-semibold text-sm">{t('voice.result1')}</h3>
+                  <h3 className="font-semibold text-sm">合成结果</h3>
                   <div className="space-y-2 text-xs">
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('voice.engine3')}</span>
+                      <span className="text-muted-foreground">引擎</span>
                       <span className="font-mono">{lastResult.engine}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('voice.t52066')}</span>
+                      <span className="text-muted-foreground">声音</span>
                       <span className="font-mono text-[10px]">{lastResult.voice}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('voice.t50018')}</span>
+                      <span className="text-muted-foreground">时长</span>
                       <span>{lastResult.duration}s</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('voice.t80534')}</span>
+                      <span className="text-muted-foreground">耗时</span>
                       <span>{lastResult.elapsed_ms}ms</span>
                     </div>
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('voice.cache1')}</span>
-                      <span>{lastResult.cached ? "命中 ✓" : t('voice.hitsnot')}</span>
+                      <span className="text-muted-foreground">缓存</span>
+                      <span>{lastResult.cached ? "命中 ✓" : "未命中"}</span>
                     </div>
                   </div>
                 </div>
@@ -446,11 +446,11 @@ export function VoiceClient() {
 
               {/* Quick presets */}
               <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-                <h3 className="font-semibold text-sm">{t('voice.test1')}</h3>
+                <h3 className="font-semibold text-sm">快速测试</h3>
                 <div className="space-y-2">
                   {[
-                    t('voice.t30470'),
-                    t('voice.t61946'),
+                    "你好，欢迎使用 OpenMate 智能助手！",
+                    "今天天气真不错，适合出去走走。",
                     "The quick brown fox jumps over the lazy dog.",
                   ].map((sample, i) => (
                     <button key={i} onClick={() => setText(sample)}
@@ -474,7 +474,7 @@ export function VoiceClient() {
                   <button onClick={() => setShowLangMenu(!showLangMenu)}
                     className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
                     <Languages size={14} />
-                    {LANGUAGES.find(l => l.code === langFilter)?.label || t('voice.allLanguages1')}
+                    {LANGUAGES.find(l => l.code === langFilter)?.label || "全部语言"}
                     <ChevronDown size={12} />
                   </button>
                   {showLangMenu && (
@@ -493,7 +493,7 @@ export function VoiceClient() {
               </div>
               <button onClick={() => setShowCreate(true)}
                 className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-sm text-white hover:bg-rose-600 transition-colors">
-                <Plus size={14} /> {t('voice.createprofile')}
+                <Plus size={14} /> 创建角色
               </button>
             </div>
 
@@ -507,7 +507,7 @@ export function VoiceClient() {
                       <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
                     </div>
                     {p.builtin && (
-                      <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-500">{t('voice.t72236')}</span>
+                      <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] text-rose-500">内置</span>
                     )}
                   </div>
                   <div className="space-y-1 text-xs text-muted-foreground">
@@ -516,16 +516,16 @@ export function VoiceClient() {
                       <span className="font-mono text-[10px]">{p.voice_id}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>{t('voice.language1')}</span>
+                      <span>语言</span>
                       <span>{p.language}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>{t('voice.t18963')}</span>
+                      <span>语速 / 音调</span>
                       <span>{p.rate} / {p.pitch}</span>
                     </div>
                     {p.usage_count > 0 && (
                       <div className="flex justify-between">
-                        <span>{t('voice.times2')}</span>
+                        <span>使用次数</span>
                         <span>{p.usage_count}</span>
                       </div>
                     )}
@@ -538,7 +538,7 @@ export function VoiceClient() {
                   <div className="flex gap-2 pt-1">
                     <button onClick={() => { setSelectedProfile(p.profile_id); setTab("synthesize"); }}
                       className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-xs text-white hover:bg-rose-600 transition-colors">
-                      <Mic size={12} /> {t('voice.t89452')}
+                      <Mic size={12} /> 使用
                     </button>
                     {!p.builtin && (
                       <button onClick={() => handleDeleteProfile(p.profile_id)}
@@ -559,18 +559,18 @@ export function VoiceClient() {
             {outputs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <FileAudio size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t('voice.outputFilesnoData')}</p>
-                <p className="text-xs mt-1t('voice.t61022')ice.saveFilesave')}</p>
+                <p className="text-sm">暂无输出文件</p>
+                <p className="text-xs mt-1">合成时勾选"保存文件"即可保存</p>
               </div>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('voice.file2')}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">{t('voice.size2')}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-36">{t('voice.createtime')}</th>
-                      <th className="px-4 py-2.5 text-right font-medium text-muted-foreground w-24">{t('voice.action1')}</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">文件名</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">大小</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-36">创建时间</th>
+                      <th className="px-4 py-2.5 text-right font-medium text-muted-foreground w-24">操作</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -610,18 +610,18 @@ export function VoiceClient() {
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4">
-            <h3 className="font-semibold">{t('voice.voiceProfilecreate')}</h3>
+            <h3 className="font-semibold">创建声音角色</h3>
             <div className="space-y-3">
               <div>
-                <label className="text-xs text-muted-foreground">{t('voice.name1')}</label>
+                <label className="text-xs text-muted-foreground">名称</label>
                 <input value={newProfile.name} onChange={(e) => setNewProfile({ ...newProfile, name: e.target.value })}
-                  placeholder={t('voice.t84292')}
+                  placeholder="如：温柔女声"
                   className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">{t('voice.description2')}</label>
+                <label className="text-xs text-muted-foreground">描述</label>
                 <input value={newProfile.description} onChange={(e) => setNewProfile({ ...newProfile, description: e.target.value })}
-                  placeholder={t('voice.description3')}
+                  placeholder="简短描述这个声音"
                   className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               </div>
               <div>
@@ -632,28 +632,28 @@ export function VoiceClient() {
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs text-muted-foreground">{t('voice.t02794')}</label>
+                  <label className="text-xs text-muted-foreground">语速</label>
                   <select value={newProfile.rate} onChange={(e) => setNewProfile({ ...newProfile, rate: e.target.value })}
                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                    <option value="-30%">{t('voice.t31491')}</option>
-                    <option value="+0%">{t('voice.t49869')}</option>
-                    <option value="+30%">{t('voice.t17538')}</option>
+                    <option value="-30%">慢速</option>
+                    <option value="+0%">正常</option>
+                    <option value="+30%">快速</option>
                   </select>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">{t('voice.t08851')}</label>
+                  <label className="text-xs text-muted-foreground">音调</label>
                   <select value={newProfile.pitch} onChange={(e) => setNewProfile({ ...newProfile, pitch: e.target.value })}
                     className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                    <option value="-10Hz">{t('voice.low3')}</option>
-                    <option value="+0Hz">{t('voice.t89293')}</option>
-                    <option value="+10Hz">{t('voice.high5')}</option>
+                    <option value="-10Hz">低沉</option>
+                    <option value="+0Hz">正常</option>
+                    <option value="+10Hz">较高</option>
                   </select>
                 </div>
               </div>
             </div>
             <div className="flex justify-end gap-2">
               <button onClick={() => setShowCreate(false)}
-                className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t('voice.cancel1')}</button>
+                className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">取消</button>
               <button onClick={handleCreateProfile} disabled={!newProfile.name}
                 className="rounded-lg bg-rose-500 px-4 py-2 text-sm text-white hover:bg-rose-600 disabled:opacity-50">
                 创建

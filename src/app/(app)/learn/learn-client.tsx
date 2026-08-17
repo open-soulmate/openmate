@@ -15,8 +15,6 @@ import {
   Loader2,
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/api-client";
-import { useTranslation } from 'react-i18next';
-
 
 interface Course {
   id: string;
@@ -45,7 +43,6 @@ function timeAgo(ts: number): string {
 }
 
 export function LearnClient() {
-  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [courses, setCourses] = useState<Course[]>([]);
   const [stats, setStats] = useState<any>(null);
