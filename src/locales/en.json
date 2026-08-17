@@ -108,7 +108,14 @@
     "records": "records",
     "totalCalls": "total calls",
     "noActivityHint": "Activity will appear here after using AI chat or running tasks",
-    "nextRun": "Next"
+    "nextRun": "Next",
+    "systemMetrics": "System Resources",
+    "systemMetricsDesc": "Real-time system resource usage",
+    "memory": "Memory",
+    "disk": "Disk",
+    "latency": "Latency",
+    "totalRequests": "Total Requests",
+    "activeAlerts": "Active Alerts"
   },
   "chat": {
     "newChat": "New Chat",

@@ -108,7 +108,14 @@
     "records": "件",
     "totalCalls": "総呼び出し回数",
     "noActivityHint": "AIチャットやタスク実行後にここにアクティビティが表示されます",
-    "nextRun": "次回"
+    "nextRun": "次回",
+    "systemMetrics": "システムリソース",
+    "systemMetricsDesc": "リアルタイムシステムリソース使用状況",
+    "memory": "メモリ",
+    "disk": "ディスク",
+    "latency": "レイテンシ",
+    "totalRequests": "総リクエスト",
+    "activeAlerts": "アクティブアラート"
   },
   "chat": {
     "newChat": "新しいチャット",
