@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { LogIn, UserPlus, Loader2, Settings, ChevronDown, Check, Wifi } from 'lucide-react';
+import { LogIn, UserPlus, Loader2, Settings, ChevronDown, Check, Wifi, Eye, EyeOff } from 'lucide-react';
 import { setApiBaseUrl, getApiBaseUrl, setUserId, setToken } from '@/lib/api-client';
 
 function api() {
@@ -24,6 +24,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
   const [loading, setLoading] = useState(false);
   const [serverAddr, setServerAddr] = useState('');
   const [showSettings, setShowSettings] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [connStatus, setConnStatus] = useState<'idle' | 'ok' | 'fail'>('idle');
 
   useEffect(() => {
@@ -104,7 +105,12 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
         </div>
 
         <input value={username} onChange={e => setUsername(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="用户名" className="w-full mb-3 px-4 py-3 rounded-lg border bg-background text-sm" autoFocus />
-        <input type="password" value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="密码" className="w-full mb-3 px-4 py-3 rounded-lg border bg-background text-sm" />
+        <div className="relative w-full mb-3">
+          <input type={showPassword ? "text" : "password"} value={password} onChange={e => setPassword(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="密码" className="w-full px-4 py-3 pr-10 rounded-lg border bg-background text-sm" />
+          <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors">
+            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+          </button>
+        </div>
         {mode === 'register' && <input value={email} onChange={e => setEmail(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSubmit()} placeholder="邮箱（可选）" className="w-full mb-3 px-4 py-3 rounded-lg border bg-background text-sm" />}
 
         {error && <p className="text-xs text-destructive mb-3 text-center">{error}</p>}
