@@ -1115,7 +1115,15 @@
     "noEvents": "イベントがありません",
     "active": "アクティブ",
     "inactive": "非アクティブ",
-    "paused": "一時停止"
+    "paused": "一時停止",
+    "createConnector": "コネクタ作成",
+    "endpointUrl": "エンドポイントURL",
+    "secretOptional": "シークレット（任意）",
+    "confirmDelete": "このコネクタを削除しますか？",
+    "test": "テスト",
+    "delete": "削除",
+    "testPayload": "テストペイロード",
+    "creating": "作成中..."
   },
   "common": {
     "loading": "読み込み中...",
