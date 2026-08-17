@@ -135,6 +135,10 @@ plugins:
     enabled: true
   - id: "smart-calc"
     enabled: true
+  - id: "bookmarks"
+    enabled: true
+  - id: "snippets"
+    enabled: true
 
 # ── Security ───────────────────────────────────────────────────
 security:
