@@ -161,7 +161,7 @@ export function VisionClient() {
     setError("");
     try {
       let root;
-      try { root = JSON.parse(mindmapData); } catch { setError("JSON格式错误"); setLoading(false); return; }
+      try { root = JSON.parse(mindmapData); } catch { setError(t("vision.jsonError")); setLoading(false); return; }
 
       const res = await fetch(`${apiBase}/api/vision/mindmap`, {
         method: "POST",
@@ -254,7 +254,7 @@ export function VisionClient() {
                 {chartType === "line" && (
                   <>
                     <Field label={t("vision.chartTitle")} value={lineTitle} onChange={setLineTitle} placeholder={t("vision.chartTitle")} />
-                    <Field label={`${t("vision.xlabel")} (${t("mind.chars")})`} value={lineX} onChange={setLineX} placeholder="1月,2月,3月" />
+                    <Field label={`${t("vision.xlabel")} (${t("mind.chars")})`} value={lineX} onChange={setLineX} placeholder={t("vision.defaultLineX")} />
                     <div>
                       <label className="text-xs text-muted-foreground">{t("vision.seriesData")}</label>
                       <textarea value={lineSeries} onChange={(e) => setLineSeries(e.target.value)}

@@ -555,9 +555,18 @@
     "hintDocs": "プロジェクト文書",
     "hintMeetings": "議事録",
     "hintTech": "技術計画",
-    "t98853": "コース",
-    "t20339": "全局検索",
-    "t25959": "跨知识库、文件、事件、Agent、课程、轨迹、スケジュール任务、テンプレート、メッセージ検索"
+    "unified": "統合検索",
+    "unifiedDesc": "ナレッジ、ファイル、イベント、エージェント、コース、軌跡、スケジュール、テンプレート、メッセージを横断検索",
+    "sourceKnowledge": "ナレッジ",
+    "sourceFiles": "ファイル",
+    "sourceEvents": "イベント",
+    "sourceCourses": "コース",
+    "sourceTrajectory": "軌跡",
+    "sourceCron": "スケジュールタスク",
+    "sourceGene": "テンプレート",
+    "sourceEcho": "メッセージ",
+    "all": "すべて",
+    "sourceAgents": "エージェント"
   },
   "command": {
     "searchCommands": "コマンドを検索...",
@@ -2616,7 +2625,15 @@
     "multiAgentCollab": "多エージェント协作",
     "t93963": "AI工程知識グラフ",
     "t84456": "JSON格式エラー",
-    "t80047": "1月,2月,3月"
+    "t80047": "1月,2月,3月",
+    "jsonError": "JSON形式が正しくありません",
+    "defaultBarTitle": "四半期売上",
+    "defaultLineTitle": "トレンド比較",
+    "defaultPieTitle": "言語使用分布",
+    "defaultScatterTitle": "散布図",
+    "defaultMindmapTitle": "AIエンジニアリング知識グラフ",
+    "defaultLineX": "1月,2月,3月,4月,5月,6月",
+    "defaultLineSeries": "製品A:100,120,140,160,180,200\n製品B:80,90,110,130,120,150"
   },
   "mind": {
     "title": "心 · パーソナリティセンター",
@@ -3301,13 +3318,16 @@
     "loading": "読み込み中...",
     "properties": "プロパティ",
     "relatedTo": "関連",
-    "t99111": "説明（可选）",
-    "t99673": "選択源实体",
-    "t20297": "選択目标实体",
-    "t76195": "作成関係",
-    "t26282": "关联関係",
-    "t42437": "暂なし关系",
-    "t44501": "削除实体"
+    "selectSource": "選択源实体",
+    "selectTarget": "選択目标实体",
+    "relatedRelations": "关联関係",
+    "noRelations": "暂なし关系",
+    "deleteEntity": "削除实体",
+    "createRelation": "作成関係",
+    "descriptionOptional": "説明（可选）",
+    "type": "タイプ",
+    "unknown": "不明",
+    "entityCount": "{entities} エンティティ · {relations} 関係 · {zoom}"
   },
   "cron": {
     "title": "Cronジョブ",
