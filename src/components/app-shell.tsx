@@ -15,7 +15,7 @@ import {
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
   Zap, Activity, Sparkles, Brain, Bolt, Heart, Home,
   MousePointer, Mic, ImageIcon, Smile, Stethoscope, Cpu, Bot, Store,
-  Camera, ScrollText,
+  Camera, ScrollText, Bell,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getApiBaseUrl } from "@/lib/api-client";
@@ -98,6 +98,7 @@ export function AppShell() {
         { href: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
         { href: "/body-map", label: t("nav.bodyMap") || "Body Map", icon: Activity },
         { href: "/activity", label: t("nav.activity") || "Activity", icon: Activity },
+        { href: "/notifications", label: t("nav.notifications") || "通知中心", icon: Bell },
         { href: "/gland", label: t("nav.gland") || "模型网关", icon: Zap },
       ],
     },
