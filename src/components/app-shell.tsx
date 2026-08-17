@@ -99,6 +99,7 @@ export function AppShell() {
         { href: "/chat", label: t("nav.chat"), icon: MessageSquare },
         { href: "/ai-groups", label: t("nav.aiGroups"), icon: Users },
         { href: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
+        { href: "/system", label: t("nav.system") || "System", icon: Server },
         { href: "/body-map", label: t("nav.bodyMap"), icon: Activity },
         { href: "/activity", label: t("nav.activity"), icon: Activity },
         { href: "/notifications", label: t("nav.notifications"), icon: Bell },

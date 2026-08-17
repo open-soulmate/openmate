@@ -71,7 +71,8 @@
     "dailyDigest": "Daily Digest",
     "timeline": "Timeline",
     "topology": "Topology",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "system": "System Overview"
   },
   "dashboard": {
     "title": "System Overview",
