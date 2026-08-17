@@ -2,8 +2,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
-import { useTranslation } from 'react-i18next';
-
   Bookmark, Plus, Search, Star, StarOff, Trash2, Edit3,
   ExternalLink, Folder, Tag, BarChart3, Grid3X3, List,
   Loader2, Check, X, ChevronRight, Heart, Clock, MousePointerClick,
@@ -50,7 +48,6 @@ type Tab = "bookmarks" | "stats";
 type ViewMode = "grid" | "list";
 
 export function BookmarksClient() {
-  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const pluginBase = `${apiBase}/api/plugins/bookmarks`;
 

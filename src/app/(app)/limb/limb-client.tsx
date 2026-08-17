@@ -175,9 +175,9 @@ export function LimbClient() {
   };
 
   const tabs = [
-    { id: "tasks" as const, label: t('limb.tasks'), icon: Terminal },
-    { id: "templates" as const, label: t('limb.templates'), icon: FileCode },
-    { id: "history" as const, label: t('limb.history'), icon: Clock },
+    { id: "tasks" as const, label: "任务", icon: Terminal },
+    { id: "templates" as const, label: "模板", icon: FileCode },
+    { id: "history" as const, label: "历史", icon: Clock },
   ];
 
   return (
@@ -185,10 +185,10 @@ export function LimbClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <MousePointer size={20} className="text-orange-500" />
-          <h1 className="text-lg font-semibold">{t('limb.title')}<h1>
+          <h1 className="text-lg font-semibold">四肢 · RPA执行器</h1>
           <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-xs font-medium text-orange-500">
-            {t('limb.t87353')}
-          <span>
+            自动化
+          </span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => { fetchStats(); fetchTasks(); }}
@@ -203,23 +203,23 @@ export function LimbClient() {
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('limb.t26095')}<span>
+              <span className="text-xs text-muted-foreground">总任务</span>
               <p className="text-2xl font-bold">{stats.total_tasks}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('limb.running')}<span>
+              <span className="text-xs text-muted-foreground">运行中</span>
               <p className="text-2xl font-bold text-blue-500">{stats.running}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('limb.t54694')}<span>
+              <span className="text-xs text-muted-foreground">队列</span>
               <p className="text-2xl font-bold text-amber-500">{stats.queue_length}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('will.successRate')}<span>
+              <span className="text-xs text-muted-foreground">成功率</span>
               <p className="text-2xl font-bold text-emerald-500">{stats.success_rate}%</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t('limb.templates')}<span>
+              <span className="text-xs text-muted-foreground">模板</span>
               <p className="text-2xl font-bold text-indigo-500">{stats.templates}</p>
             </div>
           </div>
@@ -243,7 +243,7 @@ export function LimbClient() {
               {tasks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <Terminal size={40} className="mb-3 opacity-30" />
-                  <p className="text-sm">{t('limb.t14143')}<p>
+                  <p className="text-sm">暂无任务，从模板创建一个吧</p>
                 </div>
               ) : tasks.map((task) => (
                 <div key={task.task_id}
@@ -308,13 +308,13 @@ export function LimbClient() {
                       <span>ID</span><span className="font-mono">{selected.task_id}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>{t('marrow.status')}<span><span className={statusColor(selected.status)}>{selected.status}</span>
+                      <span>状态</span><span className={statusColor(selected.status)}>{selected.status}</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>{t('limb.t97513')}<span><span>{selected.progress}%</span>
+                      <span>进度</span><span>{selected.progress}%</span>
                     </div>
                     <div className="flex justify-between">
-                      <span>{t('workspace.duration')}<span><span>{selected.elapsed_seconds}s</span>
+                      <span>耗时</span><span>{selected.elapsed_seconds}s</span>
                     </div>
                   </div>
                   {selected.error && (
@@ -327,7 +327,7 @@ export function LimbClient() {
                 {/* Step Results */}
                 {selected.results && selected.results.length > 0 && (
                   <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-                    <h4 className="text-sm font-medium">{t('limb.t62005')}<h4>
+                    <h4 className="text-sm font-medium">执行步骤</h4>
                     {selected.results.map((r, i) => (
                       <div key={i} className="flex items-start gap-2 text-xs">
                         <span className="shrink-0">{ACTION_ICONS[r.action_type] || "⚡"}</span>
@@ -348,7 +348,7 @@ export function LimbClient() {
                 {/* Actions list */}
                 {selected.actions && selected.actions.length > 0 && (
                   <div className="rounded-xl border border-border bg-card p-4 space-y-2">
-                    <h4 className="text-sm font-medium">{t('limb.t47867')}<h4>
+                    <h4 className="text-sm font-medium">动作列表</h4>
                     {selected.actions.map((a, i) => (
                       <div key={i} className="flex items-center gap-2 text-xs">
                         <span>{ACTION_ICONS[a.action_type] || "⚡"}</span>
@@ -380,8 +380,8 @@ export function LimbClient() {
                   </span>
                 </div>
                 <div className="flex gap-2 text-xs text-muted-foreground">
-                  <span>{tpl.action_count} {t('limb.t73378')}</span>
-                  <span>{tpl.variables.length} {t('limb.t02885')}</span>
+                  <span>{tpl.action_count} 个动作</span>
+                  <span>{tpl.variables.length} 个变量</span>
                 </div>
                 <div className="flex gap-1">
                   {tpl.tags.map((tag) => (
@@ -390,8 +390,8 @@ export function LimbClient() {
                 </div>
                 <button onClick={() => setShowTemplate(tpl)}
                   className="flex items-center gap-1.5 rounded-lg bg-orange-500 px-3 py-2 text-sm text-white hover:bg-orange-600 w-full justify-center">
-                  <Zap size={14} />  {t('limb.t26840')}
-                <button>
+                  <Zap size={14} /> 使用模板
+                </button>
               </div>
             ))}
           </div>
@@ -403,18 +403,18 @@ export function LimbClient() {
             {history.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Clock size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t('pipeline.noHistory')}<p>
+                <p className="text-sm">暂无执行历史</p>
               </div>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('dashboard.time')}<th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('gland.name')}<th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('marrow.status')}<th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('onboarding.step')}<th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t('workspace.duration')}<th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">时间</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">名称</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">状态</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">步骤</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">耗时</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -440,7 +440,7 @@ export function LimbClient() {
         {showTemplate && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4">
-              <h3 className="font-semibold">{t('limb.t26840')}: {showTemplate.name}</h3>
+              <h3 className="font-semibold">使用模板: {showTemplate.name}</h3>
               <p className="text-sm text-muted-foreground">{showTemplate.description}</p>
               {showTemplate.variables.map((v: any) => (
                 <div key={v.name}>
@@ -453,10 +453,10 @@ export function LimbClient() {
               ))}
               <div className="flex justify-end gap-2">
                 <button onClick={() => { setShowTemplate(null); setTplVars({}); }}
-                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t('limb.cancel')}<button>
+                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">取消</button>
                 <button onClick={() => handleInstantiate(showTemplate.template_id)} disabled={loading}
                   className="rounded-lg bg-orange-500 px-4 py-2 text-sm text-white hover:bg-orange-600 disabled:opacity-50">
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : t('limb.createTask')}
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : "创建任务"}
                 </button>
               </div>
             </div>

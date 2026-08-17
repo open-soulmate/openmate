@@ -82,10 +82,10 @@ function formatBytes(bytes: number): string {
 
 function formatRelativeTime(ts: number): string {
   const diff = Date.now() - ts * 1000;
-  if (diff < 60_000) return t('common.justNow');
-  if (diff < 3_600_000) return t('vital.t44780', { floordiff60000: Math.floor(diff / 60_000) });
-  if (diff < 86_400_000) return t('vital.t56992', { floordiff3600000: Math.floor(diff / 3_600_000) });
-  return t('vital.t94234', { floordiff86400000: Math.floor(diff / 86_400_000) });
+  if (diff < 60_000) return "刚刚";
+  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
+  return `${Math.floor(diff / 86_400_000)} 天前`;
 }
 
 function GaugeBar({ value, max = 100, color = "emerald", label, detail }: {
@@ -224,10 +224,10 @@ export function VitalClient() {
   const criticalAlerts = alerts.filter(a => !a.resolved && a.severity === "critical").length;
 
   const tabs = [
-    { key: "metrics" as const, label: t("vital.tabMetrics")), icon: Activity },
-    { key: "health" as const, label: t("vital.tabHealth")), icon: Server, badge: downCount > 0 ? downCount : undefined },
-    { key: "history" as const, label: t("vital.tabHistory")), icon: BarChart3 },
-    { key: "alerts" as const, label: t("vital.tabAlerts")), icon: AlertTriangle, badge: activeAlerts > 0 ? activeAlerts : undefined },
+    { key: "metrics" as const, label: t("vital.tabMetrics") || "系统指标", icon: Activity },
+    { key: "health" as const, label: t("vital.tabHealth") || "组件健康", icon: Server, badge: downCount > 0 ? downCount : undefined },
+    { key: "history" as const, label: t("vital.tabHistory") || "历史趋势", icon: BarChart3 },
+    { key: "alerts" as const, label: t("vital.tabAlerts") || "告警记录", icon: AlertTriangle, badge: activeAlerts > 0 ? activeAlerts : undefined },
   ];
 
   return (
@@ -239,8 +239,8 @@ export function VitalClient() {
             <Activity size={18} className="text-emerald-500" />
           </div>
           <div>
-            <h1 className="text-base font-semibold">{t("vital.title"))}</h1>
-            <p className="text-xs text-muted-foreground">{t("vital.subtitle"))}</p>
+            <h1 className="text-base font-semibold">{t("vital.title") || "生命体征 · 系统监控"}</h1>
+            <p className="text-xs text-muted-foreground">{t("vital.subtitle") || "实时监控系统健康、性能指标与告警"}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -259,7 +259,7 @@ export function VitalClient() {
             ) : (
               <RefreshCw size={12} />
             )}
-            {t("common.refresh"))}
+            {t("common.refresh") || "刷新"}
           </button>
         </div>
       </div>
@@ -276,21 +276,21 @@ export function VitalClient() {
             />
             <MetricCard
               icon={MemoryStick}
-              label=t('vital.memory')
+              label="内存"
               value={`${(metrics.memory_percent || 0).toFixed(1)}%`}
               detail={`${((metrics.memory_used_mb || 0) / 1024).toFixed(1)} / ${((metrics.memory_total_mb || 0) / 1024).toFixed(1)} GB`}
               status={(metrics.memory_percent || 0) > 90 ? "critical" : (metrics.memory_percent || 0) > 70 ? "warning" : "ok"}
             />
             <MetricCard
               icon={HardDrive}
-              label=t('vital.disk')
+              label="磁盘"
               value={`${(metrics.disk_percent || 0).toFixed(1)}%`}
               detail={`${(metrics.disk_used_gb || 0).toFixed(0)} / ${(metrics.disk_total_gb || 0).toFixed(0)} GB`}
               status={(metrics.disk_percent || 0) > 95 ? "critical" : (metrics.disk_percent || 0) > 85 ? "warning" : "ok"}
             />
             <MetricCard
               icon={Network}
-              label=t('vital.network')
+              label="网络"
               value={`${formatBytes(metrics.net_sent_bytes || 0)} ↑`}
               detail={`${formatBytes(metrics.net_recv_bytes || 0)} ↓`}
               status="ok"
@@ -332,7 +332,7 @@ export function VitalClient() {
         {healthError && activeTab === "health" && (
           <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500 flex items-center gap-2">
             <XCircle size={16} />
-            {t("vital.fetchError"))}: {healthError}
+            {t("vital.fetchError") || "获取健康数据失败"}: {healthError}
           </div>
         )}
 
@@ -340,39 +340,39 @@ export function VitalClient() {
         {activeTab === "metrics" && metrics && (
           <div className="space-y-6">
             {/* Resource Gauges */}
-            <Section title=t('vital.t79389') icon={Server}>
+            <Section title="资源使用" icon={Server}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                  <GaugeBar value={metrics.cpu_percent || 0} label=t('vital.t49714') color="blue" />
-                  <GaugeBar value={metrics.memory_percent || 0} label=t('vital.t08568') color="purple" detail={`${((metrics.memory_used_mb || 0) / 1024).toFixed(1)} / ${((metrics.memory_total_mb || 0) / 1024).toFixed(1)} GB`} />
-                  <GaugeBar value={metrics.disk_percent || 0} label=t('vital.t74325') color="amber" detail={`${(metrics.disk_used_gb || 0).toFixed(0)} / ${(metrics.disk_total_gb || 0).toFixed(0)} GB`} />
+                  <GaugeBar value={metrics.cpu_percent || 0} label="CPU 使用率" color="blue" />
+                  <GaugeBar value={metrics.memory_percent || 0} label="内存使用率" color="purple" detail={`${((metrics.memory_used_mb || 0) / 1024).toFixed(1)} / ${((metrics.memory_total_mb || 0) / 1024).toFixed(1)} GB`} />
+                  <GaugeBar value={metrics.disk_percent || 0} label="磁盘使用率" color="amber" detail={`${(metrics.disk_used_gb || 0).toFixed(0)} / ${(metrics.disk_total_gb || 0).toFixed(0)} GB`} />
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                   <div className="grid grid-cols-2 gap-3">
-                    <MiniStat label=t('vital.t88308') value={(metrics.request_qps || 0).toFixed(1)} icon={Zap} />
-                    <MiniStat label=t('vital.t88060') value={`${(metrics.latency_p99_ms || 0).toFixed(0)}ms`} icon={Clock} />
-                    <MiniStat label=t('vital.t28120') value={String(metrics.requests_total || 0)} icon={TrendingUp} />
-                    <MiniStat label=t('vital.errorRate') value={`${((metrics.error_rate || 0) * 100).toFixed(2)}%`} icon={AlertCircle} danger={(metrics.error_rate || 0) > 0.01} />
+                    <MiniStat label="请求 QPS" value={(metrics.request_qps || 0).toFixed(1)} icon={Zap} />
+                    <MiniStat label="P99 延迟" value={`${(metrics.latency_p99_ms || 0).toFixed(0)}ms`} icon={Clock} />
+                    <MiniStat label="总请求数" value={String(metrics.requests_total || 0)} icon={TrendingUp} />
+                    <MiniStat label="错误率" value={`${((metrics.error_rate || 0) * 100).toFixed(2)}%`} icon={AlertCircle} danger={(metrics.error_rate || 0) > 0.01} />
                   </div>
                 </div>
               </div>
             </Section>
 
             {/* Business Metrics */}
-            <Section title=t('vital.business') icon={Database}>
+            <Section title="业务指标" icon={Database}>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                <StatCard label=t('vital.knowledgeEntries') value={String(metrics.knowledge_entries || 0)} icon={Database} color="blue" />
-                <StatCard label=t('vital.t19958') value={String(metrics.agents_online || 0)} icon={Server} color="emerald" />
-                <StatCard label=t('vital.searchCount') value={String(metrics.search_count || 0)} icon={Activity} color="purple" />
-                <StatCard label=t('vital.t30852') value={String(metrics.errors_total || 0)} icon={AlertCircle} color={Number(metrics.errors_total) > 0 ? "red" : "emerald"} />
+                <StatCard label="知识条目" value={String(metrics.knowledge_entries || 0)} icon={Database} color="blue" />
+                <StatCard label="在线 Agent" value={String(metrics.agents_online || 0)} icon={Server} color="emerald" />
+                <StatCard label="搜索次数" value={String(metrics.search_count || 0)} icon={Activity} color="purple" />
+                <StatCard label="错误总数" value={String(metrics.errors_total || 0)} icon={AlertCircle} color={Number(metrics.errors_total) > 0 ? "red" : "emerald"} />
               </div>
             </Section>
 
             {/* Network */}
-            <Section title=t('vital.t05491') icon={Network}>
+            <Section title="网络流量" icon={Network}>
               <div className="grid grid-cols-2 gap-3">
-                <StatCard label=t('vital.t52240') value={formatBytes(metrics.net_sent_bytes || 0)} icon={TrendingUp} color="blue" />
-                <StatCard label=t('vital.t85863') value={formatBytes(metrics.net_recv_bytes || 0)} icon={TrendingDown} color="emerald" />
+                <StatCard label="上行流量" value={formatBytes(metrics.net_sent_bytes || 0)} icon={TrendingUp} color="blue" />
+                <StatCard label="下行流量" value={formatBytes(metrics.net_recv_bytes || 0)} icon={TrendingDown} color="emerald" />
               </div>
             </Section>
           </div>
@@ -384,32 +384,414 @@ export function VitalClient() {
             {/* Summary */}
             <div className="grid grid-cols-4 gap-3">
               <OverviewCard
-                label={t("vital.overallStatus"))}
+                label={t("vital.overallStatus") || "整体状态"}
                 value={health.status.toUpperCase()}
                 icon={health.status === "ok" ? CheckCircle2 : XCircle}
                 valueClass={health.status === "ok" ? "text-emerald-500" : "text-red-500"}
               />
               <OverviewCard
-                label={t("vital.healthyNodes"))}
+                label={t("vital.healthyNodes") || "健康节点"}
                 value={`${upCount}/${totalCount}`}
                 icon={Wifi}
                 valueClass="text-emerald-500"
               />
               <OverviewCard
-                label={t("vital.errorNodes"))}
+                label={t("vital.errorNodes") || "异常节点"}
                 value={String(downCount)}
                 icon={XCircle}
                 valueClass={downCount > 0 ? "text-red-500" : "text-emerald-500"}
               />
               <OverviewCard
-                label={t("vital.avgLatency"))}
-                value={`${avgLatency}mst('vital.t46068')${Math.max(...history.map(h => h.cpu)).toFixed(1)}%`}
+                label={t("vital.avgLatency") || "平均延迟"}
+                value={`${avgLatency}ms`}
+                icon={Clock}
+                valueClass="text-muted-foreground"
+              />
+            </div>
+
+            {/* Component list */}
+            <div className="space-y-2">
+              <h2 className="text-sm font-medium text-muted-foreground mb-3">
+                {t("vital.components") || "组件状态"} ({totalCount})
+              </h2>
+              {health.components.map((comp) => {
+                const cfg = STATUS_CONFIG[comp.status] || STATUS_CONFIG.down;
+                const Icon = cfg.icon;
+                return (
+                  <div
+                    key={comp.name}
+                    className={cn(
+                      "flex items-center rounded-xl border p-4 transition-colors",
+                      cfg.border, cfg.bg
+                    )}
+                  >
+                    <Icon size={16} className={cn("shrink-0", cfg.color)} />
+                    <span className="ml-3 text-sm font-medium min-w-[140px] capitalize">
+                      {comp.name}
+                    </span>
+                    <span className={cn(
+                      "ml-2 rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider",
+                      cfg.color, cfg.bg
+                    )}>
+                      {cfg.label}
+                    </span>
+                    <span className="ml-auto text-xs text-muted-foreground font-mono tabular-nums">
+                      {comp.latency_ms}ms
+                    </span>
+                    {comp.message && comp.message !== "ok" && (
+                      <span className="ml-3 text-xs text-muted-foreground truncate max-w-[200px]">
+                        {comp.message}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* History Tab */}
+        {activeTab === "history" && (
+          <div className="space-y-6">
+            {/* Time range selector */}
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-muted-foreground">时间范围:</span>
+              {[10, 30, 60, 120].map(m => (
+                <button
+                  key={m}
+                  onClick={() => { setHistoryMinutes(m); fetchHistory(m); }}
+                  className={cn(
+                    "rounded-lg px-3 py-1.5 text-xs font-medium border transition-colors",
+                    historyMinutes === m
+                      ? "border-primary bg-primary/10 text-primary"
+                      : "border-border bg-muted/30 text-muted-foreground hover:bg-muted"
+                  )}
+                >
+                  {m < 60 ? `${m}分钟` : `${m / 60}小时`}
+                </button>
+              ))}
+              <button
+                onClick={() => fetchHistory()}
+                disabled={historyLoading}
+                className="ml-auto flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                {historyLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                刷新
+              </button>
+            </div>
+
+            {history.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                <BarChart3 size={32} className="mb-3 opacity-50" />
+                <p className="text-sm">暂无历史数据</p>
+                <p className="text-xs mt-1">系统每10秒采集一次指标，等待数据积累中...</p>
+              </div>
+            ) : (
+              <>
+                {/* CPU + Memory Chart */}
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                    <Cpu size={14} className="text-blue-500" />
+                    CPU & 内存使用率
+                  </h3>
+                  <MiniChart
+                    data={history}
+                    series={[
+                      { key: "cpu", label: "CPU %", color: "#3b82f6", max: 100 },
+                      { key: "mem", label: "内存 %", color: "#a855f7", max: 100 },
+                    ]}
+                    height={160}
+                  />
+                </div>
+
+                {/* Disk Chart */}
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                    <HardDrive size={14} className="text-amber-500" />
+                    磁盘使用率
+                  </h3>
+                  <MiniChart
+                    data={history}
+                    series={[
+                      { key: "disk", label: "磁盘 %", color: "#f59e0b", max: 100 },
+                    ]}
+                    height={120}
+                  />
+                </div>
+
+                {/* QPS + Latency Chart */}
+                <div className="rounded-xl border border-border bg-card p-5">
+                  <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                    <Zap size={14} className="text-emerald-500" />
+                    请求 QPS & P99 延迟
+                  </h3>
+                  <MiniChart
+                    data={history}
+                    series={[
+                      { key: "qps", label: "QPS", color: "#10b981" },
+                      { key: "p99", label: "P99 ms", color: "#f97316" },
+                    ]}
+                    height={160}
+                  />
+                </div>
+
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                  <StatCard
+                    label="CPU 峰值"
+                    value={`${Math.max(...history.map(h => h.cpu)).toFixed(1)}%`}
                     icon={Cpu}
                     color="blue"
                   />
                   <StatCard
-                    label=t('vital.t10312')
-                    value={`${Math.max(...history.map(h => h.mem)).toFixed(1)}%t('vital.t08136')${x},${y}`;
+                    label="内存峰值"
+                    value={`${Math.max(...history.map(h => h.mem)).toFixed(1)}%`}
+                    icon={MemoryStick}
+                    color="purple"
+                  />
+                  <StatCard
+                    label="QPS 峰值"
+                    value={Math.max(...history.map(h => h.qps)).toFixed(2)}
+                    icon={Zap}
+                    color="emerald"
+                  />
+                  <StatCard
+                    label="数据点"
+                    value={String(history.length)}
+                    icon={BarChart3}
+                    color="amber"
+                  />
+                </div>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Alerts Tab */}
+        {activeTab === "alerts" && (
+          <div className="space-y-4">
+            {alerts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                <Shield size={32} className="mb-3 opacity-50" />
+                <p className="text-sm">暂无告警记录</p>
+                <p className="text-xs mt-1">系统运行正常，所有指标在阈值范围内</p>
+              </div>
+            ) : (
+              <>
+                <div className="flex items-center gap-3 mb-2">
+                  <span className="text-sm text-muted-foreground">
+                    共 {alerts.length} 条告警，{activeAlerts} 条未解决
+                  </span>
+                  {criticalAlerts > 0 && (
+                    <span className="rounded-full bg-red-500/15 px-2 py-0.5 text-xs font-semibold text-red-500">
+                      {criticalAlerts} 严重
+                    </span>
+                  )}
+                </div>
+                {alerts.map((alert, idx) => (
+                  <div
+                    key={idx}
+                    className={cn(
+                      "flex items-start gap-3 rounded-xl border p-4 transition-colors",
+                      alert.resolved
+                        ? "border-border bg-card opacity-60"
+                        : alert.severity === "critical"
+                          ? "border-red-500/30 bg-red-500/5"
+                          : "border-yellow-500/30 bg-yellow-500/5"
+                    )}
+                  >
+                    <div className={cn(
+                      "flex items-center justify-center w-8 h-8 rounded-lg shrink-0",
+                      alert.resolved
+                        ? "bg-muted"
+                        : alert.severity === "critical"
+                          ? "bg-red-500/10"
+                          : "bg-yellow-500/10"
+                    )}>
+                      {alert.resolved ? (
+                        <CheckCircle2 size={16} className="text-muted-foreground" />
+                      ) : alert.severity === "critical" ? (
+                        <XCircle size={16} className="text-red-500" />
+                      ) : (
+                        <AlertTriangle size={16} className="text-yellow-500" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={cn(
+                          "rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase",
+                          alert.severity === "critical"
+                            ? "bg-red-500/15 text-red-500"
+                            : "bg-yellow-500/15 text-yellow-500"
+                        )}>
+                          {alert.severity}
+                        </span>
+                        <span className="text-xs text-muted-foreground font-mono">{alert.rule}</span>
+                        {alert.resolved && (
+                          <span className="rounded-full bg-emerald-500/15 px-2 py-0.5 text-[10px] text-emerald-500">
+                            已恢复
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm">{alert.message}</p>
+                      <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                        <span>当前值: {alert.value}</span>
+                        <span>阈值: {alert.threshold}</span>
+                        <span>{formatRelativeTime(alert.ts)}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </>
+            )}
+          </div>
+        )}
+
+        {/* Loading state */}
+        {!health && !metrics && !healthError && (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 size={28} className="animate-spin text-primary mb-3" />
+            <p className="text-sm text-muted-foreground">{t("vital.checking") || "正在检查系统状态..."}</p>
+          </div>
+        )}
+
+        {/* Footer */}
+        {lastFetch && (
+          <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-4 mt-6 border-t border-border">
+            <span>
+              {t("vital.lastUpdated") || "最后更新"}: {lastFetch.toLocaleString("zh-CN")}
+            </span>
+            <span>{t("vital.autoRefresh") || "每 30 秒自动刷新"}</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Section({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-3">
+        <Icon size={14} className="text-muted-foreground" />
+        <h3 className="text-sm font-medium">{title}</h3>
+      </div>
+      {children}
+    </div>
+  );
+}
+
+function MetricCard({ icon: Icon, label, value, detail, status }: {
+  icon: React.ElementType; label: string; value: string; detail?: string; status: "ok" | "warning" | "critical";
+}) {
+  const statusColors = {
+    ok: "text-emerald-500 bg-emerald-500/8 border-emerald-500/20",
+    warning: "text-yellow-500 bg-yellow-500/8 border-yellow-500/20",
+    critical: "text-red-500 bg-red-500/8 border-red-500/20",
+  };
+  return (
+    <div className={cn("rounded-xl border p-3", statusColors[status])}>
+      <div className="flex items-center gap-2 mb-1">
+        <Icon size={14} className="opacity-70" />
+        <span className="text-[11px] uppercase tracking-wider opacity-70">{label}</span>
+      </div>
+      <div className="text-lg font-semibold">{value}</div>
+      {detail && <div className="text-[11px] opacity-60 mt-0.5">{detail}</div>}
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon: Icon, color }: {
+  label: string; value: string; icon: React.ElementType; color: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={14} className="text-muted-foreground" />
+        <span className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</span>
+      </div>
+      <div className="text-xl font-semibold">{value}</div>
+    </div>
+  );
+}
+
+function MiniStat({ label, value, icon: Icon, danger }: {
+  label: string; value: string; icon: React.ElementType; danger?: boolean;
+}) {
+  return (
+    <div className="rounded-lg bg-muted/30 p-3">
+      <div className="flex items-center gap-1.5 mb-1">
+        <Icon size={12} className="text-muted-foreground" />
+        <span className="text-[10px] text-muted-foreground">{label}</span>
+      </div>
+      <div className={cn("text-sm font-semibold tabular-nums", danger && "text-red-500")}>{value}</div>
+    </div>
+  );
+}
+
+function OverviewCard({ label, value, icon: Icon, valueClass }: {
+  label: string; value: string; icon: React.ElementType; valueClass: string;
+}) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="flex items-center gap-2 mb-2">
+        <Icon size={14} className="text-muted-foreground" />
+        <span className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</span>
+      </div>
+      <div className={cn("text-xl font-semibold", valueClass)}>{value}</div>
+    </div>
+  );
+}
+
+// ── SVG Mini Chart ────────────────────────────────────────
+
+interface SeriesConfig {
+  key: string;
+  label: string;
+  color: string;
+  max?: number;
+}
+
+function MiniChart({ data, series, height = 160 }: {
+  data: HistoryEntry[];
+  series: SeriesConfig[];
+  height?: number;
+}) {
+  if (data.length < 2) {
+    return (
+      <div className="flex items-center justify-center text-muted-foreground text-xs" style={{ height }}>
+        需要至少2个数据点才能显示图表
+      </div>
+    );
+  }
+
+  const W = 800;
+  const H = height;
+  const pad = { top: 20, right: 60, bottom: 30, left: 50 };
+  const cw = W - pad.left - pad.right;
+  const ch = H - pad.top - pad.bottom;
+
+  // Helper to get value from entry by key
+  const val = (d: HistoryEntry, key: string): number => {
+    const rec = d as unknown as Record<string, number>;
+    return rec[key] ?? 0;
+  };
+
+  // Calculate global max for each series
+  const seriesMax = series.map(s => {
+    if (s.max) return s.max;
+    const vals = data.map(d => val(d, s.key));
+    return Math.max(...vals) * 1.2 || 1;
+  });
+
+  // Build path for each series
+  const paths = series.map((s, si) => {
+    const max = seriesMax[si];
+    const points = data.map((d, i) => {
+      const x = pad.left + (i / (data.length - 1)) * cw;
+      const v = val(d, s.key);
+      const y = pad.top + ch - (v / max) * ch;
+      return `${x},${y}`;
     });
     return { ...s, path: `M${points.join("L")}`, max };
   });

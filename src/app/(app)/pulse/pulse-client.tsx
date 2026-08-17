@@ -66,10 +66,10 @@ const STATUS_COLORS: Record<string, string> = {
 };
 
 const TYPE_LABELS: Record<string, string> = {
-  tick: t('pulse.t16785'),
-  interval: t('pulse.t55782'),
-  cron: t('pulse.t49441'),
-  once: t('pulse.t10485'),
+  tick: "心跳",
+  interval: "定时间隔",
+  cron: "Cron调度",
+  once: "一次性",
 };
 
 export function PulseClient() {
@@ -165,9 +165,9 @@ export function PulseClient() {
   };
 
   const tabs = [
-    { id: "signals" as const, label: t("pulse.signals")), icon: Heart },
-    { id: "ticks" as const, label: t("pulse.ticks")), icon: Timer },
-    { id: "config" as const, label: t("pulse.stats")), icon: BarChart3 },
+    { id: "signals" as const, label: t("pulse.signals") || "信号管理", icon: Heart },
+    { id: "ticks" as const, label: t("pulse.ticks") || "节拍历史", icon: Timer },
+    { id: "config" as const, label: t("pulse.stats") || "精度统计", icon: BarChart3 },
   ];
 
   return (
@@ -175,14 +175,14 @@ export function PulseClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Heart size={20} className="text-red-500 animate-pulse" />
-          <h1 className="text-lg font-semibold">{t("pulse.title"))}</h1>
+          <h1 className="text-lg font-semibold">{t("pulse.title") || "脉搏 · 时序节拍"}</h1>
           <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500">
-            {t("pulse.subtitle"))}
+            {t("pulse.subtitle") || "高精度 · 亚秒级 · 漂移校正"}
           </span>
         </div>
         <button onClick={() => { fetchStats(); tab === "signals" && fetchSignals(); tab === "ticks" && fetchTicks(); }}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors">
-          <RefreshCw size={14} /> {t("common.refresh"))}
+          <RefreshCw size={14} /> {t("common.refresh") || "刷新"}
         </button>
       </div>
 
@@ -190,14 +190,14 @@ export function PulseClient() {
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard icon={Heart} label={t("pulse.signals"))} value={String(stats.total_signals)}
-              sub={t('pulse.t85391', { active0: stats.by_status.active || 0, active: t("pulse.active")) })} color="text-red-500" bg="bg-red-500/10" />
-            <StatCard icon={Zap} label={t("pulse.totalTicks"))} value={String(stats.total_ticks)}
-              sub={t("pulse.fired"))} color="text-yellow-500" bg="bg-yellow-500/10" />
-            <StatCard icon={Activity} label={t("pulse.avgDrift"))} value={formatMs(stats.precision.avg_drift_ms)}
-              sub={t('pulse.t30224', { samplesize: stats.precision.sample_size, samples: t("pulse.samples")) })} color="text-blue-500" bg="bg-blue-500/10" />
-            <StatCard icon={Clock} label={t("pulse.uptime"))} value={`${Math.round(stats.uptime_seconds)}s`}
-              sub={t("pulse.engineUptime"))} color="text-emerald-500" bg="bg-emerald-500/10" />
+            <StatCard icon={Heart} label={t("pulse.signals") || "信号总数"} value={String(stats.total_signals)}
+              sub={`${stats.by_status.active || 0} ${t("pulse.active") || "活跃"}`} color="text-red-500" bg="bg-red-500/10" />
+            <StatCard icon={Zap} label={t("pulse.totalTicks") || "总节拍"} value={String(stats.total_ticks)}
+              sub={t("pulse.fired") || "已触发"} color="text-yellow-500" bg="bg-yellow-500/10" />
+            <StatCard icon={Activity} label={t("pulse.avgDrift") || "平均漂移"} value={formatMs(stats.precision.avg_drift_ms)}
+              sub={`${stats.precision.sample_size} ${t("pulse.samples") || "采样"}`} color="text-blue-500" bg="bg-blue-500/10" />
+            <StatCard icon={Clock} label={t("pulse.uptime") || "运行时间"} value={`${Math.round(stats.uptime_seconds)}s`}
+              sub={t("pulse.engineUptime") || "引擎运行"} color="text-emerald-500" bg="bg-emerald-500/10" />
           </div>
         )}
 
@@ -217,27 +217,27 @@ export function PulseClient() {
           <div className="space-y-4">
             {/* Create */}
             <div className="rounded-xl border border-border p-4 space-y-3">
-              <h3 className="text-sm font-medium">{t("pulse.createSignal"))}</h3>
+              <h3 className="text-sm font-medium">{t("pulse.createSignal") || "创建脉搏信号"}</h3>
               <div className="grid grid-cols-5 gap-3">
                 <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                  placeholder={t("pulse.signalName"))}
+                  placeholder={t("pulse.signalName") || "信号名称..."}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
                 <select value={newType} onChange={(e) => setNewType(e.target.value)}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
-                  <option value="interval">{t('pulse.t55782')}<option>
-                  <option value="tick">{t('pulse.t16785')}<option>
-                  <option value="once">{t('pulse.t10485')}<option>
+                  <option value="interval">定时间隔</option>
+                  <option value="tick">心跳</option>
+                  <option value="once">一次性</option>
                 </select>
                 <input value={newInterval} onChange={(e) => setNewInterval(e.target.value)}
-                  placeholder=t('pulse.t60861')
+                  placeholder="间隔(ms)"
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
                 <input value={newMaxFires} onChange={(e) => setNewMaxFires(e.target.value)}
-                  placeholder=t('pulse.t44722')
+                  placeholder="最大次数(0=无限)"
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
                 <button onClick={handleCreate} disabled={loading}
                   className="flex items-center justify-center gap-1.5 rounded-lg bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-                  {t("common.create"))}
+                  {t("common.create") || "创建"}
                 </button>
               </div>
             </div>
@@ -246,7 +246,7 @@ export function PulseClient() {
             {signals.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Heart size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("pulse.noSignals"))}</p>
+                <p className="text-sm">{t("pulse.noSignals") || "暂无脉搏信号"}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -268,9 +268,9 @@ export function PulseClient() {
                             </span>
                           </div>
                           <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
-                            <span>{t("pulse.interval"))}: {formatMs(s.interval_ms)}</span>
-                            <span>{t("pulse.fired"))}: {s.fire_count}{s.max_fires > 0 ? `/${s.max_fires}` : ""}</span>
-                            <span>{t("pulse.drift"))}: {formatMs(s.drift_correction)}</span>
+                            <span>{t("pulse.interval") || "间隔"}: {formatMs(s.interval_ms)}</span>
+                            <span>{t("pulse.fired") || "已触发"}: {s.fire_count}{s.max_fires > 0 ? `/${s.max_fires}` : ""}</span>
+                            <span>{t("pulse.drift") || "漂移校正"}: {formatMs(s.drift_correction)}</span>
                             {s.last_fired_at && <span>{formatTime(s.last_fired_at)}</span>}
                           </div>
                         </div>
@@ -278,25 +278,25 @@ export function PulseClient() {
                       <div className="flex items-center gap-1">
                         <button onClick={() => handleTick(s.signal_id)}
                           className="rounded-md p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                          title=t('pulse.t41384')>
+                          title="触发一次节拍">
                           <Zap size={14} />
                         </button>
                         {s.status === "active" ? (
                           <button onClick={() => handlePause(s.signal_id)}
                             className="rounded-md p-1.5 text-muted-foreground hover:text-yellow-500 hover:bg-yellow-500/10 transition-colors"
-                            title=t('common.pause')>
+                            title="暂停">
                             <Pause size={14} />
                           </button>
                         ) : s.status === "paused" ? (
                           <button onClick={() => handleResume(s.signal_id)}
                             className="rounded-md p-1.5 text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10 transition-colors"
-                            title=t('marrow.restore')>
+                            title="恢复">
                             <Play size={14} />
                           </button>
                         ) : null}
                         <button onClick={() => handleDelete(s.signal_id)}
                           className="rounded-md p-1.5 text-muted-foreground hover:text-red-500 hover:bg-red-500/10 transition-colors"
-                          title=t('common.delete')>
+                          title="删除">
                           <Trash2 size={14} />
                         </button>
                       </div>
@@ -314,28 +314,28 @@ export function PulseClient() {
             <div className="flex items-center gap-3">
               <select value={selectedSignal || ""} onChange={(e) => setSelectedSignal(e.target.value || null)}
                 className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
-                <option value="">{t("pulse.allSignals"))}</option>
+                <option value="">{t("pulse.allSignals") || "所有信号"}</option>
                 {signals.map((s) => (
                   <option key={s.signal_id} value={s.signal_id}>{s.name}</option>
                 ))}
               </select>
-              <span className="text-xs text-muted-foreground">{ticks.length} {t("pulse.tickRecords"))}</span>
+              <span className="text-xs text-muted-foreground">{ticks.length} {t("pulse.tickRecords") || "条记录"}</span>
             </div>
 
             {ticks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Timer size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("pulse.noTicks"))}</p>
+                <p className="text-sm">{t("pulse.noTicks") || "暂无节拍记录"}</p>
               </div>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t('pulse.signals')}<th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t('dashboard.time')}<th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">{t('pulse.drift')}<th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">{t('dashboard.latency')}<th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">信号</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">时间</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">漂移</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">延迟</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -363,18 +363,18 @@ export function PulseClient() {
         {tab === "config" && stats && (
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <h3 className="text-sm font-semibold">{t("pulse.precisionStats"))}</h3>
+              <h3 className="text-sm font-semibold">{t("pulse.precisionStats") || "精度统计"}</h3>
               <div className="grid grid-cols-3 gap-6">
                 <div>
-                  <label className="text-xs text-muted-foreground">{t("pulse.avgDrift"))}</label>
+                  <label className="text-xs text-muted-foreground">{t("pulse.avgDrift") || "平均漂移"}</label>
                   <div className="mt-1 text-2xl font-bold">{formatMs(stats.precision.avg_drift_ms)}</div>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">{t("pulse.maxDrift"))}</label>
+                  <label className="text-xs text-muted-foreground">{t("pulse.maxDrift") || "最大漂移"}</label>
                   <div className="mt-1 text-2xl font-bold">{formatMs(stats.precision.max_drift_ms)}</div>
                 </div>
                 <div>
-                  <label className="text-xs text-muted-foreground">{t("pulse.samples"))}</label>
+                  <label className="text-xs text-muted-foreground">{t("pulse.samples") || "采样数"}</label>
                   <div className="mt-1 text-2xl font-bold">{stats.precision.sample_size}</div>
                 </div>
               </div>
@@ -382,7 +382,7 @@ export function PulseClient() {
 
             {/* Type breakdown */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <h3 className="text-sm font-semibold">{t("pulse.byType"))}</h3>
+              <h3 className="text-sm font-semibold">{t("pulse.byType") || "按类型"}</h3>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(stats.by_type).map(([type, count]) => (
                   <span key={type} className="rounded-full bg-red-500/10 px-3 py-1 text-xs text-red-600">
@@ -394,7 +394,7 @@ export function PulseClient() {
 
             {/* Status breakdown */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <h3 className="text-sm font-semibold">{t("pulse.byStatus"))}</h3>
+              <h3 className="text-sm font-semibold">{t("pulse.byStatus") || "按状态"}</h3>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(stats.by_status).map(([status, count]) => (
                   <span key={status} className={cn("rounded-full px-3 py-1 text-xs", STATUS_COLORS[status] || "bg-muted")}>

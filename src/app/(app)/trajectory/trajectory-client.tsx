@@ -4,8 +4,6 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { getApiBaseUrl } from "@/lib/api-client"
 import {
-import { useTranslation } from 'react-i18next';
-
   Activity, Search, GitBranch, Play, Pause, SkipForward, SkipBack,
   RefreshCw, Clock, Zap, Hash, Filter, ChevronRight, ChevronDown,
   BarChart3, Layers, AlertCircle, CheckCircle, XCircle, Eye,
@@ -529,7 +527,6 @@ function ReplayControls({
 // ── Main Component ─────────────────────────────────────────────
 
 export function TrajectoryClient() {
-  const { t } = useTranslation();
   const apiBase = getApiBaseUrl()
 
   // State

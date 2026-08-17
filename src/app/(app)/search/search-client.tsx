@@ -26,15 +26,15 @@ interface UnifiedResults {
 }
 
 const SOURCE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  knowledge: { label: t('nav.knowledge'), icon: BookOpen, color: 'text-blue-500 bg-blue-500/10' },
-  files: { label: t('chat.files'), icon: FileCode, color: 'text-emerald-500 bg-emerald-500/10' },
-  events: { label: t('nerve.events'), icon: Activity, color: 'text-amber-500 bg-amber-500/10' },
+  knowledge: { label: 'Knowledge', icon: BookOpen, color: 'text-blue-500 bg-blue-500/10' },
+  files: { label: 'Files', icon: FileCode, color: 'text-emerald-500 bg-emerald-500/10' },
+  events: { label: 'Events', icon: Activity, color: 'text-amber-500 bg-amber-500/10' },
   agents: { label: 'Agent', icon: Bot, color: 'text-purple-500 bg-purple-500/10' },
-  courses: { label: t('search.t98853'), icon: GraduationCap, color: 'text-pink-500 bg-pink-500/10' },
-  trajectory: { label: t('nav.trajectory'), icon: Clock, color: 'text-cyan-500 bg-cyan-500/10' },
-  cron: { label: t('nav.cron'), icon: RotateCcw, color: 'text-orange-500 bg-orange-500/10' },
-  gene: { label: t('limb.templates'), icon: Layers, color: 'text-lime-500 bg-lime-500/10' },
-  echo: { label: t('vital.message'), icon: Zap, color: 'text-rose-500 bg-rose-500/10' },
+  courses: { label: 'Courses', icon: GraduationCap, color: 'text-pink-500 bg-pink-500/10' },
+  trajectory: { label: 'Trajectory', icon: Clock, color: 'text-cyan-500 bg-cyan-500/10' },
+  cron: { label: 'Cron', icon: RotateCcw, color: 'text-orange-500 bg-orange-500/10' },
+  gene: { label: 'Templates', icon: Layers, color: 'text-lime-500 bg-lime-500/10' },
+  echo: { label: 'Messages', icon: Zap, color: 'text-rose-500 bg-rose-500/10' },
 };
 
 export function SearchClient() {
