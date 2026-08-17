@@ -5,12 +5,7 @@ const soulApiUrl = process.env.SOUL_API_URL || "http://localhost:8090";
 const nextConfig: NextConfig = {
   output: "standalone",
   devIndicators: false,
-  webpack: (config, { dev }) => {
-    if (dev) {
-      config.cache = false;
-    }
-    return config;
-  },
+  turbopack: {},
   async rewrites() {
     return [
       {
