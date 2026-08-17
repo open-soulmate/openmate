@@ -3,7 +3,7 @@ import en from "@/locales/en.json";
 import ja from "@/locales/ja.json";
 import { cookies } from "next/headers";
 
-const resources: Record<string, typeof zh> = { zh, en, ja };
+const resources: Record<string, Record<string, any>> = { zh, en, ja };
 
 /**
  * Server-side translation helper for metadata and server components.
