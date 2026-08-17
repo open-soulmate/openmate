@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import i18n from "@/lib/i18n";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
@@ -84,9 +85,9 @@ function formatTime(ts: number): string {
 
 function formatAge(ts: number): string {
   const hours = (Date.now() / 1000 - ts) / 3600;
-  if (hours < 1) return `${Math.round(hours * 60)} {t("common.minutesAgo")}`;
-  if (hours < 24) return `${Math.round(hours)} {t("common.hoursAgo")}`;
-  return `${Math.round(hours / 24)} {t("common.daysAgo")}`;
+  if (hours < 1) return `${Math.round(hours * 60)} ${i18n.t("common.minutesAgo")}`;
+  if (hours < 24) return `${Math.round(hours)} ${i18n.t("common.hoursAgo")}`;
+  return `${Math.round(hours / 24)} ${i18n.t("common.daysAgo")}`;
 }
 
 export function HippoClient() {

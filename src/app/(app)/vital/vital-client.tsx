@@ -81,7 +81,7 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-function formatRelativeTime(ts: number, t: (key: string) => string): string {
+function formatRelativeTime(ts: number): string {
   const diff = Date.now() - ts * 1000;
   if (diff < 60_000) return i18n.t("common.justNow");
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} ${i18n.t("common.minutesAgo")}`;
@@ -638,7 +638,7 @@ export function VitalClient() {
                       <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
                         <span>{t("vital.currentValue")}: {alert.value}</span>
                         <span>{t("vital.threshold")}: {alert.threshold}</span>
-                        <span>{formatRelativeTime(alert.ts, t)}</span>
+                        <span>{formatRelativeTime(alert.ts)}</span>
                       </div>
                     </div>
                   </div>
