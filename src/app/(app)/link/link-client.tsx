@@ -106,7 +106,7 @@ export function LinkClient() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm("确定删除此连接器？")) return;
+    if (!confirm(t("link.confirmDelete"))) return;
     try {
       await fetch(`${apiBase}/api/link/connectors/${id}`, { method: "DELETE" });
       setSelected(null);
@@ -304,17 +304,17 @@ export function LinkClient() {
                 <div className="flex gap-2">
                   <button onClick={() => handleTest(selected.connector_id)}
                     className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-                    <Activity size={12} /> 测试
+                    <Activity size={12} /> {t("link.test")}
                   </button>
                   {(selected.type === "webhook_out" || selected.type === "rest_api") && (
                     <button onClick={() => handleSend(selected.connector_id)}
                       className="flex items-center gap-1 rounded-lg border border-teal-500/30 px-3 py-1.5 text-xs text-teal-600 hover:bg-teal-500/10">
-                      <Send size={12} /> 发送
+                      <Send size={12} /> {t("link.send")}
                     </button>
                   )}
                   <button onClick={() => handleDelete(selected.connector_id)}
                     className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
-                    <Trash2 size={12} /> 删除
+                    <Trash2 size={12} /> {t("link.delete")}
                   </button>
                 </div>
               </div>
@@ -324,7 +324,7 @@ export function LinkClient() {
                 <div className="col-span-2"><span className="text-muted-foreground">Endpoint:</span> <span className="font-mono text-xs">{selected.endpoint}</span></div>
               </div>
               <div>
-                <label className="text-xs text-muted-foreground">测试 Payload (JSON)</label>
+                <label className="text-xs text-muted-foreground">{t("link.testPayload")} (JSON)</label>
                 <textarea value={testPayload} onChange={(e) => setTestPayload(e.target.value)}
                   className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono min-h-[80px] mt-1" />
               </div>
@@ -341,27 +341,27 @@ export function LinkClient() {
         {showCreate && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4">
-              <h3 className="font-semibold">新建连接器</h3>
+              <h3 className="font-semibold">{t('link.createConnector')}</h3>
               <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                placeholder="连接器名称" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t('link.connectorName')} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <select value={newType} onChange={(e) => setNewType(e.target.value)}
                 className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                <option value="webhook_in">Webhook (入站)</option>
-                <option value="webhook_out">Webhook (出站)</option>
+                <option value="webhook_in">{t('link.webhookIn')}</option>
+                <option value="webhook_out">{t('link.webhookOut')}</option>
                 <option value="rest_api">REST API</option>
-                <option value="oa_system">OA 系统</option>
-                <option value="custom">自定义</option>
+                <option value="oa_system">{t('link.oaSystem')}</option>
+                <option value="custom">{t('link.custom')}</option>
               </select>
               <input value={newEndpoint} onChange={(e) => setNewEndpoint(e.target.value)}
-                placeholder="Endpoint URL" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t('link.endpointUrl')} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <input value={newSecret} onChange={(e) => setNewSecret(e.target.value)}
-                placeholder="Secret (可选)" type="password" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t('link.secretOptional')} type="password" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowCreate(false)}
-                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">取消</button>
+                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t("common.cancel")}</button>
                 <button onClick={handleCreate} disabled={loading}
                   className="rounded-lg bg-teal-500 px-4 py-2 text-sm text-white hover:bg-teal-600 disabled:opacity-50">
-                  {loading ? "创建中..." : "创建"}
+                  {loading ? t("link.creating") : t("link.create")}
                 </button>
               </div>
             </div>

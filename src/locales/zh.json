@@ -1546,7 +1546,15 @@
     "t73119": "新建连接",
     "t33201": "测试",
     "t72588": "发送",
-    "t69735": "双向集成"
+    "t69735": "双向集成",
+    "createConnector": "新建连接器",
+    "endpointUrl": "Endpoint URL",
+    "secretOptional": "密钥（可选）",
+    "confirmDelete": "确定删除此连接器？",
+    "test": "测试",
+    "delete": "删除",
+    "testPayload": "测试 Payload",
+    "creating": "创建中..."
   },
   "common": {
     "loading": "加载中...",
