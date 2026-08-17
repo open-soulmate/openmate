@@ -187,7 +187,7 @@ export function DailyDigestClient() {
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-sm font-medium hover:from-violet-500 hover:to-fuchsia-500 transition-all disabled:opacity-50"
           >
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-            {generating ? '生成中...' : '生成今日摘要'}
+            {generating ? t('plugins.text2') || '生成中...' : t('plugins.text3') || '生成今日摘要'}
           </button>
         </div>
       </div>
@@ -240,7 +240,7 @@ export function DailyDigestClient() {
             <div className="p-6 rounded-2xl border border-border bg-card">
               <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-2">
                 <Activity className="w-3.5 h-3.5" />
-                活跃器官
+                {t('plugins.active') || '活跃器官'}
               </div>
               <div className="text-3xl font-bold text-foreground">
                 <span className="text-emerald-400">{healthyOrgans}</span>

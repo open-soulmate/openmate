@@ -316,7 +316,7 @@ export function MirrorClient() {
               {/* Logs */}
               <div className="rounded-xl border border-border p-4">
                 <div className="flex items-center justify-between mb-2">
-                  <h4 className="text-sm font-medium"{t("mirror.log")} ({logs.length})</h4>
+                  <h4 className="text-sm font-medium">{t("mirror.log")} ({logs.length})</h4>
                   <div className="flex gap-2">
                     <input value={logMessage} onChange={(e) => setLogMessage(e.target.value)}
                       onKeyDown={(e) => e.key === "Enter" && handleAddLog(selected.sandbox_id)}

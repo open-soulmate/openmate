@@ -243,7 +243,7 @@ export function LinkClient() {
                       "text-[10px] font-medium px-1.5 py-0.5 rounded",
                       e.direction === "inbound" ? "bg-blue-500/10 text-blue-500" : "bg-violet-500/10 text-violet-500"
                     )}>
-                      {e.direction === "inbound" ? "{t("link.t27996")}" : t("link.t65703")}
+                      {e.direction === "inbound" ? t("link.t27996") : t("link.t65703")}
                     </span>
                     <span className="text-xs font-medium">{e.connector_name || e.connector_id}</span>
                     <span className="text-xs text-muted-foreground truncate flex-1">{e.payload_summary}</span>
@@ -361,7 +361,7 @@ export function LinkClient() {
                   className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t("common.cancel")}</button>
                 <button onClick={handleCreate} disabled={loading}
                   className="rounded-lg bg-teal-500 px-4 py-2 text-sm text-white hover:bg-teal-600 disabled:opacity-50">
-                  {loading ? "{t("link.creating")}" : t("link.create")}
+                  {loading ? t("link.creating") : t("link.create")}
                 </button>
               </div>
             </div>

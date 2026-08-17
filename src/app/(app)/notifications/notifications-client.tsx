@@ -43,20 +43,20 @@ function levelBadge(level: string) {
   }
 }
 
-function formatTime(ts: number): string {
+function formatTime(ts: number, t: (k: string, o?: Record<string, unknown>) => string): string {
   const diff = Date.now() - ts * 1000;
   const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) return "刚刚";
+  if (seconds < 60) return t("notifications.justNow") || "刚刚";
   const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}分钟前`;
+  if (minutes < 60) return t("notifications.t38995", { minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours}小时前`;
+  if (hours < 24) return t("notifications.t82894", { hours });
   const days = Math.floor(hours / 24);
-  return `${days}天前`;
+  return t("notifications.t87957", { days });
 }
 
 function formatFullTime(ts: number): string {
-  return new Date(ts * 1000).toLocaleString("zh-CN", {
+  return new Date(ts * 1000).toLocaleString(undefined, {
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", second: "2-digit",
   });
@@ -392,7 +392,7 @@ export function NotificationsClient() {
                   {/* Meta row */}
                   <div className="flex items-center gap-3 mt-2">
                     <span className="text-xs text-muted-foreground" title={formatFullTime(notif.timestamp)}>
-                      {formatTime(notif.timestamp)}
+                      {formatTime(notif.timestamp, t)}
                     </span>
                     {notif.organ && (
                       <span className={cn(
