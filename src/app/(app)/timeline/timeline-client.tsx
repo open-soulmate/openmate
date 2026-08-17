@@ -225,7 +225,7 @@ export function TimelineClient() {
               syncing && "opacity-50"
             )}
           >
-            <Sync className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
+            <FolderSync className={cn("w-3.5 h-3.5", syncing && "animate-spin")} />
             同步事件流
           </button>
           <button
