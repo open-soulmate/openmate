@@ -46,10 +46,96 @@ interface OverviewData {
 }
 
 const ORGAN_EMOJI: Record<string, string> = {
-  soul: "🧠", cortex: "🧩", nerve: "⚡", vein: "🩸",
-  sense: "👁", will: "✨", immune: "🛡", vital: "📊",
-  gland: "🧪", gene: "🧬", echo: "🔊", mirror: "🪞",
+  // Core brain
+  soul: "🧠", cortex: "🧩", "cortex-enhanced": "🧩",
+  // Nervous system
+  nerve: "⚡",
+  // Circulatory
+  vein: "🩸",
+  // Sensory
+  sense: "👁",
+  // Will / automation
+  will: "✨",
+  // Vital signs
+  vital: "📊",
+  // Model gateway
+  gland: "🧪",
+  // Security
+  immune: "🛡",
+  // Backup
+  marrow: "🦴",
+  // Templates
+  gene: "🧬",
+  // Messaging
+  echo: "🔊",
+  // Sandbox
+  mirror: "🪞",
+  // Integration
   link: "🔗",
+  // Phase 4
+  hippo: "🧠", reflex: "⚡", heredity: "🔗",
+  nest: "🏠", pulse: "💓", limb: "💪",
+  voice: "🎤", vision: "🎨", mind: "💭",
+  // Intelligence / analytics
+  intelligence: "📈",
+  // Trajectory
+  trajectory: "📊",
+  // MCP
+  mcp: "🔌",
+  // Learning
+  learn: "📚",
+  // Diagnostics
+  diagnostics: "🩺",
+  // Soma
+  "soma-connector": "🤖",
+  // Event stream
+  "event-stream": "📡",
+  // Capture
+  capture: "📷",
+  // Pipeline
+  pipeline: "⚙️",
+  // Topology
+  topology: "🌐",
+  // Graph
+  graph: "🕸",
+  // Entity
+  entity: "🏷",
+  // Tags
+  tag: "🔖",
+  // User
+  user: "👤",
+  // LLM
+  llm: "🤖",
+  // Agent
+  agent: "🤖",
+  // Export
+  export: "📤",
+  // Search
+  search: "🔍",
+  // Chat
+  chat: "💬",
+  // Workspace
+  workspace: "📁",
+  // Workflow
+  workflow: "🔄",
+  // Collaboration
+  collab: "🤝",
+  // Marketplace
+  marketplace: "🛒",
+  // Skills
+  skills: "🧩",
+  // Notifications
+  notifications: "🔔",
+  // Knowledge
+  knowledge: "📖",
+  // Healer
+  healer: "💊",
+  // Timeline
+  timeline: "📜",
+  // Benchmark
+  benchmark: "🏁",
+  // System
+  "system-overview": "🖥",
 };
 
 function StatusBadge({ status }: { status: string }) {
