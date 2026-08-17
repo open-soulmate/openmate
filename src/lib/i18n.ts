@@ -27,10 +27,20 @@ export function detectLanguage() {
   if (typeof window === "undefined") return;
   const saved = localStorage.getItem(STORAGE_KEY);
   if (saved && ["zh", "en", "ja"].includes(saved)) {
-    // 用户手动设置过语言，尊重选择
+    // 用户手动设置过语言，优先使用
     i18n.changeLanguage(saved);
+    return;
   }
-  // 没手动设置过，保持默认zh
+  // 自适应操作系统语言
+  const langs = navigator.languages || [navigator.language];
+  for (const lang of langs) {
+    const code = lang.split("-")[0].toLowerCase();
+    if (["zh", "en", "ja"].includes(code)) {
+      i18n.changeLanguage(code);
+      return;
+    }
+  }
+  // 系统语言不在支持列表，保持默认zh
 }
 
 export default i18n;
