@@ -357,7 +357,8 @@
     "t76433": "难度",
     "t03149": "入门",
     "t56231": "中级",
-    "t16459": "}\n              >\n                <Sparkles size={16} />\n                <div className=\"text-left\">\n                  <div className=\"font-medium\">AI自動生成</div>\n                  <div className=\"text-xs opacity-70\">{t('learn.t30476')}<div>\n                </div>\n              </button>\n              <button\n                onClick={() => setGenMode(\"manual\")}\n                className={"
+    "t16459": "上級",
+    "chapterCount": "{n} 章"
   },
   "agents": {
     "title": "エージェント管理",
@@ -3646,7 +3647,8 @@
     "t38118": "没あり匹配的通知",
     "t07225": "尝试不同的検索词",
     "t58357": "前往",
-    "t43292": "查看アクティビティ流"
+    "t43292": "查看アクティビティ流",
+    "justNow": "たった今"
   },
   "health": {
     "title": "システムヘルス",

@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useTranslation } from "react-i18next";
 
 interface KnowledgeItem {
   id: string;
@@ -44,6 +45,7 @@ const availableDomains = [
 
 export function CreateCourseClient() {
   const router = useRouter();
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -406,27 +408,27 @@ export function CreateCourseClient() {
           {genMode === "ai" && (
             <section className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-2 block text-sm font-medium">章节数量</label>
+                <label className="mb-2 block text-sm font-medium">{t("learn.t10672") || "章节数量"}</label>
                 <select
                   value={numChapters}
                   onChange={(e) => setNumChapters(parseInt(e.target.value))}
                   className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
                 >
                   {[3, 4, 5, 6, 7, 8, 10].map((n) => (
-                    <option key={n} value={n}>{n} 章</option>
+                    <option key={n} value={n}>{t("learn.chapterCount", { n }) || `${n} 章`}</option>
                   ))}
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">难度</label>
+                <label className="mb-2 block text-sm font-medium">{t("learn.t76433") || "难度"}</label>
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
                   className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
                 >
-                  <option value="beginner">入门</option>
-                  <option value="intermediate">中级</option>
-                  <option value="advanced">高级</option>
+                  <option value="beginner">{t("learn.t03149") || "入门"}</option>
+                  <option value="intermediate">{t("learn.t56231") || "中级"}</option>
+                  <option value="advanced">{t("learn.t16459") || "高级"}</option>
                 </select>
               </div>
             </section>
