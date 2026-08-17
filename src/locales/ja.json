@@ -1184,7 +1184,14 @@
     "t89293": "通常",
     "high5": "高め",
     "cancel1": "キャンセル",
-    "create1": "作成"
+    "create1": "作成",
+    "cachehits1": "キャッシュヒット",
+    "characters": "文字数",
+    "engine2": "エンジン",
+    "input2": "テキスト入力",
+    "t84292": "プロファイルを検索...",
+    "times1": "合成回数",
+    "voiceProfile1": "プロファイル数"
   },
   "vision": {
     "title": "視覚 · 画像可視化エンジン",
@@ -1874,7 +1881,14 @@
     "contentPlaceholder": "コードを貼り付け...",
     "cancel": "キャンセル",
     "saveBtn": "保存",
-    "createBtn": "作成"
+    "createBtn": "作成",
+    "created": "作成済み",
+    "deleted": "削除済み",
+    "deleteFailed": "削除に失敗しました",
+    "exportFailed": "エクスポートに失敗しました",
+    "language5": "言語",
+    "networkError": "ネットワークエラー",
+    "updated": "更新済み"
   },
   "workflow": {
     "execution": {

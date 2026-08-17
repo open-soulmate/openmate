@@ -5,6 +5,7 @@ import {
   Loader2, CheckCircle2, XCircle, Hash, RefreshCw, Copy, Pin,
   ChevronDown, Edit3, Eye, ArrowUpRight, Download, Upload, Code2,
 } from 'lucide-react';
+import { useTranslation } from "react-i18next";
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 
 interface Snippet {
@@ -51,6 +52,7 @@ const LANG_COLORS: Record<string, string> = {
 };
 
 export function SnippetsClient() {
+  const { t } = useTranslation();
   const [snippets, setSnippets] = useState<Snippet[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');

@@ -1764,7 +1764,14 @@
     "t89293": "正常",
     "high5": "较高",
     "cancel1": "取消",
-    "create1": "创建"
+    "create1": "创建",
+    "cachehits1": "缓存命中",
+    "characters": "字符数",
+    "engine2": "引擎",
+    "input2": "输入文本",
+    "t84292": "搜索配置文件...",
+    "times1": "合成次数",
+    "voiceProfile1": "声线数"
   },
   "vision": {
     "title": "视觉 · 图像可视化引擎",
@@ -3152,6 +3159,13 @@
     "contentPlaceholder": "粘贴代码...",
     "cancel": "取消",
     "saveBtn": "保存",
-    "createBtn": "创建"
+    "createBtn": "创建",
+    "created": "已创建",
+    "deleted": "已删除",
+    "deleteFailed": "删除失败",
+    "exportFailed": "导出失败",
+    "language5": "语言",
+    "networkError": "网络错误",
+    "updated": "已更新"
   }
 }
