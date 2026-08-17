@@ -583,7 +583,7 @@ export function TopologyClient() {
                 <span className="inline-block h-2.5 w-2.5 rounded-full bg-amber-500" /> {t("topology.checking") || "Checking"}
               </div>
               <div className="flex items-center gap-2">
-                <span className="inline-block h-2.5 w-2.5 rounded-full bg-violet-500" /> 已选中
+                <span className="inline-block h-2.5 w-2.5 rounded-full bg-violet-500" /> {t("topology.selected")}
               </div>
             </div>
           </div>

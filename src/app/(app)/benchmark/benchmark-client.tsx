@@ -1,6 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useTranslation } from "react-i18next";
 import {
   Zap, Play, Square, Clock, BarChart3, TrendingUp, Trash2,
   Loader2, CheckCircle, XCircle, ChevronDown, ChevronUp,
@@ -69,6 +70,7 @@ type ComparisonItem = HistoryEntry;
 type TabId = "run" | "comparison" | "history";
 
 export function BenchmarkClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [tab, setTab] = useState<TabId>("run");
   const [targets, setTargets] = useState<BenchmarkTarget[]>([]);
@@ -206,9 +208,9 @@ export function BenchmarkClient() {
   const maxAvgMs = comparison.length > 0 ? Math.max(...comparison.map(c => c.avg_ms || 0), 1) : 1;
 
   const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
-    { id: "run", label: "运行测试", icon: Play },
-    { id: "comparison", label: "性能对比", icon: BarChart3 },
-    { id: "history", label: "历史记录", icon: History },
+    { id: "run", label: t("benchmark.run"), icon: Play },
+    { id: "comparison", label: t("benchmark.comparison"), icon: BarChart3 },
+    { id: "history", label: t("benchmark.history"), icon: History },
   ];
 
   return (
@@ -221,7 +223,7 @@ export function BenchmarkClient() {
           </div>
           <div>
             <h1 className="text-lg font-semibold">OpenBenchmark</h1>
-            <p className="text-xs text-muted-foreground">器官性能基准测试 · {targets.length} 个可测目标</p>
+            <p className="text-xs text-muted-foreground">{t("benchmark.subtitle", { count: targets.length })}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -248,10 +250,10 @@ export function BenchmarkClient() {
             {/* Config Panel */}
             <div className="rounded-xl border border-border bg-card p-5">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-sm font-semibold">测试配置</h2>
+                <h2 className="text-sm font-semibold">{t("benchmark.testConfig")}</h2>
                 <div className="flex items-center gap-2">
-                  <button onClick={selectAll} className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">全选</button>
-                  <button onClick={selectNone} className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">清空</button>
+                  <button onClick={selectAll} className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">{t("benchmark.selectAll")}</button>
+                  <button onClick={selectNone} className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">{t("benchmark.clearAll")}</button>
                 </div>
               </div>
 
@@ -275,7 +277,7 @@ export function BenchmarkClient() {
               {/* Params */}
               <div className="flex items-center gap-6">
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">迭代次数</span>
+                  <span className="text-xs text-muted-foreground">{t("benchmark.iterations")}</span>
                   <input
                     type="number"
                     value={iterations}
@@ -286,7 +288,7 @@ export function BenchmarkClient() {
                   />
                 </div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs text-muted-foreground">并发数</span>
+                  <span className="text-xs text-muted-foreground">{t("benchmark.concurrency")}</span>
                   <input
                     type="number"
                     value={concurrency}
@@ -302,7 +304,7 @@ export function BenchmarkClient() {
                   className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 disabled:opacity-50"
                 >
                   {running ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
-                  {running ? "测试中..." : `运行测试 (${selectedOrgans.size} 个器官)`}
+                  {running ? t("benchmark.testing") : t("benchmark.runTest", { count: selectedOrgans.size })}
                 </button>
               </div>
             </div>
@@ -312,7 +314,7 @@ export function BenchmarkClient() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <h2 className="text-sm font-semibold">
-                    测试结果 · {currentRun.organs_benchmarked} 个器官 · {currentRun.iterations} 次迭代
+                    {t("benchmark.testResults", { organs: currentRun.organs_benchmarked, iterations: currentRun.iterations })}
                   </h2>
                   <span className="text-xs text-muted-foreground">Run ID: {currentRun.run_id}</span>
                 </div>
@@ -322,15 +324,15 @@ export function BenchmarkClient() {
                   <table className="w-full text-xs">
                     <thead>
                       <tr className="border-b border-border bg-muted/50">
-                        <th className="px-3 py-2 text-left font-medium">器官</th>
-                        <th className="px-3 py-2 text-right font-medium">成功</th>
-                        <th className="px-3 py-2 text-right font-medium">失败</th>
-                        <th className="px-3 py-2 text-right font-medium">平均</th>
+                        <th className="px-3 py-2 text-left font-medium">{t("benchmark.organ")}</th>
+                        <th className="px-3 py-2 text-right font-medium">{t("benchmark.success")}</th>
+                        <th className="px-3 py-2 text-right font-medium">{t("benchmark.failure")}</th>
+                        <th className="px-3 py-2 text-right font-medium">{t("benchmark.avg")}</th>
                         <th className="px-3 py-2 text-right font-medium">P50</th>
                         <th className="px-3 py-2 text-right font-medium">P95</th>
                         <th className="px-3 py-2 text-right font-medium">P99</th>
-                        <th className="px-3 py-2 text-right font-medium">最小</th>
-                        <th className="px-3 py-2 text-right font-medium">最大</th>
+                        <th className="px-3 py-2 text-right font-medium">{t("benchmark.min")}</th>
+                        <th className="px-3 py-2 text-right font-medium">{t("benchmark.max")}</th>
                         <th className="px-3 py-2 text-right font-medium">RPS</th>
                       </tr>
                     </thead>
@@ -358,7 +360,7 @@ export function BenchmarkClient() {
 
                 {/* Visual Latency Bars */}
                 <div className="rounded-xl border border-border bg-card p-5">
-                  <h3 className="mb-3 text-xs font-semibold text-muted-foreground">延迟分布 (avg_ms)</h3>
+                  <h3 className="mb-3 text-xs font-semibold text-muted-foreground">{t("benchmark.latencyDistribution")}</h3>
                   <div className="space-y-2">
                     {currentRun.results
                       .slice()
@@ -389,8 +391,8 @@ export function BenchmarkClient() {
             {!currentRun && !running && (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <Gauge size={48} className="mb-4 opacity-30" />
-                <p className="text-sm">选择器官并运行基准测试</p>
-                <p className="text-xs">测试结果将显示延迟分布、吞吐量和百分位数</p>
+                <p className="text-sm">{t("benchmark.selectOrgans")}</p>
+                <p className="text-xs">{t("benchmark.resultsHint")}</p>
               </div>
             )}
           </div>
@@ -400,17 +402,17 @@ export function BenchmarkClient() {
         {tab === "comparison" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">性能对比 · 最新基准测试结果</h2>
+              <h2 className="text-sm font-semibold">{t("benchmark.comparisonTitle")}</h2>
               <button onClick={fetchComparison} className="flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">
-                <RefreshCw size={12} /> 刷新
+                <RefreshCw size={12} /> {t("common.refresh")}
               </button>
             </div>
 
             {comparison.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <BarChart3 size={48} className="mb-4 opacity-30" />
-                <p className="text-sm">暂无基准测试数据</p>
-                <p className="text-xs">运行一次测试后即可查看性能对比</p>
+                <p className="text-sm">{t("benchmark.noData")}</p>
+                <p className="text-xs">{t("benchmark.noDataHint")}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -458,27 +460,27 @@ export function BenchmarkClient() {
                     <div className="ml-11 rounded-lg border border-border bg-muted/30 p-4">
                       <div className="grid grid-cols-3 gap-4 text-xs">
                         <div>
-                          <span className="text-muted-foreground">最小延迟</span>
+                          <span className="text-muted-foreground">{t("benchmark.minLatency")}</span>
                           <p className="font-mono font-medium">{formatMs(item.min_ms)}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">最大延迟</span>
+                          <span className="text-muted-foreground">{t("benchmark.maxLatency")}</span>
                           <p className="font-mono font-medium">{formatMs(item.max_ms)}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">P99 延迟</span>
+                          <span className="text-muted-foreground">{t("benchmark.p99Latency")}</span>
                           <p className="font-mono font-medium">{formatMs(item.p99_ms)}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">总耗时</span>
+                          <span className="text-muted-foreground">{t("benchmark.totalDuration")}</span>
                           <p className="font-mono font-medium">{formatMs(item.total_ms)}</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">吞吐量</span>
+                          <span className="text-muted-foreground">{t("benchmark.throughput")}</span>
                           <p className="font-mono font-medium">{item.rps?.toFixed(1)} req/s</p>
                         </div>
                         <div>
-                          <span className="text-muted-foreground">测试时间</span>
+                          <span className="text-muted-foreground">{t("benchmark.testTime")}</span>
                           <p className="font-mono font-medium">{new Date(item.timestamp * 1000).toLocaleString()}</p>
                         </div>
                       </div>
@@ -494,14 +496,14 @@ export function BenchmarkClient() {
         {tab === "history" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">基准测试历史</h2>
+              <h2 className="text-sm font-semibold">{t("benchmark.historyTitle")}</h2>
               <div className="flex items-center gap-2">
                 <select
                   value={historyFilter}
                   onChange={e => { setHistoryFilter(e.target.value); }}
                   className="rounded-lg border border-border bg-background px-2 py-1 text-xs"
                 >
-                  <option value="">所有器官</option>
+                  <option value="">{t("benchmark.allOrgans")}</option>
                   {targets.map(t => (
                     <option key={t.organ} value={t.organ}>{t.label}</option>
                   ))}
@@ -510,7 +512,7 @@ export function BenchmarkClient() {
                   <RefreshCw size={12} />
                 </button>
                 <button onClick={deleteHistory} className="flex items-center gap-1 rounded px-2 py-1 text-xs text-red-400 hover:bg-red-500/10">
-                  <Trash2 size={12} /> 清空
+                  <Trash2 size={12} /> {t("common.delete")}
                 </button>
               </div>
             </div>
@@ -518,18 +520,18 @@ export function BenchmarkClient() {
             {history.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <History size={48} className="mb-4 opacity-30" />
-                <p className="text-sm">暂无历史记录</p>
+                <p className="text-sm">{t("benchmark.noHistory")}</p>
               </div>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-border">
                 <table className="w-full text-xs">
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
-                      <th className="px-3 py-2 text-left font-medium">时间</th>
-                      <th className="px-3 py-2 text-left font-medium">器官</th>
-                      <th className="px-3 py-2 text-right font-medium">迭代</th>
-                      <th className="px-3 py-2 text-right font-medium">成功</th>
-                      <th className="px-3 py-2 text-right font-medium">平均</th>
+                      <th className="px-3 py-2 text-left font-medium">{t("benchmark.time")}</th>
+                      <th className="px-3 py-2 text-left font-medium">{t("benchmark.organ")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("benchmark.iterShort")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("benchmark.success")}</th>
+                      <th className="px-3 py-2 text-right font-medium">{t("benchmark.avg")}</th>
                       <th className="px-3 py-2 text-right font-medium">P50</th>
                       <th className="px-3 py-2 text-right font-medium">P95</th>
                       <th className="px-3 py-2 text-right font-medium">P99</th>
