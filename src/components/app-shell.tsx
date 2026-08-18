@@ -155,6 +155,7 @@ export function AppShell() {
       label: t("nav.organsGroup"),
       items: [
         { href: "/soma", label: t("nav.soma"), icon: Bot },
+        { href: "/discovery", label: t("nav.discovery", "Discovery"), icon: Search },
         { href: "/cortex", label: t("nav.cortex"), icon: Cpu },
         { href: "/vein", label: t("nav.vein"), icon: Droplets },
         { href: "/gene", label: t("nav.gene"), icon: Dna },
