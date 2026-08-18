@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useTranslation } from "react-i18next";
 import {
   BookOpen,
   Bot,
@@ -39,6 +40,7 @@ export function WorkspaceSidebar({
   activeAgentName,
   activeAgentStatus = "online",
 }: WorkspaceSidebarProps) {
+  const { t } = useTranslation();
   const [collapsed, setCollapsed] = useState(false);
   const [knowledgeRefs, setKnowledgeRefs] = useState<KnowledgeRef[]>([]);
   const [vitalStats, setVitalStats] = useState<VitalStats | null>(null);
@@ -54,13 +56,13 @@ export function WorkspaceSidebar({
         const data = await res.json();
         const items = (Array.isArray(data) ? data : data.knowledge_bases || data.items || []).slice(0, 5).map((k: any) => ({
           id: k.id || k.kb_id,
-          title: k.name || k.title || "未命名",
+          title: k.name || k.title || t("workspace.unnamed"),
           type: "document" as const,
         }));
         setKnowledgeRefs(items);
       }
     } catch {}
-  }, [apiBase]);
+  }, [apiBase, t]);
 
   const fetchVital = useCallback(async () => {
     if (!apiBase) return;
@@ -84,7 +86,6 @@ export function WorkspaceSidebar({
   useEffect(() => {
     fetchKnowledge();
     fetchVital();
-    // Estimate token count from message count
     setTokenCount(messageCount * 120);
   }, [fetchKnowledge, fetchVital, messageCount]);
 
@@ -94,26 +95,26 @@ export function WorkspaceSidebar({
         <button
           onClick={() => setCollapsed(false)}
           className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-          title="展开工作区"
+          title={t("workspace.expand")}
         >
           <PanelRightOpen size={16} />
         </button>
         <div className="mt-4 space-y-3">
           <div
             className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
-            title="知识引用"
+            title={t("workspace.knowledgeRefs")}
           >
             <BookOpen size={14} />
           </div>
           <div
             className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
-            title="Agent 状态"
+            title={t("workspace.agentStatus")}
           >
             <Bot size={14} />
           </div>
           <div
             className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
-            title="对话统计"
+            title={t("workspace.chatStats")}
           >
             <BarChart3 size={14} />
           </div>
@@ -127,13 +128,13 @@ export function WorkspaceSidebar({
       {/* Header */}
       <div className="flex h-11 shrink-0 items-center justify-between border-b border-border px-3">
         <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-          工作区
+          {t("nav.workspace")}
         </span>
         <div className="flex items-center gap-1">
           <button
             onClick={() => { fetchKnowledge(); fetchVital(); }}
             className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-            title="刷新"
+            title={t("workspace.refresh")}
           >
             <RefreshCw size={12} />
           </button>
@@ -151,11 +152,11 @@ export function WorkspaceSidebar({
         <section>
           <div className="mb-2 flex items-center gap-2">
             <BookOpen size={14} className="text-muted-foreground" />
-            <h3 className="text-xs font-medium text-foreground">知识引用</h3>
+            <h3 className="text-xs font-medium text-foreground">{t("workspace.knowledgeRefs")}</h3>
           </div>
           <div className="space-y-1.5">
             {knowledgeRefs.length === 0 ? (
-              <p className="text-xs text-muted-foreground px-2 py-1">暂无知识库</p>
+              <p className="text-xs text-muted-foreground px-2 py-1">{t("workspace.noKnowledge")}</p>
             ) : (
               knowledgeRefs.map((ref) => (
                 <div
@@ -184,7 +185,7 @@ export function WorkspaceSidebar({
         <section>
           <div className="mb-2 flex items-center gap-2">
             <Bot size={14} className="text-muted-foreground" />
-            <h3 className="text-xs font-medium text-foreground">Agent 状态</h3>
+            <h3 className="text-xs font-medium text-foreground">{t("workspace.agentStatus")}</h3>
           </div>
           <div className="rounded-md border border-border bg-card p-3">
             <div className="flex items-center gap-2.5">
@@ -193,7 +194,7 @@ export function WorkspaceSidebar({
               </div>
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium text-foreground truncate">
-                  {activeAgentName ?? "未选择 Agent"}
+                  {activeAgentName ?? t("workspace.noAgent")}
                 </p>
                 <div className="flex items-center gap-1.5 mt-0.5">
                   <span
@@ -208,10 +209,10 @@ export function WorkspaceSidebar({
                   />
                   <span className="text-[10px] text-muted-foreground">
                     {activeAgentStatus === "online"
-                      ? "在线"
+                      ? t("workspace.online")
                       : activeAgentStatus === "error"
-                        ? "异常"
-                        : "离线"}
+                        ? t("system.error")
+                        : t("workspace.offline")}
                   </span>
                 </div>
               </div>
@@ -224,17 +225,17 @@ export function WorkspaceSidebar({
           <section>
             <div className="mb-2 flex items-center gap-2">
               <Zap size={14} className="text-muted-foreground" />
-              <h3 className="text-xs font-medium text-foreground">系统状态</h3>
+              <h3 className="text-xs font-medium text-foreground">{t("workspace.systemStatus")}</h3>
             </div>
             <div className="space-y-2">
               {vitalStats.cpu_percent !== undefined && (
-                <VitalBar label="CPU" value={vitalStats.cpu_percent} />
+                <VitalBar label={t("workspace.cpu")} value={vitalStats.cpu_percent} />
               )}
               {vitalStats.memory_percent !== undefined && (
-                <VitalBar label="内存" value={vitalStats.memory_percent} />
+                <VitalBar label={t("workspace.memory")} value={vitalStats.memory_percent} />
               )}
               {vitalStats.disk_percent !== undefined && (
-                <VitalBar label="磁盘" value={vitalStats.disk_percent} />
+                <VitalBar label={t("workspace.disk")} value={vitalStats.disk_percent} />
               )}
             </div>
           </section>
@@ -244,27 +245,27 @@ export function WorkspaceSidebar({
         <section>
           <div className="mb-2 flex items-center gap-2">
             <BarChart3 size={14} className="text-muted-foreground" />
-            <h3 className="text-xs font-medium text-foreground">对话统计</h3>
+            <h3 className="text-xs font-medium text-foreground">{t("workspace.chatStats")}</h3>
           </div>
           <div className="grid grid-cols-2 gap-2">
             <StatCard
               icon={<MessageSquare size={14} />}
-              label="消息数"
+              label={t("workspace.messages")}
               value={String(messageCount)}
             />
             <StatCard
               icon={<Hash size={14} />}
-              label="Token 数"
+              label={t("workspace.tokens")}
               value={tokenCount > 0 ? `~${tokenCount}` : "0"}
             />
             <StatCard
               icon={<Clock size={14} />}
-              label="耗时"
+              label={t("workspace.duration")}
               value={messageCount > 0 ? `${messageCount * 0.6}s` : "0s"}
             />
             <StatCard
               icon={<BookOpen size={14} />}
-              label="知识库"
+              label={t("workspace.knowledgeBase")}
               value={String(knowledgeRefs.length)}
             />
           </div>

@@ -1,6 +1,7 @@
 'use client';
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Terminal as TerminalIcon, X, Maximize2, Minimize2 } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { GitStatusBar } from './git-status-bar';
 
 interface TerminalPanelProps {
@@ -9,6 +10,7 @@ interface TerminalPanelProps {
 }
 
 export function TerminalPanel({ apiBase, token }: TerminalPanelProps) {
+  const { t } = useTranslation();
   const termRef = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
   const [maximized, setMaximized] = useState(false);
@@ -21,7 +23,6 @@ export function TerminalPanel({ apiBase, token }: TerminalPanelProps) {
     const { Terminal } = await import('@xterm/xterm');
     const { FitAddon } = await import('@xterm/addon-fit');
     const { WebLinksAddon } = await import('@xterm/addon-web-links');
-    // CSS loaded via global import
 
     const term = new Terminal({
       theme: { background: '#0a0a0f', foreground: '#e4e4e7', cursor: '#7c3aed', selectionBackground: '#7c3aed33' },
@@ -38,13 +39,12 @@ export function TerminalPanel({ apiBase, token }: TerminalPanelProps) {
     fitAddon.fit();
     fitAddonRef.current = fitAddon;
 
-    // WebSocket to backend terminal
     const wsUrl = `ws://${window.location.hostname}:8090/ws/terminal?token=${token}`;
     const ws = new WebSocket(wsUrl);
     ws.onopen = () => { setConnected(true); term.focus(); };
     ws.onmessage = (e) => term.write(e.data);
-    ws.onclose = () => { setConnected(false); term.write('\r\n\x1b[31m[断开连接]\x1b[0m\r\n'); };
-    ws.onerror = () => term.write('\r\n\x1b[31m[连接失败]\x1b[0m\r\n');
+    ws.onclose = () => { setConnected(false); term.write(`\r\n\x1b[31m${t('terminal.disconnected')}\x1b[0m\r\n`); };
+    ws.onerror = () => term.write(`\r\n\x1b[31m${t('terminal.connectFailed')}\x1b[0m\r\n`);
     wsRef.current = ws;
 
     term.onData((data) => ws.readyState === 1 && ws.send(JSON.stringify({ type: 'input', data })));
@@ -53,7 +53,7 @@ export function TerminalPanel({ apiBase, token }: TerminalPanelProps) {
     const onResize = () => fitAddon.fit();
     window.addEventListener('resize', onResize);
     return () => { window.removeEventListener('resize', onResize); ws.close(); term.dispose(); };
-  }, [token, connected]);
+  }, [token, connected, t]);
 
   useEffect(() => {
     if (open) initTerminal();
@@ -72,7 +72,7 @@ export function TerminalPanel({ apiBase, token }: TerminalPanelProps) {
   return (
     <>
       {/* Toggle button */}
-      <button onClick={() => setOpen(!open)} className="fixed bottom-4 right-4 z-50 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors" title="终端">
+      <button onClick={() => setOpen(!open)} className="fixed bottom-4 right-4 z-50 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors" title={t('terminal.title')}>
         <TerminalIcon className="w-5 h-5" />
       </button>
 
@@ -82,7 +82,7 @@ export function TerminalPanel({ apiBase, token }: TerminalPanelProps) {
           <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-[#111118] rounded-t-xl">
             <div className="flex items-center gap-2">
               <TerminalIcon className="w-4 h-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">终端</span>
+              <span className="text-xs text-muted-foreground">{t('terminal.title')}</span>
               <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`} />
             </div>
             <div className="flex items-center gap-1">
