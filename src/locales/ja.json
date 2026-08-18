@@ -347,18 +347,11 @@
     "chaptersLearned": "学習済み章",
     "chaptersPending": "未学習章",
     "coursesReviewing": "復習中のコース",
-    "t87836": "AI生成失敗: {detailGland}",
-    "t75096": "请检查Gland設定",
-    "t45549": "生成方法",
-    "t30476": "LLMが完全なコース内容とテストを生成",
-    "t91198": "手动作成",
-    "t22619": "作成课程フレームワーク，手动填充内容",
-    "t10672": "章の数",
-    "t76433": "难度",
-    "t03149": "入门",
-    "t56231": "中级",
-    "t16459": "上級",
-    "chapterCount": "{n} 章"
+    "chapterCount": "{n} 章",
+    "confirmDelete": "このコースを削除しますか？",
+    "noCourses": "まだコースがありません",
+    "generateFirst": "最初のコースを生成 →",
+    "chapterAbbr": "章"
   },
   "agents": {
     "title": "エージェント管理",

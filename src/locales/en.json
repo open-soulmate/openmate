@@ -348,18 +348,11 @@
     "chaptersLearned": "Chapters Learned",
     "chaptersPending": "Chapters Pending",
     "coursesReviewing": "Courses Reviewing",
-    "t87836": "AI生成失败: {detailGland}",
-    "t75096": "请检查Gland配置",
-    "t45549": "生成方式",
-    "t30476": "由LLM生成完整课程内容和测验",
-    "t91198": "手动创建",
-    "t22619": "创建课程框架，手动填充内容",
-    "t10672": "章节数量",
-    "t76433": "难度",
-    "t03149": "入门",
-    "t56231": "中级",
-    "t16459": "Advanced",
-    "chapterCount": "{n} chapters"
+    "chapterCount": "{n} chapters",
+    "confirmDelete": "Delete this course?",
+    "noCourses": "No courses yet",
+    "generateFirst": "Generate your first course →",
+    "chapterAbbr": "ch."
   },
   "agents": {
     "title": "Agent Management",
