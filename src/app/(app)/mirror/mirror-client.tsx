@@ -226,7 +226,7 @@ export function MirrorClient() {
 
   const tabs = [
     { id: "sandboxes" as const, label: t("mirror.t22079") || "沙箱", icon: Box },
-    { id: "templates" as const, label: "模板", icon: FileText },
+    { id: "templates" as const, label: t("mirror.templates") || "模板", icon: FileText },
   ];
 
   return (
@@ -280,7 +280,7 @@ export function MirrorClient() {
               <p className="text-xs font-mono truncate mt-1">{health.sandbox_dir}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">模板</span>
+              <span className="text-xs text-muted-foreground">{t("mirror.totalTemplates") || "模板"}</span>
               <p className="text-2xl font-bold">{health.templates?.total_templates || 0}</p>
             </div>
           </div>
@@ -307,7 +307,7 @@ export function MirrorClient() {
                   <Box size={40} className="mb-3 opacity-30" />
                   <p className="text-sm">{t("mirror.noSandboxes") || "暂无沙箱"}</p>
                   <button onClick={() => setTab("templates")}
-                    className="mt-3 text-xs text-indigo-500 hover:underline">从模板创建 →</button>
+                    className="mt-3 text-xs text-indigo-500 hover:underline">{t("mirror.createFromTemplate") || "从模板创建 →"}</button>
                 </div>
               ) : sandboxes.map((sb) => (
                 <div key={sb.sandbox_id}
@@ -426,7 +426,7 @@ export function MirrorClient() {
         {/* Templates Tab */}
         {tab === "templates" && (
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">沙箱模板</h3>
+            <h3 className="text-sm font-medium">{t("mirror.sandboxTemplates") || "沙箱模板"}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {templates.map((tpl) => (
                 <div key={tpl.template_id}
@@ -444,8 +444,8 @@ export function MirrorClient() {
                   </div>
                   <p className="text-xs text-muted-foreground mb-3">{tpl.description}</p>
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                    <span>变量: {Object.keys(tpl.variables).length}</span>
-                    <span>使用: {tpl.usage_count}</span>
+                    <span>{t("mirror.variableLabel") || "变量:"} {Object.keys(tpl.variables).length}</span>
+                    <span>{t("mirror.usageLabel") || "使用:"} {tpl.usage_count}</span>
                     <span>TTL: {tpl.config?.ttl_seconds || 3600}s</span>
                   </div>
                   {tpl.tags.length > 0 && (
@@ -465,7 +465,7 @@ export function MirrorClient() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{selectedTemplate.icon}</span>
-                    <h4 className="font-medium">从模板创建沙箱: {selectedTemplate.name}</h4>
+                    <h4 className="font-medium">{t("mirror.createSandboxFromTemplate") || "从模板创建沙箱:"} {selectedTemplate.name}</h4>
                   </div>
                   <button onClick={() => setSelectedTemplate(null)} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
                 </div>
@@ -490,7 +490,7 @@ export function MirrorClient() {
                 <button onClick={() => handleCreateFromTemplate(selectedTemplate)} disabled={loading}
                   className="flex items-center gap-2 rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                  创建沙箱
+                  {t("mirror.createSandbox") || "创建沙箱"}
                 </button>
               </div>
             )}
