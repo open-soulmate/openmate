@@ -493,7 +493,7 @@ export function AdminClient() {
               )}
               {overview.stats.sense && (
                 <StatsCard
-                  title="Sense 感官"
+                  title={t("admin.senseSensory") || "Sense 感官"}
                   emoji="👁"
                   items={[
                     { label: "OCR", value: overview.stats.sense.engines?.ocr?.available ? "✓" : "✗" },
@@ -504,7 +504,7 @@ export function AdminClient() {
               )}
               {overview.stats.nerve && (
                 <StatsCard
-                  title="Nerve 神经"
+                  title={t("admin.nerveNeural") || "Nerve 神经"}
                   emoji="⚡"
                   items={[
                     { label: "Events", value: overview.stats.nerve.total_events ?? 0 },
@@ -516,7 +516,7 @@ export function AdminClient() {
               )}
               {overview.stats.will && (
                 <StatsCard
-                  title="Will 意志"
+                  title={t("admin.willVolition") || "Will 意志"}
                   emoji="✨"
                   items={[
                     { label: "Workflows", value: overview.stats.will.total_workflows ?? 0 },
@@ -528,7 +528,7 @@ export function AdminClient() {
               )}
               {overview.stats.limb && (
                 <StatsCard
-                  title="Limb 四肢"
+                  title={t("admin.limbLimbs") || "Limb 四肢"}
                   emoji="💪"
                   items={[
                     { label: "Tasks", value: overview.stats.limb.total_tasks ?? 0 },
@@ -540,7 +540,7 @@ export function AdminClient() {
               )}
               {overview.stats.pulse && (
                 <StatsCard
-                  title="Pulse 脉搏"
+                  title={t("admin.pulseHeartbeat") || "Pulse 脉搏"}
                   emoji="💓"
                   items={[
                     { label: "Uptime", value: `${Math.round((overview.stats.pulse.uptime_seconds ?? 0) / 60)}m` },
@@ -551,7 +551,7 @@ export function AdminClient() {
               )}
               {overview.stats.heredity && (
                 <StatsCard
-                  title="Heredity 遗传"
+                  title={t("admin.heredityGenetic") || "Heredity 遗传"}
                   emoji="🔗"
                   items={[
                     { label: "Status", value: overview.stats.heredity.status ?? "ok" },
@@ -560,7 +560,7 @@ export function AdminClient() {
               )}
               {overview.stats.cortex && (
                 <StatsCard
-                  title="Cortex 皮层"
+                  title={t("admin.cortexCortex") || "Cortex 皮层"}
                   emoji="🧠"
                   items={[
                     { label: "Total Calls", value: overview.stats.cortex.usage?.total_calls ?? 0 },
@@ -572,7 +572,7 @@ export function AdminClient() {
               )}
               {overview.stats.voice && (
                 <StatsCard
-                  title="Voice 声带"
+                  title={t("admin.voiceVocal") || "Voice 声带"}
                   emoji="🎤"
                   items={[
                     { label: "Synthesized", value: overview.stats.voice.engine?.total_synthesized ?? 0 },
@@ -584,7 +584,7 @@ export function AdminClient() {
               )}
               {overview.stats.nest && (
                 <StatsCard
-                  title="Nest 多租户"
+                  title={t("admin.nestMultiTenant") || "Nest 多租户"}
                   emoji="🏠"
                   items={[
                     { label: "Tenants", value: overview.stats.nest.tenants?.total_tenants ?? 0 },
@@ -596,7 +596,7 @@ export function AdminClient() {
               )}
               {overview.stats.knowledge && (
                 <StatsCard
-                  title="Knowledge 知识库"
+                  title={t("admin.knowledgeBase") || "Knowledge 知识库"}
                   emoji="📚"
                   items={[
                     { label: "Entries", value: overview.stats.knowledge.total_entries ?? 0 },
@@ -607,7 +607,7 @@ export function AdminClient() {
               )}
               {overview.stats.agent && (
                 <StatsCard
-                  title="Agent 系统"
+                  title={t("admin.agentSystem") || "Agent 系统"}
                   emoji="🤖"
                   items={[
                     { label: "Agents", value: overview.stats.agent.total_agents ?? 0 },
@@ -617,7 +617,7 @@ export function AdminClient() {
               )}
               {overview.stats.graph && (
                 <StatsCard
-                  title="Graph 知识图谱"
+                  title={t("admin.graphKnowledgeGraph") || "Graph 知识图谱"}
                   emoji="🌐"
                   items={[
                     { label: "Entities", value: overview.stats.graph.total_entities ?? 0 },
@@ -628,7 +628,7 @@ export function AdminClient() {
               )}
               {overview.stats.entity && (
                 <StatsCard
-                  title="Entity 实体"
+                  title={t("admin.entityEntity") || "Entity 实体"}
                   emoji="🏷"
                   items={[
                     { label: "Entities", value: overview.stats.entity.total_entities ?? 0 },
@@ -638,7 +638,7 @@ export function AdminClient() {
               )}
               {overview.stats.search && (
                 <StatsCard
-                  title="Search 搜索"
+                  title={t("admin.searchSearch") || "Search 搜索"}
                   emoji="🔍"
                   items={[
                     { label: "Searchable", value: overview.stats.search.searchable_entries ?? 0 },
@@ -648,7 +648,7 @@ export function AdminClient() {
               )}
               {overview.stats.capture && (
                 <StatsCard
-                  title="Capture 采集"
+                  title={t("admin.captureCollection") || "Capture 采集"}
                   emoji="📸"
                   items={[
                     { label: "Captures", value: overview.stats.capture.total_captures ?? 0 },
@@ -660,7 +660,7 @@ export function AdminClient() {
               )}
               {overview.stats.workflow && (
                 <StatsCard
-                  title="Workflow 工作流"
+                  title={t("admin.workflowWorkflow") || "Workflow 工作流"}
                   emoji="⚙"
                   items={[
                     { label: "Tasks", value: overview.stats.workflow.total_tasks ?? 0 },
