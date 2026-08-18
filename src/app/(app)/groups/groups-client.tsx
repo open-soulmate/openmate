@@ -1,9 +1,9 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import Link from "next/link";
-import { useAppStore, type AgentGroup, type GroupDispatchMode, type AgentNode } from "@/stores/app-store";
+import { getApiBaseUrl } from "@/lib/api-client";
 import { Dialog } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -11,77 +11,122 @@ import {
   Users,
   Plus,
   Trash2,
-  Edit3,
   MessageSquare,
-  Crown,
   Clock,
   Search,
-  Bot,
-  Server,
-  Plug,
-  Settings,
-  ChevronRight,
-  Zap,
-  Hand,
+  Loader2,
+  AlertCircle,
+  UserPlus,
+  X,
 } from "lucide-react";
 
-// ─── Helpers ─────────────────────────────────────────────────────────────────
+// ─── Types from API ─────────────────────────────────────────────────────────
 
-function uid() {
-  return Math.random().toString(36).slice(2, 10);
+interface ApiAgent {
+  id: string;
+  group_id: string;
+  agent_id: string;
+  name: string;
+  role: "advisor" | "executor" | "verifier";
+  model: string;
+  status: "online" | "offline";
+  temperature: number;
 }
 
-function formatTime(ts: number, t?: (key: string, opts?: any) => string) {
+interface ApiGroup {
+  id: string;
+  name: string;
+  description: string;
+  status: string;
+  created_at: string;
+  agents: ApiAgent[];
+  task_count: number;
+}
+
+interface AgentRow {
+  agent_id: string;
+  name: string;
+  role: "advisor" | "executor" | "verifier";
+  model: string;
+  temperature: number;
+}
+
+// ─── Helpers ────────────────────────────────────────────────────────────────
+
+function formatTime(ts: string, t?: (key: string, opts?: any) => string) {
   if (!ts) return "—";
   const d = new Date(ts);
   const now = Date.now();
-  const diff = now - ts;
+  const diff = now - d.getTime();
   if (diff < 60_000) return t?.("groups.justNow") || "刚刚";
   if (diff < 3_600_000) return t?.("groups.minutesAgo", { minutes: Math.floor(diff / 60_000) }) || `${Math.floor(diff / 60_000)} 分钟前`;
   if (diff < 86_400_000) return t?.("groups.hoursAgo", { hours: Math.floor(diff / 3_600_000) }) || `${Math.floor(diff / 3_600_000)} 小时前`;
   return d.toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
 }
 
-const AGENT_ICONS: Record<string, React.ElementType> = {
-  soma: Server,
-  ai: Bot,
-  mcp: Plug,
+const ROLE_COLORS: Record<string, string> = {
+  advisor: "text-violet-400",
+  executor: "text-emerald-400",
+  verifier: "text-amber-400",
 };
 
-const AGENT_COLORS: Record<string, string> = {
-  soma: "text-emerald-400",
-  ai: "text-violet-400",
-  mcp: "text-amber-400",
+const ROLE_LABELS: Record<string, string> = {
+  advisor: "advisor",
+  executor: "executor",
+  verifier: "verifier",
 };
 
-// ─── Create / Edit Group Dialog ──────────────────────────────────────────────
+// ─── API helpers ────────────────────────────────────────────────────────────
+
+async function fetchGroups(): Promise<ApiGroup[]> {
+  const base = getApiBaseUrl();
+  const res = await fetch(`${base}/api/ai-groups`);
+  if (!res.ok) throw new Error(`Failed to fetch groups: ${res.status}`);
+  return res.json();
+}
+
+async function createGroupApi(data: { name: string; description: string; agents: AgentRow[] }): Promise<ApiGroup> {
+  const base = getApiBaseUrl();
+  const res = await fetch(`${base}/api/ai-groups`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(data),
+  });
+  if (!res.ok) throw new Error(`Failed to create group: ${res.status}`);
+  return res.json();
+}
+
+async function deleteGroupApi(groupId: string): Promise<void> {
+  const base = getApiBaseUrl();
+  const res = await fetch(`${base}/api/ai-groups/${groupId}`, {
+    method: "DELETE",
+  });
+  if (!res.ok) throw new Error(`Failed to delete group: ${res.status}`);
+}
+
+// ─── Create Group Dialog ────────────────────────────────────────────────────
 
 function GroupFormDialog({
   open,
   onClose,
-  onSave,
-  agents,
-  editingGroup,
+  onCreated,
 }: {
   open: boolean;
   onClose: () => void;
-  onSave: (data: Omit<AgentGroup, "id" | "createdAt" | "updatedAt">) => void;
-  agents: AgentNode[];
-  editingGroup?: AgentGroup | null;
+  onCreated: () => void;
 }) {
-  const [name, setName] = useState(editingGroup?.name ?? "");
-  const [description, setDescription] = useState(editingGroup?.description ?? "");
-  const [masterAgentId, setMasterAgentId] = useState(editingGroup?.masterAgentId ?? "");
-  const [memberAgentIds, setMemberAgentIds] = useState<string[]>(editingGroup?.memberAgentIds ?? []);
-  const [dispatchMode, setDispatchMode] = useState<GroupDispatchMode>(editingGroup?.dispatchMode ?? "auto");
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [agentRows, setAgentRows] = useState<AgentRow[]>([]);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const { t } = useTranslation();
 
   function reset() {
     setName("");
     setDescription("");
-    setMasterAgentId("");
-    setMemberAgentIds([]);
-    setDispatchMode("auto");
+    setAgentRows([]);
+    setError(null);
   }
 
   function handleClose() {
@@ -89,33 +134,51 @@ function GroupFormDialog({
     onClose();
   }
 
-  function toggleMember(id: string) {
-    setMemberAgentIds((prev) =>
-      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+  function addAgentRow() {
+    setAgentRows((prev) => [
+      ...prev,
+      { agent_id: "", name: "", role: "executor", model: "", temperature: 0.7 },
+    ]);
+  }
+
+  function removeAgentRow(idx: number) {
+    setAgentRows((prev) => prev.filter((_, i) => i !== idx));
+  }
+
+  function updateAgentRow(idx: number, field: keyof AgentRow, value: string | number) {
+    setAgentRows((prev) =>
+      prev.map((row, i) => (i === idx ? { ...row, [field]: value } : row)),
     );
   }
 
-  function handleSubmit() {
-    if (!name.trim() || !masterAgentId) return;
-    const allMembers = Array.from(new Set([masterAgentId, ...memberAgentIds]));
-    onSave({
-      name: name.trim(),
-      description: description.trim(),
-      masterAgentId,
-      memberAgentIds: allMembers,
-      dispatchMode,
-    });
-    handleClose();
+  async function handleSubmit() {
+    if (!name.trim()) return;
+    setSubmitting(true);
+    setError(null);
+    try {
+      const validAgents = agentRows.filter((a) => a.agent_id.trim() && a.name.trim());
+      await createGroupApi({
+        name: name.trim(),
+        description: description.trim(),
+        agents: validAgents,
+      });
+      handleClose();
+      onCreated();
+    } catch (err: any) {
+      setError(err.message || "Failed to create group");
+    } finally {
+      setSubmitting(false);
+    }
   }
 
-  const isValid = name.trim() && masterAgentId;
+  const isValid = name.trim().length > 0;
 
   return (
     <Dialog
       open={open}
       onClose={handleClose}
-      title={editingGroup ? t("groups.editGroup") || "编辑 Agent 群" : t("groups.createGroupDialog") || "创建 Agent 群"}
-      description={editingGroup ? t("groups.editGroupDesc") || "修改群配置" : t("groups.createGroupDialogDesc") || "创建一个新的 Agent 协作群"}
+      title={t("groups.createGroupDialog") || "创建 Agent 群"}
+      description={t("groups.createGroupDialogDesc") || "创建一个新的 Agent 协作群"}
       className="max-w-xl"
       footer={
         <>
@@ -127,15 +190,23 @@ function GroupFormDialog({
           </button>
           <button
             onClick={handleSubmit}
-            disabled={!isValid}
-            className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={!isValid || submitting}
+            className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {editingGroup ? (t("groups.save") || "保存") : (t("groups.create") || "创建")}
+            {submitting && <Loader2 size={12} className="animate-spin" />}
+            {t("groups.create") || "创建"}
           </button>
         </>
       }
     >
       <div className="space-y-4">
+        {error && (
+          <div className="flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+            <AlertCircle size={14} />
+            {error}
+          </div>
+        )}
+
         {/* Name */}
         <div>
           <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("groups.groupName") || "群名称"}</label>
@@ -160,118 +231,90 @@ function GroupFormDialog({
           />
         </div>
 
-        {/* Master Agent */}
+        {/* Agent Rows */}
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-            {t("groups.masterAgent") || "主 Agent（调度者）"}
-          </label>
-          <select
-            value={masterAgentId}
-            onChange={(e) => setMasterAgentId(e.target.value)}
-            className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
-          >
-            <option value="">{t("groups.selectMasterAgent") || "选择主 Agent..."}</option>
-            {agents.map((a) => (
-              <option key={a.id} value={a.id}>
-                {a.name} ({a.type})
-              </option>
-            ))}
-          </select>
-        </div>
+          <div className="mb-1.5 flex items-center justify-between">
+            <label className="text-xs font-medium text-muted-foreground">{t("groups.agents") || "Agents"}</label>
+            <button
+              type="button"
+              onClick={addAgentRow}
+              className="flex items-center gap-1 text-[11px] text-primary hover:text-primary/80"
+            >
+              <UserPlus size={12} />
+              {t("groups.addAgent") || "添加 Agent"}
+            </button>
+          </div>
 
-        {/* Member Agents */}
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-            {t("groups.memberAgent") || "成员 Agent"} <span className="text-muted-foreground/60">{t("groups.clickToAddRemove") || "（点击添加/移除）"}</span>
-          </label>
-          <div className="grid gap-2 max-h-48 overflow-y-auto rounded-lg border border-border p-2">
-            {agents.length === 0 ? (
-              <p className="py-4 text-center text-xs text-muted-foreground">{t("groups.noAvailableAgent") || "暂无可用 Agent"}</p>
-            ) : (
-              agents.map((a) => {
-                const isMaster = a.id === masterAgentId;
-                const isMember = memberAgentIds.includes(a.id);
-                const Icon = AGENT_ICONS[a.type] ?? Bot;
-                return (
+          {agentRows.length === 0 ? (
+            <p className="py-3 text-center text-xs text-muted-foreground">
+              {t("groups.noAgentsAdded") || "尚未添加 Agent，点击上方按钮添加"}
+            </p>
+          ) : (
+            <div className="space-y-2 max-h-60 overflow-y-auto">
+              {agentRows.map((row, idx) => (
+                <div key={idx} className="flex items-start gap-2 rounded-md border border-border p-2">
+                  <div className="flex-1 grid grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={row.agent_id}
+                      onChange={(e) => updateAgentRow(idx, "agent_id", e.target.value)}
+                      placeholder={t("groups.agentId") || "Agent ID"}
+                      className="rounded-md border border-border bg-muted/50 px-2 py-1.5 text-xs outline-none focus:border-primary"
+                    />
+                    <input
+                      type="text"
+                      value={row.name}
+                      onChange={(e) => updateAgentRow(idx, "name", e.target.value)}
+                      placeholder={t("groups.agentName") || "名称"}
+                      className="rounded-md border border-border bg-muted/50 px-2 py-1.5 text-xs outline-none focus:border-primary"
+                    />
+                    <select
+                      value={row.role}
+                      onChange={(e) => updateAgentRow(idx, "role", e.target.value)}
+                      className="rounded-md border border-border bg-muted/50 px-2 py-1.5 text-xs outline-none focus:border-primary"
+                    >
+                      <option value="advisor">Advisor</option>
+                      <option value="executor">Executor</option>
+                      <option value="verifier">Verifier</option>
+                    </select>
+                    <input
+                      type="text"
+                      value={row.model}
+                      onChange={(e) => updateAgentRow(idx, "model", e.target.value)}
+                      placeholder={t("groups.model") || "模型 (e.g. gpt-4)"}
+                      className="rounded-md border border-border bg-muted/50 px-2 py-1.5 text-xs outline-none focus:border-primary"
+                    />
+                  </div>
                   <button
-                    key={a.id}
-                    onClick={() => !isMaster && toggleMember(a.id)}
-                    disabled={isMaster}
-                    className={cn(
-                      "flex items-center gap-3 rounded-md px-3 py-2 text-left text-sm transition-colors",
-                      isMaster
-                        ? "bg-primary/10 border border-primary/30 cursor-default"
-                        : isMember
-                          ? "bg-accent border border-border"
-                          : "hover:bg-accent/50 border border-transparent",
-                    )}
+                    type="button"
+                    onClick={() => removeAgentRow(idx)}
+                    className="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                   >
-                    <Icon size={14} className={cn(AGENT_COLORS[a.type], "shrink-0")} />
-                    <span className="flex-1 truncate">{a.name}</span>
-                    {isMaster && (
-                      <Badge variant="success">
-                        <Crown size={10} className="mr-1" />
-                        {t("groups.masterAgentBadge") || "主Agent"}
-                      </Badge>
-                    )}
-                    {isMember && !isMaster && (
-                      <Badge variant="default">{t("groups.selected") || "已选"}</Badge>
-                    )}
+                    <X size={12} />
                   </button>
-                );
-              })
-            )}
-          </div>
-        </div>
-
-        {/* Dispatch Mode */}
-        <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("groups.dispatchMode") || "调度模式"}</label>
-          <div className="flex gap-2">
-            {([["auto", (t("groups.autoDispatch") || "自动调度"), Zap, (t("groups.autoDispatchDesc") || "主Agent自动分配任务给成员")], ["manual", (t("groups.manualDispatch") || "手动调度"), Hand, (t("groups.manualDispatchDesc") || "用户手动选择哪个Agent回复")]] as const).map(([key, label, Icon, desc]) => (
-              <button
-                key={key}
-                onClick={() => setDispatchMode(key)}
-                className={cn(
-                  "flex-1 rounded-lg border p-3 text-left transition-all",
-                  dispatchMode === key
-                    ? "border-primary bg-primary/10"
-                    : "border-border hover:border-primary/40",
-                )}
-              >
-                <div className="flex items-center gap-2 mb-1">
-                  <Icon size={14} className={dispatchMode === key ? "text-primary" : "text-muted-foreground"} />
-                  <span className="text-sm font-medium">{label}</span>
                 </div>
-                <p className="text-[11px] text-muted-foreground">{desc}</p>
-              </button>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </Dialog>
   );
 }
 
-// ─── Group Card ──────────────────────────────────────────────────────────────
+// ─── Group Card ─────────────────────────────────────────────────────────────
 
 function GroupCard({
   group,
-  agents,
-  onEdit,
   onDelete,
 }: {
-  group: AgentGroup;
-  agents: AgentNode[];
-  onEdit: (group: AgentGroup) => void;
-  onDelete: (group: AgentGroup) => void;
+  group: ApiGroup;
+  onDelete: (group: ApiGroup) => void;
 }) {
   const { t } = useTranslation();
-  const master = agents.find((a) => a.id === group.masterAgentId);
-  const memberCount = group.memberAgentIds.length;
-  const onlineMembers = group.memberAgentIds.filter(
-    (id) => agents.find((a) => a.id === id)?.status === "online",
-  ).length;
+  const advisor = group.agents.find((a) => a.role === "advisor");
+  const memberCount = group.agents.length;
+  const onlineCount = group.agents.filter((a) => a.status === "online").length;
 
   return (
     <div className="group rounded-lg border border-border bg-card p-4 transition-all hover:border-primary/40 hover:shadow-lg">
@@ -290,8 +333,8 @@ function GroupCard({
             )}
           </div>
         </div>
-        <Badge variant={group.dispatchMode === "auto" ? "success" : "default"}>
-          {group.dispatchMode === "auto" ? (t("groups.autoDispatch") || "自动调度") : (t("groups.manualDispatch") || "手动调度")}
+        <Badge variant={group.status === "active" ? "success" : "default"}>
+          {group.status}
         </Badge>
       </div>
 
@@ -303,39 +346,41 @@ function GroupCard({
             {memberCount} {t("groups.members") || "成员"}
           </span>
           <span className="text-[10px] text-emerald-400">
-            ({onlineMembers} {t("groups.online") || "在线"})
+            ({onlineCount} {t("groups.online") || "在线"})
           </span>
         </div>
         <div className="flex items-center gap-2 rounded-md bg-muted/50 px-2.5 py-1.5">
-          <Crown size={12} className="text-amber-400" />
           <span className="text-xs text-muted-foreground truncate">
-            {master?.name ?? (t("groups.notSet") || "未设置")}
+            {advisor?.name ?? (t("groups.notSet") || "无 advisor")}
           </span>
         </div>
       </div>
 
-      {/* Members preview */}
-      <div className="mb-3 flex items-center gap-1">
-        {group.memberAgentIds.slice(0, 5).map((id) => {
-          const agent = agents.find((a) => a.id === id);
-          if (!agent) return null;
-          const Icon = AGENT_ICONS[agent.type] ?? Bot;
-          return (
-            <div
-              key={id}
+      {/* Agent roles preview */}
+      <div className="mb-3 flex flex-wrap items-center gap-1">
+        {group.agents.slice(0, 5).map((agent) => (
+          <div
+            key={agent.id}
+            className={cn(
+              "flex h-7 items-center gap-1 rounded-full border border-border bg-muted px-2",
+              agent.status === "online" ? "ring-1 ring-emerald-500/50" : "",
+            )}
+            title={`${agent.name} (${agent.role})`}
+          >
+            <span
               className={cn(
-                "flex h-7 w-7 items-center justify-center rounded-full border border-border bg-muted",
-                agent.status === "online" ? "ring-1 ring-emerald-500/50" : "",
+                "inline-block h-1.5 w-1.5 rounded-full shrink-0",
+                agent.status === "online" ? "bg-emerald-400" : "bg-gray-400",
               )}
-              title={agent.name}
-            >
-              <Icon size={12} className={AGENT_COLORS[agent.type]} />
-            </div>
-          );
-        })}
-        {group.memberAgentIds.length > 5 && (
-          <div className="flex h-7 w-7 items-center justify-center rounded-full border border-border bg-muted text-[10px] text-muted-foreground">
-            +{group.memberAgentIds.length - 5}
+            />
+            <span className={cn("text-[10px] truncate max-w-[60px]", ROLE_COLORS[agent.role])}>
+              {agent.name}
+            </span>
+          </div>
+        ))}
+        {group.agents.length > 5 && (
+          <div className="flex h-7 items-center justify-center rounded-full border border-border bg-muted px-2 text-[10px] text-muted-foreground">
+            +{group.agents.length - 5}
           </div>
         )}
       </div>
@@ -344,7 +389,12 @@ function GroupCard({
       <div className="flex items-center justify-between border-t border-border pt-3">
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Clock size={11} />
-          <span>{formatTime(group.updatedAt, t)}</span>
+          <span>{formatTime(group.created_at, t)}</span>
+          {group.task_count > 0 && (
+            <span className="ml-2 text-[10px] text-muted-foreground/60">
+              · {group.task_count} {t("groups.tasks") || "任务"}
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1 opacity-0 transition-all group-hover:opacity-100">
           <Link
@@ -354,13 +404,6 @@ function GroupCard({
             <MessageSquare size={12} />
             {t("groups.enter") || "进入"}
           </Link>
-          <button
-            onClick={() => onEdit(group)}
-            className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-            title={t("groups.edit") || "编辑"}
-          >
-            <Edit3 size={13} />
-          </button>
           <button
             onClick={() => onDelete(group)}
             className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
@@ -374,46 +417,53 @@ function GroupCard({
   );
 }
 
-// ─── Main Component ──────────────────────────────────────────────────────────
+// ─── Main Component ─────────────────────────────────────────────────────────
 
 export function GroupsClient() {
   const { t } = useTranslation();
-  const groups = useAppStore((s) => s.groups);
-  const addGroup = useAppStore((s) => s.addGroup);
-  const updateGroup = useAppStore((s) => s.updateGroup);
-  const deleteGroup = useAppStore((s) => s.deleteGroup);
-  const agents = useAppStore((s) => s.agentNodes);
-
+  const [groups, setGroups] = useState<ApiGroup[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [showCreate, setShowCreate] = useState(false);
-  const [editingGroup, setEditingGroup] = useState<AgentGroup | null>(null);
-  const [deleteTarget, setDeleteTarget] = useState<AgentGroup | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<ApiGroup | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filtered = groups.filter((g) =>
-    g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    g.description.toLowerCase().includes(searchQuery.toLowerCase()),
+  const loadGroups = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await fetchGroups();
+      setGroups(data);
+    } catch (err: any) {
+      setError(err.message || "Failed to load groups");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    loadGroups();
+  }, [loadGroups]);
+
+  const filtered = groups.filter(
+    (g) =>
+      g.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      g.description.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
-  function handleCreate(data: Omit<AgentGroup, "id" | "createdAt" | "updatedAt">) {
-    const now = Date.now();
-    addGroup({
-      id: uid(),
-      ...data,
-      createdAt: now,
-      updatedAt: now,
-    });
-  }
-
-  function handleEdit(data: Omit<AgentGroup, "id" | "createdAt" | "updatedAt">) {
-    if (!editingGroup) return;
-    updateGroup(editingGroup.id, data);
-    setEditingGroup(null);
-  }
-
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteTarget) return;
-    deleteGroup(deleteTarget.id);
-    setDeleteTarget(null);
+    setDeleting(true);
+    try {
+      await deleteGroupApi(deleteTarget.id);
+      setDeleteTarget(null);
+      await loadGroups();
+    } catch (err: any) {
+      setError(err.message || "Failed to delete group");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -454,9 +504,25 @@ export function GroupsClient() {
         </div>
       </div>
 
+      {/* Error banner */}
+      {error && (
+        <div className="mx-6 mt-3 flex items-center gap-2 rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <AlertCircle size={14} />
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setError(null)} className="text-destructive/60 hover:text-destructive">
+            <X size={12} />
+          </button>
+        </div>
+      )}
+
       {/* Grid */}
       <div className="flex-1 overflow-y-auto p-6">
-        {filtered.length === 0 ? (
+        {loading ? (
+          <div className="flex h-full flex-col items-center justify-center py-16">
+            <Loader2 size={24} className="animate-spin text-muted-foreground" />
+            <p className="mt-3 text-xs text-muted-foreground">{t("groups.loading") || "加载中..."}</p>
+          </div>
+        ) : filtered.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center py-16">
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
               <Users className="h-7 w-7 text-muted-foreground" />
@@ -472,8 +538,6 @@ export function GroupsClient() {
               <GroupCard
                 key={group.id}
                 group={group}
-                agents={agents}
-                onEdit={setEditingGroup}
                 onDelete={setDeleteTarget}
               />
             ))}
@@ -485,17 +549,7 @@ export function GroupsClient() {
       <GroupFormDialog
         open={showCreate}
         onClose={() => setShowCreate(false)}
-        onSave={handleCreate}
-        agents={agents}
-      />
-
-      {/* Edit Dialog */}
-      <GroupFormDialog
-        open={!!editingGroup}
-        onClose={() => setEditingGroup(null)}
-        onSave={handleEdit}
-        agents={agents}
-        editingGroup={editingGroup}
+        onCreated={loadGroups}
       />
 
       {/* Delete Confirmation */}
@@ -514,8 +568,10 @@ export function GroupsClient() {
             </button>
             <button
               onClick={handleDelete}
-              className="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90"
+              disabled={deleting}
+              className="flex items-center gap-1.5 rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50"
             >
+              {deleting && <Loader2 size={12} className="animate-spin" />}
               {t("groups.delete") || "删除"}
             </button>
           </>
@@ -527,7 +583,7 @@ export function GroupsClient() {
             <span className="text-sm font-medium">{deleteTarget?.name}</span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            {t("groups.memberCount") || "成员数"}: {deleteTarget?.memberAgentIds.length ?? 0} · {t("groups.dispatchMode") || "调度模式"}: {deleteTarget?.dispatchMode === "auto" ? (t("groups.auto") || "自动") : (t("groups.manual") || "手动")}
+            {t("groups.memberCount") || "成员数"}: {deleteTarget?.agents.length ?? 0} · {t("groups.tasks") || "任务"}: {deleteTarget?.task_count ?? 0}
           </p>
         </div>
       </Dialog>
