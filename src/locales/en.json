@@ -2111,7 +2111,10 @@
     "shouldArchive": "⚠️ Should Archive",
     "noArchiveNeeded": "✓ No Archive Needed",
     "shouldForget": "🗑️ Should Forget",
-    "noForgetNeeded": "✓ No Forget Needed"
+    "noForgetNeeded": "✓ No Forget Needed",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "daysAgo": "{{count}}d ago"
   },
   "reflex": {
     "title": "Reflex · High-Speed Response",
@@ -2833,7 +2836,11 @@
     "t66058": "太棒了！这个功能终于实现了，我好开心！",
     "t97062": "这个bug让我非常头疼，已经折腾了一整天。",
     "t96269": "期待明天的发布会，希望一切顺利。",
-    "t42129": "这个问题我不太理解，能再解释一下吗？"
+    "t42129": "这个问题我不太理解，能再解释一下吗？",
+    "sampleJoy": "This is amazing! The feature finally works, I'm so happy!",
+    "sampleAnger": "This bug is giving me a headache, been at it all day.",
+    "sampleAnticipation": "Looking forward to tomorrow's launch, hope everything goes well.",
+    "sampleConfusion": "I don't quite understand this, could you explain again?"
   },
   "nerve": {
     "title": "Nerve · Event Bus",
@@ -3860,7 +3867,10 @@
     "connections": "Connections",
     "execute": "Execute",
     "pause": "Pause",
-    "stop": "Stop"
+    "stop": "Stop",
+    "startLabel": "Start",
+    "selectOrCreate": "Select or create a workflow",
+    "selectHint": "Select from the left list, or click \"New\" in the toolbar"
   },
   "graphBuilder": {
     "title": "Graph Builder",
@@ -3917,9 +3927,6 @@
       "related"
     ]
   },
-  "nav.topology": "Topology",
-  "topology.title": "System Topology",
-  "nav.notifications": "Notifications",
   "notifications": {
     "title": "Notification Center",
     "all": "All",
@@ -4227,23 +4234,23 @@
     "connectionStatus": "{name} {connected}",
     "disconnected": "Disconnected",
     "connected": "Connected",
-    "confirmDelete": "Delete MCP server \"{name}\"?",
-    "deleted": "{name} deleted",
+    "confirmDelete": "Delete MCP server",
+    "deleted": "deleted",
     "nameUrlRequired": "Name and URL are required",
-    "added": "{newName} added",
-    "addFailed": "Failed to add",
+    "added": "added",
+    "addFailed": "Add failed",
     "statusChanged": "{name} {enabled}",
     "searchPlaceholder": "Search servers or tools...",
     "serverName": "Server Name *",
     "noMatchServers": "No matching servers",
-    "noServers": "No MCP servers",
+    "noServers": "No MCP servers yet",
     "notConnected": "Not connected",
     "disconnect": "Disconnect",
-    "registeredAt": "Registered at:",
+    "registeredAt": "Registered:",
     "noTools": "No registered tools. Tools will be discovered automatically after connecting.",
     "addServer": "Add Server",
     "registerNewServer": "Register New MCP Server",
-    "availableTools": "Available Tools ({server.tools.length})",
+    "availableTools": "Available Tools",
     "title": "MCP Client",
     "subtitle": "Model Context Protocol client management",
     "networkError": "Network error",
@@ -4251,7 +4258,17 @@
     "deleteFailed": "Delete failed",
     "connect": "Connect",
     "enable": "Enable",
-    "disable": "Disable"
+    "disable": "Disable",
+    "disabled": "Disabled",
+    "enabled": "Enabled",
+    "serviceManagement": "Model Context Protocol service management",
+    "connectedBadge": "Connected",
+    "tools": "Tools",
+    "serverNamePlaceholder": "Server Name *",
+    "descriptionPlaceholder": "Description",
+    "noMatch": "No matching servers",
+    "disabledBadge": "Disabled",
+    "noToolsMessage": "No registered tools. Tools will be auto-discovered after connecting."
   },
   "timeline": {
     "allOrgans": "All Organs",
@@ -4657,37 +4674,6 @@
     "text24": "趋势图",
     "text25": "个数据点"
   },
-  "mcp.connected": "Connected",
-  "mcp.disconnected": "Disconnected",
-  "mcp.operationFailed": "Operation failed",
-  "mcp.networkError": "Network error",
-  "mcp.confirmDelete": "Delete MCP server",
-  "mcp.deleted": "deleted",
-  "mcp.deleteFailed": "Delete failed",
-  "mcp.nameUrlRequired": "Name and URL are required",
-  "mcp.added": "added",
-  "mcp.addFailed": "Add failed",
-  "mcp.disabled": "Disabled",
-  "mcp.enabled": "Enabled",
-  "mcp.serviceManagement": "Model Context Protocol service management",
-  "mcp.connectedBadge": "Connected",
-  "mcp.tools": "Tools",
-  "mcp.addServer": "Add Server",
-  "mcp.searchPlaceholder": "Search servers or tools...",
-  "mcp.registerNewServer": "Register New MCP Server",
-  "mcp.serverNamePlaceholder": "Server Name *",
-  "mcp.descriptionPlaceholder": "Description",
-  "mcp.noMatch": "No matching servers",
-  "mcp.noServers": "No MCP servers yet",
-  "mcp.notConnected": "Not connected",
-  "mcp.disabledBadge": "Disabled",
-  "mcp.disable": "Disable",
-  "mcp.enable": "Enable",
-  "mcp.disconnect": "Disconnect",
-  "mcp.connect": "Connect",
-  "mcp.registeredAt": "Registered:",
-  "mcp.availableTools": "Available Tools",
-  "mcp.noToolsMessage": "No registered tools. Tools will be auto-discovered after connecting.",
   "smartCalc": {
     "subtitle": "Math expression solving · Unit conversion · Calculation history",
     "tabCalc": "Calculate",
@@ -4810,5 +4796,14 @@
     "removeMember": "Remove Member",
     "confirmRemove": "Remove \"{{name}}\" from the team?",
     "removeMemberNote": "This member will be removed from the team but will not be deleted."
+  },
+  "createCourse": {
+    "genMode": "Generation Method",
+    "aiAutoGen": "AI Auto Generate",
+    "aiAutoGenDesc": "LLM generates complete course content and quizzes",
+    "manualCreate": "Manual Create",
+    "manualCreateDesc": "Create course framework, fill content manually",
+    "aiGenFailed": "AI generation failed: {{detail}}",
+    "checkGland": "Please check Gland configuration"
   }
 }

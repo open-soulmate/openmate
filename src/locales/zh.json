@@ -2137,7 +2137,10 @@
     "shouldArchive": "⚠️ 应归档",
     "noArchiveNeeded": "✓ 不需归档",
     "shouldForget": "🗑️ 应遗忘",
-    "noForgetNeeded": "✓ 不需遗忘"
+    "noForgetNeeded": "✓ 不需遗忘",
+    "minutesAgo": "{{count}}分钟前",
+    "hoursAgo": "{{count}}小时前",
+    "daysAgo": "{{count}}天前"
   },
   "reflex": {
     "title": "反射 · 高速应答引擎",
@@ -2868,7 +2871,11 @@
     "t66058": "太棒了！这个功能终于实现了，我好开心！",
     "t97062": "这个bug让我非常头疼，已经折腾了一整天。",
     "t96269": "期待明天的发布会，希望一切顺利。",
-    "t42129": "这个问题我不太理解，能再解释一下吗？"
+    "t42129": "这个问题我不太理解，能再解释一下吗？",
+    "sampleJoy": "太棒了！这个功能终于实现了，我好开心！",
+    "sampleAnger": "这个bug让我非常头疼，已经折腾了一整天。",
+    "sampleAnticipation": "期待明天的发布会，希望一切顺利。",
+    "sampleConfusion": "这个问题我不太理解，能再解释一下吗？"
   },
   "nerve": {
     "title": "神经 · 事件总线",
@@ -3453,7 +3460,7 @@
     }
   },
   "topology": {
-    "title": "系统拓扑",
+    "title": "系统拓扑 · Topology",
     "catAll": "全部",
     "catCore": "核心",
     "catPlatform": "平台",
@@ -3895,7 +3902,10 @@
     "connections": "连接",
     "execute": "执行",
     "pause": "暂停",
-    "stop": "停止"
+    "stop": "停止",
+    "startLabel": "开始",
+    "selectOrCreate": "选择或创建工作流",
+    "selectHint": "从左侧列表选择，或点击工具栏「新建」"
   },
   "graphBuilder": {
     "title": "图谱编排",
@@ -3952,9 +3962,6 @@
       "相关"
     ]
   },
-  "nav.topology": "系统拓扑",
-  "topology.title": "系统拓扑 · Topology",
-  "nav.notifications": "通知中心",
   "notifications": {
     "title": "通知中心",
     "all": "全部",
@@ -4262,10 +4269,10 @@
     "connectionStatus": "{name} {connected}",
     "disconnected": "已断开",
     "connected": "已连接",
-    "confirmDelete": "确定删除 MCP 服务器 \"{name}\"？",
-    "deleted": "{name} 已删除",
+    "confirmDelete": "确定删除 MCP 服务器",
+    "deleted": "已删除",
     "nameUrlRequired": "名称和URL必填",
-    "added": "{newName} 已添加",
+    "added": "已添加",
     "addFailed": "添加失败",
     "statusChanged": "{name} 已{enabled}",
     "searchPlaceholder": "搜索服务器或工具...",
@@ -4278,7 +4285,7 @@
     "noTools": "暂无已注册工具。连接服务器后将自动发现工具。",
     "addServer": "添加服务器",
     "registerNewServer": "注册新 MCP 服务器",
-    "availableTools": "可用工具 ({server.tools.length})",
+    "availableTools": "可用工具",
     "title": "MCP 客户端",
     "subtitle": "模型上下文协议客户端管理",
     "networkError": "网络错误",
@@ -4286,7 +4293,17 @@
     "deleteFailed": "删除失败",
     "connect": "连接",
     "enable": "启用",
-    "disable": "禁用"
+    "disable": "禁用",
+    "disabled": "已禁用",
+    "enabled": "已启用",
+    "serviceManagement": "Model Context Protocol 服务管理",
+    "connectedBadge": "已连接",
+    "tools": "工具",
+    "serverNamePlaceholder": "服务器名称 *",
+    "descriptionPlaceholder": "描述",
+    "noMatch": "没有匹配的服务器",
+    "disabledBadge": "已禁用",
+    "noToolsMessage": "暂无已注册工具。连接服务器后将自动发现工具。"
   },
   "timeline": {
     "allOrgans": "全部器官",
@@ -4692,37 +4709,6 @@
     "text24": "趋势图",
     "text25": "个数据点"
   },
-  "mcp.connected": "已连接",
-  "mcp.disconnected": "已断开",
-  "mcp.operationFailed": "操作失败",
-  "mcp.networkError": "网络错误",
-  "mcp.confirmDelete": "确定删除 MCP 服务器",
-  "mcp.deleted": "已删除",
-  "mcp.deleteFailed": "删除失败",
-  "mcp.nameUrlRequired": "名称和URL必填",
-  "mcp.added": "已添加",
-  "mcp.addFailed": "添加失败",
-  "mcp.disabled": "已禁用",
-  "mcp.enabled": "已启用",
-  "mcp.serviceManagement": "Model Context Protocol 服务管理",
-  "mcp.connectedBadge": "已连接",
-  "mcp.tools": "工具",
-  "mcp.addServer": "添加服务器",
-  "mcp.searchPlaceholder": "搜索服务器或工具...",
-  "mcp.registerNewServer": "注册新 MCP 服务器",
-  "mcp.serverNamePlaceholder": "服务器名称 *",
-  "mcp.descriptionPlaceholder": "描述",
-  "mcp.noMatch": "没有匹配的服务器",
-  "mcp.noServers": "暂无 MCP 服务器",
-  "mcp.notConnected": "未连接",
-  "mcp.disabledBadge": "已禁用",
-  "mcp.disable": "禁用",
-  "mcp.enable": "启用",
-  "mcp.disconnect": "断开",
-  "mcp.connect": "连接",
-  "mcp.registeredAt": "注册时间:",
-  "mcp.availableTools": "可用工具",
-  "mcp.noToolsMessage": "暂无已注册工具。连接服务器后将自动发现工具。",
   "smartCalc": {
     "subtitle": "数学表达式求解 · 单位转换 · 计算历史",
     "tabCalc": "计算",
@@ -4845,5 +4831,14 @@
     "removeMember": "移除成员",
     "confirmRemove": "确定要将「{{name}}」移出团队吗？",
     "removeMemberNote": "该成员将从团队中移除，但不会被删除。"
+  },
+  "createCourse": {
+    "genMode": "生成方式",
+    "aiAutoGen": "AI 自动生成",
+    "aiAutoGenDesc": "由LLM生成完整课程内容和测验",
+    "manualCreate": "手动创建",
+    "manualCreateDesc": "创建课程框架，手动填充内容",
+    "aiGenFailed": "AI生成失败: {{detail}}",
+    "checkGland": "请检查Gland配置"
   }
 }
