@@ -269,7 +269,7 @@ export function AppShell() {
         onMouseLeave={handleMouseLeave}
         className={cn(
           "hidden h-screen flex-col border-r border-border bg-sidebar transition-[width] duration-200 md:flex",
-          isExpanded ? "w-60" : "w-16"
+          isExpanded ? "w-60" : "w-14"
         )}
       >
         {/* Header: brand + collapse toggle */}
@@ -313,11 +313,15 @@ export function AppShell() {
                   return (
                     <Link key={item.href} href={item.href}
                       className={cn(
-                        "flex h-9 items-center rounded-md text-sm transition-colors group mb-0.5",
-                        isExpanded ? "" : "justify-center",
-                        active ? "bg-sidebar-accent text-foreground font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground"
+                        "flex h-8 items-center rounded-[6px] text-[13px] font-medium transition-all duration-150 group",
+                        isExpanded ? "px-2.5" : "justify-center",
+                        active
+                          ? "text-[#7c3aed] bg-[rgba(124,58,237,0.12)] border-l-[3px] border-l-[#7c3aed] pl-[7px]"
+                          : "text-sidebar-foreground hover:bg-[#18181b] hover:text-foreground border-l-[3px] border-l-transparent"
                       )}>
-                      <item.icon size={20} className="shrink-0" />
+                      <span className="flex w-8 min-w-8 h-8 items-center justify-center text-[15px] shrink-0">
+                        <item.icon size={15} />
+                      </span>
                       {/* Text column: hidden when collapsed */}
                       <span className={cn(
                         "truncate whitespace-nowrap transition-all duration-150",
