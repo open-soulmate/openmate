@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
+import { getApiBaseUrl } from "@/lib/api-client";
 
 interface MetricLine {
   name: string;
@@ -152,7 +153,8 @@ export function MetricsClient() {
 
   const fetchMetrics = useCallback(async () => {
     try {
-      const resp = await fetch("/api/soul/metrics");
+      const apiBase = getApiBaseUrl();
+      const resp = await fetch(`${apiBase}/metrics`);
       const text = await resp.text();
       setRawMetrics(text);
       setMetrics(parsePrometheus(text));
