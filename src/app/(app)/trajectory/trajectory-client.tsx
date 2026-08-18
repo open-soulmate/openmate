@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { getApiBaseUrl } from "@/lib/api-client"
+import { useTranslation } from "react-i18next"
 import {
   Activity, Search, GitBranch, Play, Pause, SkipForward, SkipBack,
   RefreshCw, Clock, Zap, Hash, Filter, ChevronRight, ChevronDown,
@@ -118,6 +119,7 @@ function timeAgo(ts: string): string {
 // ── Stats Dashboard ────────────────────────────────────────────
 
 function StatsBar({ stats, loading }: { stats: TrajectoryStats | null; loading: boolean }) {
+  const { t } = useTranslation()
   if (loading || !stats) {
     return (
       <div style={{ display: "flex", gap: 16, marginBottom: 20 }}>
@@ -133,10 +135,10 @@ function StatsBar({ stats, loading }: { stats: TrajectoryStats | null; loading: 
   }
 
   const cards = [
-    { label: "Sessions", value: stats.total_sessions, icon: Layers, color: "#3b82f6" },
-    { label: "Running", value: stats.running_sessions, icon: Activity, color: "#22c55e" },
-    { label: "Events", value: stats.total_events, icon: Hash, color: "#a855f7" },
-    { label: "Tokens", value: formatTokens(stats.total_tokens), icon: Zap, color: "#f59e0b" },
+    { label: t("trajectory.sessions"), value: stats.total_sessions, icon: Layers, color: "#3b82f6" },
+    { label: t("trajectory.running"), value: stats.running_sessions, icon: Activity, color: "#22c55e" },
+    { label: t("trajectory.events"), value: stats.total_events, icon: Hash, color: "#a855f7" },
+    { label: t("trajectory.tokens"), value: formatTokens(stats.total_tokens), icon: Zap, color: "#f59e0b" },
   ]
 
   return (
@@ -176,6 +178,7 @@ function SearchBar({
   onSearch: () => void
 }) {
   const [showFilters, setShowFilters] = useState(false)
+  const { t } = useTranslation()
 
   return (
     <div style={{ marginBottom: 16 }}>
@@ -191,7 +194,7 @@ function SearchBar({
             value={query}
             onChange={e => onQueryChange(e.target.value)}
             onKeyDown={e => e.key === "Enter" && onSearch()}
-            placeholder="Search trajectory events..."
+            placeholder={t("trajectory.searchEventsPlaceholder")}
             style={{
               flex: 1, border: "none", outline: "none", background: "transparent",
               fontSize: 14, color: "hsl(var(--foreground))",
@@ -208,7 +211,7 @@ function SearchBar({
           }}
         >
           <Filter size={14} />
-          {selectedTypes.size > 0 ? `${selectedTypes.size} filters` : "Filter"}
+          {selectedTypes.size > 0 ? t("trajectory.filters", { count: selectedTypes.size }) : t("trajectory.filter")}
         </button>
         <button
           onClick={onSearch}
@@ -218,7 +221,7 @@ function SearchBar({
             cursor: "pointer", fontSize: 13, fontWeight: 500,
           }}
         >
-          Search
+          {t("trajectory.search")}
         </button>
       </div>
       {showFilters && eventTypes.length > 0 && (
@@ -261,6 +264,7 @@ function SessionCard({
   selected: boolean
   onSelect: () => void
 }) {
+  const { t } = useTranslation()
   const statusColor = session.status === "running" ? "#22c55e" :
     session.status === "completed" ? "#3b82f6" : "#94a3b8"
 
@@ -294,11 +298,11 @@ function SessionCard({
           {session.status}
         </span>
         <span style={{ fontSize: 10, color: "hsl(var(--muted-foreground))" }}>
-          {session.total_events} events
+          {session.total_events} {t("trajectory.events")}
         </span>
         {session.total_tokens > 0 && (
           <span style={{ fontSize: 10, color: "hsl(var(--muted-foreground))" }}>
-            {formatTokens(session.total_tokens)} tok
+            {formatTokens(session.total_tokens)} {t("trajectory.tok")}
           </span>
         )}
         <span style={{ fontSize: 10, color: "hsl(var(--muted-foreground))", marginLeft: "auto" }}>
@@ -313,6 +317,7 @@ function SessionCard({
 
 function EventCard({ event, idx, total }: { event: TrajectoryEvent; idx: number; total: number }) {
   const [expanded, setExpanded] = useState(false)
+  const { t } = useTranslation()
   const color = getEventColor(event.event_type)
   const Icon = getEventIcon(event.event_type)
   const contentRef = useRef<HTMLPreElement>(null)
@@ -364,7 +369,7 @@ function EventCard({ event, idx, total }: { event: TrajectoryEvent; idx: number;
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           {event.token_usage > 0 && (
             <span style={{ fontSize: 10, color: "hsl(var(--muted-foreground))" }}>
-              {formatTokens(event.token_usage)} tok
+              {formatTokens(event.token_usage)} {t("trajectory.tok")}
             </span>
           )}
           {event.duration_ms > 0 && (
@@ -405,7 +410,7 @@ function EventCard({ event, idx, total }: { event: TrajectoryEvent; idx: number;
               }}
             >
               {expanded ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
-              {expanded ? "Collapse" : "Expand"}
+              {expanded ? t("trajectory.collapse") : t("trajectory.expand")}
             </button>
           )}
           {parsedMeta && (
@@ -418,7 +423,7 @@ function EventCard({ event, idx, total }: { event: TrajectoryEvent; idx: number;
                 border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
               }}
             >
-              <Copy size={12} /> Metadata
+              <Copy size={12} /> {t("trajectory.metadata")}
             </button>
           )}
         </div>
@@ -440,6 +445,7 @@ function ReplayControls({
   speed: number
   onSpeedChange: (s: number) => void
 }) {
+  const { t } = useTranslation()
   return (
     <div style={{
       display: "flex", alignItems: "center", gap: 8, padding: "8px 12px",
@@ -467,7 +473,7 @@ function ReplayControls({
         }}
       >
         {playing ? <Pause size={14} /> : <Play size={14} />}
-        {playing ? "Pause" : "Play"}
+        {playing ? t("trajectory.pause") : t("trajectory.play")}
       </button>
       <button
         onClick={() => onStep(Math.min(events.length - 1, currentIdx + 1))}
@@ -528,6 +534,7 @@ function ReplayControls({
 
 export function TrajectoryClient() {
   const apiBase = getApiBaseUrl()
+  const { t } = useTranslation()
 
   // State
   const [stats, setStats] = useState<TrajectoryStats | null>(null)
@@ -728,7 +735,7 @@ export function TrajectoryClient() {
         )}
         <BarChart3 size={22} style={{ color: "hsl(var(--primary))" }} />
         <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "hsl(var(--foreground))" }}>
-          Trajectory
+        {t("trajectory.title")}
         </h2>
         <button
           onClick={() => { fetchStats(); fetchSessions() }}
@@ -739,7 +746,7 @@ export function TrajectoryClient() {
             display: "flex", alignItems: "center", gap: 4,
           }}
         >
-          <RefreshCw size={12} /> Refresh
+          <RefreshCw size={12} /> {t("trajectory.refresh")}
         </button>
         <button
           onClick={() => {
@@ -755,7 +762,7 @@ export function TrajectoryClient() {
             display: "flex", alignItems: "center", gap: 4,
           }}
         >
-          <BarChart3 size={12} /> Analytics
+          <BarChart3 size={12} /> {t("trajectory.analytics")}
         </button>
       </div>
 
@@ -778,7 +785,7 @@ export function TrajectoryClient() {
           {analyticsLoading ? (
             <div style={{ textAlign: "center", padding: 40, color: "hsl(var(--muted-foreground))" }}>
               <RefreshCw size={24} style={{ animation: "spin 1s linear infinite", marginBottom: 8 }} />
-              <p style={{ fontSize: 14 }}>Loading analytics...</p>
+              <p style={{ fontSize: 14 }}>{t("trajectory.loadingAnalytics")}</p>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -790,13 +797,13 @@ export function TrajectoryClient() {
                   border: "1px solid hsl(var(--border))",
                 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 12px", color: "hsl(var(--foreground))", display: "flex", alignItems: "center", gap: 8 }}>
-                    <Zap size={16} style={{ color: "#f59e0b" }} /> Token Usage (Last {tokenAnalytics.summary.days_tracked} Days)
+                    <Zap size={16} style={{ color: "#f59e0b" }} /> {t("trajectory.tokenUsageDays", { days: tokenAnalytics.summary.days_tracked })}
                   </h3>
                   <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
                     {[
-                      { label: "Total Tokens", value: formatTokens(tokenAnalytics.summary.total_tokens), color: "#f59e0b" },
-                      { label: "Total Events", value: tokenAnalytics.summary.total_events, color: "#a855f7" },
-                      { label: "Avg Daily", value: formatTokens(tokenAnalytics.summary.avg_daily_tokens), color: "#3b82f6" },
+                      { label: t("trajectory.totalTokens"), value: formatTokens(tokenAnalytics.summary.total_tokens), color: "#f59e0b" },
+                      { label: t("trajectory.totalEvents"), value: tokenAnalytics.summary.total_events, color: "#a855f7" },
+                      { label: t("trajectory.avgDaily"), value: formatTokens(tokenAnalytics.summary.avg_daily_tokens), color: "#3b82f6" },
                     ].map(c => (
                       <div key={c.label} style={{
                         flex: 1, minWidth: 120, padding: "10px 14px", borderRadius: 8,
@@ -839,13 +846,13 @@ export function TrajectoryClient() {
                   border: "1px solid hsl(var(--border))",
                 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 12px", color: "hsl(var(--foreground))", display: "flex", alignItems: "center", gap: 8 }}>
-                    <Wrench size={16} style={{ color: "#f59e0b" }} /> Tool Usage Frequency
+                    <Wrench size={16} style={{ color: "#f59e0b" }} /> {t("trajectory.toolUsageFrequency")}
                   </h3>
                   <div style={{ overflow: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
                         <tr style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-                          {["Tool", "Usage", "Success Rate", "Avg Duration", "Tokens"].map(h => (
+                          {[t("trajectory.tool"), t("trajectory.usage"), t("trajectory.successRate"), t("trajectory.avgDuration"), t("trajectory.tokens")].map(h => (
                             <th key={h} style={{ padding: "6px 8px", textAlign: "left", color: "hsl(var(--muted-foreground))", fontWeight: 500, fontSize: 10, textTransform: "uppercase" }}>{h}</th>
                           ))}
                         </tr>
@@ -880,13 +887,13 @@ export function TrajectoryClient() {
                   border: "1px solid hsl(var(--border))",
                 }}>
                   <h3 style={{ fontSize: 14, fontWeight: 600, margin: "0 0 12px", color: "hsl(var(--foreground))", display: "flex", alignItems: "center", gap: 8 }}>
-                    <Bot size={16} style={{ color: "#a855f7" }} /> Agent Performance
+                    <Bot size={16} style={{ color: "#a855f7" }} /> {t("trajectory.agentPerformance")}
                   </h3>
                   <div style={{ overflow: "auto" }}>
                     <table style={{ width: "100%", borderCollapse: "collapse", fontSize: 12 }}>
                       <thead>
                         <tr style={{ borderBottom: "1px solid hsl(var(--border))" }}>
-                          {["Agent", "Events", "Success Rate", "Tokens", "Avg Duration"].map(h => (
+                          {[t("trajectory.agent"), t("trajectory.events"), t("trajectory.successRate"), t("trajectory.tokens"), t("trajectory.avgDuration")].map(h => (
                             <th key={h} style={{ padding: "6px 8px", textAlign: "left", color: "hsl(var(--muted-foreground))", fontWeight: 500, fontSize: 10, textTransform: "uppercase" }}>{h}</th>
                           ))}
                         </tr>
@@ -916,8 +923,8 @@ export function TrajectoryClient() {
               {toolAnalytics.length === 0 && agentAnalytics.length === 0 && !tokenAnalytics && (
                 <div style={{ textAlign: "center", padding: 40, color: "hsl(var(--muted-foreground))" }}>
                   <BarChart3 size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
-                  <p style={{ fontSize: 14 }}>No analytics data yet</p>
-                  <p style={{ fontSize: 12, opacity: 0.7 }}>Analytics will appear as agents execute tasks</p>
+                  <p style={{ fontSize: 14 }}>{t("trajectory.noAnalyticsData")}</p>
+                  <p style={{ fontSize: 12, opacity: 0.7 }}>{t("trajectory.analyticsWillAppear")}</p>
                 </div>
               )}
             </div>
@@ -940,16 +947,16 @@ export function TrajectoryClient() {
                 gap: 8,
               }}>
                 {loading ? (
-                  <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 13 }}>Loading...</p>
+                  <p style={{ color: "hsl(var(--muted-foreground))", fontSize: 13 }}>{t("trajectory.loadingAnalytics")}</p>
                 ) : sessions.length === 0 ? (
                   <div style={{
                     gridColumn: "1 / -1", textAlign: "center", padding: 40,
                     color: "hsl(var(--muted-foreground))",
                   }}>
                     <Activity size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
-                    <p style={{ fontSize: 14 }}>No trajectory sessions yet</p>
+                    <p style={{ fontSize: 14 }}>{t("trajectory.noTrajectorySessions")}</p>
                     <p style={{ fontSize: 12, opacity: 0.7 }}>
-                      Sessions will appear here as agents execute tasks
+                      {t("trajectory.sessionsWillAppear")}
                     </p>
                   </div>
                 ) : (
@@ -995,7 +1002,7 @@ export function TrajectoryClient() {
                     cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
                   }}
                 >
-                  <Play size={12} /> Replay
+                  <Play size={12} /> {t("trajectory.replay")}
                 </button>
                 <button
                   onClick={forkSession}
@@ -1008,13 +1015,13 @@ export function TrajectoryClient() {
                     opacity: forking ? 0.5 : 1,
                   }}
                 >
-                  <GitBranch size={12} /> {forking ? "Forking..." : "Fork"}
+                  <GitBranch size={12} /> {forking ? t("trajectory.forking") : t("trajectory.fork")}
                 </button>
                 <div style={{
                   marginLeft: "auto", fontSize: 12, color: "hsl(var(--muted-foreground))",
                   display: "flex", alignItems: "center", gap: 8,
                 }}>
-                  <span>{events.length} events</span>
+                  <span>{events.length} {t("trajectory.events")}</span>
                   {selectedSession && (
                     <span style={{
                       padding: "2px 8px", borderRadius: 4, fontSize: 10,
@@ -1050,8 +1057,8 @@ export function TrajectoryClient() {
                 display: "flex", alignItems: "center", gap: 8,
               }}>
                 <Search size={14} />
-                {searchResults?.length || 0} results for &ldquo;{query}&rdquo;
-                {selectedTypes.size > 0 && ` (filtered: ${Array.from(selectedTypes).join(", ")})`}
+                {searchResults?.length || 0} {t("trajectory.resultsFor", { count: searchResults?.length || 0, query })}
+                {selectedTypes.size > 0 && ` (${t("trajectory.filtered", { types: Array.from(selectedTypes).join(", ") })})`}
               </div>
             )}
 
@@ -1062,7 +1069,7 @@ export function TrajectoryClient() {
               }}>
                 <Activity size={32} style={{ opacity: 0.3, marginBottom: 8 }} />
                 <p style={{ fontSize: 14 }}>
-                  {view === "search" ? "No matching events" : "No events in this session"}
+                  {view === "search" ? t("trajectory.noMatchingEvents") : t("trajectory.noEventsInSession")}
                 </p>
               </div>
             ) : (
