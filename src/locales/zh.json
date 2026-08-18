@@ -4898,7 +4898,10 @@
     "inHours": "{hours} 小时后",
     "inHoursMinutes": "{hours} 小时 {minutes} 分钟后",
     "custom": "自定义",
-    "nextRun": "下次运行：{time}"
+    "nextRun": "下次运行：{time}",
+    "weeklyMon": "每周一 9:00",
+    "monthlyFirst": "每月1号",
+    "weekdays9": "每周五天"
   },
   "terminal": {
     "disconnected": "[断开连接]",
