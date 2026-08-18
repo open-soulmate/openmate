@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
+import { useTranslation } from "react-i18next";
 import Link from "next/link";
 import {
   useAppStore,
@@ -70,6 +71,7 @@ function CreateTeamDialog({
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
+  const { t } = useTranslation();
 
   function reset() {
     setName("");
@@ -113,8 +115,8 @@ function CreateTeamDialog({
     <Dialog
       open={open}
       onClose={handleClose}
-      title="创建团队"
-      description="创建一个新的 Agent 协作团队"
+      title={t("team.createTeam") || "创建团队"}
+      description={t("team.createDesc") || "创建一个新的 Agent 协作团队"}
       className="max-w-xl"
       footer={
         <>
@@ -122,46 +124,46 @@ function CreateTeamDialog({
             onClick={handleClose}
             className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
           >
-            取消
+            {t("team.cancel") || "取消"}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!isValid}
             className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            创建
+            {t("team.create") || "创建"}
           </button>
         </>
       }
     >
       <div className="space-y-4">
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">团队名称</label>
+          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("team.teamName") || "团队名称"}</label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="研究团队"
+            placeholder={t("team.sampleTeamName") || "研究团队"}
             className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
           />
         </div>
         <div>
-          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">描述</label>
+          <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t("team.description") || "描述"}</label>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="专注于协作研究的 Agent 团队"
+            placeholder={t("team.sampleTeamDesc") || "专注于协作研究的 Agent 团队"}
             className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
           />
         </div>
         <div>
           <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-            选择成员 <span className="text-muted-foreground/60">（第一个选中的将成为 Leader）</span>
+            {t("team.selectMembers") || "选择成员"} <span className="text-muted-foreground/60">{t("team.leaderHint") || "（第一个选中的将成为 Leader）"}</span>
           </label>
           <div className="grid gap-2 max-h-48 overflow-y-auto rounded-lg border border-border p-2">
             {agents.length === 0 ? (
-              <p className="py-4 text-center text-xs text-muted-foreground">暂无可用 Agent</p>
+              <p className="py-4 text-center text-xs text-muted-foreground">{t("team.noAvailableAgent") || "暂无可用 Agent"}</p>
             ) : (
               agents.map((a) => {
                 const isSelected = selectedAgents.includes(a.id);
@@ -186,7 +188,7 @@ function CreateTeamDialog({
                       </Badge>
                     )}
                     {isSelected && selectedAgents.indexOf(a.id) !== 0 && (
-                      <Badge variant="default">已选</Badge>
+                      <Badge variant="default">{t("team.selected") || "已选"}</Badge>
                     )}
                   </button>
                 );
@@ -208,6 +210,7 @@ function TeamCard({
   team: Team;
   onDelete: (team: Team) => void;
 }) {
+  const { t } = useTranslation();
   const onlineCount = team.members.filter((m) => m.status === "online").length;
   const leader = team.members.find((m) => m.role === "leader");
   const recentActivities = team.activities.slice(0, 3);
@@ -231,7 +234,7 @@ function TeamCard({
           </div>
         </div>
         <Badge variant={onlineCount > 0 ? "success" : "default"}>
-          {onlineCount > 0 ? "活跃" : "空闲"}
+          {onlineCount > 0 ? (t("team.active") || "活跃") : (t("team.idle") || "空闲")}
         </Badge>
       </div>
 
@@ -243,19 +246,19 @@ function TeamCard({
             {team.members.length}
           </span>
           <span className="text-[10px] text-emerald-400">
-            {onlineCount}在线
+            {onlineCount}{t("team.online") || "在线"}
           </span>
         </div>
         <div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5">
           <CheckSquare size={12} className="text-muted-foreground" />
           <span className="text-[11px] text-muted-foreground">
-            {pendingTasks} 待办
+            {pendingTasks} {t("team.todo") || "待办"}
           </span>
         </div>
         <div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5">
           <Activity size={12} className="text-muted-foreground" />
           <span className="text-[11px] text-muted-foreground">
-            {team.activities.length} 活动
+            {team.activities.length} {t("team.activity") || "活动"}
           </span>
         </div>
       </div>
@@ -309,12 +312,12 @@ function TeamCard({
             className="flex h-7 items-center gap-1 rounded-md bg-primary px-2.5 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"
           >
             <ChevronRight size={12} />
-            进入
+            {t("team.enter") || "进入"}
           </Link>
           <button
             onClick={() => onDelete(team)}
             className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            title="删除"
+            title={t("team.delete") || "删除"}
           >
             <Trash2 size={13} />
           </button>
@@ -327,6 +330,7 @@ function TeamCard({
 // ─── Main Component ──────────────────────────────────────────────────────────
 
 export function TeamClient() {
+  const { t } = useTranslation();
   const teams = useAppStore((s) => s.teams);
   const addTeam = useAppStore((s) => s.addTeam);
   const deleteTeam = useAppStore((s) => s.deleteTeam);
@@ -354,7 +358,7 @@ export function TeamClient() {
         type: "member_joined" as const,
         actorId: m.agentId,
         actorName: m.name,
-        description: `${m.name} 加入了团队`,
+        description: t("team.memberJoined", { name: m.name }) || `${m.name} 加入了团队`,
         timestamp: now,
       })),
       tasks: [],
@@ -378,9 +382,9 @@ export function TeamClient() {
             <Users size={18} />
           </div>
           <div>
-            <h2 className="text-sm font-medium">团队管理</h2>
+            <h2 className="text-sm font-medium">{t("team.teamManagement") || "团队管理"}</h2>
             <p className="text-xs text-muted-foreground">
-              {teams.length} 个团队
+              {teams.length} {t("team.teamCount") || "个团队"}
             </p>
           </div>
         </div>
@@ -389,7 +393,7 @@ export function TeamClient() {
           className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
           <Plus size={14} />
-          创建团队
+          {t("team.createTeam") || "创建团队"}
         </button>
       </div>
 
@@ -404,7 +408,7 @@ export function TeamClient() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="搜索团队..."
+            placeholder={t("team.searchTeams") || "搜索团队..."}
             className="w-full rounded-md border border-border bg-muted/50 pl-9 pr-3 py-1.5 text-xs outline-none focus:border-primary transition-colors"
           />
         </div>
@@ -417,9 +421,9 @@ export function TeamClient() {
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
               <Users className="h-7 w-7 text-muted-foreground" />
             </div>
-            <h3 className="mb-2 text-sm font-medium">暂无团队</h3>
+            <h3 className="mb-2 text-sm font-medium">{t("team.noTeams") || "暂无团队"}</h3>
             <p className="text-xs text-muted-foreground">
-              点击「创建团队」按钮创建你的第一个 Agent 协作团队
+              {t("team.createFirstHint") || "点击「创建团队」按钮创建你的第一个 Agent 协作团队"}
             </p>
           </div>
         ) : (
@@ -447,21 +451,21 @@ export function TeamClient() {
       <Dialog
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        title="删除团队"
-        description={`确定要删除 "${deleteTarget?.name}" 吗？此操作不可撤销。`}
+        title={t("team.deleteTeam") || "删除团队"}
+        description={t("team.confirmDelete", { name: deleteTarget?.name }) || `确定要删除 "${deleteTarget?.name}" 吗？此操作不可撤销。`}
         footer={
           <>
             <button
               onClick={() => setDeleteTarget(null)}
               className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              取消
+              {t("team.cancel") || "取消"}
             </button>
             <button
               onClick={handleDelete}
               className="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90"
             >
-              删除
+              {t("team.delete") || "删除"}
             </button>
           </>
         }
@@ -472,7 +476,7 @@ export function TeamClient() {
             <span className="text-sm font-medium">{deleteTarget?.name}</span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            成员数: {deleteTarget?.members.length ?? 0} · 任务数:{" "}
+            {t("team.memberCount") || "成员数"}: {deleteTarget?.members.length ?? 0} · {t("team.taskCount") || "任务数"}:{" "}
             {deleteTarget?.tasks.length ?? 0}
           </p>
         </div>
