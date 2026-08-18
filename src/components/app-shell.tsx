@@ -269,14 +269,12 @@ export function AppShell() {
         onMouseLeave={handleMouseLeave}
         className={cn(
           "hidden h-screen flex-col border-r border-border bg-sidebar transition-[width] duration-200 md:flex",
-          isExpanded ? "w-60" : "w-14"
+          isExpanded ? "w-60" : "w-16"
         )}
       >
         {/* Header: brand + collapse toggle */}
         <div className="flex h-12 shrink-0 items-center px-3">
-          <div className="flex w-8 shrink-0 items-center justify-center">
-            <span className={cn("text-sm font-bold text-primary transition-opacity duration-150", isExpanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden")}>OM</span>
-          </div>
+          <span className={cn("text-sm font-bold text-primary transition-opacity duration-150", isExpanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden")}>OM</span>
           <div className={cn("flex-1 min-w-0 transition-all duration-150", isExpanded ? "ml-2 opacity-100" : "w-0 opacity-0 overflow-hidden")}>
             <span className="text-sm font-semibold text-foreground whitespace-nowrap">OpenMate</span>
           </div>
@@ -315,13 +313,11 @@ export function AppShell() {
                   return (
                     <Link key={item.href} href={item.href}
                       className={cn(
-                        "flex h-8 items-center rounded-md text-sm transition-colors group mb-0.5",
+                        "flex h-9 items-center rounded-md text-sm transition-colors group mb-0.5",
+                        isExpanded ? "" : "justify-center",
                         active ? "bg-sidebar-accent text-foreground font-medium" : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground"
                       )}>
-                      {/* Fixed icon column: 32px wide, icon always centered at same position */}
-                      <div className="flex w-8 shrink-0 items-center justify-center">
-                        <item.icon size={16} />
-                      </div>
+                      <item.icon size={20} className="shrink-0" />
                       {/* Text column: hidden when collapsed */}
                       <span className={cn(
                         "truncate whitespace-nowrap transition-all duration-150",
