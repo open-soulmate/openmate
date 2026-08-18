@@ -82,11 +82,12 @@ function formatTime(ts: number): string {
   });
 }
 
-function formatAge(ts: number): string {
+function formatAge(ts: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const hours = (Date.now() / 1000 - ts) / 3600;
-  if (hours < 1) return `${Math.round(hours * 60)}分钟前`;
-  if (hours < 24) return `${Math.round(hours)}小时前`;
-  return `${Math.round(hours / 24)}天前`;
+  const count = hours < 1 ? Math.round(hours * 60) : hours < 24 ? Math.round(hours) : Math.round(hours / 24);
+  if (hours < 1) return t("hippo.minutesAgo", { count }) || `${count}分钟前`;
+  if (hours < 24) return t("hippo.hoursAgo", { count }) || `${count}小时前`;
+  return t("hippo.daysAgo", { count }) || `${count}天前`;
 }
 
 export function HippoClient() {
@@ -189,7 +190,7 @@ export function HippoClient() {
     try {
       const res = await fetch(`${apiBase}/api/hippo/decay/run`, { method: "POST" });
       const data = await res.json();
-      alert(`衰减完成: 更新${data.updated}条, 归档${data.archived}条, 遗忘${data.forgotten}条`);
+      alert(t("hippo.decayComplete", { updated: data.updated, archived: data.archived, forgotten: data.forgotten }) || `衰减完成: 更新${data.updated}条, 归档${data.archived}条, 遗忘${data.forgotten}条`);
       fetchMemories();
       fetchStats();
     } catch {} finally { setLoading(false); }
@@ -211,7 +212,7 @@ export function HippoClient() {
     try {
       const res = await fetch(`${apiBase}/api/hippo/sessions/lifecycle-check`, { method: "POST" });
       const data = await res.json();
-      alert(`生命周期检查: 检查${data.checked}个会话, 新闲置${data.newly_idle}个, 新过期${data.newly_expired}个`);
+      alert(t("hippo.lifecycleResult", { checked: data.checked, idle: data.newly_idle, expired: data.newly_expired }) || `生命周期检查: 检查${data.checked}个会话, 新闲置${data.newly_idle}个, 新过期${data.newly_expired}个`);
       fetchSessions();
     } catch {}
   };
@@ -325,9 +326,9 @@ export function HippoClient() {
                         <p className="text-sm">{m.content}</p>
                         <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
                           <span className="font-mono">{m.session_id.slice(0, 8)}</span>
-                          <span>{formatAge(m.created_at)}</span>
+                          <span>{formatAge(m.created_at, t)}</span>
                           <span>{t("hippo.accessed") || "访问"}: {m.access_count}</span>
-                          {m.archived && <span className="text-amber-500 font-medium">已归档</span>}
+                          {m.archived && <span className="text-amber-500 font-medium">{t("hippo.archived") || "已归档"}</span>}
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0 ml-4">
@@ -518,10 +519,10 @@ export function HippoClient() {
                   </div>
                   <div className="flex gap-4 text-xs">
                     <span className={simResult.should_archive ? "text-amber-500" : "text-muted-foreground"}>
-                      {simResult.should_archive ? "⚠️ 应归档" : "✓ 不需归档"}
+                      {simResult.should_archive ? (t("hippo.shouldArchive") || "⚠️ 应归档") : (t("hippo.noArchiveNeeded") || "✓ 不需归档")}
                     </span>
                     <span className={simResult.should_forget ? "text-red-500" : "text-muted-foreground"}>
-                      {simResult.should_forget ? "🗑️ 应遗忘" : "✓ 不需遗忘"}
+                      {simResult.should_forget ? (t("hippo.shouldForget") || "🗑️ 应遗忘") : (t("hippo.noForgetNeeded") || "✓ 不需遗忘")}
                     </span>
                   </div>
                 </div>

@@ -1,7 +1,7 @@
 "use client";
-
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import {
   BookOpen,
   Plus,
@@ -27,27 +27,28 @@ interface Course {
   updatedAt: number;
 }
 
-const statusConfig = {
-  not_started: { label: "Not Started", color: "text-muted-foreground", icon: BookOpen },
-  in_progress: { label: "In Progress", color: "text-blue-500", icon: Clock },
-  reviewing: { label: "Reviewing", color: "text-amber-500", icon: RotateCcw },
-  completed: { label: "Completed", color: "text-green-500", icon: CheckCircle2 },
-};
-
-function timeAgo(ts: number): string {
+function timeAgo(ts: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const diff = Date.now() / 1000 - ts;
-  if (diff < 60) return "just now";
+  if (diff < 60) return t("common.justNow") || "just now";
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
 export function LearnClient() {
+  const { t } = useTranslation();
   const [query, setQuery] = useState("");
   const [courses, setCourses] = useState<Course[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const apiBase = getApiBaseUrl();
+
+  const statusConfig = {
+    not_started: { label: t("learn.notStarted"), color: "text-muted-foreground", icon: BookOpen },
+    in_progress: { label: t("learn.inProgress"), color: "text-blue-500", icon: Clock },
+    reviewing: { label: t("learn.reviewing"), color: "text-amber-500", icon: RotateCcw },
+    completed: { label: t("learn.completed"), color: "text-green-500", icon: CheckCircle2 },
+  };
 
   const fetchCourses = useCallback(async () => {
     try {
@@ -75,7 +76,7 @@ export function LearnClient() {
 
   const handleDelete = async (e: React.MouseEvent, courseId: string) => {
     e.preventDefault();
-    if (!confirm("Delete this course?")) return;
+    if (!confirm(t("learn.confirmDelete") || "Delete this course?")) return;
     try {
       await fetch(`${apiBase}/api/learn/courses/${courseId}`, { method: "DELETE" });
       setCourses((prev) => prev.filter((c) => c.id !== courseId));
@@ -108,7 +109,7 @@ export function LearnClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-2">
           <GraduationCap size={20} className="text-primary" />
-          <h1 className="text-lg font-semibold">Learning Center</h1>
+          <h1 className="text-lg font-semibold">{t("learn.title")}</h1>
         </div>
 
         <div className="flex items-center gap-3">
@@ -117,7 +118,7 @@ export function LearnClient() {
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Filter courses…"
+              placeholder={t("learn.filterCourses")}
               className="w-48 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
@@ -127,7 +128,7 @@ export function LearnClient() {
             className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Plus size={14} />
-            Generate Course
+            {t("learn.createCourse")}
           </Link>
         </div>
       </div>
@@ -140,7 +141,7 @@ export function LearnClient() {
           </div>
           <div>
             <p className="text-lg font-semibold">{totalLearned}</p>
-            <p className="text-xs text-muted-foreground">Chapters Learned</p>
+            <p className="text-xs text-muted-foreground">{t("learn.chaptersLearned")}</p>
           </div>
         </div>
         <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
@@ -149,7 +150,7 @@ export function LearnClient() {
           </div>
           <div>
             <p className="text-lg font-semibold">{totalPending}</p>
-            <p className="text-xs text-muted-foreground">Chapters Pending</p>
+            <p className="text-xs text-muted-foreground">{t("learn.chaptersPending")}</p>
           </div>
         </div>
         <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
@@ -158,7 +159,7 @@ export function LearnClient() {
           </div>
           <div>
             <p className="text-lg font-semibold">{reviewingCount}</p>
-            <p className="text-xs text-muted-foreground">Courses Reviewing</p>
+            <p className="text-xs text-muted-foreground">{t("learn.coursesReviewing")}</p>
           </div>
         </div>
       </div>
@@ -168,9 +169,9 @@ export function LearnClient() {
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <BookOpen size={48} className="mb-4 opacity-30" />
-            <p className="text-sm">No courses yet</p>
+            <p className="text-sm">{t("learn.noCourses") || "No courses yet"}</p>
             <Link href="/learn/create" className="mt-2 text-xs text-primary hover:underline">
-              Generate your first course →
+              {t("learn.generateFirst") || "Generate your first course →"}
             </Link>
           </div>
         ) : (
@@ -214,7 +215,7 @@ export function LearnClient() {
                         {cfg.label}
                       </span>
                       <span className="text-muted-foreground">
-                        {course.completedChapters}/{course.totalChapters} ch.
+                        {course.completedChapters}/{course.totalChapters} {t("learn.chapterAbbr") || "ch."}
                       </span>
                     </div>
                     <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -235,7 +236,7 @@ export function LearnClient() {
                       </span>
                     ))}
                     <span className="ml-auto text-[10px] text-muted-foreground">
-                      {timeAgo(course.updatedAt)}
+                      {timeAgo(course.updatedAt, t)}
                     </span>
                   </div>
                 </Link>
