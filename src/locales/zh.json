@@ -352,7 +352,21 @@
     "confirmDelete": "确定删除此课程？",
     "noCourses": "暂无课程",
     "generateFirst": "生成你的第一门课程 →",
-    "chapterAbbr": "章"
+    "chapterAbbr": "章",
+    "courseNotFound": "课程未找到",
+    "backToCourses": "返回课程列表",
+    "chaptersCompletedCount": "{completed}/{total} 章节已完成",
+    "hideQuiz": "隐藏测验",
+    "takeQuiz": "参加测验",
+    "noChapters": "暂无章节",
+    "chapterQuiz": "章节测验",
+    "score": "得分",
+    "submitted": "已提交",
+    "submitAnswers": "提交答案",
+    "previous": "上一章",
+    "next": "下一章",
+    "learned": "已学习",
+    "markAsLearned": "标记为已学习"
   },
   "agents": {
     "title": "Agent管理",

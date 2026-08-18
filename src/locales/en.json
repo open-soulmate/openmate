@@ -352,7 +352,21 @@
     "confirmDelete": "Delete this course?",
     "noCourses": "No courses yet",
     "generateFirst": "Generate your first course →",
-    "chapterAbbr": "ch."
+    "chapterAbbr": "ch.",
+    "courseNotFound": "Course not found",
+    "backToCourses": "Back to courses",
+    "chaptersCompletedCount": "{completed}/{total} chapters completed",
+    "hideQuiz": "Hide Quiz",
+    "takeQuiz": "Take Quiz",
+    "noChapters": "No chapters yet",
+    "chapterQuiz": "Chapter Quiz",
+    "score": "Score",
+    "submitted": "Submitted",
+    "submitAnswers": "Submit Answers",
+    "previous": "Previous",
+    "next": "Next",
+    "learned": "Learned",
+    "markAsLearned": "Mark as Learned"
   },
   "agents": {
     "title": "Agent Management",
