@@ -34,12 +34,12 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
-function formatTime(ts: number) {
+function formatTime(ts: number, t?: (key: string, opts?: any) => string) {
   if (!ts) return "—";
   const diff = Date.now() - ts;
-  if (diff < 60_000) return "刚刚";
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
+  if (diff < 60_000) return t?.("team.justNow") || "刚刚";
+  if (diff < 3_600_000) return t?.("team.minutesAgo", { minutes: Math.floor(diff / 60_000) }) || `${Math.floor(diff / 60_000)} 分钟前`;
+  if (diff < 86_400_000) return t?.("team.hoursAgo", { hours: Math.floor(diff / 3_600_000) }) || `${Math.floor(diff / 3_600_000)} 小时前`;
   return new Date(ts).toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
 }
 
@@ -304,7 +304,7 @@ function TeamCard({
       <div className="flex items-center justify-between border-t border-border pt-3">
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
           <Clock size={11} />
-          <span>{formatTime(team.updatedAt)}</span>
+          <span>{formatTime(team.updatedAt, t)}</span>
         </div>
         <div className="flex items-center gap-1 opacity-0 transition-all group-hover:opacity-100">
           <Link
