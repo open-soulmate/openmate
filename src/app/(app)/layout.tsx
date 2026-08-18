@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { AppShell } from '@/components/app-shell';
 import { Topbar } from '@/components/topbar';
 import { CommandMenu } from '@/components/command-menu';
+import { GlobalShortcuts } from '@/components/global-shortcuts';
 import { LoginPage } from '@/components/login-page';
 import { ToastProvider } from '@/components/toast-provider';
 import { isLoggedIn } from '@/lib/api-client';
@@ -31,6 +32,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <main className="flex-1 overflow-hidden">{children}</main>
         </div>
         <CommandMenu />
+        <GlobalShortcuts />
       </div>
     </ToastProvider>
   );
