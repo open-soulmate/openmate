@@ -19,6 +19,7 @@ import {
   Pill,
   History,
   Gauge,
+  BarChart3,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getApiBaseUrl } from "@/lib/api-client";
@@ -184,6 +185,7 @@ export function AppShell() {
         { href: "/system", label: t("nav.system") || "System", icon: Server },
         { href: "/admin", label: t("nav.admin"), icon: Shield },
         { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope },
+        { href: "/metrics", label: t("nav.metrics") || "Metrics", icon: BarChart3 },
         { href: "/benchmark", label: t("nav.benchmark"), icon: Gauge },
         { href: "/intelligence", label: t("nav.intelligence"), icon: Brain },
         { href: "/healer", label: t("nav.healer"), icon: Pill },
