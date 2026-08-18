@@ -152,7 +152,7 @@ export function MetricsClient() {
 
   const fetchMetrics = useCallback(async () => {
     try {
-      const resp = await fetch("/api/metrics");
+      const resp = await fetch("/api/soul/metrics");
       const text = await resp.text();
       setRawMetrics(text);
       setMetrics(parsePrometheus(text));
