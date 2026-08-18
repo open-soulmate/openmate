@@ -4840,5 +4840,8 @@
   "mind.sample1": "太棒了！这个功能终于实现了，我好开心！",
   "mind.sample2": "这个bug让我非常头疼，已经折腾了一整天。",
   "mind.sample3": "期待明天的发布会，希望一切顺利。",
-  "mind.sample4": "这个问题我不太理解，能再解释一下吗？"
+  "mind.sample4": "这个问题我不太理解，能再解释一下吗？",
+  "search.all": "全部",
+  "heredity.requires": "需要",
+  "heredity.actual": "实际"
 }

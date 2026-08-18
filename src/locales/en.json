@@ -4805,5 +4805,8 @@
   "mind.sample1": "This feature is finally done, I am so happy!",
   "mind.sample2": "This bug is driving me crazy, I have been working on it all day.",
   "mind.sample3": "Looking forward to tomorrow's launch, hope everything goes well.",
-  "mind.sample4": "I do not quite understand this issue, can you explain again?"
+  "mind.sample4": "I do not quite understand this issue, can you explain again?",
+  "search.all": "All",
+  "heredity.requires": "requires",
+  "heredity.actual": "actual"
 }

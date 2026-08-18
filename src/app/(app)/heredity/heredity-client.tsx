@@ -292,7 +292,7 @@ export function HeredityClient() {
                         <span className="font-medium">{compatCheck.compatible ? t('heredity.t69119') : t('heredity.t28492')}</span>
                       </div>
                       {compatCheck.issues?.map((issue: any, i: number) => (
-                        <p key={i} className="mt-1 text-xs text-red-400">{issue.dependency}: {issue.issue} (需要 {issue.required}, 实际 {issue.actual})</p>
+                        <p key={i} className="mt-1 text-xs text-red-400">{issue.dependency}: {issue.issue} ({t("heredity.requires") || "需要"} {issue.required}, {t("heredity.actual") || "实际"} {issue.actual})</p>
                       ))}
                     </div>
                   )}

@@ -181,7 +181,7 @@ export function SearchClient() {
                       : "border-border text-muted-foreground hover:bg-muted"
                   )}
                 >
-                  全部 ({unifiedResults.total})
+                  {t("search.all") || "全部"} ({unifiedResults.total})
                 </button>
                 {Object.entries(unifiedResults.by_source).map(([source, items]) => {
                   const config = SOURCE_CONFIG[source];
