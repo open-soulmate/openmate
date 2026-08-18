@@ -64,12 +64,16 @@ export function AppShell() {
         if (!Array.isArray(items) || items.length === 0) return;
         const grouped = new Map<string, NavItem[]>();
         for (const item of items) {
-          const arr = grouped.get(item.group) || [];
+          const groupName = (item.group || "Plugins").toUpperCase() === "PLUGINS" ? "Plugins" : item.group || "Plugins";
+          const arr = grouped.get(groupName) || [];
           arr.push({ href: item.href, label: item.label, icon: Plug });
-          grouped.set(item.group, arr);
+          grouped.set(groupName, arr);
         }
         setPluginGroups(
-          Array.from(grouped.entries()).map(([label, navItems]) => ({ label, items: navItems }))
+          Array.from(grouped.entries()).map(([label, navItems]) => ({
+            label: label === "Plugins" || label === "PLUGINS" ? t("nav.plugins") : label,
+            items: navItems
+          }))
         );
       })
       .catch(() => {});
