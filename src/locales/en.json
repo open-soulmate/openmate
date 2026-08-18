@@ -3861,7 +3861,13 @@
     "installedSkills": "Installed Skills",
     "installedAgents": "Installed Agents",
     "searchSources": "Search sources...",
-    "builtinSources": "Built-in Sources"
+    "builtinSources": "Built-in Sources",
+    "title": "Marketplace",
+    "syncAll": "Sync All",
+    "justNow": "Just now",
+    "noSources": "No sources configured",
+    "items": "Items",
+    "close": "Close"
   },
   "aiGroups": {
     "title": "AI Groups",

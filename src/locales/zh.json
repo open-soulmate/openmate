@@ -3861,7 +3861,13 @@
     "installedSkills": "已安装技能",
     "installedAgents": "已安装Agent",
     "searchSources": "搜索来源...",
-    "builtinSources": "内置来源"
+    "builtinSources": "内置来源",
+    "title": "应用市场",
+    "syncAll": "全部同步",
+    "justNow": "刚刚",
+    "noSources": "暂无来源",
+    "items": "项目",
+    "close": "关闭"
   },
   "aiGroups": {
     "title": "AI群组",
