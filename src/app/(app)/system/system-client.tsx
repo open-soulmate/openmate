@@ -1,13 +1,12 @@
 "use client";
-
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
   Activity, Cpu, HardDrive, MemoryStick, Database,
   Puzzle, Zap, CheckCircle, XCircle, AlertTriangle,
-  RefreshCw, Loader2, Server, Clock,
+  RefreshCw, Loader2, Server, Clock, Play, Pause,
 } from "lucide-react";
 
 interface OrganStatus {
@@ -98,9 +97,12 @@ export function SystemOverviewClient() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [lastRefresh, setLastRefresh] = useState(0);
+  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [refreshInterval, setRefreshInterval] = useState(15); // seconds
+  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const fetchOverview = useCallback(async () => {
-    setLoading(true);
+  const fetchOverview = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
     setError("");
     try {
       const res = await fetch(`${apiBase}/api/system/overview`, { signal: AbortSignal.timeout(10000) });
@@ -111,11 +113,20 @@ export function SystemOverviewClient() {
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to fetch");
     } finally {
-      setLoading(false);
+      if (!silent) setLoading(false);
     }
   }, [apiBase]);
 
   useEffect(() => { fetchOverview(); }, [fetchOverview]);
+
+  // Auto-refresh interval
+  useEffect(() => {
+    if (intervalRef.current) clearInterval(intervalRef.current);
+    if (autoRefresh && refreshInterval > 0) {
+      intervalRef.current = setInterval(() => fetchOverview(true), refreshInterval * 1000);
+    }
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+  }, [autoRefresh, refreshInterval, fetchOverview]);
 
   const metrics = data?.metrics && !("error" in data.metrics) ? data.metrics as SystemMetrics : null;
 
@@ -131,14 +142,35 @@ export function SystemOverviewClient() {
             <h1 className="text-lg font-semibold">{t("system.systemOverview")}</h1>
             <p className="text-xs text-muted-foreground">
               v{data?.version} · {data?.elapsed_ms}ms · {lastRefresh ? new Date(lastRefresh).toLocaleTimeString() : "—"}
+              {autoRefresh && <span className="ml-1 text-emerald-500">● {t("system.live") || "LIVE"}</span>}
             </p>
           </div>
         </div>
-        <button onClick={fetchOverview} disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50">
-          {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          {t("system.refresh")}
-        </button>
+        <div className="flex items-center gap-2">
+          {/* Auto-refresh toggle */}
+          <button onClick={() => setAutoRefresh(!autoRefresh)}
+            className={cn("flex items-center gap-1.5 rounded-lg border px-2.5 py-1.5 text-xs transition-colors",
+              autoRefresh ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-500" : "border-border text-muted-foreground hover:bg-accent")}>
+            {autoRefresh ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+            {autoRefresh ? t("system.autoRefreshOn") || "Auto" : t("system.autoRefreshOff") || "Paused"}
+          </button>
+          {/* Interval selector */}
+          {autoRefresh && (
+            <select value={refreshInterval} onChange={(e) => setRefreshInterval(Number(e.target.value))}
+              className="rounded-lg border border-border bg-card px-2 py-1.5 text-xs text-foreground">
+              <option value={5}>5s</option>
+              <option value={15}>15s</option>
+              <option value={30}>30s</option>
+              <option value={60}>60s</option>
+            </select>
+          )}
+          {/* Manual refresh */}
+          <button onClick={() => fetchOverview()} disabled={loading}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50">
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {t("system.refresh")}
+          </button>
+        </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 space-y-6">
