@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useTranslation } from "react-i18next";
 import {
   Camera, RefreshCw, Trash2, ExternalLink, Search,
   FileText, Type, CheckCircle, Loader2, ArrowUpCircle,
@@ -28,47 +29,43 @@ interface CaptureStats {
   selection_captures: number;
 }
 
-function TypeBadge({ type }: { type: string }) {
+function TypeBadge({ type, t }: { type: string; t: (k: string) => string }) {
   return type === "page" ? (
     <span className="inline-flex items-center gap-1 rounded-full bg-blue-500/10 px-2 py-0.5 text-[10px] font-medium text-blue-500">
-      <Globe size={10} /> 页面
+      <Globe size={10} /> {t("capture.page")}
     </span>
   ) : (
     <span className="inline-flex items-center gap-1 rounded-full bg-purple-500/10 px-2 py-0.5 text-[10px] font-medium text-purple-500">
-      <Type size={10} /> 选文
+      <Type size={10} /> {t("capture.selection")}
     </span>
   );
 }
 
-function StatusBadge({ status }: { status: string }) {
+function StatusBadge({ status, t }: { status: string; t: (k: string) => string }) {
   const colors: Record<string, string> = {
     captured: "bg-emerald-500/10 text-emerald-500",
     duplicate: "bg-yellow-500/10 text-yellow-500",
     promoted: "bg-blue-500/10 text-blue-500",
   };
-  const labels: Record<string, string> = {
-    captured: "已采集",
-    duplicate: "重复",
-    promoted: "已入库",
-  };
   return (
     <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium", colors[status] || "bg-gray-500/10 text-gray-500")}>
-      {labels[status] || status}
+      {t(`capture.${status}`) || status}
     </span>
   );
 }
 
-function formatTime(ts: number): string {
-  const d = new Date(ts * 1000);
-  const now = new Date();
-  const diff = (now.getTime() - d.getTime()) / 1000;
-  if (diff < 60) return "刚刚";
-  if (diff < 3600) return `${Math.floor(diff / 60)}分钟前`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}小时前`;
-  return d.toLocaleDateString("zh-CN", { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" });
+function formatTime(ts: number, t: (k: string, o?: Record<string, unknown>) => string): string {
+  const diff = Date.now() - ts * 1000;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 60) return t("notifications.justNow") || "刚刚";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return t("capture.t13587", { floordiff60: minutes });
+  const hours = Math.floor(minutes / 60);
+  return t("capture.t58929", { floordiff3600: hours });
 }
 
 export function CaptureClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [stats, setStats] = useState<CaptureStats | null>(null);
@@ -130,12 +127,12 @@ export function CaptureClient() {
             <Camera size={18} className="text-orange-500" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold">采集管理</h1>
-            <p className="text-xs text-muted-foreground">浏览器扩展采集的内容，可提升到知识库</p>
+            <h1 className="text-lg font-semibold">{t("capture.title")}</h1>
+            <p className="text-xs text-muted-foreground">{t("capture.subtitle")}</p>
           </div>
         </div>
         <button onClick={fetchData} className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-accent">
-          <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> 刷新
+          <RefreshCw size={12} className={loading ? "animate-spin" : ""} /> {t("capture.refresh")}
         </button>
       </div>
 
@@ -143,15 +140,15 @@ export function CaptureClient() {
       {stats && (
         <div className="grid grid-cols-3 gap-3 border-b border-border px-6 py-3">
           <div className="rounded-lg bg-muted/50 px-3 py-2">
-            <div className="text-[10px] text-muted-foreground">总计</div>
+            <div className="text-[10px] text-muted-foreground">{t("capture.total")}</div>
             <div className="text-lg font-bold">{stats.total_captures}</div>
           </div>
           <div className="rounded-lg bg-blue-500/5 px-3 py-2">
-            <div className="text-[10px] text-muted-foreground">页面采集</div>
+            <div className="text-[10px] text-muted-foreground">{t("capture.pageCapture")}</div>
             <div className="text-lg font-bold text-blue-500">{stats.page_captures}</div>
           </div>
           <div className="rounded-lg bg-purple-500/5 px-3 py-2">
-            <div className="text-[10px] text-muted-foreground">文本采集</div>
+            <div className="text-[10px] text-muted-foreground">{t("capture.textCapture")}</div>
             <div className="text-lg font-bold text-purple-500">{stats.selection_captures}</div>
           </div>
         </div>
@@ -160,17 +157,17 @@ export function CaptureClient() {
       {/* Filters */}
       <div className="flex items-center gap-2 border-b border-border px-6 py-2.5">
         <div className="flex rounded-lg border border-border p-0.5">
-          {(["all", "page", "selection"] as const).map(t => (
-            <button key={t} onClick={() => setFilter(t)}
-              className={cn("rounded-md px-2.5 py-1 text-xs transition-colors", filter === t ? "bg-accent font-medium" : "text-muted-foreground hover:text-foreground")}>
-              {t === "all" ? "全部" : t === "page" ? "页面" : "选文"}
+          {(["all", "page", "selection"] as const).map(f => (
+            <button key={f} onClick={() => setFilter(f)}
+              className={cn("rounded-md px-2.5 py-1 text-xs transition-colors", filter === f ? "bg-accent font-medium" : "text-muted-foreground hover:text-foreground")}>
+              {t(`capture.${f}`)}
             </button>
           ))}
         </div>
         <div className="relative flex-1">
           <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="搜索标题、URL或内容..." className="w-full rounded-lg border border-border bg-background py-1.5 pl-7 pr-3 text-xs" />
+            placeholder={t("capture.searchPlaceholder")} className="w-full rounded-lg border border-border bg-background py-1.5 pl-7 pr-3 text-xs" />
         </div>
       </div>
 
@@ -178,13 +175,13 @@ export function CaptureClient() {
       <div className="flex-1 overflow-y-auto px-6 py-3">
         {loading && captures.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
-            <Loader2 size={16} className="animate-spin mr-2" /> 加载中...
+            <Loader2 size={16} className="animate-spin mr-2" /> {t("capture.loading")}
           </div>
         ) : filteredCaptures.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Camera size={32} className="mb-2 opacity-30" />
-            <p className="text-sm">暂无采集内容</p>
-            <p className="text-xs mt-1">使用浏览器扩展采集网页内容</p>
+            <p className="text-sm">{t("capture.noContent")}</p>
+            <p className="text-xs mt-1">{t("capture.noContentHint")}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -193,13 +190,13 @@ export function CaptureClient() {
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <TypeBadge type={capture.capture_type} />
-                      <StatusBadge status={capture.status} />
+                      <TypeBadge type={capture.capture_type} t={t} />
+                      <StatusBadge status={capture.status} t={t} />
                       <span className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                        <Clock size={10} /> {formatTime(capture.created_at)}
+                        <Clock size={10} /> {formatTime(capture.created_at, t)}
                       </span>
                     </div>
-                    <h3 className="text-sm font-medium truncate">{capture.title || "无标题"}</h3>
+                    <h3 className="text-sm font-medium truncate">{capture.title || t("capture.untitled")}</h3>
                     <a href={capture.url} target="_blank" rel="noopener noreferrer"
                       className="flex items-center gap-1 text-xs text-muted-foreground hover:text-blue-500 truncate mt-0.5">
                       <ExternalLink size={10} /> {capture.url}
@@ -225,14 +222,14 @@ export function CaptureClient() {
                       <button onClick={() => handlePromote(capture.id)}
                         disabled={promoting === capture.id}
                         className="flex items-center gap-1 rounded-lg bg-blue-500/10 px-2 py-1.5 text-[10px] font-medium text-blue-500 hover:bg-blue-500/20 disabled:opacity-50"
-                        title="提升到知识库">
+                        title={t("capture.promoteToKB")}>
                         {promoting === capture.id ? <Loader2 size={10} className="animate-spin" /> : <ArrowUpCircle size={10} />}
-                        入库
+                        {t("capture.promote")}
                       </button>
                     )}
                     <button onClick={() => handleDelete(capture.id)}
                       className="flex items-center gap-1 rounded-lg bg-red-500/10 px-2 py-1.5 text-[10px] font-medium text-red-500 hover:bg-red-500/20"
-                      title="删除">
+                      title={t("capture.delete")}>
                       <Trash2 size={10} />
                     </button>
                   </div>
