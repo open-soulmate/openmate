@@ -97,19 +97,26 @@ export function AppShell() {
   }, []);
 
   const navGroups: NavGroup[] = [
+    // 1. 核心 — 日常高频
     {
       label: t("nav.core"),
       items: [
         { href: "/chat", label: t("nav.chat"), icon: MessageSquare },
-        { href: "/ai-groups", label: t("nav.aiGroups"), icon: Users },
         { href: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
-        { href: "/system", label: t("nav.system") || "System", icon: Server },
-        { href: "/body-map", label: t("nav.bodyMap"), icon: Activity },
-        { href: "/activity", label: t("nav.activity"), icon: Activity },
         { href: "/notifications", label: t("nav.notifications"), icon: Bell },
-        { href: "/gland", label: t("nav.gland"), icon: Zap },
       ],
     },
+    // 2. AI协作 — Agent和群组
+    {
+      label: t("nav.aiGroup"),
+      items: [
+        { href: "/ai-groups", label: t("nav.aiGroups"), icon: Users },
+        { href: "/agents", label: t("nav.agents"), icon: Server },
+        { href: "/groups", label: t("nav.groups"), icon: Users },
+        { href: "/team", label: t("nav.team"), icon: Users },
+      ],
+    },
+    // 3. 知识管理
     {
       label: t("nav.knowledgeGroup"),
       items: [
@@ -120,26 +127,29 @@ export function AppShell() {
         { href: "/search", label: t("nav.search"), icon: Search },
       ],
     },
-    {
-      label: t("nav.toolsGroup"),
-      items: [
-        { href: "/skills", label: t("nav.skills"), icon: Puzzle },
-        { href: "/mcp", label: t("nav.mcp"), icon: Plug },
-        { href: "/agents", label: t("nav.agents"), icon: Server },
-        { href: "/groups", label: t("nav.groups"), icon: Users },
-        { href: "/team", label: t("nav.team"), icon: Users },
-        { href: "/workspace", label: t("nav.workspace"), icon: FolderKanban },
-      ],
-    },
+    // 4. 自动化 — 任务编排
     {
       label: t("nav.automationGroup"),
       items: [
         { href: "/cron", label: t("nav.cron"), icon: Clock },
         { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
         { href: "/workflow-builder", label: t("nav.workflowBuilder"), icon: GitBranch },
+        { href: "/pipeline", label: t("nav.pipeline"), icon: Zap },
         { href: "/will", label: t("nav.will"), icon: Sparkles },
       ],
     },
+    // 5. 工具
+    {
+      label: t("nav.toolsGroup"),
+      items: [
+        { href: "/skills", label: t("nav.skills"), icon: Puzzle },
+        { href: "/mcp", label: t("nav.mcp"), icon: Plug },
+        { href: "/workspace", label: t("nav.workspace"), icon: FolderKanban },
+        { href: "/capture", label: t("nav.capture"), icon: Camera },
+        { href: "/download", label: t("nav.download"), icon: Download },
+      ],
+    },
+    // 6. 器官系统 — 合并原ORGANS+INTERNAL SERVICES
     {
       label: t("nav.organsGroup"),
       items: [
@@ -148,15 +158,11 @@ export function AppShell() {
         { href: "/vein", label: t("nav.vein"), icon: Droplets },
         { href: "/gene", label: t("nav.gene"), icon: Dna },
         { href: "/vital", label: t("nav.vital"), icon: Activity },
+        { href: "/gland", label: t("nav.gland"), icon: Zap },
         { href: "/hippo", label: t("nav.hippo"), icon: Brain },
         { href: "/reflex", label: t("nav.reflex"), icon: Bolt },
         { href: "/heredity", label: t("nav.heredity"), icon: GitBranch },
         { href: "/pulse", label: t("nav.pulse"), icon: Heart },
-      ],
-    },
-    {
-      label: t("nav.internalServices"),
-      items: [
         { href: "/nerve", label: t("nav.nerve"), icon: Zap },
         { href: "/sense", label: t("nav.sense"), icon: Eye },
         { href: "/immune", label: t("nav.immune"), icon: Shield },
@@ -164,8 +170,6 @@ export function AppShell() {
         { href: "/echo", label: t("nav.echo"), icon: Volume2 },
         { href: "/mirror", label: t("nav.mirror"), icon: Layers },
         { href: "/link", label: t("nav.link"), icon: Link2 },
-        { href: "/capture", label: t("nav.capture"), icon: Camera },
-        { href: "/pipeline", label: t("nav.pipeline"), icon: Zap },
         { href: "/nest", label: t("nav.nest"), icon: Home },
         { href: "/limb", label: t("nav.limb"), icon: MousePointer },
         { href: "/voice", label: t("nav.voice"), icon: Mic },
@@ -173,19 +177,20 @@ export function AppShell() {
         { href: "/mind", label: t("nav.mind"), icon: Smile },
       ],
     },
+    // 7. 系统管理
     {
       label: t("nav.systemGroup"),
       items: [
-        { href: "/healer", label: t("nav.healer"), icon: Pill },
+        { href: "/system", label: t("nav.system") || "System", icon: Server },
+        { href: "/admin", label: t("nav.admin"), icon: Shield },
+        { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope },
+        { href: "/benchmark", label: t("nav.benchmark"), icon: Gauge },
         { href: "/intelligence", label: t("nav.intelligence"), icon: Brain },
+        { href: "/healer", label: t("nav.healer"), icon: Pill },
         { href: "/topology", label: t("nav.topology"), icon: Network },
         { href: "/trajectory", label: t("nav.trajectory"), icon: Activity },
         { href: "/timeline", label: t("nav.timeline"), icon: History },
         { href: "/changelog", label: t("nav.changelog"), icon: ScrollText },
-        { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope },
-        { href: "/benchmark", label: t("nav.benchmark"), icon: Gauge },
-        { href: "/admin", label: t("nav.admin"), icon: Shield },
-        { href: "/download", label: t("nav.download"), icon: Download },
         { href: "/plugins", label: t("nav.plugins"), icon: Puzzle },
         { href: "/marketplace", label: t("nav.marketplace"), icon: Store },
         { href: "/settings", label: t("nav.settings"), icon: Settings },
