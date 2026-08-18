@@ -13,18 +13,19 @@ import {
 
 interface ProcessInfo {
   pid: number;
-  name: string;
   user: string;
-  cpu_percent: number;
-  memory_percent: number;
+  cpu: number;
+  mem: number;
   command: string;
+  executable?: string;
+  description?: string;
 }
 
 interface CLITool {
   name: string;
   path: string;
   version: string;
-  available: boolean;
+  description: string;
 }
 
 interface ServiceInfo {
@@ -32,18 +33,15 @@ interface ServiceInfo {
   local_address: string;
   local_port: number;
   state: string;
-  pid: number;
-  process_name: string;
+  pid?: number;
+  process_name?: string;
+  description?: string;
 }
 
 interface AdapterInfo {
-  adapter_id: string;
   name: string;
-  adapter_type: string;
-  status: string;
-  configured_at: string;
-  last_used: string | null;
-  metadata: Record<string, unknown>;
+  description: string;
+  registered_at: number;
 }
 
 interface ScanResult {
@@ -204,11 +202,11 @@ export function DiscoveryClient() {
   };
 
   const filteredProcesses = processes.filter(p =>
-    !processFilter || p.name.toLowerCase().includes(processFilter.toLowerCase()) || p.command.toLowerCase().includes(processFilter.toLowerCase())
+    !processFilter || (p.executable || "").toLowerCase().includes(processFilter.toLowerCase()) || p.command.toLowerCase().includes(processFilter.toLowerCase())
   );
 
   const filteredTools = cliTools.filter(t =>
-    !toolFilter || t.name.toLowerCase().includes(toolFilter.toLowerCase())
+    !toolFilter || t.name.toLowerCase().includes(toolFilter.toLowerCase()) || (t.description || "").toLowerCase().includes(toolFilter.toLowerCase())
   );
 
   const statusColor = (s: string) => {
@@ -242,7 +240,7 @@ export function DiscoveryClient() {
           <span className="flex items-center gap-1.5 text-emerald-400"><CheckCircle className="w-4 h-4" /> Scan complete in {scanResult.scan_duration_ms}ms</span>
           <span className="text-muted-foreground">•</span>
           <span>{processes.length} processes</span>
-          <span>{cliTools.filter(t=>t.available).length} CLI tools</span>
+          <span>{cliTools.length} CLI tools</span>
           <span>{services.length} services</span>
           <span>{adapters.length} adapters</span>
         </div>
@@ -265,7 +263,7 @@ export function DiscoveryClient() {
             <div className="grid grid-cols-4 gap-4">
               {[
                 { icon: Cpu, label: "Processes", value: processes.length, color: "cyan" },
-                { icon: Terminal, label: "CLI Tools", value: cliTools.filter(t=>t.available).length, color: "emerald" },
+                { icon: Terminal, label: "CLI Tools", value: cliTools.length, color: "emerald" },
                 { icon: Network, label: "Services", value: services.length, color: "violet" },
                 { icon: Plug, label: "Adapters", value: adapters.length, color: "amber" },
               ].map(s => (
@@ -301,10 +299,10 @@ export function DiscoveryClient() {
                     {filteredProcesses.slice(0, 100).map(p => (
                       <tr key={p.pid} className={cn("border-t border-border/50 hover:bg-muted/30 cursor-pointer", expandedProcess === p.pid && "bg-muted/50")} onClick={() => setExpandedProcess(expandedProcess === p.pid ? null : p.pid)}>
                         <td className="px-4 py-2 font-mono text-xs">{p.pid}</td>
-                        <td className="px-4 py-2 font-medium">{p.name}</td>
+                        <td className="px-4 py-2 font-medium">{p.executable || p.command.split("/").pop()?.split(" ")[0] || "-"}</td>
                         <td className="px-4 py-2 text-muted-foreground">{p.user}</td>
-                        <td className={cn("px-4 py-2 text-right font-mono", p.cpu_percent > 50 ? "text-red-400" : p.cpu_percent > 10 ? "text-yellow-400" : "text-emerald-400")}>{p.cpu_percent.toFixed(1)}</td>
-                        <td className={cn("px-4 py-2 text-right font-mono", p.memory_percent > 50 ? "text-red-400" : p.memory_percent > 10 ? "text-yellow-400" : "text-emerald-400")}>{p.memory_percent.toFixed(1)}</td>
+                        <td className={cn("px-4 py-2 text-right font-mono", p.cpu > 50 ? "text-red-400" : p.cpu > 10 ? "text-yellow-400" : "text-emerald-400")}>{p.cpu.toFixed(1)}</td>
+                        <td className={cn("px-4 py-2 text-right font-mono", p.mem > 50 ? "text-red-400" : p.mem > 10 ? "text-yellow-400" : "text-emerald-400")}>{p.mem.toFixed(1)}</td>
                         <td className="px-4 py-2 text-xs text-muted-foreground truncate max-w-xs">{p.command}</td>
                       </tr>
                     ))}
@@ -322,8 +320,8 @@ export function DiscoveryClient() {
               </div>
               <div className="max-h-60 overflow-y-auto p-4 grid grid-cols-3 gap-2">
                 {filteredTools.map(tool => (
-                  <div key={tool.name} className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border text-sm", tool.available ? "border-emerald-500/30 bg-emerald-500/5" : "border-border bg-muted/30 opacity-50")}>
-                    {tool.available ? <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" /> : <XCircle className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
+                  <div key={tool.name} className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm border-emerald-500/30 bg-emerald-500/5">
+                    <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <span className="font-medium truncate">{tool.name}</span>
                     {tool.version && <span className="text-xs text-muted-foreground ml-auto">{tool.version}</span>}
                   </div>
@@ -385,18 +383,16 @@ export function DiscoveryClient() {
               ) : (
                 <div className="p-4 grid grid-cols-2 gap-3">
                   {adapters.map(a => (
-                    <div key={a.adapter_id} onClick={() => setActiveAdapterId(activeAdapterId === a.adapter_id ? null : a.adapter_id)} className={cn("p-4 rounded-xl border cursor-pointer transition-all", activeAdapterId === a.adapter_id ? "border-amber-500 bg-amber-500/10" : "border-border hover:border-amber-500/50 bg-card/50")}>
+                    <div key={a.name} onClick={() => setActiveAdapterId(activeAdapterId === a.name ? null : a.name)} className={cn("p-4 rounded-xl border cursor-pointer transition-all", activeAdapterId === a.name ? "border-amber-500 bg-amber-500/10" : "border-border hover:border-amber-500/50 bg-card/50")}>
                       <div className="flex items-center gap-3 mb-2">
-                        {a.adapter_type === "rest" ? <Globe className="w-5 h-5 text-blue-400" /> : a.adapter_type === "database" ? <Database className="w-5 h-5 text-purple-400" /> : <FolderOpen className="w-5 h-5 text-emerald-400" />}
+                        <Server className="w-5 h-5 text-amber-400" />
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{a.name}</p>
-                          <p className="text-xs text-muted-foreground capitalize">{a.adapter_type} adapter</p>
+                          <p className="text-xs text-muted-foreground truncate">{a.description}</p>
                         </div>
-                        <span className={cn("px-2 py-0.5 rounded text-xs font-medium", a.status === "active" ? "bg-emerald-500/20 text-emerald-400" : "bg-red-500/20 text-red-400")}>{a.status}</span>
                       </div>
                       <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(a.configured_at).toLocaleDateString()}</span>
-                        {a.last_used && <span className="flex items-center gap-1"><Activity className="w-3 h-3" /> Last: {new Date(a.last_used).toLocaleDateString()}</span>}
+                        <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(a.registered_at * 1000).toLocaleDateString()}</span>
                       </div>
                     </div>
                   ))}
