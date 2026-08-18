@@ -63,7 +63,7 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
         setUserId(res.id);
       } else {
         const res = await a.login(username, password);
-        if (res.user_id) { setUserId(username); setToken(res.access_token); }
+        if (res.user_id) { setUserId(res.user_id); setToken(res.access_token); }
         else throw new Error(t('login.loginFailed'));
       }
       onLogin();
