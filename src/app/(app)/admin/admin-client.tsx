@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
   Shield,
@@ -39,6 +40,7 @@ interface SystemOverview {
 }
 
 export function AdminClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [overview, setOverview] = useState<SystemOverview | null>(null);
   const [loading, setLoading] = useState(true);
@@ -322,7 +324,7 @@ export function AdminClient() {
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
               {overview.stats.vein && (
                 <StatsCard
-                  title="Vein 文件存储"
+                  title={t("admin.veinFileStorage") || "Vein 文件存储"}
                   emoji="🩸"
                   items={[
                     { label: "Files", value: overview.stats.vein.store?.total_files ?? 0 },
@@ -334,7 +336,7 @@ export function AdminClient() {
               )}
               {overview.stats.gland && (
                 <StatsCard
-                  title="Gland 模型网关"
+                  title={t("admin.glandModelGateway") || "Gland 模型网关"}
                   emoji="🧪"
                   items={[
                     { label: "Total Tokens", value: (overview.stats.gland.total_tokens ?? 0).toLocaleString() },
@@ -345,7 +347,7 @@ export function AdminClient() {
               )}
               {overview.stats.immune && (
                 <StatsCard
-                  title="Immune 安全审计"
+                  title={t("admin.immuneSecurityAudit") || "Immune 安全审计"}
                   emoji="🛡"
                   items={[
                     { label: "Audit Entries", value: overview.stats.immune.audit?.total_entries ?? 0 },
@@ -356,7 +358,7 @@ export function AdminClient() {
               )}
               {overview.stats.gene && (
                 <StatsCard
-                  title="Gene 模板库"
+                  title={t("admin.geneTemplateLibrary") || "Gene 模板库"}
                   emoji="🧬"
                   items={[
                     { label: "Templates", value: overview.stats.gene.total_templates ?? 0 },
@@ -368,7 +370,7 @@ export function AdminClient() {
               )}
               {overview.stats.hippo && (
                 <StatsCard
-                  title="Hippo 记忆管理"
+                  title={t("admin.hippoMemoryMgmt") || "Hippo 记忆管理"}
                   emoji="🧠"
                   items={[
                     { label: "Memories", value: overview.stats.hippo.memory?.total_memories ?? 0 },
@@ -380,7 +382,7 @@ export function AdminClient() {
               )}
               {overview.stats.vital && (
                 <StatsCard
-                  title="Vital 系统监控"
+                  title={t("admin.vitalSystemMonitor") || "Vital 系统监控"}
                   emoji="📊"
                   items={[
                     { label: "CPU", value: `${overview.stats.vital.system?.cpu_percent ?? 0}%` },
@@ -392,7 +394,7 @@ export function AdminClient() {
               )}
               {overview.stats.mind && (
                 <StatsCard
-                  title="Mind 人格系统"
+                  title={t("admin.mindPersonalitySys") || "Mind 人格系统"}
                   emoji="💭"
                   items={[
                     { label: "Personalities", value: overview.stats.mind.personality?.total_personalities ?? 0 },
@@ -403,7 +405,7 @@ export function AdminClient() {
               )}
               {overview.stats.vision && (
                 <StatsCard
-                  title="Vision 视觉中枢"
+                  title={t("admin.visionVisualCenter") || "Vision 视觉中枢"}
                   emoji="🎨"
                   items={[
                     { label: "Generated", value: overview.stats.vision.total_generated ?? 0 },
@@ -414,7 +416,7 @@ export function AdminClient() {
               )}
               {overview.stats.pipeline && (
                 <StatsCard
-                  title="Pipeline 智能流水线"
+                  title={t("admin.pipelineSmartPipeline") || "Pipeline 智能流水线"}
                   emoji="🔄"
                   items={[
                     { label: "Total Runs", value: overview.stats.pipeline.total_runs ?? 0 },
@@ -425,7 +427,7 @@ export function AdminClient() {
               )}
               {overview.stats.trajectory && (
                 <StatsCard
-                  title="Trajectory 轨迹"
+                  title={t("admin.trajectoryTrack") || "Trajectory 轨迹"}
                   emoji="📈"
                   items={[
                     { label: "Sessions", value: overview.stats.trajectory.total_sessions ?? 0 },
@@ -436,7 +438,7 @@ export function AdminClient() {
               )}
               {overview.stats.reflex && (
                 <StatsCard
-                  title="Reflex 高速反射"
+                  title={t("admin.reflexHighSpeed") || "Reflex 高速反射"}
                   emoji="⚡"
                   items={[
                     { label: "Cache Entries", value: overview.stats.reflex.cache?.total_entries ?? 0 },
@@ -447,7 +449,7 @@ export function AdminClient() {
               )}
               {overview.stats.mirror && (
                 <StatsCard
-                  title="Mirror 沙箱"
+                  title={t("admin.mirrorSandbox") || "Mirror 沙箱"}
                   emoji="🪞"
                   items={[
                     { label: "Sandboxes", value: overview.stats.mirror.total_sandboxes ?? 0 },
@@ -457,7 +459,7 @@ export function AdminClient() {
               )}
               {overview.stats.echo && (
                 <StatsCard
-                  title="Echo 消息推送"
+                  title={t("admin.echoMessagePush") || "Echo 消息推送"}
                   emoji="🔊"
                   items={[
                     { label: "Messages", value: overview.stats.echo.total_messages ?? 0 },
@@ -469,7 +471,7 @@ export function AdminClient() {
               )}
               {overview.stats.link && (
                 <StatsCard
-                  title="Link 双向集成"
+                  title={t("admin.linkBidirectional") || "Link 双向集成"}
                   emoji="🔗"
                   items={[
                     { label: "Connectors", value: overview.stats.link.total_connectors ?? 0 },
@@ -480,7 +482,7 @@ export function AdminClient() {
               )}
               {overview.stats.marrow && (
                 <StatsCard
-                  title="Marrow 灾备"
+                  title={t("admin.marrowDisaster") || "Marrow 灾备"}
                   emoji="🦴"
                   items={[
                     { label: "Backups", value: overview.stats.marrow.backup?.total_backups ?? 0 },
