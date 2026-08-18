@@ -181,18 +181,18 @@ export function SmartCalcClient() {
 
       {/* Tabs */}
       <div className="flex gap-1 px-6 pt-3">
-        {(["calc", "convert", "history"] as Tab[]).map((t) => (
+        {(["calc", "convert", "history"] as Tab[]).map((tabItem) => (
           <button
-            key={t}
-            onClick={() => { setTab(t); if (t === "history") fetchHistory(); }}
+            key={tabItem}
+            onClick={() => { setTab(tabItem); if (tabItem === "history") fetchHistory(); }}
             className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors ${
-              tab === t ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"
+              tab === tabItem ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground hover:bg-muted"
             }`}
           >
-            {t === "calc" && <Calculator size={13} />}
-            {t === "convert" && <ArrowRightLeft size={13} />}
-            {t === "history" && <History size={13} />}
-            {t === "calc" ? t("smartCalc.tabCalc") : t === "convert" ? t("smartCalc.tabConvert") : t("smartCalc.tabHistory")}
+            {tabItem === "calc" && <Calculator size={13} />}
+            {tabItem === "convert" && <ArrowRightLeft size={13} />}
+            {tabItem === "history" && <History size={13} />}
+            {tabItem === "calc" ? t("smartCalc.tabCalc") : tabItem === "convert" ? t("smartCalc.tabConvert") : t("smartCalc.tabHistory")}
           </button>
         ))}
       </div>
