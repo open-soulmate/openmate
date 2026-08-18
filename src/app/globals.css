@@ -10,22 +10,22 @@
   --color-card-foreground: #e4e4e7;
   --color-popover: #111118;
   --color-popover-foreground: #e4e4e7;
-  --color-primary: #6366f1;
+  --color-primary: #7c3aed;
   --color-primary-foreground: #fafafa;
   --color-secondary: #1e1e2a;
   --color-secondary-foreground: #a1a1aa;
-  --color-muted: #18181f;
+  --color-muted: #18181b;
   --color-muted-foreground: #71717a;
-  --color-accent: #1e1e2a;
+  --color-accent: #1a1a20;
   --color-accent-foreground: #e4e4e7;
   --color-destructive: #ef4444;
   --color-destructive-foreground: #fafafa;
   --color-border: #27272a;
   --color-input: #27272a;
-  --color-ring: #6366f1;
-  --color-sidebar: #0d0d14;
+  --color-ring: #7c3aed;
+  --color-sidebar: #111118;
   --color-sidebar-foreground: #a1a1aa;
-  --color-sidebar-accent: #1a1a24;
+  --color-sidebar-accent: #1a1a20;
 
   --radius: 0.625rem;
 }
