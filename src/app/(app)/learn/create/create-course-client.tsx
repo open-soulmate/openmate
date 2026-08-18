@@ -130,7 +130,7 @@ export function CreateCourseClient() {
           const err = await res.json();
           console.error("AI generation failed:", err);
           // Fallback to manual
-          alert(`AI生成失败: ${err.detail || "请检查Gland配置"}`);
+          alert(t("createCourse.aiGenFailed", { detail: err.detail || (t("createCourse.checkGland") || "请检查Gland配置") }) || `AI生成失败: ${err.detail || "请检查Gland配置"}`);
         }
       } else {
         // Manual generation
@@ -371,7 +371,7 @@ export function CreateCourseClient() {
 
           {/* Generation Mode */}
           <section>
-            <label className="mb-2 block text-sm font-medium">生成方式</label>
+            <label className="mb-2 block text-sm font-medium">{t("createCourse.genMode") || "生成方式"}</label>
             <div className="flex gap-3">
               <button
                 onClick={() => setGenMode("ai")}
@@ -383,8 +383,8 @@ export function CreateCourseClient() {
               >
                 <Sparkles size={16} />
                 <div className="text-left">
-                  <div className="font-medium">AI 自动生成</div>
-                  <div className="text-xs opacity-70">由LLM生成完整课程内容和测验</div>
+                  <div className="font-medium">{t("createCourse.aiAutoGen") || "AI 自动生成"}</div>
+                  <div className="text-xs opacity-70">{t("createCourse.aiAutoGenDesc") || "由LLM生成完整课程内容和测验"}</div>
                 </div>
               </button>
               <button
@@ -397,8 +397,8 @@ export function CreateCourseClient() {
               >
                 <BookOpen size={16} />
                 <div className="text-left">
-                  <div className="font-medium">手动创建</div>
-                  <div className="text-xs opacity-70">创建课程框架，手动填充内容</div>
+                  <div className="font-medium">{t("createCourse.manualCreate") || "手动创建"}</div>
+                  <div className="text-xs opacity-70">{t("createCourse.manualCreateDesc") || "创建课程框架，手动填充内容"}</div>
                 </div>
               </button>
             </div>
