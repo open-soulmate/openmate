@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl, getToken } from "@/lib/api-client";
+import { useTranslation } from "react-i18next";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -117,21 +118,22 @@ function sourceIcon(type: string) {
   }
 }
 
-function timeAgo(ts: string | null): string {
-  if (!ts) return "从未同步";
+function timeAgo(ts: string | null, t: (key: string, opts?: Record<string, unknown>) => string): string {
+  if (!ts) return t("marketplace.neverSynced") || "从未同步";
   const diff = Date.now() - new Date(ts).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return "刚刚";
-  if (mins < 60) return `${mins}分钟前`;
+  if (mins < 1) return t("marketplace.justNow") || "刚刚";
+  if (mins < 60) return t("marketplace.minutesAgo", { mins }) || `${mins}分钟前`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return `${hours}小时前`;
+  if (hours < 24) return t("marketplace.hoursAgo", { hours }) || `${hours}小时前`;
   const days = Math.floor(hours / 24);
-  return `${days}天前`;
+  return t("marketplace.daysAgo", { days }) || `${days}天前`;
 }
 
 // ─── Component ──────────────────────────────────────────────────────
 
 export function MarketplaceClient() {
+  const { t } = useTranslation();
   const [stats, setStats] = useState<MarketplaceStats | null>(null);
   const [skillSources, setSkillSources] = useState<SkillSource[]>([]);
   const [agentSources, setAgentSources] = useState<AgentSource[]>([]);
@@ -153,11 +155,11 @@ export function MarketplaceClient() {
       setSkillSources(skillsData.sources || []);
       setAgentSources(agentsData.sources || []);
     } catch (e) {
-      setError(e instanceof Error ? e.message : "加载失败");
+      setError(e instanceof Error ? e.message : (t("marketplace.loadFailed") || "加载失败"));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -167,7 +169,7 @@ export function MarketplaceClient() {
       await syncSkillSource(sourceId);
       await loadData();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "同步失败");
+      setError(e instanceof Error ? e.message : (t("marketplace.syncFailed") || "同步失败"));
     } finally {
       setSyncing((prev) => {
         const next = new Set(prev);
@@ -185,7 +187,7 @@ export function MarketplaceClient() {
       else await syncAllAgents();
       await loadData();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "同步失败");
+      setError(e instanceof Error ? e.message : (t("marketplace.syncFailed") || "同步失败"));
     } finally {
       setSyncing((prev) => {
         const next = new Set(prev);
@@ -220,8 +222,8 @@ export function MarketplaceClient() {
           <div className="flex items-center gap-3">
             <Store className="h-6 w-6 text-primary" />
             <div>
-              <h1 className="text-xl font-semibold">技能市场</h1>
-              <p className="text-sm text-muted-foreground">发现、安装和管理技能与Agent</p>
+              <h1 className="text-xl font-semibold">{t("marketplace.title") || "技能市场"}</h1>
+              <p className="text-sm text-muted-foreground">{t("marketplace.subtitleDesc") || "发现、安装和管理技能与Agent"}</p>
             </div>
           </div>
           <button
@@ -234,7 +236,7 @@ export function MarketplaceClient() {
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            同步全部{activeTab === "skills" ? "技能" : "Agent"}
+            {t("marketplace.syncAll", { type: activeTab === "skills" ? (t("marketplace.skills") || "技能") : (t("marketplace.agents") || "Agent") }) || `同步全部${activeTab === "skills" ? "技能" : "Agent"}`}
           </button>
         </div>
       </div>
@@ -242,10 +244,10 @@ export function MarketplaceClient() {
       {/* Stats */}
       {stats && (
         <div className="shrink-0 grid grid-cols-4 gap-4 border-b border-border px-6 py-4">
-          <StatCard icon={Package} label="技能来源" value={stats.skill_sources} color="text-blue-500" />
-          <StatCard icon={Bot} label="Agent来源" value={stats.agent_sources} color="text-green-500" />
-          <StatCard icon={Download} label="已安装技能" value={stats.total_skills} color="text-purple-500" />
-          <StatCard icon={Zap} label="已安装Agent" value={stats.total_agents} color="text-orange-500" />
+          <StatCard icon={Package} label={t("marketplace.skillSources") || "技能来源"} value={stats.skill_sources} color="text-blue-500" />
+          <StatCard icon={Bot} label={t("marketplace.agentSources") || "Agent来源"} value={stats.agent_sources} color="text-green-500" />
+          <StatCard icon={Download} label={t("marketplace.installedSkills") || "已安装技能"} value={stats.total_skills} color="text-purple-500" />
+          <StatCard icon={Zap} label={t("marketplace.installedAgents") || "已安装Agent"} value={stats.total_agents} color="text-orange-500" />
         </div>
       )}
 
@@ -254,21 +256,21 @@ export function MarketplaceClient() {
         <div className="shrink-0 flex items-center gap-2 border-b border-border bg-destructive/10 px-6 py-2 text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
           {error}
-          <button onClick={() => setError(null)} className="ml-auto text-xs underline">关闭</button>
+          <button onClick={() => setError(null)} className="ml-auto text-xs underline">{t("marketplace.close") || "关闭"}</button>
         </div>
       )}
 
       {/* Tabs + Search */}
       <div className="shrink-0 flex items-center gap-4 border-b border-border px-6 py-2">
         <div className="flex gap-1">
-          <TabButton active={activeTab === "skills"} onClick={() => setActiveTab("skills")} icon={Package} label="技能来源" count={skillSources.length} />
-          <TabButton active={activeTab === "agents"} onClick={() => setActiveTab("agents")} icon={Bot} label="Agent来源" count={agentSources.length} />
+          <TabButton active={activeTab === "skills"} onClick={() => setActiveTab("skills")} icon={Package} label={t("marketplace.skillSources") || "技能来源"} count={skillSources.length} />
+          <TabButton active={activeTab === "agents"} onClick={() => setActiveTab("agents")} icon={Bot} label={t("marketplace.agentSources") || "Agent来源"} count={agentSources.length} />
         </div>
         <div className="relative ml-auto w-64">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder="搜索来源..."
+            placeholder={t("marketplace.searchSources") || "搜索来源..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-border bg-background py-1.5 pl-9 pr-3 text-sm outline-none focus:border-primary"
@@ -345,11 +347,14 @@ interface SourceItem {
 }
 
 function SourceGrid({ sources, syncing, onSync, type }: { sources: SourceItem[]; syncing: Set<string>; onSync: (id: string) => void; type: string }) {
+  const { t } = useTranslation();
+
   if (sources.length === 0) {
+    const typeName = type === "skills" ? (t("marketplace.skills") || "技能") : (t("marketplace.agents") || "Agent");
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <Store className="mb-4 h-12 w-12" />
-        <p className="text-sm">暂无{type === "skills" ? "技能" : "Agent"}来源</p>
+        <p className="text-sm">{t("marketplace.noSources", { type: typeName }) || `暂无${typeName}来源`}</p>
       </div>
     );
   }
@@ -364,6 +369,7 @@ function SourceGrid({ sources, syncing, onSync, type }: { sources: SourceItem[];
 }
 
 function SourceCard({ source, syncing, onSync }: { source: SourceItem; syncing: Set<string>; onSync: (id: string) => void }) {
+  const { t } = useTranslation();
   const Icon = sourceIcon(source.type);
   const isSyncing = syncing.has(source.id);
   const count = (source.skill_count ?? source.agent_count ?? 0) as number;
@@ -397,9 +403,9 @@ function SourceCard({ source, syncing, onSync }: { source: SourceItem; syncing: 
       <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
         <div className="flex items-center gap-1">
           <Clock className="h-3 w-3" />
-          {timeAgo(source.last_sync)}
+          {timeAgo(source.last_sync, t)}
         </div>
-        <span>{count} 项</span>
+        <span>{t("marketplace.items", { count }) || `${count} 项`}</span>
       </div>
 
       <div className="mt-3 flex items-center gap-2">
@@ -413,7 +419,7 @@ function SourceCard({ source, syncing, onSync }: { source: SourceItem; syncing: 
           ) : (
             <RefreshCw className="h-3 w-3" />
           )}
-          同步
+          {t("marketplace.sync") || "同步"}
         </button>
         {source.url && (
           <a
@@ -430,7 +436,7 @@ function SourceCard({ source, syncing, onSync }: { source: SourceItem; syncing: 
       {source.builtin && (
         <div className="mt-2 flex items-center gap-1 text-[10px] text-muted-foreground">
           <CheckCircle2 className="h-3 w-3 text-green-500" />
-          内置来源
+          {t("marketplace.builtinSources") || "内置来源"}
         </div>
       )}
     </div>

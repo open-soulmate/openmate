@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import {
   Puzzle, Plus, Trash2, Power, PowerOff, RefreshCw,
   Package, Code, AlertCircle, CheckCircle2, Loader2,
@@ -7,7 +8,6 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl, getToken } from "@/lib/api-client";
-import { useTranslation } from "react-i18next";
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -72,6 +72,7 @@ async function uninstallPlugin(id: string): Promise<void> {
 // ─── Sub-components ─────────────────────────────────────────────────
 
 function StatusBadge({ enabled }: { enabled: boolean }) {
+  const { t } = useTranslation();
   return (
     <span className={cn(
       "inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium",
@@ -80,7 +81,7 @@ function StatusBadge({ enabled }: { enabled: boolean }) {
         : "bg-muted text-muted-foreground"
     )}>
       {enabled ? <CheckCircle2 size={12} /> : <AlertCircle size={12} />}
-      {enabled ? "已启用" : "已停用"}
+      {enabled ? (t("plugins.enabled") || "已启用") : (t("plugins.disabled") || "已停用")}
     </span>
   );
 }
@@ -111,6 +112,7 @@ function PluginCard({
   onToggle: (id: string, enabled: boolean) => void;
   onUninstall: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const [toggling, setToggling] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
@@ -167,23 +169,23 @@ function PluginCard({
           ) : (
             <Power size={13} />
           )}
-          {plugin.enabled ? "停用" : "启用"}
+          {plugin.enabled ? (t("plugins.disable") || "停用") : (t("plugins.enable") || "启用")}
         </button>
 
         {showConfirm ? (
           <div className="flex items-center gap-1.5 ml-auto">
-            <span className="text-[11px] text-destructive">确认卸载?</span>
+            <span className="text-[11px] text-destructive">{t("plugins.confirmUninstall") || "确认卸载?"}</span>
             <button
               onClick={() => { onUninstall(plugin.id); setShowConfirm(false); }}
               className="rounded-lg bg-destructive/10 px-2.5 py-1.5 text-xs font-medium text-destructive hover:bg-destructive/20"
             >
-              确定
+              {t("plugins.confirm") || "确定"}
             </button>
             <button
               onClick={() => setShowConfirm(false)}
               className="rounded-lg bg-muted px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-muted/80"
             >
-              取消
+              {t("plugins.cancel") || "取消"}
             </button>
           </div>
         ) : (
@@ -192,7 +194,7 @@ function PluginCard({
             className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium text-destructive/70 hover:text-destructive hover:bg-destructive/10 transition-colors ml-auto"
           >
             <Trash2 size={13} />
-            卸载
+            {t("plugins.uninstall") || "卸载"}
           </button>
         )}
       </div>
@@ -201,6 +203,7 @@ function PluginCard({
 }
 
 function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstalled: () => void }) {
+  const { t } = useTranslation();
   const [manifest, setManifest] = useState("");
   const [error, setError] = useState("");
   const [installing, setInstalling] = useState(false);
@@ -231,7 +234,7 @@ function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstal
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Plus size={16} />
             </div>
-            <h2 className="text-base font-semibold">安装插件</h2>
+            <h2 className="text-base font-semibold">{t("plugins.installPlugin") || "安装插件"}</h2>
           </div>
           <button onClick={onClose} className="rounded-lg p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
             <X size={16} />
@@ -241,7 +244,7 @@ function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstal
         <div className="p-6 space-y-4">
           <div>
             <label className="text-sm font-medium mb-1.5 block">Plugin Manifest (JSON)</label>
-            <p className="text-xs text-muted-foreground mb-2">粘贴插件的 manifest JSON 配置</p>
+            <p className="text-xs text-muted-foreground mb-2">{t("plugins.manifestPlaceholder") || "粘贴插件的 manifest JSON 配置"}</p>
             <textarea
               value={manifest}
               onChange={(e) => setManifest(e.target.value)}
@@ -261,7 +264,7 @@ function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstal
 
         <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/30">
           <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
-            取消
+            {t("plugins.cancel") || "取消"}
           </button>
           <button
             onClick={handleInstall}
@@ -269,7 +272,7 @@ function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstal
             className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {installing ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
-            安装
+            {t("plugins.install") || "安装"}
           </button>
         </div>
       </div>
@@ -280,6 +283,7 @@ function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstal
 // ─── Main Component ─────────────────────────────────────────────────
 
 export function PluginsClient() {
+  const { t } = useTranslation();
   const [plugins, setPlugins] = useState<Plugin[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -333,13 +337,13 @@ export function PluginsClient() {
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Puzzle size={22} />
               </div>
-              插件管理
+              {t("plugins.pluginManagement") || "插件管理"}
             </h1>
             <p className="text-sm text-muted-foreground mt-1.5">
-              安装、配置和管理系统插件
+              {t("plugins.managePlugins") || "安装、配置和管理系统插件"}
               {plugins.length > 0 && (
                 <span className="ml-2 text-xs">
-                  · 共 {plugins.length} 个插件，{enabledCount} 个已启用
+                  · {t("plugins.pluginCount", { total: plugins.length, enabled: enabledCount }) || `共 ${plugins.length} 个插件，${enabledCount} 个已启用`}
                 </span>
               )}
             </p>
@@ -350,14 +354,14 @@ export function PluginsClient() {
               className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <RefreshCw size={14} />
-              刷新
+              {t("plugins.refresh") || "刷新"}
             </button>
             <button
               onClick={() => setShowInstall(true)}
               className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <Plus size={14} />
-              安装插件
+              {t("plugins.installPlugin") || "安装插件"}
             </button>
           </div>
         </div>
@@ -368,7 +372,7 @@ export function PluginsClient() {
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="搜索插件..."
+              placeholder={t("plugins.searchPlugins") || "搜索插件..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full rounded-lg border border-border bg-muted/50 pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
@@ -380,8 +384,8 @@ export function PluginsClient() {
               onChange={(e) => setFilterType(e.target.value)}
               className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
             >
-              {types.map((t) => (
-                <option key={t} value={t}>{t === "all" ? "全部类型" : t}</option>
+              {types.map((tp) => (
+                <option key={tp} value={tp}>{tp === "all" ? (t("plugins.allTypes") || "全部类型") : tp}</option>
               ))}
             </select>
           )}
@@ -391,21 +395,21 @@ export function PluginsClient() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
             <Loader2 size={32} className="animate-spin mb-4" />
-            <p className="text-sm">加载插件列表...</p>
+            <p className="text-sm">{t("plugins.loadingPlugins") || "加载插件列表..."}</p>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-24">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-4">
               <AlertCircle size={24} />
             </div>
-            <p className="text-sm font-medium mb-1">加载失败</p>
+            <p className="text-sm font-medium mb-1">{t("plugins.loadFailed") || "加载失败"}</p>
             <p className="text-xs text-muted-foreground mb-4">{error}</p>
             <button
               onClick={loadPlugins}
               className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <RefreshCw size={14} />
-              重试
+              {t("plugins.retry") || "重试"}
             </button>
           </div>
         ) : filtered.length === 0 ? (
@@ -414,12 +418,12 @@ export function PluginsClient() {
               <Package size={32} />
             </div>
             <p className="text-sm font-medium mb-1">
-              {searchQuery || filterType !== "all" ? "没有匹配的插件" : "暂无插件"}
+              {searchQuery || filterType !== "all" ? (t("plugins.noMatchPlugins") || "没有匹配的插件") : (t("plugins.noPlugins") || "暂无插件")}
             </p>
             <p className="text-xs text-muted-foreground mb-4">
               {searchQuery || filterType !== "all"
-                ? "尝试调整搜索条件"
-                : "点击「安装插件」开始扩展系统功能"}
+                ? (t("plugins.adjustSearch") || "尝试调整搜索条件")
+                : (t("plugins.installHint") || "点击「安装插件」开始扩展系统功能")}
             </p>
             {!searchQuery && filterType === "all" && (
               <button
@@ -427,7 +431,7 @@ export function PluginsClient() {
                 className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 <Plus size={14} />
-                安装插件
+                {t("plugins.installPlugin") || "安装插件"}
               </button>
             )}
           </div>
