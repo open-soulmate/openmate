@@ -4853,5 +4853,22 @@
   "mind.sample4": "I do not quite understand this issue, can you explain again?",
   "search.all": "All",
   "heredity.requires": "requires",
-  "heredity.actual": "actual"
+  "heredity.actual": "actual",
+  "system": {
+    "systemOverview": "System Overview",
+    "refresh": "Refresh",
+    "systemStatus": "System Status",
+    "organsHealthy": "{count}/{total} organs healthy",
+    "cpu": "CPU",
+    "memory": "Memory",
+    "disk": "Disk",
+    "knowledge": "Knowledge",
+    "plugins": "Plugins",
+    "tokensUsed": "Tokens Used",
+    "apiCalls": "API Calls",
+    "organHealth": "Organ Health",
+    "ok": "OK",
+    "degraded": "Degraded",
+    "error": "Error"
+  }
 }

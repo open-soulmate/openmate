@@ -53,17 +53,18 @@ const ORGAN_EMOJI: Record<string, string> = {
 };
 
 function StatusBadge({ status }: { status: string }) {
+  const { t } = useTranslation();
   if (status === "ok") {
-    return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-500"><CheckCircle className="h-3 w-3" /> OK</span>;
+    return <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-500"><CheckCircle className="h-3 w-3" /> {t("system.ok")}</span>;
   }
   if (status === "degraded") {
-    return <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500"><AlertTriangle className="h-3 w-3" /> Degraded</span>;
+    return <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-xs font-medium text-amber-500"><AlertTriangle className="h-3 w-3" /> {t("system.degraded")}</span>;
   }
-  return <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500"><XCircle className="h-3 w-3" /> Error</span>;
+  return <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500"><XCircle className="h-3 w-3" /> {t("system.error")}</span>;
 }
 
-function MetricBar({ label, value, max, icon: Icon, color }: {
-  label: string; value: number; max: number; icon: React.ElementType; color: string;
+function MetricBar({ label, value, max, icon: Icon, color, unit }: {
+  label: string; value: number; max: number; icon: React.ElementType; color: string; unit?: string;
 }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
@@ -84,7 +85,7 @@ function MetricBar({ label, value, max, icon: Icon, color }: {
         />
       </div>
       <p className="mt-2 text-xs text-muted-foreground">
-        {label === "CPU" ? `${value}%` : label === "Memory" ? `${value} MB` : `${value} GB`}
+        {value}{unit || ""}
       </p>
     </div>
   );
@@ -127,7 +128,7 @@ export function SystemOverviewClient() {
             <Server size={20} className="text-violet-500" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold">System Overview</h1>
+            <h1 className="text-lg font-semibold">{t("system.systemOverview")}</h1>
             <p className="text-xs text-muted-foreground">
               v{data?.version} · {data?.elapsed_ms}ms · {lastRefresh ? new Date(lastRefresh).toLocaleTimeString() : "—"}
             </p>
@@ -136,7 +137,7 @@ export function SystemOverviewClient() {
         <button onClick={fetchOverview} disabled={loading}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-accent transition-colors disabled:opacity-50">
           {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-          Refresh
+          {t("system.refresh")}
         </button>
       </div>
 
@@ -154,9 +155,9 @@ export function SystemOverviewClient() {
             <div className="flex items-center gap-3">
               <Activity size={20} className={data.system_status === "ok" ? "text-emerald-500" : "text-amber-500"} />
               <div>
-                <p className="font-medium">System Status</p>
+                <p className="font-medium">{t("system.systemStatus")}</p>
                 <p className="text-sm text-muted-foreground">
-                  {data.organs.healthy_count}/{data.organs.total_count} organs healthy
+                  {t("system.organsHealthy", { count: data.organs.healthy_count, total: data.organs.total_count })}
                 </p>
               </div>
             </div>
@@ -167,9 +168,9 @@ export function SystemOverviewClient() {
         {/* Resource Metrics */}
         {metrics && (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <MetricBar label="CPU" value={metrics.cpu_percent} max={100} icon={Cpu} color="text-blue-500" />
-            <MetricBar label="Memory" value={metrics.memory.used_mb} max={metrics.memory.total_mb} icon={MemoryStick} color="text-emerald-500" />
-            <MetricBar label="Disk" value={metrics.disk.used_gb} max={metrics.disk.total_gb} icon={HardDrive} color="text-violet-500" />
+            <MetricBar label={t("system.cpu")} value={metrics.cpu_percent} max={100} icon={Cpu} color="text-blue-500" unit="%" />
+            <MetricBar label={t("system.memory")} value={metrics.memory.used_mb} max={metrics.memory.total_mb} icon={MemoryStick} color="text-emerald-500" unit=" MB" />
+            <MetricBar label={t("system.disk")} value={metrics.disk.used_gb} max={metrics.disk.total_gb} icon={HardDrive} color="text-violet-500" unit=" GB" />
           </div>
         )}
 
@@ -179,28 +180,28 @@ export function SystemOverviewClient() {
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Database size={14} className="text-blue-500" />
-                <span className="text-xs text-muted-foreground">Knowledge</span>
+                <span className="text-xs text-muted-foreground">{t("system.knowledge")}</span>
               </div>
               <p className="text-2xl font-bold">{data.knowledge.total_entries}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Puzzle size={14} className="text-emerald-500" />
-                <span className="text-xs text-muted-foreground">Plugins</span>
+                <span className="text-xs text-muted-foreground">{t("system.plugins")}</span>
               </div>
               <p className="text-2xl font-bold">{data.plugins.active_plugins}<span className="text-sm text-muted-foreground">/{data.plugins.total_plugins}</span></p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Zap size={14} className="text-amber-500" />
-                <span className="text-xs text-muted-foreground">Tokens Used</span>
+                <span className="text-xs text-muted-foreground">{t("system.tokensUsed")}</span>
               </div>
               <p className="text-2xl font-bold">{data.gland.total_tokens.toLocaleString()}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Clock size={14} className="text-violet-500" />
-                <span className="text-xs text-muted-foreground">API Calls</span>
+                <span className="text-xs text-muted-foreground">{t("system.apiCalls")}</span>
               </div>
               <p className="text-2xl font-bold">{data.gland.call_count}</p>
             </div>
@@ -210,7 +211,7 @@ export function SystemOverviewClient() {
         {/* Organ Grid */}
         {data && (
           <div>
-            <h2 className="text-sm font-semibold mb-3">Organ Health</h2>
+            <h2 className="text-sm font-semibold mb-3">{t("system.organHealth")}</h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
               {Object.entries(data.organs.organs).map(([name, status]) => (
                 <div key={name} className={cn("rounded-lg border p-3 flex items-center gap-2 transition-colors",

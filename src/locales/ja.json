@@ -4464,5 +4464,22 @@
     "t78905": "Search 検索",
     "t79871": "Capture 采集",
     "t08367": "Workflow ワークフロー"
+  },
+  "system": {
+    "systemOverview": "システム概要",
+    "refresh": "更新",
+    "systemStatus": "システムステータス",
+    "organsHealthy": "{count}/{total} 器官が正常",
+    "cpu": "CPU",
+    "memory": "メモリ",
+    "disk": "ディスク",
+    "knowledge": "ナレッジ",
+    "plugins": "プラグイン",
+    "tokensUsed": "トークン使用量",
+    "apiCalls": "API 呼び出し",
+    "organHealth": "器官ヘルス",
+    "ok": "OK",
+    "degraded": "低下",
+    "error": "エラー"
   }
 }

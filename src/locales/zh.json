@@ -4888,5 +4888,22 @@
   "mind.sample4": "这个问题我不太理解，能再解释一下吗？",
   "search.all": "全部",
   "heredity.requires": "需要",
-  "heredity.actual": "实际"
+  "heredity.actual": "实际",
+  "system": {
+    "systemOverview": "系统概览",
+    "refresh": "刷新",
+    "systemStatus": "系统状态",
+    "organsHealthy": "{count}/{total} 个器官健康",
+    "cpu": "CPU",
+    "memory": "内存",
+    "disk": "磁盘",
+    "knowledge": "知识库",
+    "plugins": "插件",
+    "tokensUsed": "Token 用量",
+    "apiCalls": "API 调用",
+    "organHealth": "器官健康",
+    "ok": "正常",
+    "degraded": "降级",
+    "error": "异常"
+  }
 }
