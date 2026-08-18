@@ -59,6 +59,7 @@
     "trajectory": "Trajectory",
     "cortex": "Cortex",
     "soma": "Soma",
+    "discovery": "Discovery",
     "bodyMap": "Body Map",
     "activity": "Activity",
     "diagnostics": "Diagnostics",
