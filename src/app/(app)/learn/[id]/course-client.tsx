@@ -1,7 +1,7 @@
 "use client";
-
 import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
+import { useTranslation } from "react-i18next";
 import {
   ArrowLeft,
   ChevronLeft,
@@ -45,6 +45,7 @@ interface CourseDetail {
 }
 
 export function CourseClient({ courseId }: { courseId: string }) {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [course, setCourse] = useState<CourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -85,9 +86,9 @@ export function CourseClient({ courseId }: { courseId: string }) {
   if (!course) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
-        <p className="text-muted-foreground">Course not found</p>
+        <p className="text-muted-foreground">{t("learn.courseNotFound") || "Course not found"}</p>
         <Link href="/learn" className="text-sm text-primary hover:underline">
-          ← Back to courses
+          ← {t("learn.backToCourses") || "Back to courses"}
         </Link>
       </div>
     );
@@ -157,7 +158,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
           <div>
             <h1 className="text-sm font-semibold">{course.title}</h1>
             <p className="text-xs text-muted-foreground">
-              {completedCount}/{chapters.length} chapters completed
+              {t("learn.chaptersCompletedCount", { completed: completedCount, total: chapters.length }) || `${completedCount}/${chapters.length} chapters completed`}
             </p>
           </div>
         </div>
@@ -169,7 +170,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
               className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent"
             >
               <BrainCircuit size={14} />
-              {showQuiz ? "Hide Quiz" : "Take Quiz"}
+              {showQuiz ? t("learn.hideQuiz") || "Hide Quiz" : t("learn.takeQuiz") || "Take Quiz"}
             </button>
           )}
         </div>
@@ -181,7 +182,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
           {/* Progress */}
           <div className="mb-4">
             <div className="mb-1 flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">Progress</span>
+              <span className="text-muted-foreground">{t("learn.progress")}</span>
               <span className="font-medium">{progress}%</span>
             </div>
             <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
@@ -220,13 +221,13 @@ export function CourseClient({ courseId }: { courseId: string }) {
           {!chapter ? (
             <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
               <BookOpen size={48} className="mb-4 opacity-30" />
-              <p className="text-sm">No chapters yet</p>
+              <p className="text-sm">{t("learn.noChapters") || "No chapters yet"}</p>
             </div>
           ) : showQuiz && currentQuiz.length > 0 ? (
             <div className="mx-auto max-w-2xl p-8">
               <div className="mb-6 flex items-center gap-2">
                 <GraduationCap size={20} className="text-primary" />
-                <h2 className="text-lg font-semibold">Chapter Quiz</h2>
+                <h2 className="text-lg font-semibold">{t("learn.chapterQuiz") || "Chapter Quiz"}</h2>
               </div>
 
               <div className="space-y-6">
@@ -286,7 +287,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
               <div className="mt-6 flex items-center justify-between">
                 {quizSubmitted ? (
                   <p className="text-sm font-medium">
-                    Score: {quizScore}/{currentQuiz.length} (
+                    {t("learn.score") || "Score"}: {quizScore}/{currentQuiz.length} (
                     {Math.round(((quizScore ?? 0) / currentQuiz.length) * 100)}%)
                   </p>
                 ) : (
@@ -297,7 +298,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
                   disabled={quizSubmitted || quizAnswers.some((a) => a === null)}
                   className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-4 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
-                  {quizSubmitted ? "Submitted" : "Submit Answers"}
+                  {quizSubmitted ? t("learn.submitted") || "Submitted" : t("learn.submitAnswers") || "Submit Answers"}
                 </button>
               </div>
             </div>
@@ -329,7 +330,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
                   className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent disabled:opacity-40"
                 >
                   <ChevronLeft size={14} />
-                  Previous
+                  {t("learn.previous") || "Previous"}
                 </button>
 
                 <button
@@ -343,12 +344,12 @@ export function CourseClient({ courseId }: { courseId: string }) {
                   {chapter.completed ? (
                     <>
                       <CheckCircle2 size={14} />
-                      Learned
+                      {t("learn.learned") || "Learned"}
                     </>
                   ) : (
                     <>
                       <BookOpen size={14} />
-                      Mark as Learned
+                      {t("learn.markAsLearned") || "Mark as Learned"}
                     </>
                   )}
                 </button>
@@ -360,7 +361,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
                   disabled={currentIndex === chapters.length - 1}
                   className="inline-flex h-8 items-center gap-1 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent disabled:opacity-40"
                 >
-                  Next
+                  {t("learn.next") || "Next"}
                   <ChevronRight size={14} />
                 </button>
               </div>

@@ -351,7 +351,21 @@
     "confirmDelete": "このコースを削除しますか？",
     "noCourses": "まだコースがありません",
     "generateFirst": "最初のコースを生成 →",
-    "chapterAbbr": "章"
+    "chapterAbbr": "章",
+    "courseNotFound": "コースが見つかりません",
+    "backToCourses": "コース一覧に戻る",
+    "chaptersCompletedCount": "{completed}/{total} 章完了",
+    "hideQuiz": "クイズを隠す",
+    "takeQuiz": "クイズに挑戦",
+    "noChapters": "まだ章がありません",
+    "chapterQuiz": "章のクイズ",
+    "score": "スコア",
+    "submitted": "提出済み",
+    "submitAnswers": "回答を提出",
+    "previous": "前へ",
+    "next": "次へ",
+    "learned": "学習済み",
+    "markAsLearned": "学習済みにする"
   },
   "agents": {
     "title": "エージェント管理",
