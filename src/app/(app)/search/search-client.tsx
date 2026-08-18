@@ -25,18 +25,6 @@ interface UnifiedResults {
   sources_searched: string[];
 }
 
-const SOURCE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-  knowledge: { label: '知识库', icon: BookOpen, color: 'text-blue-500 bg-blue-500/10' },
-  files: { label: '文件', icon: FileCode, color: 'text-emerald-500 bg-emerald-500/10' },
-  events: { label: '事件', icon: Activity, color: 'text-amber-500 bg-amber-500/10' },
-  agents: { label: 'Agent', icon: Bot, color: 'text-purple-500 bg-purple-500/10' },
-  courses: { label: '课程', icon: GraduationCap, color: 'text-pink-500 bg-pink-500/10' },
-  trajectory: { label: '轨迹', icon: Clock, color: 'text-cyan-500 bg-cyan-500/10' },
-  cron: { label: '定时任务', icon: RotateCcw, color: 'text-orange-500 bg-orange-500/10' },
-  gene: { label: '模板', icon: Layers, color: 'text-lime-500 bg-lime-500/10' },
-  echo: { label: '消息', icon: Zap, color: 'text-rose-500 bg-rose-500/10' },
-};
-
 export function SearchClient() {
   const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
@@ -49,8 +37,20 @@ export function SearchClient() {
   const [searchTime, setSearchTime] = useState(0);
   const [activeSource, setActiveSource] = useState<string>('all');
 
+  const SOURCE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
+    knowledge: { label: t('search.sourceKnowledge') || '知识库', icon: BookOpen, color: 'text-blue-500 bg-blue-500/10' },
+    files: { label: t('search.sourceFiles') || '文件', icon: FileCode, color: 'text-emerald-500 bg-emerald-500/10' },
+    events: { label: t('search.sourceEvents') || '事件', icon: Activity, color: 'text-amber-500 bg-amber-500/10' },
+    agents: { label: t('search.sourceAgents') || 'Agent', icon: Bot, color: 'text-purple-500 bg-purple-500/10' },
+    courses: { label: t('search.sourceCourses') || '课程', icon: GraduationCap, color: 'text-pink-500 bg-pink-500/10' },
+    trajectory: { label: t('search.sourceTrajectory') || '轨迹', icon: Clock, color: 'text-cyan-500 bg-cyan-500/10' },
+    cron: { label: t('search.sourceCron') || '定时任务', icon: RotateCcw, color: 'text-orange-500 bg-orange-500/10' },
+    gene: { label: t('search.sourceGene') || '模板', icon: Layers, color: 'text-lime-500 bg-lime-500/10' },
+    echo: { label: t('search.sourceEcho') || '消息', icon: Zap, color: 'text-rose-500 bg-rose-500/10' },
+  };
+
   const MODES = [
-    { id: "unified" as const, label: "全局搜索", icon: Layers, desc: "跨知识库、文件、事件、Agent、课程、轨迹、定时任务、模板、消息搜索" },
+    { id: "unified" as const, label: t('search.unified') || "全局搜索", icon: Layers, desc: t('search.unifiedDesc') || "跨知识库、文件、事件、Agent、课程、轨迹、定时任务、模板、消息搜索" },
     { id: "hybrid" as const, label: t('search.hybrid'), icon: Layers, desc: t('search.hybridDesc') },
     { id: "semantic" as const, label: t('search.semantic'), icon: Zap, desc: t('search.semanticDesc') },
     { id: "fulltext" as const, label: t('search.fulltext'), icon: BookOpen, desc: t('search.fulltextDesc') },

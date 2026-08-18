@@ -3909,7 +3909,10 @@
     "deleteRule": "Delete rule",
     "noRules": "No forwarding rules. Add rules to auto-push notifications to external channels.",
     "channelsPlaceholder": "console, dingtalk, telegram...",
-    "addRule": "Add"
+    "addRule": "Add",
+    "minutesAgo": "{{minutes}}m ago",
+    "hoursAgo": "{{hours}}h ago",
+    "daysAgo": "{{days}}d ago"
   },
   "health": {
     "title": "System Health",
