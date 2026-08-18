@@ -87,9 +87,9 @@ body {
   --color-border: #e4e4e7;
   --color-input: #e4e4e7;
   --color-ring: #6366f1;
-  --color-sidebar: #fafafa;
-  --color-sidebar-foreground: #71717a;
-  --color-sidebar-accent: #f0f0f2;
+  --color-sidebar: #111118;
+  --color-sidebar-foreground: #a1a1aa;
+  --color-sidebar-accent: #1a1a20;
 }
 
 /* ─── Purple Theme ────────────────────────────────────────────────────── */
@@ -113,8 +113,8 @@ body {
   --color-border: #2a1a40;
   --color-input: #2a1a40;
   --color-ring: #a855f7;
-  --color-sidebar: #0f0819;
-  --color-sidebar-foreground: #a78bbc;
-  --color-sidebar-accent: #1a0f2e;
+  --color-sidebar: #111118;
+  --color-sidebar-foreground: #a1a1aa;
+  --color-sidebar-accent: #1a1a20;
 }
 @import "@xterm/xterm/css/xterm.css";
