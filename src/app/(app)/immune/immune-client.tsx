@@ -7,6 +7,7 @@ import {
   Shield, Loader2, AlertTriangle, CheckCircle, XCircle,
   Eye, Ban, Unlock, Clock, Activity, FileText, Search,
   Plus, Trash2, RefreshCw, Settings, Globe, Lock,
+  Zap, Crosshair,
 } from "lucide-react"
 
 interface ModuleStats {
@@ -42,7 +43,7 @@ interface IPEntry {
   ttl_seconds: number | null
 }
 
-type ActiveTab = "overview" | "moderate" | "ratelimit" | "ip" | "audit"
+type ActiveTab = "overview" | "moderate" | "ratelimit" | "ip" | "audit" | "intrusion"
 
 export function ImmuneClient() {
   const { t } = useTranslation()
@@ -72,6 +73,15 @@ export function ImmuneClient() {
   const [auditEntries, setAuditEntries] = useState<AuditEntry[]>([])
   const [auditFilter, setAuditFilter] = useState("")
   const [auditStats, setAuditStats] = useState<Record<string, unknown> | null>(null)
+
+  // Intrusion detection state
+  const [intrusionStats, setIntrusionStats] = useState<Record<string, unknown> | null>(null)
+  const [threats, setThreats] = useState<Array<Record<string, unknown>>>([])
+  const [blockedIps, setBlockedIps] = useState<Array<Record<string, unknown>>>([])
+  const [inspectIp, setInspectIp] = useState("")
+  const [inspectPath, setInspectPath] = useState("/")
+  const [inspectBody, setInspectBody] = useState("")
+  const [inspectResult, setInspectResult] = useState<Record<string, unknown> | null>(null)
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -110,6 +120,41 @@ export function ImmuneClient() {
       setAuditStats(await res.json())
     } catch {}
   }, [apiBase])
+
+  const fetchIntrusionStats = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/immune/intrusion/stats`)
+      setIntrusionStats(await res.json())
+    } catch {}
+  }, [apiBase])
+
+  const fetchThreats = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/immune/intrusion/threats?limit=100`)
+      const data = await res.json()
+      setThreats(data.threats || [])
+    } catch {}
+  }, [apiBase])
+
+  const fetchBlockedIps = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/immune/intrusion/blocked`)
+      const data = await res.json()
+      setBlockedIps(data.blocked_ips || [])
+    } catch {}
+  }, [apiBase])
+
+  const handleInspect = useCallback(async () => {
+    if (!inspectIp.trim()) return
+    try {
+      const res = await fetch(`${apiBase}/api/immune/intrusion/inspect`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ip: inspectIp, path: inspectPath, body: inspectBody, method: "GET" }),
+      })
+      setInspectResult(await res.json())
+    } catch {}
+  }, [inspectIp, inspectPath, inspectBody, apiBase])
 
   useEffect(() => {
     Promise.all([fetchHealth(), fetchRateLimitStats(), fetchIpLists(), fetchAuditLog(), fetchAuditStats()])
@@ -206,6 +251,7 @@ export function ImmuneClient() {
     { key: "moderate", label: t('immune.contentModeration'), icon: Eye },
     { key: "ratelimit", label: t('immune.rateLimit1'), icon: Clock },
     { key: "ip", label: t('immune.t21173'), icon: Globe },
+    { key: "intrusion", label: "Intrusion Detection", icon: Crosshair },
     { key: "audit", label: t('immune.auditLog1'), icon: FileText },
   ]
 
@@ -599,6 +645,188 @@ export function ImmuneClient() {
                   ))
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Intrusion Detection Tab */}
+      {activeTab === "intrusion" && (
+        <div className="space-y-6">
+          {/* Stats row */}
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+            {[
+              { label: "Inspected", value: String((intrusionStats?.total_inspected as number) ?? 0), icon: Eye },
+              { label: "Threats", value: String((intrusionStats?.total_threats as number) ?? 0), icon: AlertTriangle },
+              { label: "Auto-Blocked", value: String((intrusionStats?.total_blocked as number) ?? 0), icon: Ban },
+              { label: "Active Blocks", value: String((intrusionStats?.active_blocks as number) ?? 0), icon: Lock },
+              { label: "Suspicious IPs", value: String((intrusionStats?.suspicious_ips as number) ?? 0), icon: Globe },
+            ].map(item => {
+              const Icon = item.icon
+              return (
+                <div key={item.label} className="bg-card border border-border rounded-xl p-4">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Icon className="w-4 h-4 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground">{item.label}</span>
+                  </div>
+                  <div className="text-2xl font-bold">{item.value}</div>
+                </div>
+              )
+            })}
+          </div>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Request Inspector */}
+            <div className="bg-card border border-border rounded-xl p-5 space-y-4">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Crosshair className="w-4 h-4" /> Request Inspector
+              </h3>
+              <p className="text-xs text-muted-foreground">
+                Test a request against the intrusion detection engine. Enter an IP, path, and optional body to scan.
+              </p>
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={inspectIp}
+                    onChange={(e) => setInspectIp(e.target.value)}
+                    placeholder="Source IP (e.g. 192.168.1.1)"
+                    className="w-40 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm"
+                  />
+                  <input
+                    type="text"
+                    value={inspectPath}
+                    onChange={(e) => setInspectPath(e.target.value)}
+                    placeholder="/api/search?q=' OR 1=1--"
+                    className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm font-mono"
+                  />
+                </div>
+                <textarea
+                  value={inspectBody}
+                  onChange={(e) => setInspectBody(e.target.value)}
+                  placeholder="Request body (optional)"
+                  rows={3}
+                  className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm font-mono resize-none"
+                />
+                <button
+                  onClick={handleInspect}
+                  disabled={!inspectIp.trim()}
+                  className="w-full py-2.5 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-red-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
+                >
+                  <Crosshair className="w-4 h-4" />
+                  Inspect Request
+                </button>
+              </div>
+
+              {inspectResult && (
+                <div className="space-y-2">
+                  <div className={`flex items-center gap-2 p-3 rounded-lg border ${
+                    (inspectResult.threats_found as number) === 0
+                      ? "border-green-500/30 bg-green-500/10 text-green-400"
+                      : "border-red-500/30 bg-red-500/10 text-red-400"
+                  }`}>
+                    {(inspectResult.threats_found as number) === 0
+                      ? <CheckCircle className="w-5 h-5" />
+                      : <XCircle className="w-5 h-5" />}
+                    <span className="font-semibold">
+                      {(inspectResult.threats_found as number) === 0 ? "Clean — No threats detected" : `${inspectResult.threats_found} threat(s) detected`}
+                    </span>
+                  </div>
+                  {(inspectResult.threats as Array<Record<string, unknown>>)?.map((threat, i) => (
+                    <div key={i} className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg space-y-1">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
+                        <span className="text-sm font-medium">{String(threat.attack_type)}</span>
+                        <span className={`ml-auto text-xs px-2 py-0.5 rounded border ${getRiskColor(String(threat.threat_level))}`}>
+                          {String(threat.threat_level)}
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">{String(threat.detail)}</p>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Auto-Blocked IPs */}
+            <div className="bg-card border border-border rounded-xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="font-semibold flex items-center gap-2">
+                  <Ban className="w-4 h-4 text-red-400" /> Auto-Blocked IPs
+                </h3>
+                <button onClick={() => { fetchBlockedIps(); fetchIntrusionStats(); }} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                  <RefreshCw className="w-3 h-3" /> Refresh
+                </button>
+              </div>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {blockedIps.length === 0 ? (
+                  <p className="text-sm text-muted-foreground/50 text-center py-4">No auto-blocked IPs</p>
+                ) : (
+                  blockedIps.map((entry, i) => (
+                    <div key={i} className="flex items-center gap-2 p-2 bg-red-500/5 border border-red-500/20 rounded-lg">
+                      <Ban className="w-3.5 h-3.5 text-red-400" />
+                      <code className="text-sm font-mono">{String(entry.ip)}</code>
+                      <span className="text-xs text-muted-foreground">{String(entry.threat_count)} threats</span>
+                      <span className="text-xs text-muted-foreground">
+                        {Array.isArray(entry.threat_types) ? (entry.threat_types as string[]).join(", ") : ""}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Threats */}
+          <div className="bg-card border border-border rounded-xl overflow-hidden">
+            <div className="flex items-center justify-between p-4 border-b border-border">
+              <h3 className="font-semibold flex items-center gap-2">
+                <Zap className="w-4 h-4 text-yellow-400" /> Recent Threats
+              </h3>
+              <button onClick={fetchThreats} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                <RefreshCw className="w-3 h-3" /> Refresh
+              </button>
+            </div>
+            <div className="max-h-[400px] overflow-y-auto">
+              {threats.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
+                  <Shield className="w-12 h-12 mb-2" />
+                  <p className="text-sm">No threats detected — system is clean</p>
+                </div>
+              ) : (
+                <table className="w-full text-sm">
+                  <thead className="sticky top-0 bg-muted/50">
+                    <tr className="text-xs text-muted-foreground">
+                      <th className="text-left p-3 font-medium">Time</th>
+                      <th className="text-left p-3 font-medium">Type</th>
+                      <th className="text-left p-3 font-medium">IP</th>
+                      <th className="text-left p-3 font-medium">Path</th>
+                      <th className="text-left p-3 font-medium">Detail</th>
+                      <th className="text-left p-3 font-medium">Level</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {threats.map((threat, i) => (
+                      <tr key={i} className="border-t border-border/50 hover:bg-muted/20 transition-colors">
+                        <td className="p-3 text-xs text-muted-foreground font-mono whitespace-nowrap">
+                          {formatTimestamp(threat.timestamp as number)}
+                        </td>
+                        <td className="p-3">
+                          <span className="text-xs font-mono">{String(threat.attack_type)}</span>
+                        </td>
+                        <td className="p-3 font-mono text-xs">{String(threat.source_ip)}</td>
+                        <td className="p-3 text-xs font-mono max-w-[200px] truncate">{String(threat.path)}</td>
+                        <td className="p-3 text-xs text-muted-foreground max-w-[250px] truncate">{String(threat.detail)}</td>
+                        <td className="p-3">
+                          <span className={`text-xs px-2 py-0.5 rounded border ${getRiskColor(String(threat.threat_level))}`}>
+                            {String(threat.threat_level)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
             </div>
           </div>
         </div>
