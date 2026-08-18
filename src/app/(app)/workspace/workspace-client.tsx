@@ -26,24 +26,26 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-function formatRelativeTime(timestamp: number): string {
+function formatRelativeTime(timestamp: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const diff = Date.now() - timestamp;
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "刚刚";
-  if (minutes < 60) return `${minutes} 分钟前`;
+  if (minutes < 1) return t("workspace.justNow") || "刚刚";
+  if (minutes < 60) return t("workspace.minutesAgo", { minutes }) || `${minutes} 分钟前`;
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 24) return t("workspace.hoursAgo", { hours }) || `${hours} 小时前`;
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} 天前`;
+  if (days < 7) return t("workspace.daysAgo", { days }) || `${days} 天前`;
   return new Date(timestamp).toLocaleDateString("zh-CN");
 }
 
 function WorkspaceCard({
   workspace,
   onDelete,
+  t,
 }: {
   workspace: Workspace;
   onDelete: (id: string) => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const [showMenu, setShowMenu] = useState(false);
 
@@ -94,7 +96,7 @@ function WorkspaceCard({
                 className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs text-destructive hover:bg-accent"
               >
                 <Trash2 size={12} />
-                删除工作区
+                {t("workspace.deleteWorkspace") || "删除工作区"}
               </button>
             </div>
           )}
@@ -112,11 +114,11 @@ function WorkspaceCard({
       <div className="mt-auto flex items-center gap-4 border-t border-border pt-3">
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Clock size={12} />
-          <span>{formatRelativeTime(workspace.lastModified)}</span>
+          <span>{formatRelativeTime(workspace.lastModified, t)}</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Files size={12} />
-          <span>{workspace.fileCount} 文件</span>
+          <span>{workspace.fileCount} {t("workspace.filesUnit") || "文件"}</span>
         </div>
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <HardDrive size={12} />
@@ -136,10 +138,12 @@ function CreateWorkspaceDialog({
   open,
   onClose,
   onCreate,
+  t,
 }: {
   open: boolean;
   onClose: () => void;
   onCreate: (name: string, path: string, description: string) => void;
+  t: (key: string, opts?: Record<string, unknown>) => string;
 }) {
   const [name, setName] = useState("");
   const [path, setPath] = useState("");
@@ -159,22 +163,22 @@ function CreateWorkspaceDialog({
     <Dialog
       open={open}
       onClose={onClose}
-      title="创建工作区"
-      description="添加一个新的项目工作区"
+      title={t("workspace.create") || "创建工作区"}
+      description={t("workspace.createDesc") || "添加一个新的项目工作区"}
       footer={
         <>
           <button
             onClick={onClose}
             className="rounded-lg border border-border px-3 py-1.5 text-xs text-foreground hover:bg-accent"
           >
-            取消
+            {t("common.cancel") || "取消"}
           </button>
           <button
             onClick={handleSubmit}
             disabled={!name.trim() || !path.trim()}
             className="rounded-lg bg-primary px-3 py-1.5 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
-            创建
+            {t("workspace.createAction") || "创建"}
           </button>
         </>
       }
@@ -182,19 +186,19 @@ function CreateWorkspaceDialog({
       <div className="space-y-4">
         <div>
           <label className="mb-1.5 block text-xs font-medium text-foreground">
-            名称
+            {t("workspace.name") || "名称"}
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="我的项目"
+            placeholder={t("workspace.myProject") || "我的项目"}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
         </div>
         <div>
           <label className="mb-1.5 block text-xs font-medium text-foreground">
-            路径
+            {t("workspace.path") || "路径"}
           </label>
           <input
             type="text"
@@ -206,12 +210,12 @@ function CreateWorkspaceDialog({
         </div>
         <div>
           <label className="mb-1.5 block text-xs font-medium text-foreground">
-            描述（可选）
+            {t("workspace.descriptionOptional") || "描述（可选）"}
           </label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            placeholder="项目描述..."
+            placeholder={t("workspace.projectPlaceholder") || "项目描述..."}
             rows={2}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none"
           />
@@ -326,6 +330,7 @@ export function WorkspaceClient() {
                 key={ws.id}
                 workspace={ws}
                 onDelete={removeWorkspace}
+                t={t}
               />
             ))}
           </div>
@@ -337,6 +342,7 @@ export function WorkspaceClient() {
         open={showCreate}
         onClose={() => setShowCreate(false)}
         onCreate={handleCreate}
+        t={t}
       />
     </div>
   );
