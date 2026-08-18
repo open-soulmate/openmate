@@ -4833,5 +4833,12 @@
     "manualCreateDesc": "创建课程框架，手动填充内容",
     "aiGenFailed": "AI生成失败: {{detail}}",
     "checkGland": "请检查Gland配置"
-  }
+  },
+  "workflowBuilder.newWorkflow": "新建工作流",
+  "workflowBuilder.selectOrCreate": "选择或创建工作流",
+  "workflowBuilder.selectHint": "从左侧列表选择，或点击工具栏「新建」",
+  "mind.sample1": "太棒了！这个功能终于实现了，我好开心！",
+  "mind.sample2": "这个bug让我非常头疼，已经折腾了一整天。",
+  "mind.sample3": "期待明天的发布会，希望一切顺利。",
+  "mind.sample4": "这个问题我不太理解，能再解释一下吗？"
 }

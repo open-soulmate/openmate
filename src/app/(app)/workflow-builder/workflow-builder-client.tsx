@@ -31,11 +31,12 @@ const defaultNodes: Node<WorkflowNodeData>[] = [
     id: "start-1",
     type: "startNode",
     position: { x: 400, y: 80 },
-    data: { label: "开始", type: "start", triggerType: "manual" },
+    data: { label: "Start", type: "start", triggerType: "manual" },
   },
 ];
 
 export function WorkflowBuilderClient() {
+  const { t } = useTranslation();
   const storeNodes = useWorkflowStore((s) => s.nodes);
   const storeEdges = useWorkflowStore((s) => s.edges);
   const setStoreNodes = useWorkflowStore((s) => s.setNodes);
@@ -152,7 +153,7 @@ export function WorkflowBuilderClient() {
   );
 
   const handleCreateNew = useCallback(() => {
-    const id = useWorkflowStore.getState().createWorkflow("新建工作流");
+    const id = useWorkflowStore.getState().createWorkflow(t("workflowBuilder.newWorkflow") || "新建工作流");
     if (id) {
       const wf = useWorkflowStore.getState().workflows.find((w) => w.id === id);
       if (wf) {
@@ -160,7 +161,7 @@ export function WorkflowBuilderClient() {
         setEdges(wf.edges);
       }
     }
-  }, [setNodes, setEdges]);
+  }, [setNodes, setEdges, t]);
 
   const selectedNode = selectedNodeId
     ? nodes.find((n) => n.id === selectedNodeId)
@@ -222,10 +223,10 @@ export function WorkflowBuilderClient() {
               <div className="text-center">
                 <div className="mb-3 text-4xl opacity-20">⚡</div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  选择或创建工作流
+                  {t("workflowBuilder.selectOrCreate") || "选择或创建工作流"}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  从左侧列表选择，或点击工具栏「新建」
+                  {t("workflowBuilder.selectHint") || "从左侧列表选择，或点击工具栏「新建」"}
                 </p>
               </div>
             </div>
