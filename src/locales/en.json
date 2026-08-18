@@ -4863,7 +4863,10 @@
     "inHours": "In {hours} hours",
     "inHoursMinutes": "In {hours} hours {minutes} minutes",
     "custom": "Custom",
-    "nextRun": "Next run: {time}"
+    "nextRun": "Next run: {time}",
+    "weeklyMon": "Mon 9:00",
+    "monthlyFirst": "1st of month",
+    "weekdays9": "Weekdays"
   },
   "terminal": {
     "disconnected": "[Disconnected]",

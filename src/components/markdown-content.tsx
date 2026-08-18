@@ -3,6 +3,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, Pencil } from 'lucide-react';
 import { useState, useCallback, lazy, Suspense } from 'react';
+import { useTranslation } from 'react-i18next';
 
 // Lazy load Monaco editor to avoid SSR issues
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
@@ -14,6 +15,7 @@ interface CodeBlockProps {
 }
 
 function CodeBlock({ code, language, onApply }: CodeBlockProps) {
+  const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedCode, setEditedCode] = useState(code);
@@ -46,7 +48,7 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
               className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground px-1.5 py-0.5 rounded hover:bg-white/5"
             >
               <Pencil className="w-3 h-3" />
-              <span>编辑</span>
+              <span>{t('markdown.edit')}</span>
             </button>
           )}
           <button
@@ -54,7 +56,7 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
             className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground px-1.5 py-0.5 rounded hover:bg-white/5"
           >
             {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-            {copied ? '已复制' : '复制'}
+            {copied ? t('markdown.copied') : t('markdown.copy')}
           </button>
         </div>
       </div>
@@ -65,7 +67,7 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
           <Suspense
             fallback={
               <div className="flex items-center justify-center h-[200px] bg-[#0d0d14] text-muted-foreground text-xs">
-                加载编辑器...
+                {t('markdown.loading')}
               </div>
             }
           >
@@ -102,14 +104,14 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
               onClick={handleCancel}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
             >
-              取消
+              {t('markdown.cancel')}
             </button>
             {onApply && (
               <button
                 onClick={handleApply}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               >
-                应用修改
+                {t('markdown.apply')}
               </button>
             )}
           </div>

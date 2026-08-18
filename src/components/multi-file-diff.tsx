@@ -1,6 +1,7 @@
 'use client';
 import { useState, useCallback, lazy, Suspense } from 'react';
 import { FileText, Check, X, ChevronDown, ChevronRight } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 const MonacoDiffEditor = lazy(() => import('@monaco-editor/react').then(mod => ({ default: mod.DiffEditor })));
@@ -22,6 +23,7 @@ interface MultiFileDiffProps {
 }
 
 export function MultiFileDiff({ files, onAccept, onReject, onAcceptAll, onRejectAll }: MultiFileDiffProps) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab] = useState(0);
   const [acceptedFiles, setAcceptedFiles] = useState<Set<string>>(new Set());
   const [rejectedFiles, setRejectedFiles] = useState<Set<string>>(new Set());
@@ -77,12 +79,17 @@ export function MultiFileDiff({ files, onAccept, onReject, onAcceptAll, onReject
 
   const getFileStatusColor = (status: FileChange['status']) => {
     switch (status) {
-      case 'added':
-        return 'text-green-500';
-      case 'deleted':
-        return 'text-red-500';
-      default:
-        return 'text-yellow-500';
+      case 'added': return 'text-green-500';
+      case 'deleted': return 'text-red-500';
+      default: return 'text-yellow-500';
+    }
+  };
+
+  const statusLabel = (status: FileChange['status']) => {
+    switch (status) {
+      case 'added': return t('diff.added');
+      case 'deleted': return t('diff.deleted');
+      default: return t('diff.modified');
     }
   };
 
@@ -97,11 +104,11 @@ export function MultiFileDiff({ files, onAccept, onReject, onAcceptAll, onReject
           >
             {expanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
             <span className="font-medium">
-              {files.length} 个文件修改
+              {t('diff.filesModified', { count: files.length })}
             </span>
           </button>
           <span className="text-[10px] text-muted-foreground/60">
-            {acceptedFiles.size} 已接受 · {rejectedFiles.size} 已拒绝
+            {t('diff.fileStatus', { accepted: acceptedFiles.size, rejected: rejectedFiles.size })}
           </span>
         </div>
         <div className="flex items-center gap-1">
@@ -110,14 +117,14 @@ export function MultiFileDiff({ files, onAccept, onReject, onAcceptAll, onReject
             className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-green-500 hover:bg-green-500/10 transition-colors"
           >
             <Check className="w-3 h-3" />
-            全部接受
+            {t('diff.acceptAll')}
           </button>
           <button
             onClick={handleRejectAll}
             className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-red-500 hover:bg-red-500/10 transition-colors"
           >
             <X className="w-3 h-3" />
-            全部拒绝
+            {t('diff.rejectAll')}
           </button>
         </div>
       </div>
@@ -155,7 +162,7 @@ export function MultiFileDiff({ files, onAccept, onReject, onAcceptAll, onReject
               <div className="flex items-center justify-between px-3 py-1.5 bg-[#1e1e2e] border-b border-border/30">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span className={getFileStatusColor(currentFile.status)}>
-                    {currentFile.status === 'added' ? '新增' : currentFile.status === 'deleted' ? '删除' : '修改'}
+                    {statusLabel(currentFile.status)}
                   </span>
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/50">
                     {currentFile.path}
@@ -169,27 +176,27 @@ export function MultiFileDiff({ files, onAccept, onReject, onAcceptAll, onReject
                         className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-green-500 hover:bg-green-500/10 transition-colors"
                       >
                         <Check className="w-3 h-3" />
-                        接受
+                        {t('diff.accept')}
                       </button>
                       <button
                         onClick={() => handleReject(currentFile.path)}
                         className="flex items-center gap-1 px-2 py-1 rounded text-[11px] text-red-500 hover:bg-red-500/10 transition-colors"
                       >
                         <X className="w-3 h-3" />
-                        拒绝
+                        {t('diff.reject')}
                       </button>
                     </>
                   )}
                   {acceptedFiles.has(currentFile.path) && (
                     <span className="flex items-center gap-1 text-[11px] text-green-500">
                       <Check className="w-3 h-3" />
-                      已接受
+                      {t('diff.acceptedStatus')}
                     </span>
                   )}
                   {rejectedFiles.has(currentFile.path) && (
                     <span className="flex items-center gap-1 text-[11px] text-red-500">
                       <X className="w-3 h-3" />
-                      已拒绝
+                      {t('diff.rejectedStatus')}
                     </span>
                   )}
                 </div>
@@ -197,7 +204,7 @@ export function MultiFileDiff({ files, onAccept, onReject, onAcceptAll, onReject
               <Suspense
                 fallback={
                   <div className="flex items-center justify-center h-[300px] text-muted-foreground text-xs">
-                    加载 Diff 编辑器...
+                    {t('diff.loading')}
                   </div>
                 }
               >

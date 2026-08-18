@@ -3,59 +3,61 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { Clock, ChevronDown } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 interface CronPreset {
-  label: string;
+  labelKey: string;
   value: string;
-  description: string;
+  descKey: string;
 }
 
 const presets: CronPreset[] = [
-  { label: "每小时", value: "0 * * * *", description: "每小时整点执行" },
-  { label: "每天 8:00", value: "0 8 * * *", description: "每天早上 8 点" },
-  { label: "每周一 9:00", value: "0 9 * * 1", description: "每周一早上 9 点" },
-  { label: "每月1号", value: "0 0 1 * *", description: "每月 1 号零点" },
-  { label: "每周五天", value: "0 9 * * 1-5", description: "工作日早上 9 点" },
+  { labelKey: "cronPicker.hourly", value: "0 * * * *", descKey: "cronPicker.hourly" },
+  { labelKey: "cronPicker.dailyAt", value: "0 8 * * *", descKey: "cronPicker.dailyAt" },
+  { labelKey: "cronPicker.weeklyMon", value: "0 9 * * 1", descKey: "cronPicker.weeklyMon" },
+  { labelKey: "cronPicker.monthlyFirst", value: "0 0 1 * *", descKey: "cronPicker.monthlyFirst" },
+  { labelKey: "cronPicker.weekdays9", value: "0 9 * * 1-5", descKey: "cronPicker.weekdays9" },
 ];
 
-function parseCronExpression(expr: string): string {
+function parseCronExpression(expr: string, t: (key: string, opts?: any) => string): string {
   const parts = expr.trim().split(/\s+/);
-  if (parts.length !== 5) return "无效的 Cron 表达式";
+  if (parts.length !== 5) return t("cronPicker.invalidCron");
 
   const [min, hour, dom, month, dow] = parts;
 
   const dowNames: Record<string, string> = {
-    "0": "周日", "1": "周一", "2": "周二", "3": "周三",
-    "4": "周四", "5": "周五", "6": "周六", "7": "周日",
-    "1-5": "工作日",
+    "0": t("cronPicker.sunday"), "1": t("cronPicker.monday"), "2": t("cronPicker.tuesday"),
+    "3": t("cronPicker.wednesday"), "4": t("cronPicker.thursday"), "5": t("cronPicker.friday"),
+    "6": t("cronPicker.saturday"), "7": t("cronPicker.sunday"),
+    "1-5": t("cronPicker.weekdays"),
   };
 
   if (dom === "*" && month === "*") {
     if (dow !== "*") {
-      const dayName = dowNames[dow] ?? `星期${dow}`;
+      const dayName = dowNames[dow] ?? dow;
       if (min === "0" && hour !== "*") return `${dayName} ${hour}:00`;
       if (hour !== "*") return `${dayName} ${hour}:${min.padStart(2, "0")}`;
-      return `${dayName} 每小时`;
+      return t("cronPicker.dayHourly", { day: dayName });
     }
     if (hour !== "*") {
-      if (min === "0") return `每天 ${hour}:00`;
-      return `每天 ${hour}:${min.padStart(2, "0")}`;
+      if (min === "0") return t("cronPicker.dailyAt", { hour });
+      return `${t("cronPicker.dailyAt", { hour }).replace(/:00$/, ":" + min.padStart(2, "0"))}`;
     }
-    if (min === "0") return "每小时整点";
-    return `每小时第 ${min} 分钟`;
+    if (min === "0") return t("cronPicker.hourly");
+    return t("cronPicker.minuteOfHour", { min });
   }
 
   if (dom !== "*" && month === "*") {
     if (hour !== "*" && min !== "*") {
-      return `每月 ${dom} 日 ${hour}:${min.padStart(2, "0")}`;
+      return `${t("cronPicker.monthly", { dom })} ${hour}:${min.padStart(2, "0")}`;
     }
-    return `每月 ${dom} 日`;
+    return t("cronPicker.monthly", { dom });
   }
 
   return expr;
 }
 
-function getNextRunPreview(expr: string): string | null {
+function getNextRunPreview(expr: string, t: (key: string, opts?: any) => string): string | null {
   const parts = expr.trim().split(/\s+/);
   if (parts.length !== 5) return null;
 
@@ -80,9 +82,9 @@ function getNextRunPreview(expr: string): string | null {
   const hours = Math.floor(diff / (1000 * 60 * 60));
   const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
 
-  if (hours === 0) return `${minutes} 分钟后`;
-  if (minutes === 0) return `${hours} 小时后`;
-  return `${hours} 小时 ${minutes} 分钟后`;
+  if (hours === 0) return t("cronPicker.inMinutes", { minutes });
+  if (minutes === 0) return t("cronPicker.inHours", { hours });
+  return t("cronPicker.inHoursMinutes", { hours, minutes });
 }
 
 interface CronPickerProps {
@@ -92,11 +94,20 @@ interface CronPickerProps {
 }
 
 export function CronPicker({ value, onChange, className }: CronPickerProps) {
+  const { t } = useTranslation();
   const [showCustom, setShowCustom] = useState(false);
 
   const activePreset = presets.find((p) => p.value === value);
-  const description = useMemo(() => parseCronExpression(value), [value]);
-  const nextRun = useMemo(() => getNextRunPreview(value), [value]);
+  const description = useMemo(() => parseCronExpression(value, t), [value, t]);
+  const nextRun = useMemo(() => getNextRunPreview(value, t), [value, t]);
+
+  const presetLabels: Record<string, string> = {
+    "0 * * * *": t("cronPicker.hourly"),
+    "0 8 * * *": t("cronPicker.dailyAt", { hour: "8" }),
+    "0 9 * * 1": `${t("cronPicker.monday")} 9:00`,
+    "0 0 1 * *": t("cronPicker.monthly", { dom: "1" }),
+    "0 9 * * 1-5": `${t("cronPicker.weekdays")} 9:00`,
+  };
 
   return (
     <div className={cn("space-y-3", className)}>
@@ -117,7 +128,7 @@ export function CronPicker({ value, onChange, className }: CronPickerProps) {
                 : "border border-border text-muted-foreground hover:bg-accent hover:text-foreground",
             )}
           >
-            {preset.label}
+            {presetLabels[preset.value] || preset.value}
           </button>
         ))}
         <button
@@ -130,7 +141,7 @@ export function CronPicker({ value, onChange, className }: CronPickerProps) {
               : "border border-border text-muted-foreground hover:bg-accent hover:text-foreground",
           )}
         >
-          自定义
+          {t("cronPicker.custom")}
           <ChevronDown size={11} className={cn("transition-transform", showCustom && "rotate-180")} />
         </button>
       </div>
@@ -145,9 +156,6 @@ export function CronPicker({ value, onChange, className }: CronPickerProps) {
             placeholder="* * * * *"
             className="w-full rounded-md border border-border bg-muted px-3 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
           />
-          <p className="text-[10px] text-muted-foreground">
-            格式：分 时 日 月 星期（如 &quot;0 9 * * 1-5&quot; 表示工作日 9 点）
-          </p>
         </div>
       )}
 
@@ -158,7 +166,7 @@ export function CronPicker({ value, onChange, className }: CronPickerProps) {
           <span className="text-foreground">{description}</span>
           {nextRun && (
             <span className="ml-2 text-muted-foreground">
-              &middot; 下次运行：{nextRun}
+              &middot; {t("cronPicker.nextRun", { time: nextRun })}
             </span>
           )}
         </div>

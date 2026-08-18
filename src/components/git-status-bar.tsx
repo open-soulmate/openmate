@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { GitBranch, GitCommit, GitFork, FileDiff, Check, Loader2, RefreshCw } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 
 interface GitStatus {
@@ -20,6 +21,7 @@ interface GitStatusBarProps {
 }
 
 export function GitStatusBar({ apiBase, token, onRunCommand }: GitStatusBarProps) {
+  const { t } = useTranslation();
   const [status, setStatus] = useState<GitStatus>({
     branch: '',
     modified: 0,
@@ -111,25 +113,25 @@ export function GitStatusBar({ apiBase, token, onRunCommand }: GitStatusBarProps
             <button
               onClick={() => handleGitCommand('git diff')}
               className="flex items-center gap-1 text-yellow-500 hover:text-yellow-400 transition-colors"
-              title="查看修改"
+              title={t('git.viewChanges')}
             >
               <FileDiff className="w-3 h-3" />
-              <span>{status.modified} 修改</span>
+              <span>{status.modified} {t('git.modified')}</span>
             </button>
           )}
           {status.staged > 0 && (
             <button
               onClick={() => handleGitCommand('git diff --staged')}
               className="flex items-center gap-1 text-green-500 hover:text-green-400 transition-colors"
-              title="查看暂存"
+              title={t('git.viewStaged')}
             >
               <Check className="w-3 h-3" />
-              <span>{status.staged} 暂存</span>
+              <span>{status.staged} {t('git.staged')}</span>
             </button>
           )}
           {status.untracked > 0 && (
             <span className="text-muted-foreground/60">
-              {status.untracked} 未跟踪
+              {status.untracked} {t('git.untracked')}
             </span>
           )}
           {(status.ahead > 0 || status.behind > 0) && (
@@ -140,7 +142,7 @@ export function GitStatusBar({ apiBase, token, onRunCommand }: GitStatusBarProps
             </div>
           )}
           {status.modified === 0 && status.staged === 0 && status.untracked === 0 && (
-            <span className="text-green-500/80">工作区干净</span>
+            <span className="text-green-500/80">{t('git.clean')}</span>
           )}
         </div>
 
@@ -152,7 +154,7 @@ export function GitStatusBar({ apiBase, token, onRunCommand }: GitStatusBarProps
           onClick={fetchStatus}
           disabled={status.loading}
           className="flex items-center gap-1 text-muted-foreground hover:text-foreground transition-colors p-1 rounded hover:bg-muted/50"
-          title="刷新状态"
+          title={t('git.refresh')}
         >
           <RefreshCw className={cn('w-3 h-3', status.loading && 'animate-spin')} />
         </button>
@@ -221,7 +223,7 @@ export function GitStatusBar({ apiBase, token, onRunCommand }: GitStatusBarProps
                 setCommitMessage('');
               }
             }}
-            placeholder="提交信息..."
+            placeholder={t('git.commitPlaceholder')}
             className="flex-1 px-2 py-1 text-xs bg-muted/50 rounded border border-border/50 focus:outline-none focus:border-primary/50"
             autoFocus
           />
@@ -240,7 +242,7 @@ export function GitStatusBar({ apiBase, token, onRunCommand }: GitStatusBarProps
             ) : (
               <Check className="w-3 h-3" />
             )}
-            <span>提交</span>
+            <span>{t('git.commit')}</span>
           </button>
         </div>
       )}

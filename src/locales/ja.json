@@ -4476,7 +4476,10 @@
     "inHours": "{hours}時間後",
     "inHoursMinutes": "{hours}時間{minutes}分後",
     "custom": "カスタム",
-    "nextRun": "次回実行：{time}"
+    "nextRun": "次回実行：{time}",
+    "weeklyMon": "月曜 9:00",
+    "monthlyFirst": "毎月1日",
+    "weekdays9": "平日"
   },
   "terminal": {
     "disconnected": "[切断]",

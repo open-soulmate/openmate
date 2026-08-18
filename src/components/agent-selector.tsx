@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Bot, CheckCircle, XCircle, Loader2, Cpu, MessageSquare, Code2, Terminal, Workflow, Zap } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 
 const getApiUrl = () => getApiBaseUrl();
@@ -28,6 +29,7 @@ interface AgentSelectorProps {
 }
 
 export function AgentSelector({ onSelect, selectedAgent }: AgentSelectorProps) {
+  const { t } = useTranslation();
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -68,10 +70,10 @@ export function AgentSelector({ onSelect, selectedAgent }: AgentSelectorProps) {
       <div className="px-6 py-4 border-b">
         <h2 className="text-lg font-semibold flex items-center gap-2">
           <Bot className="w-5 h-5 text-primary" />
-          选择 Agent
+          {t('agent.selectAgent')}
         </h2>
         <p className="text-sm text-muted-foreground mt-1">
-          选择一个AI Agent开始对话
+          {t('agent.selectDesc')}
         </p>
       </div>
 
@@ -80,7 +82,7 @@ export function AgentSelector({ onSelect, selectedAgent }: AgentSelectorProps) {
         {available.length > 0 && (
           <div className="mb-6">
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 px-1">
-              可用 Agent ({available.length})
+              {t('agent.available', { count: available.length })}
             </p>
             <div className="grid grid-cols-1 gap-2">
               {available.map(agent => {
@@ -113,7 +115,7 @@ export function AgentSelector({ onSelect, selectedAgent }: AgentSelectorProps) {
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                        <span className="text-xs text-green-500">就绪</span>
+                        <span className="text-xs text-green-500">{t('agent.ready')}</span>
                       </div>
                     </div>
                   </button>
@@ -127,7 +129,7 @@ export function AgentSelector({ onSelect, selectedAgent }: AgentSelectorProps) {
         {unavailable.length > 0 && (
           <div>
             <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3 px-1">
-              未安装 ({unavailable.length})
+              {t('agent.unavailable', { count: unavailable.length })}
             </p>
             <div className="grid grid-cols-1 gap-2">
               {unavailable.map(agent => {
@@ -151,7 +153,7 @@ export function AgentSelector({ onSelect, selectedAgent }: AgentSelectorProps) {
                       </div>
                       <div className="flex items-center gap-1.5 shrink-0">
                         <XCircle className="w-3.5 h-3.5 text-muted-foreground" />
-                        <span className="text-xs text-muted-foreground">未安装</span>
+                        <span className="text-xs text-muted-foreground">{t('agent.notInstalled')}</span>
                       </div>
                     </div>
                   </div>
@@ -164,8 +166,8 @@ export function AgentSelector({ onSelect, selectedAgent }: AgentSelectorProps) {
         {agents.length === 0 && (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Bot className="w-12 h-12 mb-3 opacity-30" />
-            <p className="text-sm">未检测到Agent</p>
-            <p className="text-xs mt-1">请安装Hermes、MiMo、Claude等CLI工具</p>
+            <p className="text-sm">{t('agent.noneDetected')}</p>
+            <p className="text-xs mt-1">{t('agent.installHint')}</p>
           </div>
         )}
       </div>

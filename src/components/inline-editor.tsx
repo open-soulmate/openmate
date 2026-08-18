@@ -2,6 +2,7 @@
 import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { Copy, Check, X, Save, Pencil } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 const MonacoEditor = dynamic(() => import('@monaco-editor/react'), { ssr: false });
 
@@ -14,6 +15,7 @@ interface InlineEditorProps {
 }
 
 export function InlineEditor({ code, language, fileName, readOnly = false, onApply }: InlineEditorProps) {
+  const { t } = useTranslation();
   const [isEditing, setIsEditing] = useState(false);
   const [editedCode, setEditedCode] = useState(code);
   const [copied, setCopied] = useState(false);
@@ -53,7 +55,7 @@ export function InlineEditor({ code, language, fileName, readOnly = false, onApp
               className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground px-1.5 py-0.5 rounded hover:bg-muted/50"
             >
               <Pencil className="w-3 h-3" />
-              <span>编辑</span>
+              <span>{t('markdown.edit')}</span>
             </button>
           )}
           <button
@@ -61,7 +63,7 @@ export function InlineEditor({ code, language, fileName, readOnly = false, onApp
             className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground px-1.5 py-0.5 rounded hover:bg-muted/50"
           >
             {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
-            {copied ? '已复制' : '复制'}
+            {copied ? t('markdown.copied') : t('markdown.copy')}
           </button>
         </div>
       </div>
@@ -102,7 +104,7 @@ export function InlineEditor({ code, language, fileName, readOnly = false, onApp
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
             >
               <X className="w-3.5 h-3.5" />
-              取消
+              {t('markdown.cancel')}
             </button>
             {onApply && (
               <button
@@ -110,7 +112,7 @@ export function InlineEditor({ code, language, fileName, readOnly = false, onApp
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 <Save className="w-3.5 h-3.5" />
-                应用修改
+                {t('markdown.apply')}
               </button>
             )}
           </div>
