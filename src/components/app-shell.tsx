@@ -22,7 +22,7 @@ import {
   BarChart3,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
-import { getUserId, getApiBaseUrl } from "@/lib/api-client";
+import { getUserId, getUserName, getApiBaseUrl } from "@/lib/api-client";
 import { type ThemeId, persistTheme } from "@/lib/theme";
 import {
   SidebarProvider,
@@ -228,7 +228,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
   };
 
-  const userId = getUserId() || "User";
+  const userId = getUserName() || getUserId() || "User";
 
   // Close menu on outside click
   useEffect(() => {

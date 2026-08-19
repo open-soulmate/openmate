@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { LogIn, UserPlus, Loader2, Settings, ChevronDown, Check, Wifi, Eye, EyeOff } from 'lucide-react';
-import { setApiBaseUrl, getApiBaseUrl, setUserId, setToken } from '@/lib/api-client';
+import { setApiBaseUrl, getApiBaseUrl, setUserId, setToken, setUserName } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
 
 function api() {
@@ -60,10 +60,10 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
       const a = api();
       if (mode === 'register') {
         const res = await a.register(username, password, email || `${username}@openmate.local`);
-        setUserId(res.id);
+        setUserId(res.id); setUserName(username);
       } else {
         const res = await a.login(username, password);
-        if (res.user_id) { setUserId(res.user_id); setToken(res.access_token); }
+        if (res.user_id) { setUserId(res.user_id); setToken(res.access_token); setUserName(res.username || username); }
         else throw new Error(t('login.loginFailed'));
       }
       onLogin();
