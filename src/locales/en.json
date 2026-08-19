@@ -2296,7 +2296,7 @@
     "changes": "Changes",
     "entries": "Entries",
     "noMigrations": "No migrations yet",
-    "noChangelog": "No changelog entries",
+    "noChangelog": "No changelog entries yet",
     "componentsCount": "Components Count",
     "major": "Major",
     "minor": "Minor",
@@ -2352,7 +2352,15 @@
     "text30": "依赖关系图",
     "text31": "无依赖",
     "actual": "Actual",
-    "requires": "Requires"
+    "requires": "Requires",
+    "active": "Active",
+    "allStatus": "All Status",
+    "deprecated": "Deprecated",
+    "versionChanges": "Version changes will appear here",
+    "mostDepended": "Most Depended On",
+    "dependent": "dependent",
+    "independent": "Independent Components",
+    "date": "Date"
   },
   "pulse": {
     "title": "Pulse · Precision Timer",
@@ -3527,7 +3535,11 @@
       "motor": "Motor",
       "isolation": "Isolation",
       "foundation": "Foundation"
-    }
+    },
+    "auto": "Auto",
+    "open": "Open",
+    "allOrgans": "All Organs",
+    "systemsTitle": "Systems"
   },
   "topology": {
     "title": "System Topology",

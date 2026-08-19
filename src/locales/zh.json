@@ -2315,7 +2315,7 @@
     "changes": "变更",
     "entries": "条目",
     "noMigrations": "暂无迁移",
-    "noChangelog": "暂无变更日志",
+    "noChangelog": "暂无变更记录",
     "componentsCount": "组件数量",
     "major": "主版本",
     "minor": "次版本",
@@ -2371,7 +2371,15 @@
     "text30": "依赖关系图",
     "text31": "无依赖",
     "actual": "实际",
-    "requires": "依赖"
+    "requires": "依赖",
+    "active": "活跃",
+    "allStatus": "全部状态",
+    "deprecated": "已弃用",
+    "versionChanges": "版本变更将在此显示",
+    "mostDepended": "最常被依赖",
+    "dependent": "个依赖",
+    "independent": "独立组件",
+    "date": "日期"
   },
   "pulse": {
     "title": "脉搏 · 高精度时序节拍器",
@@ -3551,7 +3559,11 @@
       "motor": "运动",
       "isolation": "隔离",
       "foundation": "基础"
-    }
+    },
+    "auto": "自动",
+    "open": "打开",
+    "allOrgans": "所有器官",
+    "systemsTitle": "系统"
   },
   "topology": {
     "title": "系统拓扑 · Topology",
