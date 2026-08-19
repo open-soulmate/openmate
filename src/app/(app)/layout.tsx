@@ -26,15 +26,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   return (
     <ToastProvider>
-      <div className="flex h-screen overflow-hidden">
-        <AppShell />
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <Topbar />
-          <main className="flex-1 overflow-hidden">{children}</main>
-        </div>
+      <AppShell>
+        <Topbar />
+        <main className="flex-1 overflow-hidden">{children}</main>
         <CommandMenu />
         <GlobalShortcuts />
-      </div>
+      </AppShell>
     </ToastProvider>
   );
 }

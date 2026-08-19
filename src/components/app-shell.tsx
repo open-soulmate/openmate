@@ -8,7 +8,7 @@ import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
 import {
   MessageSquare, BookOpen, GraduationCap, Network, Search,
-  Puzzle, Settings, PanelLeftClose, PanelLeftOpen, Server,
+  Puzzle, Settings, Server,
   Workflow, Plug, Users, GitBranch, Clock, Download,
   User, Moon, Sun, FileText, MessageCircle, LogOut,
   LayoutDashboard, FolderKanban, Share2, ChevronDown,
@@ -24,10 +24,22 @@ import {
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getApiBaseUrl } from "@/lib/api-client";
 import { type ThemeId, persistTheme } from "@/lib/theme";
-
-// Paperclip-style sidebar: fixed icon column, text hides on collapse
-// Expanded: 240px, icon at 12px left, text flows right
-// Collapsed: 56px, icon stays at same position, text hidden
+import {
+  SidebarProvider,
+  Sidebar,
+  SidebarContent,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarGroupLabel,
+  SidebarHeader,
+  SidebarFooter,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+  SidebarTrigger,
+  SidebarRail,
+  SidebarInset,
+} from "@/components/ui/sidebar";
 
 interface NavItem {
   href: string;
@@ -40,20 +52,18 @@ interface NavGroup {
   items: NavItem[];
 }
 
-export function AppShell() {
+export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const collapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggle = useAppStore((s) => s.toggleSidebar);
   const storeTheme = useAppStore((s) => s.theme);
   const setStoreTheme = useAppStore((s) => s.setTheme);
-  const [hoverExpanded, setHoverExpanded] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const { t } = useTranslation();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set([t("nav.internalServices")]))
   const [pluginGroups, setPluginGroups] = useState<NavGroup[]>([])
   const [eventCount, setEventCount] = useState(0)
-  const hoverTimer = useRef<ReturnType<typeof setTimeout>>(undefined)
   const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -93,12 +103,11 @@ export function AppShell() {
         .catch(() => {});
     };
     fetchEvents();
-    const interval = setInterval(fetchEvents, 30000); // refresh every 30s
+    const interval = setInterval(fetchEvents, 30000);
     return () => clearInterval(interval);
   }, []);
 
   const navGroups: NavGroup[] = [
-    // 1. 核心 — 日常高频
     {
       label: t("nav.core"),
       items: [
@@ -107,7 +116,6 @@ export function AppShell() {
         { href: "/notifications", label: t("nav.notifications"), icon: Bell },
       ],
     },
-    // 2. AI协作 — Agent和群组
     {
       label: t("nav.aiGroup"),
       items: [
@@ -117,7 +125,6 @@ export function AppShell() {
         { href: "/team", label: t("nav.team"), icon: Users },
       ],
     },
-    // 3. 知识管理
     {
       label: t("nav.knowledgeGroup"),
       items: [
@@ -128,7 +135,6 @@ export function AppShell() {
         { href: "/search", label: t("nav.search"), icon: Search },
       ],
     },
-    // 4. 自动化 — 任务编排
     {
       label: t("nav.automationGroup"),
       items: [
@@ -139,7 +145,6 @@ export function AppShell() {
         { href: "/will", label: t("nav.will"), icon: Sparkles },
       ],
     },
-    // 5. 工具
     {
       label: t("nav.toolsGroup"),
       items: [
@@ -150,7 +155,6 @@ export function AppShell() {
         { href: "/download", label: t("nav.download"), icon: Download },
       ],
     },
-    // 6. 器官系统 — 合并原ORGANS+INTERNAL SERVICES
     {
       label: t("nav.organsGroup"),
       items: [
@@ -179,7 +183,6 @@ export function AppShell() {
         { href: "/mind", label: t("nav.mind"), icon: Smile },
       ],
     },
-    // 7. 系统管理
     {
       label: t("nav.systemGroup"),
       items: [
@@ -203,7 +206,7 @@ export function AppShell() {
     },
   ];
 
-  // Insert plugin groups between "内部服务" and "系统"
+  // Insert plugin groups between organs and system
   const allNavGroups: NavGroup[] = (() => {
     if (pluginGroups.length === 0) return navGroups;
     const result: NavGroup[] = [];
@@ -225,19 +228,7 @@ export function AppShell() {
     });
   };
 
-  const isExpanded = !collapsed || hoverExpanded;
   const userId = getUserId() || "User";
-
-  const handleMouseEnter = useCallback(() => {
-    if (collapsed) {
-      hoverTimer.current = setTimeout(() => setHoverExpanded(true), 200);
-    }
-  }, [collapsed]);
-
-  const handleMouseLeave = useCallback(() => {
-    clearTimeout(hoverTimer.current);
-    setHoverExpanded(false);
-  }, []);
 
   // Close menu on outside click
   useEffect(() => {
@@ -264,168 +255,159 @@ export function AppShell() {
   }
 
   return (
-    <>
-      {/* Desktop sidebar - Paperclip style */}
-      <aside
-        onMouseEnter={handleMouseEnter}
-        onMouseLeave={handleMouseLeave}
-        className={cn(
-          "hidden h-screen flex-col border-r border-border bg-sidebar transition-[width] duration-200 md:flex",
-          isExpanded ? "w-60" : "w-[68px]"
-        )}
-      >
-        {/* Header: brand + collapse toggle */}
-        <div className="flex h-12 shrink-0 items-center px-3">
-          <span className={cn("text-sm font-bold text-primary transition-opacity duration-150", isExpanded ? "opacity-100" : "opacity-0 w-0 overflow-hidden")}>OM</span>
-          <div className={cn("flex-1 min-w-0 transition-all duration-150", isExpanded ? "ml-2 opacity-100" : "w-0 opacity-0 overflow-hidden")}>
-            <span className="text-sm font-semibold text-foreground whitespace-nowrap">OpenMate</span>
+    <SidebarProvider open={!collapsed} onOpenChange={(open) => { if (open === collapsed) toggle(); }}>
+      {/* Desktop sidebar - shadcn/ui Sidebar component */}
+      <Sidebar collapsible="icon" className="hidden md:flex">
+        <SidebarHeader>
+          <div className="flex h-12 shrink-0 items-center px-2">
+            <span className="text-sm font-bold text-primary">OM</span>
+            <span className="ml-2 text-sm font-semibold text-foreground group-data-[collapsible=icon]:hidden">
+              OpenMate
+            </span>
           </div>
-          <button onClick={toggle}
-            className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-sidebar-foreground hover:bg-sidebar-accent hover:text-foreground transition-colors">
-            {isExpanded ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
-          </button>
-        </div>
+        </SidebarHeader>
 
-        {/* Navigation - grouped, fixed icon column + flowing text */}
-        <nav className="flex-1 overflow-y-auto px-2 py-1">
+        <SidebarContent>
           {allNavGroups.map((group) => {
             const groupCollapsed = collapsedGroups.has(group.label);
             return (
-              <div key={group.label} className="mb-1">
-                {/* Group header */}
-                <button
+              <SidebarGroup key={group.label}>
+                <SidebarGroupLabel
+                  className="cursor-pointer select-none"
                   onClick={() => toggleGroup(group.label)}
-                  className={cn(
-                    "flex h-7 w-full items-center rounded-md text-[11px] font-medium uppercase tracking-wider transition-colors",
-                    isExpanded ? "px-2 text-muted-foreground hover:text-foreground" : "justify-center text-muted-foreground"
-                  )}
                 >
-                  {isExpanded ? (
-                    <>
-                      <span className="flex-1 text-left">{group.label}</span>
-                      <ChevronDown size={12} className={cn("transition-transform", groupCollapsed && "-rotate-90")} />
-                    </>
-                  ) : (
-                    <div className="h-px w-4 bg-border" />
-                  )}
-                </button>
-                {/* Group items */}
-                {!groupCollapsed && group.items.map((item) => {
-                  const active = pathname.startsWith(item.href);
-                  return (
-                    <Link key={item.href} href={item.href}
-                      className={cn(
-                        "flex h-8 items-center rounded-[6px] text-[13px] font-medium transition-all duration-150 group",
-                        isExpanded ? "px-2.5" : "justify-center",
-                        active
-                          ? "text-[#7c3aed] bg-[rgba(124,58,237,0.12)] border-l-[3px] border-l-[#7c3aed] pl-[7px]"
-                          : "text-sidebar-foreground hover:bg-[#18181b] hover:text-foreground border-l-[3px] border-l-transparent"
-                      )}>
-                      <span className="flex w-8 min-w-8 h-8 items-center justify-center text-[15px] shrink-0">
-                        <item.icon size={15} />
-                      </span>
-                      {/* Text column: hidden when collapsed */}
-                      <span className={cn(
-                        "truncate whitespace-nowrap transition-all duration-150",
-                        isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
-                      )} suppressHydrationWarning>
-                        {item.label}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
+                  <span className="flex-1">{group.label}</span>
+                  <ChevronDown
+                    size={12}
+                    className={cn(
+                      "ml-auto transition-transform group-data-[collapsible=icon]:hidden",
+                      groupCollapsed && "-rotate-90"
+                    )}
+                  />
+                </SidebarGroupLabel>
+                {!groupCollapsed && (
+                  <SidebarGroupContent>
+                    <SidebarMenu>
+                      {group.items.map((item) => {
+                        const active = pathname.startsWith(item.href);
+                        return (
+                          <SidebarMenuItem key={item.href}>
+                            <SidebarMenuButton
+                              asChild
+                              isActive={active}
+                              tooltip={item.label}
+                              className={cn(
+                                active && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] hover:bg-[rgba(124,58,237,0.18)] hover:text-[#7c3aed]"
+                              )}
+                            >
+                              <Link href={item.href}>
+                                <item.icon />
+                                <span suppressHydrationWarning>{item.label}</span>
+                              </Link>
+                            </SidebarMenuButton>
+                          </SidebarMenuItem>
+                        );
+                      })}
+                    </SidebarMenu>
+                  </SidebarGroupContent>
+                )}
+              </SidebarGroup>
             );
           })}
-        </nav>
+        </SidebarContent>
 
-        {/* Notification Bell + Footer - User Account */}
-        <div className="border-t border-border px-2 py-2 space-y-1">
+        <SidebarFooter>
           {/* Notification Bell */}
-          <Link href="/activity" className="flex w-full items-center rounded-md py-1.5 text-sm transition-colors hover:bg-sidebar-accent">
-            <div className="flex w-8 shrink-0 items-center justify-center">
-              <div className="relative">
-                <Activity size={16} className="text-muted-foreground" />
-                {eventCount > 0 && (
-                  <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">
-                    {eventCount > 9 ? "9+" : eventCount}
-                  </span>
-                )}
-              </div>
-            </div>
-            <span className={cn(
-              "truncate whitespace-nowrap transition-all duration-150 text-xs text-muted-foreground",
-              isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
-            )} suppressHydrationWarning>
-              {t("nav.activity")}
-            </span>
-          </Link>
+          <SidebarMenu>
+            <SidebarMenuItem>
+              <SidebarMenuButton asChild tooltip={t("nav.activity")}>
+                <Link href="/activity">
+                  <div className="relative">
+                    <Activity size={16} />
+                    {eventCount > 0 && (
+                      <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-red-500 text-[8px] font-bold text-white">
+                        {eventCount > 9 ? "9+" : eventCount}
+                      </span>
+                    )}
+                  </div>
+                  <span suppressHydrationWarning>{t("nav.activity")}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
 
           {/* User Account */}
-        <div className="relative" ref={menuRef}>
-          <button onClick={() => setMenuOpen(!menuOpen)}
-            className="flex w-full items-center rounded-md py-1.5 text-sm transition-colors hover:bg-sidebar-accent">
-            {/* Fixed avatar column */}
-            <div className="flex w-8 shrink-0 items-center justify-center">
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
+          <div className="relative" ref={menuRef}>
+            <button
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="flex w-full items-center gap-2 rounded-md p-2 text-sm transition-colors hover:bg-sidebar-accent"
+            >
+              <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground">
                 {userId[0].toUpperCase()}
               </div>
-            </div>
-            {/* User info: hidden when collapsed */}
-            <div className={cn(
-              "flex flex-col items-start min-w-0 transition-all duration-150",
-              isExpanded ? "opacity-100 w-auto" : "opacity-0 w-0 overflow-hidden"
-            )}>
-              <span className="truncate text-sm font-medium text-foreground">{userId}</span>
-              <span className="text-[10px] text-muted-foreground">v0.1.0</span>
-            </div>
-          </button>
+              <div className="flex flex-col items-start min-w-0 flex-1 group-data-[collapsible=icon]:hidden">
+                <span className="truncate text-sm font-medium text-foreground">{userId}</span>
+                <span className="text-[10px] text-muted-foreground">v0.1.0</span>
+              </div>
+            </button>
 
-          {/* Account Menu Popover */}
-          {menuOpen && (
-            <div className="absolute bottom-full left-0 mb-2 w-64 rounded-xl border border-border bg-card shadow-lg overflow-hidden z-50">
-              <div className="p-4 border-b border-border">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                    {userId[0].toUpperCase()}
-                  </div>
-                  <div className="min-w-0">
-                    <div className="text-sm font-medium truncate">{userId}</div>
-                    <div className="text-xs text-muted-foreground">{t("account.loggedIn")}</div>
+            {/* Account Menu Popover */}
+            {menuOpen && (
+              <div className="absolute bottom-full left-0 mb-2 w-64 rounded-xl border border-border bg-card shadow-lg overflow-hidden z-50">
+                <div className="p-4 border-b border-border">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                      {userId[0].toUpperCase()}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-medium truncate">{userId}</div>
+                      <div className="text-xs text-muted-foreground">{t("account.loggedIn")}</div>
+                    </div>
                   </div>
                 </div>
+                <div className="py-1">
+                  <MenuItem icon={User} label={t("account.viewProfile")} description={t("account.viewProfileDesc")} onClick={() => { router.push("/settings#account"); setMenuOpen(false); }} />
+                  <MenuItem icon={Settings} label={t("account.editProfile")} description={t("account.editProfileDesc")} onClick={() => { router.push("/settings#account"); setMenuOpen(false); }} />
+                  <MenuItem icon={FileText} label={t("account.documentation")} description={t("account.documentationDesc")} onClick={() => window.open("https://github.com/open-soulmate/openmate", "_blank")} />
+                  <MenuItem icon={MessageCircle} label={t("account.feedback")} description={t("account.feedbackDesc")} onClick={() => window.open("https://github.com/open-soulmate/openmate/issues", "_blank")} />
+                  <button onClick={toggleTheme}
+                    className="flex w-full items-start gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left">
+                    <div className="mt-0.5 text-muted-foreground">
+                      {storeTheme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm">{storeTheme === "dark" ? t("account.switchToLight") : storeTheme === "light" ? t("account.switchToPurple") : t("account.switchToDark")}</div>
+                      <div className="text-xs text-muted-foreground">{t("account.switchTheme")}</div>
+                    </div>
+                  </button>
+                </div>
+                <div className="border-t border-border py-1">
+                  <button onClick={handleLogout}
+                    className="flex w-full items-start gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left">
+                    <div className="mt-0.5 text-muted-foreground"><LogOut size={16} /></div>
+                    <div>
+                      <div className="text-sm">{t("account.logout")}</div>
+                      <div className="text-xs text-muted-foreground">{t("account.logoutDesc")}</div>
+                    </div>
+                  </button>
+                </div>
               </div>
-              <div className="py-1">
-                <MenuItem icon={User} label={t("account.viewProfile")} description={t("account.viewProfileDesc")} onClick={() => { router.push("/settings#account"); setMenuOpen(false); }} />
-                <MenuItem icon={Settings} label={t("account.editProfile")} description={t("account.editProfileDesc")} onClick={() => { router.push("/settings#account"); setMenuOpen(false); }} />
-                <MenuItem icon={FileText} label={t("account.documentation")} description={t("account.documentationDesc")} onClick={() => window.open("https://github.com/open-soulmate/openmate", "_blank")} />
-                <MenuItem icon={MessageCircle} label={t("account.feedback")} description={t("account.feedbackDesc")} onClick={() => window.open("https://github.com/open-soulmate/openmate/issues", "_blank")} />
-                <button onClick={toggleTheme}
-                  className="flex w-full items-start gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left">
-                  <div className="mt-0.5 text-muted-foreground">
-                    {storeTheme === "dark" ? <Moon size={16} /> : <Sun size={16} />}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="text-sm">{storeTheme === "dark" ? t("account.switchToLight") : storeTheme === "light" ? t("account.switchToPurple") : t("account.switchToDark")}</div>
-                    <div className="text-xs text-muted-foreground">{t("account.switchTheme")}</div>
-                  </div>
-                </button>
-              </div>
-              <div className="border-t border-border py-1">
-                <button onClick={handleLogout}
-                  className="flex w-full items-start gap-3 px-4 py-2.5 hover:bg-muted/50 transition-colors text-left">
-                  <div className="mt-0.5 text-muted-foreground"><LogOut size={16} /></div>
-                  <div>
-                    <div className="text-sm">{t("account.logout")}</div>
-                    <div className="text-xs text-muted-foreground">{t("account.logoutDesc")}</div>
-                  </div>
-                </button>
-              </div>
-            </div>
-          )}
+            )}
+          </div>
+        </SidebarFooter>
+
+        <SidebarRail />
+      </Sidebar>
+
+      {/* Main content area */}
+      <SidebarInset>
+        <header className="flex h-10 shrink-0 items-center border-b border-border px-4">
+          <SidebarTrigger className="-ml-1" />
+        </header>
+        <div className="flex flex-1 flex-col overflow-hidden">
+          {children}
         </div>
-        </div>
-      </aside>
+      </SidebarInset>
 
       {/* Mobile bottom tab bar */}
       <nav className="fixed inset-x-0 bottom-0 z-50 flex h-14 items-center justify-around border-t border-border bg-sidebar px-2 md:hidden">
@@ -441,9 +423,10 @@ export function AppShell() {
           );
         })}
       </nav>
+
       {/* Terminal Panel */}
       <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
-    </>
+    </SidebarProvider>
   );
 }
 
