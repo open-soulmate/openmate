@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useTranslation } from "react-i18next";
 import {
   GitBranch, RefreshCw, Package, ArrowRight, Clock,
   CheckCircle, AlertTriangle, Search, Filter, ChevronDown,
@@ -42,6 +43,7 @@ interface HealthData {
 }
 
 export function ChangelogClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [tab, setTab] = useState<"components" | "changelog" | "dependencies">("components");
   const [components, setComponents] = useState<Component[]>([]);
@@ -95,9 +97,9 @@ export function ChangelogClient() {
   });
 
   const tabs = [
-    { id: "components" as const, label: "Components", icon: Package },
-    { id: "changelog" as const, label: "Changelog", icon: Clock },
-    { id: "dependencies" as const, label: "Dependencies", icon: Link2 },
+    { id: "components" as const, label: t("heredity.components", "Components"), icon: Package },
+    { id: "changelog" as const, label: t("heredity.changelog", "Changelog"), icon: Clock },
+    { id: "dependencies" as const, label: t("heredity.dependencies", "Dependencies"), icon: Link2 },
   ];
 
   return (
@@ -106,7 +108,7 @@ export function ChangelogClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <GitBranch size={20} className="text-emerald-500" />
-          <h1 className="text-lg font-semibold">System Changelog</h1>
+          <h1 className="text-lg font-semibold">{t("heredity.title", "System Changelog")}</h1>
           {health && (
             <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-500">
               v{health.registry.platform_version} · {health.registry.total_components} components
@@ -117,7 +119,7 @@ export function ChangelogClient() {
           onClick={() => { fetchComponents(); fetchHealth(); if (tab === "changelog") fetchChangelog(); }}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted"
         >
-          <RefreshCw size={14} /> Refresh
+          <RefreshCw size={14} /> {t("heredity.refresh", "Refresh")}
         </button>
       </div>
 
@@ -126,25 +128,25 @@ export function ChangelogClient() {
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">Components</span>
+              <span className="text-xs text-muted-foreground">{t("heredity.components", "Components")}</span>
               <p className="text-2xl font-bold">{health.registry.total_components}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">Total Versions</span>
+              <span className="text-xs text-muted-foreground">{t("heredity.versions", "Total Versions")}</span>
               <p className="text-2xl font-bold">{health.registry.total_versions}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">Changelog Entries</span>
+              <span className="text-xs text-muted-foreground">{t("heredity.changelogEntries", "Changelog Entries")}</span>
               <p className="text-2xl font-bold">{health.registry.total_changelog_entries}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">Active</span>
+              <span className="text-xs text-muted-foreground">{t("heredity.active", "Active")}</span>
               <p className="text-2xl font-bold text-emerald-500">
                 {health.registry.version_statuses?.active || 0}
               </p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">Platform Version</span>
+              <span className="text-xs text-muted-foreground">{t("heredity.platformVersion", "Platform Version")}</span>
               <p className="text-2xl font-bold">v{health.registry.platform_version}</p>
             </div>
           </div>
@@ -169,7 +171,7 @@ export function ChangelogClient() {
               <input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Search components..."
+                placeholder={t("heredity.searchComponents", "Search components...")}
                 className="w-full rounded-lg border border-border bg-background pl-9 pr-3 py-2 text-sm"
               />
             </div>
@@ -178,9 +180,9 @@ export function ChangelogClient() {
               onChange={(e) => setFilterStatus(e.target.value)}
               className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
             >
-              <option value="all">All Status</option>
-              <option value="active">Active</option>
-              <option value="deprecated">Deprecated</option>
+              <option value="all">{t("heredity.allStatus", "All Status")}</option>
+              <option value="active">{t("heredity.active", "Active")}</option>
+              <option value="deprecated">{t("heredity.deprecated", "Deprecated")}</option>
             </select>
           </div>
         )}
@@ -231,18 +233,18 @@ export function ChangelogClient() {
             {changelog.length === 0 ? (
               <div className="rounded-xl border border-border bg-card p-8 text-center">
                 <Clock size={32} className="mx-auto mb-3 text-muted-foreground" />
-                <p className="text-sm text-muted-foreground">No changelog entries yet</p>
-                <p className="text-xs text-muted-foreground mt-1">Version changes will appear here</p>
+                <p className="text-sm text-muted-foreground">{t("heredity.noChangelog", "No changelog entries yet")}</p>
+                <p className="text-xs text-muted-foreground mt-1">{t("heredity.versionChanges", "Version changes will appear here")}</p>
               </div>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">Component</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">Version</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">Changes</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">Date</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("heredity.components", "Component")}</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("heredity.version", "Version")}</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("heredity.changes", "Changes")}</th>
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("heredity.date", "Date")}</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -273,7 +275,7 @@ export function ChangelogClient() {
         {tab === "dependencies" && (
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-card p-4">
-              <h3 className="text-sm font-medium mb-3">Dependency Graph</h3>
+              <h3 className="text-sm font-medium mb-3">{t("heredity.dependencyGraph", "Dependency Graph")}</h3>
               <div className="space-y-2">
                 {edges.map((edge, i) => {
                   const fromComp = components.find((c) => c.component_id === edge.from);
@@ -293,14 +295,14 @@ export function ChangelogClient() {
                 })}
               </div>
               {edges.length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-4">No dependencies registered</p>
+                <p className="text-sm text-muted-foreground text-center py-4">{t("heredity.noDeps", "No dependencies registered")}</p>
               )}
             </div>
 
             {/* Dependency summary */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
-                <h3 className="text-sm font-medium mb-3">Most Depended On</h3>
+                <h3 className="text-sm font-medium mb-3">{t("heredity.mostDepended", "Most Depended On")}</h3>
                 <div className="space-y-2">
                   {Object.entries(
                     edges.reduce((acc, e) => { acc[e.to] = (acc[e.to] || 0) + 1; return acc; }, {} as Record<string, number>)
@@ -313,7 +315,7 @@ export function ChangelogClient() {
                         <div key={dep} className="flex items-center justify-between">
                           <span className="text-xs font-medium">{comp?.component_name || dep}</span>
                           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">
-                            {count} dependent{count !== 1 ? "s" : ""}
+                            {count} {t("heredity.dependent", "dependent")}
                           </span>
                         </div>
                       );
@@ -321,7 +323,7 @@ export function ChangelogClient() {
                 </div>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
-                <h3 className="text-sm font-medium mb-3">Independent Components</h3>
+                <h3 className="text-sm font-medium mb-3">{t("heredity.independent", "Independent Components")}</h3>
                 <div className="space-y-2">
                   {components
                     .filter((c) => Object.keys(c.dependencies).length === 0)

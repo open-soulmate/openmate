@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useTranslation } from "react-i18next";
 import {
   RefreshCw, Maximize2, Minimize2, Activity,
   CheckCircle, XCircle, Loader2, Clock,
@@ -240,6 +241,7 @@ const CONNECTIONS: Array<[string, string]> = [
 ];
 
 export function BodyMapClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [organStatuses, setOrganStatuses] = useState<Record<string, OrganStatus>>({});
   const [hoveredOrgan, setHoveredOrgan] = useState<string | null>(null);
@@ -324,13 +326,13 @@ export function BodyMapClient() {
       <div className="body-map-header flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Activity size={20} className="text-primary" />
-          <h1 className="text-lg font-semibold">System Body Map</h1>
+          <h1 className="text-lg font-semibold">{t("bodyMap.title", "System Body Map")}</h1>
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
-            {okCount}/{totalCount} Online
+            {okCount}/{totalCount} {t("bodyMap.healthy", "Online")}
           </span>
           {errorCount > 0 && (
             <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500">
-              {errorCount} Error{errorCount > 1 ? "s" : ""}
+              {errorCount} {t("bodyMap.errors", "Error")}
             </span>
           )}
         </div>
@@ -349,13 +351,13 @@ export function BodyMapClient() {
             )}
           >
             <div className={cn("w-1.5 h-1.5 rounded-full", autoRefresh ? "bg-green-500 animate-pulse" : "bg-muted-foreground")} />
-            Auto
+            {t("bodyMap.auto", "Auto")}
           </button>
           <button
             onClick={checkAllOrgans}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted transition-colors"
           >
-            <RefreshCw size={12} /> Refresh
+            <RefreshCw size={12} /> {t("bodyMap.refresh", "Refresh")}
           </button>
           <button
             onClick={toggleFullscreen}
@@ -447,7 +449,7 @@ export function BodyMapClient() {
         <div className="body-map-side w-72 border-l border-border overflow-y-auto p-4 space-y-4">
           {/* System legend */}
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Systems</h3>
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t("bodyMap.systemsTitle", "Systems")}</h3>
             <div className="space-y-1.5">
               {Object.entries(SYSTEM_COLORS).map(([system, colors]) => (
                 <div key={system} className="flex items-center gap-2">
@@ -471,15 +473,15 @@ export function BodyMapClient() {
               <div className="flex items-center gap-2">
                 {selectedStatus.status === "ok" ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-500">
-                    <CheckCircle size={10} /> Healthy
+                    <CheckCircle size={10} /> {t("bodyMap.healthy", "Healthy")}
                   </span>
                 ) : selectedStatus.status === "error" ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-500">
-                    <XCircle size={10} /> Error
+                    <XCircle size={10} /> {t("bodyMap.errors", "Error")}
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                    <Loader2 size={10} className="animate-spin" /> Checking...
+                    <Loader2 size={10} className="animate-spin" /> {t("bodyMap.loading", "Checking...")}
                   </span>
                 )}
               </div>
@@ -487,7 +489,7 @@ export function BodyMapClient() {
                 href={selectedOrganData.href}
                 className="block w-full rounded-lg bg-primary px-3 py-2 text-center text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               >
-                Open {selectedOrganData.label} →
+                {t("bodyMap.open", "Open")} {selectedOrganData.label} →
               </Link>
             </div>
           )}
@@ -495,7 +497,7 @@ export function BodyMapClient() {
           {/* Organ list */}
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
-              All Organs ({okCount}/{totalCount})
+              {t("bodyMap.allOrgans", "All Organs")} ({okCount}/{totalCount})
             </h3>
             <div className="space-y-1">
               {ORGAN_LAYOUT.map((organ) => {

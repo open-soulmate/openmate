@@ -2315,7 +2315,7 @@
     "changes": "変更",
     "entries": "エントリ",
     "noMigrations": "マイグレーションなし",
-    "noChangelog": "変更履歴なし",
+    "noChangelog": "変更履歴はまだありません",
     "componentsCount": "コンポーネント数",
     "major": "メジャー",
     "minor": "マイナー",
@@ -2371,7 +2371,15 @@
     "t66360": "選択组件...",
     "t75585": "依存関係图",
     "actual": "実際",
-    "requires": "必要"
+    "requires": "必要",
+    "active": "アクティブ",
+    "allStatus": "すべてのステータス",
+    "deprecated": "非推奨",
+    "versionChanges": "バージョンの変更はここに表示されます",
+    "mostDepended": "最も依存されている",
+    "dependent": "依存",
+    "independent": "独立コンポーネント",
+    "date": "日付"
   },
   "pulse": {
     "title": "脈拍 · 高精度タイマー",
@@ -3551,7 +3559,11 @@
       "motor": "運動",
       "isolation": "隔離",
       "foundation": "基盤"
-    }
+    },
+    "auto": "自動",
+    "open": "開く",
+    "allOrgans": "全臓器",
+    "systemsTitle": "システム"
   },
   "topology": {
     "title": "システムトポロジー",
