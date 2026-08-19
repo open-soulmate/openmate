@@ -271,7 +271,7 @@ export function AppShell() {
         onMouseLeave={handleMouseLeave}
         className={cn(
           "hidden h-screen flex-col border-r border-border bg-sidebar transition-[width] duration-200 md:flex",
-          isExpanded ? "w-60" : "w-14"
+          isExpanded ? "w-60" : "w-[68px]"
         )}
       >
         {/* Header: brand + collapse toggle */}
