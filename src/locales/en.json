@@ -637,7 +637,15 @@
     "minutesAgo": "{{minutes}} minutes ago",
     "hoursAgo": "{{hours}} hours ago",
     "daysAgo": "{{days}} days ago",
-    "filesUnit": "files"
+    "filesUnit": "files",
+    "back": "Back",
+    "createDir": "Create Directory",
+    "createDirDesc": "Enter directory name",
+    "dirName": "Directory Name",
+    "loading": "Loading...",
+    "modified": "Modified",
+    "newFolder": "New Folder",
+    "size": "Size"
   },
   "onboarding": {
     "chinese": "中文",
@@ -1604,7 +1612,9 @@
     "usageCount": "Used: {count}",
     "usageTimes": "Used {count} times",
     "variableCount": "Variables: {count}",
-    "variableHelp": "Use {{variable_name}} syntax to define variables, e.g. {{task_name}}, {{duration}}"
+    "variableHelp": "Use {{variable_name}} syntax to define variables, e.g. {{task_name}}, {{duration}}",
+    "channelsHealthy": "Channels Healthy",
+    "testHealth": "Test Health"
   },
   "mirror": {
     "title": "Mirror · Sandbox Testing",
@@ -1815,7 +1825,32 @@
       "recentCalls": "Recent Calls",
       "time": "Time",
       "noRecentRecords": "No Recent Records"
-    }
+    },
+    "budgetLimit": "Budget Limit",
+    "budgetPlaceholder": "Enter budget amount",
+    "confirmDeleteProvider": "Are you sure you want to delete this provider?",
+    "form.add": "Add",
+    "form.addKey": "Add Key",
+    "form.apiKeyManagement": "API Key Management",
+    "form.byModel": "By Model",
+    "form.byProvider": "By Provider",
+    "form.chatModel": "Chat Model",
+    "form.delete": "Delete",
+    "form.deleteKey": "Delete Key",
+    "form.editKey": "Edit Key",
+    "form.enabled": "Enabled",
+    "form.endDate": "End Date",
+    "form.model": "Model",
+    "form.models": "Models",
+    "form.noKeys": "No API keys configured",
+    "form.provider": "Provider",
+    "form.providerName": "Provider Name",
+    "form.save": "Save",
+    "form.saveKey": "Save Key",
+    "form.startDate": "Start Date",
+    "form.testConnection": "Test Connection",
+    "form.totalBudget": "Total Budget",
+    "form.usage": "Usage"
   },
   "vital": {
     "agentsOnline": "Agents Online",
@@ -2327,7 +2362,9 @@
     "text28": "迁移",
     "text29": "变更",
     "text30": "依赖关系图",
-    "text31": "无依赖"
+    "text31": "无依赖",
+    "actual": "Actual",
+    "requires": "Requires"
   },
   "pulse": {
     "title": "Pulse · Precision Timer",
@@ -2403,7 +2440,14 @@
     "text29": "最大漂移",
     "text30": "采样数",
     "type": "按类型",
-    "status": "按状态"
+    "status": "按状态",
+    "cron": "Cron",
+    "intervalPlaceholder": "e.g. 5m, 1h",
+    "latency": "Latency",
+    "maxCountPlaceholder": "Max count",
+    "once": "Once",
+    "signal": "Signal",
+    "tick": "Tick"
   },
   "nest": {
     "title": "Nest · Multi-Tenant Isolation",
@@ -3334,7 +3378,10 @@
     "text65": "最高质量",
     "text66": "需改进",
     "text67": "批量评分结果",
-    "text68": "条"
+    "text68": "条",
+    "recommend.recent": "Recent",
+    "recommend.related": "Related",
+    "recommend.trending": "Trending"
   },
   "intelligence": {
     "title": "System Intelligence",
@@ -3497,7 +3544,8 @@
     "capabilities": "Capabilities",
     "checking": "Checking...",
     "goToPage": "Go to page",
-    "t69854": "已选中"
+    "t69854": "已选中",
+    "selected": "Selected"
   },
   "graph": {
     "title": "Knowledge Graph",
@@ -3677,7 +3725,12 @@
     "teamCount": "teams",
     "memberCount": "Members",
     "taskCount": "Tasks",
-    "justNow": "just now"
+    "justNow": "just now",
+    "loadError": "Failed to load team data",
+    "loading": "Loading...",
+    "noLeader": "No leader",
+    "refresh": "Refresh",
+    "retry": "Retry"
   },
   "groups": {
     "title": "Agent Groups",
@@ -3837,7 +3890,13 @@
     "memberCount": "Members",
     "justNow": "just now",
     "minutesAgo": "{minutes} min ago",
-    "hoursAgo": "{hours}h ago"
+    "hoursAgo": "{hours}h ago",
+    "agentId": "Agent ID",
+    "agentName": "Agent Name",
+    "loading": "Loading...",
+    "model": "Model",
+    "noAgentsAdded": "No agents added",
+    "tasks": "Tasks"
   },
   "marketplace": {
     "subtitle": "Skill and Agent source management",
@@ -4038,6 +4097,7 @@
     "viewDiagnostics": "View full diagnostics"
   },
   "healer": {
+    "title": "Healer · Self-Diagnosis",
     "actionFailed": "Failed",
     "actionSuccess": "Success",
     "actionsExecuted": "Actions",
@@ -4483,7 +4543,8 @@
     "healthStatus": "Health Status",
     "healthy": "Healthy",
     "unhealthy": "Unhealthy",
-    "refresh": "Refresh"
+    "refresh": "Refresh",
+    "willVolition": "Will · Volition System"
   },
   "plugins": {
     "loadFailed": "Load failed",
@@ -4926,7 +4987,10 @@
     "organHealth": "Organ Health",
     "ok": "OK",
     "degraded": "Degraded",
-    "error": "Error"
+    "error": "Error",
+    "autoRefreshOff": "Auto Refresh Off",
+    "autoRefreshOn": "Auto Refresh On",
+    "live": "Live"
   },
   "diff": {
     "filesModified": "{count} files modified",
@@ -5248,5 +5312,16 @@
     "t26433": "Start",
     "t37840": "Select or create a workflow",
     "t88657": "Select from the list on the left, or click 'New' in the toolbar"
+  },
+  "metrics": {
+    "title": "Prometheus Metrics",
+    "refresh": "Refresh",
+    "autoRefresh": "Auto Refresh",
+    "endpoint": "Endpoint",
+    "lastUpdate": "Last Update",
+    "loading": "Loading metrics...",
+    "error": "Failed to fetch metrics",
+    "raw": "Raw Data",
+    "parsed": "Parsed"
   }
 }
