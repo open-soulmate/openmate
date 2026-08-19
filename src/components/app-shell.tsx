@@ -409,20 +409,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </SidebarInset>
 
-      {/* Mobile bottom tab bar */}
-      <nav className="fixed inset-x-0 bottom-0 z-50 flex h-14 items-center justify-around border-t border-border bg-sidebar px-2 md:hidden">
-        {navGroups.flatMap((g) => g.items).slice(0, 5).map((item) => {
-          const active = pathname.startsWith(item.href);
-          return (
-            <Link key={item.href} href={item.href}
-              className={cn("flex flex-col items-center gap-0.5 rounded-md px-3 py-1.5 text-[10px] transition-colors",
-                active ? "text-foreground" : "text-sidebar-foreground")}>
-              <item.icon size={20} />
-              <span suppressHydrationWarning>{item.label}</span>
-            </Link>
-          );
-        })}
-      </nav>
 
       {/* Terminal Panel */}
       <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
