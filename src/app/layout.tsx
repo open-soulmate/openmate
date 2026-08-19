@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "@/styles/sidebar.css";
 import I18nProvider from "@/components/i18n-provider";
 
 export const viewport: Viewport = {

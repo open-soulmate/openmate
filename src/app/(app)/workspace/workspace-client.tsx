@@ -66,7 +66,16 @@ export function WorkspaceClient() {
     try {
       const res = await fetch(`${apiBase}/api/dir?path=${encodeURIComponent(path)}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data: DirEntry[] = await res.json();
+      const json = await res.json();
+      // API returns {path, entries[]} — map to our interface
+      const raw = Array.isArray(json) ? json : (json.entries || []);
+      const data: DirEntry[] = raw.map((e: any) => ({
+        name: e.name,
+        path: e.path,
+        is_dir: e.is_dir ?? e.type === "directory",
+        size: e.size ?? 0,
+        modified: e.modified ?? "",
+      }));
       // Sort: directories first, then files, alphabetically
       data.sort((a, b) => {
         if (a.is_dir !== b.is_dir) return a.is_dir ? -1 : 1;
