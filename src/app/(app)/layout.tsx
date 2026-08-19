@@ -1,5 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
+import '@/styles/sidebar.css';
 import { AppShell } from '@/components/app-shell';
 import { Topbar } from '@/components/topbar';
 import { CommandMenu } from '@/components/command-menu';
