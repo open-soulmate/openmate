@@ -637,7 +637,15 @@
     "minutesAgo": "{{minutes}}分前",
     "hoursAgo": "{{hours}}時間前",
     "daysAgo": "{{days}}日前",
-    "filesUnit": "ファイル"
+    "filesUnit": "ファイル",
+    "back": "戻る",
+    "createDir": "ディレクトリ作成",
+    "createDirDesc": "ディレクトリ名を入力",
+    "dirName": "ディレクトリ名",
+    "loading": "読み込み中...",
+    "modified": "更新日時",
+    "newFolder": "新規フォルダ",
+    "size": "サイズ"
   },
   "onboarding": {
     "chinese": "中文",
@@ -1604,7 +1612,9 @@
     "usageCount": "使用回数: {count}",
     "usageTimes": "{count} 回使用",
     "variableCount": "変数: {count}",
-    "variableHelp": "{{変数名}} 構文で変数を定義 例: {{task_name}}, {{duration}}"
+    "variableHelp": "{{変数名}} 構文で変数を定義 例: {{task_name}}, {{duration}}",
+    "channelsHealthy": "チャンネル正常",
+    "testHealth": "ヘルステスト"
   },
   "mirror": {
     "title": "ミラー · サンドボックステスト",
@@ -1815,7 +1825,32 @@
       "recentCalls": "最近の呼び出し",
       "time": "時間",
       "noRecentRecords": "呼び出し記録がありません"
-    }
+    },
+    "budgetLimit": "予算上限",
+    "budgetPlaceholder": "予算額を入力",
+    "confirmDeleteProvider": "このプロバイダーを削除しますか？",
+    "form.add": "追加",
+    "form.addKey": "キー追加",
+    "form.apiKeyManagement": "APIキー管理",
+    "form.byModel": "モデル別",
+    "form.byProvider": "プロバイダー別",
+    "form.chatModel": "チャットモデル",
+    "form.delete": "削除",
+    "form.deleteKey": "キー削除",
+    "form.editKey": "キー編集",
+    "form.enabled": "有効",
+    "form.endDate": "終了日",
+    "form.model": "モデル",
+    "form.models": "モデル一覧",
+    "form.noKeys": "APIキー未設定",
+    "form.provider": "プロバイダー",
+    "form.providerName": "プロバイダー名",
+    "form.save": "保存",
+    "form.saveKey": "キー保存",
+    "form.startDate": "開始日",
+    "form.testConnection": "接続テスト",
+    "form.totalBudget": "総予算",
+    "form.usage": "使用量"
   },
   "vital": {
     "title": "バイタル · システム監視",
@@ -2405,7 +2440,14 @@
     "t30224": "{samplesize} {samples}",
     "t60861": "间隔(ms)",
     "t44722": "最大次数(0=なし限)",
-    "t41384": "触发一次节拍"
+    "t41384": "触发一次节拍",
+    "cron": "定期実行",
+    "intervalPlaceholder": "例: 5m, 1h",
+    "latency": "レイテンシ",
+    "maxCountPlaceholder": "最大回数",
+    "once": "一回",
+    "signal": "シグナル",
+    "tick": "ティック"
   },
   "nest": {
     "title": "巣 · マルチテナント分離",
@@ -3340,7 +3382,10 @@
     "text66": "需改进",
     "text67": "批量评分結果",
     "text68": "条",
-    "t44632": "入力知識条目 ID..."
+    "t44632": "入力知識条目 ID...",
+    "recommend.recent": "最近",
+    "recommend.related": "関連",
+    "recommend.trending": "トレンド"
   },
   "intelligence": {
     "title": "インテリジェンス分析",
@@ -3503,7 +3548,8 @@
     "capabilities": "機能",
     "checking": "確認中...",
     "goToPage": "ページへ移動",
-    "t69854": "已选中"
+    "t69854": "已选中",
+    "selected": "選択中"
   },
   "graph": {
     "title": "ナレッジグラフ",
@@ -3658,7 +3704,12 @@
     "todo": "TODO",
     "unassigned": "未割り当て",
     "urgent": "緊急",
-    "user": "ユーザー"
+    "user": "ユーザー",
+    "loadError": "チームデータ読み込み失敗",
+    "loading": "読み込み中...",
+    "noLeader": "リーダーなし",
+    "refresh": "更新",
+    "retry": "再試行"
   },
   "groups": {
     "title": "エージェントグループ",
@@ -3818,7 +3869,13 @@
     "sampleGroupName": "研究グループ",
     "searchGroups": "グループを検索...",
     "selectMasterAgent": "メインAgentを選択...",
-    "selected": "選択済み"
+    "selected": "選択済み",
+    "agentId": "エージェントID",
+    "agentName": "エージェント名",
+    "loading": "読み込み中...",
+    "model": "モデル",
+    "noAgentsAdded": "エージェント未追加",
+    "tasks": "タスク"
   },
   "marketplace": {
     "title": "マーケットプレイス",
@@ -4019,6 +4076,7 @@
     "viewDiagnostics": "完全な診断を見る"
   },
   "healer": {
+    "title": "ヒーラー · 自己診断",
     "actionFailed": "失敗",
     "actionSuccess": "成功",
     "actionsExecuted": "実行アクション",
@@ -4838,7 +4896,8 @@
     "vitalSystemMonitor": "Vital システム監視",
     "voiceVocal": "Voice 音声",
     "will意志": "Will 意志",
-    "workflowWorkflow": "Workflow ワークフロー"
+    "workflowWorkflow": "Workflow ワークフロー",
+    "willVolition": "意志 · 意志システム"
   },
   "system": {
     "systemOverview": "システム概要",
@@ -4855,7 +4914,10 @@
     "organHealth": "器官ヘルス",
     "ok": "OK",
     "degraded": "低下",
-    "error": "エラー"
+    "error": "エラー",
+    "autoRefreshOff": "自動更新OFF",
+    "autoRefreshOn": "自動更新ON",
+    "live": "リアルタイム"
   },
   "diff": {
     "filesModified": "{count} ファイル変更",
@@ -5254,5 +5316,16 @@
     "justNow": "たった今",
     "minutesAgo": "{minutes}分前",
     "hoursAgo": "{hours}時間前"
+  },
+  "metrics": {
+    "title": "Prometheus メトリクス",
+    "refresh": "更新",
+    "autoRefresh": "自動更新",
+    "endpoint": "エンドポイント",
+    "lastUpdate": "最終更新",
+    "loading": "メトリクス読み込み中...",
+    "error": "メトリクス取得失敗",
+    "raw": "生データ",
+    "parsed": "解析済み"
   }
 }

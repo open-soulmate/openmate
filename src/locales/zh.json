@@ -637,7 +637,15 @@
     "minutesAgo": "{{minutes}} 分钟前",
     "hoursAgo": "{{hours}} 小时前",
     "daysAgo": "{{days}} 天前",
-    "filesUnit": "文件"
+    "filesUnit": "文件",
+    "back": "返回",
+    "createDir": "创建目录",
+    "createDirDesc": "输入目录名称",
+    "dirName": "目录名称",
+    "loading": "加载中...",
+    "modified": "修改时间",
+    "newFolder": "新建文件夹",
+    "size": "大小"
   },
   "onboarding": {
     "chinese": "中文",
@@ -1604,7 +1612,9 @@
     "contentTemplatePlaceholder": "内容模板，支持 {{variable}} 变量",
     "variableHelp": "使用 {{变量名}} 语法定义变量，如 {{task_name}}, {{duration}}",
     "cancel": "取消",
-    "create": "创建"
+    "create": "创建",
+    "channelsHealthy": "通道健康",
+    "testHealth": "测试健康"
   },
   "mirror": {
     "title": "镜像 · 沙箱测试",
@@ -1815,7 +1825,32 @@
       "recentCalls": "最近调用",
       "time": "时间",
       "noRecentRecords": "暂无调用记录"
-    }
+    },
+    "budgetLimit": "预算上限",
+    "budgetPlaceholder": "输入预算金额",
+    "confirmDeleteProvider": "确定删除此供应商？",
+    "form.add": "添加",
+    "form.addKey": "添加密钥",
+    "form.apiKeyManagement": "API 密钥管理",
+    "form.byModel": "按模型",
+    "form.byProvider": "按供应商",
+    "form.chatModel": "对话模型",
+    "form.delete": "删除",
+    "form.deleteKey": "删除密钥",
+    "form.editKey": "编辑密钥",
+    "form.enabled": "已启用",
+    "form.endDate": "结束日期",
+    "form.model": "模型",
+    "form.models": "模型列表",
+    "form.noKeys": "未配置API密钥",
+    "form.provider": "供应商",
+    "form.providerName": "供应商名称",
+    "form.save": "保存",
+    "form.saveKey": "保存密钥",
+    "form.startDate": "开始日期",
+    "form.testConnection": "测试连接",
+    "form.totalBudget": "总预算",
+    "form.usage": "用量"
   },
   "vital": {
     "agentsOnline": "在线 Agent",
@@ -2327,7 +2362,9 @@
     "text28": "迁移",
     "text29": "变更",
     "text30": "依赖关系图",
-    "text31": "无依赖"
+    "text31": "无依赖",
+    "actual": "实际",
+    "requires": "依赖"
   },
   "pulse": {
     "title": "脉搏 · 高精度时序节拍器",
@@ -2403,7 +2440,14 @@
     "text29": "最大漂移",
     "text30": "采样数",
     "type": "按类型",
-    "status": "按状态"
+    "status": "按状态",
+    "cron": "定时",
+    "intervalPlaceholder": "如 5m, 1h",
+    "latency": "延迟",
+    "maxCountPlaceholder": "最大次数",
+    "once": "单次",
+    "signal": "信号",
+    "tick": "心跳"
   },
   "nest": {
     "title": "巢穴 · 多租户隔离",
@@ -3334,7 +3378,10 @@
     "text65": "最高质量",
     "text66": "需改进",
     "text67": "批量评分结果",
-    "text68": "条"
+    "text68": "条",
+    "recommend.recent": "最近",
+    "recommend.related": "相关",
+    "recommend.trending": "热门"
   },
   "intelligence": {
     "title": "智能分析",
@@ -3497,7 +3544,8 @@
     "capabilities": "能力",
     "checking": "检查中...",
     "goToPage": "跳转到页面",
-    "t69854": "已选中"
+    "t69854": "已选中",
+    "selected": "已选择"
   },
   "graph": {
     "title": "知识图谱",
@@ -3677,7 +3725,12 @@
     "teamCount": "个团队",
     "memberCount": "成员数",
     "taskCount": "任务数",
-    "justNow": "刚刚"
+    "justNow": "刚刚",
+    "loadError": "加载团队数据失败",
+    "loading": "加载中...",
+    "noLeader": "无负责人",
+    "refresh": "刷新",
+    "retry": "重试"
   },
   "groups": {
     "title": "Agent分组",
@@ -3837,7 +3890,13 @@
     "memberCount": "成员数",
     "justNow": "刚刚",
     "minutesAgo": "{minutes} 分钟前",
-    "hoursAgo": "{hours} 小时前"
+    "hoursAgo": "{hours} 小时前",
+    "agentId": "代理ID",
+    "agentName": "代理名称",
+    "loading": "加载中...",
+    "model": "模型",
+    "noAgentsAdded": "未添加代理",
+    "tasks": "任务"
   },
   "marketplace": {
     "subtitle": "技能和Agent源管理",
@@ -4038,6 +4097,7 @@
     "viewDiagnostics": "查看完整诊断"
   },
   "healer": {
+    "title": "自愈 · 器官诊断",
     "actionFailed": "失败",
     "actionSuccess": "成功",
     "actionsExecuted": "执行动作",
@@ -4483,7 +4543,8 @@
     "healthStatus": "健康状态",
     "healthy": "正常",
     "unhealthy": "异常",
-    "refresh": "刷新"
+    "refresh": "刷新",
+    "willVolition": "意志 · 意志系统"
   },
   "plugins": {
     "loadFailed": "加载失败",
@@ -4926,7 +4987,10 @@
     "organHealth": "器官健康",
     "ok": "正常",
     "degraded": "降级",
-    "error": "异常"
+    "error": "异常",
+    "autoRefreshOff": "关闭自动刷新",
+    "autoRefreshOn": "开启自动刷新",
+    "live": "实时"
   },
   "diff": {
     "filesModified": "{count} 个文件修改",
@@ -5248,5 +5312,16 @@
     "t26433": "开始",
     "t37840": "选择或创建工作流",
     "t88657": "从左侧列表选择，或点击工具栏「新建」"
+  },
+  "metrics": {
+    "title": "Prometheus 指标",
+    "refresh": "刷新",
+    "autoRefresh": "自动刷新",
+    "endpoint": "端点",
+    "lastUpdate": "最后更新",
+    "loading": "加载指标中...",
+    "error": "获取指标失败",
+    "raw": "原始数据",
+    "parsed": "解析数据"
   }
 }
