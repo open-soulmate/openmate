@@ -368,7 +368,12 @@
     "previous": "Previous",
     "next": "Next",
     "learned": "Learned",
-    "markAsLearned": "Mark as Learned"
+    "markAsLearned": "Mark as Learned",
+    "t03149": "Learn",
+    "t10672": "Course",
+    "t16459": "Progress",
+    "t56231": "Start Learning",
+    "t76433": "Completed"
   },
   "agents": {
     "title": "Agent Management",
@@ -1226,7 +1231,8 @@
     "t44032": "Remove",
     "t70683": "Reason",
     "t96396": "Reset Rate Limit",
-    "time3": "Time"
+    "time3": "Time",
+    "auditRecordCount": "Audit Record Count"
   },
   "marrow": {
     "title": "Marrow · Backup & Recovery",
@@ -1850,7 +1856,8 @@
     "form.startDate": "Start Date",
     "form.testConnection": "Test Connection",
     "form.totalBudget": "Total Budget",
-    "form.usage": "Usage"
+    "form.usage": "Usage",
+    "unlimited": "Unlimited"
   },
   "vital": {
     "agentsOnline": "Agents Online",
@@ -2908,7 +2915,11 @@
     "sampleJoy": "This is amazing! The feature finally works, I'm so happy!",
     "sampleAnger": "This bug is giving me a headache, been at it all day.",
     "sampleAnticipation": "Looking forward to tomorrow's launch, hope everything goes well.",
-    "sampleConfusion": "I don't quite understand this, could you explain again?"
+    "sampleConfusion": "I don't quite understand this, could you explain again?",
+    "sample1": "Feeling good today",
+    "sample2": "This task is tricky",
+    "sample3": "Need help with a problem",
+    "sample4": "Done, thanks!"
   },
   "nerve": {
     "title": "Nerve · Event Bus",
@@ -3014,7 +3025,23 @@
     "text36": "发布结果",
     "text37": "事件已发布",
     "text38": ">填写信息后点击",
-    "text39": "填写信息后点击"
+    "text39": "填写信息后点击",
+    "activeTopics": "Active Topics",
+    "recentEvents": "Recent Events",
+    "viewAll": "View All",
+    "addSubscription": "Add Subscription",
+    "activeSubscriptions": "Active Subscriptions",
+    "deliveryCount": "Delivered",
+    "times": "times",
+    "lastDelivery": "Last Delivery",
+    "registerNode": "Register Node",
+    "nodeList": "Node List",
+    "registered": "Registered",
+    "heartbeat": "Heartbeat",
+    "total": "Total",
+    "items": "items",
+    "deliveredTo": "Delivered to",
+    "fillAndClick": "Fill in and click "
   },
   "will": {
     "title": "Will · Workflow Engine",
@@ -4034,18 +4061,9 @@
       "technology": "Technology",
       "organization": "Organization"
     },
-    "relationTypes": [
-      "belongs to",
-      "contains",
-      "relates to",
-      "depends on",
-      "located at",
-      "created by",
-      "uses",
-      "member of",
-      "participates in",
-      "related"
-    ]
+    "relationTypes": {
+      "2": "relates to"
+    }
   },
   "notifications": {
     "title": "Notification Center",
@@ -4708,7 +4726,13 @@
     "managePlugins": "Install, configure and manage system plugins",
     "pluginCount": "{{total}} plugins, {{enabled}} enabled",
     "refresh": "Refresh",
-    "longIntervalCount": "{{count}}"
+    "longIntervalCount": "{{count}}",
+    "tags": "Tags",
+    "text19": "Search plugins...",
+    "text2": "Enabled",
+    "text3": "Disabled",
+    "titlePlaceholder": "Plugin title",
+    "total": "Total"
   },
   "team-detail": {
     "text1": "刚刚",
@@ -5322,6 +5346,30 @@
     "loading": "Loading metrics...",
     "error": "Failed to fetch metrics",
     "raw": "Raw Data",
-    "parsed": "Parsed"
+    "parsed": "Parsed",
+    "autoRefreshOff": "Auto-refresh off",
+    "cores": "cores",
+    "cpu": "CPU",
+    "cpuTime": "CPU Time",
+    "disk": "Disk",
+    "errors": "Errors",
+    "instanceInfo": "Instance Info",
+    "loadFailed": "Load failed",
+    "memory": "Memory",
+    "noErrors": "No errors",
+    "processMetrics": "Process Metrics",
+    "systemMetrics": "System Metrics",
+    "uptime": "Uptime",
+    "virtual": "Virtual",
+    "avgResponseTime": "Avg Response Time",
+    "peakMemory": "Peak Memory",
+    "requestCount": "Request Count",
+    "organHealth": "Organ Health",
+    "organs": "Organs",
+    "scrapeConfig": "Scrape Config",
+    "systemMemory": "System Memory",
+    "topEndpoints": "Top Endpoints",
+    "updated": "Updated",
+    "used": "Used"
   }
 }
