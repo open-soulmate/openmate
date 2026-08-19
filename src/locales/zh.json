@@ -368,7 +368,12 @@
     "previous": "上一章",
     "next": "下一章",
     "learned": "已学习",
-    "markAsLearned": "标记为已学习"
+    "markAsLearned": "标记为已学习",
+    "t03149": "学习",
+    "t10672": "课程",
+    "t16459": "进度",
+    "t56231": "开始学习",
+    "t76433": "已完成"
   },
   "agents": {
     "title": "Agent管理",
@@ -1226,7 +1231,8 @@
     "t44032": "移除",
     "t70683": "原因",
     "t96396": "重置限流",
-    "time3": "时间"
+    "time3": "时间",
+    "auditRecordCount": "审计记录数"
   },
   "marrow": {
     "title": "骨髓 · 备份恢复",
@@ -1850,7 +1856,8 @@
     "form.startDate": "开始日期",
     "form.testConnection": "测试连接",
     "form.totalBudget": "总预算",
-    "form.usage": "用量"
+    "form.usage": "用量",
+    "unlimited": "无限制"
   },
   "vital": {
     "agentsOnline": "在线 Agent",
@@ -2908,7 +2915,11 @@
     "sampleJoy": "太棒了！这个功能终于实现了，我好开心！",
     "sampleAnger": "这个bug让我非常头疼，已经折腾了一整天。",
     "sampleAnticipation": "期待明天的发布会，希望一切顺利。",
-    "sampleConfusion": "这个问题我不太理解，能再解释一下吗？"
+    "sampleConfusion": "这个问题我不太理解，能再解释一下吗？",
+    "sample1": "今天感觉不错",
+    "sample2": "这个任务有点棘手",
+    "sample3": "需要帮忙解决一个问题",
+    "sample4": "完成了，谢谢！"
   },
   "nerve": {
     "title": "神经 · 事件总线",
@@ -3014,7 +3025,23 @@
     "text36": "发布结果",
     "text37": "事件已发布",
     "text38": ">填写信息后点击",
-    "text39": "填写信息后点击"
+    "text39": "填写信息后点击",
+    "activeTopics": "活跃 Topics",
+    "recentEvents": "最近事件",
+    "viewAll": "查看全部",
+    "addSubscription": "添加订阅",
+    "activeSubscriptions": "活跃订阅",
+    "deliveryCount": "投递",
+    "times": "次",
+    "lastDelivery": "最后投递",
+    "registerNode": "注册节点",
+    "nodeList": "节点列表",
+    "registered": "注册时间",
+    "heartbeat": "心跳",
+    "total": "共",
+    "items": "条",
+    "deliveredTo": "投递到",
+    "fillAndClick": "填写信息后点击"
   },
   "will": {
     "title": "意志 · 工作流引擎",
@@ -4034,18 +4061,9 @@
       "technology": "技术",
       "organization": "组织"
     },
-    "relationTypes": [
-      "属于",
-      "包含",
-      "关联",
-      "依赖",
-      "位于",
-      "创建",
-      "使用",
-      "属于组织",
-      "参与",
-      "相关"
-    ]
+    "relationTypes": {
+      "2": "关联"
+    }
   },
   "notifications": {
     "title": "通知中心",
@@ -4708,7 +4726,13 @@
     "managePlugins": "安装、配置和管理系统插件",
     "pluginCount": "共 {{total}} 个插件，{{enabled}} 个已启用",
     "refresh": "刷新",
-    "longIntervalCount": "{{count}}个"
+    "longIntervalCount": "{{count}}个",
+    "tags": "标签",
+    "text19": "搜索插件...",
+    "text2": "已启用",
+    "text3": "已禁用",
+    "titlePlaceholder": "插件标题",
+    "total": "总计"
   },
   "team-detail": {
     "text1": "刚刚",
@@ -5322,6 +5346,30 @@
     "loading": "加载指标中...",
     "error": "获取指标失败",
     "raw": "原始数据",
-    "parsed": "解析数据"
+    "parsed": "解析数据",
+    "autoRefreshOff": "自动刷新已关闭",
+    "cores": "核心",
+    "cpu": "CPU",
+    "cpuTime": "CPU 时间",
+    "disk": "磁盘",
+    "errors": "错误",
+    "instanceInfo": "实例信息",
+    "loadFailed": "加载失败",
+    "memory": "内存",
+    "noErrors": "无错误",
+    "processMetrics": "进程指标",
+    "systemMetrics": "系统指标",
+    "uptime": "运行时间",
+    "virtual": "虚拟",
+    "avgResponseTime": "平均响应时间",
+    "peakMemory": "峰值内存",
+    "requestCount": "请求数",
+    "organHealth": "器官健康",
+    "organs": "器官",
+    "scrapeConfig": "采集配置",
+    "systemMemory": "系统内存",
+    "topEndpoints": "热门端点",
+    "updated": "更新时间",
+    "used": "已使用"
   }
 }
