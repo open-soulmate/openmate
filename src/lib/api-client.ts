@@ -117,8 +117,18 @@ export function setUserId(id: string) {
   localStorage.setItem('openmate-user-id', id);
 }
 
+export function getUserName(): string | null {
+  if (typeof window === 'undefined') return null;
+  return localStorage.getItem('openmate-username');
+}
+
+export function setUserName(name: string) {
+  localStorage.setItem('openmate-username', name);
+}
+
 export function clearUser() {
   localStorage.removeItem('openmate-user-id');
+  localStorage.removeItem('openmate-username');
   localStorage.removeItem('openmate-token');
 }
 

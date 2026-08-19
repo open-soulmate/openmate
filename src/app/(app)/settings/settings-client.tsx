@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { type ThemeId, themes, getStoredTheme, persistTheme } from "@/lib/theme";
 import { useAppStore } from "@/stores/app-store";
-import { getApiBaseUrl, getToken, getUserId } from "@/lib/api-client";
+import { getApiBaseUrl, getToken, getUserId, getUserName } from "@/lib/api-client";
 import { useToast } from "@/components/toast-provider";
 import i18n from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
@@ -550,10 +550,10 @@ export function SettingsClient() {
               <SettingCard title={t("settings.userInfo")}>
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
                   <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
-                    {(getUserId() || "U")[0].toUpperCase()}
+                    {(getUserName() || getUserId() || "U")[0].toUpperCase()}
                   </div>
                   <div>
-                    <div className="text-sm font-medium">{getUserId() || "User"}</div>
+                    <div className="text-sm font-medium">{getUserName() || getUserId() || "User"}</div>
                     <div className="text-xs text-muted-foreground">{t("settings.signedIn")}</div>
                   </div>
                 </div>
