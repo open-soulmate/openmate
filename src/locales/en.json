@@ -4048,7 +4048,13 @@
       "organization": "Organization"
     },
     "relationTypes": {
-      "2": "relates to"
+      "0": "belongs to",
+      "1": "contains",
+      "2": "relates to",
+      "3": "depends on",
+      "4": "derived from",
+      "5": "part of",
+      "6": "references"
     }
   },
   "notifications": {
