@@ -543,7 +543,9 @@
     "enabledCount": "enabled",
     "refresh": "Refresh",
     "detecting": "Detecting...",
-    "temperatureDesc": "Control output randomness"
+    "temperatureDesc": "Control output randomness",
+    "shellWhitelistPlaceholder": "ls, cat, grep",
+    "knowledgePathPlaceholder": "~/.openmate/knowledge"
   },
   "search": {
     "title": "Search Everything",
@@ -1407,7 +1409,11 @@
     "text65": "导出历史",
     "text66": "暂无导出记录",
     "text67": " entries",
-    "download": "Download"
+    "download": "Download",
+    "backupNamePlaceholder": "my-backup",
+    "tagsPlaceholder": "daily, important",
+    "sourceDirsPlaceholder": "~/.opensoul/data",
+    "scheduleTagsPlaceholder": "auto, daily"
   },
   "gene": {
     "title": "Gene · Template Library",
@@ -1695,7 +1701,8 @@
     "test": "Test",
     "delete": "Delete",
     "testPayload": "Test Payload",
-    "creating": "Creating..."
+    "creating": "Creating...",
+    "endpointUrlPlaceholder": "Endpoint URL"
   },
   "common": {
     "loading": "Loading...",

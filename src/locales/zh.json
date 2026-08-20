@@ -543,7 +543,9 @@
     "enabledCount": "已启用",
     "refresh": "刷新",
     "detecting": "检测中...",
-    "temperatureDesc": "控制输出随机性"
+    "temperatureDesc": "控制输出随机性",
+    "shellWhitelistPlaceholder": "ls, cat, grep",
+    "knowledgePathPlaceholder": "~/.openmate/knowledge"
   },
   "search": {
     "title": "搜索一切",
@@ -1407,7 +1409,11 @@
     "text65": "导出历史",
     "text66": "暂无导出记录",
     "text67": "条",
-    "download": "下载"
+    "download": "下载",
+    "backupNamePlaceholder": "my-backup",
+    "tagsPlaceholder": "daily, important",
+    "sourceDirsPlaceholder": "~/.opensoul/data",
+    "scheduleTagsPlaceholder": "auto, daily"
   },
   "gene": {
     "title": "基因 · 模板库",
@@ -1695,7 +1701,8 @@
     "test": "测试",
     "delete": "删除",
     "testPayload": "测试 Payload",
-    "creating": "创建中..."
+    "creating": "创建中...",
+    "endpointUrlPlaceholder": "端点 URL"
   },
   "common": {
     "loading": "加载中...",

@@ -446,17 +446,17 @@ export function MarrowClient() {
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.backupName") || "备份名称"}</label>
                     <input value={backupForm.name} onChange={e => setBackupForm({ ...backupForm, name: e.target.value })}
-                      placeholder="my-backup" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("marrow.backupNamePlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.tags") || "标签"} ({t("common.commaSeparated") || "逗号分隔"})</label>
                     <input value={backupForm.tags} onChange={e => setBackupForm({ ...backupForm, tags: e.target.value })}
-                      placeholder="daily, important" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("marrow.tagsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                   <div className="col-span-2">
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.sourceDirs") || "源目录"} ({t("common.commaSeparated") || "逗号分隔"})</label>
                     <input value={backupForm.sourceDirs} onChange={e => setBackupForm({ ...backupForm, sourceDirs: e.target.value })}
-                      placeholder="~/.opensoul/data" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
+                      placeholder={t("marrow.sourceDirsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
                   </div>
                   <div className="col-span-2">
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.description") || "描述"}</label>
@@ -561,12 +561,12 @@ export function MarrowClient() {
                   <div className="col-span-2">
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.sourceDirs") || "源目录"}</label>
                     <input value={scheduleForm.sourceDirs} onChange={e => setScheduleForm({ ...scheduleForm, sourceDirs: e.target.value })}
-                      placeholder="~/.opensoul/data" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
+                      placeholder={t("marrow.sourceDirsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
                   </div>
                   <div className="col-span-2">
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.tags") || "标签"}</label>
                     <input value={scheduleForm.tags} onChange={e => setScheduleForm({ ...scheduleForm, tags: e.target.value })}
-                      placeholder="auto, daily" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("marrow.scheduleTagsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
