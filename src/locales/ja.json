@@ -5363,5 +5363,14 @@
     "topEndpoints": "トップエンドポイント",
     "updated": "更新日時",
     "used": "使用済み"
+  },
+  "bookmarks": {
+    "updated": "ブックマークを更新しました",
+    "added": "ブックマークを追加しました",
+    "deleted": "ブックマークを削除しました",
+    "saveError": "ブックマークの保存に失敗しました",
+    "collectionCreated": "コレクションを作成しました",
+    "promoted": "ナレッジベースに昇格しました",
+    "deleteConfirm": "このブックマークを削除しますか？"
   }
 }
