@@ -1,10 +1,6 @@
-import { CaptureClient } from "./capture-client";
-
-export const metadata = {
-  title: "Capture · OpenMate",
-  description: "Browser capture content management, knowledge base promotion",
-};
-
+"use client";
+import dynamic from "next/dynamic";
+const CaptureClient = dynamic(() => import("./capture-client").then((m) => m.CaptureClient), { ssr: false });
 export default function CapturePage() {
   return <CaptureClient />;
 }

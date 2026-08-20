@@ -1,10 +1,6 @@
-import { VeinClient } from "./vein-client";
-
-export const metadata = {
-  title: "File Management · OpenMate",
-  description: "Vein file management, storage statistics",
-};
-
+"use client";
+import dynamic from "next/dynamic";
+const VeinClient = dynamic(() => import("./vein-client").then((m) => m.VeinClient), { ssr: false });
 export default function VeinPage() {
   return <VeinClient />;
 }

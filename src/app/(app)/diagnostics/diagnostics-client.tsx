@@ -1,13 +1,12 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
-import { useTranslation } from "react-i18next";
 import {
-  Activity, CheckCircle, XCircle, Loader2, RefreshCw,
-  Server, Clock, Cpu, HardDrive, MemoryStick, Settings,
-  ChevronRight, ChevronDown, Zap, AlertTriangle, Info,
-  Gauge, Globe, Database, Shield,
+  Activity, RefreshCw, CheckCircle, XCircle, Loader2,
+  Server, Clock, Cpu, HardDrive, MemoryStick,
+  Gauge, AlertTriangle, Info, Wifi, WifiOff,
 } from "lucide-react";
 
 interface OrganResult {
@@ -17,8 +16,6 @@ interface OrganResult {
   status: "ok" | "error";
   status_code: number;
   response_time_ms: number;
-  error?: string;
-  detail?: Record<string, unknown>;
 }
 
 interface SystemInfo {
@@ -27,37 +24,29 @@ interface SystemInfo {
   arch: string;
   python: string;
   cpu_count: number;
-  cpu_percent?: number;
-  memory_total_gb?: number;
-  memory_used_gb?: number;
-  memory_percent?: number;
-  disk_total_gb?: number;
-  disk_used_gb?: number;
-  disk_percent?: number;
-  uptime_seconds?: number;
-  load_avg_1m?: number;
-  load_avg_5m?: number;
-  load_avg_15m?: number;
-  has_psutil: boolean;
+  cpu_percent: number;
+  memory_total_gb: number;
+  memory_used_gb: number;
+  memory_percent: number;
+  disk_total_gb: number;
+  disk_used_gb: number;
+  disk_percent: number;
+  uptime_seconds: number;
+}
+
+interface DiagnosticsSummary {
+  total: number;
+  healthy: number;
+  unhealthy: number;
+  avg_response_ms: number;
+  max_response_ms: number;
+  overall: string;
 }
 
 interface CheckAllResult {
-  summary: {
-    total: number;
-    healthy: number;
-    unhealthy: number;
-    avg_response_ms: number;
-    max_response_ms: number;
-    overall: string;
-  };
+  summary: DiagnosticsSummary;
   system: SystemInfo;
   organs: OrganResult[];
-}
-
-interface ConfigChange {
-  key: string;
-  default: unknown;
-  current: unknown;
 }
 
 function formatUptime(seconds: number): string {
@@ -81,8 +70,27 @@ function StatusBadge({ status }: { status: "ok" | "error" }) {
   );
 }
 
+function GaugeBar({ value, max, label, color }: { value: number; max: number; label: string; color: string }) {
+  const pct = max > 0 ? Math.min((value / max) * 100, 100) : 0;
+  const barColor = pct < 60 ? "bg-emerald-500" : pct < 85 ? "bg-amber-500" : "bg-red-500";
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted-foreground">{label}</span>
+        <span className="font-mono font-medium">{pct.toFixed(1)}%</span>
+      </div>
+      <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+        <div
+          className={cn("h-full rounded-full transition-all duration-500", barColor)}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+    </div>
+  );
+}
+
 function ResponseTimeBar({ ms }: { ms: number }) {
-  const width = Math.min(ms / 10, 100); // 1000ms = 100%
+  const width = Math.min(ms / 10, 100);
   const color = ms < 50 ? "bg-emerald-500" : ms < 200 ? "bg-amber-500" : "bg-red-500";
   return (
     <div className="flex items-center gap-2">
@@ -98,26 +106,20 @@ export function DiagnosticsClient() {
   const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const [data, setData] = useState<CheckAllResult | null>(null);
-  const [configChanges, setConfigChanges] = useState<ConfigChange[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [expandedOrgan, setExpandedOrgan] = useState<string | null>(null);
-  const [organDetails, setOrganDetails] = useState<Record<string, OrganResult>>({});
-  const [detailLoading, setDetailLoading] = useState<string | null>(null);
 
   const runCheck = useCallback(async () => {
     setLoading(true);
     setError("");
     try {
-      const [checkRes, configRes] = await Promise.all([
-        fetch(`${apiBase}/api/diagnostics/check-all`, { signal: AbortSignal.timeout(15000) }),
-        fetch(`${apiBase}/api/diagnostics/config-diff`, { signal: AbortSignal.timeout(5000) }),
-      ]);
-      if (checkRes.ok) setData(await checkRes.json());
-      else setError(`HTTP ${checkRes.status}`);
-      if (configRes.ok) {
-        const cd = await configRes.json();
-        setConfigChanges(cd.changes || []);
+      const res = await fetch(`${apiBase}/api/diagnostics/check-all`, {
+        signal: AbortSignal.timeout(15000),
+      });
+      if (res.ok) {
+        setData(await res.json());
+      } else {
+        setError(`HTTP ${res.status}`);
       }
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Check failed");
@@ -126,38 +128,30 @@ export function DiagnosticsClient() {
     }
   }, [apiBase]);
 
-  useEffect(() => { runCheck(); }, [runCheck]);
+  useEffect(() => {
+    runCheck();
+    const interval = setInterval(runCheck, 60000);
+    return () => clearInterval(interval);
+  }, [runCheck]);
 
-  const toggleOrgan = async (key: string) => {
-    if (expandedOrgan === key) {
-      setExpandedOrgan(null);
-      return;
-    }
-    setExpandedOrgan(key);
-    if (!organDetails[key]) {
-      setDetailLoading(key);
-      try {
-        const res = await fetch(`${apiBase}/api/diagnostics/organs/${key}`);
-        if (res.ok) {
-          const detail = await res.json();
-          setOrganDetails((prev) => ({ ...prev, [key]: detail }));
-        }
-      } catch { /* ignore */ }
-      finally { setDetailLoading(null); }
-    }
-  };
+  // Sort organs by response time
+  const sortedOrgans = data?.organs
+    ? [...data.organs].sort((a, b) => a.response_time_ms - b.response_time_ms)
+    : [];
 
   // Group organs by category
-  const grouped = data?.organs.reduce<Record<string, OrganResult[]>>((acc, o) => {
+  const grouped = sortedOrgans.reduce<Record<string, OrganResult[]>>((acc, o) => {
     (acc[o.category] = acc[o.category] || []).push(o);
     return acc;
-  }, {}) || {};
+  }, {});
 
   const categoryLabels: Record<string, string> = {
-    core: t("diagnostics.coreLayer"),
-    platform: t("diagnostics.platformLayer"),
-    advanced: t("diagnostics.advancedLayer"),
-    system: t("diagnostics.systemLayer"),
+    core: t("diagnostics.coreLayer") || "Core",
+    platform: t("diagnostics.platformLayer") || "Platform",
+    advanced: t("diagnostics.advancedLayer") || "Advanced",
+    system: t("diagnostics.systemLayer") || "System",
+    service: t("diagnostics.serviceLayer") || "Service",
+    organ: t("diagnostics.organLayer") || "Organ",
   };
 
   return (
@@ -166,10 +160,21 @@ export function DiagnosticsClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Activity size={20} className="text-orange-500" />
-          <h1 className="text-lg font-semibold">{t("diagnostics.title")}</h1>
+          <h1 className="text-lg font-semibold">{t("diagnostics.title") || "Diagnostics"}</h1>
           <span className="rounded-full bg-orange-500/10 px-2 py-0.5 text-xs font-medium text-orange-500">
-            {t("diagnostics.deepInspection")}
+            {t("diagnostics.badge") || "Health Check"}
           </span>
+          {data && (
+            data.summary.overall === "ok" ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-500">
+                <Wifi size={10} /> All OK
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-500">
+                <WifiOff size={10} /> Issues
+              </span>
+            )
+          )}
         </div>
         <button
           onClick={runCheck}
@@ -177,7 +182,7 @@ export function DiagnosticsClient() {
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors disabled:opacity-50"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-          {loading ? (t("diagnostics.checking") || "检测中...") : t("diagnostics.refresh")}
+          {loading ? (t("diagnostics.checking") || "Checking...") : (t("diagnostics.refresh") || "Refresh")}
         </button>
       </div>
 
@@ -188,187 +193,136 @@ export function DiagnosticsClient() {
           </div>
         )}
 
-        {/* Summary Cards */}
         {data && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <div className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.totalOrgans")}</span>
-                <div className="rounded-lg p-1.5 bg-blue-500/10"><Server size={14} className="text-blue-500" /></div>
-              </div>
-              <p className="text-2xl font-bold">{data.summary.total}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                <span className="text-emerald-500">{data.summary.healthy}</span> {t("diagnostics.healthy") || "正常"} ·
-                <span className="text-red-500 ml-1">{data.summary.unhealthy}</span> {t("diagnostics.unhealthy") || "异常"}
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.avgResponse")}</span>
-                <div className="rounded-lg p-1.5 bg-amber-500/10"><Clock size={14} className="text-amber-500" /></div>
-              </div>
-              <p className="text-2xl font-bold">{data.summary.avg_response_ms}<span className="text-sm font-normal ml-0.5">ms</span></p>
-              <p className="text-xs text-muted-foreground mt-0.5">{t("diagnostics.max") || "最大"} {data.summary.max_response_ms.toFixed(1)}ms</p>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">CPU</span>
-                <div className="rounded-lg p-1.5 bg-violet-500/10"><Cpu size={14} className="text-violet-500" /></div>
-              </div>
-              <p className="text-2xl font-bold">
-                {data.system.cpu_percent !== undefined ? `${data.system.cpu_percent}%` : `${data.system.cpu_count}${t("diagnostics.cores") || "核"}`}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {data.system.has_psutil ? `${data.system.cpu_count} ${t("diagnostics.cores") || "核心"}` : `Load: ${data.system.load_avg_1m?.toFixed(2)}`}
-              </p>
-            </div>
-            <div className="rounded-xl border border-border bg-card p-4">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.memory")}</span>
-                <div className="rounded-lg p-1.5 bg-emerald-500/10"><MemoryStick size={14} className="text-emerald-500" /></div>
-              </div>
-              <p className="text-2xl font-bold">
-                {data.system.memory_percent !== undefined ? `${data.system.memory_percent}%` : "N/A"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {data.system.memory_used_gb !== undefined ? `${data.system.memory_used_gb}G / ${data.system.memory_total_gb}G` : "psutil not installed"}
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* System Info */}
-        {data && (
-          <div className="rounded-xl border border-border bg-card p-5">
-            <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
-              <Info size={14} className="text-blue-500" />
-              {t("diagnostics.systemInfo")}
-            </h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-              <div><span className="text-muted-foreground">{t("diagnostics.hostname")}:</span> <span className="font-mono">{data.system.hostname}</span></div>
-              <div><span className="text-muted-foreground">{t("diagnostics.os")}:</span> {data.system.os}</div>
-              <div><span className="text-muted-foreground">{t("diagnostics.arch")}:</span> {data.system.arch}</div>
-              <div><span className="text-muted-foreground">Python:</span> <span className="font-mono">{data.system.python}</span></div>
-              {data.system.disk_percent !== undefined && (
-                <>
-                  <div><span className="text-muted-foreground">{t("diagnostics.disk")}:</span> {data.system.disk_percent}% ({data.system.disk_used_gb}G / {data.system.disk_total_gb}G)</div>
-                </>
-              )}
-              {data.system.uptime_seconds !== undefined && (
-                <div><span className="text-muted-foreground">{t("diagnostics.uptime")}:</span> {formatUptime(data.system.uptime_seconds)}</div>
-              )}
-            </div>
-          </div>
-        )}
-
-        {/* Organ Health — grouped by category */}
-        {data && Object.entries(grouped).map(([category, organs]) => (
-          <div key={category} className="rounded-xl border border-border bg-card overflow-hidden">
-            <div className="px-5 py-3 border-b border-border bg-muted/30">
-              <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
-                  <Gauge size={14} className="text-orange-500" />
-                  {categoryLabels[category] || category}
-                </h3>
-                <span className="text-[10px] text-muted-foreground">
-                  {organs.filter((o) => o.status === "ok").length}/{organs.length} {t("diagnostics.healthy") || "正常"}
-                </span>
-              </div>
-            </div>
-            <div className="divide-y divide-border">
-              {organs.map((organ) => (
-                <div key={organ.key}>
-                  <button
-                    onClick={() => toggleOrgan(organ.key)}
-                    className="flex w-full items-center gap-3 px-5 py-3 hover:bg-muted/30 transition-colors text-left"
-                  >
-                    <StatusBadge status={organ.status} />
-                    <span className="text-sm font-medium flex-1">{organ.label}</span>
-                    <ResponseTimeBar ms={organ.response_time_ms} />
-                    {detailLoading === organ.key ? (
-                      <Loader2 size={14} className="animate-spin text-muted-foreground" />
-                    ) : expandedOrgan === organ.key ? (
-                      <ChevronDown size={14} className="text-muted-foreground" />
-                    ) : (
-                      <ChevronRight size={14} className="text-muted-foreground" />
-                    )}
-                  </button>
-                  {/* Expanded detail */}
-                  {expandedOrgan === organ.key && organDetails[organ.key] && (
-                    <div className="px-5 pb-4 pt-0">
-                      <div className="rounded-lg bg-muted/50 p-4 text-xs space-y-2">
-                        <div className="grid grid-cols-3 gap-2">
-                          <div><span className="text-muted-foreground">{t("diagnostics.statusCode") || "状态码"}:</span> {organDetails[organ.key].status_code}</div>
-                          <div><span className="text-muted-foreground">{t("diagnostics.responseTime") || "响应时间"}:</span> {organDetails[organ.key].response_time_ms}ms</div>
-                          <div><span className="text-muted-foreground">{t("diagnostics.category") || "分类"}:</span> {organDetails[organ.key].category}</div>
-                        </div>
-                        {organDetails[organ.key].error && (
-                          <div className="text-red-500">{t("diagnostics.error") || "错误"}: {organDetails[organ.key].error}</div>
-                        )}
-                        {organDetails[organ.key].detail && (
-                          <pre className="whitespace-pre-wrap rounded bg-background p-3 text-[11px] font-mono max-h-40 overflow-y-auto">
-                            {JSON.stringify(organDetails[organ.key].detail, null, 2)}
-                          </pre>
-                        )}
-                      </div>
-                    </div>
-                  )}
+          <>
+            {/* Health Summary */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.totalOrgans") || "Total"}</span>
+                  <div className="rounded-lg p-1.5 bg-blue-500/10"><Server size={14} className="text-blue-500" /></div>
                 </div>
-              ))}
+                <p className="text-2xl font-bold">{data.summary.total}</p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  <span className="text-emerald-500">{data.summary.healthy}</span> ok ·
+                  <span className="text-red-500 ml-1">{data.summary.unhealthy}</span> error
+                </p>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.avgResponse") || "Avg Response"}</span>
+                  <div className="rounded-lg p-1.5 bg-amber-500/10"><Clock size={14} className="text-amber-500" /></div>
+                </div>
+                <p className="text-2xl font-bold">{data.summary.avg_response_ms}<span className="text-sm font-normal ml-0.5">ms</span></p>
+                <p className="text-xs text-muted-foreground mt-0.5">max {data.summary.max_response_ms.toFixed(1)}ms</p>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">CPU</span>
+                  <div className="rounded-lg p-1.5 bg-violet-500/10"><Cpu size={14} className="text-violet-500" /></div>
+                </div>
+                <p className="text-2xl font-bold">{data.system.cpu_percent}%</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{data.system.cpu_count} cores</p>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.memory") || "Memory"}</span>
+                  <div className="rounded-lg p-1.5 bg-emerald-500/10"><MemoryStick size={14} className="text-emerald-500" /></div>
+                </div>
+                <p className="text-2xl font-bold">{data.system.memory_percent}%</p>
+                <p className="text-xs text-muted-foreground mt-0.5">{data.system.memory_used_gb}G / {data.system.memory_total_gb}G</p>
+              </div>
             </div>
-          </div>
-        ))}
 
-        {/* Config Changes */}
-        {configChanges.length > 0 && (
-          <div className="rounded-xl border border-border bg-card overflow-hidden">
-            <div className="px-5 py-3 border-b border-border bg-muted/30">
+            {/* System Gauges */}
+            <div className="rounded-xl border border-border bg-card p-5 space-y-4">
               <h3 className="text-sm font-semibold flex items-center gap-2">
-                <Settings size={14} className="text-violet-500" />
-                {t("diagnostics.configChanges")}
-                <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500">
-                  {configChanges.length} {t("diagnostics.items") || "项"}
-                </span>
+                <Gauge size={14} className="text-orange-500" />
+                {t("diagnostics.systemGauges") || "System Gauges"}
               </h3>
+              <GaugeBar value={data.system.cpu_percent} max={100} label="CPU" color="violet" />
+              <GaugeBar value={data.system.memory_percent} max={100} label={`${t("diagnostics.memory") || "Memory"} (${data.system.memory_used_gb}G / ${data.system.memory_total_gb}G)`} color="emerald" />
+              <GaugeBar value={data.system.disk_percent} max={100} label={`${t("diagnostics.disk") || "Disk"} (${data.system.disk_used_gb}G / ${data.system.disk_total_gb}G)`} color="blue" />
             </div>
-            <div className="divide-y divide-border">
-              {configChanges.map((change) => (
-                <div key={change.key} className="flex items-center gap-4 px-5 py-3 text-xs">
-                  <span className="font-mono font-medium text-foreground w-48 truncate">{change.key}</span>
-                  <span className="text-muted-foreground flex-1 truncate">
-                    {t("diagnostics.default") || "默认"}: <span className="font-mono">{JSON.stringify(change.default)}</span>
-                  </span>
-                  <span className="text-amber-500 font-mono truncate">
-                    {t("diagnostics.current") || "当前"}: {JSON.stringify(change.current)}
-                  </span>
+
+            {/* System Info */}
+            <div className="rounded-xl border border-border bg-card p-5">
+              <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
+                <Info size={14} className="text-blue-500" />
+                {t("diagnostics.systemInfo") || "System Info"}
+              </h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                <div><span className="text-muted-foreground">{t("diagnostics.hostname") || "Hostname"}: </span><span className="font-mono">{data.system.hostname}</span></div>
+                <div><span className="text-muted-foreground">{t("diagnostics.os") || "OS"}: </span>{data.system.os}</div>
+                <div><span className="text-muted-foreground">{t("diagnostics.arch") || "Arch"}: </span>{data.system.arch}</div>
+                <div><span className="text-muted-foreground">Python: </span><span className="font-mono">{data.system.python}</span></div>
+                <div><span className="text-muted-foreground">{t("diagnostics.uptime") || "Uptime"}: </span>{formatUptime(data.system.uptime_seconds)}</div>
+              </div>
+            </div>
+
+            {/* Organ List — grouped by category, sorted by response time */}
+            {Object.entries(grouped).map(([category, organs]) => (
+              <div key={category} className="rounded-xl border border-border bg-card overflow-hidden">
+                <div className="px-5 py-3 border-b border-border bg-muted/30">
+                  <div className="flex items-center justify-between">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <Gauge size={14} className="text-orange-500" />
+                      {categoryLabels[category] || category}
+                    </h3>
+                    <span className="text-[10px] text-muted-foreground">
+                      {organs.filter((o) => o.status === "ok").length}/{organs.length} {t("diagnostics.healthy") || "healthy"}
+                    </span>
+                  </div>
                 </div>
-              ))}
+                <div className="divide-y divide-border">
+                  {organs.map((organ) => (
+                    <div key={organ.key} className="flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors">
+                      <StatusBadge status={organ.status} />
+                      <span className="text-sm font-medium flex-1">{organ.label}</span>
+                      <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
+                        {organ.key}
+                      </span>
+                      <ResponseTimeBar ms={organ.response_time_ms} />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+
+            {/* Overall Status Banner */}
+            <div
+              className={cn(
+                "rounded-xl border p-5 flex items-center gap-4",
+                data.summary.overall === "ok"
+                  ? "border-emerald-500/30 bg-emerald-500/5"
+                  : "border-amber-500/30 bg-amber-500/5"
+              )}
+            >
+              {data.summary.overall === "ok" ? (
+                <CheckCircle size={24} className="text-emerald-500 shrink-0" />
+              ) : (
+                <AlertTriangle size={24} className="text-amber-500 shrink-0" />
+              )}
+              <div>
+                <p className="text-sm font-semibold">
+                  {data.summary.overall === "ok"
+                    ? (t("diagnostics.allOk") || "All systems operational")
+                    : (t("diagnostics.partialError") || "Some systems have issues")}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {data.summary.healthy}/{data.summary.total} {t("diagnostics.organHealth") || "organs healthy"} ·
+                  {t("diagnostics.avgResponse") || "Avg"} {data.summary.avg_response_ms}ms ·
+                  {data.system.hostname} ({data.system.os})
+                </p>
+              </div>
             </div>
-          </div>
+          </>
         )}
 
-        {/* Overall Status Banner */}
-        {data && (
-          <div className={cn(
-            "rounded-xl border p-5 flex items-center gap-4",
-            data.summary.overall === "ok"
-              ? "border-emerald-500/30 bg-emerald-500/5"
-              : "border-amber-500/30 bg-amber-500/5"
-          )}>
-            {data.summary.overall === "ok" ? (
-              <CheckCircle size={24} className="text-emerald-500 shrink-0" />
-            ) : (
-              <AlertTriangle size={24} className="text-amber-500 shrink-0" />
-            )}
-            <div>
-              <p className="text-sm font-semibold">
-                {data.summary.overall === "ok" ? (t("diagnostics.allOk") || "所有系统正常运行") : (t("diagnostics.partialError") || "部分系统异常")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                {data.summary.healthy}/{data.summary.total} {t("diagnostics.organHealth") || "器官健康"} · {t("diagnostics.avgResponse")} {data.summary.avg_response_ms}ms ·
-                {t("diagnostics.system") || "系统"} {data.system.hostname} ({data.system.os})
-              </p>
-            </div>
+        {/* Loading state */}
+        {!data && loading && (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 size={24} className="animate-spin text-orange-500" />
           </div>
         )}
       </div>
