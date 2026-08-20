@@ -543,7 +543,9 @@
     "enabledCount": "有効",
     "refresh": "更新",
     "detecting": "检测中...",
-    "temperatureDesc": "出力のランダム性を制御"
+    "temperatureDesc": "出力のランダム性を制御",
+    "shellWhitelistPlaceholder": "ls, cat, grep",
+    "knowledgePathPlaceholder": "~/.openmate/knowledge"
   },
   "search": {
     "title": "すべてを検索",
@@ -1407,7 +1409,11 @@
     "t54582": "{{every}} {{secs}} {{seconds}}",
     "t69373": "{rounddiff60000} {minutesLater}",
     "t29381": "{rounddiff3600000} {hoursLater}",
-    "t23389": "{exportSuccess}: {{records}} {records1}"
+    "t23389": "{exportSuccess}: {{records}} {records1}",
+    "backupNamePlaceholder": "my-backup",
+    "tagsPlaceholder": "daily, important",
+    "sourceDirsPlaceholder": "~/.opensoul/data",
+    "scheduleTagsPlaceholder": "auto, daily"
   },
   "gene": {
     "title": "遺伝子 · テンプレートライブラリ",
@@ -1695,7 +1701,8 @@
     "t73119": "新規作成连接",
     "t33201": "テスト",
     "t72588": "送信",
-    "t69735": "双方向インテグレーション"
+    "t69735": "双方向インテグレーション",
+    "endpointUrlPlaceholder": "エンドポイント URL"
   },
   "common": {
     "loading": "読み込み中...",

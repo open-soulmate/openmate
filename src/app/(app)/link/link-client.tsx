@@ -353,7 +353,7 @@ export function LinkClient() {
                 <option value="custom">{t("link.custom")}</option>
               </select>
               <input value={newEndpoint} onChange={(e) => setNewEndpoint(e.target.value)}
-                placeholder="Endpoint URL" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("link.endpointUrlPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <input value={newSecret} onChange={(e) => setNewSecret(e.target.value)}
                 placeholder={t("link.t09336")} type="password" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <div className="flex justify-end gap-2">

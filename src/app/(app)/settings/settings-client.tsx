@@ -493,7 +493,7 @@ export function SettingsClient() {
               </div>
 
               <SettingCard title={t("settings.shellWhitelist")} description={t("settings.shellWhitelistDesc")}>
-                <TextInput value={settings.shellWhitelist} onChange={(v) => update("shellWhitelist", v)} placeholder="ls, cat, grep" />
+                <TextInput value={settings.shellWhitelist} onChange={(v) => update("shellWhitelist", v)} placeholder={t("settings.shellWhitelistPlaceholder")} />
               </SettingCard>
 
               <SettingCard title={t("settings.fileAccess")} description={t("settings.fileAccessDesc")}>
@@ -516,7 +516,7 @@ export function SettingsClient() {
               </div>
 
               <SettingCard title={t("settings.knowledgePath")} description={t("settings.knowledgePathDesc")}>
-                <TextInput value={settings.knowledgePath} onChange={(v) => update("knowledgePath", v)} placeholder="~/.openmate/knowledge" />
+                <TextInput value={settings.knowledgePath} onChange={(v) => update("knowledgePath", v)} placeholder={t("settings.knowledgePathPlaceholder")} />
               </SettingCard>
 
               <SettingCard title={t("settings.cacheLimit")} description={`${t("settings.cacheLimitDesc")}: ${settings.cacheLimit}MB`}>
