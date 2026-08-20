@@ -5363,5 +5363,14 @@
     "topEndpoints": "Top Endpoints",
     "updated": "Updated",
     "used": "Used"
+  },
+  "bookmarks": {
+    "updated": "Bookmark updated",
+    "added": "Bookmark added",
+    "deleted": "Bookmark deleted",
+    "saveError": "Error saving bookmark",
+    "collectionCreated": "Collection created",
+    "promoted": "Promoted to knowledge base",
+    "deleteConfirm": "Delete this bookmark?"
   }
 }

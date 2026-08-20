@@ -5363,5 +5363,14 @@
     "topEndpoints": "热门端点",
     "updated": "更新时间",
     "used": "已使用"
+  },
+  "bookmarks": {
+    "updated": "书签已更新",
+    "added": "书签已添加",
+    "deleted": "书签已删除",
+    "saveError": "保存书签失败",
+    "collectionCreated": "合集已创建",
+    "promoted": "已推送到知识库",
+    "deleteConfirm": "确定删除此书签？"
   }
 }

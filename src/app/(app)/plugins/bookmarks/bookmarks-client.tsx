@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useCallback } from "react";
+import { useTranslation } from "react-i18next";
 import { getApiBaseUrl } from "@/lib/api-client";
 import {
   Bookmark, Plus, Search, Star, StarOff, Trash2, Edit3,
@@ -48,6 +49,7 @@ type Tab = "bookmarks" | "stats";
 type ViewMode = "grid" | "list";
 
 export function BookmarksClient() {
+  const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const pluginBase = `${apiBase}/api/plugins/bookmarks`;
 
@@ -161,25 +163,25 @@ export function BookmarksClient() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: formUrl, title: formTitle, description: formDesc, collection: formCollection, tags: tagsList }),
         });
-        showToast("Bookmark updated");
+        showToast(t("bookmarks.updated"));
       } else {
         await fetch(`${pluginBase}/bookmarks`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ url: formUrl, title: formTitle, description: formDesc, collection: formCollection, tags: tagsList }),
         });
-        showToast("Bookmark added");
+        showToast(t("bookmarks.added"));
       }
       setShowModal(false);
       loadBookmarks(); loadCollections(); loadTags();
-    } catch { showToast("Error saving bookmark"); }
+    } catch { showToast(t("bookmarks.saveError")); }
     setFormSaving(false);
   };
 
   const deleteBookmark = async (id: string) => {
-    if (!confirm("Delete this bookmark?")) return;
+    if (!confirm(t("bookmarks.deleteConfirm"))) return;
     await fetch(`${pluginBase}/bookmarks/${id}`, { method: "DELETE" });
-    showToast("Bookmark deleted");
+    showToast(t("bookmarks.deleted"));
     loadBookmarks(); loadCollections(); loadTags();
   };
 
@@ -197,12 +199,12 @@ export function BookmarksClient() {
     });
     setShowColModal(false); setNewColName(""); setNewColIcon("📁");
     loadCollections();
-    showToast("Collection created");
+    showToast(t("bookmarks.collectionCreated"));
   };
 
   const promoteBookmark = async (id: string) => {
     const res = await fetch(`${pluginBase}/bookmarks/${id}/promote`, { method: "POST" });
-    if (res.ok) showToast("Promoted to knowledge base");
+    if (res.ok) showToast(t("bookmarks.promoted"));
   };
 
   // ── Helpers ─────────────────────────────────────────────
