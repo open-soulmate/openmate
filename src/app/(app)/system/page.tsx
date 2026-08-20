@@ -1,9 +1,7 @@
-import { SystemOverviewClient } from "./system-client";
-
-export const metadata = {
-  title: "System Overview — OpenMate",
-};
-
-export default function SystemOverviewPage() {
-  return <SystemOverviewClient />;
+"use client";
+import dynamic from "next/dynamic";
+const SystemClient = dynamic(() => import("./system-client").then((m) => m.SystemOverviewClient), { ssr: false });
+// Note: export name is SystemOverviewClient in system-client.tsx
+export default function SystemPage() {
+  return <SystemClient />;
 }

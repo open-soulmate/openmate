@@ -1,7 +1,6 @@
-import { TimelineClient } from "./timeline-client";
-
-export const metadata = { title: "Timeline — OpenMate" };
-
+"use client";
+import dynamic from "next/dynamic";
+const TimelineClient = dynamic(() => import("./timeline-client").then((m) => m.TimelineClient), { ssr: false });
 export default function TimelinePage() {
   return <TimelineClient />;
 }

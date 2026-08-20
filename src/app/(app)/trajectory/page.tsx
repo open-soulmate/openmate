@@ -1,7 +1,6 @@
-import { TrajectoryClient } from "./trajectory-client"
-
-export const metadata = { title: "Trajectory" }
-
+"use client";
+import dynamic from "next/dynamic";
+const TrajectoryClient = dynamic(() => import("./trajectory-client").then((m) => m.TrajectoryClient), { ssr: false });
 export default function TrajectoryPage() {
-  return <TrajectoryClient />
+  return <TrajectoryClient />;
 }
