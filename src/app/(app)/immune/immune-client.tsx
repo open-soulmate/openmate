@@ -690,21 +690,21 @@ export function ImmuneClient() {
                     type="text"
                     value={inspectIp}
                     onChange={(e) => setInspectIp(e.target.value)}
-                    placeholder="Source IP (e.g. 192.168.1.1)"
+                    placeholder={t("immune.sourceIpPlaceholder")}
                     className="w-40 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm"
                   />
                   <input
                     type="text"
                     value={inspectPath}
                     onChange={(e) => setInspectPath(e.target.value)}
-                    placeholder="/api/search?q=' OR 1=1--"
+                    placeholder={t("immune.attackPayloadPlaceholder")}
                     className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm font-mono"
                   />
                 </div>
                 <textarea
                   value={inspectBody}
                   onChange={(e) => setInspectBody(e.target.value)}
-                  placeholder="Request body (optional)"
+                  placeholder={t("immune.requestBodyPlaceholder")}
                   rows={3}
                   className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm font-mono resize-none"
                 />

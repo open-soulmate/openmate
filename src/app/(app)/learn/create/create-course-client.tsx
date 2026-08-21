@@ -24,24 +24,33 @@ interface KnowledgeItem {
 }
 
 const availableTopics = [
-  "Web Development",
-  "System Design",
-  "Machine Learning",
-  "DevOps",
-  "Database",
-  "Security",
-  "Mobile Development",
-  "Cloud Architecture",
+  "Web Development", "System Design", "Machine Learning", "DevOps",
+  "Database", "Security", "Mobile Development", "Cloud Architecture",
 ];
 
 const availableDomains = [
-  "Frontend",
-  "Backend",
-  "Full Stack",
-  "Data Engineering",
-  "Infrastructure",
-  "AI/ML",
+  "Frontend", "Backend", "Full Stack", "Data Engineering", "Infrastructure", "AI/ML",
 ];
+
+const topicI18nKeys: Record<string, string> = {
+  "Web Development": "createCourse.topicWebDev",
+  "System Design": "createCourse.topicSystemDesign",
+  "Machine Learning": "createCourse.topicML",
+  "DevOps": "createCourse.topicDevOps",
+  "Database": "createCourse.topicDatabase",
+  "Security": "createCourse.topicSecurity",
+  "Mobile Development": "createCourse.topicMobile",
+  "Cloud Architecture": "createCourse.topicCloud",
+};
+
+const domainI18nKeys: Record<string, string> = {
+  "Frontend": "createCourse.domainFrontend",
+  "Backend": "createCourse.domainBackend",
+  "Full Stack": "createCourse.domainFullStack",
+  "Data Engineering": "createCourse.domainDataEng",
+  "Infrastructure": "createCourse.domainInfra",
+  "AI/ML": "createCourse.domainAiMl",
+};
 
 export function CreateCourseClient() {
   const router = useRouter();
@@ -69,7 +78,7 @@ export function CreateCourseClient() {
           const data = await res.json();
           const items: KnowledgeItem[] = (data.knowledge_bases || data.items || []).map((kb: any) => ({
             id: kb.kb_id || kb.id,
-            title: kb.name || kb.title || "Untitled",
+            title: kb.name || kb.title || t("createCourse.untitled"),
             type: kb.type || "document",
             tags: kb.tags || [],
             excerpt: kb.description || kb.excerpt || "",
@@ -139,7 +148,7 @@ export function CreateCourseClient() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             title,
-            description: description || `A course about ${selectedTopics.join(", ")}`,
+            description: description || t("createCourse.courseAbout", { topics: selectedTopics.join(", ") }),
             tags: selectedTopics.map((t) => t.toLowerCase().replace(/\s+/g, "-")),
             topics: selectedTopics,
             domain: selectedDomain,
@@ -156,14 +165,14 @@ export function CreateCourseClient() {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify({
-                title: `${topicName} — Chapter ${i + 1}`,
-                content: `## ${topicName}\n\nThis chapter covers the fundamentals of ${topicName}.\n\n### Key Concepts\n\n- Concept 1\n- Concept 2\n- Concept 3\n\n> Start writing your notes here...`,
+                title: t("createCourse.chapterTitle", { topic: topicName, num: i + 1 }),
+                content: `## ${topicName}\n\n${t("createCourse.chapterIntro", { topic: topicName })}\n\n### ${t("createCourse.keyConcepts")}\n\n- ${t("createCourse.concept")} 1\n- ${t("createCourse.concept")} 2\n- ${t("createCourse.concept")} 3\n\n> ${t("createCourse.startNotes")}`,
                 quiz: [
                   {
-                    question: `What is the main topic of this chapter?`,
-                    options: [topicName, "Something else", "Not sure", "Skip"],
+                    question: t("createCourse.quizMainTopic"),
+                    options: [topicName, t("createCourse.quizOptionOther"), t("createCourse.quizOptionNotSure"), t("createCourse.quizOptionSkip")],
                     correct_index: 0,
-                    explanation: `This chapter focuses on ${topicName}.`,
+                    explanation: t("createCourse.quizExplanation", { topic: topicName }),
                   },
                 ],
               }),
@@ -190,9 +199,9 @@ export function CreateCourseClient() {
           <ArrowLeft size={16} />
         </Link>
         <div>
-          <h1 className="text-sm font-semibold">Generate New Course</h1>
+          <h1 className="text-sm font-semibold">{t("createCourse.generateNew")}</h1>
           <p className="text-xs text-muted-foreground">
-            Select topics and knowledge entries, then let AI plan your course
+            {t("createCourse.selectHint")}
           </p>
         </div>
       </div>
@@ -202,12 +211,12 @@ export function CreateCourseClient() {
           {/* Course title */}
           <section>
             <label className="mb-2 block text-sm font-medium">
-              Course Title
+              {t("createCourse.courseTitle")}
             </label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="e.g. Next.js 15 Deep Dive"
+              placeholder={t("createCourse.courseTitlePlaceholder")}
               className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
             />
           </section>
@@ -215,12 +224,12 @@ export function CreateCourseClient() {
           {/* Description */}
           <section>
             <label className="mb-2 block text-sm font-medium">
-              Description <span className="font-normal text-muted-foreground">(optional)</span>
+              {t("createCourse.description")} <span className="font-normal text-muted-foreground">{t("createCourse.optional")}</span>
             </label>
             <textarea
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="Brief description of what this course covers..."
+              placeholder={t("createCourse.descriptionPlaceholder")}
               rows={3}
               className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-primary resize-none"
             />
@@ -229,9 +238,9 @@ export function CreateCourseClient() {
           {/* Topics */}
           <section>
             <label className="mb-2 block text-sm font-medium">
-              Topics{" "}
+              {t("createCourse.topics")}{" "}
               <span className="text-muted-foreground font-normal">
-                (select one or more)
+                {t("createCourse.selectOneOrMore")}
               </span>
             </label>
             <div className="flex flex-wrap gap-2">
@@ -248,7 +257,7 @@ export function CreateCourseClient() {
                     }`}
                   >
                     {selected && <Check size={12} />}
-                    {topic}
+                    {t(topicI18nKeys[topic] || topic)}
                   </button>
                 );
               })}
@@ -258,9 +267,9 @@ export function CreateCourseClient() {
           {/* Domain */}
           <section>
             <label className="mb-2 block text-sm font-medium">
-              Domain{" "}
+              {t("createCourse.domain")}{" "}
               <span className="text-muted-foreground font-normal">
-                (optional)
+                {t("createCourse.optional")}
               </span>
             </label>
             <div className="flex flex-wrap gap-2">
@@ -279,7 +288,7 @@ export function CreateCourseClient() {
                     }`}
                   >
                     {selected && <Check size={12} />}
-                    {domain}
+                    {t(domainI18nKeys[domain] || domain)}
                   </button>
                 );
               })}
@@ -289,9 +298,9 @@ export function CreateCourseClient() {
           {/* Knowledge items */}
           <section>
             <label className="mb-2 block text-sm font-medium">
-              Knowledge Entries{" "}
+              {t("createCourse.knowledgeEntries")}{" "}
               <span className="text-muted-foreground font-normal">
-                (select items from your knowledge base)
+                {t("createCourse.selectFromKb")}
               </span>
             </label>
 
@@ -300,7 +309,7 @@ export function CreateCourseClient() {
               <input
                 value={knowledgeQuery}
                 onChange={(e) => setKnowledgeQuery(e.target.value)}
-                placeholder="Search knowledge base…"
+                placeholder={t("createCourse.searchKb")}
                 className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
             </div>
@@ -312,7 +321,7 @@ export function CreateCourseClient() {
                 </div>
               ) : filteredItems.length === 0 ? (
                 <p className="py-8 text-center text-xs text-muted-foreground">
-                  No knowledge entries found
+                  {t("createCourse.noKbFound")}
                 </p>
               ) : (
                 filteredItems.map((item) => {
@@ -363,8 +372,7 @@ export function CreateCourseClient() {
 
             {selectedItems.length > 0 && (
               <p className="mt-2 text-xs text-muted-foreground">
-                {selectedItems.length} item
-                {selectedItems.length !== 1 ? "s" : ""} selected
+                {t("createCourse.itemsSelected", { count: selectedItems.length })}
               </p>
             )}
           </section>
@@ -444,12 +452,12 @@ export function CreateCourseClient() {
               {generating ? (
                 <>
                   <Loader2 size={16} className="animate-spin" />
-                  Generating…
+                  {t("createCourse.generating")}
                 </>
               ) : (
                 <>
                   <Sparkles size={16} />
-                  Generate Course
+                  {t("createCourse.generateCourse")}
                 </>
               )}
             </button>
