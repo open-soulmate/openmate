@@ -75,7 +75,9 @@
     "timeline": "Timeline",
     "topology": "Topology",
     "notifications": "Notifications",
-    "system": "System Overview"
+    "system": "System Overview",
+    "soul": "Soul Management",
+    "somaAdmin": "Soma Management"
   },
   "dashboard": {
     "title": "System Overview",

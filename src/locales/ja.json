@@ -75,7 +75,9 @@
     "topology": "トポロジー",
     "notifications": "通知センター",
     "system": "システム概要",
-    "aiGroup": "AI協力"
+    "aiGroup": "AI協力",
+    "soul": "Soul管理",
+    "somaAdmin": "Soma管理"
   },
   "dashboard": {
     "title": "システム概要",
