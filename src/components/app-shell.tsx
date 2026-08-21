@@ -194,6 +194,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         { href: "/metrics", label: t("nav.metrics") || "Metrics", icon: BarChart3 },
         { href: "/benchmark", label: t("nav.benchmark"), icon: Gauge },
         { href: "/intelligence", label: t("nav.intelligence"), icon: Brain },
+        { href: "/ai-engine", label: t("nav.aiEngine", "AI Engine"), icon: Cpu },
         { href: "/healer", label: t("nav.healer"), icon: Pill },
         { href: "/topology", label: t("nav.topology"), icon: Network },
         { href: "/trajectory", label: t("nav.trajectory"), icon: Activity },
