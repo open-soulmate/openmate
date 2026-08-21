@@ -119,6 +119,20 @@ export default function SomaAdminClient() {
     } catch {} finally { setConfigLoading(false); }
   }, []);
 
+  const toggleConnector = useCallback(async (name: string) => {
+    try {
+      const res = await fetch(`${somaBase}/api/connectors/${name}/toggle`, { method: "POST" });
+      const data = await res.json();
+      // Update local state
+      setConnectors(prev => prev.map(c =>
+        c.name === name || c.id === name ? { ...c, enabled: data.enabled ?? !c.enabled } : c
+      ));
+      if (selectedConnector?.name === name || selectedConnector?.id === name) {
+        setSelectedConnector(prev => prev ? { ...prev, enabled: data.enabled ?? !prev.enabled } : prev);
+      }
+    } catch {}
+  }, [selectedConnector]);
+
   useEffect(() => { fetchDashboard(); }, [fetchDashboard]);
 
   useEffect(() => {
@@ -313,6 +327,22 @@ export default function SomaAdminClient() {
                         <div><span className="text-muted-foreground">{t("somaAdmin.connErrors")}:</span> {selectedConnector.error_count}</div>
                       )}
                     </div>
+
+                    {/* Toggle Button */}
+                    {selectedConnector.enabled !== undefined && (
+                      <button
+                        onClick={() => toggleConnector(selectedConnector.name || selectedConnector.id)}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                          selectedConnector.enabled
+                            ? "bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                            : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                        )}
+                      >
+                        {selectedConnector.enabled ? <WifiOff size={14} /> : <Wifi size={14} />}
+                        {selectedConnector.enabled ? t("somaAdmin.disableConnector") : t("somaAdmin.enableConnector")}
+                      </button>
+                    )}
 
                     {/* Config */}
                     {selectedConnector.config && (

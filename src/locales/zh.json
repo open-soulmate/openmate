@@ -5378,7 +5378,9 @@
     "soulApiUrl": "Soul API",
     "justNow": "刚刚",
     "minutesAgo": "{{minutes}}分钟前",
-    "hoursAgo": "{{hours}}小时前"
+    "hoursAgo": "{{hours}}小时前",
+    "enableConnector": "启用连接器",
+    "disableConnector": "禁用连接器"
   },
   "ai-groups": {
     "add": "添加",
