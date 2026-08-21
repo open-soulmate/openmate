@@ -2840,7 +2840,18 @@
     "input2": "输入文本",
     "t84292": "搜索配置文件...",
     "times1": "合成次数",
-    "voiceProfile1": "声线数"
+    "voiceProfile1": "声线数",
+    "available": "可用",
+    "backendStatus": "后端状态",
+    "badge": "语音合成",
+    "errors": "错误",
+    "languageBreakdown": "语言分布",
+    "noLanguages": "暂无语言数据",
+    "preferredBackend": "首选后端",
+    "totalProfiles": "总角色数",
+    "unavailable": "不可用",
+    "user": "用户",
+    "voiceProfiles": "声音角色"
   },
   "vision": {
     "title": "视觉 · 图像可视化引擎",
@@ -2898,7 +2909,16 @@
     "defaultScatterTitle": "散点图",
     "defaultMindmapTitle": "AI工程知识图谱",
     "defaultLineX": "1月,2月,3月,4月,5月,6月",
-    "defaultLineSeries": "产品A:100,120,140,160,180,200\n产品B:80,90,110,130,120,150"
+    "defaultLineSeries": "产品A:100,120,140,160,180,200\n产品B:80,90,110,130,120,150",
+    "available": "可用",
+    "backendStatus": "后端状态",
+    "engine": "引擎",
+    "errors": "错误",
+    "outputDirectory": "输出目录",
+    "recentOutputs": "最近输出",
+    "savedOutputs": "已保存输出",
+    "totalGenerated": "总生成数",
+    "unavailable": "不可用"
   },
   "mind": {
     "title": "心智 · 人格调节层",
@@ -3247,7 +3267,11 @@
     "max": "最大",
     "cores": "核心",
     "t39409": "{{cpucount}}{{cores}}",
-    "t17783": "{{cpucount}} {{cores}}"
+    "t17783": "{{cpucount}} {{cores}}",
+    "badge": "深度检查",
+    "organLayer": "器官层",
+    "serviceLayer": "服务层",
+    "systemGauges": "系统仪表"
   },
   "cortex": {
     "title": "OpenCortex",
@@ -3616,7 +3640,18 @@
     "checking": "检查中...",
     "goToPage": "跳转到页面",
     "t69854": "已选中",
-    "selected": "已选择"
+    "selected": "已选择",
+    "badge": "系统拓扑",
+    "categories": "分类",
+    "categoryBreakdown": "分类明细",
+    "clearFilter": "清除筛选",
+    "nodeList": "节点列表",
+    "sortByCategory": "按分类排序",
+    "sortByName": "按名称排序",
+    "sortByResponse": "按响应排序",
+    "status": "状态",
+    "totalEdges": "总边数",
+    "totalNodes": "总节点数"
   },
   "graph": {
     "title": "知识图谱",
@@ -5469,5 +5504,40 @@
     "computerUseDesc": "本地代码执行引擎，支持自然语言控制计算机。",
     "n8nDesc": "开源工作流自动化平台，连接 400+ 应用与服务。",
     "xiaomiDesc": "小米自研大模型 API，中文理解与代码能力出色。"
+  },
+  "category": "分类",
+  "collection": "集合",
+  "connector_id": "连接器ID",
+  "event_type": "事件类型",
+  "favorite": "收藏",
+  "include_archived": "包含已归档",
+  "language": "语言",
+  "level": "级别",
+  "limit": "限制",
+  "name": "名称",
+  "organ": "器官",
+  "path": "路径",
+  "risk_level": "风险等级",
+  "session_id": "会话ID",
+  "signal_id": "信号ID",
+  "source": "来源",
+  "starred": "已标星",
+  "stdio": "标准IO",
+  "topic": "主题",
+  "unread_only": "仅未读",
+  "aiEngine": {
+    "title": "AI 引擎",
+    "subtitle": "5层架构监控、上下文token用量、图状态、工具路由",
+    "layers": "架构层",
+    "contextUsage": "上下文用量",
+    "graphStatus": "图状态",
+    "harnessRoutes": "工具路由",
+    "analyzeTask": "分析任务",
+    "analyzePlaceholder": "描述要分析的任务...",
+    "agents": "Agent",
+    "totalTasks": "总任务数",
+    "successRate": "成功率",
+    "avgResponse": "平均响应",
+    "compress": "压缩"
   }
 }

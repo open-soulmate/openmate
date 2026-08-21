@@ -2840,7 +2840,18 @@
     "input2": "Input text",
     "t84292": "Search profiles...",
     "times1": "Synthesized",
-    "voiceProfile1": "Profiles"
+    "voiceProfile1": "Profiles",
+    "available": "Available",
+    "backendStatus": "Backend Status",
+    "badge": "TTS",
+    "errors": "Errors",
+    "languageBreakdown": "Language Breakdown",
+    "noLanguages": "No language data",
+    "preferredBackend": "Preferred Backend",
+    "totalProfiles": "Total Profiles",
+    "unavailable": "Unavailable",
+    "user": "User",
+    "voiceProfiles": "Voice Profiles"
   },
   "vision": {
     "title": "Vision · Image Visualization",
@@ -2898,7 +2909,16 @@
     "defaultScatterTitle": "Scatter Plot",
     "defaultMindmapTitle": "AI Engineering Knowledge Graph",
     "defaultLineX": "Jan,Feb,Mar,Apr,May,Jun",
-    "defaultLineSeries": "Product A:100,120,140,160,180,200\nProduct B:80,90,110,130,120,150"
+    "defaultLineSeries": "Product A:100,120,140,160,180,200\nProduct B:80,90,110,130,120,150",
+    "available": "Available",
+    "backendStatus": "Backend Status",
+    "engine": "Engine",
+    "errors": "Errors",
+    "outputDirectory": "Output Directory",
+    "recentOutputs": "Recent Outputs",
+    "savedOutputs": "Saved Outputs",
+    "totalGenerated": "Total Generated",
+    "unavailable": "Unavailable"
   },
   "mind": {
     "title": "Mind · Personality Center",
@@ -3247,7 +3267,11 @@
     "max": "Max",
     "cores": "cores",
     "t39409": "{{cpucount}}{{cores}}",
-    "t17783": "{{cpucount}} {{cores}}"
+    "t17783": "{{cpucount}} {{cores}}",
+    "badge": "Deep Inspection",
+    "organLayer": "Organ Layer",
+    "serviceLayer": "Service Layer",
+    "systemGauges": "System Gauges"
   },
   "cortex": {
     "title": "OpenCortex",
@@ -3616,7 +3640,18 @@
     "checking": "Checking...",
     "goToPage": "Go to page",
     "t69854": "已选中",
-    "selected": "Selected"
+    "selected": "Selected",
+    "badge": "System Topology",
+    "categories": "Categories",
+    "categoryBreakdown": "Category Breakdown",
+    "clearFilter": "Clear Filter",
+    "nodeList": "Node List",
+    "sortByCategory": "Sort by Category",
+    "sortByName": "Sort by Name",
+    "sortByResponse": "Sort by Response",
+    "status": "Status",
+    "totalEdges": "Total Edges",
+    "totalNodes": "Total Nodes"
   },
   "graph": {
     "title": "Knowledge Graph",
@@ -5469,5 +5504,40 @@
     "computerUseDesc": "Local code execution engine, control your computer with natural language.",
     "n8nDesc": "Open-source workflow automation platform connecting 400+ apps and services.",
     "xiaomiDesc": "Xiaomi proprietary LLM API with excellent Chinese understanding and code capabilities."
+  },
+  "category": "Category",
+  "collection": "Collection",
+  "connector_id": "Connector ID",
+  "event_type": "Event Type",
+  "favorite": "Favorite",
+  "include_archived": "Include Archived",
+  "language": "Language",
+  "level": "Level",
+  "limit": "Limit",
+  "name": "Name",
+  "organ": "Organ",
+  "path": "Path",
+  "risk_level": "Risk Level",
+  "session_id": "Session ID",
+  "signal_id": "Signal ID",
+  "source": "Source",
+  "starred": "Starred",
+  "stdio": "stdio",
+  "topic": "Topic",
+  "unread_only": "Unread Only",
+  "aiEngine": {
+    "title": "AI Engine",
+    "subtitle": "5-layer architecture monitoring, context token usage, graph state, tool routing",
+    "layers": "Layers",
+    "contextUsage": "Context Usage",
+    "graphStatus": "Graph Status",
+    "harnessRoutes": "Harness Routes",
+    "analyzeTask": "Analyze Task",
+    "analyzePlaceholder": "Describe the task to analyze...",
+    "agents": "Agents",
+    "totalTasks": "Total Tasks",
+    "successRate": "Success Rate",
+    "avgResponse": "Avg Response",
+    "compress": "Compress"
   }
 }
