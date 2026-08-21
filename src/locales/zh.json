@@ -4153,7 +4153,11 @@
     "addRule": "添加",
     "minutesAgo": "{{minutes}}分钟前",
     "hoursAgo": "{{hours}}小时前",
-    "daysAgo": "{{days}}天前"
+    "daysAgo": "{{days}}天前",
+    "info": "信息",
+    "warning": "警告",
+    "error": "错误",
+    "success": "成功"
   },
   "health": {
     "title": "系统健康",

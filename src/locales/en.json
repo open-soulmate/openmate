@@ -4153,7 +4153,11 @@
     "addRule": "Add",
     "minutesAgo": "{{minutes}}m ago",
     "hoursAgo": "{{hours}}h ago",
-    "daysAgo": "{{days}}d ago"
+    "daysAgo": "{{days}}d ago",
+    "info": "Info",
+    "warning": "Warning",
+    "error": "Error",
+    "success": "Success"
   },
   "health": {
     "title": "System Health",

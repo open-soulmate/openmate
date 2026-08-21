@@ -340,10 +340,10 @@ export function NotificationsClient() {
               className="h-7 rounded-md border border-border bg-background px-2 text-xs text-foreground"
             >
               <option value="">{t("notifications.all") || "全部"}</option>
-              <option value="info">Info</option>
-              <option value="warning">Warning</option>
-              <option value="error">Error</option>
-              <option value="success">Success</option>
+              <option value="info">{t("notifications.info")}</option>
+              <option value="warning">{t("notifications.warning")}</option>
+              <option value="error">{t("notifications.error")}</option>
+              <option value="success">{t("notifications.success")}</option>
             </select>
           </div>
           <div className="flex items-center gap-2">
@@ -438,10 +438,10 @@ export function NotificationsClient() {
               onChange={(e) => setNewRuleLevel(e.target.value)}
               className="h-8 rounded-md border border-border bg-background px-2 text-xs text-foreground"
             >
-              <option value="error">Error</option>
-              <option value="warning">Warning</option>
-              <option value="info">Info</option>
-              <option value="success">Success</option>
+              <option value="error">{t("notifications.error")}</option>
+              <option value="warning">{t("notifications.warning")}</option>
+              <option value="info">{t("notifications.info")}</option>
+              <option value="success">{t("notifications.success")}</option>
             </select>
             <span className="text-xs text-muted-foreground">→</span>
             <input

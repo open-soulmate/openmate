@@ -4128,7 +4128,11 @@
     "addRule": "追加",
     "daysAgo": "{{days}}日前",
     "hoursAgo": "{{hours}}時間前",
-    "minutesAgo": "{{minutes}}分前"
+    "minutesAgo": "{{minutes}}分前",
+    "info": "情報",
+    "warning": "警告",
+    "error": "エラー",
+    "success": "成功"
   },
   "health": {
     "title": "システムヘルス",
