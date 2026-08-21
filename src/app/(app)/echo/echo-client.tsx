@@ -598,7 +598,7 @@ export function EchoClient() {
                   <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground text-xs">{t("echo.t98064") || "暂无消息记录"}</td></tr>
                 ) : history.map((m, i) => (
                   <tr key={m.msg_id || i} className="border-b border-border last:border-0 hover:bg-muted/30">
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(m.timestamp * 1000).toLocaleString("zh-CN")}</td>
+                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(m.timestamp * 1000).toLocaleString(undefined)}</td>
                     <td className="px-4 py-2.5 text-xs font-mono">{m.channel}</td>
                     <td className="px-4 py-2.5 text-xs">{m.title}</td>
                     <td className="px-4 py-2.5">

@@ -339,7 +339,7 @@ export function BodyMapClient() {
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">
             <Clock size={12} className="inline mr-1" />
-            {lastRefresh.toLocaleTimeString("zh-CN")}
+            {lastRefresh.toLocaleTimeString(undefined)}
           </span>
           <button
             onClick={() => setAutoRefresh(!autoRefresh)}

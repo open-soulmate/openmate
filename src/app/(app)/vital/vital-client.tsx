@@ -247,7 +247,7 @@ export function VitalClient() {
         <div className="flex items-center gap-3">
           {lastFetch && (
             <span className="text-[10px] text-muted-foreground">
-              {lastFetch.toLocaleTimeString("zh-CN")}
+              {lastFetch.toLocaleTimeString(undefined)}
             </span>
           )}
           <button
@@ -660,7 +660,7 @@ export function VitalClient() {
         {lastFetch && (
           <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-4 mt-6 border-t border-border">
             <span>
-              {t("vital.lastUpdated") || "最后更新"}: {lastFetch.toLocaleString("zh-CN")}
+              {t("vital.lastUpdated") || "最后更新"}: {lastFetch.toLocaleString(undefined)}
             </span>
             <span>{t("vital.autoRefresh") || "每 30 秒自动刷新"}</span>
           </div>
@@ -808,7 +808,7 @@ function MiniChart({ data, series, height = 160 }: {
     const d = new Date(data[idx].ts * 1000);
     return {
       x: pad.left + (idx / (data.length - 1)) * cw,
-      label: d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit" }),
+      label: d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" }),
     };
   });
 

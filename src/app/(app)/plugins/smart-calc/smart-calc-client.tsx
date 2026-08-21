@@ -159,7 +159,7 @@ export function SmartCalcClient() {
   };
 
   const formatTime = (ts: number) => {
-    return new Date(ts * 1000).toLocaleString("zh-CN", {
+    return new Date(ts * 1000).toLocaleString(undefined, {
       hour: "2-digit", minute: "2-digit", second: "2-digit",
     });
   };

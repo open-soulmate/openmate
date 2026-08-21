@@ -61,7 +61,7 @@ function formatTime(ts: string, t?: (key: string, opts?: any) => string) {
   if (diff < 60_000) return t?.("groups.justNow") || "刚刚";
   if (diff < 3_600_000) return t?.("groups.minutesAgo", { minutes: Math.floor(diff / 60_000) }) || `${Math.floor(diff / 60_000)} 分钟前`;
   if (diff < 86_400_000) return t?.("groups.hoursAgo", { hours: Math.floor(diff / 3_600_000) }) || `${Math.floor(diff / 3_600_000)} 小时前`;
-  return d.toLocaleDateString("zh-CN", { month: "short", day: "numeric" });
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 const ROLE_COLORS: Record<string, string> = {

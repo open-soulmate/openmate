@@ -121,7 +121,7 @@ function formatTime(ts: number, t?: (key: string, opts?: any) => string) {
       t?.("team.hoursAgo", { hours: Math.floor(diff / 3_600_000) }) ||
       `${Math.floor(diff / 3_600_000)} 小时前`
     );
-  return new Date(ts).toLocaleDateString("zh-CN", {
+  return new Date(ts).toLocaleDateString(undefined, {
     month: "short",
     day: "numeric",
   });

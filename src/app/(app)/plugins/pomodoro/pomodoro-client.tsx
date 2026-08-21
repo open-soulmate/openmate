@@ -162,7 +162,7 @@ export function PomodoroClient() {
   };
 
   const formatTime = (ts: number) => {
-    return new Date(ts * 1000).toLocaleString("zh-CN", {
+    return new Date(ts * 1000).toLocaleString(undefined, {
       month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit",
     });
   };

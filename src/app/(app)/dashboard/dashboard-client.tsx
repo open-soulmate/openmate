@@ -613,7 +613,7 @@ export function DashboardClient() {
                   {recentRecords.slice(0, 10).map((r, i) => (
                     <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                       <td className="px-4 py-2 text-xs text-muted-foreground">
-                        {new Date(r.timestamp * 1000).toLocaleString("zh-CN", {
+                        {new Date(r.timestamp * 1000).toLocaleString(undefined, {
                           month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
                         })}
                       </td>
@@ -645,7 +645,7 @@ export function DashboardClient() {
                     </div>
                     {job.next_run && (
                       <span className="text-[10px] text-muted-foreground">
-                        {t("dashboard.nextRun")}: {new Date(job.next_run).toLocaleString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                        {t("dashboard.nextRun")}: {new Date(job.next_run).toLocaleString(undefined, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </span>
                     )}
                   </div>
