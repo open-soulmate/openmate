@@ -1,7 +1,8 @@
-import { ActivityFeedClient } from "./activity-feed-client";
+"use client";
+import dynamic from "next/dynamic";
 
-export const metadata = { title: "Activity Feed — OpenMate" };
+const ActivityFeedClient = dynamic(() => import("./activity-feed-client").then((m) => m.ActivityFeedClient), { ssr: false });
 
-export default function ActivityFeedPage() {
+export default function ActivityPage() {
   return <ActivityFeedClient />;
 }

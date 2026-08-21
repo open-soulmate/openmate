@@ -1,7 +1,8 @@
-import { ImmuneClient } from "./immune-client"
+"use client";
+import dynamic from "next/dynamic";
 
-export const metadata = { title: "Immune" }
+const ImmuneClient = dynamic(() => import("./immune-client").then((m) => m.ImmuneClient), { ssr: false });
 
 export default function ImmunePage() {
-  return <ImmuneClient />
+  return <ImmuneClient />;
 }

@@ -1,6 +1,7 @@
-import { HealerClient } from "./healer-client";
+"use client";
+import dynamic from "next/dynamic";
 
-export const metadata = { title: "Healer — OpenMate" };
+const HealerClient = dynamic(() => import("./healer-client").then((m) => m.HealerClient), { ssr: false });
 
 export default function HealerPage() {
   return <HealerClient />;
