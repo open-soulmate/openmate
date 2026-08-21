@@ -1256,7 +1256,17 @@
     "t70683": "原因",
     "t96396": "重置限流",
     "time3": "时间",
-    "auditRecordCount": "审计记录数"
+    "auditRecordCount": "审计记录数",
+    "noBlockedIps": "没有自动封锁的IP",
+    "noThreats": "未检测到威胁 — 系统安全",
+    "time": "时间",
+    "type": "类型",
+    "path": "路径",
+    "level": "级别",
+    "threats": "威胁",
+    "blockedIps": "自动封锁的IP",
+    "refresh": "刷新",
+    "threatCount": "次威胁"
   },
   "marrow": {
     "title": "骨髓 · 备份恢复",

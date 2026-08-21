@@ -1256,7 +1256,17 @@
     "t45063": "更新設定",
     "t85847": "输入文本，检测敏感信息（PII、密钥、携帯電話号、身份证等）",
     "t94139": "リセット计数",
-    "auditRecordCount": "監査レコード数"
+    "auditRecordCount": "監査レコード数",
+    "noBlockedIps": "自動ブロックされたIPはありません",
+    "noThreats": "脅威は検出されませんでした — システムは安全です",
+    "time": "時刻",
+    "type": "タイプ",
+    "path": "パス",
+    "level": "レベル",
+    "threats": "脅威",
+    "blockedIps": "自動ブロックされたIP",
+    "refresh": "更新",
+    "threatCount": "件の脅威"
   },
   "marrow": {
     "title": "骨髄 · バックアップ復元",
