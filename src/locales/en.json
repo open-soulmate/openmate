@@ -5378,7 +5378,9 @@
     "soulApiUrl": "Soul API",
     "justNow": "Just now",
     "minutesAgo": "{{minutes}}m ago",
-    "hoursAgo": "{{hours}}h ago"
+    "hoursAgo": "{{hours}}h ago",
+    "enableConnector": "Enable Connector",
+    "disableConnector": "Disable Connector"
   },
   "ai-groups": {
     "add": "Add",

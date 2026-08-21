@@ -5468,7 +5468,9 @@
     "soulApiUrl": "Soul API",
     "justNow": "たった今",
     "minutesAgo": "{{minutes}}分前",
-    "hoursAgo": "{{hours}}時間前"
+    "hoursAgo": "{{hours}}時間前",
+    "enableConnector": "コネクタを有効化",
+    "disableConnector": "コネクタを無効化"
   },
   "metrics": {
     "title": "Prometheus メトリクス",
