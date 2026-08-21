@@ -136,22 +136,22 @@ function LanguageStep({
 
 // ─── Step 3: Theme Selection ─────────────────────────────────────────────────
 
-const themeOptions: { id: ThemeId; label: string; preview: string; ring: string }[] = [
+const themeOptions: { id: ThemeId; labelKey: string; preview: string; ring: string }[] = [
   {
     id: "dark",
-    label: "深色",
+    labelKey: "onboarding.dark",
     preview: "bg-[#0a0a0f]",
     ring: "ring-[#6366f1]",
   },
   {
     id: "light",
-    label: "浅色",
+    labelKey: "onboarding.light",
     preview: "bg-[#ffffff]",
     ring: "ring-[#6366f1]",
   },
   {
     id: "purple",
-    label: "紫色",
+    labelKey: "onboarding.purple",
     preview: "bg-[#0c0514]",
     ring: "ring-[#a855f7]",
   },
