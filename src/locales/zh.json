@@ -75,7 +75,9 @@
     "timeline": "时间线",
     "topology": "系统拓扑",
     "notifications": "通知中心",
-    "system": "系统总览"
+    "system": "系统总览",
+    "soul": "Soul管理",
+    "somaAdmin": "Soma管理"
   },
   "dashboard": {
     "title": "系统概览",

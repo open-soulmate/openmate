@@ -187,8 +187,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       label: t("nav.systemGroup"),
       items: [
         { href: "/system", label: t("nav.system") || "System", icon: Server },
-        { href: "/soul", label: "Soul管理", icon: Brain },
-        { href: "/soma-admin", label: "Soma管理", icon: Bot },
+        { href: "/soul", label: t("nav.soul"), icon: Brain },
+        { href: "/soma-admin", label: t("nav.somaAdmin"), icon: Bot },
         { href: "/admin", label: t("nav.admin"), icon: Shield },
         { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope },
         { href: "/metrics", label: t("nav.metrics") || "Metrics", icon: BarChart3 },
