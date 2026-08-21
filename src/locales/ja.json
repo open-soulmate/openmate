@@ -2840,7 +2840,18 @@
     "t96207": "保存ファイル",
     "t79274": "创建役割",
     "t30198": "使用",
-    "t70407": "文字转语音"
+    "t70407": "文字转语音",
+    "available": "利用可能",
+    "backendStatus": "バックエンドステータス",
+    "badge": "TTS",
+    "errors": "エラー",
+    "languageBreakdown": "言語内訳",
+    "noLanguages": "言語データなし",
+    "preferredBackend": "優先バックエンド",
+    "totalProfiles": "総プロファイル数",
+    "unavailable": "利用不可",
+    "user": "ユーザー",
+    "voiceProfiles": "ボイスプロファイル"
   },
   "vision": {
     "title": "視覚 · 画像可視化エンジン",
@@ -2898,7 +2909,16 @@
     "defaultScatterTitle": "散布図",
     "defaultMindmapTitle": "AIエンジニアリング知識グラフ",
     "defaultLineX": "1月,2月,3月,4月,5月,6月",
-    "defaultLineSeries": "製品A:100,120,140,160,180,200\n製品B:80,90,110,130,120,150"
+    "defaultLineSeries": "製品A:100,120,140,160,180,200\n製品B:80,90,110,130,120,150",
+    "available": "利用可能",
+    "backendStatus": "バックエンドステータス",
+    "engine": "エンジン",
+    "errors": "エラー",
+    "outputDirectory": "出力ディレクトリ",
+    "recentOutputs": "最近の出力",
+    "savedOutputs": "保存済み出力",
+    "totalGenerated": "総生成数",
+    "unavailable": "利用不可"
   },
   "mind": {
     "title": "心 · パーソナリティセンター",
@@ -3247,7 +3267,11 @@
     "max": "最大",
     "cores": "コア",
     "t39409": "{{cpucount}}{{cores}}",
-    "t17783": "{{cpucount}} {{cores}}"
+    "t17783": "{{cpucount}} {{cores}}",
+    "badge": "詳細検査",
+    "organLayer": "オーガンレイヤー",
+    "serviceLayer": "サービスレイヤー",
+    "systemGauges": "システムゲージ"
   },
   "cortex": {
     "title": "OpenCortex",
@@ -3616,7 +3640,18 @@
     "checking": "確認中...",
     "goToPage": "ページへ移動",
     "t69854": "已选中",
-    "selected": "選択中"
+    "selected": "選択中",
+    "badge": "システムトポロジー",
+    "categories": "カテゴリ",
+    "categoryBreakdown": "カテゴリ内訳",
+    "clearFilter": "フィルタークリア",
+    "nodeList": "ノードリスト",
+    "sortByCategory": "カテゴリで並べ替え",
+    "sortByName": "名前で並べ替え",
+    "sortByResponse": "レスポンスで並べ替え",
+    "status": "ステータス",
+    "totalEdges": "総エッジ数",
+    "totalNodes": "総ノード数"
   },
   "graph": {
     "title": "ナレッジグラフ",
@@ -5469,5 +5504,40 @@
     "computerUseDesc": "ローカルコード実行エンジン、自然言語でコンピュータを操作。",
     "n8nDesc": "400+ アプリとサービスを接続するオープンソースワークフロー自動化プラットフォーム。",
     "xiaomiDesc": "小米自社開発 LLM API、中国語理解とコード能力に優れる。"
+  },
+  "category": "カテゴリ",
+  "collection": "コレクション",
+  "connector_id": "コネクタID",
+  "event_type": "イベントタイプ",
+  "favorite": "お気に入り",
+  "include_archived": "アーカイブ含む",
+  "language": "言語",
+  "level": "レベル",
+  "limit": "制限",
+  "name": "名前",
+  "organ": "オーガン",
+  "path": "パス",
+  "risk_level": "リスクレベル",
+  "session_id": "セッションID",
+  "signal_id": "シグナルID",
+  "source": "ソース",
+  "starred": "スター付き",
+  "stdio": "標準IO",
+  "topic": "トピック",
+  "unread_only": "未読のみ",
+  "aiEngine": {
+    "title": "AIエンジン",
+    "subtitle": "5層アーキテクチャ監視、コンテキストトークン使用量、グラフ状態、ツールルーティング",
+    "layers": "レイヤー",
+    "contextUsage": "コンテキスト使用量",
+    "graphStatus": "グラフ状態",
+    "harnessRoutes": "ハーネスルート",
+    "analyzeTask": "タスク分析",
+    "analyzePlaceholder": "分析するタスクを記述...",
+    "agents": "エージェント",
+    "totalTasks": "総タスク数",
+    "successRate": "成功率",
+    "avgResponse": "平均レスポンス",
+    "compress": "圧縮"
   }
 }
