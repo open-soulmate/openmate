@@ -65,6 +65,7 @@
     "metrics": "Prometheusメトリクス",
     "benchmark": "ベンチマーク",
     "intelligence": "インテリジェンス分析",
+    "aiEngine": "AI エンジン",
     "capture": "キャプチャ",
     "pipeline": "パイプライン",
     "admin": "管理",

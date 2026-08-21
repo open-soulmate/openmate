@@ -66,6 +66,7 @@
     "metrics": "Prometheus指标",
     "benchmark": "性能测试",
     "intelligence": "智能分析",
+    "aiEngine": "AI 引擎",
     "capture": "采集",
     "pipeline": "流水线",
     "admin": "系统管理",
