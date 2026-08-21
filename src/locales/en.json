@@ -1256,7 +1256,17 @@
     "t70683": "Reason",
     "t96396": "Reset Rate Limit",
     "time3": "Time",
-    "auditRecordCount": "Audit Record Count"
+    "auditRecordCount": "Audit Record Count",
+    "noBlockedIps": "No auto-blocked IPs",
+    "noThreats": "No threats detected — system is clean",
+    "time": "Time",
+    "type": "Type",
+    "path": "Path",
+    "level": "Level",
+    "threats": "Threats",
+    "blockedIps": "Auto-Blocked IPs",
+    "refresh": "Refresh",
+    "threatCount": "threats"
   },
   "marrow": {
     "title": "Marrow · Backup & Recovery",

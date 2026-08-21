@@ -752,21 +752,21 @@ export function ImmuneClient() {
             <div className="bg-card border border-border rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
                 <h3 className="font-semibold flex items-center gap-2">
-                  <Ban className="w-4 h-4 text-red-400" /> Auto-Blocked IPs
+                  <Ban className="w-4 h-4 text-red-400" /> {t('immune.blockedIps')}
                 </h3>
                 <button onClick={() => { fetchBlockedIps(); fetchIntrusionStats(); }} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                  <RefreshCw className="w-3 h-3" /> Refresh
+                  <RefreshCw className="w-3 h-3" /> {t('common.refresh')}
                 </button>
               </div>
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {blockedIps.length === 0 ? (
-                  <p className="text-sm text-muted-foreground/50 text-center py-4">No auto-blocked IPs</p>
+                  <p className="text-sm text-muted-foreground/50 text-center py-4">{t('immune.noBlockedIps')}</p>
                 ) : (
                   blockedIps.map((entry, i) => (
                     <div key={i} className="flex items-center gap-2 p-2 bg-red-500/5 border border-red-500/20 rounded-lg">
                       <Ban className="w-3.5 h-3.5 text-red-400" />
                       <code className="text-sm font-mono">{String(entry.ip)}</code>
-                      <span className="text-xs text-muted-foreground">{String(entry.threat_count)} threats</span>
+                      <span className="text-xs text-muted-foreground">{String(entry.threat_count)} {t('immune.threatCount')}</span>
                       <span className="text-xs text-muted-foreground">
                         {Array.isArray(entry.threat_types) ? (entry.threat_types as string[]).join(", ") : ""}
                       </span>
@@ -781,28 +781,28 @@ export function ImmuneClient() {
           <div className="bg-card border border-border rounded-xl overflow-hidden">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <h3 className="font-semibold flex items-center gap-2">
-                <Zap className="w-4 h-4 text-yellow-400" /> Recent Threats
+                <Zap className="w-4 h-4 text-yellow-400" /> {t('immune.threats')}
               </h3>
               <button onClick={fetchThreats} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                <RefreshCw className="w-3 h-3" /> Refresh
+                <RefreshCw className="w-3 h-3" /> {t('common.refresh')}
               </button>
             </div>
             <div className="max-h-[400px] overflow-y-auto">
               {threats.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
                   <Shield className="w-12 h-12 mb-2" />
-                  <p className="text-sm">No threats detected — system is clean</p>
+                  <p className="text-sm">{t('immune.noThreats')}</p>
                 </div>
               ) : (
                 <table className="w-full text-sm">
                   <thead className="sticky top-0 bg-muted/50">
                     <tr className="text-xs text-muted-foreground">
-                      <th className="text-left p-3 font-medium">Time</th>
-                      <th className="text-left p-3 font-medium">Type</th>
+                      <th className="text-left p-3 font-medium">{t('immune.time')}</th>
+                      <th className="text-left p-3 font-medium">{t('immune.type')}</th>
                       <th className="text-left p-3 font-medium">IP</th>
-                      <th className="text-left p-3 font-medium">Path</th>
-                      <th className="text-left p-3 font-medium">Detail</th>
-                      <th className="text-left p-3 font-medium">Level</th>
+                      <th className="text-left p-3 font-medium">{t('immune.path')}</th>
+                      <th className="text-left p-3 font-medium">{t('immune.detail')}</th>
+                      <th className="text-left p-3 font-medium">{t('immune.level')}</th>
                     </tr>
                   </thead>
                   <tbody>
