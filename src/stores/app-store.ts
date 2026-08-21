@@ -298,12 +298,12 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   // Agent Nodes
   agentNodes: [
-    { id: "soma-1", name: "采集分身-北京", type: "soma", status: "online", lastSeen: "Just now", nodeId: "soma-bj-01", endpoint: "ws://10.0.1.12:8900" },
-    { id: "soma-2", name: "采集分身-上海", type: "soma", status: "offline", lastSeen: "1 hour ago", nodeId: "soma-sh-01", endpoint: "ws://10.0.2.12:8900" },
+    { id: "soma-1", name: "Collector-Beijing", type: "soma", status: "online", lastSeen: "Just now", nodeId: "soma-bj-01", endpoint: "ws://10.0.1.12:8900" },
+    { id: "soma-2", name: "Collector-Shanghai", type: "soma", status: "offline", lastSeen: "1 hour ago", nodeId: "soma-sh-01", endpoint: "ws://10.0.2.12:8900" },
     { id: "ai-1", name: "GPT-4o", type: "ai", status: "online", lastSeen: "Just now", provider: "OpenAI", model: "gpt-4o", baseUrl: "https://api.openai.com/v1" },
     { id: "ai-2", name: "Claude Sonnet", type: "ai", status: "online", lastSeen: "3 min ago", provider: "Claude", model: "claude-sonnet-4-20250514", baseUrl: "https://api.anthropic.com/v1" },
-    { id: "mcp-1", name: "文件系统 MCP", type: "mcp", status: "online", lastSeen: "5 min ago", serverUrl: "http://localhost:3001", tools: ["read_file", "write_file", "list_dir"] },
-    { id: "mcp-2", name: "数据库 MCP", type: "mcp", status: "error", lastSeen: "30 min ago", serverUrl: "http://localhost:3002", tools: ["query", "execute", "schema"] },
+    { id: "mcp-1", name: "File System MCP", type: "mcp", status: "online", lastSeen: "5 min ago", serverUrl: "http://localhost:3001", tools: ["read_file", "write_file", "list_dir"] },
+    { id: "mcp-2", name: "Database MCP", type: "mcp", status: "error", lastSeen: "30 min ago", serverUrl: "http://localhost:3002", tools: ["query", "execute", "schema"] },
   ],
   setAgentNodes: (nodes) => set({ agentNodes: nodes }),
 
@@ -585,7 +585,7 @@ export const useAppStore = create<AppState>((set, get) => ({
     },
     {
       id: "ws-3",
-      name: "数据处理管道",
+      name: "Data Processing Pipeline",
       path: "~/projects/data-pipeline",
       lastModified: Date.now() - 172800000,
       fileCount: 42,

@@ -21,7 +21,7 @@ import {
   Zap,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { type ThemeId, themes, applyTheme } from "@/lib/theme";
+import { type ThemeId, applyTheme } from "@/lib/theme";
 import { useAppStore } from "@/stores/app-store";
 
 // ─── Step Indicator ──────────────────────────────────────────────────────────

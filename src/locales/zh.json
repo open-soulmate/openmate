@@ -5431,5 +5431,42 @@
     "collectionCreated": "合集已创建",
     "promoted": "已推送到知识库",
     "deleteConfirm": "确定删除此书签？"
+  },
+  "theme": {
+    "dark": "深色",
+    "light": "浅色",
+    "purple": "紫色"
+  },
+  "agentInstaller": {
+    "unknownAgent": "未知的 Agent",
+    "savingConfig": "保存配置…",
+    "invalidAgent": "无效的 Agent",
+    "savingApiKey": "保存 API Key…",
+    "connectionTestFailed": "连接测试失败，请检查 API Key",
+    "copyingInstallCmd": "复制安装命令到剪贴板…",
+    "copyingDockerCmd": "复制 Docker 命令到剪贴板…",
+    "installing": "安装中…",
+    "completed": "安装完成",
+    "testingConnection": "正在测试 {name} 连接…",
+    "connected": "{name} 已接入",
+    "copied": "已复制: {cmd}",
+    "detecting": "正在检测 {name} 是否可用…",
+    "markedInstalled": "{name} 已标记为已安装（请确认命令已执行）",
+    "detectingPort": "正在检测端口 {port} 是否可用…",
+    "readyOnPort": "{name} 已就绪 (端口 {port})",
+    "markedInstalledDocker": "{name} 已标记为已安装（请确认 Docker 容器已启动）",
+    "aiderDesc": "AI 结对编程助手，直接在终端中编辑代码。",
+    "claudeDesc": "Anthropic 出品的远程 AI 助手，擅长长文本与推理。",
+    "gptDesc": "OpenAI 出品的远程 AI 模型，支持 GPT-4o 及更早版本。",
+    "minioDesc": "高性能对象存储，兼容 S3 API，适合 AI 数据湖。",
+    "natsDesc": "轻量级消息队列，为微服务与 Agent 通信而生。"
+  },
+  "agentTypes": {
+    "hermesDesc": "Hermes 消息代理，支持多协议通信。",
+    "openHandsDesc": "开源 AI 编码助手，支持多种模型。",
+    "ollamaDesc": "本地大模型推理框架，一键运行 Llama、Qwen 等模型。",
+    "computerUseDesc": "本地代码执行引擎，支持自然语言控制计算机。",
+    "n8nDesc": "开源工作流自动化平台，连接 400+ 应用与服务。",
+    "xiaomiDesc": "小米自研大模型 API，中文理解与代码能力出色。"
   }
 }

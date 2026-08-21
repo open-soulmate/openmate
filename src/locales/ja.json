@@ -5431,5 +5431,42 @@
     "collectionCreated": "コレクションを作成しました",
     "promoted": "ナレッジベースに昇格しました",
     "deleteConfirm": "このブックマークを削除しますか？"
+  },
+  "theme": {
+    "dark": "ダーク",
+    "light": "ライト",
+    "purple": "パープル"
+  },
+  "agentInstaller": {
+    "unknownAgent": "不明なエージェント",
+    "savingConfig": "設定を保存中…",
+    "invalidAgent": "無効なエージェント",
+    "savingApiKey": "API Key を保存中…",
+    "connectionTestFailed": "接続テスト失敗、API Key を確認してください",
+    "copyingInstallCmd": "インストールコマンドをクリップボードにコピー中…",
+    "copyingDockerCmd": "Docker コマンドをクリップボードにコピー中…",
+    "installing": "インストール中…",
+    "completed": "インストール完了",
+    "testingConnection": "{name} の接続テスト中…",
+    "connected": "{name} 接続完了",
+    "copied": "コピー済み: {cmd}",
+    "detecting": "{name} が利用可能かチェック中…",
+    "markedInstalled": "{name} をインストール済みとしてマーク（コマンド実行済みか確認してください）",
+    "detectingPort": "ポート {port} が利用可能かチェック中…",
+    "readyOnPort": "{name} 準備完了 (ポート {port})",
+    "markedInstalledDocker": "{name} をインストール済みとしてマーク（Docker コンテナ起動を確認してください）",
+    "aiderDesc": "ターミナルで直接コードを編集する AI ペアプログラミングアシスタント。",
+    "claudeDesc": "Anthropic AI アシスタント — 長文と推論に優れる。",
+    "gptDesc": "OpenAI リモート AI モデル、GPT-4o 以前のバージョンをサポート。",
+    "minioDesc": "高性能オブジェクトストレージ、S3 互換、AI データレイクに最適。",
+    "natsDesc": "マイクロサービスと Agent 通信向けの軽量メッセージキュー。"
+  },
+  "agentTypes": {
+    "hermesDesc": "Hermes メッセージプロキシ、マルチプロトコル対応。",
+    "openHandsDesc": "複数モデル対応のオープンソース AI コーディングアシスタント。",
+    "ollamaDesc": "ローカル LLM 推論フレームワーク — Llama、Qwen 等をワンクリックで実行。",
+    "computerUseDesc": "ローカルコード実行エンジン、自然言語でコンピュータを操作。",
+    "n8nDesc": "400+ アプリとサービスを接続するオープンソースワークフロー自動化プラットフォーム。",
+    "xiaomiDesc": "小米自社開発 LLM API、中国語理解とコード能力に優れる。"
   }
 }

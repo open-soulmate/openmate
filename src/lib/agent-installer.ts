@@ -1,3 +1,4 @@
+import i18n from "./i18n";
 import { getAgentRegistry, type RegisteredAgent, type MarketAgentType } from "./agent-registry";
 
 export interface InstallProgress {
@@ -22,7 +23,7 @@ const AGENT_DEFS: Record<string, AgentDefinition> = {
   "open-interpreter": {
     id: "open-interpreter",
     name: "Open Interpreter",
-    description: "本地代码执行引擎，支持自然语言控制计算机。",
+    description: i18n.t("agentTypes.computerUseDesc"),
     type: "local",
     installCommand: "pip install open-interpreter",
     needsApiKey: false,
@@ -32,7 +33,7 @@ const AGENT_DEFS: Record<string, AgentDefinition> = {
   ollama: {
     id: "ollama",
     name: "Ollama",
-    description: "本地大模型推理框架，一键运行 Llama、Qwen 等模型。",
+    description: i18n.t("agentTypes.ollamaDesc"),
     type: "local",
     installCommand: "curl -fsSL https://ollama.com/install.sh | sh",
     needsApiKey: false,
@@ -43,7 +44,7 @@ const AGENT_DEFS: Record<string, AgentDefinition> = {
   aider: {
     id: "aider",
     name: "Aider",
-    description: "AI 结对编程助手，直接在终端中编辑代码。",
+    description: i18n.t("agentInstaller.aiderDesc"),
     type: "local",
     installCommand: "pip install aider-chat",
     needsApiKey: false,
@@ -53,7 +54,7 @@ const AGENT_DEFS: Record<string, AgentDefinition> = {
   n8n: {
     id: "n8n",
     name: "n8n",
-    description: "开源工作流自动化平台，连接 400+ 应用与服务。",
+    description: i18n.t("agentTypes.n8nDesc"),
     type: "tool",
     installCommand: "docker run -it --rm -p 5678:5678 n8nio/n8n",
     needsApiKey: false,
@@ -63,7 +64,7 @@ const AGENT_DEFS: Record<string, AgentDefinition> = {
   claude: {
     id: "claude",
     name: "Claude",
-    description: "Anthropic 出品的远程 AI 助手，擅长长文本与推理。",
+    description: "Anthropic AI assistant — excels at long text and reasoning.",
     type: "remote",
     installCommand: "",
     needsApiKey: true,
@@ -72,7 +73,7 @@ const AGENT_DEFS: Record<string, AgentDefinition> = {
   gpt: {
     id: "gpt",
     name: "GPT",
-    description: "OpenAI 出品的远程 AI 模型，支持 GPT-4o 及更早版本。",
+    description: "OpenAI remote AI model supporting GPT-4o and earlier versions.",
     type: "remote",
     installCommand: "",
     needsApiKey: true,
@@ -81,7 +82,7 @@ const AGENT_DEFS: Record<string, AgentDefinition> = {
   mimo: {
     id: "mimo",
     name: "MiMo",
-    description: "小米自研大模型，中文理解与代码能力出色。",
+    description: i18n.t("agentTypes.xiaomiDesc"),
     type: "remote",
     installCommand: "",
     needsApiKey: true,
@@ -90,7 +91,7 @@ const AGENT_DEFS: Record<string, AgentDefinition> = {
   minio: {
     id: "minio",
     name: "MinIO",
-    description: "高性能对象存储，兼容 S3 API，适合 AI 数据湖。",
+    description: "High-performance object storage, S3-compatible, ideal for AI data lakes.",
     type: "tool",
     installCommand:
       "docker run -p 9000:9000 -p 9001:9001 minio/minio server /data --console-address :9001",
@@ -101,7 +102,7 @@ const AGENT_DEFS: Record<string, AgentDefinition> = {
   nats: {
     id: "nats",
     name: "NATS",
-    description: "轻量级消息队列，为微服务与 Agent 通信而生。",
+    description: "Lightweight message queue built for microservices and Agent communication.",
     type: "tool",
     installCommand: "docker run -p 4222:4222 nats",
     needsApiKey: false,
@@ -123,7 +124,7 @@ export class AgentInstaller {
   ): Promise<boolean> {
     const def = AGENT_DEFS[agentId];
     if (!def) {
-      onProgress({ stage: "error", message: "未知的 Agent" });
+      onProgress({ stage: "error", message: i18n.t("agentInstaller.unknownAgent") });
       return false;
     }
 
@@ -145,12 +146,12 @@ export class AgentInstaller {
   ): Promise<boolean> {
     // Remote agents need API key — caller should show dialog first
     // This method is called after API key is provided
-    onProgress({ stage: "testing", message: `正在测试 ${def.name} 连接…` });
+    onProgress({ stage: "testing", message: i18n.t("agentInstaller.testingConnection", { name: def.name }) });
 
     // Simulate connection test
     await delay(800);
 
-    onProgress({ stage: "saving", message: "保存配置…" });
+    onProgress({ stage: "saving", message: i18n.t("agentInstaller.savingConfig") });
 
     this.registry.register({
       id: def.id,
@@ -163,7 +164,7 @@ export class AgentInstaller {
       taskTypes: def.taskTypes,
     });
 
-    onProgress({ stage: "done", message: `${def.name} 已接入` });
+    onProgress({ stage: "done", message: i18n.t("agentInstaller.connected", { name: def.name }) });
     return true;
   }
 
@@ -174,11 +175,11 @@ export class AgentInstaller {
   ): Promise<boolean> {
     const def = AGENT_DEFS[agentId];
     if (!def || def.type !== "remote") {
-      onProgress({ stage: "error", message: "无效的 Agent" });
+      onProgress({ stage: "error", message: i18n.t("agentInstaller.invalidAgent") });
       return false;
     }
 
-    onProgress({ stage: "saving", message: "保存 API Key…" });
+    onProgress({ stage: "saving", message: i18n.t("agentInstaller.savingApiKey") });
     await delay(300);
 
     // Save API key to localStorage
@@ -190,14 +191,14 @@ export class AgentInstaller {
       // ignore
     }
 
-    onProgress({ stage: "testing", message: `正在测试 ${def.name} 连接…` });
+    onProgress({ stage: "testing", message: i18n.t("agentInstaller.testingConnection", { name: def.name }) });
     await delay(1000);
 
     // Simulate connection test (always succeeds for now)
     const connected = true;
 
     if (!connected) {
-      onProgress({ stage: "error", message: "连接测试失败，请检查 API Key" });
+      onProgress({ stage: "error", message: i18n.t("agentInstaller.connectionTestFailed") });
       return false;
     }
 
@@ -212,7 +213,7 @@ export class AgentInstaller {
       taskTypes: def.taskTypes,
     });
 
-    onProgress({ stage: "done", message: `${def.name} 已接入` });
+    onProgress({ stage: "done", message: i18n.t("agentInstaller.connected", { name: def.name }) });
     return true;
   }
 
@@ -220,7 +221,7 @@ export class AgentInstaller {
     def: AgentDefinition,
     onProgress: (p: InstallProgress) => void,
   ): Promise<boolean> {
-    onProgress({ stage: "copying", message: "复制安装命令到剪贴板…" });
+    onProgress({ stage: "copying", message: i18n.t("agentInstaller.copyingInstallCmd") });
 
     try {
       await navigator.clipboard.writeText(def.installCommand);
@@ -230,12 +231,12 @@ export class AgentInstaller {
 
     onProgress({
       stage: "copying",
-      message: `已复制: ${def.installCommand}`,
+      message: i18n.t("agentInstaller.copied", { cmd: def.installCommand }),
     });
 
     // Wait a bit then check if available
     await delay(1500);
-    onProgress({ stage: "testing", message: `正在检测 ${def.name} 是否可用…` });
+    onProgress({ stage: "testing", message: i18n.t("agentInstaller.detecting", { name: def.name }) });
 
     // We can't actually run shell commands from the browser,
     // so we mark as installed and let the user verify
@@ -255,7 +256,7 @@ export class AgentInstaller {
 
     onProgress({
       stage: "done",
-      message: `${def.name} 已标记为已安装（请确认命令已执行）`,
+      message: i18n.t("agentInstaller.markedInstalled", { name: def.name }),
     });
     return true;
   }
@@ -264,7 +265,7 @@ export class AgentInstaller {
     def: AgentDefinition,
     onProgress: (p: InstallProgress) => void,
   ): Promise<boolean> {
-    onProgress({ stage: "copying", message: "复制 Docker 命令到剪贴板…" });
+    onProgress({ stage: "copying", message: i18n.t("agentInstaller.copyingDockerCmd") });
 
     try {
       await navigator.clipboard.writeText(def.installCommand);
@@ -274,11 +275,11 @@ export class AgentInstaller {
 
     onProgress({
       stage: "copying",
-      message: `已复制: ${def.installCommand}`,
+      message: i18n.t("agentInstaller.copied", { cmd: def.installCommand }),
     });
 
     await delay(1500);
-    onProgress({ stage: "testing", message: `正在检测端口 ${def.port} 是否可用…` });
+    onProgress({ stage: "testing", message: i18n.t("agentInstaller.detectingPort", { port: def.port }) });
 
     // Check port availability (best effort from browser)
     if (def.port) {
@@ -296,7 +297,7 @@ export class AgentInstaller {
           port: def.port,
           taskTypes: def.taskTypes,
         });
-        onProgress({ stage: "done", message: `${def.name} 已就绪 (端口 ${def.port})` });
+        onProgress({ stage: "done", message: i18n.t("agentInstaller.readyOnPort", { name: def.name, port: def.port }) });
         return true;
       }
     }
@@ -317,7 +318,7 @@ export class AgentInstaller {
 
     onProgress({
       stage: "done",
-      message: `${def.name} 已标记为已安装（请确认 Docker 容器已启动）`,
+      message: i18n.t("agentInstaller.markedInstalledDocker", { name: def.name }),
     });
     return true;
   }
