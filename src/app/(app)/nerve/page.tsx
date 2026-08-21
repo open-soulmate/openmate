@@ -1,7 +1,8 @@
-import { NerveClient } from "./nerve-client"
+"use client";
+import dynamic from "next/dynamic";
 
-export const metadata = { title: "Nerve" }
+const NerveClient = dynamic(() => import("./nerve-client").then((m) => m.NerveClient), { ssr: false });
 
 export default function NervePage() {
-  return <NerveClient />
+  return <NerveClient />;
 }

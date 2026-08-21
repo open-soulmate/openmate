@@ -1,7 +1,8 @@
-import { MarrowClient } from "./marrow-client"
+"use client";
+import dynamic from "next/dynamic";
 
-export const metadata = { title: "Marrow" }
+const MarrowClient = dynamic(() => import("./marrow-client").then((m) => m.MarrowClient), { ssr: false });
 
 export default function MarrowPage() {
-  return <MarrowClient />
+  return <MarrowClient />;
 }

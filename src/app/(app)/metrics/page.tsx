@@ -1,6 +1,7 @@
-import { MetricsClient } from "./metrics-client";
+"use client";
+import dynamic from "next/dynamic";
 
-export const metadata = { title: "Metrics — OpenMate" };
+const MetricsClient = dynamic(() => import("./metrics-client").then((m) => m.MetricsClient), { ssr: false });
 
 export default function MetricsPage() {
   return <MetricsClient />;

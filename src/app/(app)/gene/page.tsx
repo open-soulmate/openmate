@@ -1,7 +1,8 @@
-import { GeneClient } from "./gene-client"
+"use client";
+import dynamic from "next/dynamic";
 
-export const metadata = { title: "Gene" }
+const GeneClient = dynamic(() => import("./gene-client").then((m) => m.GeneClient), { ssr: false });
 
 export default function GenePage() {
-  return <GeneClient />
+  return <GeneClient />;
 }

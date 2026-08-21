@@ -1,6 +1,7 @@
-import { BodyMapClient } from "./body-map-client";
+"use client";
+import dynamic from "next/dynamic";
 
-export const metadata = { title: "Body Map — OpenMate" };
+const BodyMapClient = dynamic(() => import("./body-map-client").then((m) => m.BodyMapClient), { ssr: false });
 
 export default function BodyMapPage() {
   return <BodyMapClient />;
