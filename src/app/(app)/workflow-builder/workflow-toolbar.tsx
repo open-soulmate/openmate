@@ -218,7 +218,7 @@ export function WorkflowToolbar({ onCreateNew }: WorkflowToolbarProps) {
           <span>v{activeWorkflow.version}</span>
           <span>·</span>
           <span>
-            {new Date(activeWorkflow.updatedAt).toLocaleString("zh-CN")}
+            {new Date(activeWorkflow.updatedAt).toLocaleString(undefined)}
           </span>
         </div>
       )}

@@ -344,7 +344,7 @@ export function HealerClient() {
                   )}
                   <span className="text-xs text-muted-foreground">{h.response_time_ms}ms</span>
                   <span className="text-xs text-muted-foreground">
-                    {new Date(h.timestamp * 1000).toLocaleTimeString("zh-CN")}
+                    {new Date(h.timestamp * 1000).toLocaleTimeString(undefined)}
                   </span>
                 </div>
               </div>

@@ -62,7 +62,7 @@ function formatTimestamp(ts?: number, t?: (key: string, opts?: Record<string, un
   if (diff < 60000) return t ? t('activity.justNow') : "just now";
   if (diff < 3600000) return t ? t('activity.minutesAgo', { count: Math.floor(diff / 60000) }) : `${Math.floor(diff / 60000)}m ago`;
   if (diff < 86400000) return t ? t('activity.hoursAgo', { count: Math.floor(diff / 3600000) }) : `${Math.floor(diff / 3600000)}h ago`;
-  return date.toLocaleDateString("zh-CN", { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+  return date.toLocaleDateString(undefined, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" });
 }
 
 export function ActivityFeedClient() {

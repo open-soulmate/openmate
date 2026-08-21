@@ -255,7 +255,7 @@ export function LinkClient() {
                     </span>
                     <span className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <Clock size={10} />
-                      {new Date(e.timestamp * 1000).toLocaleTimeString("zh-CN")}
+                      {new Date(e.timestamp * 1000).toLocaleTimeString(undefined)}
                     </span>
                   </div>
                 ))}

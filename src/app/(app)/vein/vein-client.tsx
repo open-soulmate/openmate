@@ -68,7 +68,7 @@ function formatBytes(bytes: number): string {
 }
 
 function formatTime(ts: number): string {
-  return new Date(ts * 1000).toLocaleString("zh-CN", {
+  return new Date(ts * 1000).toLocaleString(undefined, {
     year: "numeric",
     month: "2-digit",
     day: "2-digit",

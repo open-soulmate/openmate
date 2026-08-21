@@ -35,7 +35,7 @@ function uid() {
 }
 
 function formatTime(ts: number) {
-  return new Date(ts).toLocaleTimeString("zh-CN", {
+  return new Date(ts).toLocaleTimeString(undefined, {
     hour: "2-digit",
     minute: "2-digit",
   });

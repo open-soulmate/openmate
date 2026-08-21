@@ -534,7 +534,7 @@ export function GlandClient() {
                           <td className="px-3 py-2 text-right text-muted-foreground">{formatNumber(r.completion_tokens)}</td>
                           <td className="px-3 py-2 text-right font-medium text-foreground">{formatNumber(r.total_tokens)}</td>
                           <td className="px-3 py-2 text-right text-xs text-muted-foreground">
-                            {new Date(r.timestamp * 1000).toLocaleTimeString("zh-CN")}
+                            {new Date(r.timestamp * 1000).toLocaleTimeString(undefined)}
                           </td>
                         </tr>
                       ))}

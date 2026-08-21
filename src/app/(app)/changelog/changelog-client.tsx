@@ -220,7 +220,7 @@ export function ChangelogClient() {
                   </div>
                 )}
                 <p className="text-[10px] text-muted-foreground">
-                  Registered: {new Date(c.created_at * 1000).toLocaleDateString("zh-CN")}
+                  Registered: {new Date(c.created_at * 1000).toLocaleDateString(undefined)}
                 </p>
               </div>
             ))}
@@ -260,7 +260,7 @@ export function ChangelogClient() {
                           )) || "—"}
                         </td>
                         <td className="px-4 py-2.5 text-xs text-muted-foreground">
-                          {new Date(entry.timestamp * 1000).toLocaleDateString("zh-CN")}
+                          {new Date(entry.timestamp * 1000).toLocaleDateString(undefined)}
                         </td>
                       </tr>
                     ))}

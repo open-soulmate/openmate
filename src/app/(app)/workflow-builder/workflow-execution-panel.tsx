@@ -254,7 +254,7 @@ export function WorkflowExecutionPanel() {
                   </div>
                   <span className="text-xs text-muted-foreground font-mono">
                     {new Date(currentExecution.started_at).toLocaleTimeString(
-                      "zh-CN",
+                      undefined,
                     )}
                   </span>
                 </div>
@@ -346,7 +346,7 @@ export function WorkflowExecutionPanel() {
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>{exec.steps.length} 步</span>
                     <span className="font-mono">
-                      {new Date(exec.started_at).toLocaleString("zh-CN")}
+                      {new Date(exec.started_at).toLocaleString(undefined)}
                     </span>
                   </div>
                 </div>

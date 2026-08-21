@@ -89,7 +89,7 @@ function getTypeIcon(type: string): React.ElementType {
 
 function formatTimestamp(ts: number): string {
   const d = new Date(ts * 1000)
-  return d.toLocaleString("zh-CN", {
+  return d.toLocaleString(undefined, {
     month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", second: "2-digit",
   })
@@ -384,7 +384,7 @@ function EventsList({
   const grouped: Record<string, TimelineEvent[]> = {}
   for (const ev of events) {
     const d = new Date(ev.timestamp * 1000)
-    const dateKey = d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" })
+    const dateKey = d.toLocaleDateString(undefined, { year: "numeric", month: "2-digit", day: "2-digit" })
     if (!grouped[dateKey]) grouped[dateKey] = []
     grouped[dateKey].push(ev)
   }
