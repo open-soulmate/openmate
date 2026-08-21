@@ -1,12 +1,19 @@
+import i18n from "./i18n";
+
 export type ThemeId = "dark" | "light" | "purple";
 
 const STORAGE_KEY = "openmate-theme";
 
-export const themes: { id: ThemeId; label: string; color: string }[] = [
-  { id: "dark", label: "深色", color: "#6366f1" },
-  { id: "light", label: "浅色", color: "#818cf8" },
-  { id: "purple", label: "紫色", color: "#a855f7" },
+export const themes: { id: ThemeId; labelKey: string; color: string }[] = [
+  { id: "dark", labelKey: "theme.dark", color: "#6366f1" },
+  { id: "light", labelKey: "theme.light", color: "#818cf8" },
+  { id: "purple", labelKey: "theme.purple", color: "#a855f7" },
 ];
+
+/** Get themes with translated labels. */
+export function getThemes() {
+  return themes.map((t) => ({ ...t, label: i18n.t(t.labelKey) }));
+}
 
 export function getStoredTheme(): ThemeId {
   if (typeof window === "undefined") return "dark";

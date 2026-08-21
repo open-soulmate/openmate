@@ -5431,5 +5431,42 @@
     "collectionCreated": "Collection created",
     "promoted": "Promoted to knowledge base",
     "deleteConfirm": "Delete this bookmark?"
+  },
+  "theme": {
+    "dark": "Dark",
+    "light": "Light",
+    "purple": "Purple"
+  },
+  "agentInstaller": {
+    "unknownAgent": "Unknown Agent",
+    "savingConfig": "Saving config…",
+    "invalidAgent": "Invalid Agent",
+    "savingApiKey": "Saving API Key…",
+    "connectionTestFailed": "Connection test failed, please check your API Key",
+    "copyingInstallCmd": "Copying install command to clipboard…",
+    "copyingDockerCmd": "Copying Docker command to clipboard…",
+    "installing": "Installing…",
+    "completed": "Installation complete",
+    "testingConnection": "Testing {name} connection…",
+    "connected": "{name} connected",
+    "copied": "Copied: {cmd}",
+    "detecting": "Checking if {name} is available…",
+    "markedInstalled": "{name} marked as installed (please confirm command was executed)",
+    "detectingPort": "Checking if port {port} is available…",
+    "readyOnPort": "{name} ready (port {port})",
+    "markedInstalledDocker": "{name} marked as installed (please confirm Docker container is running)",
+    "aiderDesc": "AI pair programming assistant that edits code directly in the terminal.",
+    "claudeDesc": "Anthropic AI assistant — excels at long text and reasoning.",
+    "gptDesc": "OpenAI remote AI model supporting GPT-4o and earlier versions.",
+    "minioDesc": "High-performance object storage, S3-compatible, ideal for AI data lakes.",
+    "natsDesc": "Lightweight message queue built for microservices and Agent communication."
+  },
+  "agentTypes": {
+    "hermesDesc": "Hermes message proxy with multi-protocol support.",
+    "openHandsDesc": "Open-source AI coding assistant supporting multiple models.",
+    "ollamaDesc": "Local LLM inference framework — run Llama, Qwen, and more with one click.",
+    "computerUseDesc": "Local code execution engine, control your computer with natural language.",
+    "n8nDesc": "Open-source workflow automation platform connecting 400+ apps and services.",
+    "xiaomiDesc": "Xiaomi proprietary LLM API with excellent Chinese understanding and code capabilities."
   }
 }

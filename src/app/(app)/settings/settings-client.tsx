@@ -9,7 +9,7 @@ import {
   CheckCircle2, AlertCircle, LogOut, User, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { type ThemeId, themes, getStoredTheme, persistTheme } from "@/lib/theme";
+import { type ThemeId, getThemes, getStoredTheme, persistTheme } from "@/lib/theme";
 import { useAppStore } from "@/stores/app-store";
 import { getApiBaseUrl, getToken, getUserId, getUserName } from "@/lib/api-client";
 import { useToast } from "@/components/toast-provider";
@@ -398,7 +398,7 @@ export function SettingsClient() {
 
               <SettingCard title={t("settings.theme")} description={t("settings.themeDesc")}>
                 <ButtonGroup value={settings.theme} onChange={(v) => update("theme", v as ThemeId)}
-                  options={themes.map((t) => ({ value: t.id, label: t.label, icon: t.id === "dark" ? Moon : t.id === "light" ? Sun : Palette }))} />
+                  options={getThemes().map((t) => ({ value: t.id, label: t.label, icon: t.id === "dark" ? Moon : t.id === "light" ? Sun : Palette }))} />
               </SettingCard>
 
               <SettingCard title={t("settings.fontSize")} description={t("settings.fontSizeDesc")}>
