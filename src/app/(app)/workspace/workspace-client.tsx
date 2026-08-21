@@ -34,18 +34,18 @@ function formatBytes(bytes: number): string {
   return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
 }
 
-function formatTime(modified: string | number): string {
+function formatTime(modified: string | number, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const d = typeof modified === "number" ? new Date(modified * 1000) : new Date(modified);
   if (isNaN(d.getTime())) return "-";
   const diff = Date.now() - d.getTime();
   const minutes = Math.floor(diff / 60000);
-  if (minutes < 1) return "刚刚";
-  if (minutes < 60) return `${minutes} 分钟前`;
+  if (minutes < 1) return t("workspace.justNow");
+  if (minutes < 60) return t("workspace.minutesAgo", { minutes });
   const hours = Math.floor(minutes / 60);
-  if (hours < 24) return `${hours} 小时前`;
+  if (hours < 24) return t("workspace.hoursAgo", { hours });
   const days = Math.floor(hours / 24);
-  if (days < 7) return `${days} 天前`;
-  return d.toLocaleDateString("zh-CN");
+  if (days < 7) return t("workspace.daysAgo", { days });
+  return d.toLocaleDateString();
 }
 
 export function WorkspaceClient() {
@@ -278,7 +278,7 @@ export function WorkspaceClient() {
                   {entry.is_dir ? "-" : formatBytes(entry.size)}
                 </span>
                 <span className="text-right text-xs text-muted-foreground">
-                  {formatTime(entry.modified)}
+                  {formatTime(entry.modified, t)}
                 </span>
               </button>
             ))}
