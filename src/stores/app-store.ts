@@ -567,21 +567,21 @@ export const useAppStore = create<AppState>((set, get) => ({
   workspaces: [
     {
       id: "ws-1",
-      name: "OpenMate 前端",
+      name: "OpenMate Frontend",
       path: "~/projects/openmate",
       lastModified: Date.now() - 3600000,
       fileCount: 156,
       size: 2457600,
-      description: "OpenMate 主项目前端代码",
+      description: "OpenMate main frontend codebase",
     },
     {
       id: "ws-2",
-      name: "AI Agent 后端",
+      name: "AI Agent Backend",
       path: "~/projects/agent-backend",
       lastModified: Date.now() - 86400000,
       fileCount: 89,
       size: 1536000,
-      description: "Agent 后端服务",
+      description: "Agent backend service",
     },
     {
       id: "ws-3",
