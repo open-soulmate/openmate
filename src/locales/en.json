@@ -78,7 +78,9 @@
     "notifications": "Notifications",
     "system": "System Overview",
     "soul": "Soul Management",
-    "somaAdmin": "Soma Management"
+    "somaAdmin": "Soma Management",
+    "kbSharing": "KB Sharing",
+    "knowledgeRequests": "KB Requests"
   },
   "dashboard": {
     "title": "System Overview",
@@ -5587,5 +5589,30 @@
     "successRate": "Success Rate",
     "avgResponse": "Avg Response",
     "compress": "Compress"
+  },
+  "kbSharing": {
+    "description": "Share knowledge bases with team members",
+    "newRequest": "New Sharing Request",
+    "createTitle": "Create Sharing Request",
+    "kbId": "Knowledge Base ID",
+    "kbName": "Knowledge Base Name",
+    "namePlaceholder": "Enter KB name",
+    "myOnly": "My Requests Only",
+    "empty": "No sharing requests found",
+    "requester": "Requester",
+    "reviewNote": "Review note (optional)"
+  },
+  "knowledgeRequests": {
+    "description": "Request new knowledge bases or review pending requests",
+    "newRequest": "New Request",
+    "createTitle": "Request New Knowledge Base",
+    "name": "Knowledge Base Name",
+    "description_label": "Description",
+    "namePlaceholder": "e.g. Project Documentation",
+    "descPlaceholder": "Describe the purpose and contents of this knowledge base",
+    "myOnly": "My Requests Only",
+    "empty": "No knowledge requests found",
+    "requester": "Requester",
+    "reviewNote": "Review note (optional)"
   }
 }

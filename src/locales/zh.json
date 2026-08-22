@@ -78,7 +78,9 @@
     "notifications": "通知中心",
     "system": "系统总览",
     "soul": "Soul管理",
-    "somaAdmin": "Soma管理"
+    "somaAdmin": "Soma管理",
+    "kbSharing": "知识库共享",
+    "knowledgeRequests": "知识库申请"
   },
   "dashboard": {
     "title": "系统概览",
@@ -5587,5 +5589,30 @@
     "successRate": "成功率",
     "avgResponse": "平均响应",
     "compress": "压缩"
+  },
+  "kbSharing": {
+    "description": "与团队成员共享知识库",
+    "newRequest": "新建共享申请",
+    "createTitle": "创建共享申请",
+    "kbId": "知识库 ID",
+    "kbName": "知识库名称",
+    "namePlaceholder": "输入知识库名称",
+    "myOnly": "仅我的申请",
+    "empty": "暂无共享申请",
+    "requester": "申请人",
+    "reviewNote": "审核备注（可选）"
+  },
+  "knowledgeRequests": {
+    "description": "申请新知识库或审核待处理申请",
+    "newRequest": "新建申请",
+    "createTitle": "申请新知识库",
+    "name": "知识库名称",
+    "description_label": "描述",
+    "namePlaceholder": "如：项目文档",
+    "descPlaceholder": "描述该知识库的用途和内容",
+    "myOnly": "仅我的申请",
+    "empty": "暂无知识库申请",
+    "requester": "申请人",
+    "reviewNote": "审核备注（可选）"
   }
 }

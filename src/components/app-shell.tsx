@@ -133,6 +133,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         { href: "/graph", label: t("nav.graph"), icon: Network },
         { href: "/graph-builder", label: t("nav.graphBuilder"), icon: Share2 },
         { href: "/search", label: t("nav.search"), icon: Search },
+        { href: "/kb-sharing", label: t("nav.kbSharing", "KB Sharing"), icon: Share2 },
+        { href: "/knowledge-requests", label: t("nav.knowledgeRequests", "KB Requests"), icon: FileText },
       ],
     },
     {
