@@ -1597,7 +1597,7 @@
   },
   "echo": {
     "title": "回声 · 消息推送",
-    "subtitle": "多渠道消息推送：Webhook/邮件/钉钉/企微/Telegram",
+    "subtitle": "多渠道消息推送：Webhook/邮件/钉钉/企微/Telegram/Discord",
     "send": "发送消息",
     "broadcast": "广播消息",
     "channels": "消息通道",

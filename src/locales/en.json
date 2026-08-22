@@ -1599,7 +1599,7 @@
   },
   "echo": {
     "title": "Echo · Message Push",
-    "subtitle": "Multi-channel messaging: Webhook/Email/DingTalk/WeCom/Telegram",
+    "subtitle": "Multi-channel messaging: Webhook/Email/DingTalk/WeCom/Telegram/Discord",
     "send": "Send Message",
     "broadcast": "Broadcast",
     "channels": "Channels",
