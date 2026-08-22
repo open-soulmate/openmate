@@ -1597,7 +1597,7 @@
   },
   "echo": {
     "title": "エコー · メッセージプッシュ",
-    "subtitle": "マルチチャネルメッセージング：Webhook/メール/DingTalk/WeCom/Telegram",
+    "subtitle": "マルチチャネルメッセージング：Webhook/メール/DingTalk/WeCom/Telegram/Discord",
     "send": "メッセージ送信",
     "broadcast": "ブロードキャスト",
     "channels": "チャネル",
