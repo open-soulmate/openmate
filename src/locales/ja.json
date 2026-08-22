@@ -78,7 +78,9 @@
     "system": "システム概要",
     "aiGroup": "AI協力",
     "soul": "Soul管理",
-    "somaAdmin": "Soma管理"
+    "somaAdmin": "Soma管理",
+    "kbSharing": "KB共有",
+    "knowledgeRequests": "KBリクエスト"
   },
   "dashboard": {
     "title": "システム概要",
@@ -5587,5 +5589,30 @@
     "successRate": "成功率",
     "avgResponse": "平均レスポンス",
     "compress": "圧縮"
+  },
+  "kbSharing": {
+    "description": "チームメンバーと知識ベースを共有",
+    "newRequest": "新しい共有リクエスト",
+    "createTitle": "共有リクエスト作成",
+    "kbId": "知識ベースID",
+    "kbName": "知識ベース名",
+    "namePlaceholder": "KB名を入力",
+    "myOnly": "自分のリクエストのみ",
+    "empty": "共有リクエストがありません",
+    "requester": "リクエスト者",
+    "reviewNote": "レビューメモ（任意）"
+  },
+  "knowledgeRequests": {
+    "description": "新しい知識ベースをリクエスト、または保留中のリクエストを確認",
+    "newRequest": "新しいリクエスト",
+    "createTitle": "新知識ベースをリクエスト",
+    "name": "知識ベース名",
+    "description_label": "説明",
+    "namePlaceholder": "例：プロジェクト文書",
+    "descPlaceholder": "この知識ベースの目的と内容を説明してください",
+    "myOnly": "自分のリクエストのみ",
+    "empty": "知識ベースリクエストがありません",
+    "requester": "リクエスト者",
+    "reviewNote": "レビューメモ（任意）"
   }
 }
