@@ -11,12 +11,14 @@ import {
   ChevronRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 
 interface WorkflowListPanelProps {
   onLoad: (nodes: Node<WorkflowNodeData>[], edges: Edge[]) => void;
 }
 
 export function WorkflowListPanel({ onLoad }: WorkflowListPanelProps) {
+  const { t } = useTranslation();
   const workflows = useWorkflowStore((s) => s.workflows);
   const activeWorkflowId = useWorkflowStore((s) => s.activeWorkflowId);
   const loadWorkflow = useWorkflowStore((s) => s.loadWorkflow);
@@ -47,7 +49,7 @@ export function WorkflowListPanel({ onLoad }: WorkflowListPanelProps) {
         <button
           onClick={() => setCollapsed(false)}
           className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-          title="展开列表"
+          title={t("workflowBuilder.expandList")}
         >
           <ChevronRight size={14} />
         </button>
@@ -61,7 +63,7 @@ export function WorkflowListPanel({ onLoad }: WorkflowListPanelProps) {
   return (
     <div className="flex h-full w-52 shrink-0 flex-col border-r border-border bg-card">
       <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
-        <h3 className="text-xs font-medium text-foreground">工作流列表</h3>
+        <h3 className="text-xs font-medium text-foreground">{t("workflowBuilder.workflowList")}</h3>
         <button
           onClick={() => setCollapsed(true)}
           className="flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -73,7 +75,7 @@ export function WorkflowListPanel({ onLoad }: WorkflowListPanelProps) {
         {workflows.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center px-3">
             <Workflow size={24} className="mb-2 text-muted-foreground/40" />
-            <p className="text-[11px] text-muted-foreground">暂无工作流</p>
+            <p className="text-[11px] text-muted-foreground">{t("workflowBuilder.noWorkflows")}</p>
           </div>
         ) : (
           workflows.map((wf) => (
@@ -98,7 +100,7 @@ export function WorkflowListPanel({ onLoad }: WorkflowListPanelProps) {
                       handleDuplicate(wf.id);
                     }}
                     className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-foreground"
-                    title="复制"
+                    title={t("workflowBuilder.copy")}
                   >
                     <Copy size={11} />
                   </button>
@@ -108,14 +110,14 @@ export function WorkflowListPanel({ onLoad }: WorkflowListPanelProps) {
                       setConfirmDeleteId(wf.id);
                     }}
                     className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground hover:text-destructive"
-                    title="删除"
+                    title={t("workflowBuilder.delete")}
                   >
                     <Trash2 size={11} />
                   </button>
                 </div>
               </div>
               <span className="text-[10px] text-muted-foreground">
-                {wf.nodes.length} 节点 · v{wf.version}
+                {wf.nodes.length} {t("workflowBuilder.nodes")} · v{wf.version}
               </span>
             </div>
           ))
@@ -125,19 +127,19 @@ export function WorkflowListPanel({ onLoad }: WorkflowListPanelProps) {
       {/* Delete confirm */}
       {confirmDeleteId && (
         <div className="border-t border-border p-2">
-          <p className="mb-2 text-[11px] text-muted-foreground">确认删除？</p>
+          <p className="mb-2 text-[11px] text-muted-foreground">{t("workflowBuilder.confirmDelete")}</p>
           <div className="flex gap-1">
             <button
               onClick={() => handleDelete(confirmDeleteId)}
               className="flex-1 rounded-md bg-destructive px-2 py-1 text-[11px] font-medium text-destructive-foreground hover:bg-destructive/90"
             >
-              删除
+              {t("workflowBuilder.delete")}
             </button>
             <button
               onClick={() => setConfirmDeleteId(null)}
               className="flex-1 rounded-md border border-border px-2 py-1 text-[11px] text-muted-foreground hover:bg-accent"
             >
-              取消
+              {t("workflowBuilder.cancel")}
             </button>
           </div>
         </div>

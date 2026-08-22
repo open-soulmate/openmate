@@ -15,6 +15,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useTranslation } from "react-i18next";
 import { useState } from "react";
 
 function statusIcon(status: string) {
@@ -134,6 +135,7 @@ function StepCard({
 }
 
 export function WorkflowExecutionPanel() {
+  const { t } = useTranslation();
   const showExecutionPanel = useWorkflowStore((s) => s.showExecutionPanel);
   const toggleExecutionPanel = useWorkflowStore((s) => s.toggleExecutionPanel);
   const currentExecution = useWorkflowStore((s) => s.currentExecution);
@@ -157,7 +159,7 @@ export function WorkflowExecutionPanel() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-2 border-b border-border">
         <div className="flex items-center gap-3">
-          <h3 className="text-sm font-medium">工作流执行</h3>
+          <h3 className="text-sm font-medium">{t("workflowBuilder.workflowExecution")}</h3>
           <div className="flex gap-1">
             <button
               onClick={() => setTab("current")}
@@ -168,7 +170,7 @@ export function WorkflowExecutionPanel() {
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              当前执行
+              {t("workflowBuilder.currentExecution")}
             </button>
             <button
               onClick={() => setTab("history")}
@@ -179,7 +181,7 @@ export function WorkflowExecutionPanel() {
                   : "text-muted-foreground hover:text-foreground",
               )}
             >
-              历史记录
+              {t("workflowBuilder.history")}
             </button>
           </div>
         </div>
@@ -190,13 +192,13 @@ export function WorkflowExecutionPanel() {
               className="flex items-center gap-1 rounded-md px-2 py-1 text-xs text-red-500 hover:bg-red-500/10 transition-colors"
             >
               <StopCircle size={12} />
-              取消
+              {t("workflowBuilder.cancel")}
             </button>
           )}
           <button
             onClick={fetchExecutionHistory}
             className="rounded-md p-1 text-muted-foreground hover:text-foreground hover:bg-accent transition-colors"
-            title="刷新"
+            title={t("workflowBuilder.refresh")}
           >
             <RefreshCw size={14} />
           </button>
@@ -216,8 +218,8 @@ export function WorkflowExecutionPanel() {
             {!currentExecution ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                 <Clock size={32} className="mb-2 opacity-30" />
-                <p className="text-sm">尚未执行工作流</p>
-                <p className="text-xs mt-1">点击工具栏的「运行」按钮开始执行</p>
+                <p className="text-sm">{t("workflowBuilder.notExecutedYet")}</p>
+                <p className="text-xs mt-1">{t("workflowBuilder.clickRunToStart")}</p>
               </div>
             ) : (
               <>
@@ -241,13 +243,13 @@ export function WorkflowExecutionPanel() {
                         )}
                       >
                         {currentExecution.status === "running"
-                          ? "执行中..."
+                          ? t("workflowBuilder.executing")
                           : currentExecution.status === "completed"
-                            ? "执行完成"
+                            ? t("workflowBuilder.executionCompleted")
                             : currentExecution.status === "failed"
-                              ? "执行失败"
+                              ? t("workflowBuilder.executionFailed")
                               : currentExecution.status === "cancelled"
-                                ? "已取消"
+                                ? t("workflowBuilder.cancelled")
                                 : currentExecution.status}
                       </span>
                     </div>
@@ -264,7 +266,7 @@ export function WorkflowExecutionPanel() {
                   <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3 text-xs text-red-500">
                     <div className="flex items-center gap-1.5 font-medium mb-1">
                       <XCircle size={12} />
-                      错误信息
+                      {t("workflowBuilder.errorInfo")}
                     </div>
                     <p className="font-mono">{currentExecution.error}</p>
                   </div>
@@ -274,7 +276,7 @@ export function WorkflowExecutionPanel() {
                 {currentExecution.steps.length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      执行步骤
+                      {t("workflowBuilder.executionSteps")}
                     </h4>
                     <div className="space-y-1.5">
                       {currentExecution.steps.map((step, i) => (
@@ -288,7 +290,7 @@ export function WorkflowExecutionPanel() {
                 {Object.keys(currentExecution.variables).length > 0 && (
                   <div className="space-y-2">
                     <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                      输入变量
+                      {t("workflowBuilder.inputVariables")}
                     </h4>
                     <div className="rounded-lg border border-border bg-muted/30 p-3 font-mono text-xs">
                       {Object.entries(currentExecution.variables).map(
@@ -312,7 +314,7 @@ export function WorkflowExecutionPanel() {
             {executionHistory.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
                 <Clock size={32} className="mb-2 opacity-30" />
-                <p className="text-sm">暂无执行历史</p>
+                <p className="text-sm">{t("workflowBuilder.noExecutionHistory")}</p>
               </div>
             ) : (
               executionHistory.map((exec) => (
@@ -344,7 +346,7 @@ export function WorkflowExecutionPanel() {
                     </div>
                   </div>
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                    <span>{exec.steps.length} 步</span>
+                    <span>{exec.steps.length} {t("workflowBuilder.steps")}</span>
                     <span className="font-mono">
                       {new Date(exec.started_at).toLocaleString(undefined)}
                     </span>
