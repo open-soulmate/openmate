@@ -1274,7 +1274,10 @@
     "threatCount": "件の脅威",
     "immune.sourceIpPlaceholder": "送信元IP (例: 192.168.1.1)",
     "immune.attackPayloadPlaceholder": "/api/search?q=' OR 1=1--",
-    "immune.requestBodyPlaceholder": "リクエストボディ (任意)"
+    "immune.requestBodyPlaceholder": "リクエストボディ (任意)",
+    "sourceIpPlaceholder": "送信元IP",
+    "attackPayloadPlaceholder": "攻撃ペイロード",
+    "requestBodyPlaceholder": "リクエストボディ"
   },
   "marrow": {
     "title": "骨髄 · バックアップ復元",
@@ -1810,7 +1813,10 @@
     "daysAgo": "日前",
     "minutes": "分",
     "hours": "時間",
-    "total": "合計"
+    "total": "合計",
+    "approve": "承認",
+    "reject": "却下",
+    "review": "レビュー"
   },
   "gland": {
     "title": "腺 · モデルゲートウェイ",
