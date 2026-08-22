@@ -24,12 +24,12 @@ const headers = () => ({
   Authorization: `Bearer ${getToken()}`,
 });
 
-function timeAgo(ts: string): string {
+function timeAgo(ts: string, t: (k: string, o?: Record<string, unknown>) => string): string {
   const diff = Date.now() - new Date(ts).getTime();
-  if (diff < 60000) return 'just now';
-  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
-  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
-  return `${Math.floor(diff / 86400000)}d ago`;
+  if (diff < 60000) return t('plugins.justNow');
+  if (diff < 3600000) return t('plugins.minutesAgo', { n: Math.floor(diff / 60000) });
+  if (diff < 86400000) return t('plugins.hoursAgo', { n: Math.floor(diff / 3600000) });
+  return t('plugins.daysAgo', { n: Math.floor(diff / 86400000) });
 }
 
 function MarkdownPreview({ content }: { content: string }) {
@@ -178,16 +178,16 @@ export function QuickNotesClient() {
       }
 
       if (res.ok) {
-        showToast(editingNote ? 'Note updated' : 'Note created');
+        showToast(editingNote ? t('plugins.noteUpdated') : t('plugins.noteCreated'));
         closeEditor();
         fetchNotes();
         fetchTags();
         fetchStats();
       } else {
-        showToast('Failed to save note', 'error');
+        showToast(t('plugins.saveFailed'), 'error');
       }
     } catch {
-      showToast('Error saving note', 'error');
+      showToast(t('plugins.saveError'), 'error');
     }
   };
 
@@ -198,14 +198,14 @@ export function QuickNotesClient() {
         headers: headers(),
       });
       if (res.ok) {
-        showToast('Note deleted');
+        showToast(t('plugins.noteDeleted'));
         if (editingNote?.id === id) closeEditor();
         fetchNotes();
         fetchTags();
         fetchStats();
       }
     } catch {
-      showToast('Error deleting note', 'error');
+      showToast(t('plugins.deleteError'), 'error');
     }
   };
 
@@ -230,12 +230,12 @@ export function QuickNotesClient() {
       });
       const data = await res.json();
       if (data.status === 'promoted') {
-        showToast('Promoted to knowledge base');
+        showToast(t('plugins.promoted'));
       } else {
-        showToast(data.error || 'Promoted with warnings', 'error');
+        showToast(data.error || t('plugins.promoteWarning'), 'error');
       }
     } catch {
-      showToast('Error promoting note', 'error');
+      showToast(t('plugins.promoteError'), 'error');
     }
     setPromoting(false);
   };
@@ -284,7 +284,7 @@ export function QuickNotesClient() {
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               <StickyNote size={18} className="text-primary" />
-              <h2 className="font-semibold text-sm">Quick Notes</h2>
+              <h2 className="font-semibold text-sm">{t('plugins.quickNotesTitle')}</h2>
             </div>
             <div className="flex gap-1.5">
               <button onClick={() => { fetchNotes(); fetchTags(); fetchStats(); }}
@@ -304,16 +304,16 @@ export function QuickNotesClient() {
             <input
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Search notes..."
+              placeholder={t('plugins.searchNotes')}
               className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-border bg-muted text-xs outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
 
           {/* Stats */}
           <div className="flex gap-3 text-[10px] text-muted-foreground">
-            <span>{stats.total} notes</span>
-            <span>{stats.pinned} pinned</span>
-            <span>{stats.created_today} today</span>
+            <span>{t('plugins.notesCount', { count: stats.total })}</span>
+            <span>{t('plugins.pinnedCount', { count: stats.pinned })}</span>
+            <span>{t('plugins.todayCount', { count: stats.created_today })}</span>
           </div>
         </div>
 
@@ -326,7 +326,7 @@ export function QuickNotesClient() {
                 !filterTag ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              All
+              {t('plugins.all')}
             </button>
             {allTags.map(tag => (
               <button
@@ -350,7 +350,7 @@ export function QuickNotesClient() {
           {pinnedNotes.length > 0 && (
             <div className="px-3 pt-2">
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 px-1 flex items-center gap-1">
-                <Pin size={8} /> Pinned
+                <Pin size={8} /> {t('plugins.pinnedSection')}
               </p>
               {pinnedNotes.map(note => (
                 <NoteCard
@@ -360,6 +360,7 @@ export function QuickNotesClient() {
                   onClick={() => openEdit(note)}
                   onTogglePin={() => handleTogglePin(note)}
                   onDelete={() => handleDelete(note.id)}
+                  t={t}
                 />
               ))}
             </div>
@@ -368,15 +369,15 @@ export function QuickNotesClient() {
           <div className="px-3 pt-2 pb-4">
             {pinnedNotes.length > 0 && regularNotes.length > 0 && (
               <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 px-1">
-                Recent
+                {t('plugins.recentSection')}
               </p>
             )}
             {regularNotes.length === 0 && pinnedNotes.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <StickyNote size={32} className="mb-2 opacity-30" />
-                <p className="text-xs">No notes yet</p>
+                <p className="text-xs">{t('plugins.noNotesYet')}</p>
                 <button onClick={openCreate} className="text-xs text-primary mt-2 hover:underline">
-                  Create your first note
+                  {t('plugins.createFirstNote')}
                 </button>
               </div>
             ) : (
@@ -388,6 +389,7 @@ export function QuickNotesClient() {
                   onClick={() => openEdit(note)}
                   onTogglePin={() => handleTogglePin(note)}
                   onDelete={() => handleDelete(note.id)}
+                  t={t}
                 />
               ))
             )}
@@ -403,7 +405,7 @@ export function QuickNotesClient() {
             <div className="flex items-center gap-2">
               <Edit3 size={14} className="text-muted-foreground" />
               <span className="text-sm font-medium">
-                {isCreating ? 'New Note' : 'Edit Note'}
+                {isCreating ? t('plugins.newNote') : t('plugins.editNote')}
               </span>
             </div>
             <div className="flex items-center gap-2">
@@ -414,7 +416,7 @@ export function QuickNotesClient() {
                 }`}
               >
                 {preview ? <Edit3 size={12} /> : <Eye size={12} />}
-                {preview ? 'Edit' : 'Preview'}
+                {preview ? t('plugins.editBtn') : t('plugins.previewBtn')}
               </button>
               {editingNote && (
                 <button
@@ -423,13 +425,13 @@ export function QuickNotesClient() {
                   className="px-2.5 py-1 rounded-lg text-xs border border-green-500/30 text-green-500 hover:bg-green-500/5 flex items-center gap-1.5 disabled:opacity-50"
                 >
                   {promoting ? <Loader2 size={12} className="animate-spin" /> : <ArrowUpRight size={12} />}
-                  Promote
+                  {t('plugins.promoteBtn')}
                 </button>
               )}
               <button onClick={handleSave}
                 className="px-3 py-1 rounded-lg text-xs bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5">
                 <Save size={12} />
-                Save
+                {t('plugins.saveBtn')}
               </button>
               <button onClick={closeEditor}
                 className="p-1 rounded-lg hover:bg-muted transition-colors">
@@ -444,7 +446,7 @@ export function QuickNotesClient() {
             <input
               value={formTitle}
               onChange={e => setFormTitle(e.target.value)}
-              placeholder="Note title..."
+              placeholder={t('plugins.titlePlaceholder')}
               className="w-full text-xl font-bold bg-transparent outline-none placeholder:text-muted-foreground/50"
             />
 
@@ -464,7 +466,7 @@ export function QuickNotesClient() {
                   value={tagInput}
                   onChange={e => setTagInput(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addTag(); } }}
-                  placeholder="Add tag..."
+                  placeholder={t('plugins.addTagPlaceholder')}
                   className="w-20 text-xs bg-transparent outline-none placeholder:text-muted-foreground/50"
                 />
               </div>
@@ -476,7 +478,7 @@ export function QuickNotesClient() {
                 }`}
               >
                 <Pin size={10} />
-                {formPinned ? 'Pinned' : 'Pin'}
+                {formPinned ? t('plugins.pinnedLabel') : t('plugins.pinLabel')}
               </button>
             </div>
 
@@ -486,14 +488,14 @@ export function QuickNotesClient() {
                 {formContent ? (
                   <MarkdownPreview content={formContent} />
                 ) : (
-                  <p className="text-muted-foreground text-sm italic">Nothing to preview</p>
+                  <p className="text-muted-foreground text-sm italic">{t('plugins.nothingToPreview')}</p>
                 )}
               </div>
             ) : (
               <textarea
                 value={formContent}
                 onChange={e => setFormContent(e.target.value)}
-                placeholder="Write your note in Markdown..."
+                placeholder={t('plugins.contentPlaceholder')}
                 className="w-full min-h-[300px] bg-transparent outline-none resize-none text-sm leading-relaxed font-mono placeholder:text-muted-foreground/50"
               />
             )}
@@ -503,11 +505,11 @@ export function QuickNotesClient() {
         /* Empty state */
         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
           <StickyNote size={48} className="mb-4 opacity-20" />
-          <p className="text-sm mb-2">Select a note or create a new one</p>
+          <p className="text-sm mb-2">{t('plugins.selectOrCreate')}</p>
           <button onClick={openCreate}
             className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 flex items-center gap-2">
             <Plus size={14} />
-            New Note
+            {t('plugins.newNoteBtn')}
           </button>
         </div>
       )}
@@ -516,13 +518,14 @@ export function QuickNotesClient() {
 }
 
 function NoteCard({
-  note, active, onClick, onTogglePin, onDelete,
+  note, active, onClick, onTogglePin, onDelete, t,
 }: {
   note: Note;
   active: boolean;
   onClick: () => void;
   onTogglePin: () => void;
   onDelete: () => void;
+  t: (k: string, o?: Record<string, unknown>) => string;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
 
@@ -540,14 +543,14 @@ function NoteCard({
           <div className="flex items-center gap-1.5">
             {note.pinned && <Pin size={10} className="text-amber-500 shrink-0" />}
             <p className="text-xs font-medium truncate">
-              {note.title || 'Untitled'}
+              {note.title || t('plugins.untitled')}
             </p>
           </div>
           <p className="text-[10px] text-muted-foreground truncate mt-0.5">
-            {note.content.slice(0, 60) || 'Empty note'}
+            {note.content.slice(0, 60) || t('plugins.emptyNote')}
           </p>
           <div className="flex items-center gap-2 mt-1">
-            <span className="text-[9px] text-muted-foreground/60">{timeAgo(note.updated_at)}</span>
+            <span className="text-[9px] text-muted-foreground/60">{timeAgo(note.updated_at, t)}</span>
             {note.tags.slice(0, 2).map(tag => (
               <span key={tag} className="text-[9px] text-primary/60">#{tag}</span>
             ))}
@@ -560,7 +563,7 @@ function NoteCard({
           <button
             onClick={e => { e.stopPropagation(); onTogglePin(); }}
             className="p-1 rounded hover:bg-background transition-colors"
-            title={note.pinned ? 'Unpin' : 'Pin'}
+            title={note.pinned ? t('plugins.unpinLabel') : t('plugins.pinLabel')}
           >
             <Pin size={10} className={note.pinned ? 'text-amber-500' : 'text-muted-foreground'} />
           </button>
@@ -568,7 +571,7 @@ function NoteCard({
             <button
               onClick={e => { e.stopPropagation(); onDelete(); }}
               className="p-1 rounded hover:bg-red-500/10 transition-colors"
-              title="Confirm delete"
+              title={t('plugins.confirmDelete')}
             >
               <Check size={10} className="text-red-500" />
             </button>
@@ -576,7 +579,7 @@ function NoteCard({
             <button
               onClick={e => { e.stopPropagation(); setConfirmDelete(true); setTimeout(() => setConfirmDelete(false), 2000); }}
               className="p-1 rounded hover:bg-red-500/10 transition-colors"
-              title="Delete"
+              title={t('plugins.deleteLabel')}
             >
               <Trash2 size={10} className="text-muted-foreground" />
             </button>
