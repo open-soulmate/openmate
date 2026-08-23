@@ -316,10 +316,10 @@ export function EnterpriseClient() {
                       className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500" />
                     <select value={permAction} onChange={e => setPermAction(e.target.value)}
                       className="px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 focus:outline-none focus:border-blue-500">
-                      <option value="read">Read</option>
-                      <option value="write">Write</option>
-                      <option value="delete">Delete</option>
-                      <option value="admin">Admin</option>
+                      <option value="read">{t("enterprise.permRead", "Read")}</option>
+                      <option value="write">{t("enterprise.permWrite", "Write")}</option>
+                      <option value="delete">{t("enterprise.permDelete", "Delete")}</option>
+                      <option value="admin">{t("enterprise.permAdmin", "Admin")}</option>
                     </select>
                     <button onClick={assignPermission} disabled={permLoading || !permUserId || !permResource}
                       className="px-4 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-zinc-700 disabled:text-zinc-500 rounded-lg text-sm font-medium text-white transition-colors flex items-center gap-2">

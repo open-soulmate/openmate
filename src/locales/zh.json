@@ -5710,7 +5710,11 @@
     "noRolesDefined": "尚未定义角色，请在上方创建。",
     "filterByAction": "按操作筛选...",
     "refresh": "刷新",
-    "noAudit": "暂无审计记录"
+    "noAudit": "暂无审计记录",
+    "permRead": "读取",
+    "permWrite": "写入",
+    "permDelete": "删除",
+    "permAdmin": "管理"
   },
   "sessions": {
     "title": "会话管理",
@@ -5720,6 +5724,7 @@
     "noSessions": "暂无会话",
     "confirmDelete": "确认",
     "cancel": "取消",
-    "noMessages": "该会话暂无消息"
+    "noMessages": "该会话暂无消息",
+    "messages": "条消息"
   }
 }

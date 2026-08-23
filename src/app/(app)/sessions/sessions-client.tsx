@@ -224,7 +224,7 @@ export function SessionsClient() {
                 <span className="text-sm font-medium text-zinc-200 truncate">
                   {selectedSession.title || selectedSession.session_id}
                 </span>
-                <span className="text-xs text-zinc-500">({selectedSession.messages.length} messages)</span>
+                <span className="text-xs text-zinc-500">({selectedSession.messages.length} {t("sessions.messages", "messages")})</span>
               </div>
               <button onClick={() => setSelectedSession(null)}
                 className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200">

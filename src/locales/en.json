@@ -5691,7 +5691,11 @@
     "noRolesDefined": "No roles defined yet. Create one above.",
     "filterByAction": "Filter by action...",
     "refresh": "Refresh",
-    "noAudit": "No audit records found"
+    "noAudit": "No audit records found",
+    "permRead": "Read",
+    "permWrite": "Write",
+    "permDelete": "Delete",
+    "permAdmin": "Admin"
   },
   "sessions": {
     "title": "Sessions",
@@ -5701,6 +5705,7 @@
     "noSessions": "No sessions found",
     "confirmDelete": "Confirm",
     "cancel": "Cancel",
-    "noMessages": "No messages in this session"
+    "noMessages": "No messages in this session",
+    "messages": "messages"
   }
 }
