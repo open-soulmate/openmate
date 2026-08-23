@@ -4201,7 +4201,7 @@
     "forwardOff": "無効",
     "deleteRule": "ルール削除",
     "noRules": "転送ルールなし。ルールを追加して通知を外部チャネルに自動プッシュします。",
-    "channelsPlaceholder": "console, dingtalk, telegram...",
+    "channelsPlaceholder": "console, dingtalk, slack, discord, telegram...",
     "addRule": "追加",
     "daysAgo": "{{days}}日前",
     "hoursAgo": "{{hours}}時間前",
