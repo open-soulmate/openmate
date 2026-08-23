@@ -5666,5 +5666,41 @@
     "empty": "No knowledge requests found",
     "requester": "Requester",
     "reviewNote": "Review note (optional)"
+  },
+  "enterprise": {
+    "title": "Enterprise Management",
+    "subtitle": "Users, roles, permissions & audit trail",
+    "users": "Users & Roles",
+    "roles": "Role Management",
+    "audit": "Audit Log",
+    "assignRole": "Assign Role to User",
+    "userIdPlaceholder": "User ID",
+    "rolePlaceholder": "Role name",
+    "assign": "Assign",
+    "assignPermission": "Assign Permission",
+    "resourcePlaceholder": "Resource (e.g. knowledge, workflow)",
+    "grant": "Grant",
+    "userList": "Users",
+    "noUsers": "No users found",
+    "noRoles": "No roles",
+    "createRole": "Create Role",
+    "roleNamePlaceholder": "Role name (e.g. editor, viewer)",
+    "permsPlaceholder": "Permissions (comma-separated)",
+    "create": "Create",
+    "roleList": "Roles",
+    "noRolesDefined": "No roles defined yet. Create one above.",
+    "filterByAction": "Filter by action...",
+    "refresh": "Refresh",
+    "noAudit": "No audit records found"
+  },
+  "sessions": {
+    "title": "Sessions",
+    "subtitle": "Browse and manage conversation sessions",
+    "count": "sessions",
+    "searchPlaceholder": "Search sessions...",
+    "noSessions": "No sessions found",
+    "confirmDelete": "Confirm",
+    "cancel": "Cancel",
+    "noMessages": "No messages in this session"
   }
 }

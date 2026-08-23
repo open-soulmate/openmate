@@ -5674,9 +5674,9 @@
     "reviewNote": "レビューメモ（任意）"
   },
   "knowledgeRequests": {
-    "description": "新しい知識ベースをリクエスト、または保留中のリクエストを確認",
-    "newRequest": "新しいリクエスト",
-    "createTitle": "新知識ベースをリクエスト",
+    "description": "新しい知識ベースのリクエストまたは保留リクエストの確認",
+    "newRequest": "新規リクエスト",
+    "createTitle": "新知識ベースリクエスト",
     "name": "知識ベース名",
     "description_label": "説明",
     "namePlaceholder": "例：プロジェクト文書",
@@ -5685,5 +5685,41 @@
     "empty": "知識ベースリクエストがありません",
     "requester": "リクエスト者",
     "reviewNote": "レビューメモ（任意）"
+  },
+  "enterprise": {
+    "title": "エンタープライズ管理",
+    "subtitle": "ユーザー、ロール、権限、監査ログ",
+    "users": "ユーザーとロール",
+    "roles": "ロール管理",
+    "audit": "監査ログ",
+    "assignRole": "ユーザーにロールを割り当て",
+    "userIdPlaceholder": "ユーザーID",
+    "rolePlaceholder": "ロール名",
+    "assign": "割り当て",
+    "assignPermission": "権限を割り当て",
+    "resourcePlaceholder": "リソース（例：knowledge、workflow）",
+    "grant": "付与",
+    "userList": "ユーザー一覧",
+    "noUsers": "ユーザーが見つかりません",
+    "noRoles": "ロールなし",
+    "createRole": "ロール作成",
+    "roleNamePlaceholder": "ロール名（例：editor、viewer）",
+    "permsPlaceholder": "権限（カンマ区切り）",
+    "create": "作成",
+    "roleList": "ロール一覧",
+    "noRolesDefined": "ロールがまだ定義されていません。上で作成してください。",
+    "filterByAction": "アクションでフィルター...",
+    "refresh": "更新",
+    "noAudit": "監査記録がありません"
+  },
+  "sessions": {
+    "title": "セッション管理",
+    "subtitle": "会話セッションの閲覧と管理",
+    "count": "セッション",
+    "searchPlaceholder": "セッションを検索...",
+    "noSessions": "セッションが見つかりません",
+    "confirmDelete": "確認",
+    "cancel": "キャンセル",
+    "noMessages": "このセッションにメッセージがありません"
   }
 }

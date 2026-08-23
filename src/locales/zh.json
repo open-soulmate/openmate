@@ -5674,7 +5674,7 @@
     "reviewNote": "审核备注（可选）"
   },
   "knowledgeRequests": {
-    "description": "申请新知识库或审核待处理申请",
+    "description": "申请新知识库或审核待处理的申请",
     "newRequest": "新建申请",
     "createTitle": "申请新知识库",
     "name": "知识库名称",
@@ -5685,5 +5685,41 @@
     "empty": "暂无知识库申请",
     "requester": "申请人",
     "reviewNote": "审核备注（可选）"
+  },
+  "enterprise": {
+    "title": "企业管理",
+    "subtitle": "用户、角色、权限与审计追踪",
+    "users": "用户与角色",
+    "roles": "角色管理",
+    "audit": "审计日志",
+    "assignRole": "分配角色给用户",
+    "userIdPlaceholder": "用户ID",
+    "rolePlaceholder": "角色名称",
+    "assign": "分配",
+    "assignPermission": "分配权限",
+    "resourcePlaceholder": "资源（如 knowledge、workflow）",
+    "grant": "授权",
+    "userList": "用户列表",
+    "noUsers": "暂无用户",
+    "noRoles": "无角色",
+    "createRole": "创建角色",
+    "roleNamePlaceholder": "角色名称（如 editor、viewer）",
+    "permsPlaceholder": "权限（逗号分隔）",
+    "create": "创建",
+    "roleList": "角色列表",
+    "noRolesDefined": "尚未定义角色，请在上方创建。",
+    "filterByAction": "按操作筛选...",
+    "refresh": "刷新",
+    "noAudit": "暂无审计记录"
+  },
+  "sessions": {
+    "title": "会话管理",
+    "subtitle": "浏览和管理对话会话",
+    "count": "个会话",
+    "searchPlaceholder": "搜索会话...",
+    "noSessions": "暂无会话",
+    "confirmDelete": "确认",
+    "cancel": "取消",
+    "noMessages": "该会话暂无消息"
   }
 }
