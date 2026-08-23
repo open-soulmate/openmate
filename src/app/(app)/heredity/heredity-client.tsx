@@ -240,7 +240,7 @@ export function HeredityClient() {
               <div className="relative flex-1 max-w-xs">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder={t("heredity.searchComponents") || "搜索组件..."}
+                  placeholder={t("heredity.searchComponents") || "Search components..."}
                   className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-teal-500/20" />
               </div>
               <span className="text-xs text-muted-foreground">{filteredComponents.length} {t('heredity.componentsCount') || t('heredity.t55429')}</span>
@@ -292,7 +292,7 @@ export function HeredityClient() {
                         <span className="font-medium">{compatCheck.compatible ? t('heredity.t69119') : t('heredity.t28492')}</span>
                       </div>
                       {compatCheck.issues?.map((issue: any, i: number) => (
-                        <p key={i} className="mt-1 text-xs text-red-400">{issue.dependency}: {issue.issue} ({t("heredity.requires") || "需要"} {issue.required}, {t("heredity.actual") || "实际"} {issue.actual})</p>
+                        <p key={i} className="mt-1 text-xs text-red-400">{issue.dependency}: {issue.issue} ({t("heredity.requires") || "requires"} {issue.required}, {t("heredity.actual") || "actual"} {issue.actual})</p>
                       ))}
                     </div>
                   )}
@@ -349,16 +349,16 @@ export function HeredityClient() {
               <div className="grid grid-cols-4 gap-3">
                 <select value={migComponentId} onChange={(e) => setMigComponentId(e.target.value)}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
-                  <option value="">{t("heredity.selectComponent") || "选择组件..."}</option>
+                  <option value="">{t("heredity.selectComponent") || "Select component..."}</option>
                   {components.map((c) => (
                     <option key={c.component_id} value={c.component_id}>{c.component_name} (v{c.current_version})</option>
                   ))}
                 </select>
                 <input value={migFrom} onChange={(e) => setMigFrom(e.target.value)}
-                  placeholder={t("heredity.fromVersion") || "源版本 (如 0.1.0)"}
+                  placeholder={t("heredity.fromVersion") || "Source version (e.g. 0.1.0)"}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/20" />
                 <input value={migTo} onChange={(e) => setMigTo(e.target.value)}
-                  placeholder={t("heredity.toVersion") || "目标版本 (如 0.2.0)"}
+                  placeholder={t("heredity.toVersion") || "Target version (e.g. 0.2.0)"}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/20" />
                 <button onClick={handleCreateMigration} disabled={loading}
                   className="flex items-center justify-center gap-1.5 rounded-lg bg-teal-500 px-4 py-2 text-sm text-white hover:bg-teal-600 disabled:opacity-50">

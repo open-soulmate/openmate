@@ -110,16 +110,16 @@ function mapGroupToTeam(group: ApiGroup): Team {
 function formatTime(ts: number, t?: (key: string, opts?: any) => string) {
   if (!ts) return "—";
   const diff = Date.now() - ts;
-  if (diff < 60_000) return t?.("team.justNow") || "刚刚";
+  if (diff < 60_000) return t?.("team.justNow") || "just now";
   if (diff < 3_600_000)
     return (
       t?.("team.minutesAgo", { minutes: Math.floor(diff / 60_000) }) ||
-      `${Math.floor(diff / 60_000)} 分钟前`
+      `${Math.floor(diff / 60_000)}m ago`
     );
   if (diff < 86_400_000)
     return (
       t?.("team.hoursAgo", { hours: Math.floor(diff / 3_600_000) }) ||
-      `${Math.floor(diff / 3_600_000)} 小时前`
+      `${Math.floor(diff / 3_600_000)}h ago`
     );
   return new Date(ts).toLocaleDateString(undefined, {
     month: "short",
@@ -521,7 +521,7 @@ export function TeamClient() {
             </h3>
             <p className="text-xs text-muted-foreground">
               {t("team.createFirstHint") ||
-                "点击「创建团队」按钮创建你的第一个 Agent 协作团队"}
+                "Click \"Create Team\" to create your first Agent collaboration team"}
             </p>
           </div>
         ) : (
@@ -545,10 +545,10 @@ export function TeamClient() {
       <Dialog
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
-        title={t("team.deleteTeam") || "删除团队"}
+        title={t("team.deleteTeam") || "Delete Team"}
         description={
           t("team.confirmDelete", { name: deleteTarget?.name }) ||
-          `确定要删除 "${deleteTarget?.name}" 吗？此操作不可撤销。`
+          `Delete "${deleteTarget?.name}"? This action cannot be undone.`
         }
         footer={
           <>

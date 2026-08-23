@@ -168,7 +168,7 @@ export function MirrorClient() {
   };
 
   const handleDestroy = async (id: string) => {
-    if (!confirm(t("mirror.t91607") || "确定销毁此沙箱？")) return;
+    if (!confirm(t("mirror.t91607") || "Destroy this sandbox?")) return;
     try {
       await fetch(`${apiBase}/api/mirror/sandboxes/${id}`, { method: "DELETE" });
       setSelected(null);
@@ -225,8 +225,8 @@ export function MirrorClient() {
   };
 
   const tabs = [
-    { id: "sandboxes" as const, label: t("mirror.t22079") || "沙箱", icon: Box },
-    { id: "templates" as const, label: t("mirror.templates") || "模板", icon: FileText },
+    { id: "sandboxes" as const, label: t("mirror.t22079") || "Sandboxes", icon: Box },
+    { id: "templates" as const, label: t("mirror.templates") || "Templates", icon: FileText },
   ];
 
   return (
@@ -234,9 +234,9 @@ export function MirrorClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Layers size={20} className="text-indigo-500" />
-          <h1 className="text-lg font-semibold">{t("mirror.title") || "镜像 · 沙箱测试"}</h1>
+          <h1 className="text-lg font-semibold">{t("mirror.title") || "Mirror · Sandbox Testing"}</h1>
           <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-500">
-            {t("mirror.t13347") || "隔离环境"}
+            {t("mirror.t13347") || "Isolated environment"}
           </span>
         </div>
         <div className="flex items-center gap-2">
@@ -244,11 +244,11 @@ export function MirrorClient() {
             <>
               <button onClick={handleCleanup}
                 className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted">
-                <Sparkles size={12} /> {t("mirror.cleanup") || "清理"}
+                <Sparkles size={12} /> {t("mirror.cleanup") || "Cleanup Expired"}
               </button>
               <button onClick={() => setShowCreate(true)}
                 className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-1.5 text-sm text-white hover:bg-indigo-600">
-                <Plus size={14} /> {t("mirror.t40266") || "新建沙箱"}
+                <Plus size={14} /> {t("mirror.t40266") || "Create Sandbox"}
               </button>
             </>
           )}
@@ -264,23 +264,23 @@ export function MirrorClient() {
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("mirror.t22079") || "总沙箱"}</span>
+              <span className="text-xs text-muted-foreground">{t("mirror.t22079") || "Sandboxes"}</span>
               <p className="text-2xl font-bold">{health.total_sandboxes || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("mirror.active") || "活跃"}</span>
+              <span className="text-xs text-muted-foreground">{t("mirror.active") || "Active"}</span>
               <p className="text-2xl font-bold text-emerald-500">{health.active || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("mirror.paused") || "暂停"}</span>
+              <span className="text-xs text-muted-foreground">{t("mirror.paused") || "Paused"}</span>
               <p className="text-2xl font-bold text-amber-500">{health.paused || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("mirror.ttl") || "存储目录"}</span>
+              <span className="text-xs text-muted-foreground">{t("mirror.ttl") || "Storage"}</span>
               <p className="text-xs font-mono truncate mt-1">{health.sandbox_dir}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("mirror.totalTemplates") || "模板"}</span>
+              <span className="text-xs text-muted-foreground">{t("mirror.totalTemplates") || "Templates"}</span>
               <p className="text-2xl font-bold">{health.templates?.total_templates || 0}</p>
             </div>
           </div>
@@ -305,9 +305,9 @@ export function MirrorClient() {
               {sandboxes.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <Box size={40} className="mb-3 opacity-30" />
-                  <p className="text-sm">{t("mirror.noSandboxes") || "暂无沙箱"}</p>
+                  <p className="text-sm">{t("mirror.noSandboxes") || "No sandboxes yet"}</p>
                   <button onClick={() => setTab("templates")}
-                    className="mt-3 text-xs text-indigo-500 hover:underline">{t("mirror.createFromTemplate") || "从模板创建 →"}</button>
+                    className="mt-3 text-xs text-indigo-500 hover:underline">{t("mirror.createFromTemplate") || "Create from template →"}</button>
                 </div>
               ) : sandboxes.map((sb) => (
                 <div key={sb.sandbox_id}
@@ -321,8 +321,8 @@ export function MirrorClient() {
                     <span className={cn("text-xs", statusColor(sb.status))}>{sb.status}</span>
                   </div>
                   <div className="flex gap-3 text-xs text-muted-foreground">
-                    <span>{t("mirror.snapshot") || "快照"}: {sb.snapshot_count}</span>
-                    <span>{t("mirror.log") || "日志"}: {sb.log_count}</span>
+                    <span>{t("mirror.snapshot") || "Snapshots"}: {sb.snapshot_count}</span>
+                    <span>{t("mirror.log") || "Logs"}: {sb.log_count}</span>
                   </div>
                 </div>
               ))}
@@ -344,30 +344,30 @@ export function MirrorClient() {
                     {selected.status === "active" ? (
                       <button onClick={() => handlePause(selected.sandbox_id)}
                         className="flex items-center gap-1 rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs text-amber-600 hover:bg-amber-500/10">
-                        <Pause size={12} /> {t("mirror.pause") || "暂停"}
+                        <Pause size={12} /> {t("mirror.pause") || "Pause"}
                       </button>
                     ) : selected.status === "paused" ? (
                       <button onClick={() => handleResume(selected.sandbox_id)}
                         className="flex items-center gap-1 rounded-lg border border-emerald-500/30 px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-500/10">
-                        <Play size={12} /> {t("mirror.resume") || "恢复"}
+                        <Play size={12} /> {t("mirror.resume") || "Resume"}
                       </button>
                     ) : null}
                     <button onClick={() => handleSnapshot(selected.sandbox_id)}
                       className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-                      <Camera size={12} /> {t("mirror.snapshot") || "快照"}
+                      <Camera size={12} /> {t("mirror.snapshot") || "Snapshot"}
                     </button>
                     <button onClick={() => handleDestroy(selected.sandbox_id)}
                       className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
-                      <Trash2 size={12} /> {t("mirror.destroy") || "销毁"}
+                      <Trash2 size={12} /> {t("mirror.destroy") || "Destroy"}
                     </button>
                   </div>
                 </div>
 
                 {/* Variables */}
                 <div className="rounded-xl border border-border p-4">
-                  <h4 className="text-sm font-medium mb-2">{t("mirror.variables") || "变量"}</h4>
+                  <h4 className="text-sm font-medium mb-2">{t("mirror.variables") || "Variables"}</h4>
                   {Object.keys(variables).length === 0 ? (
-                    <p className="text-xs text-muted-foreground">{t("mirror.t74225") || "暂无变量"}</p>
+                    <p className="text-xs text-muted-foreground">{t("mirror.t74225") || "No variables"}</p>
                   ) : (
                     <div className="space-y-1 mb-3">
                       {Object.entries(variables).map(([k, v]) => (
@@ -386,7 +386,7 @@ export function MirrorClient() {
                       placeholder={t("mirror.t13221") || "Value"} className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
                     <button onClick={() => handleSetVariable(selected.sandbox_id)}
                       className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
-                      {t("mirror.t85783") || "设置"}
+                      {t("mirror.t85783") || "Set"}
                     </button>
                   </div>
                 </div>
@@ -394,20 +394,20 @@ export function MirrorClient() {
                 {/* Logs */}
                 <div className="rounded-xl border border-border p-4">
                   <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium">{t("mirror.log") || "日志"} ({logs.length})</h4>
+                    <h4 className="text-sm font-medium">{t("mirror.log") || "Logs"} ({logs.length})</h4>
                     <div className="flex gap-2">
                       <input value={logMessage} onChange={(e) => setLogMessage(e.target.value)}
                         onKeyDown={(e) => e.key === "Enter" && handleAddLog(selected.sandbox_id)}
-                        placeholder={t("mirror.t74580") || "输入日志消息"} className="rounded border border-border bg-background px-2 py-1 text-xs w-48" />
+                        placeholder={t("mirror.t74580") || "Enter log message"} className="rounded border border-border bg-background px-2 py-1 text-xs w-48" />
                       <button onClick={() => handleAddLog(selected.sandbox_id)}
                         className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
-                        {t("mirror.logAction") || "记录"}
+                        {t("mirror.logAction") || "Record"}
                       </button>
                     </div>
                   </div>
                   <div className="max-h-60 overflow-y-auto space-y-1">
                     {logs.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">{t("mirror.t59742") || "暂无日志"}</p>
+                      <p className="text-xs text-muted-foreground">{t("mirror.t59742") || "No logs"}</p>
                     ) : logs.map((l, i) => (
                       <div key={i} className="flex gap-2 text-xs">
                         <span className="text-muted-foreground shrink-0">{new Date(l.ts * 1000).toLocaleTimeString(undefined)}</span>
@@ -426,7 +426,7 @@ export function MirrorClient() {
         {/* Templates Tab */}
         {tab === "templates" && (
           <div className="space-y-4">
-            <h3 className="text-sm font-medium">{t("mirror.sandboxTemplates") || "沙箱模板"}</h3>
+            <h3 className="text-sm font-medium">{t("mirror.sandboxTemplates") || "Sandbox Templates"}</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
               {templates.map((tpl) => (
                 <div key={tpl.template_id}
@@ -444,8 +444,8 @@ export function MirrorClient() {
                   </div>
                   <p className="text-xs text-muted-foreground mb-3">{tpl.description}</p>
                   <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-                    <span>{t("mirror.variableLabel") || "变量:"} {Object.keys(tpl.variables).length}</span>
-                    <span>{t("mirror.usageLabel") || "使用:"} {tpl.usage_count}</span>
+                    <span>{t("mirror.variableLabel") || "Variables:"} {Object.keys(tpl.variables).length}</span>
+                    <span>{t("mirror.usageLabel") || "Usage:"} {tpl.usage_count}</span>
                     <span>TTL: {tpl.config?.ttl_seconds || 3600}s</span>
                   </div>
                   {tpl.tags.length > 0 && (
@@ -465,7 +465,7 @@ export function MirrorClient() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{selectedTemplate.icon}</span>
-                    <h4 className="font-medium">{t("mirror.createSandboxFromTemplate") || "从模板创建沙箱:"} {selectedTemplate.name}</h4>
+                    <h4 className="font-medium">{t("mirror.createSandboxFromTemplate") || "Create sandbox from template:"} {selectedTemplate.name}</h4>
                   </div>
                   <button onClick={() => setSelectedTemplate(null)} className="text-xs text-muted-foreground hover:text-foreground">✕</button>
                 </div>
@@ -490,7 +490,7 @@ export function MirrorClient() {
                 <button onClick={() => handleCreateFromTemplate(selectedTemplate)} disabled={loading}
                   className="flex items-center gap-2 rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
-                  {t("mirror.createSandbox") || "创建沙箱"}
+                  {t("mirror.createSandbox") || "Create Sandbox"}
                 </button>
               </div>
             )}
@@ -501,17 +501,17 @@ export function MirrorClient() {
         {showCreate && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
             <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4">
-              <h3 className="font-semibold">{t("mirror.t40266") || "新建沙箱"}</h3>
+              <h3 className="font-semibold">{t("mirror.t40266") || "Create Sandbox"}</h3>
               <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                placeholder={t("mirror.sandboxName") || "沙箱名称"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("mirror.sandboxName") || "Sandbox Name"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
-                placeholder={t("mirror.t65256") || "描述（可选）"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("mirror.t65256") || "Description (optional)"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowCreate(false)}
-                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t("common.cancel") || "取消"}</button>
+                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t("common.cancel") || "Cancel"}</button>
                 <button onClick={handleCreate} disabled={loading}
                   className="rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50">
-                  {loading ? <Loader2 size={14} className="animate-spin" /> : t("mirror.create") || "创建"}
+                  {loading ? <Loader2 size={14} className="animate-spin" /> : t("mirror.create") || "Create"}
                 </button>
               </div>
             </div>

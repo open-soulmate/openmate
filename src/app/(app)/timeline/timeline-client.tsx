@@ -375,7 +375,7 @@ function EventsList({
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
         <Clock className="w-10 h-10 mb-3 opacity-30" />
         <p className="text-sm">{t("timeline.noEvents")}</p>
-        <p className="text-xs mt-1">点击「{t("timeline.syncEvents")}」从内存缓冲区导入事件</p>
+        <p className="text-xs mt-1">{t("timeline.syncHint")}</p>
       </div>
     )
   }

@@ -121,22 +121,22 @@ export function MarrowClient() {
       })
       if (res.ok) {
         const data = await res.json()
-        showMsg("ok", `${t("marrow.backupCreated") || "备份创建成功"}: ${data.backup_id} (${data.file_count} ${t("marrow.files") || "文件"})`)
+        showMsg("ok", `${t("marrow.backupCreated") || "Backup created"}: ${data.backup_id} (${data.file_count} ${t("marrow.files") || "files"})`)
         setShowCreateBackup(false)
         setBackupForm({ name: "", description: "", sourceDirs: "~/.opensoul/data", tags: "" })
         refresh()
       } else {
         const err = await res.json()
-        showMsg("err", err.detail || (t("marrow.backupFailed") || "备份创建失败"))
+        showMsg("err", err.detail || (t("marrow.backupFailed") || "Backup failed"))
       }
     } catch (e: any) {
-      showMsg("err", e.message || (t("common.networkError") || "网络错误"))
+      showMsg("err", e.message || (t("common.networkError") || "Network error"))
     }
     setCreating(false)
   }
 
   const handleRestore = async (backupId: string) => {
-    if (!confirm(`${t("marrow.confirmRestoreBackup") || "确认恢复备份"} "${backupId}"？${t("marrow.willOverwrite") || "这将覆盖当前数据。"}`)) return
+    if (!confirm(`${t("marrow.confirmRestoreBackup") || "Confirm restore backup"} "${backupId}"? ${t("marrow.willOverwrite") || "This will overwrite current data."}`)) return
     setRestoring(backupId)
     try {
       const res = await fetch(`${apiBase}/api/marrow/restore/${backupId}`, {
@@ -145,26 +145,26 @@ export function MarrowClient() {
         body: JSON.stringify({ backup_id: backupId, target_dir: "~/.opensoul/restore" }),
       })
       if (res.ok) {
-        showMsg("ok", t("marrow.restoreSuccess") || "恢复成功")
+        showMsg("ok", t("marrow.restoreSuccess") || "Restore successful")
       } else {
         const err = await res.json()
-        showMsg("err", err.detail || (t("marrow.restoreFailed") || "恢复失败"))
+        showMsg("err", err.detail || (t("marrow.restoreFailed") || "Restore failed"))
       }
     } catch (e: any) {
-      showMsg("err", e.message || (t("common.networkError") || "网络错误"))
+      showMsg("err", e.message || (t("common.networkError") || "Network error"))
     }
     setRestoring(null)
   }
 
   const handleDeleteBackup = async (backupId: string) => {
-    if (!confirm(`${t("marrow.confirmDeleteBackup") || "确认删除备份"} "${backupId}"？`)) return
+    if (!confirm(`${t("marrow.confirmDeleteBackup") || "Confirm delete backup"} "${backupId}"?`)) return
     setDeleting(backupId)
     try {
       await fetch(`${apiBase}/api/marrow/backups/${backupId}`, { method: "DELETE" })
-      showMsg("ok", t("marrow.backupDeleted") || "备份已删除")
+      showMsg("ok", t("marrow.backupDeleted") || "Backup deleted")
       refresh()
     } catch (e: any) {
-      showMsg("err", e.message || (t("common.deleteFailed") || "删除失败"))
+      showMsg("err", e.message || (t("common.deleteFailed") || "Delete failed"))
     }
     setDeleting(null)
   }
@@ -187,16 +187,16 @@ export function MarrowClient() {
       })
       if (res.ok) {
         const data = await res.json()
-        showMsg("ok", `${t("marrow.scheduleCreated") || "定时备份已创建"}: ${data.name}`)
+        showMsg("ok", `${t("marrow.scheduleCreated") || "Scheduled backup created"}: ${data.name}`)
         setShowCreateSchedule(false)
         setScheduleForm({ name: "", sourceDirs: "~/.opensoul/data", interval: "daily", description: "", tags: "" })
         refresh()
       } else {
         const err = await res.json()
-        showMsg("err", err.detail || (t("common.createFailed") || "创建失败"))
+        showMsg("err", err.detail || (t("common.createFailed") || "Create failed"))
       }
     } catch (e: any) {
-      showMsg("err", e.message || (t("common.networkError") || "网络错误"))
+      showMsg("err", e.message || (t("common.networkError") || "Network error"))
     }
     setCreating(false)
   }
@@ -208,21 +208,21 @@ export function MarrowClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ enabled }),
       })
-      showMsg("ok", enabled ? (t("common.enabled") || "已启用") : (t("common.paused") || "已暂停"))
+      showMsg("ok", enabled ? (t("common.enabled") || "Enabled") : (t("common.paused") || "Paused"))
       refresh()
     } catch (e: any) {
-      showMsg("err", e.message || (t("common.actionFailed") || "操作失败"))
+      showMsg("err", e.message || (t("common.actionFailed") || "Action failed"))
     }
   }
 
   const handleDeleteSchedule = async (scheduleId: string) => {
-    if (!confirm(t("marrow.confirmDeleteSchedule") || "确认删除此定时备份？")) return
+    if (!confirm(t("marrow.confirmDeleteSchedule") || "Delete this scheduled backup?")) return
     try {
       await fetch(`${apiBase}/api/marrow/schedules/${scheduleId}`, { method: "DELETE" })
-      showMsg("ok", t("marrow.scheduleDeleted") || "定时备份已删除")
+      showMsg("ok", t("marrow.scheduleDeleted") || "Scheduled backup deleted")
       refresh()
     } catch (e: any) {
-      showMsg("err", e.message || (t("common.deleteFailed") || "删除失败"))
+      showMsg("err", e.message || (t("common.deleteFailed") || "Delete failed"))
     }
   }
 
@@ -230,10 +230,10 @@ export function MarrowClient() {
     try {
       const res = await fetch(`${apiBase}/api/marrow/schedules/run-due`, { method: "POST" })
       const data = await res.json()
-      showMsg("ok", `${t("marrow.runComplete") || "执行完成"}: ${data.count} ${t("marrow.tasks") || "个任务"}`)
+      showMsg("ok", `${t("marrow.runComplete") || "Execution complete"}: ${data.count} ${t("marrow.tasks") || "tasks"}`)
       refresh()
     } catch (e: any) {
-      showMsg("err", e.message || (t("common.executeFailed") || "执行失败"))
+      showMsg("err", e.message || (t("common.executeFailed") || "Execution failed"))
     }
   }
 
