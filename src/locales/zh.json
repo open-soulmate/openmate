@@ -4891,7 +4891,8 @@
     "deleteError": "删除笔记出错",
     "promoted": "已提升到知识库",
     "promoteWarning": "已提升（有警告）",
-    "promoteError": "提升笔记出错"
+    "promoteError": "提升笔记出错",
+    "generating": "生成中..."
   },
   "team-detail": {
     "text1": "刚刚",

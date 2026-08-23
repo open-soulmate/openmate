@@ -4474,7 +4474,8 @@
     "deleteError": "ノートの削除中にエラーが発生しました",
     "promoted": "ナレッジベースに昇格しました",
     "promoteWarning": "昇格しました（警告あり）",
-    "promoteError": "ノートの昇格中にエラーが発生しました"
+    "promoteError": "ノートの昇格中にエラーが発生しました",
+    "generating": "生成中..."
   },
   "workflow": {
     "execution": {

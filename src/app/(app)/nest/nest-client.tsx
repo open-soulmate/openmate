@@ -203,13 +203,13 @@ export function NestClient() {
           <Home size={20} className="text-rose-500" />
           <h1 className="text-lg font-semibold">{t('nest.text4')}</h1>
           <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-xs font-medium text-rose-500">
-            {t('nest.saasIsolation') || 'SaaS隔离'}
+            {t('nest.saasIsolation')}
           </span>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowCreate(true)}
             className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-sm text-white hover:bg-rose-600">
-            <Plus size={14} /> {t('nest.createTenant1') || '新建租户'}
+            <Plus size={14} /> {t('nest.createTenant1')}
           </button>
           <button onClick={() => { fetchStats(); fetchTenants(); }}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
@@ -281,7 +281,7 @@ export function NestClient() {
                   </div>
                   <div className="flex gap-4 text-xs text-muted-foreground">
                     <span>NS: {tenant.namespace}</span>
-                    <span>{t('nest.status2') || '状态:'} {tenant.status}</span>
+                    <span>{t('nest.status2')} {tenant.status}</span>
                     {tenant.tags.length > 0 && tenant.tags.map((tag) => (
                       <span key={tag} className="rounded-full bg-rose-500/10 px-1.5 py-0.5 text-rose-500">{tag}</span>
                     ))}
@@ -374,7 +374,7 @@ export function NestClient() {
                     </select>
                     <button onClick={() => handleQuotaCheck(selected.tenant_id)}
                       className="rounded-lg bg-rose-500 px-3 py-1.5 text-xs text-white hover:bg-rose-600">
-                      {t('nest.checkBtn') || '检查'}
+                      {t('nest.checkBtn')}
                     </button>
                   </div>
                   {quotaResult && (
@@ -443,7 +443,7 @@ export function NestClient() {
             <div className="flex items-center gap-2">
               <button onClick={fetchAudit}
                 className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-                <RefreshCw size={12} /> {t('nest.refresh') || '刷新'}
+                <RefreshCw size={12} /> {t('nest.refresh')}
               </button>
               <span className="text-xs text-muted-foreground">{t('nest.records', { count: auditLog.length }) || `${auditLog.length} 条记录`}</span>
             </div>

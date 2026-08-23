@@ -151,7 +151,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
         <AlertCircle className="w-12 h-12 text-destructive" />
         <p className="text-muted-foreground">{error}</p>
         <button onClick={() => router.push('/cron')} className="px-4 py-2 rounded-lg border text-sm hover:bg-muted">
-          {t('cronDetail.backToList') || '返回列表'}
+          {t('cronDetail.backToList')}
         </button>
       </div>
     );
@@ -169,7 +169,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
         <button
           onClick={() => router.push('/cron')}
           className="p-2 rounded-lg hover:bg-muted transition-colors"
-          title={t('cronDetail.backToList') || '返回列表'}
+          title={t('cronDetail.backToList')}
         >
           <ArrowLeft className="w-4 h-4" />
         </button>
@@ -182,12 +182,12 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
                 ? 'bg-green-500/10 text-green-500'
                 : 'bg-amber-500/10 text-amber-500'
             }`}>
-              {job.status === 'active' ? (t('cronDetail.running') || '运行中') : (t('cronDetail.paused') || '已暂停')}
+              {job.status === 'active' ? (t('cronDetail.running')) : (t('cronDetail.paused'))}
             </span>
           </div>
           <div className="flex items-center gap-2 mt-1">
             <span className="text-xs text-muted-foreground font-mono">{taskId}</span>
-            <button onClick={copyId} className="p-0.5 rounded hover:bg-muted" title={t('cronDetail.copyId') || '复制ID'}>
+            <button onClick={copyId} className="p-0.5 rounded hover:bg-muted" title={t('cronDetail.copyId')}>
               {copied ? <Check className="w-3 h-3 text-green-500" /> : <Copy className="w-3 h-3 text-muted-foreground" />}
             </button>
           </div>
@@ -202,7 +202,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-muted transition-colors text-amber-500"
             >
               {actionLoading === 'pause' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pause className="w-4 h-4" />}
-              {t('cronDetail.pause') || '暂停'}
+              {t('cronDetail.pause')}
             </button>
           ) : (
             <button
@@ -211,7 +211,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
               className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-muted transition-colors text-green-500"
             >
               {actionLoading === 'resume' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
-              {t('cronDetail.resume') || '恢复'}
+              {t('cronDetail.resume')}
             </button>
           )}
           <button
@@ -220,7 +220,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
           >
             {actionLoading === 'run' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-            {t('cronDetail.runNow') || '立即执行'}
+            {t('cronDetail.runNow')}
           </button>
           <button
             onClick={() => handleAction('delete')}
@@ -228,7 +228,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
             className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-destructive/10 text-destructive transition-colors"
           >
             {actionLoading === 'delete' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-            {t('cronDetail.delete') || '删除'}
+            {t('cronDetail.delete')}
           </button>
         </div>
       </div>
@@ -246,7 +246,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
         <div className="p-4 rounded-xl border bg-card">
           <div className="flex items-center gap-2 mb-1">
             <Calendar className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">{t('cronDetail.scheduleRule') || '调度规则'}</span>
+            <span className="text-xs text-muted-foreground">{t('cronDetail.scheduleRule')}</span>
           </div>
           <p className="text-sm font-mono">{job.schedule}</p>
           <p className="text-xs text-muted-foreground mt-1">{formatSchedule(job.schedule, t)}</p>
@@ -254,21 +254,21 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
         <div className="p-4 rounded-xl border bg-card">
           <div className="flex items-center gap-2 mb-1">
             <Bot className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">{t('cronDetail.execAgent') || '执行Agent'}</span>
+            <span className="text-xs text-muted-foreground">{t('cronDetail.execAgent')}</span>
           </div>
           <p className="text-sm font-medium capitalize">{icon} {agent}</p>
         </div>
         <div className="p-4 rounded-xl border bg-card">
           <div className="flex items-center gap-2 mb-1">
             <Clock className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">{t('cronDetail.nextRun') || '下次执行'}</span>
+            <span className="text-xs text-muted-foreground">{t('cronDetail.nextRun')}</span>
           </div>
           <p className="text-sm">{job.next_run ? new Date(job.next_run).toLocaleString('zh-CN') : '—'}</p>
         </div>
         <div className="p-4 rounded-xl border bg-card">
           <div className="flex items-center gap-2 mb-1">
             <RefreshCw className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">{t('cronDetail.lastRun') || '上次执行'}</span>
+            <span className="text-xs text-muted-foreground">{t('cronDetail.lastRun')}</span>
           </div>
           <p className="text-sm">{job.last_run ? new Date(job.last_run).toLocaleString('zh-CN') : '—'}</p>
         </div>
@@ -279,7 +279,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
         <div className="mb-6 p-4 rounded-xl border bg-card">
           <div className="flex items-center gap-2 mb-2">
             <Send className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">{t('cronDetail.deliverTarget') || '投递目标'}</span>
+            <span className="text-xs text-muted-foreground">{t('cronDetail.deliverTarget')}</span>
           </div>
           <p className="text-sm font-mono bg-muted/50 rounded-lg px-3 py-2">{job.deliver}</p>
         </div>
@@ -290,7 +290,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
         <div className="mb-6 p-4 rounded-xl border bg-card">
           <div className="flex items-center gap-2 mb-2">
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
-            <span className="text-xs text-muted-foreground">{t('cronDetail.execPrompt') || '执行提示词'}</span>
+            <span className="text-xs text-muted-foreground">{t('cronDetail.execPrompt')}</span>
           </div>
           <pre className="text-sm whitespace-pre-wrap bg-muted/50 rounded-lg px-3 py-2 font-mono max-h-60 overflow-y-auto">
             {job.prompt}
@@ -303,7 +303,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
         <div className="mb-6 p-4 rounded-xl border border-destructive/30 bg-destructive/5">
           <div className="flex items-center gap-2 mb-2">
             <AlertCircle className="w-4 h-4 text-destructive" />
-            <span className="text-xs text-destructive font-medium">{t('cronDetail.recentError') || '最近错误'}</span>
+            <span className="text-xs text-destructive font-medium">{t('cronDetail.recentError')}</span>
           </div>
           <pre className="text-sm whitespace-pre-wrap text-destructive/80 font-mono">
             {job.last_error}
@@ -316,17 +316,17 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
         <div className="p-4 border-b flex items-center justify-between">
           <h2 className="text-sm font-medium flex items-center gap-2">
             <Clock className="w-4 h-4 text-muted-foreground" />
-            {t('cronDetail.execHistory') || '执行历史'}
+            {t('cronDetail.execHistory')}
           </h2>
-          <button onClick={loadHistory} className="p-1.5 rounded-lg hover:bg-muted transition-colors" title={t('cronDetail.refresh') || '刷新'}>
+          <button onClick={loadHistory} className="p-1.5 rounded-lg hover:bg-muted transition-colors" title={t('cronDetail.refresh')}>
             <RefreshCw className="w-3.5 h-3.5 text-muted-foreground" />
           </button>
         </div>
         {history.length === 0 ? (
           <div className="p-8 text-center text-muted-foreground text-sm">
             <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
-            <p>{t('cronDetail.noHistory') || '暂无执行记录'}</p>
-            <p className="text-xs mt-1">{t('cronDetail.runNowHint') || '点击「立即执行」触发一次手动运行'}</p>
+            <p>{t('cronDetail.noHistory')}</p>
+            <p className="text-xs mt-1">{t('cronDetail.runNowHint')}</p>
           </div>
         ) : (
           <div className="divide-y divide-border/50">
@@ -340,8 +340,8 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
                       'bg-amber-500 animate-pulse'
                     }`} />
                     <span className="text-sm font-medium">
-                      {entry.status === 'success' ? (t('cronDetail.success') || '成功') :
-                       entry.status === 'failed' ? (t('cronDetail.failed') || '失败') : (t('cronDetail.running') || '运行中')}
+                      {entry.status === 'success' ? (t('cronDetail.success')) :
+                       entry.status === 'failed' ? (t('cronDetail.failed')) : (t('cronDetail.running'))}
                     </span>
                     <span className="text-xs text-muted-foreground font-mono">{entry.id.slice(0, 8)}</span>
                   </div>
