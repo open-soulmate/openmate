@@ -193,6 +193,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         { href: "/soul", label: t("nav.soul"), icon: Brain },
         { href: "/soma-admin", label: t("nav.somaAdmin"), icon: Bot },
         { href: "/admin", label: t("nav.admin"), icon: Shield },
+        { href: "/enterprise", label: t("nav.enterprise", "Enterprise"), icon: Shield },
+        { href: "/sessions", label: t("nav.sessions", "Sessions"), icon: History },
         { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope },
         { href: "/metrics", label: t("nav.metrics") || "Metrics", icon: BarChart3 },
         { href: "/benchmark", label: t("nav.benchmark"), icon: Gauge },

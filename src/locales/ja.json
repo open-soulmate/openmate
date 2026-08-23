@@ -81,7 +81,9 @@
     "soul": "Soul管理",
     "somaAdmin": "Soma管理",
     "kbSharing": "KB共有",
-    "knowledgeRequests": "KBリクエスト"
+    "knowledgeRequests": "KBリクエスト",
+    "enterprise": "エンタープライズ",
+    "sessions": "セッション"
   },
   "dashboard": {
     "title": "システム概要",
