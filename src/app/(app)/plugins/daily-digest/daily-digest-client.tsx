@@ -187,7 +187,7 @@ export function DailyDigestClient() {
             className="flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-violet-600 to-fuchsia-600 text-white text-sm font-medium hover:from-violet-500 hover:to-fuchsia-500 transition-all disabled:opacity-50"
           >
             {generating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
-            {generating ? t('plugins.text2') || '生成中...' : t('plugins.text3') || '生成今日摘要'}
+            {generating ? t('plugins.generating') : t('plugins.generateToday')}
           </button>
         </div>
       </div>
@@ -195,9 +195,9 @@ export function DailyDigestClient() {
       {/* Tabs */}
       <div className="flex gap-1 p-1 bg-muted/30 rounded-lg w-fit">
         {[
-          { key: 'today', label: t('plugins.todayDigest') || '今日摘要', icon: Newspaper },
-          { key: 'history', label: t('plugins.history') || '历史记录', icon: Calendar },
-          { key: 'trends', label: t('plugins.trendAnalysis') || '趋势分析', icon: TrendingUp },
+          { key: 'today', label: t('plugins.todayDigest'), icon: Newspaper },
+          { key: 'history', label: t('plugins.history'), icon: Calendar },
+          { key: 'trends', label: t('plugins.trendAnalysis'), icon: TrendingUp },
         ].map(({ key, label, icon: Icon }) => (
           <button
             key={key}
@@ -240,20 +240,20 @@ export function DailyDigestClient() {
             <div className="p-6 rounded-2xl border border-border bg-card">
               <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-2">
                 <Activity className="w-3.5 h-3.5" />
-                {t('plugins.active') || '活跃器官'}
+                {t('plugins.active')}
               </div>
               <div className="text-3xl font-bold text-foreground">
                 <span className="text-emerald-400">{healthyOrgans}</span>
                 <span className="text-muted-foreground text-lg">/{Object.keys(digest.organ_summary).length}</span>
               </div>
-              <div className="text-xs text-muted-foreground mt-1">{t('plugins.online') || '在线运行'}</div>
+              <div className="text-xs text-muted-foreground mt-1">{t('plugins.online')}</div>
             </div>
 
             {/* Events */}
             <div className="p-6 rounded-2xl border border-border bg-card">
               <div className="flex items-center gap-2 text-xs text-muted-foreground uppercase tracking-wider mb-2">
                 <Flame className="w-3.5 h-3.5" />
-                24h {t('plugins.text19') || '事件'}
+                24h {t('plugins.events24h')}
               </div>
               <div className="text-3xl font-bold text-foreground">{digest.total_events}</div>
               <div className="text-xs text-muted-foreground mt-1">{t("plugins.crossOrganEvents") || "Cross-Organ Events"}</div>
@@ -476,10 +476,10 @@ export function DailyDigestClient() {
         <div className="space-y-6">
           <div className="flex gap-2">
             {[
-              { key: 'health_score', label: t('plugins.healthScore') || '健康分' },
-              { key: 'total_events', label: t('plugins.eventCount') || '事件数' },
-              { key: 'active_organs', label: t('plugins.activeOrgans') || '活跃器官' },
-              { key: 'avg_response_ms', label: t('plugins.responseTime') || '响应时间' },
+              { key: 'health_score', label: t('plugins.healthScore') },
+              { key: 'total_events', label: t('plugins.eventCount') },
+              { key: 'active_organs', label: t('plugins.activeOrgans') },
+              { key: 'avg_response_ms', label: t('plugins.responseTime') },
             ].map(({ key, label }) => (
               <button
                 key={key}

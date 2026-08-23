@@ -104,7 +104,7 @@ export function KnowledgeClient() {
     if (!confirm(t("knowledge.confirmShare", { name: kbName }) || `申请将"${kbName}"共享到企业知识库？`)) return;
     try {
       await api.createSharingRequest({ kb_id: kbId, kb_name: kbName });
-      alert(t("knowledge.shareSubmitted") || '共享申请已提交，等待管理员审批');
+      alert(t("knowledge.shareSubmitted"));
     } catch (e) { setError(`${t('common.error')}: ${(e as Error).message}`); }
   };
 
@@ -196,13 +196,13 @@ export function KnowledgeClient() {
   if (showLogin) return (
     <div className="flex items-center justify-center h-full">
       <div className="p-6 rounded-lg border bg-card w-80">
-        <h2 className="text-lg font-bold mb-4">{isRegister ? (t("knowledge.registerAccount") || '注册账号') : (t("knowledge.login1") || '登录')}</h2>
+        <h2 className="text-lg font-bold mb-4">{isRegister ? (t("knowledge.registerAccount")) : (t("knowledge.login1"))}</h2>
         <input value={loginUser} onChange={e => setLoginUser(e.target.value)} placeholder={t("knowledge.username1") || "Username"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
         <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder={t("knowledge.password1") || "Password"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
         {isRegister && <input value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder={t("knowledge.emailPlaceholder") || "Email (optional)"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />}
         {error && <p className="text-xs text-destructive mb-2">{error}</p>}
-        <button onClick={handleLogin} className="w-full px-3 py-2 rounded bg-primary text-primary-foreground text-sm mb-2">{isRegister ? (t("knowledge.register") || '注册') : (t("knowledge.login2") || '登录')}</button>
-        <button onClick={() => { setIsRegister(!isRegister); setError(''); }} className="w-full px-3 py-2 rounded border text-sm text-muted-foreground">{isRegister ? (t("knowledge.haveAccount") || '已有账号？去登录') : (t("knowledge.noAccount") || '没有账号？去注册')}</button>
+        <button onClick={handleLogin} className="w-full px-3 py-2 rounded bg-primary text-primary-foreground text-sm mb-2">{isRegister ? (t("knowledge.register")) : (t("knowledge.login2"))}</button>
+        <button onClick={() => { setIsRegister(!isRegister); setError(''); }} className="w-full px-3 py-2 rounded border text-sm text-muted-foreground">{isRegister ? (t("knowledge.haveAccount")) : (t("knowledge.noAccount"))}</button>
       </div>
     </div>
   );
@@ -218,7 +218,7 @@ export function KnowledgeClient() {
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold flex items-center gap-2"><BookOpen className="w-6 h-6" /> {t('knowledge.title')}</h1>
         <div className="flex gap-2">
-          {items.length > 0 && <button onClick={handleDedup} disabled={deduping} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Sparkles className="w-4 h-4" /> {deduping ? (t("knowledge.deduping") || '去重中...') : (t("knowledge.smartDedup") || '智能去重')}</button>}
+          {items.length > 0 && <button onClick={handleDedup} disabled={deduping} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Sparkles className="w-4 h-4" /> {deduping ? (t("knowledge.deduping")) : (t("knowledge.smartDedup"))}</button>}
           <button onClick={() => setShowRequest(!showRequest)} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Send className="w-4 h-4" /> {t("knowledge.kbApply") || "Apply for KB"}</button>
           <button onClick={() => { setShowUpload(!showUpload); setShowCreate(false); }} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Upload className="w-4 h-4" /> {t("knowledge.fileImport") || "Import Files"}</button>
           <button onClick={() => { setShowCreate(!showCreate); setShowUpload(false); }} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm flex items-center gap-1"><Plus className="w-4 h-4" /> {t('knowledge.create')}</button>
@@ -315,7 +315,7 @@ export function KnowledgeClient() {
               className="px-4 py-2 rounded bg-primary text-primary-foreground text-sm disabled:opacity-50 flex items-center gap-1"
             >
               {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-              {uploading ? t("knowledge.importing", { done: uploadProgress.done, total: uploadProgress.total }) || `导入中 (${uploadProgress.done}/${uploadProgress.total})` : (t('knowledge.startImport') || '开始导入')}
+              {uploading ? t("knowledge.importing", { done: uploadProgress.done, total: uploadProgress.total }) || `导入中 (${uploadProgress.done}/${uploadProgress.total})` : (t('knowledge.startImport'))}
             </button>
             {uploading && (
               <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">

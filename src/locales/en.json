@@ -4882,7 +4882,8 @@
     "deleteError": "Error deleting note",
     "promoted": "Promoted to knowledge base",
     "promoteWarning": "Promoted with warnings",
-    "promoteError": "Error promoting note"
+    "promoteError": "Error promoting note",
+    "generating": "Generating..."
   },
   "team-detail": {
     "text1": "just now",
