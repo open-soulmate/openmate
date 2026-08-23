@@ -57,7 +57,7 @@ function StatusBadge({ status, t }: { status: string; t: (k: string) => string }
 function formatTime(ts: number, t: (k: string, o?: Record<string, unknown>) => string): string {
   const diff = Date.now() - ts * 1000;
   const seconds = Math.floor(diff / 1000);
-  if (seconds < 60) return t("notifications.justNow") || "刚刚";
+  if (seconds < 60) return t("notifications.justNow") || "Just now";
   const minutes = Math.floor(seconds / 60);
   if (minutes < 60) return t("capture.t13587", { floordiff60: minutes });
   const hours = Math.floor(minutes / 60);

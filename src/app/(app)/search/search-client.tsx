@@ -50,7 +50,7 @@ export function SearchClient() {
   };
 
   const MODES = [
-    { id: "unified" as const, label: t('search.unified') || "全局搜索", icon: Layers, desc: t('search.unifiedDesc') || "跨知识库、文件、事件、Agent、课程、轨迹、定时任务、模板、消息搜索" },
+    { id: "unified" as const, label: t('search.unified') || "Global Search", icon: Layers, desc: t('search.unifiedDesc') || "Search across knowledge, files, events, agents, courses, trajectories, schedules, templates, messages" },
     { id: "hybrid" as const, label: t('search.hybrid'), icon: Layers, desc: t('search.hybridDesc') },
     { id: "semantic" as const, label: t('search.semantic'), icon: Zap, desc: t('search.semanticDesc') },
     { id: "fulltext" as const, label: t('search.fulltext'), icon: BookOpen, desc: t('search.fulltextDesc') },
@@ -181,7 +181,7 @@ export function SearchClient() {
                       : "border-border text-muted-foreground hover:bg-muted"
                   )}
                 >
-                  {t("search.all") || "全部"} ({unifiedResults.total})
+                  {t("search.all") || "All"} ({unifiedResults.total})
                 </button>
                 {Object.entries(unifiedResults.by_source).map(([source, items]) => {
                   const config = SOURCE_CONFIG[source];

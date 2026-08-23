@@ -174,7 +174,7 @@ export function NotificationCenter() {
             ? "bg-accent text-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-foreground"
         )}
-        title={t("notifications.title") || "通知中心"}
+        title={t("notifications.title") || "Notification Center"}
       >
         <Bell size={16} />
         {unreadCount > 0 && (
@@ -192,7 +192,7 @@ export function NotificationCenter() {
             <div className="flex items-center gap-2">
               <Bell size={16} className="text-foreground" />
               <h3 className="text-sm font-semibold text-foreground">
-                {t("notifications.title") || "通知中心"}
+                {t("notifications.title") || "Notification Center"}
               </h3>
               {unreadCount > 0 && (
                 <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500/10 px-1.5 text-[10px] font-medium text-red-500">
@@ -205,10 +205,10 @@ export function NotificationCenter() {
                 <button
                   onClick={handleMarkAllRead}
                   className="flex h-7 items-center gap-1 rounded-md px-2 text-xs text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                  title={t("notifications.markAllRead") || "全部已读"}
+                  title={t("notifications.markAllRead") || "Mark all read"}
                 >
                   <CheckCheck size={12} />
-                  <span className="hidden sm:inline">{t("notifications.markAllRead") || "全部已读"}</span>
+                  <span className="hidden sm:inline">{t("notifications.markAllRead") || "Mark all read"}</span>
                 </button>
               )}
               <button
@@ -231,7 +231,7 @@ export function NotificationCenter() {
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {t("notifications.all") || "全部"}
+              {t("notifications.all") || "All"}
               {filter === "all" && (
                 <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary" />
               )}
@@ -245,7 +245,7 @@ export function NotificationCenter() {
                   : "text-muted-foreground hover:text-foreground"
               )}
             >
-              {t("notifications.unread") || "未读"}
+              {t("notifications.unread") || "Unread"}
               {unreadCount > 0 && (
                 <span className="ml-1 text-[10px] text-muted-foreground">({unreadCount})</span>
               )}
@@ -264,8 +264,8 @@ export function NotificationCenter() {
             ) : notifications.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                 <Bell size={32} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("notifications.empty") || "暂无通知"}</p>
-                <p className="text-xs mt-1">{t("notifications.emptyDesc") || "系统事件和器官活动将在此显示"}</p>
+                <p className="text-sm">{t("notifications.empty") || "No notifications"}</p>
+                <p className="text-xs mt-1">{t("notifications.emptyDesc") || "System events and organ activities will appear here"}</p>
               </div>
             ) : (
               <div className="py-1">
@@ -323,7 +323,7 @@ export function NotificationCenter() {
                             handleMarkRead(notif.id);
                           }}
                           className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                          title={t("notifications.markRead") || "标记已读"}
+                          title={t("notifications.markRead") || "Mark as read"}
                         >
                           <Check size={12} />
                         </button>
@@ -334,7 +334,7 @@ export function NotificationCenter() {
                           handleDismiss(notif.id);
                         }}
                         className="flex h-6 w-6 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-red-500 transition-colors"
-                        title={t("notifications.dismiss") || "移除"}
+                        title={t("notifications.dismiss") || "Dismiss"}
                       >
                         <Trash2 size={12} />
                       </button>
@@ -352,13 +352,13 @@ export function NotificationCenter() {
                 onClick={handleClearAll}
                 className="text-xs text-muted-foreground hover:text-foreground transition-colors"
               >
-                {t("notifications.clearAll") || "清空全部"}
+                {t("notifications.clearAll") || "Clear all"}
               </button>
               <button
                 onClick={() => { router.push("/activity"); setOpen(false); }}
                 className="text-xs text-primary hover:underline"
               >
-                {t("notifications.viewAll") || "查看全部活动"} →
+                {t("notifications.viewAll") || "View All Activity"} →
               </button>
             </div>
           )}

@@ -219,19 +219,19 @@ export function PulseClient() {
               <h3 className="text-sm font-medium">{t("pulse.createSignal") || t('pulse.create')}</h3>
               <div className="grid grid-cols-5 gap-3">
                 <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                  placeholder={t("pulse.signalName") || "信号名称..."}
+                  placeholder={t("pulse.signalName") || "Signal Name"}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
                 <select value={newType} onChange={(e) => setNewType(e.target.value)}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
-                  <option value="interval">{t("pulse.interval") || "定时间隔"}</option>
-                  <option value="tick">{t("pulse.tick") || "心跳"}</option>
-                  <option value="once">{t("pulse.once") || "一次性"}</option>
+                  <option value="interval">{t("pulse.interval") || "Interval (ms)"}</option>
+                  <option value="tick">{t("pulse.tick") || "Tick"}</option>
+                  <option value="once">{t("pulse.once") || "Once"}</option>
                 </select>
                 <input value={newInterval} onChange={(e) => setNewInterval(e.target.value)}
-                  placeholder={t("pulse.intervalPlaceholder") || "间隔(ms)"}
+                  placeholder={t("pulse.intervalPlaceholder") || "e.g. 5m, 1h"}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
                 <input value={newMaxFires} onChange={(e) => setNewMaxFires(e.target.value)}
-                  placeholder={t("pulse.maxCountPlaceholder") || "最大次数(0=无限)"}
+                  placeholder={t("pulse.maxCountPlaceholder") || "Max count"}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
                 <button onClick={handleCreate} disabled={loading}
                   className="flex items-center justify-center gap-1.5 rounded-lg bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600 disabled:opacity-50">
@@ -331,10 +331,10 @@ export function PulseClient() {
                 <table className="w-full text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("pulse.signal") || "信号"}</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("pulse.time") || "时间"}</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">{t("pulse.drift") || "漂移"}</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">{t("pulse.latency") || "延迟"}</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("pulse.signal") || "Signal"}</th>
+                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("pulse.time") || "Interval"}</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">{t("pulse.drift") || "Drift"}</th>
+                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">{t("pulse.latency") || "Latency"}</th>
                     </tr>
                   </thead>
                   <tbody>

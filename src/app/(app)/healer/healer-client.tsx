@@ -163,7 +163,7 @@ export function HealerClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Stethoscope size={20} className="text-teal-500" />
-          <h1 className="text-lg font-semibold">{t("healer.title") || "自愈 · 器官诊断"}</h1>
+          <h1 className="text-lg font-semibold">{t("healer.title") || "Healer · Self-Diagnosis"}</h1>
           <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-500">
             {t("healer.autoDiagnoseTitle")}
           </span>

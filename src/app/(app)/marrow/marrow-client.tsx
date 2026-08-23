@@ -248,13 +248,13 @@ export function MarrowClient() {
       const res = await fetch(`${apiBase}/api/marrow/import`, { method: "POST", body: formData })
       if (res.ok) {
         const data = await res.json()
-        showMsg("ok", `${t("marrow.importSuccess") || "导入成功"}: ${data.records} ${t("marrow.records") || "条记录"}`)
+        showMsg("ok", `${t("marrow.importSuccess") || "Import successful"}: ${data.records} ${t("marrow.records") || "records"}`)
       } else {
         const err = await res.json()
-        showMsg("err", err.detail || (t("marrow.importFailed") || "导入失败"))
+        showMsg("err", err.detail || (t("marrow.importFailed") || "Import failed"))
       }
     } catch (ex: any) {
-      showMsg("err", ex.message || (t("marrow.importFailed") || "导入失败"))
+      showMsg("err", ex.message || (t("marrow.importFailed") || "Import failed"))
     }
     setImporting(false)
     e.target.value = ""
@@ -268,11 +268,11 @@ export function MarrowClient() {
 
   const formatInterval = (expr: string, secs: number) => {
     const map: Record<string, string> = {
-      hourly: t("marrow.hourly") || "每小时",
-      daily: t("marrow.daily") || "每天",
-      weekly: t("marrow.weekly") || "每周",
+      hourly: t("marrow.hourly") || "Hourly",
+      daily: t("marrow.daily") || "Daily",
+      weekly: t("marrow.weekly") || "Weekly",
     }
-    return map[expr] || `${t("marrow.every") || "每"} ${secs} ${t("marrow.seconds") || "秒"}`
+    return map[expr] || `${t("marrow.every") || "Every"} ${secs} ${t("marrow.seconds") || "seconds"}`
   }
 
   const formatNextRun = (ts: number) => {
@@ -280,9 +280,9 @@ export function MarrowClient() {
     const d = new Date(ts * 1000)
     const now = Date.now()
     const diff = ts * 1000 - now
-    if (diff <= 0) return t("marrow.runSoon") || "即将执行"
-    if (diff < 3600000) return `${Math.round(diff / 60000)} ${t("marrow.minutesLater") || "分钟后"}`
-    if (diff < 86400000) return `${Math.round(diff / 3600000)} ${t("marrow.hoursLater") || "小时后"}`
+    if (diff <= 0) return t("marrow.runSoon") || "Running soon"
+    if (diff < 3600000) return `${Math.round(diff / 60000)} ${t("marrow.minutesLater") || "minutes later"}`
+    if (diff < 86400000) return `${Math.round(diff / 3600000)} ${t("marrow.hoursLater") || "hours later"}`
     return d.toLocaleString()
   }
 
@@ -295,10 +295,10 @@ export function MarrowClient() {
   }
 
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Bone }> = [
-    { key: "overview", label: t("marrow.tabOverview") || "概览", icon: Activity },
-    { key: "backups", label: t("marrow.tabBackups") || "备份管理", icon: Archive },
-    { key: "schedules", label: t("marrow.tabSchedules") || "定时备份", icon: CalendarClock },
-    { key: "migration", label: t("marrow.tabMigration") || "数据迁移", icon: ArrowUpDown },
+    { key: "overview", label: t("marrow.tabOverview") || "Overview", icon: Activity },
+    { key: "backups", label: t("marrow.tabBackups") || "Backup Management", icon: Archive },
+    { key: "schedules", label: t("marrow.tabSchedules") || "Scheduled Backups", icon: CalendarClock },
+    { key: "migration", label: t("marrow.tabMigration") || "Migration", icon: ArrowUpDown },
   ]
 
   return (
@@ -310,8 +310,8 @@ export function MarrowClient() {
             <Bone className="w-5 h-5 text-amber-400" />
           </div>
           <div>
-            <h1 className="text-lg font-semibold text-foreground">{t("marrow.title") || "Marrow — 骨髓系统"}</h1>
-            <p className="text-sm text-muted-foreground">{t("marrow.subtitle") || "备份恢复、定时备份、数据迁移、灾备管理"}</p>
+            <h1 className="text-lg font-semibold text-foreground">{t("marrow.title") || "Marrow — Backup System"}</h1>
+            <p className="text-sm text-muted-foreground">{t("marrow.subtitle") || "Backup & restore, scheduled backups, data migration, disaster recovery"}</p>
           </div>
         </div>
 
@@ -359,10 +359,10 @@ export function MarrowClient() {
           <div className="space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
-                { label: t("marrow.totalBackups") || "总备份", value: health?.backup.total_backups ?? 0, icon: Archive, color: "text-blue-400", bg: "from-blue-500/20 to-blue-600/10" },
-                { label: t("marrow.totalSize") || "总大小", value: formatSize(health?.backup.total_size_bytes ?? 0), icon: HardDrive, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
-                { label: t("marrow.scheduledTasks") || "定时任务", value: health?.scheduler.active_schedules ?? 0, icon: CalendarClock, color: "text-cyan-400", bg: "from-cyan-500/20 to-cyan-600/10" },
-                { label: t("marrow.status") || "状态", value: health?.status === "ok" ? (t("common.normal") || "正常") : (t("common.abnormal") || "异常"), icon: CheckCircle, color: health?.status === "ok" ? "text-green-400" : "text-red-400", bg: health?.status === "ok" ? "from-green-500/20 to-green-600/10" : "from-red-500/20 to-red-600/10" },
+                { label: t("marrow.totalBackups") || "Total Backups", value: health?.backup.total_backups ?? 0, icon: Archive, color: "text-blue-400", bg: "from-blue-500/20 to-blue-600/10" },
+                { label: t("marrow.totalSize") || "Total Size", value: formatSize(health?.backup.total_size_bytes ?? 0), icon: HardDrive, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
+                { label: t("marrow.scheduledTasks") || "Scheduled Tasks", value: health?.scheduler.active_schedules ?? 0, icon: CalendarClock, color: "text-cyan-400", bg: "from-cyan-500/20 to-cyan-600/10" },
+                { label: t("marrow.status") || "Status", value: health?.status === "ok" ? (t("common.normal") || "Normal") : (t("common.abnormal") || "Abnormal"), icon: CheckCircle, color: health?.status === "ok" ? "text-green-400" : "text-red-400", bg: health?.status === "ok" ? "from-green-500/20 to-green-600/10" : "from-red-500/20 to-red-600/10" },
               ].map(s => (
                 <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-4", s.bg)}>
                   <s.icon className={cn("w-4 h-4 mb-2", s.color)} />
@@ -374,19 +374,19 @@ export function MarrowClient() {
 
             {/* Paths */}
             <div className="p-4 rounded-xl border border-border bg-card space-y-2">
-              <h3 className="text-sm font-semibold text-foreground mb-2">{t("marrow.storagePaths") || "存储路径"}</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-2">{t("marrow.storagePaths") || "Storage Paths"}</h3>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">{t("marrow.backupDir") || "备份目录"}:</span>
+                <span className="text-muted-foreground">{t("marrow.backupDir") || "Backup Directory"}:</span>
                 <code className="px-2 py-0.5 rounded bg-muted text-xs font-mono">{health?.backup.backup_dir || "~/.opensoul/backups"}</code>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">{t("marrow.exportDir") || "导出目录"}:</span>
+                <span className="text-muted-foreground">{t("marrow.exportDir") || "Export directory"}:</span>
                 <code className="px-2 py-0.5 rounded bg-muted text-xs font-mono">{health?.export_dir || "~/.opensoul/exports"}</code>
               </div>
               <div className="flex items-center gap-2 text-sm">
-                <span className="text-muted-foreground">{t("marrow.scheduler") || "调度器"}:</span>
+                <span className="text-muted-foreground">{t("marrow.scheduler") || "Scheduler"}:</span>
                 <span className={cn("text-xs font-medium", health?.scheduler.running ? "text-green-400" : "text-red-400")}>
-                  {health?.scheduler.running ? (t("common.running") || "运行中") : (t("common.stopped") || "已停止")}
+                  {health?.scheduler.running ? (t("common.running") || "Running") : (t("common.stopped") || "Stopped")}
                 </span>
               </div>
             </div>
@@ -398,24 +398,24 @@ export function MarrowClient() {
                 className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all text-left"
               >
                 <Plus className="w-5 h-5 text-primary mb-2" />
-                <div className="text-sm font-semibold text-foreground">{t("marrow.createBackup") || "创建备份"}</div>
-                <div className="text-xs text-muted-foreground">{t("marrow.snapshotCurrent") || "快照当前系统数据"}</div>
+                <div className="text-sm font-semibold text-foreground">{t("marrow.createBackup") || "Create Backup"}</div>
+                <div className="text-xs text-muted-foreground">{t("marrow.snapshotCurrent") || "Snapshot current system data"}</div>
               </button>
               <button
                 onClick={() => { setActiveTab("schedules"); setShowCreateSchedule(true) }}
                 className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all text-left"
               >
                 <CalendarClock className="w-5 h-5 text-cyan-400 mb-2" />
-                <div className="text-sm font-semibold text-foreground">{t("marrow.scheduledBackup") || "定时备份"}</div>
-                <div className="text-xs text-muted-foreground">{t("marrow.setAutoBackup") || "设置自动备份计划"}</div>
+                <div className="text-sm font-semibold text-foreground">{t("marrow.scheduledBackup") || "Scheduled Backups"}</div>
+                <div className="text-xs text-muted-foreground">{t("marrow.setAutoBackup") || "Set up automatic backup schedule"}</div>
               </button>
               <button
                 onClick={() => setActiveTab("migration")}
                 className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all text-left"
               >
                 <ArrowUpDown className="w-5 h-5 text-purple-400 mb-2" />
-                <div className="text-sm font-semibold text-foreground">{t("marrow.dataMigration") || "数据迁移"}</div>
-                <div className="text-xs text-muted-foreground">{t("marrow.importExport") || "导入/导出数据"}</div>
+                <div className="text-sm font-semibold text-foreground">{t("marrow.dataMigration") || "Data Migration"}</div>
+                <div className="text-xs text-muted-foreground">{t("marrow.importExport") || "Import/Export data"}</div>
               </button>
             </div>
           </div>
@@ -425,7 +425,7 @@ export function MarrowClient() {
         {activeTab === "backups" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">{t("marrow.backups") || "备份列表"}</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("marrow.backups") || "Backup List"}</h3>
               <div className="flex gap-2">
                 <button onClick={refresh} className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground">
                   <RefreshCw className="w-4 h-4" />
@@ -434,7 +434,7 @@ export function MarrowClient() {
                   onClick={() => setShowCreateBackup(!showCreateBackup)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90"
                 >
-                  <Plus className="w-3.5 h-3.5" /> {t("marrow.createBackup") || "创建备份"}
+                  <Plus className="w-3.5 h-3.5" /> {t("marrow.createBackup") || "Create Backup"}
                 </button>
               </div>
             </div>
@@ -444,32 +444,32 @@ export function MarrowClient() {
               <div className="p-4 rounded-xl border border-border bg-card space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.backupName") || "备份名称"}</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.backupName") || "Backup Name"}</label>
                     <input value={backupForm.name} onChange={e => setBackupForm({ ...backupForm, name: e.target.value })}
                       placeholder={t("marrow.backupNamePlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.tags") || "标签"} ({t("common.commaSeparated") || "逗号分隔"})</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.tags") || "Tags"} ({t("common.commaSeparated") || "Comma separated"})</label>
                     <input value={backupForm.tags} onChange={e => setBackupForm({ ...backupForm, tags: e.target.value })}
                       placeholder={t("marrow.tagsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                   <div className="col-span-2">
-                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.sourceDirs") || "源目录"} ({t("common.commaSeparated") || "逗号分隔"})</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.sourceDirs") || "Source Directories"} ({t("common.commaSeparated") || "Comma separated"})</label>
                     <input value={backupForm.sourceDirs} onChange={e => setBackupForm({ ...backupForm, sourceDirs: e.target.value })}
                       placeholder={t("marrow.sourceDirsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
                   </div>
                   <div className="col-span-2">
-                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.description") || "描述"}</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.description") || "Description"}</label>
                     <input value={backupForm.description} onChange={e => setBackupForm({ ...backupForm, description: e.target.value })}
-                      placeholder={t("marrow.descriptionPlaceholder") || "备份描述 (可选)"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("marrow.descriptionPlaceholder") || "Backup description (optional)"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => setShowCreateBackup(false)} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">{t("common.cancel") || "取消"}</button>
+                  <button onClick={() => setShowCreateBackup(false)} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">{t("common.cancel") || "Cancel"}</button>
                   <button onClick={handleCreateBackup} disabled={creating}
                     className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40">
                     {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
-                    {creating ? (t("common.creating") || "创建中...") : (t("common.create") || "创建")}
+                    {creating ? (t("common.creating") || "Creating...") : (t("common.create") || "Create")}
                   </button>
                 </div>
               </div>
@@ -478,7 +478,7 @@ export function MarrowClient() {
             {/* Backup List */}
             <div className="space-y-2">
               {backups.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-sm">{t("marrow.noBackups") || "暂无备份"}</div>
+                <div className="text-center py-8 text-muted-foreground text-sm">{t("marrow.noBackups") || "No backups yet"}</div>
               )}
               {backups.map(b => (
                 <div key={b.backup_id} className="p-4 rounded-xl border border-border bg-card">
@@ -488,7 +488,7 @@ export function MarrowClient() {
                       <div>
                         <div className="text-sm font-semibold text-foreground">{b.name || b.backup_id}</div>
                         <div className="text-xs text-muted-foreground">
-                          {new Date(b.created_at).toLocaleString()} · {b.file_count} {t("marrow.files") || "文件"} · {formatSize(b.size_bytes)}
+                          {new Date(b.created_at).toLocaleString()} · {b.file_count} {t("marrow.files") || "files"} · {formatSize(b.size_bytes)}
                         </div>
                         {b.description && <div className="text-xs text-muted-foreground mt-1">{b.description}</div>}
                         {b.tags && b.tags.length > 0 && (
@@ -503,15 +503,15 @@ export function MarrowClient() {
                     <div className="flex items-center gap-2">
                       <button onClick={() => handleRestore(b.backup_id)} disabled={restoring === b.backup_id}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-green-500/10 text-green-400 hover:bg-green-500/20 transition-colors disabled:opacity-40"
-                        title={t("marrow.restore") || "恢复"}>
+                        title={t("marrow.restore") || "Restore"}>
                         {restoring === b.backup_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <RotateCcw className="w-3 h-3" />}
-                        {t("marrow.restore") || "恢复"}
+                        {t("marrow.restore") || "Restore"}
                       </button>
                       <button onClick={() => handleDeleteBackup(b.backup_id)} disabled={deleting === b.backup_id}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors disabled:opacity-40"
-                        title={t("common.delete") || "删除"}>
+                        title={t("common.delete") || "Delete"}>
                         {deleting === b.backup_id ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />}
-                        {t("common.delete") || "删除"}
+                        {t("common.delete") || "Delete"}
                       </button>
                     </div>
                   </div>
@@ -525,17 +525,17 @@ export function MarrowClient() {
         {activeTab === "schedules" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">{t("marrow.scheduledBackups") || "定时备份"}</h3>
+              <h3 className="text-sm font-semibold text-foreground">{t("marrow.scheduledBackups") || "Scheduled Backups"}</h3>
               <div className="flex gap-2">
                 <button onClick={handleRunDue}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 text-sm hover:bg-amber-500/20">
-                  <Play className="w-3.5 h-3.5" /> {t("marrow.runDue") || "执行到期任务"}
+                  <Play className="w-3.5 h-3.5" /> {t("marrow.runDue") || "Run Due Tasks"}
                 </button>
                 <button
                   onClick={() => setShowCreateSchedule(!showCreateSchedule)}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90"
                 >
-                  <Plus className="w-3.5 h-3.5" /> {t("marrow.createSchedule") || "创建定时备份"}
+                  <Plus className="w-3.5 h-3.5" /> {t("marrow.createSchedule") || "Create Scheduled Backup"}
                 </button>
               </div>
             </div>
@@ -545,36 +545,36 @@ export function MarrowClient() {
               <div className="p-4 rounded-xl border border-border bg-card space-y-3">
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.scheduleName") || "任务名称"}</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.scheduleName") || "Task Name"}</label>
                     <input value={scheduleForm.name} onChange={e => setScheduleForm({ ...scheduleForm, name: e.target.value })}
-                      placeholder={t("marrow.dailyBackup") || "每日数据备份"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("marrow.dailyBackup") || "Daily data backup"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                   <div>
-                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.interval") || "频率"}</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.interval") || "Interval"}</label>
                     <select value={scheduleForm.interval} onChange={e => setScheduleForm({ ...scheduleForm, interval: e.target.value })}
                       className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                      <option value="hourly">{t("marrow.hourly") || "每小时"}</option>
-                      <option value="daily">{t("marrow.daily") || "每天"}</option>
-                      <option value="weekly">{t("marrow.weekly") || "每周"}</option>
+                      <option value="hourly">{t("marrow.hourly") || "Hourly"}</option>
+                      <option value="daily">{t("marrow.daily") || "Daily"}</option>
+                      <option value="weekly">{t("marrow.weekly") || "Weekly"}</option>
                     </select>
                   </div>
                   <div className="col-span-2">
-                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.sourceDirs") || "源目录"}</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.sourceDirs") || "Source Directories"}</label>
                     <input value={scheduleForm.sourceDirs} onChange={e => setScheduleForm({ ...scheduleForm, sourceDirs: e.target.value })}
                       placeholder={t("marrow.sourceDirsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
                   </div>
                   <div className="col-span-2">
-                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.tags") || "标签"}</label>
+                    <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.tags") || "Tags"}</label>
                     <input value={scheduleForm.tags} onChange={e => setScheduleForm({ ...scheduleForm, tags: e.target.value })}
                       placeholder={t("marrow.scheduleTagsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => setShowCreateSchedule(false)} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">{t("common.cancel") || "取消"}</button>
+                  <button onClick={() => setShowCreateSchedule(false)} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">{t("common.cancel") || "Cancel"}</button>
                   <button onClick={handleCreateSchedule} disabled={creating || !scheduleForm.name}
                     className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40">
                     {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CalendarClock className="w-3.5 h-3.5" />}
-                    {creating ? (t("common.creating") || "创建中...") : (t("common.create") || "创建")}
+                    {creating ? (t("common.creating") || "Creating...") : (t("common.create") || "Create")}
                   </button>
                 </div>
               </div>
@@ -583,7 +583,7 @@ export function MarrowClient() {
             {/* Schedule List */}
             <div className="space-y-2">
               {schedules.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-sm">{t("marrow.noSchedules") || "暂无定时备份"}</div>
+                <div className="text-center py-8 text-muted-foreground text-sm">{t("marrow.noSchedules") || "No scheduled backups"}</div>
               )}
               {schedules.map(s => (
                 <div key={s.schedule_id} className={cn("p-4 rounded-xl border bg-card", s.enabled ? "border-border" : "border-border/50 opacity-60")}>
@@ -593,7 +593,7 @@ export function MarrowClient() {
                       <div>
                         <div className="text-sm font-semibold text-foreground">{s.name}</div>
                         <div className="text-xs text-muted-foreground">
-                          {formatInterval(s.cron_expr, s.interval_seconds)} · {t("marrow.runCount") || "已执行"}: {s.run_count} · {t("marrow.nextRun") || "下次"}: {formatNextRun(s.next_run_at)}
+                          {formatInterval(s.cron_expr, s.interval_seconds)} · {t("marrow.runCount") || "Run count"}: {s.run_count} · {t("marrow.nextRun") || "Next run"}: {formatNextRun(s.next_run_at)}
                         </div>
                         {s.source_dirs && (
                           <div className="text-xs text-muted-foreground mt-1 font-mono">{s.source_dirs.join(", ")}</div>
@@ -604,11 +604,11 @@ export function MarrowClient() {
                       <button onClick={() => handleToggleSchedule(s.schedule_id, !s.enabled)}
                         className={cn("flex items-center gap-1 px-2.5 py-1 rounded-md text-xs transition-colors",
                           s.enabled ? "bg-amber-500/10 text-amber-400 hover:bg-amber-500/20" : "bg-green-500/10 text-green-400 hover:bg-green-500/20")}>
-                        {s.enabled ? <><Pause className="w-3 h-3" /> {t("common.pause") || "暂停"}</> : <><Play className="w-3 h-3" /> {t("common.enable") || "启用"}</>}
+                        {s.enabled ? <><Pause className="w-3 h-3" /> {t("common.pause") || "Pause"}</> : <><Play className="w-3 h-3" /> {t("common.enable") || "Enable"}</>}
                       </button>
                       <button onClick={() => handleDeleteSchedule(s.schedule_id)}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-red-500/10 text-red-400 hover:bg-red-500/20 transition-colors">
-                        <Trash2 className="w-3 h-3" /> {t("common.delete") || "删除"}
+                        <Trash2 className="w-3 h-3" /> {t("common.delete") || "Delete"}
                       </button>
                     </div>
                   </div>
@@ -623,8 +623,8 @@ export function MarrowClient() {
           <div className="space-y-6">
             {/* Export */}
             <div className="p-4 rounded-xl border border-border bg-card">
-              <h3 className="text-sm font-semibold text-foreground mb-3">{t("marrow.exportData") || "数据导出"}</h3>
-              <p className="text-xs text-muted-foreground mb-3">{t("marrow.exportDesc") || "将知识库数据导出为标准格式"}</p>
+              <h3 className="text-sm font-semibold text-foreground mb-3">{t("marrow.exportData") || "Export Data"}</h3>
+              <p className="text-xs text-muted-foreground mb-3">{t("marrow.exportDesc") || "Export knowledge base data in standard format"}</p>
               <button
                 onClick={async () => {
                   try {
@@ -635,21 +635,21 @@ export function MarrowClient() {
                     })
                     if (res.ok) {
                       const data = await res.json()
-                      showMsg("ok", `${t("marrow.exportSuccess") || "导出完成"}: ${data.records} ${t("marrow.records") || "条记录"}`)
+                      showMsg("ok", `${t("marrow.exportSuccess") || "Export complete"}: ${data.records} ${t("marrow.records") || "records"}`)
                       refresh()
                     }
-                  } catch { showMsg("err", t("marrow.exportFailed") || "导出失败") }
+                  } catch { showMsg("err", t("marrow.exportFailed") || "Export failed") }
                 }}
                 className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/10 text-purple-400 text-sm hover:bg-purple-500/20"
               >
-                <Download className="w-4 h-4" /> {t("marrow.startExport") || "开始导出"}
+                <Download className="w-4 h-4" /> {t("marrow.startExport") || "Start Export"}
               </button>
             </div>
 
             {/* Import */}
             <div className="p-4 rounded-xl border border-border bg-card">
-              <h3 className="text-sm font-semibold text-foreground mb-3">{t("marrow.importData") || "数据导入"}</h3>
-              <p className="text-xs text-muted-foreground mb-3">{t("marrow.importDesc") || "从备份文件或标准格式导入数据"}</p>
+              <h3 className="text-sm font-semibold text-foreground mb-3">{t("marrow.importData") || "Import Data"}</h3>
+              <p className="text-xs text-muted-foreground mb-3">{t("marrow.importDesc") || "Import data from backup files or standard formats"}</p>
               <div className="flex items-center gap-3">
                 <select value={importFormat} onChange={e => setImportFormat(e.target.value)}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
@@ -659,7 +659,7 @@ export function MarrowClient() {
                 </select>
                 <label className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 text-green-400 text-sm hover:bg-green-500/20 cursor-pointer">
                   <Upload className="w-4 h-4" />
-                  {importing ? (t("common.importing") || "导入中...") : (t("marrow.selectFile") || "选择文件")}
+                  {importing ? (t("common.importing") || "Importing...") : (t("marrow.selectFile") || "Select file")}
                   <input type="file" className="hidden" onChange={handleImport} accept=".json,.csv,.md,.txt" disabled={importing} />
                 </label>
               </div>
@@ -667,9 +667,9 @@ export function MarrowClient() {
 
             {/* Export History */}
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3">{t("marrow.exportHistory") || "导出历史"}</h3>
+              <h3 className="text-sm font-semibold text-foreground mb-3">{t("marrow.exportHistory") || "Export History"}</h3>
               {exports.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground text-sm">{t("marrow.noExports") || "暂无导出记录"}</div>
+                <div className="text-center py-6 text-muted-foreground text-sm">{t("marrow.noExports") || "No exports yet"}</div>
               ) : (
                 <div className="space-y-2">
                   {exports.map(exp => (
@@ -677,13 +677,13 @@ export function MarrowClient() {
                       <div className="flex items-center gap-3">
                         <FileText className="w-4 h-4 text-purple-400" />
                         <div>
-                          <div className="text-sm text-foreground">{exp.format.toUpperCase()} · {exp.record_count} {t("marrow.records") || "条"} · {formatSize(exp.size_bytes)}</div>
+                          <div className="text-sm text-foreground">{exp.format.toUpperCase()} · {exp.record_count} {t("marrow.records") || "records"} · {formatSize(exp.size_bytes)}</div>
                           <div className="text-xs text-muted-foreground">{new Date(exp.created_at).toLocaleString()}</div>
                         </div>
                       </div>
                       <a href={`${apiBase}/api/marrow/exports/${exp.job_id}/download`}
                         className="flex items-center gap-1 px-2.5 py-1 rounded-md text-xs bg-blue-500/10 text-blue-400 hover:bg-blue-500/20">
-                        <Download className="w-3 h-3" /> {t("common.download") || "下载"}
+                        <Download className="w-3 h-3" /> {t("common.download") || "Download"}
                       </a>
                     </div>
                   ))}

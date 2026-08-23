@@ -179,8 +179,8 @@ function CreateTeamDialog({
     <Dialog
       open={open}
       onClose={handleClose}
-      title={t("team.createTeam") || "创建团队"}
-      description={t("team.createDesc") || "创建一个新的 Agent 协作团队"}
+      title={t("team.createTeam") || "Create Team"}
+      description={t("team.createDesc") || "Create a new Agent collaboration team"}
       className="max-w-xl"
       footer={
         <>
@@ -189,7 +189,7 @@ function CreateTeamDialog({
             disabled={isLoading}
             className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
           >
-            {t("team.cancel") || "取消"}
+            {t("team.cancel") || "Cancel"}
           </button>
           <button
             onClick={handleSubmit}
@@ -197,7 +197,7 @@ function CreateTeamDialog({
             className="rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
           >
             {isLoading && <Loader2 size={12} className="animate-spin" />}
-            {t("team.create") || "创建"}
+            {t("team.create") || "Create"}
           </button>
         </>
       }
@@ -205,26 +205,26 @@ function CreateTeamDialog({
       <div className="space-y-4">
         <div>
           <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-            {t("team.teamName") || "团队名称"}
+            {t("team.teamName") || "Team Name"}
           </label>
           <input
             type="text"
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder={t("team.sampleTeamName") || "研究团队"}
+            placeholder={t("team.sampleTeamName") || "Research Team"}
             className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
           />
         </div>
         <div>
           <label className="mb-1.5 block text-xs font-medium text-muted-foreground">
-            {t("team.description") || "描述"}
+            {t("team.description") || "Description"}
           </label>
           <input
             type="text"
             value={description}
             onChange={(e) => setDescription(e.target.value)}
             placeholder={
-              t("team.sampleTeamDesc") || "专注于协作研究的 Agent 团队"
+              t("team.sampleTeamDesc") || "An Agent team focused on collaborative research"
             }
             className="w-full rounded-md border border-border bg-muted/50 px-3 py-2 text-sm outline-none focus:border-primary transition-colors"
           />
@@ -266,8 +266,8 @@ function TeamCard({
         </div>
         <Badge variant={onlineCount > 0 ? "success" : "default"}>
           {onlineCount > 0
-            ? t("team.active") || "活跃"
-            : t("team.idle") || "空闲"}
+            ? t("team.active") || "Active"
+            : t("team.idle") || "Idle"}
         </Badge>
       </div>
 
@@ -280,19 +280,19 @@ function TeamCard({
           </span>
           <span className="text-[10px] text-emerald-400">
             {onlineCount}
-            {t("team.online") || "在线"}
+            {t("team.online") || "online"}
           </span>
         </div>
         <div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5">
           <CheckSquare size={12} className="text-muted-foreground" />
           <span className="text-[11px] text-muted-foreground">
-            {team.taskCount} {t("team.todo") || "待办"}
+            {team.taskCount} {t("team.todo") || "To Do"}
           </span>
         </div>
         <div className="flex items-center gap-1.5 rounded-md bg-muted/50 px-2 py-1.5">
           <Activity size={12} className="text-muted-foreground" />
           <span className="text-[11px] text-muted-foreground">
-            {leader ? leader.name : t("team.noLeader") || "无负责人"}
+            {leader ? leader.name : t("team.noLeader") || "No leader"}
           </span>
         </div>
       </div>
@@ -335,12 +335,12 @@ function TeamCard({
             className="flex h-7 items-center gap-1 rounded-md bg-primary px-2.5 text-[11px] font-medium text-primary-foreground hover:bg-primary/90"
           >
             <ChevronRight size={12} />
-            {t("team.enter") || "进入"}
+            {t("team.enter") || "Enter"}
           </Link>
           <button
             onClick={() => onDelete(team)}
             className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-            title={t("team.delete") || "删除"}
+            title={t("team.delete") || "Delete"}
           >
             <Trash2 size={13} />
           </button>
@@ -442,10 +442,10 @@ export function TeamClient() {
           </div>
           <div>
             <h2 className="text-sm font-medium">
-              {t("team.teamManagement") || "团队管理"}
+              {t("team.teamManagement") || "Team Management"}
             </h2>
             <p className="text-xs text-muted-foreground">
-              {teams.length} {t("team.teamCount") || "个团队"}
+              {teams.length} {t("team.teamCount") || "teams"}
             </p>
           </div>
         </div>
@@ -454,7 +454,7 @@ export function TeamClient() {
             onClick={fetchTeams}
             disabled={loading}
             className="flex items-center gap-1.5 rounded-md border border-border px-2.5 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground disabled:opacity-50"
-            title={t("team.refresh") || "刷新"}
+            title={t("team.refresh") || "Refresh"}
           >
             <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
           </button>
@@ -463,7 +463,7 @@ export function TeamClient() {
             className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
           >
             <Plus size={14} />
-            {t("team.createTeam") || "创建团队"}
+            {t("team.createTeam") || "Create Team"}
           </button>
         </div>
       </div>
@@ -479,7 +479,7 @@ export function TeamClient() {
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder={t("team.searchTeams") || "搜索团队..."}
+            placeholder={t("team.searchTeams") || "Search teams..."}
             className="w-full rounded-md border border-border bg-muted/50 pl-9 pr-3 py-1.5 text-xs outline-none focus:border-primary transition-colors"
           />
         </div>
@@ -491,7 +491,7 @@ export function TeamClient() {
           <div className="flex h-full flex-col items-center justify-center text-center py-16">
             <Loader2 size={32} className="animate-spin text-muted-foreground mb-4" />
             <p className="text-sm text-muted-foreground">
-              {t("team.loading") || "加载中..."}
+              {t("team.loading") || "Loading..."}
             </p>
           </div>
         ) : error ? (
@@ -500,7 +500,7 @@ export function TeamClient() {
               <AlertCircle className="h-7 w-7 text-destructive" />
             </div>
             <h3 className="mb-2 text-sm font-medium text-destructive">
-              {t("team.loadError") || "加载失败"}
+              {t("team.loadError") || "Failed to load team data"}
             </h3>
             <p className="text-xs text-muted-foreground mb-4">{error}</p>
             <button
@@ -508,7 +508,7 @@ export function TeamClient() {
               className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
             >
               <RefreshCw size={12} />
-              {t("team.retry") || "重试"}
+              {t("team.retry") || "Retry"}
             </button>
           </div>
         ) : filtered.length === 0 ? (
@@ -517,7 +517,7 @@ export function TeamClient() {
               <Users className="h-7 w-7 text-muted-foreground" />
             </div>
             <h3 className="mb-2 text-sm font-medium">
-              {t("team.noTeams") || "暂无团队"}
+              {t("team.noTeams") || "No teams"}
             </h3>
             <p className="text-xs text-muted-foreground">
               {t("team.createFirstHint") ||
@@ -557,7 +557,7 @@ export function TeamClient() {
               disabled={deleting}
               className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent hover:text-foreground"
             >
-              {t("team.cancel") || "取消"}
+              {t("team.cancel") || "Cancel"}
             </button>
             <button
               onClick={handleDelete}
@@ -565,7 +565,7 @@ export function TeamClient() {
               className="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90 disabled:opacity-50 flex items-center gap-1.5"
             >
               {deleting && <Loader2 size={12} className="animate-spin" />}
-              {t("team.delete") || "删除"}
+              {t("team.delete") || "Delete"}
             </button>
           </>
         }
@@ -576,9 +576,9 @@ export function TeamClient() {
             <span className="text-sm font-medium">{deleteTarget?.name}</span>
           </div>
           <p className="mt-1 text-xs text-muted-foreground">
-            {t("team.memberCount") || "成员数"}:{" "}
+            {t("team.memberCount") || "Members"}:{" "}
             {deleteTarget?.members.length ?? 0} ·{" "}
-            {t("team.taskCount") || "任务数"}: {deleteTarget?.taskCount ?? 0}
+            {t("team.taskCount") || "Tasks"}: {deleteTarget?.taskCount ?? 0}
           </p>
         </div>
       </Dialog>

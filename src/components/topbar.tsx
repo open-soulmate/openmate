@@ -24,13 +24,13 @@ export function Topbar() {
     "/mcp": t("nav.mcp"),
     "/groups": t("nav.groups"),
     "/dashboard": t("nav.dashboard"),
-    "/team": t("nav.team") || "团队",
-    "/workspace": t("nav.workspace") || "工作区",
-    "/graph-builder": t("nav.graphBuilder") || "图谱编排",
-    "/ai-groups": t("nav.aiGroups") || "AI群",
+    "/team": t("nav.team") || "Team",
+    "/workspace": t("nav.workspace") || "Workspace",
+    "/graph-builder": t("nav.graphBuilder") || "Graph Builder",
+    "/ai-groups": t("nav.aiGroups") || "AI Groups",
     "/cron": t("nav.cron"),
     "/download": t("nav.download"),
-    "/notifications": t("nav.notifications") || "通知中心",
+    "/notifications": t("nav.notifications") || "Notifications",
   };
 
   const title = titles[pathname] || "OpenMate";

@@ -109,7 +109,7 @@ function MemberList({
         <div className="flex items-center gap-2">
           <Users size={14} className="text-muted-foreground" />
           <span className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {t("groupChat.members") || "群成员"}
+            {t("groupChat.members") || "Group Members"}
           </span>
         </div>
         <p className="mt-1 text-[11px] text-muted-foreground">
@@ -122,7 +122,7 @@ function MemberList({
         {master && (
           <div className="mb-2">
             <p className="mb-1 px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-              {t("groupChat.dispatcher") || "调度者"}
+              {t("groupChat.dispatcher") || "Dispatcher"}
             </p>
             <MemberItem agent={master} isMaster meetingActive={meetingActive} />
           </div>
@@ -131,7 +131,7 @@ function MemberList({
         {/* Other members */}
         <div>
           <p className="mb-1 px-2 text-[10px] font-medium uppercase tracking-wider text-muted-foreground">
-            {t("groupChat.member") || "成员"}
+            {t("groupChat.member") || "Member"}
           </p>
           {members
             .filter((m) => m.id !== group.masterAgentId)
@@ -144,7 +144,7 @@ function MemberList({
       {/* Group info */}
       <div className="border-t border-border px-3 py-2">
         <p className="text-[10px] text-muted-foreground">
-          {t("groupChat.dispatchMode") || "调度模式:"} {group.dispatchMode === "auto" ? (t("groupChat.autoDispatch") || "自动调度") : (t("groupChat.manualDispatch") || "手动调度")}
+          {t("groupChat.dispatchMode") || "Dispatch Mode:"} {group.dispatchMode === "auto" ? (t("groupChat.autoDispatch") || "Auto") : (t("groupChat.manualDispatch") || "Manual")}
         </p>
       </div>
     </div>
@@ -189,7 +189,7 @@ function MemberItem({
           {isMaster && <Crown size={10} className="shrink-0 text-amber-400" />}
         </div>
         <span className="text-[10px] text-muted-foreground">
-          {agent.status === "online" ? (t("groupChat.statusOnline") || "在线") : agent.status === "error" ? (t("groupChat.statusError") || "错误") : (t("groupChat.statusOffline") || "离线")}
+          {agent.status === "online" ? (t("groupChat.statusOnline") || "Online") : agent.status === "error" ? (t("groupChat.statusError") || "Error") : (t("groupChat.statusOffline") || "Offline")}
         </span>
       </div>
     </div>
@@ -475,11 +475,11 @@ export function GroupChatClient({ groupIdPromise }: { groupIdPromise: Promise<{ 
     otherMembers.forEach((agent, i) => {
       setTimeout(() => {
         const topics = [
-          t("groupChat.topic1") || "从数据角度看，我建议先收集更多样本再做判断。",
-          t("groupChat.topic2") || "技术实现上，当前架构可以支撑，但需要优化性能。",
-          t("groupChat.topic3") || "从用户体验角度，建议简化流程，降低使用门槛。",
-          t("groupChat.topic4") || "我已完成相关工具调用，结果符合预期。",
-          t("groupChat.topic5") || "建议增加监控告警，确保系统稳定性。",
+          t("groupChat.topic1") || "From a data perspective, I suggest collecting more samples before making a judgment.",
+          t("groupChat.topic2") || "Technically, the current architecture can support this, but performance needs optimization.",
+          t("groupChat.topic3") || "From a UX perspective, I suggest simplifying the workflow to lower the barrier to entry.",
+          t("groupChat.topic4") || "I have completed the relevant tool calls. Results are as expected.",
+          t("groupChat.topic5") || "Consider adding monitoring alerts to ensure system stability.",
         ];
         const msg: GroupChatMessage = {
           id: uid(),
@@ -520,16 +520,16 @@ export function GroupChatClient({ groupIdPromise }: { groupIdPromise: Promise<{ 
         <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
           <Users className="h-7 w-7 text-muted-foreground" />
         </div>
-        <h3 className="mb-2 text-sm font-medium">{t("groupChat.notFound") || "群组不存在"}</h3>
+        <h3 className="mb-2 text-sm font-medium">{t("groupChat.notFound") || "Group Not Found"}</h3>
         <p className="mb-4 text-xs text-muted-foreground">
-          {t("groupChat.deleted") || "该群组可能已被删除"}
+          {t("groupChat.deleted") || "This group may have been deleted"}
         </p>
         <Link
           href="/groups"
           className="flex items-center gap-1.5 rounded-md bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90"
         >
           <ArrowLeft size={14} />
-          {t("groupChat.backToList") || "返回群列表"}
+          {t("groupChat.backToList") || "Back to Groups"}
         </Link>
       </div>
     );
@@ -556,7 +556,7 @@ export function GroupChatClient({ groupIdPromise }: { groupIdPromise: Promise<{ 
             <div>
               <h2 className="text-sm font-medium">{group.name}</h2>
               <p className="text-[11px] text-muted-foreground">
-                {t("groupChat.headerInfo", { count: group.memberAgentIds.length, mode: group.dispatchMode === "auto" ? (t("groupChat.autoDispatch") || "自动调度") : (t("groupChat.manualDispatch") || "手动调度") }) || `${group.memberAgentIds.length} 成员 · ${group.dispatchMode === "auto" ? "自动调度" : "手动调度"}`}
+                {t("groupChat.headerInfo", { count: group.memberAgentIds.length, mode: group.dispatchMode === "auto" ? (t("groupChat.autoDispatch") || "Auto") : (t("groupChat.manualDispatch") || "Manual") }) || `${group.memberAgentIds.length} 成员 · ${group.dispatchMode === "auto" ? "自动调度" : "手动调度"}`}
               </p>
             </div>
           </div>
@@ -572,12 +572,12 @@ export function GroupChatClient({ groupIdPromise }: { groupIdPromise: Promise<{ 
               )}
             >
               <Play size={12} />
-              {meetingActive ? (t("groupChat.meetingInProgress") || "会议进行中...") : (t("groupChat.startMeeting") || "开会")}
+              {meetingActive ? (t("groupChat.meetingInProgress") || "Meeting in progress...") : (t("groupChat.startMeeting") || "Meeting")}
             </button>
             <button
               onClick={() => clearGroupMessages(groupId)}
               className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-              title={t("groupChat.clearMessages") || "清空消息"}
+              title={t("groupChat.clearMessages") || "Clear Messages"}
             >
               <MessageSquare size={14} />
             </button>
@@ -595,21 +595,21 @@ export function GroupChatClient({ groupIdPromise }: { groupIdPromise: Promise<{ 
                 {group.name}
               </h2>
               <p className="max-w-sm text-sm text-muted-foreground mb-4">
-                {group.description || (t("groupChat.defaultDesc") || "在这里开始与 Agent 群组对话")}
+                {group.description || (t("groupChat.defaultDesc") || "Start a conversation with your Agent group here")}
               </p>
               <div className="flex flex-wrap justify-center gap-2">
                 <button
-                  onClick={() => setInput(t("groupChat.analyzeProject") || "分析一下当前项目状态")}
+                  onClick={() => setInput(t("groupChat.analyzeProject") || "Analyze current project status")}
                   className="rounded-lg border border-border bg-card px-3 py-2 text-xs text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
                 >
-                  {t("groupChat.analyzeProject") || "分析一下当前项目状态"}
+                  {t("groupChat.analyzeProject") || "Analyze current project status"}
                 </button>
                 <button
                   onClick={startMeeting}
                   className="rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-400 transition-colors hover:bg-amber-500/20"
                 >
                   <Play size={12} className="inline mr-1" />
-                  {t("groupChat.beginMeeting") || "开始会议"}
+                  {t("groupChat.beginMeeting") || "Begin Meeting"}
                 </button>
               </div>
             </div>
@@ -639,7 +639,7 @@ export function GroupChatClient({ groupIdPromise }: { groupIdPromise: Promise<{ 
                       <Icon size={14} className={AGENT_COLORS[agent.type]} />
                       <span className="font-medium">{agent.name}</span>
                       <span className="text-[11px] text-muted-foreground">
-                        {agent.type} · {agent.status === "online" ? (t("groupChat.statusOnline") || "在线") : (t("groupChat.statusOffline") || "离线")}
+                        {agent.type} · {agent.status === "online" ? (t("groupChat.statusOnline") || "Online") : (t("groupChat.statusOffline") || "Offline")}
                       </span>
                     </button>
                   );
@@ -658,7 +658,7 @@ export function GroupChatClient({ groupIdPromise }: { groupIdPromise: Promise<{ 
                     handleSend();
                   }
                 }}
-                placeholder={t("groupChat.inputPlaceholder") || "输入消息... 使用 @ 提及特定 Agent"}
+                placeholder={t("groupChat.inputPlaceholder") || "Type a message... use @ to mention a specific Agent"}
                 rows={1}
                 className="max-h-30 min-h-[36px] flex-1 resize-none bg-transparent px-2 text-sm outline-none placeholder:text-muted-foreground"
               />
@@ -678,11 +678,11 @@ export function GroupChatClient({ groupIdPromise }: { groupIdPromise: Promise<{ 
                 {meetingActive ? (
                   <span className="text-amber-400">
                     <Play size={10} className="inline mr-1" />
-                    {t("groupChat.meetingInProgress") || "会议进行中..."}
+                    {t("groupChat.meetingInProgress") || "Meeting in progress..."}
                   </span>
                 ) : (
                   <span>
-                    {t("groupChat.mainAgent") || "主Agent:"} {master?.name ?? (t("groupChat.notSet") || "未设置")} · {t("groupChat.mentionHint") || "使用 @Agent名称 提及特定成员"}
+                    {t("groupChat.mainAgent") || "Main Agent:"} {master?.name ?? (t("groupChat.notSet") || "Not set")} · {t("groupChat.mentionHint") || "Use @AgentName to mention a member"}
                   </span>
                 )}
               </p>
@@ -695,7 +695,7 @@ export function GroupChatClient({ groupIdPromise }: { groupIdPromise: Promise<{ 
                   className="flex items-center gap-1 text-[11px] text-primary hover:underline"
                 >
                   <X size={10} />
-                  {t("groupChat.clearMention") || "清除@提及"}
+                  {t("groupChat.clearMention") || "Clear @mention"}
                 </button>
               )}
             </div>

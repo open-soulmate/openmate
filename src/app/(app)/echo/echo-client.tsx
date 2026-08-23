@@ -201,7 +201,7 @@ export function EchoClient() {
   };
 
   const handleDeleteTemplate = async (id: string) => {
-    if (!confirm(t("echo.confirmDeleteTemplate") || "确定删除此模板？")) return;
+    if (!confirm(t("echo.confirmDeleteTemplate") || "Delete this template?")) return;
     try {
       await fetch(`${apiBase}/api/echo/templates/${id}`, { method: "DELETE" });
       if (selectedTemplate?.template_id === id) setSelectedTemplate(null);
@@ -217,10 +217,10 @@ export function EchoClient() {
   };
 
   const tabs = [
-    { id: "send" as const, label: t("echo.send") || "发送", icon: Send },
-    { id: "templates" as const, label: t("echo.templates") || "模板", icon: FileText },
-    { id: "channels" as const, label: t("echo.t17213") || "渠道", icon: Radio },
-    { id: "history" as const, label: t("echo.history") || "历史", icon: Clock },
+    { id: "send" as const, label: t("echo.send") || "Send Message", icon: Send },
+    { id: "templates" as const, label: t("echo.templates") || "Templates", icon: FileText },
+    { id: "channels" as const, label: t("echo.t17213") || "Channel Management", icon: Radio },
+    { id: "history" as const, label: t("echo.history") || "History", icon: Clock },
   ];
 
   return (
@@ -228,14 +228,14 @@ export function EchoClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Volume2 size={20} className="text-pink-500" />
-          <h1 className="text-lg font-semibold">{t("echo.title") || "回声 · 消息推送"}</h1>
+          <h1 className="text-lg font-semibold">{t("echo.title") || "Echo · Message Push"}</h1>
           <span className="rounded-full bg-pink-500/10 px-2 py-0.5 text-xs font-medium text-pink-500">
-            {t("echo.t83763") || "多渠道"}
+            {t("echo.t83763") || "Message Push"}
           </span>
         </div>
         <button onClick={() => { fetchHealth(); tab === "channels" && fetchChannels(); tab === "history" && fetchHistory(); tab === "templates" && fetchTemplates(); }}
           className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
-          <RefreshCw size={14} /> {t("common.refresh") || "刷新"}
+          <RefreshCw size={14} /> {t("common.refresh") || "Refresh"}
         </button>
       </div>
 
@@ -244,25 +244,25 @@ export function EchoClient() {
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("echo.t38907") || "总消息"}</span>
+              <span className="text-xs text-muted-foreground">{t("echo.t38907") || "Total Messages"}</span>
               <p className="text-2xl font-bold">{health.total_messages || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("echo.success") || "成功"}</span>
+              <span className="text-xs text-muted-foreground">{t("echo.success") || "Success"}</span>
               <p className="text-2xl font-bold text-emerald-500">{health.sent || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("echo.fail") || "失败"}</span>
+              <span className="text-xs text-muted-foreground">{t("echo.fail") || "Failed"}</span>
               <p className="text-2xl font-bold text-red-500">{health.failed || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("echo.channel") || "渠道"}</span>
+              <span className="text-xs text-muted-foreground">{t("echo.channel") || "Channel"}</span>
               <p className="text-2xl font-bold">{health.channels_enabled || 0}/{health.channels_configured || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
-              <span className="text-xs text-muted-foreground">{t("echo.templates") || "模板"}</span>
+              <span className="text-xs text-muted-foreground">{t("echo.templates") || "Templates"}</span>
               <p className="text-2xl font-bold">{health.templates?.total_templates || 0}</p>
-              <p className="text-xs text-muted-foreground mt-0.5">{(t("echo.usageTimes") || "使用 {count} 次").replace("{count}", String(health.templates?.total_usage || 0))}</p>
+              <p className="text-xs text-muted-foreground mt-0.5">{(t("echo.usageTimes") || "Used {{count}} times").replace("{count}", String(health.templates?.total_usage || 0))}</p>
             </div>
           </div>
         )}
@@ -285,28 +285,28 @@ export function EchoClient() {
               <select value={sendChannel} onChange={(e) => setSendChannel(e.target.value)}
                 className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
                 <option value="webhook">Webhook</option>
-                <option value="dingtalk">{t("echo.t83975") || "钉钉"}</option>
-                <option value="wechat_work">{t("echo.t19991") || "企微"}</option>
-                <option value="feishu">{t("echo.t80862") || "飞书"}</option>
+                <option value="dingtalk">{t("echo.t83975") || "DingTalk"}</option>
+                <option value="wechat_work">{t("echo.t19991") || "WeCom"}</option>
+                <option value="feishu">{t("echo.t80862") || "Feishu"}</option>
                 <option value="telegram">Telegram</option>
-                <option value="email">{t("echo.t32383") || "邮件"}</option>
-                <option value="console">{t("echo.t24631") || "控制台"}</option>
+                <option value="email">{t("echo.t32383") || "Email"}</option>
+                <option value="console">{t("echo.t24631") || "Console"}</option>
               </select>
               <input value={sendTarget} onChange={(e) => setSendTarget(e.target.value)}
-                placeholder={t("echo.t63160") || "目标地址（可选）"} className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("echo.t63160") || "Target address (optional)"} className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
             </div>
             <input value={sendTitle} onChange={(e) => setSendTitle(e.target.value)}
-              placeholder={t("echo.t20317") || "消息标题"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+              placeholder={t("echo.t20317") || "Message title"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
             <textarea value={sendContent} onChange={(e) => setSendContent(e.target.value)}
-              placeholder={t("echo.t31187") || "消息内容"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm min-h-[100px] resize-none" />
+              placeholder={t("echo.t31187") || "Message content"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm min-h-[100px] resize-none" />
             <div className="flex gap-2">
               <button onClick={handleSend}
                 className="flex items-center gap-2 rounded-lg bg-pink-500 px-4 py-2 text-sm text-white hover:bg-pink-600">
-                <Send size={14} /> {t("echo.t72588") || "发送"}
+                <Send size={14} /> {t("echo.t72588") || "Send"}
               </button>
               <button onClick={handleBroadcast}
                 className="flex items-center gap-2 rounded-lg border border-pink-500/30 px-4 py-2 text-sm text-pink-600 hover:bg-pink-500/10">
-                <Radio size={14} /> {t("echo.t63980") || "广播"}
+                <Radio size={14} /> {t("echo.t63980") || "Broadcast all channels"}
               </button>
             </div>
             {sendResult && (
@@ -322,10 +322,10 @@ export function EchoClient() {
         {tab === "templates" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium">{t("echo.messageTemplates") || "消息模板"}</h3>
+              <h3 className="text-sm font-medium">{t("echo.messageTemplates") || "Message Templates"}</h3>
               <button onClick={() => setShowCreateTemplate(true)}
                 className="flex items-center gap-1.5 rounded-lg bg-pink-500 px-3 py-1.5 text-sm text-white hover:bg-pink-600">
-                <Plus size={14} /> {t("echo.createTemplate") || "新建模板"}
+                <Plus size={14} /> {t("echo.createTemplate") || "New Template"}
               </button>
             </div>
 
@@ -350,15 +350,15 @@ export function EchoClient() {
                     </div>
                     <p className="text-xs text-muted-foreground line-clamp-1">{tpl.description}</p>
                     <div className="flex items-center gap-3 mt-1.5 text-[10px] text-muted-foreground">
-                      <span>{(t("echo.variableCount") || "变量: {count}").replace("{count}", String(tpl.variables.length))}</span>
-                      <span>{(t("echo.usageCount") || "使用: {count}").replace("{count}", String(tpl.usage_count))}</span>
+                      <span>{(t("echo.variableCount") || "Variables: {{count}}").replace("{count}", String(tpl.variables.length))}</span>
+                      <span>{(t("echo.usageCount") || "Used: {{count}}").replace("{count}", String(tpl.usage_count))}</span>
                     </div>
                   </div>
                 ))}
                 {templates.length === 0 && (
                   <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
                     <FileText size={32} className="mb-2 opacity-30" />
-                    <p className="text-sm">{t("echo.noTemplates") || "暂无模板"}</p>
+                    <p className="text-sm">{t("echo.noTemplates") || "No templates yet"}</p>
                   </div>
                 )}
               </div>
@@ -386,16 +386,16 @@ export function EchoClient() {
 
                   {/* Template Preview */}
                   <div className="rounded-lg border border-border bg-muted/20 p-3">
-                    <div className="text-xs text-muted-foreground mb-1">{t("echo.titleTemplate") || "标题模板"}</div>
+                    <div className="text-xs text-muted-foreground mb-1">{t("echo.titleTemplate") || "Title Template"}</div>
                     <div className="text-sm font-mono">{selectedTemplate.title_template}</div>
-                    <div className="text-xs text-muted-foreground mt-2 mb-1">{t("echo.contentTemplate") || "内容模板"}</div>
+                    <div className="text-xs text-muted-foreground mt-2 mb-1">{t("echo.contentTemplate") || "Content Template"}</div>
                     <pre className="text-xs font-mono whitespace-pre-wrap">{selectedTemplate.content_template}</pre>
                   </div>
 
                   {/* Variables Input */}
                   {selectedTemplate.variables.length > 0 && (
                     <div className="rounded-xl border border-border p-4 space-y-3">
-                      <h4 className="text-sm font-medium">{t("echo.fillVariables") || "填充变量"}</h4>
+                      <h4 className="text-sm font-medium">{t("echo.fillVariables") || "Fill Variables"}</h4>
                       <div className="grid grid-cols-2 gap-3">
                         {selectedTemplate.variables.map((v) => (
                           <div key={v}>
@@ -418,14 +418,14 @@ export function EchoClient() {
                       className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
                       <option value="console">Console</option>
                       <option value="webhook">Webhook</option>
-                      <option value="dingtalk">{t("echo.t83975") || "钉钉"}</option>
-                      <option value="wechat_work">{t("echo.t19991") || "企微"}</option>
-                      <option value="feishu">{t("echo.t80862") || "飞书"}</option>
+                      <option value="dingtalk">{t("echo.t83975") || "DingTalk"}</option>
+                      <option value="wechat_work">{t("echo.t19991") || "WeCom"}</option>
+                      <option value="feishu">{t("echo.t80862") || "Feishu"}</option>
                       <option value="telegram">Telegram</option>
-                      <option value="email">{t("echo.t32383") || "邮件"}</option>
+                      <option value="email">{t("echo.t32383") || "Email"}</option>
                     </select>
                     <input value={sendTarget} onChange={(e) => setSendTarget(e.target.value)}
-                      placeholder={t("echo.t63160") || "目标地址（可选）"} className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("echo.t63160") || "Target address (optional)"} className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   </div>
 
                   {/* Action Buttons */}
@@ -433,18 +433,18 @@ export function EchoClient() {
                     <button onClick={() => handleTemplateSend(selectedTemplate)} disabled={sendingTemplate}
                       className="flex items-center gap-2 rounded-lg bg-pink-500 px-4 py-2 text-sm text-white hover:bg-pink-600 disabled:opacity-50">
                       {sendingTemplate ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
-                      {t("echo.t72588") || "发送"}
+                      {t("echo.t72588") || "Send"}
                     </button>
                     <button onClick={() => handleTemplatePreview(selectedTemplate)}
                       className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">
-                      <Eye size={14} /> {t("echo.preview") || "预览"}
+                      <Eye size={14} /> {t("echo.preview") || "Preview"}
                     </button>
                   </div>
 
                   {/* Preview Result */}
                   {previewResult && (
                     <div className="rounded-lg border border-pink-500/30 bg-pink-500/5 p-4 space-y-2">
-                      <div className="text-xs text-pink-500 font-medium">{t("echo.previewResult") || "预览结果"}</div>
+                      <div className="text-xs text-pink-500 font-medium">{t("echo.previewResult") || "Preview Result"}</div>
                       <div className="font-medium">{previewResult.title}</div>
                       <pre className="text-xs whitespace-pre-wrap text-muted-foreground">{previewResult.content}</pre>
                     </div>
@@ -468,34 +468,34 @@ export function EchoClient() {
             {showCreateTemplate && (
               <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
                 <div className="w-full max-w-lg rounded-xl border border-border bg-card p-6 space-y-4">
-                  <h3 className="font-semibold">{t("echo.createNewTemplate") || "新建消息模板"}</h3>
+                  <h3 className="font-semibold">{t("echo.createNewTemplate") || "New Message Template"}</h3>
                   <div className="grid grid-cols-2 gap-3">
                     <input value={newTplName} onChange={(e) => setNewTplName(e.target.value)}
-                      placeholder={t("echo.templateName") || "模板名称"} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("echo.templateName") || "Template Name"} className="rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                     <div className="flex gap-2">
                       <input value={newTplIcon} onChange={(e) => setNewTplIcon(e.target.value)}
-                        placeholder={t("echo.icon") || "图标"} className="w-16 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                        placeholder={t("echo.icon") || "Icon"} className="w-16 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                       <select value={newTplCategory} onChange={(e) => setNewTplCategory(e.target.value)}
                         className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                        <option value="custom">{t("echo.custom") || "自定义"}</option>
-                        <option value="task">{t("echo.task") || "任务"}</option>
-                        <option value="alert">{t("echo.alert") || "告警"}</option>
-                        <option value="system">{t("echo.system") || "系统"}</option>
+                        <option value="custom">{t("echo.custom") || "Custom"}</option>
+                        <option value="task">{t("echo.task") || "Task"}</option>
+                        <option value="alert">{t("echo.alert") || "Alert"}</option>
+                        <option value="system">{t("echo.system") || "System"}</option>
                       </select>
                     </div>
                   </div>
                   <input value={newTplDesc} onChange={(e) => setNewTplDesc(e.target.value)}
-                    placeholder={t("echo.descriptionOptional") || "描述（可选）"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                    placeholder={t("echo.descriptionOptional") || "Description (optional)"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   <input value={newTplTitle} onChange={(e) => setNewTplTitle(e.target.value)}
-                    placeholder={t("echo.titleTemplatePlaceholder") || "标题模板，如: ✅ 任务完成: {{task_name}}"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                    placeholder={t("echo.titleTemplatePlaceholder") || "Title template, e.g.: ✅ Task complete: {{task_name}}"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                   <textarea value={newTplContent} onChange={(e) => setNewTplContent(e.target.value)}
-                    placeholder={t("echo.contentTemplatePlaceholder") || "内容模板，支持 {{variable}} 变量"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm min-h-[120px] resize-none" />
-                  <p className="text-xs text-muted-foreground">{t("echo.variableHelp") || "使用 {{变量名}} 语法定义变量，如 {{task_name}}, {{duration}}"}</p>
+                    placeholder={t("echo.contentTemplatePlaceholder") || "Content template, supports {{variable}} variables"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm min-h-[120px] resize-none" />
+                  <p className="text-xs text-muted-foreground">{t("echo.variableHelp") || "Use {{variable_name}} syntax to define variables, e.g. {{task_name}}, {{duration}}"}</p>
                   <div className="flex justify-end gap-2">
                     <button onClick={() => setShowCreateTemplate(false)}
-                      className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t("echo.cancel") || "取消"}</button>
+                      className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t("echo.cancel") || "Cancel"}</button>
                     <button onClick={handleCreateTemplate}
-                      className="rounded-lg bg-pink-500 px-4 py-2 text-sm text-white hover:bg-pink-600">{t("echo.create") || "创建"}</button>
+                      className="rounded-lg bg-pink-500 px-4 py-2 text-sm text-white hover:bg-pink-600">{t("echo.create") || "Create"}</button>
                   </div>
                 </div>
               </div>
@@ -528,7 +528,7 @@ export function EchoClient() {
               <button onClick={fetchChannelHealth} disabled={testingHealth}
                 className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-sm text-white hover:bg-emerald-600 disabled:opacity-50">
                 {testingHealth ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle size={14} />}
-                {t("echo.testHealth") || "测试连通性"}
+                {t("echo.testHealth") || "Test Health"}
               </button>
             </div>
             {/* Channel Health Summary */}
@@ -538,7 +538,7 @@ export function EchoClient() {
                 <div className="flex items-center gap-2">
                   {channelHealth.status === "ok" ? <CheckCircle size={14} className="text-emerald-500" /> : <XCircle size={14} className="text-yellow-500" />}
                   <span className="font-medium">
-                    {channelHealth.healthy}/{channelHealth.total} {t("echo.channelsHealthy") || "渠道健康"}
+                    {channelHealth.healthy}/{channelHealth.total} {t("echo.channelsHealthy") || "Channels Healthy"}
                   </span>
                 </div>
               </div>
@@ -563,16 +563,16 @@ export function EchoClient() {
                         </span>
                       )}
                       <span className={cn("text-xs", ch.enabled ? "text-emerald-500" : "text-muted-foreground")}>
-                        {ch.enabled ? t("echo.enabled") || "已启用" : t("echo.t00979") || "未启用"}
+                        {ch.enabled ? t("echo.enabled") || "Enabled" : t("echo.t00979") || "Disabled"}
                       </span>
                     </div>
                   </div>
-                  {ch.has_endpoint && <p className="text-xs text-muted-foreground font-mono">{t("echo.t53402") || "已配置Endpoint"}</p>}
-                  {ch.has_token && <p className="text-xs text-muted-foreground">{t("echo.t36791") || "已配置Token"}</p>}
+                  {ch.has_endpoint && <p className="text-xs text-muted-foreground font-mono">{t("echo.t53402") || "Endpoint configured"}</p>}
+                  {ch.has_token && <p className="text-xs text-muted-foreground">{t("echo.t36791") || "Token configured"}</p>}
                   {healthInfo?.error && <p className="text-xs text-red-400 mt-1">{healthInfo.error}</p>}
                   <button onClick={() => handleConfigure(ch.channel)}
                     className="mt-2 rounded-lg border border-border px-3 py-1 text-xs hover:bg-muted">
-                    {t("echo.t45063") || "保存配置"}
+                    {t("echo.t45063") || "Update config"}
                   </button>
                 </div>
                 );
@@ -587,15 +587,15 @@ export function EchoClient() {
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("echo.time") || "时间"}</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("echo.channel") || "渠道"}</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("echo.title_label") || "标题"}</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("echo.status") || "状态"}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("echo.time") || "Time"}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("echo.channel") || "Channel"}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("echo.title_label") || "Title"}</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("echo.status") || "Status"}</th>
                 </tr>
               </thead>
               <tbody>
                 {history.length === 0 ? (
-                  <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground text-xs">{t("echo.t98064") || "暂无消息记录"}</td></tr>
+                  <tr><td colSpan={4} className="px-4 py-8 text-center text-muted-foreground text-xs">{t("echo.t98064") || "No message history"}</td></tr>
                 ) : history.map((m, i) => (
                   <tr key={m.msg_id || i} className="border-b border-border last:border-0 hover:bg-muted/30">
                     <td className="px-4 py-2.5 text-xs text-muted-foreground">{new Date(m.timestamp * 1000).toLocaleString(undefined)}</td>

@@ -139,7 +139,7 @@ export function CreateCourseClient() {
           const err = await res.json();
           console.error("AI generation failed:", err);
           // Fallback to manual
-          alert(t("createCourse.aiGenFailed", { detail: err.detail || (t("createCourse.checkGland") || "请检查Gland配置") }) || `AI生成失败: ${err.detail || "请检查Gland配置"}`);
+          alert(t("createCourse.aiGenFailed", { detail: err.detail || (t("createCourse.checkGland") || "Please check Gland configuration") }) || `AI生成失败: ${err.detail || "Please check Gland configuration"}`);
         }
       } else {
         // Manual generation
@@ -379,7 +379,7 @@ export function CreateCourseClient() {
 
           {/* Generation Mode */}
           <section>
-            <label className="mb-2 block text-sm font-medium">{t("createCourse.genMode") || "生成方式"}</label>
+            <label className="mb-2 block text-sm font-medium">{t("createCourse.genMode") || "Generation Method"}</label>
             <div className="flex gap-3">
               <button
                 onClick={() => setGenMode("ai")}
@@ -391,8 +391,8 @@ export function CreateCourseClient() {
               >
                 <Sparkles size={16} />
                 <div className="text-left">
-                  <div className="font-medium">{t("createCourse.aiAutoGen") || "AI 自动生成"}</div>
-                  <div className="text-xs opacity-70">{t("createCourse.aiAutoGenDesc") || "由LLM生成完整课程内容和测验"}</div>
+                  <div className="font-medium">{t("createCourse.aiAutoGen") || "AI Auto Generate"}</div>
+                  <div className="text-xs opacity-70">{t("createCourse.aiAutoGenDesc") || "LLM generates complete course content and quizzes"}</div>
                 </div>
               </button>
               <button
@@ -405,8 +405,8 @@ export function CreateCourseClient() {
               >
                 <BookOpen size={16} />
                 <div className="text-left">
-                  <div className="font-medium">{t("createCourse.manualCreate") || "手动创建"}</div>
-                  <div className="text-xs opacity-70">{t("createCourse.manualCreateDesc") || "创建课程框架，手动填充内容"}</div>
+                  <div className="font-medium">{t("createCourse.manualCreate") || "Manual Create"}</div>
+                  <div className="text-xs opacity-70">{t("createCourse.manualCreateDesc") || "Create course framework, fill content manually"}</div>
                 </div>
               </button>
             </div>
@@ -416,7 +416,7 @@ export function CreateCourseClient() {
           {genMode === "ai" && (
             <section className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-2 block text-sm font-medium">{t("learn.t10672") || "章节数量"}</label>
+                <label className="mb-2 block text-sm font-medium">{t("learn.t10672") || "Course"}</label>
                 <select
                   value={numChapters}
                   onChange={(e) => setNumChapters(parseInt(e.target.value))}
@@ -428,15 +428,15 @@ export function CreateCourseClient() {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">{t("learn.t76433") || "难度"}</label>
+                <label className="mb-2 block text-sm font-medium">{t("learn.t76433") || "Completed"}</label>
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
                   className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
                 >
-                  <option value="beginner">{t("learn.t03149") || "入门"}</option>
-                  <option value="intermediate">{t("learn.t56231") || "中级"}</option>
-                  <option value="advanced">{t("learn.t16459") || "高级"}</option>
+                  <option value="beginner">{t("learn.t03149") || "Learn"}</option>
+                  <option value="intermediate">{t("learn.t56231") || "Start Learning"}</option>
+                  <option value="advanced">{t("learn.t16459") || "Progress"}</option>
                 </select>
               </div>
             </section>

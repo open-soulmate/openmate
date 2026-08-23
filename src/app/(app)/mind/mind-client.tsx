@@ -187,10 +187,10 @@ export function MindClient() {
               <div className="rounded-xl border border-border bg-card p-5 space-y-2">
                 <h3 className="font-semibold text-sm">{t("mind.quickTest")}</h3>
                 {[
-                  t("mind.sample1") || "太棒了！这个功能终于实现了，我好开心！",
-                  t("mind.sample2") || "这个bug让我非常头疼，已经折腾了一整天。",
-                  t("mind.sample3") || "期待明天的发布会，希望一切顺利。",
-                  t("mind.sample4") || "这个问题我不太理解，能再解释一下吗？",
+                  t("mind.sample1") || "This feature is finally done, I am so happy!",
+                  t("mind.sample2") || "This bug is driving me crazy, I have been working on it all day.",
+                  t("mind.sample3") || "Looking forward to tomorrow's launch, hope everything goes well.",
+                  t("mind.sample4") || "I do not quite understand this issue, can you explain again?",
                   "Thank you so much, this is amazing work!",
                 ].map((s, i) => (
                   <button key={i} onClick={() => setEmotionText(s)}

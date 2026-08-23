@@ -153,7 +153,7 @@ export function WorkflowBuilderClient() {
   );
 
   const handleCreateNew = useCallback(() => {
-    const id = useWorkflowStore.getState().createWorkflow(t("workflowBuilder.newWorkflow") || "新建工作流");
+    const id = useWorkflowStore.getState().createWorkflow(t("workflowBuilder.newWorkflow") || "New Workflow");
     if (id) {
       const wf = useWorkflowStore.getState().workflows.find((w) => w.id === id);
       if (wf) {
@@ -223,10 +223,10 @@ export function WorkflowBuilderClient() {
               <div className="text-center">
                 <div className="mb-3 text-4xl opacity-20">⚡</div>
                 <p className="text-sm font-medium text-muted-foreground">
-                  {t("workflowBuilder.selectOrCreate") || "选择或创建工作流"}
+                  {t("workflowBuilder.selectOrCreate") || "Select or Create Workflow"}
                 </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  {t("workflowBuilder.selectHint") || "从左侧列表选择，或点击工具栏「新建」"}
+                  {t("workflowBuilder.selectHint") || "Select from the left panel, or click \"New\" in the toolbar"}
                 </p>
               </div>
             </div>
