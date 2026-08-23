@@ -81,7 +81,9 @@
     "soul": "Soul Management",
     "somaAdmin": "Soma Management",
     "kbSharing": "KB Sharing",
-    "knowledgeRequests": "KB Requests"
+    "knowledgeRequests": "KB Requests",
+    "enterprise": "Enterprise",
+    "sessions": "Sessions"
   },
   "dashboard": {
     "title": "System Overview",
