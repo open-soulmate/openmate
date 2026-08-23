@@ -5710,7 +5710,11 @@
     "noRolesDefined": "ロールがまだ定義されていません。上で作成してください。",
     "filterByAction": "アクションでフィルター...",
     "refresh": "更新",
-    "noAudit": "監査記録がありません"
+    "noAudit": "監査記録がありません",
+    "permRead": "読み取り",
+    "permWrite": "書き込み",
+    "permDelete": "削除",
+    "permAdmin": "管理"
   },
   "sessions": {
     "title": "セッション管理",
@@ -5720,6 +5724,7 @@
     "noSessions": "セッションが見つかりません",
     "confirmDelete": "確認",
     "cancel": "キャンセル",
-    "noMessages": "このセッションにメッセージがありません"
+    "noMessages": "このセッションにメッセージがありません",
+    "messages": "メッセージ"
   }
 }
