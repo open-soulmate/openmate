@@ -145,7 +145,7 @@ export function ReflexClient() {
     try {
       const res = await fetch(`${apiBase}/api/reflex/cleanup`, { method: "POST" });
       const data = await res.json();
-      alert(`清理完成: 移除${data.removed}条过期条目`);
+      alert(t("reflex.cleanupComplete", { count: data.removed }));
       fetchEntries(); fetchStats();
     } catch {}
   };

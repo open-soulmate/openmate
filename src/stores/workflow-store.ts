@@ -281,7 +281,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
     const dup: WorkflowDefinition = {
       ...wf,
       id: newId,
-      name: `${wf.name} (副本)`,
+      name: `${wf.name} (copy)`,
       nodes: structuredClone(wf.nodes),
       edges: structuredClone(wf.edges),
       createdAt: now,
@@ -309,7 +309,7 @@ export const useWorkflowStore = create<WorkflowState>((set, get) => ({
       const wf: WorkflowDefinition = {
         ...parsed,
         id,
-        name: `${parsed.name || "Imported Workflow"} (导入)`,
+        name: `${parsed.name || "Imported Workflow"} (imported)`,
         createdAt: now,
         updatedAt: now,
         version: 1,

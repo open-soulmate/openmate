@@ -157,10 +157,10 @@ export function WorkspaceClient() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-lg font-semibold text-foreground">
-              {t("workspace.listTitle", "文件浏览器")}
+              {t("workspace.listTitle", "Workspaces")}
             </h1>
             <p className="text-xs text-muted-foreground mt-0.5">
-              {t("workspace.listDescription", "浏览和管理服务器文件系统")}
+              {t("workspace.listDescription", "Browse and manage server file system")}
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -169,7 +169,7 @@ export function WorkspaceClient() {
               className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground hover:bg-accent transition-colors"
             >
               <FolderPlus size={14} />
-              {t("workspace.create", "新建目录")}
+              {t("workspace.create", "Create Directory")}
             </button>
             <button
               onClick={() => fetchDir(currentPath)}
@@ -177,7 +177,7 @@ export function WorkspaceClient() {
               className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-foreground hover:bg-accent transition-colors disabled:opacity-50"
             >
               <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
-              {t("workspace.refresh", "刷新")}
+              {t("workspace.refresh", "Refresh")}
             </button>
           </div>
         </div>
@@ -214,7 +214,7 @@ export function WorkspaceClient() {
             className="mb-3 flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             <ArrowLeft size={14} />
-            {t("workspace.back", "返回上级")}
+            {t("workspace.back", "Back")}
           </button>
         )}
 
@@ -231,7 +231,7 @@ export function WorkspaceClient() {
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 size={24} className="animate-spin text-muted-foreground" />
             <p className="mt-3 text-xs text-muted-foreground">
-              {t("workspace.loading", "加载中...")}
+              {t("workspace.loading", "Loading...")}
             </p>
           </div>
         ) : entries.length === 0 ? (
@@ -240,16 +240,16 @@ export function WorkspaceClient() {
               <FolderOpen size={28} className="text-muted-foreground" />
             </div>
             <h3 className="mt-4 text-sm font-medium text-foreground">
-              {t("workspace.empty", "目录为空")}
+              {t("workspace.empty", "Directory is empty")}
             </h3>
           </div>
         ) : (
           <div className="rounded-lg border border-border overflow-hidden">
             {/* Table header */}
             <div className="grid grid-cols-[1fr_100px_140px] bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border">
-              <span>{t("workspace.name", "名称")}</span>
-              <span className="text-right">{t("workspace.size", "大小")}</span>
-              <span className="text-right">{t("workspace.modified", "修改时间")}</span>
+              <span>{t("workspace.name", "Name")}</span>
+              <span className="text-right">{t("workspace.size", "Size")}</span>
+              <span className="text-right">{t("workspace.modified", "Modified")}</span>
             </div>
             {/* Rows */}
             {entries.map((entry) => (
@@ -290,15 +290,15 @@ export function WorkspaceClient() {
       <Dialog
         open={showMkdir}
         onClose={() => { setShowMkdir(false); setMkdirName(""); }}
-        title={t("workspace.createDir", "新建目录")}
-        description={t("workspace.createDirDesc", `在 ${currentPath} 下创建新目录`)}
+        title={t("workspace.createDir", "Create Directory")}
+        description={t("workspace.createDirDesc", `Create new directory in ${currentPath}`)}
         footer={
           <>
             <button
               onClick={() => { setShowMkdir(false); setMkdirName(""); }}
               className="rounded-lg border border-border px-3 py-1.5 text-xs text-foreground hover:bg-accent"
             >
-              {t("common.cancel", "取消")}
+              {t("common.cancel", "Cancel")}
             </button>
             <button
               onClick={handleMkdir}
@@ -308,7 +308,7 @@ export function WorkspaceClient() {
               {mkdirLoading ? (
                 <Loader2 size={14} className="animate-spin" />
               ) : (
-                t("workspace.createAction", "创建")
+                t("workspace.createAction", "Create")
               )}
             </button>
           </>
@@ -316,14 +316,14 @@ export function WorkspaceClient() {
       >
         <div>
           <label className="mb-1.5 block text-xs font-medium text-foreground">
-            {t("workspace.dirName", "目录名称")}
+            {t("workspace.dirName", "Directory Name")}
           </label>
           <input
             type="text"
             value={mkdirName}
             onChange={(e) => setMkdirName(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleMkdir()}
-            placeholder={t("workspace.newFolder", "新建文件夹")}
+            placeholder={t("workspace.newFolder", "New Folder")}
             className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
             autoFocus
           />

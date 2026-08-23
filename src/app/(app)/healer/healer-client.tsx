@@ -308,7 +308,7 @@ export function HealerClient() {
                     )}
                     {r.action_taken !== "none" && (
                       <div>
-                        <span className="text-xs font-medium text-muted-foreground">{t("healer.healAction")}动作</span>
+                        <span className="text-xs font-medium text-muted-foreground">{t("healer.healActionLabel")}</span>
                         <p className="text-xs mt-1">
                           {r.action_taken} → {r.action_success ? `✅ ${t("healer.actionSuccess")}` : `❌ ${t("healer.actionFailed")}`}
                         </p>
@@ -361,7 +361,7 @@ export function HealerClient() {
                 <p className="text-2xl font-bold">{stats.total_diagnoses}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
-                <span className="text-xs text-muted-foreground">已{t("healer.healAction")}</span>
+                <span className="text-xs text-muted-foreground">{t("healer.healedLabel")}</span>
                 <p className="text-2xl font-bold text-emerald-500">{stats.healed}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
