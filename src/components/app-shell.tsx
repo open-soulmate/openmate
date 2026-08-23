@@ -20,6 +20,7 @@ import {
   History,
   Gauge,
   BarChart3,
+  Package,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getUserName, getApiBaseUrl } from "@/lib/api-client";
@@ -199,6 +200,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         { href: "/ai-engine", label: t("nav.aiEngine", "AI Engine"), icon: Cpu },
         { href: "/healer", label: t("nav.healer"), icon: Pill },
         { href: "/topology", label: t("nav.topology"), icon: Network },
+        { href: "/registry", label: t("nav.registry", "Registry"), icon: Package },
         { href: "/trajectory", label: t("nav.trajectory"), icon: Activity },
         { href: "/timeline", label: t("nav.timeline"), icon: History },
         { href: "/changelog", label: t("nav.changelog"), icon: ScrollText },
