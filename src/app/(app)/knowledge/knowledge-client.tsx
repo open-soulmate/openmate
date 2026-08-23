@@ -197,9 +197,9 @@ export function KnowledgeClient() {
     <div className="flex items-center justify-center h-full">
       <div className="p-6 rounded-lg border bg-card w-80">
         <h2 className="text-lg font-bold mb-4">{isRegister ? (t("knowledge.registerAccount") || '注册账号') : (t("knowledge.login1") || '登录')}</h2>
-        <input value={loginUser} onChange={e => setLoginUser(e.target.value)} placeholder={t("knowledge.username1") || "用户名"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
-        <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder={t("knowledge.password1") || "密码"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
-        {isRegister && <input value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder={t("knowledge.emailPlaceholder") || "邮箱（可选）"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />}
+        <input value={loginUser} onChange={e => setLoginUser(e.target.value)} placeholder={t("knowledge.username1") || "Username"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
+        <input type="password" value={loginPass} onChange={e => setLoginPass(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleLogin()} placeholder={t("knowledge.password1") || "Password"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
+        {isRegister && <input value={loginEmail} onChange={e => setLoginEmail(e.target.value)} placeholder={t("knowledge.emailPlaceholder") || "Email (optional)"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />}
         {error && <p className="text-xs text-destructive mb-2">{error}</p>}
         <button onClick={handleLogin} className="w-full px-3 py-2 rounded bg-primary text-primary-foreground text-sm mb-2">{isRegister ? (t("knowledge.register") || '注册') : (t("knowledge.login2") || '登录')}</button>
         <button onClick={() => { setIsRegister(!isRegister); setError(''); }} className="w-full px-3 py-2 rounded border text-sm text-muted-foreground">{isRegister ? (t("knowledge.haveAccount") || '已有账号？去登录') : (t("knowledge.noAccount") || '没有账号？去注册')}</button>
@@ -219,8 +219,8 @@ export function KnowledgeClient() {
         <h1 className="text-2xl font-bold flex items-center gap-2"><BookOpen className="w-6 h-6" /> {t('knowledge.title')}</h1>
         <div className="flex gap-2">
           {items.length > 0 && <button onClick={handleDedup} disabled={deduping} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Sparkles className="w-4 h-4" /> {deduping ? (t("knowledge.deduping") || '去重中...') : (t("knowledge.smartDedup") || '智能去重')}</button>}
-          <button onClick={() => setShowRequest(!showRequest)} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Send className="w-4 h-4" /> {t("knowledge.kbApply") || "申请知识库"}</button>
-          <button onClick={() => { setShowUpload(!showUpload); setShowCreate(false); }} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Upload className="w-4 h-4" /> {t("knowledge.fileImport") || "导入文件"}</button>
+          <button onClick={() => setShowRequest(!showRequest)} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Send className="w-4 h-4" /> {t("knowledge.kbApply") || "Apply for KB"}</button>
+          <button onClick={() => { setShowUpload(!showUpload); setShowCreate(false); }} className="px-3 py-2 rounded-lg border text-sm flex items-center gap-1 hover:bg-muted"><Upload className="w-4 h-4" /> {t("knowledge.fileImport") || "Import Files"}</button>
           <button onClick={() => { setShowCreate(!showCreate); setShowUpload(false); }} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm flex items-center gap-1"><Plus className="w-4 h-4" /> {t('knowledge.create')}</button>
         </div>
       </div>
@@ -234,12 +234,12 @@ export function KnowledgeClient() {
       {/* 申请知识库表单 */}
       {showRequest && (
         <div className="mb-6 p-4 rounded-lg border bg-card">
-          <h3 className="font-medium mb-2">{t("knowledge.createKBApply") || "申请创建知识库"}</h3>
-          <p className="text-xs text-muted-foreground mb-3">{t("knowledge.applyDesc") || "提交申请后，管理员将在OpenSoul后台审批，审批通过后自动创建。"}</p>
-          <input value={reqName} onChange={e => setReqName(e.target.value)} placeholder={t("knowledge.kbNamePlaceholder") || "知识库名称"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
-          <textarea value={reqDesc} onChange={e => setReqDesc(e.target.value)} placeholder={t("knowledge.kbDescPlaceholder") || "描述（用途、内容范围等）"} rows={2} className="w-full mb-3 px-3 py-2 rounded border bg-background text-sm resize-none" />
+          <h3 className="font-medium mb-2">{t("knowledge.createKBApply") || "Apply to Create KB"}</h3>
+          <p className="text-xs text-muted-foreground mb-3">{t("knowledge.applyDesc") || "After submission, admin will review in OpenSoul backend. KB will be created automatically upon approval."}</p>
+          <input value={reqName} onChange={e => setReqName(e.target.value)} placeholder={t("knowledge.kbNamePlaceholder") || "KB Name"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
+          <textarea value={reqDesc} onChange={e => setReqDesc(e.target.value)} placeholder={t("knowledge.kbDescPlaceholder") || "Description (usage, content scope, etc.)"} rows={2} className="w-full mb-3 px-3 py-2 rounded border bg-background text-sm resize-none" />
           <div className="flex gap-2">
-            <button onClick={handleKbRequest} className="px-4 py-2 rounded bg-primary text-primary-foreground text-sm">{t("knowledge.submitApply") || "提交申请"}</button>
+            <button onClick={handleKbRequest} className="px-4 py-2 rounded bg-primary text-primary-foreground text-sm">{t("knowledge.submitApply") || "Submit"}</button>
             <button onClick={() => setShowRequest(false)} className="px-4 py-2 rounded border text-sm">{t('common.cancel')}</button>
           </div>
         </div>
@@ -249,10 +249,10 @@ export function KnowledgeClient() {
       {showUpload && (
         <div className="mb-6 p-4 rounded-lg border bg-card">
           <div className="flex items-center justify-between mb-3">
-            <h3 className="font-medium flex items-center gap-2"><Upload className="w-4 h-4" /> {t("knowledge.importToKB") || "导入文件到知识库"}</h3>
+            <h3 className="font-medium flex items-center gap-2"><Upload className="w-4 h-4" /> {t("knowledge.importToKB") || "Import Files to KB"}</h3>
             <button onClick={() => { setShowUpload(false); setUploadFiles([]); setUploadResult(''); }} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
           </div>
-          <p className="text-xs text-muted-foreground mb-3">{t("knowledge.fileImportDesc") || "支持 PDF、DOCX、TXT、Markdown、HTML、CSV、JSON、代码文件等。文件将被自动解析、分块并建立向量索引。"}</p>
+          <p className="text-xs text-muted-foreground mb-3">{t("knowledge.fileImportDesc") || "Supports PDF, DOCX, TXT, Markdown, HTML, CSV, JSON, code files etc. Files will be auto-parsed, chunked and vector-indexed."}</p>
 
           {/* Drop zone */}
           <div
@@ -265,8 +265,8 @@ export function KnowledgeClient() {
             }`}
           >
             <Upload className="w-8 h-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">{t("knowledge.dragDrop") || "拖拽文件到这里，或点击选择文件"}</p>
-            <p className="text-xs text-muted-foreground/70 mt-1">{t("knowledge.uploadLimit") || "支持批量上传，单文件最大 50MB"}</p>
+            <p className="text-sm text-muted-foreground">{t("knowledge.dragDrop") || "Drag files here, or click to select"}</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">{t("knowledge.uploadLimit") || "Batch upload supported, max 50MB per file"}</p>
             <input
               ref={fileInputRef}
               type="file"
@@ -281,8 +281,8 @@ export function KnowledgeClient() {
           {uploadFiles.length > 0 && (
             <div className="mb-3">
               <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium">{uploadFiles.length} {t("knowledge.filesSelected", { count: uploadFiles.length }) || "个文件已选择"}</span>
-                <button onClick={() => setUploadFiles([])} className="text-xs text-muted-foreground hover:text-destructive">{t("knowledge.clearAll") || "清空"}</button>
+                <span className="text-sm font-medium">{uploadFiles.length} {t("knowledge.filesSelected", { count: uploadFiles.length }) || "{{count}} files selected"}</span>
+                <button onClick={() => setUploadFiles([])} className="text-xs text-muted-foreground hover:text-destructive">{t("knowledge.clearAll") || "Clear All"}</button>
               </div>
               <div className="max-h-40 overflow-y-auto space-y-1">
                 {uploadFiles.map((file, i) => (
@@ -303,7 +303,7 @@ export function KnowledgeClient() {
           <input
             value={uploadTags}
             onChange={e => setUploadTags(e.target.value)}
-            placeholder={t("knowledge.tagPlaceholder") || "标签（可选，逗号分隔，如：技术文档,2024）"}
+            placeholder={t("knowledge.tagPlaceholder") || "Tags (optional, comma-separated)"}
             className="w-full mb-3 px-3 py-2 rounded border bg-background text-sm"
           />
 
@@ -337,8 +337,8 @@ export function KnowledgeClient() {
       {/* 新建知识条目 */}
       {showCreate && (
         <div className="mb-6 p-4 rounded-lg border bg-card">
-          <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder={t("knowledge.kbTitlePlaceholder") || "知识条目标题"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
-          <textarea value={newContent} onChange={e => setNewContent(e.target.value)} placeholder={t("knowledge.kbContentPlaceholder") || "知识内容"} rows={4} className="w-full mb-3 px-3 py-2 rounded border bg-background text-sm resize-none" />
+          <input value={newTitle} onChange={e => setNewTitle(e.target.value)} placeholder={t("knowledge.kbTitlePlaceholder") || "Knowledge entry title"} className="w-full mb-2 px-3 py-2 rounded border bg-background text-sm" />
+          <textarea value={newContent} onChange={e => setNewContent(e.target.value)} placeholder={t("knowledge.kbContentPlaceholder") || "Knowledge content"} rows={4} className="w-full mb-3 px-3 py-2 rounded border bg-background text-sm resize-none" />
           <div className="flex gap-2">
             <button onClick={handleCreate} className="px-4 py-2 rounded bg-primary text-primary-foreground text-sm">{t('common.create')}</button>
             <button onClick={() => setShowCreate(false)} className="px-4 py-2 rounded border text-sm">{t('common.cancel')}</button>
@@ -351,7 +351,7 @@ export function KnowledgeClient() {
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <BookOpen className="w-12 h-12 mb-4 opacity-50" />
           <p className="mb-2">{t('knowledge.empty')}</p>
-          <p className="text-sm">{t("knowledge.applyFirst") || "先申请创建知识库，审批通过后即可添加知识"}</p>
+          <p className="text-sm">{t("knowledge.applyFirst") || "Apply to create a KB first, then add knowledge after approval"}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -369,17 +369,17 @@ export function KnowledgeClient() {
                     {isFileImport && (
                       <div className="flex items-center gap-2 mt-1">
                         <span className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{String(meta.content_type || '')}</span>
-                        {meta.char_count != null && <span className="text-xs text-muted-foreground">{Number(meta.char_count).toLocaleString()} {t("knowledge.characters") || "字符"}</span>}
+                        {meta.char_count != null && <span className="text-xs text-muted-foreground">{Number(meta.char_count).toLocaleString()} {t("knowledge.characters") || "characters"}</span>}
                       </div>
                     )}
                     {item.content && <p className="text-sm text-muted-foreground mt-1 line-clamp-3">{item.content}</p>}
                   </div>
                   <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <button onClick={(e) => { e.stopPropagation(); handleShare(item.id, item.title); }} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary" title={t("knowledge.shareToKB") || "共享到企业知识库"}><Share2 className="w-4 h-4" /></button>
+                    <button onClick={(e) => { e.stopPropagation(); handleShare(item.id, item.title); }} className="p-1 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary" title={t("knowledge.shareToKB") || "Share to Enterprise KB"}><Share2 className="w-4 h-4" /></button>
                     <button onClick={(e) => { e.stopPropagation(); handleDelete(item.id); }} className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive" title={t('common.delete')}><Trash2 className="w-4 h-4" /></button>
                   </div>
                 </div>
-                {!!(meta)?.shared_to_enterprise && <div className="mt-2 text-xs text-green-500 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> {t("knowledge.shared") || "已共享到企业知识库"}</div>}
+                {!!(meta)?.shared_to_enterprise && <div className="mt-2 text-xs text-green-500 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> {t("knowledge.shared") || "Shared to Enterprise KB"}</div>}
                 {item.created_at && <div className="mt-2 text-xs text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</div>}
               </div>
             );

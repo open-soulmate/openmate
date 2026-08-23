@@ -333,7 +333,7 @@ export function NotificationsClient() {
       {showFilters && (
         <div className="flex items-center gap-4 px-6 py-2 border-b border-border bg-muted/20">
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{t("notifications.level") || "级别"}:</span>
+            <span className="text-xs text-muted-foreground">{t("notifications.level") || "Level"}:</span>
             <select
               value={levelFilter}
               onChange={(e) => setLevelFilter(e.target.value)}
@@ -347,7 +347,7 @@ export function NotificationsClient() {
             </select>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{t("notifications.source") || "来源"}:</span>
+            <span className="text-xs text-muted-foreground">{t("notifications.source") || "Source"}:</span>
             <select
               value={sourceFilter}
               onChange={(e) => setSourceFilter(e.target.value)}
@@ -364,7 +364,7 @@ export function NotificationsClient() {
               onClick={() => { setLevelFilter(""); setSourceFilter(""); }}
               className="text-xs text-primary hover:underline"
             >
-              {t("notifications.clearFilters") || "清除筛选"}
+              {t("notifications.clearFilters") || "Clear filters"}
             </button>
           )}
         </div>
@@ -376,9 +376,9 @@ export function NotificationsClient() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <Radio size={14} className="text-primary" />
-              <span className="text-sm font-medium">{t("notifications.echoForward") || "Echo 推送桥接"}</span>
+              <span className="text-sm font-medium">{t("notifications.echoForward") || "Echo Push Bridge"}</span>
               <span className="text-[10px] px-1.5 py-0.5 rounded bg-primary/10 text-primary">
-                {Object.keys(forwardRules).length} {t("notifications.rules") || "规则"}
+                {Object.keys(forwardRules).length} {t("notifications.rules") || "rules"}
               </span>
             </div>
             <button
@@ -390,7 +390,7 @@ export function NotificationsClient() {
                   : "border-muted-foreground/30 bg-muted text-muted-foreground"
               )}
             >
-              {forwardEnabled ? "✅ " + (t("notifications.forwardOn") || "已开启") : "⏸ " + (t("notifications.forwardOff") || "已关闭")}
+              {forwardEnabled ? "✅ " + (t("notifications.forwardOn") || "Enabled") : "⏸ " + (t("notifications.forwardOff") || "Disabled")}
             </button>
           </div>
 
@@ -418,7 +418,7 @@ export function NotificationsClient() {
                 <button
                   onClick={() => handleDeleteForwardRule(level)}
                   className="text-muted-foreground hover:text-red-500 transition-colors"
-                  title={t("notifications.deleteRule") || "删除规则"}
+                  title={t("notifications.deleteRule") || "Delete rule"}
                 >
                   <X size={12} />
                 </button>
@@ -426,7 +426,7 @@ export function NotificationsClient() {
             ))}
             {Object.keys(forwardRules).length === 0 && (
               <p className="text-xs text-muted-foreground py-2">
-                {t("notifications.noRules") || "暂无转发规则。添加规则以将通知自动推送到外部渠道。"}
+                {t("notifications.noRules") || "No forwarding rules. Add rules to auto-push notifications to external channels."}
               </p>
             )}
           </div>
@@ -457,7 +457,7 @@ export function NotificationsClient() {
               className="flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
             >
               <Send size={12} />
-              {t("notifications.addRule") || "添加"}
+              {t("notifications.addRule") || "Add"}
             </button>
           </div>
         </div>
@@ -474,13 +474,13 @@ export function NotificationsClient() {
             <Bell size={48} className="mb-4 opacity-20" />
             <p className="text-sm font-medium">
               {searchQuery
-                ? (t("notifications.noResults") || "没有匹配的通知")
-                : (t("notifications.empty") || "暂无通知")}
+                ? (t("notifications.noResults") || "No results")
+                : (t("notifications.empty") || "No notifications")}
             </p>
             <p className="text-xs mt-1">
               {searchQuery
-                ? (t("notifications.tryDifferentSearch") || "尝试不同的搜索词")
-                : (t("notifications.emptyDesc") || "系统事件和器官活动将在此显示")}
+                ? (t("notifications.tryDifferentSearch") || "Try different search terms")
+                : (t("notifications.emptyDesc") || "System events and organ activities will appear here")}
             </p>
           </div>
         ) : (
@@ -528,7 +528,7 @@ export function NotificationsClient() {
                         <button
                           onClick={(e) => { e.stopPropagation(); handleMarkRead(notif.id); }}
                           className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                          title={t("notifications.markRead") || "标记已读"}
+                          title={t("notifications.markRead") || "Mark as read"}
                         >
                           <Check size={14} />
                         </button>
@@ -537,7 +537,7 @@ export function NotificationsClient() {
                         <button
                           onClick={(e) => { e.stopPropagation(); router.push(notif.action_url); }}
                           className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
-                          title={t("notifications.navigate") || "前往"}
+                          title={t("notifications.navigate") || "Navigate"}
                         >
                           <ExternalLink size={14} />
                         </button>
@@ -545,7 +545,7 @@ export function NotificationsClient() {
                       <button
                         onClick={(e) => { e.stopPropagation(); handleDismiss(notif.id); }}
                         className="flex h-7 w-7 items-center justify-center rounded text-muted-foreground hover:bg-accent hover:text-red-500 transition-colors"
-                        title={t("notifications.dismiss") || "移除"}
+                        title={t("notifications.dismiss") || "Dismiss"}
                       >
                         <Trash2 size={14} />
                       </button>
@@ -581,13 +581,13 @@ export function NotificationsClient() {
       {/* Footer */}
       <div className="flex items-center justify-between px-6 py-3 border-t border-border bg-muted/30">
         <span className="text-xs text-muted-foreground">
-          {t("notifications.showing") || "显示"} {filtered.length} / {notifications.length} {t("notifications.items") || "条"}
+          {t("notifications.showing") || "Showing"} {filtered.length} / {notifications.length} {t("notifications.items") || "items"}
         </span>
         <button
           onClick={() => router.push("/activity")}
           className="text-xs text-primary hover:underline flex items-center gap-1"
         >
-          {t("notifications.viewActivity") || "查看活动流"} →
+          {t("notifications.viewActivity") || "View Activity Stream"} →
         </button>
       </div>
     </div>

@@ -106,7 +106,7 @@ export function HealthWidget() {
             ? "bg-accent text-foreground"
             : "text-muted-foreground hover:bg-accent hover:text-foreground"
         )}
-        title={t("health.title") || "系统健康"}
+        title={t("health.title") || "System Health"}
       >
         {overallStatus === "loading" ? (
           <Loader2 size={16} className="animate-spin" />
@@ -131,7 +131,7 @@ export function HealthWidget() {
             <div className="flex items-center gap-2">
               <Stethoscope size={16} className="text-foreground" />
               <h3 className="text-sm font-semibold text-foreground">
-                {t("health.title") || "系统健康"}
+                {t("health.title") || "System Health"}
               </h3>
               <span className={cn(
                 "text-[10px] px-1.5 py-0.5 rounded-full font-medium",
@@ -183,7 +183,7 @@ export function HealthWidget() {
               onClick={() => { router.push("/diagnostics"); setOpen(false); }}
               className="text-xs text-primary hover:underline"
             >
-              {t("health.viewDiagnostics") || "查看完整诊断"} →
+              {t("health.viewDiagnostics") || "View Full Diagnostics"} →
             </button>
           </div>
         </div>

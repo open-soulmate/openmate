@@ -225,10 +225,10 @@ export function VitalClient() {
   const criticalAlerts = alerts.filter(a => !a.resolved && a.severity === "critical").length;
 
   const tabs = [
-    { key: "metrics" as const, label: t("vital.tabMetrics") || "系统指标", icon: Activity },
-    { key: "health" as const, label: t("vital.tabHealth") || "组件健康", icon: Server, badge: downCount > 0 ? downCount : undefined },
-    { key: "history" as const, label: t("vital.tabHistory") || "历史趋势", icon: BarChart3 },
-    { key: "alerts" as const, label: t("vital.tabAlerts") || "告警记录", icon: AlertTriangle, badge: activeAlerts > 0 ? activeAlerts : undefined },
+    { key: "metrics" as const, label: t("vital.tabMetrics") || "System Metrics", icon: Activity },
+    { key: "health" as const, label: t("vital.tabHealth") || "Health", icon: Server, badge: downCount > 0 ? downCount : undefined },
+    { key: "history" as const, label: t("vital.tabHistory") || "History", icon: BarChart3 },
+    { key: "alerts" as const, label: t("vital.tabAlerts") || "Alerts", icon: AlertTriangle, badge: activeAlerts > 0 ? activeAlerts : undefined },
   ];
 
   return (
@@ -240,8 +240,8 @@ export function VitalClient() {
             <Activity size={18} className="text-emerald-500" />
           </div>
           <div>
-            <h1 className="text-base font-semibold">{t("vital.title") || "生命体征 · 系统监控"}</h1>
-            <p className="text-xs text-muted-foreground">{t("vital.subtitle") || "实时监控系统健康、性能指标与告警"}</p>
+            <h1 className="text-base font-semibold">{t("vital.title") || "Vitals · System Monitor"}</h1>
+            <p className="text-xs text-muted-foreground">{t("vital.subtitle") || "Real-time monitoring of system health, performance metrics, and alerts"}</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -333,7 +333,7 @@ export function VitalClient() {
         {healthError && activeTab === "health" && (
           <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500 flex items-center gap-2">
             <XCircle size={16} />
-            {t("vital.fetchError") || "获取健康数据失败"}: {healthError}
+            {t("vital.fetchError") || "Failed to fetch health data"}: {healthError}
           </div>
         )}
 
@@ -385,25 +385,25 @@ export function VitalClient() {
             {/* Summary */}
             <div className="grid grid-cols-4 gap-3">
               <OverviewCard
-                label={t("vital.overallStatus") || "整体状态"}
+                label={t("vital.overallStatus") || "Overall Status"}
                 value={health.status.toUpperCase()}
                 icon={health.status === "ok" ? CheckCircle2 : XCircle}
                 valueClass={health.status === "ok" ? "text-emerald-500" : "text-red-500"}
               />
               <OverviewCard
-                label={t("vital.healthyNodes") || "健康节点"}
+                label={t("vital.healthyNodes") || "Healthy Nodes"}
                 value={`${upCount}/${totalCount}`}
                 icon={Wifi}
                 valueClass="text-emerald-500"
               />
               <OverviewCard
-                label={t("vital.errorNodes") || "异常节点"}
+                label={t("vital.errorNodes") || "Error Nodes"}
                 value={String(downCount)}
                 icon={XCircle}
                 valueClass={downCount > 0 ? "text-red-500" : "text-emerald-500"}
               />
               <OverviewCard
-                label={t("vital.avgLatency") || "平均延迟"}
+                label={t("vital.avgLatency") || "Avg Latency"}
                 value={`${avgLatency}ms`}
                 icon={Clock}
                 valueClass="text-muted-foreground"
@@ -413,7 +413,7 @@ export function VitalClient() {
             {/* Component list */}
             <div className="space-y-2">
               <h2 className="text-sm font-medium text-muted-foreground mb-3">
-                {t("vital.components") || "组件状态"} ({totalCount})
+                {t("vital.components") || "Components"} ({totalCount})
               </h2>
               {health.components.map((comp) => {
                 const cfg = STATUS_CONFIG[comp.status] || STATUS_CONFIG.down;
@@ -652,7 +652,7 @@ export function VitalClient() {
         {!health && !metrics && !healthError && (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 size={28} className="animate-spin text-primary mb-3" />
-            <p className="text-sm text-muted-foreground">{t("vital.checking") || "正在检查系统状态..."}</p>
+            <p className="text-sm text-muted-foreground">{t("vital.checking") || "Checking system status..."}</p>
           </div>
         )}
 
@@ -660,9 +660,9 @@ export function VitalClient() {
         {lastFetch && (
           <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-4 mt-6 border-t border-border">
             <span>
-              {t("vital.lastUpdated") || "最后更新"}: {lastFetch.toLocaleString(undefined)}
+              {t("vital.lastUpdated") || "Last updated"}: {lastFetch.toLocaleString(undefined)}
             </span>
-            <span>{t("vital.autoRefresh") || "每 30 秒自动刷新"}</span>
+            <span>{t("vital.autoRefresh") || "Auto-refreshes every 30 seconds"}</span>
           </div>
         )}
       </div>

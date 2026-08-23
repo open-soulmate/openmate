@@ -656,8 +656,8 @@ export function VeinClient() {
   const filteredFiles = files;
 
   const tabs: { id: TabId; label: string; icon: React.ElementType }[] = [
-    { id: "files", label: t("vein.filesTab") || "文件管理", icon: Folder },
-    { id: "cache", label: t("vein.cacheTab") || "缓存管理", icon: CacheIcon },
+    { id: "files", label: t("vein.filesTab") || "Files", icon: Folder },
+    { id: "cache", label: t("vein.cacheTab") || "Cache", icon: CacheIcon },
   ];
 
   return (
@@ -666,7 +666,7 @@ export function VeinClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Folder size={20} className="text-red-500" />
-          <h1 className="text-lg font-semibold">{t("vein.title") || "文件管理"}</h1>
+          <h1 className="text-lg font-semibold">{t("vein.title") || "Vein · File Management"}</h1>
           <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500">
             Vein
           </span>
@@ -680,7 +680,7 @@ export function VeinClient() {
                 className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-sm text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Upload size={14} />
-                {uploading ? (t("vein.uploading") || "上传中...") : (t("vein.upload") || "上传文件")}
+                {uploading ? (t("vein.uploading") || "Uploading...") : (t("vein.upload") || "Upload File")}
               </button>
               <input ref={fileInputRef} type="file" multiple className="hidden" onChange={e => handleUpload(e.target.files)} />
             </>
@@ -689,7 +689,7 @@ export function VeinClient() {
             onClick={() => { fetchFiles(); fetchStats(); fetchChunkedUploads(); }}
             className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
           >
-            <RefreshCw size={14} /> {t("common.refresh") || "刷新"}
+            <RefreshCw size={14} /> {t("common.refresh") || "Refresh"}
           </button>
         </div>
       </div>
@@ -733,7 +733,7 @@ export function VeinClient() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <StatCard
               icon={Folder}
-              label={t("vein.totalFiles") || "文件总数"}
+              label={t("vein.totalFiles") || "Total Files"}
               value={stats.store.total_files}
               sub={t("vein.uniqueBlobs", { count: stats.store.unique_blobs })}
               color="text-blue-500"
@@ -741,7 +741,7 @@ export function VeinClient() {
             />
             <StatCard
               icon={HardDrive}
-              label={t("vein.totalSize") || "存储大小"}
+              label={t("vein.totalSize") || "Total Size"}
               value={formatBytes(stats.store.total_size_bytes)}
               sub={t("vein.diskUsage", { size: formatBytes(stats.store.disk_usage_bytes) })}
               color="text-emerald-500"
@@ -795,10 +795,10 @@ export function VeinClient() {
             >
               <Upload size={32} className="mx-auto text-muted-foreground/50" />
               <p className="mt-2 text-sm font-medium">
-                {dragActive ? (t("vein.dropToUpload") || "释放文件以上传") : (t("vein.dragOrClick") || "拖拽文件到此处，或点击选择文件")}
+                {dragActive ? (t("vein.dropToUpload") || "Drop to upload") : (t("vein.dragOrClick") || "Drag files here or click to select")}
               </p>
               <p className="text-xs text-muted-foreground">
-                {t("vein.supportAll") || "支持任意文件类型，>10MB自动分片上传，自动去重存储"}
+                {t("vein.supportAll") || "Supports all file types, automatic dedup"}
               </p>
             </div>
 
@@ -845,7 +845,7 @@ export function VeinClient() {
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <input
                     type="text"
-                    placeholder={t("vein.searchPlaceholder") || "搜索文件名..."}
+                    placeholder={t("vein.searchPlaceholder") || "Search filenames..."}
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
@@ -856,7 +856,7 @@ export function VeinClient() {
                   onClick={handleSearch}
                   className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90 transition-colors"
                 >
-                  {t("common.search") || "搜索"}
+                  {t("common.search") || "Search"}
                 </button>
                 <button
                   onClick={handleBatchAutoProcess}
@@ -867,7 +867,7 @@ export function VeinClient() {
                   {batchProcessing ? t("vein.batchProcessingBtn") : t("vein.batchRecognizeBtn")}
                 </button>
                 <span className="text-xs text-muted-foreground">
-                  {loading ? (t("common.loading") || "加载中...") : `${filteredFiles.length} ${(t("vein.files") || "个文件")}`}
+                  {loading ? (t("common.loading") || "Loading...") : `${filteredFiles.length} ${(t("vein.files") || "File List")}`}
                 </span>
               </div>
 
@@ -903,9 +903,9 @@ export function VeinClient() {
               {filteredFiles.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <FolderOpen size={40} className="opacity-30 mb-3" />
-                  <p className="text-sm">{t("vein.noFiles") || "暂无文件"}</p>
+                  <p className="text-sm">{t("vein.noFiles") || "No files"}</p>
                   <p className="text-xs mt-1">
-                    {search ? (t("vein.noMatch") || "未找到匹配的文件") : (t("vein.startUpload") || "上传文件开始使用")}
+                    {search ? (t("vein.noMatch") || "No matching files") : (t("vein.startUpload") || "Upload File")}
                   </p>
                 </div>
               ) : (
@@ -914,19 +914,19 @@ export function VeinClient() {
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
                         <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                          {t("vein.fileName") || "文件名"}
+                          {t("vein.fileName") || "Filename"}
                         </th>
                         <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
-                          {t("vein.size") || "大小"}
+                          {t("vein.size") || "Size"}
                         </th>
                         <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
-                          {t("vein.type") || "类型"}
+                          {t("vein.type") || "Type"}
                         </th>
                         <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-40">
-                          {t("vein.uploadTime") || "上传时间"}
+                          {t("vein.uploadTime") || "Upload Time"}
                         </th>
                         <th className="px-4 py-2.5 text-right font-medium text-muted-foreground w-28">
-                          {t("vein.actions") || "操作"}
+                          {t("vein.actions") || "Actions"}
                         </th>
                       </tr>
                     </thead>
@@ -963,14 +963,14 @@ export function VeinClient() {
                               <div className="flex gap-1 justify-end">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleDownload(f.file_id, f.name); }}
-                                  title={t("vein.download") || "下载"}
+                                  title={t("vein.download") || "Download"}
                                   className="rounded-md border border-border p-1.5 text-muted-foreground hover:bg-muted transition-colors"
                                 >
                                   <Download size={12} />
                                 </button>
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleDelete(f.file_id); }}
-                                  title={t("vein.delete") || "删除"}
+                                  title={t("vein.delete") || "Delete"}
                                   className="rounded-md border border-red-500/30 p-1.5 text-red-500 hover:bg-red-500/10 transition-colors"
                                 >
                                   <Trash2 size={12} />

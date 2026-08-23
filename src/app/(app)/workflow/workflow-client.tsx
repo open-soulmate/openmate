@@ -115,14 +115,14 @@ export function WorkflowClient() {
         body: JSON.stringify({}),
       });
       if (res.ok) {
-        showToast(`${wf.name} ${t("workflow.executeSuccessSuffix") || "执行成功"}`, "success");
+        showToast(`${wf.name} ${t("workflow.executeSuccessSuffix") || "executed successfully"}`, "success");
         fetchWorkflows();
       } else {
         const data = await res.json();
-        showToast(data.detail || (t("workflow.executeFailed") || "执行失败"), "error");
+        showToast(data.detail || (t("workflow.executeFailed") || "Execution failed"), "error");
       }
     } catch {
-      showToast(t("workflow.networkError") || "网络错误", "error");
+      showToast(t("workflow.networkError") || "Network error", "error");
     }
     setActionLoading((prev) => ({ ...prev, [wf.id]: "" }));
   };
@@ -137,11 +137,11 @@ export function WorkflowClient() {
         body: JSON.stringify({ status: newStatus }),
       });
       if (res.ok) {
-        showToast(`${wf.name} ${newStatus === "paused" ? (t("workflow.paused") || "已暂停") : (t("workflow.activated") || "已激活")}`, "success");
+        showToast(`${wf.name} ${newStatus === "paused" ? (t("workflow.paused") || "paused") : (t("workflow.activated") || "Activated")}`, "success");
         fetchWorkflows();
       }
     } catch {
-      showToast(t("workflow.operationFailed") || "操作失败", "error");
+      showToast(t("workflow.operationFailed") || "Operation failed", "error");
     }
     setActionLoading((prev) => ({ ...prev, [wf.id]: "" }));
   };
@@ -153,18 +153,18 @@ export function WorkflowClient() {
         headers,
       });
       if (res.ok) {
-        showToast(`${wf.name} ${t("workflow.deletedSuffix") || "已删除"}`, "success");
+        showToast(`${wf.name} ${t("workflow.deletedSuffix") || "deleted"}`, "success");
         setDeleteTarget(null);
         fetchWorkflows();
       }
     } catch {
-      showToast(t("workflow.deleteFailed") || "删除失败", "error");
+      showToast(t("workflow.deleteFailed") || "Delete failed", "error");
     }
   };
 
   const handleCreate = async () => {
     if (!newName) {
-      showToast(t("workflow.nameRequired") || "名称必填", "error");
+      showToast(t("workflow.nameRequired") || "Name is required", "error");
       return;
     }
     try {
@@ -178,7 +178,7 @@ export function WorkflowClient() {
         }),
       });
       if (res.ok) {
-        showToast(`${newName} ${t("workflow.createdSuffix") || "已创建"}`, "success");
+        showToast(`${newName} ${t("workflow.createdSuffix") || "created"}`, "success");
         setShowCreate(false);
         setNewName("");
         setNewDesc("");
@@ -186,10 +186,10 @@ export function WorkflowClient() {
         fetchWorkflows();
       } else {
         const data = await res.json();
-        showToast(data.detail || (t("workflow.createFailed") || "创建失败"), "error");
+        showToast(data.detail || (t("workflow.createFailed") || "Create failed"), "error");
       }
     } catch {
-      showToast(t("workflow.networkError") || "网络错误", "error");
+      showToast(t("workflow.networkError") || "Network error", "error");
     }
   };
 
@@ -256,24 +256,24 @@ export function WorkflowClient() {
         {showCreate && (
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">
             <h3 className="text-sm font-medium flex items-center gap-2">
-              <Plus size={14} /> {t("workflow.createNew") || "创建新工作流"}
+              <Plus size={14} /> {t("workflow.createNew") || "Create New Workflow"}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                placeholder={t("workflow.workflowName") || "工作流名称 *"} className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                placeholder={t("workflow.workflowName") || "Workflow Name *"} className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
               <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
-                placeholder={t("workflow.descriptionPlaceholder") || "描述"} className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                placeholder={t("workflow.descriptionPlaceholder") || "Description"} className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
               <select value={newTrigger} onChange={(e) => setNewTrigger(e.target.value)}
                 className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30">
-                <option value="manual">{t("workflow.triggerManual") || "手动触发"}</option>
-                <option value="cron">{t("workflow.triggerCron") || "定时触发"}</option>
-                <option value="event">{t("workflow.triggerEvent") || "事件触发"}</option>
+                <option value="manual">{t("workflow.triggerManual") || "Manual Trigger"}</option>
+                <option value="cron">{t("workflow.triggerCron") || "Cron Trigger"}</option>
+                <option value="event">{t("workflow.triggerEvent") || "Event Trigger"}</option>
                 <option value="webhook">Webhook</option>
               </select>
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowCreate(false)} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent">{t("common.cancel") || "取消"}</button>
-              <button onClick={handleCreate} className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">{t("workflow.create") || "创建"}</button>
+              <button onClick={() => setShowCreate(false)} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent">{t("common.cancel") || "Cancel"}</button>
+              <button onClick={handleCreate} className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">{t("workflow.create") || "Create"}</button>
             </div>
           </div>
         )}
@@ -281,7 +281,7 @@ export function WorkflowClient() {
         {/* Workflow list */}
         {loading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
-            <Loader2 size={20} className="animate-spin mr-2" /> {t("common.loading") || "加载中..."}
+            <Loader2 size={20} className="animate-spin mr-2" /> {t("common.loading") || "Loading..."}
           </div>
         ) : filtered.length === 0 ? (
           <div className="flex h-full flex-col items-center justify-center text-center">
@@ -337,7 +337,7 @@ export function WorkflowClient() {
                         {wf.last_execution && (
                           <span className="flex items-center gap-1">
                             <Clock size={11} />
-                            {t("workflow.lastExec") || "最后执行"}: {new Date(wf.last_execution.started_at * 1000).toLocaleString()}
+                            {t("workflow.lastExec") || "Last execution"}: {new Date(wf.last_execution.started_at * 1000).toLocaleString()}
                             ({wf.last_execution.status})
                           </span>
                         )}
@@ -348,20 +348,20 @@ export function WorkflowClient() {
                       {(wf.status === "draft" || wf.status === "paused" || wf.status === "active") && (
                         <button onClick={() => handleExecute(wf)} disabled={!!busy}
                           className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-                          title={t("workflow.execute") || "执行"}>
+                          title={t("workflow.execute") || "Execute"}>
                           {busy === "execute" ? <Loader2 size={13} className="animate-spin" /> : <Play size={13} />}
                         </button>
                       )}
                       {(wf.status === "active" || wf.status === "paused") && (
                         <button onClick={() => handleTogglePause(wf)} disabled={!!busy}
                           className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
-                          title={wf.status === "paused" ? (t("workflow.resume") || "恢复") : (t("workflow.pause") || "暂停")}>
+                          title={wf.status === "paused" ? (t("workflow.resume") || "Resume") : (t("workflow.pause") || "Pause")}>
                           {busy === "toggle" ? <Loader2 size={13} className="animate-spin" /> : wf.status === "paused" ? <Play size={13} /> : <Pause size={13} />}
                         </button>
                       )}
                       <button onClick={() => setDeleteTarget(wf)}
                         className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                        title={t("workflow.delete") || "删除"}>
+                        title={t("workflow.delete") || "Delete"}>
                         <Trash2 size={13} />
                       </button>
                     </div>
@@ -377,7 +377,7 @@ export function WorkflowClient() {
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
-            <h3 className="text-sm font-medium mb-2">{t("workflow.deleteWorkflow") || "删除工作流"}</h3>
+            <h3 className="text-sm font-medium mb-2">{t("workflow.deleteWorkflow") || "Delete Workflow"}</h3>
             <p className="text-xs text-muted-foreground mb-4">
               {t("workflow.confirmDeleteText", { name: deleteTarget.name }) || `确定删除 "${deleteTarget.name}"？此操作不可撤销。`}
             </p>
@@ -393,11 +393,11 @@ export function WorkflowClient() {
             <div className="flex gap-2 justify-end">
               <button onClick={() => setDeleteTarget(null)}
                 className="rounded-md border border-border px-3 py-1.5 text-xs font-medium text-muted-foreground hover:bg-accent">
-                {t("common.cancel") || "取消"}
+                {t("common.cancel") || "Cancel"}
               </button>
               <button onClick={() => handleDelete(deleteTarget)}
                 className="rounded-md bg-destructive px-3 py-1.5 text-xs font-medium text-destructive-foreground hover:bg-destructive/90">
-                {t("workflow.deleteAction") || "删除"}
+                {t("workflow.deleteAction") || "Delete"}
               </button>
             </div>
           </div>

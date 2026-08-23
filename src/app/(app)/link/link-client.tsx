@@ -158,7 +158,7 @@ export function LinkClient() {
       <div className="flex items-center justify-between border-b border-border px-6 py-4">
         <div className="flex items-center gap-3">
           <Link2 size={20} className="text-teal-500" />
-          <h1 className="text-lg font-semibold">{t("link.title") || "突触 · 双向集成"}</h1>
+          <h1 className="text-lg font-semibold">{t("link.title") || "Link · Integration Gateway"}</h1>
           <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-500">
             {t("link.t69735")}
           </span>
