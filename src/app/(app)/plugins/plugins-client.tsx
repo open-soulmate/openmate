@@ -343,7 +343,7 @@ export function PluginsClient() {
               {t("plugins.managePlugins") || "Install, configure, and manage system plugins"}
               {plugins.length > 0 && (
                 <span className="ml-2 text-xs">
-                  · {t("plugins.pluginCount", { total: plugins.length, enabled: enabledCount }) || `共 ${plugins.length} 个插件，${enabledCount} 个已启用`}
+                  · {t("plugins.pluginCount", { total: plugins.length, enabled: enabledCount }) || `${plugins.length} plugins, ${enabledCount} enabled`}
                 </span>
               )}
             </p>

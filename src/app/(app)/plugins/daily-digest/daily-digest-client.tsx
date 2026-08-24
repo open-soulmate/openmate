@@ -453,10 +453,10 @@ export function DailyDigestClient() {
                       </span>
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
-                      <span>{t("plugins.organsOnlineCount", { count: item.active_organs }) || `${item.active_organs} 器官在线`}</span>
-                      <span>{t("plugins.eventsCount", { count: item.total_events }) || `${item.total_events} 事件`}</span>
+                      <span>{t("plugins.organsOnlineCount", { count: item.active_organs }) || `${item.active_organs} organs online`}</span>
+                      <span>{t("plugins.eventsCount", { count: item.total_events }) || `${item.total_events} events`}</span>
                       {item.warnings.length > 0 && (
-                        <span className="text-amber-400">{t("plugins.warningsCount", { count: item.warnings.length }) || `${item.warnings.length} 告警`}</span>
+                        <span className="text-amber-400">{t("plugins.warningsCount", { count: item.warnings.length }) || `${item.warnings.length} warnings`}</span>
                       )}
                     </div>
                     {item.highlights.length > 0 && (
@@ -501,7 +501,7 @@ export function DailyDigestClient() {
             <div className="p-6 rounded-2xl border border-border bg-card">
               <div className="flex items-center gap-3 mb-4">
                 <h3 className="text-sm font-semibold">{t("plugins.trendChart") || "Trend Chart"}</h3>
-                <span className="text-xs text-muted-foreground">{t("plugins.dataPoints", { count: trends.length }) || `${trends.length} 个数据点`}</span>
+                <span className="text-xs text-muted-foreground">{t("plugins.dataPoints", { count: trends.length }) || `${trends.length} data points`}</span>
               </div>
               {/* Simple bar chart */}
               <div className="flex items-end gap-1 h-40">

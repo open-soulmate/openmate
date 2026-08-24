@@ -45,10 +45,10 @@ const CATEGORY_COLORS: Record<string, { bg: string; text: string; border: string
 };
 
 const PHASE_COLORS: Record<string, string> = {
-  "一期": "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-  "二期": "bg-blue-500/10 text-blue-400 border-blue-500/20",
-  "三期": "bg-amber-500/10 text-amber-400 border-amber-500/20",
-  "四期": "bg-purple-500/10 text-purple-400 border-purple-500/20",
+  "Phase 1": "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  "Phase 2": "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  "Phase 3": "bg-amber-500/10 text-amber-400 border-amber-500/20",
+  "Phase 4": "bg-purple-500/10 text-purple-400 border-purple-500/20",
 };
 
 export function RegistryClient() {

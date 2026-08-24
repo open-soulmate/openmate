@@ -379,7 +379,7 @@ export function WorkflowClient() {
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
             <h3 className="text-sm font-medium mb-2">{t("workflow.deleteWorkflow") || "Delete Workflow"}</h3>
             <p className="text-xs text-muted-foreground mb-4">
-              {t("workflow.confirmDeleteText", { name: deleteTarget.name }) || `确定删除 "${deleteTarget.name}"？此操作不可撤销。`}
+              {t("workflow.confirmDeleteText", { name: deleteTarget.name }) || `Delete "${deleteTarget.name}"? This cannot be undone.`}
             </p>
             <div className="rounded-lg border border-border bg-muted/50 p-3 mb-4">
               <div className="flex items-center gap-2">
