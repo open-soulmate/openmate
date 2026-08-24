@@ -59,8 +59,8 @@ function formatTime(ts: string, t?: (key: string, opts?: any) => string) {
   const now = Date.now();
   const diff = now - d.getTime();
   if (diff < 60_000) return t?.("groups.justNow") || "Just now";
-  if (diff < 3_600_000) return t?.("groups.minutesAgo", { minutes: Math.floor(diff / 60_000) }) || `${Math.floor(diff / 60_000)} 分钟前`;
-  if (diff < 86_400_000) return t?.("groups.hoursAgo", { hours: Math.floor(diff / 3_600_000) }) || `${Math.floor(diff / 3_600_000)} 小时前`;
+  if (diff < 3_600_000) return t?.("groups.minutesAgo", { minutes: Math.floor(diff / 60_000) }) || `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return t?.("groups.hoursAgo", { hours: Math.floor(diff / 3_600_000) }) || `${Math.floor(diff / 3_600_000)}h ago`;
   return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 

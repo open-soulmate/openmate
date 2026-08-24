@@ -123,11 +123,11 @@ function timeAgo(ts: string | null, t: (key: string, opts?: Record<string, unkno
   const diff = Date.now() - new Date(ts).getTime();
   const mins = Math.floor(diff / 60000);
   if (mins < 1) return t("marketplace.justNow") || "Just now";
-  if (mins < 60) return t("marketplace.minutesAgo", { mins }) || `${mins}分钟前`;
+  if (mins < 60) return t("marketplace.minutesAgo", { mins }) || `${mins}m ago`;
   const hours = Math.floor(mins / 60);
-  if (hours < 24) return t("marketplace.hoursAgo", { hours }) || `${hours}小时前`;
+  if (hours < 24) return t("marketplace.hoursAgo", { hours }) || `${hours}h ago`;
   const days = Math.floor(hours / 24);
-  return t("marketplace.daysAgo", { days }) || `${days}天前`;
+  return t("marketplace.daysAgo", { days }) || `${days}d ago`;
 }
 
 // ─── Component ──────────────────────────────────────────────────────
@@ -354,7 +354,7 @@ function SourceGrid({ sources, syncing, onSync, type }: { sources: SourceItem[];
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <Store className="mb-4 h-12 w-12" />
-        <p className="text-sm">{t("marketplace.noSources", { type: typeName }) || `暂无${typeName}来源`}</p>
+        <p className="text-sm">{t("marketplace.noSources", { type: typeName }) || `No ${typeName} sources`}</p>
       </div>
     );
   }
