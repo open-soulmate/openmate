@@ -101,7 +101,7 @@ export function KnowledgeClient() {
   };
 
   const handleShare = async (kbId: string, kbName: string) => {
-    if (!confirm(t("knowledge.confirmShare", { name: kbName }) || `申请将"${kbName}"共享到企业知识库？`)) return;
+    if (!confirm(t("knowledge.confirmShare", { name: kbName }) || `Request to share "${kbName}" to enterprise knowledge base?`)) return;
     try {
       await api.createSharingRequest({ kb_id: kbId, kb_name: kbName });
       alert(t("knowledge.shareSubmitted"));
@@ -114,7 +114,7 @@ export function KnowledgeClient() {
       const uid = getUserId();
       const res = await fetch(`${getApiBaseUrl()}/api/dedup/deduplicate?user_id=${uid}`, { method: 'POST' });
       const data = await res.json();
-      setDedupResult(t("knowledge.dedupResult", { total: data.total, dup: data.duplicates_found, removed: data.duplicates_removed }) || `扫描${data.total}条，发现${data.duplicates_found}条重复，已清理${data.duplicates_removed}条`);
+      setDedupResult(t("knowledge.dedupResult", { total: data.total, dup: data.duplicates_found, removed: data.duplicates_removed }) || `Scanned ${data.total}, found ${data.duplicates_found} duplicates, cleaned ${data.duplicates_removed}`);
       loadItems();
     } catch (e) { setError(`${t('common.error')}: ${(e as Error).message}`); }
     setDeduping(false);
@@ -180,8 +180,8 @@ export function KnowledgeClient() {
     }
 
     const parts = [];
-    if (succeeded > 0) parts.push(t("knowledge.importSuccess", { count: succeeded }) || `✅ ${succeeded} 个文件导入成功`);
-    if (failed > 0) parts.push(t("knowledge.importFailed", { count: failed }) || `❌ ${failed} 个文件失败`);
+    if (succeeded > 0) parts.push(t("knowledge.importSuccess", { count: succeeded }) || `✅ ${succeeded} files imported`);
+    if (failed > 0) parts.push(t("knowledge.importFailed", { count: failed }) || `❌ ${failed} files failed`);
     setUploadResult(parts.join('，'));
 
     if (succeeded > 0) {
@@ -192,7 +192,7 @@ export function KnowledgeClient() {
     setUploading(false);
   };
 
-  // 登录页
+  // Login page
   if (showLogin) return (
     <div className="flex items-center justify-center h-full">
       <div className="p-6 rounded-lg border bg-card w-80">
@@ -209,7 +209,7 @@ export function KnowledgeClient() {
 
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
-  // 审批状态显示
+  // Approval status display
   const pendingReq = kbRequests.find(r => r.status === 'pending');
   const approvedReq = kbRequests.find(r => r.status === 'approved');
 
@@ -229,7 +229,7 @@ export function KnowledgeClient() {
       {dedupResult && <div className="mb-4 p-3 rounded-lg bg-green-500/10 text-green-600 text-sm">{dedupResult}</div>}
 
       {/* 审批状态提示 */}
-      {pendingReq && <div className="mb-4 p-3 rounded-lg bg-yellow-500/10 text-yellow-600 text-sm flex items-center gap-2"><Clock className="w-4 h-4" /> {t("knowledge.approvalPending", { name: pendingReq.kb_name }) || `知识库"${pendingReq.kb_name}"申请审批中...`}</div>}
+      {pendingReq && <div className="mb-4 p-3 rounded-lg bg-yellow-500/10 text-yellow-600 text-sm flex items-center gap-2"><Clock className="w-4 h-4" /> {t("knowledge.approvalPending", { name: pendingReq.kb_name }) || `Knowledge base "${pendingReq.kb_name}" approval pending...`}</div>}
 
       {/* 申请知识库表单 */}
       {showRequest && (
@@ -315,7 +315,7 @@ export function KnowledgeClient() {
               className="px-4 py-2 rounded bg-primary text-primary-foreground text-sm disabled:opacity-50 flex items-center gap-1"
             >
               {uploading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Upload className="w-3 h-3" />}
-              {uploading ? t("knowledge.importing", { done: uploadProgress.done, total: uploadProgress.total }) || `导入中 (${uploadProgress.done}/${uploadProgress.total})` : (t('knowledge.startImport'))}
+              {uploading ? t("knowledge.importing", { done: uploadProgress.done, total: uploadProgress.total }) || `Importing (${uploadProgress.done}/${uploadProgress.total})` : (t('knowledge.startImport'))}
             </button>
             {uploading && (
               <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">

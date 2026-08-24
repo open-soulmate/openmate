@@ -227,7 +227,7 @@ export function PomodoroClient() {
                 )}
                 {!status.active && (
                   <span className="text-sm text-muted-foreground mt-1">
-                    {tr("plugins.pomodoroSummary", { sessions: stats?.today.sessions || 0, minutes: stats?.today.focus_minutes || 0 }) || `${stats?.today.sessions || 0} 个番茄 · ${stats?.today.focus_minutes || 0} 分钟`}
+                    {tr("plugins.pomodoroSummary", { sessions: stats?.today.sessions || 0, minutes: stats?.today.focus_minutes || 0 }) || `${stats?.today.sessions || 0} sessions · ${stats?.today.focus_minutes || 0} min`}
                   </span>
                 )}
               </div>
@@ -250,7 +250,7 @@ export function PomodoroClient() {
                     className="rounded-lg border border-border bg-muted px-2 py-1.5 text-sm outline-none"
                   >
                     {[15, 20, 25, 30, 45, 60].map((m) => (
-                      <option key={m} value={m}>{tr("plugins.minutes", { m }) || `${m} 分钟`}</option>
+                      <option key={m} value={m}>{tr("plugins.minutes", { m }) || `${m} min`}</option>
                     ))}
                   </select>
                 </div>
@@ -306,7 +306,7 @@ export function PomodoroClient() {
         {tab === "history" && (
           <div className="space-y-3 max-w-xl">
             <div className="flex items-center justify-between">
-              <span className="text-xs text-muted-foreground">{tr("plugins.recordsCount", { count: sessions.length }) || `${sessions.length} 条记录`}</span>
+              <span className="text-xs text-muted-foreground">{tr("plugins.recordsCount", { count: sessions.length }) || `${sessions.length} records`}</span>
               {sessions.length > 0 && (
                 <button onClick={clearSessions} className="flex items-center gap-1 text-xs text-muted-foreground hover:text-red-500">
                   <Trash2 size={12} /> {tr("plugins.clear") || "Clear"}
@@ -381,7 +381,7 @@ export function PomodoroClient() {
                     <input type="range" min={2} max={8} value={longInterval}
                       onChange={(e) => setLongInterval(Number(e.target.value))}
                       className="w-32 accent-amber-500" />
-                    <span className="text-sm font-mono w-12 text-right">{tr("plugins.longIntervalCount", { count: longInterval }) || `${longInterval}个`}</span>
+                    <span className="text-sm font-mono w-12 text-right">{tr("plugins.longIntervalCount", { count: longInterval }) || `${longInterval}`}</span>
                   </div>
                 </div>
               </div>

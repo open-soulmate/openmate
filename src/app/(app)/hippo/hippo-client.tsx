@@ -85,9 +85,9 @@ function formatTime(ts: number): string {
 function formatAge(ts: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const hours = (Date.now() / 1000 - ts) / 3600;
   const count = hours < 1 ? Math.round(hours * 60) : hours < 24 ? Math.round(hours) : Math.round(hours / 24);
-  if (hours < 1) return t("hippo.minutesAgo", { count }) || `${count}分钟前`;
-  if (hours < 24) return t("hippo.hoursAgo", { count }) || `${count}小时前`;
-  return t("hippo.daysAgo", { count }) || `${count}天前`;
+  if (hours < 1) return t("hippo.minutesAgo", { count }) || `${count}m ago`;
+  if (hours < 24) return t("hippo.hoursAgo", { count }) || `${count}h ago`;
+  return t("hippo.daysAgo", { count }) || `${count}d ago`;
 }
 
 export function HippoClient() {
@@ -190,7 +190,7 @@ export function HippoClient() {
     try {
       const res = await fetch(`${apiBase}/api/hippo/decay/run`, { method: "POST" });
       const data = await res.json();
-      alert(t("hippo.decayComplete", { updated: data.updated, archived: data.archived, forgotten: data.forgotten }) || `衰减完成: 更新${data.updated}条, 归档${data.archived}条, 遗忘${data.forgotten}条`);
+      alert(t("hippo.decayComplete", { updated: data.updated, archived: data.archived, forgotten: data.forgotten }) || `Decay complete: updated ${data.updated}, archived ${data.archived}, forgotten ${data.forgotten}`);
       fetchMemories();
       fetchStats();
     } catch {} finally { setLoading(false); }
@@ -212,7 +212,7 @@ export function HippoClient() {
     try {
       const res = await fetch(`${apiBase}/api/hippo/sessions/lifecycle-check`, { method: "POST" });
       const data = await res.json();
-      alert(t("hippo.lifecycleResult", { checked: data.checked, idle: data.newly_idle, expired: data.newly_expired }) || `生命周期检查: 检查${data.checked}个会话, 新闲置${data.newly_idle}个, 新过期${data.newly_expired}个`);
+      alert(t("hippo.lifecycleResult", { checked: data.checked, idle: data.newly_idle, expired: data.newly_expired }) || `Lifecycle check: ${data.checked} sessions, ${data.newly_idle} newly idle, ${data.newly_expired} expired`);
       fetchSessions();
     } catch {}
   };

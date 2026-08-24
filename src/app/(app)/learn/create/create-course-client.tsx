@@ -139,7 +139,7 @@ export function CreateCourseClient() {
           const err = await res.json();
           console.error("AI generation failed:", err);
           // Fallback to manual
-          alert(t("createCourse.aiGenFailed", { detail: err.detail || (t("createCourse.checkGland") || "Please check Gland configuration") }) || `AI生成失败: ${err.detail || "Please check Gland configuration"}`);
+          alert(t("createCourse.aiGenFailed", { detail: err.detail || (t("createCourse.checkGland") || "Please check Gland configuration") }) || `AI generation failed: ${err.detail || "Please check Gland configuration"}`);
         }
       } else {
         // Manual generation
@@ -423,7 +423,7 @@ export function CreateCourseClient() {
                   className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
                 >
                   {[3, 4, 5, 6, 7, 8, 10].map((n) => (
-                    <option key={n} value={n}>{t("learn.chapterCount", { n }) || `${n} 章`}</option>
+                    <option key={n} value={n}>{t("learn.chapterCount", { n }) || `${n} chapters`}</option>
                   ))}
                 </select>
               </div>

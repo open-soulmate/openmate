@@ -28,8 +28,8 @@ function formatTime(ts: number, t: (key: string, opts?: Record<string, unknown>)
   if (!ts) return '—';
   const diff = Date.now() - ts;
   if (diff < 60_000) return t("teamDetail.justNow") || "Just now";
-  if (diff < 3_600_000) return t("teamDetail.minutesAgo", { count: Math.floor(diff / 60_000) }) || `${Math.floor(diff / 60_000)} 分钟前`;
-  if (diff < 86_400_000) return t("teamDetail.hoursAgo", { count: Math.floor(diff / 3_600_000) }) || `${Math.floor(diff / 3_600_000)} 小时前`;
+  if (diff < 3_600_000) return t("teamDetail.minutesAgo", { count: Math.floor(diff / 60_000) }) || `${Math.floor(diff / 60_000)}m ago`;
+  if (diff < 86_400_000) return t("teamDetail.hoursAgo", { count: Math.floor(diff / 3_600_000) }) || `${Math.floor(diff / 3_600_000)}h ago`;
   return new Date(ts).toLocaleDateString('zh-CN', { month: 'short', day: 'numeric' });
 }
 
@@ -249,7 +249,7 @@ function TaskBoard({
                       {columns.filter(c => c.status !== col.status).map(c => (
                         <button key={c.status} onClick={() => onMove(task.id, c.status)}
                           className="text-[9px] px-1.5 py-0.5 rounded bg-muted hover:bg-primary/10 text-muted-foreground hover:text-primary transition-colors"
-                          title={t("teamDetail.moveTo", { label: c.label }) || `移至${c.label}`}>
+                          title={t("teamDetail.moveTo", { label: c.label }) || `Move to ${c.label}`}>
                           {c.label}
                         </button>
                       ))}
@@ -312,7 +312,7 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
     addTeamTask(cur.id, task);
     addTeamActivity(cur.id, {
       id: uid(), type: 'task_created', actorId: 'user', actorName: t("teamDetail.user") || "User",
-      description: t("teamDetail.taskCreatedDesc", { title: task.title }) || `创建了任务「${task.title}」`, taskId: task.id, timestamp: Date.now(),
+      description: t("teamDetail.taskCreatedDesc", { title: task.title }) || `Created task "${task.title}"`, taskId: task.id, timestamp: Date.now(),
     });
   }
 
@@ -322,7 +322,7 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
     if (task && status === 'done') {
       addTeamActivity(cur.id, {
         id: uid(), type: 'task_completed', actorId: task.assigneeId || '', actorName: task.assigneeName || (t("teamDetail.system") || "System"),
-        description: t("teamDetail.taskCompletedDesc", { title: task.title }) || `完成了任务「${task.title}」`, taskId, timestamp: Date.now(),
+        description: t("teamDetail.taskCompletedDesc", { title: task.title }) || `Completed task "${task.title}"`, taskId, timestamp: Date.now(),
       });
     }
   }
@@ -331,7 +331,7 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
     addTeamMember(cur.id, member);
     addTeamActivity(cur.id, {
       id: uid(), type: 'member_joined', actorId: member.agentId, actorName: member.name,
-      description: t("teamDetail.memberJoinedDesc", { name: member.name }) || `${member.name} 加入了团队`, timestamp: Date.now(),
+      description: t("teamDetail.memberJoinedDesc", { name: member.name }) || `${member.name} joined the team`, timestamp: Date.now(),
     });
   }
 
@@ -340,7 +340,7 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
     removeTeamMember(cur.id, deleteMemberTarget.id);
     addTeamActivity(cur.id, {
       id: uid(), type: 'member_left', actorId: deleteMemberTarget.agentId, actorName: deleteMemberTarget.name,
-      description: t("teamDetail.memberLeftDesc", { name: deleteMemberTarget.name }) || `${deleteMemberTarget.name} 离开了团队`, timestamp: Date.now(),
+      description: t("teamDetail.memberLeftDesc", { name: deleteMemberTarget.name }) || `${deleteMemberTarget.name} left the team`, timestamp: Date.now(),
     });
     setDeleteMemberTarget(null);
   }
@@ -374,7 +374,7 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
             <Users size={14} className="text-muted-foreground" />
             <span className="font-medium">{cur.members.length}</span>
             <span className="text-xs text-muted-foreground">{t("teamDetail.members") || "Members"}</span>
-            <span className="text-xs text-emerald-400">{t("teamDetail.onlineWithCount", { count: onlineCount }) || `${onlineCount}在线`}</span>
+            <span className="text-xs text-emerald-400">{t("teamDetail.onlineWithCount", { count: onlineCount }) || `${onlineCount} online`}</span>
           </div>
           <div className="flex items-center gap-2 text-sm">
             <CheckSquare size={14} className="text-muted-foreground" />
@@ -474,7 +474,7 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
                       <div className="flex items-center gap-2 mt-0.5">
                         <span className="text-[10px] text-muted-foreground capitalize">{member.type}</span>
                         <span className="text-[10px] text-muted-foreground">·</span>
-                        <span className="text-[10px] text-muted-foreground">{t("teamDetail.joinedAt", { time: formatTime(member.joinedAt, t) }) || `加入于 ${formatTime(member.joinedAt, t)}`}</span>
+                        <span className="text-[10px] text-muted-foreground">{t("teamDetail.joinedAt", { time: formatTime(member.joinedAt, t) }) || `Joined ${formatTime(member.joinedAt, t)}`}</span>
                       </div>
                     </div>
                     {member.role !== 'leader' && (
@@ -528,7 +528,7 @@ export function TeamDetailClient({ paramsPromise }: { paramsPromise: Promise<{ i
 
       {/* Delete Member Confirmation */}
       <Dialog open={!!deleteMemberTarget} onClose={() => setDeleteMemberTarget(null)}
-        title={t("teamDetail.removeMember") || "Remove Member"} description={t("teamDetail.confirmRemove", { name: deleteMemberTarget?.name }) || `确定要将「${deleteMemberTarget?.name}」移出团队吗？`}
+        title={t("teamDetail.removeMember") || "Remove Member"} description={t("teamDetail.confirmRemove", { name: deleteMemberTarget?.name }) || `Remove ${deleteMemberTarget?.name} from the team?`}
         footer={<>
           <button onClick={() => setDeleteMemberTarget(null)}
             className="rounded-md border px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent">{t("teamDetail.cancel") || "Cancel"}</button>
