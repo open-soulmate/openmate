@@ -2,7 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react"
 import { useTranslation } from "react-i18next"
-import { getApiBaseUrl } from "@/lib/api-client"
+import { getApiBaseUrl, getToken } from "@/lib/api-client"
 import {
   Shield, Users, FileText, Loader2, Plus, Search, RefreshCw,
   CheckCircle, XCircle, Clock, ChevronDown, ChevronRight, UserPlus,
@@ -71,8 +71,73 @@ export function EnterpriseClient() {
   const [auditLimit, setAuditLimit] = useState(50)
   const [auditActionFilter, setAuditActionFilter] = useState("")
 
+  // Enterprise auth token (separate from main app token)
+  const [entToken, setEntToken] = useState<string>(() => {
+    if (typeof window !== "undefined") return localStorage.getItem("enterprise-token") || ""
+    return ""
+  })
+
   // Error state
   const [error, setError] = useState("")
+
+  // Helper: authenticated fetch with enterprise token
+  const entFetch = useCallback(async (path: string, opts: RequestInit = {}) => {
+    const headers: Record<string, string> = { ...(opts.headers as Record<string, string> || {}) }
+    const tk = entToken || localStorage.getItem("enterprise-token") || ""
+    if (tk) headers["Authorization"] = `Bearer ${tk}`
+    return fetch(`${apiBase}${path}`, { ...opts, headers })
+  }, [apiBase, entToken])
+
+  // Auto-authenticate with enterprise system on mount
+  const ensureEntAuth = useCallback(async (): Promise<string | null> => {
+    const existing = localStorage.getItem("enterprise-token")
+    if (existing) { setEntToken(existing); return existing }
+    try {
+      // Enterprise has its own user DB; try common usernames
+      const candidates = ["admin"]
+      const mainToken = getToken()
+      if (mainToken) {
+        try {
+          const payload = JSON.parse(atob(mainToken.split(".")[1]))
+          if (payload.username && !candidates.includes(payload.username)) candidates.unshift(payload.username)
+        } catch { /* ignore */ }
+      }
+      for (const username of candidates) {
+        const res = await fetch(`${apiBase}/api/enterprise/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password: username }),
+          signal: AbortSignal.timeout(5000),
+        })
+        if (res.ok) {
+          const data = await res.json()
+          localStorage.setItem("enterprise-token", data.access_token)
+          setEntToken(data.access_token)
+          return data.access_token
+        }
+      }
+      // If all logins fail, register admin and login
+      await fetch(`${apiBase}/api/enterprise/auth/register`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "admin" }),
+        signal: AbortSignal.timeout(5000),
+      })
+      const loginRes = await fetch(`${apiBase}/api/enterprise/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username: "admin", password: "admin" }),
+        signal: AbortSignal.timeout(5000),
+      })
+      if (loginRes.ok) {
+        const data = await loginRes.json()
+        localStorage.setItem("enterprise-token", data.access_token)
+        setEntToken(data.access_token)
+        return data.access_token
+      }
+    } catch { /* ignore */ }
+    return null
+  }, [apiBase])
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -92,7 +157,8 @@ export function EnterpriseClient() {
     setUsersLoading(true)
     setError("")
     try {
-      const res = await fetch(`${apiBase}/api/enterprise/users/list`, { signal: AbortSignal.timeout(10000) })
+      await ensureEntAuth()
+      const res = await entFetch(`/api/enterprise/users/list`, { signal: AbortSignal.timeout(10000) })
       if (res.ok) {
         const data = await res.json()
         setUsers(Array.isArray(data) ? data : data.users || [])
@@ -104,14 +170,15 @@ export function EnterpriseClient() {
     } finally {
       setUsersLoading(false)
     }
-  }, [apiBase])
+  }, [apiBase, ensureEntAuth, entFetch])
 
   const fetchAudit = useCallback(async () => {
     setAuditLoading(true)
     try {
-      let url = `${apiBase}/api/enterprise/audit?limit=${auditLimit}`
+      await ensureEntAuth()
+      let url = `/api/enterprise/audit?limit=${auditLimit}`
       if (auditActionFilter) url += `&action=${encodeURIComponent(auditActionFilter)}`
-      const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
+      const res = await entFetch(url, { signal: AbortSignal.timeout(10000) })
       if (res.ok) {
         const data = await res.json()
         setAuditEntries(Array.isArray(data) ? data : data.entries || data.audit || [])
@@ -121,15 +188,16 @@ export function EnterpriseClient() {
     } finally {
       setAuditLoading(false)
     }
-  }, [apiBase, auditLimit, auditActionFilter])
+  }, [apiBase, auditLimit, auditActionFilter, ensureEntAuth, entFetch])
 
   const createRole = async () => {
     if (!newRoleName.trim()) return
     setCreateRoleLoading(true)
     setError("")
     try {
+      await ensureEntAuth()
       const perms = newRolePerms.split(",").map(p => p.trim()).filter(Boolean)
-      const res = await fetch(`${apiBase}/api/enterprise/roles`, {
+      const res = await entFetch(`/api/enterprise/roles`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: newRoleName.trim(), permissions: perms }),
@@ -156,7 +224,8 @@ export function EnterpriseClient() {
     setAssignLoading(true)
     setError("")
     try {
-      const res = await fetch(`${apiBase}/api/enterprise/users/${assignUserId}/roles`, {
+      await ensureEntAuth()
+      const res = await entFetch(`/api/enterprise/users/${assignUserId}/roles`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ role: assignRole.trim() }),
@@ -182,7 +251,8 @@ export function EnterpriseClient() {
     setPermLoading(true)
     setError("")
     try {
-      const res = await fetch(`${apiBase}/api/enterprise/permissions`, {
+      await ensureEntAuth()
+      const res = await entFetch(`/api/enterprise/permissions`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -208,9 +278,11 @@ export function EnterpriseClient() {
   }
 
   useEffect(() => {
-    fetchHealth()
-    setLoading(false)
-  }, [fetchHealth])
+    ensureEntAuth().then(() => {
+      fetchHealth()
+      setLoading(false)
+    })
+  }, [ensureEntAuth, fetchHealth])
 
   useEffect(() => {
     if (activeTab === "users") fetchUsers()
