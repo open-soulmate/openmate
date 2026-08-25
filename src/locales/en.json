@@ -1047,7 +1047,9 @@
     "versionTracking": "Version tracking",
     "versionTrackingLabel": "Version Tracking",
     "yes": "✅ Yes",
-    "yesLabel": "Yes"
+    "yesLabel": "Yes",
+    "text34": " ",
+    "text48": "will"
   },
   "sense": {
     "title": "Sense · Multimodal Parsing",
@@ -2247,7 +2249,8 @@
     "noForgetNeeded": "✓ No Forget Needed",
     "minutesAgo": "{{count}}m ago",
     "hoursAgo": "{{count}}h ago",
-    "daysAgo": "{{count}}d ago"
+    "daysAgo": "{{count}}d ago",
+    "text11": " "
   },
   "reflex": {
     "title": "Reflex · High-Speed Response",
