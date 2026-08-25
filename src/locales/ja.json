@@ -378,7 +378,31 @@
     "t10672": "コース",
     "t16459": "進捗",
     "t56231": "学習開始",
-    "t76433": "完了"
+    "t76433": "完了",
+    "policyCard": "ポリシー",
+    "import": "インポート",
+    "editCourse": "コース編集",
+    "learningCard": "学習カード",
+    "downloadAsImage": "画像としてダウンロード",
+    "downloadPolicy": "ポリシーカードをダウンロード",
+    "aiGenerate": "AI生成",
+    "manualCreate": "手動作成",
+    "courseTitle": "コースタイトル",
+    "courseTitlePlaceholder": "コースタイトルを入力...",
+    "description": "説明",
+    "descriptionPlaceholder": "簡単な説明...",
+    "tags": "タグ",
+    "optional": "任意",
+    "creating": "作成中...",
+    "create": "作成",
+    "chapters": "章数",
+    "difficulty": "難易度",
+    "beginner": "初級",
+    "intermediate": "中級",
+    "advanced": "上級",
+    "save": "保存",
+    "saving": "保存中...",
+    "cancel": "キャンセル"
   },
   "agents": {
     "title": "エージェント管理",
@@ -1819,7 +1843,8 @@
     "total": "合計",
     "approve": "承認",
     "reject": "却下",
-    "review": "レビュー"
+    "review": "レビュー",
+    "saving": "保存中..."
   },
   "gland": {
     "title": "腺 · モデルゲートウェイ",
