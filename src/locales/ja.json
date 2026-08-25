@@ -402,7 +402,16 @@
     "advanced": "上級",
     "save": "保存",
     "saving": "保存中...",
-    "cancel": "キャンセル"
+    "cancel": "キャンセル",
+    "policyCourseMgmt": "コース管理",
+    "policyCreateEdit": "作成、編集、削除、インポート操作に対応",
+    "policyAI": "AI生成にはGlandゲートウェイの設定が必要",
+    "policyProgress": "学習進捗",
+    "policyChapters": "各チャプターは個別に追跡",
+    "policyComplete": "全チャプター完了時に自動でコース完了としてマーク",
+    "policySecurity": "データセキュリティ",
+    "policyLocal": "すべてのデータはローカルに保存",
+    "policyNoUpload": "データはクラウドにアップロードされません"
   },
   "agents": {
     "title": "エージェント管理",
