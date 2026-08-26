@@ -357,27 +357,27 @@ export function LearnClient() {
   // Download policy card
   const downloadPolicyCard = () => {
     const policyContent = `
-# 学习政策卡 / Learning Policy Card
+# ${t("learn.policyCard")} / Learning Policy Card
 
-## 课程管理政策
-1. 所有课程支持创建、编辑、删除和导入操作
-2. AI自动生成课程需配置Gland网关
-3. 手动创建课程支持自定义章节
+## ${t("learn.policyCourseMgmt")}
+1. ${t("learn.policyCreateEdit")}
+2. ${t("learn.policyAI")}
+3. ${t("learn.policyManualCreate")}
 
-## 学习进度政策
-1. 每个章节独立标记完成状态
-2. 完成所有章节后课程状态自动更新为"已完成"
-3. 学习卡仅在课程完成后可生成
+## ${t("learn.policyProgress")}
+1. ${t("learn.policyChapters")}
+2. ${t("learn.policyComplete")}
+3. ${t("learn.policyLearningCard")}
 
-## 数据安全政策
-1. 所有课程数据本地存储
-2. 学习记录不会上传至云端
-3. 导出功能支持JSON格式
+## ${t("learn.policySecurity")}
+1. ${t("learn.policyLocal")}
+2. ${t("learn.policyNoUpload")}
+3. ${t("learn.policyExport")}
 
-## 评分政策
-1. 章节测验自动评分
-2. 正确率80%以上视为通过
-3. 未通过可重新作答
+## ${t("learn.policyScoring")}
+1. ${t("learn.policyAutoGrade")}
+2. ${t("learn.policyPassRate")}
+3. ${t("learn.policyRetry")}
 
 Generated: ${new Date().toLocaleString("zh-CN")}
     `.trim();

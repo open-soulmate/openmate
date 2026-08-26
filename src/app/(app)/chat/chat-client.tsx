@@ -53,11 +53,11 @@ interface AgentInfo {
   sourceGroups?: SourceGroup[];
 }
 
-// Source metadata for sub-group display
-const SOURCE_META: Record<string, { label: string; icon: string }> = {
-  cli:    { label: 'CLI 终端',  icon: '⌨️' },
-  weixin: { label: '微信',      icon: '💬' },
-  cron:   { label: '定时任务',  icon: '⏰' },
+// Source metadata for sub-group display (labels are i18n keys)
+const SOURCE_META: Record<string, { labelKey: string; icon: string }> = {
+  cli:    { labelKey: 'sessions.sourceCli',  icon: '⌨️' },
+  weixin: { labelKey: 'sessions.sourceWeixin', icon: '💬' },
+  cron:   { labelKey: 'sessions.sourceCron', icon: '⏰' },
 };
 
 // Known agent icons (fallback for detect API)
@@ -222,32 +222,55 @@ export function ChatClient() {
     } catch {}
 
     // Group sessions by platform/source
+    // cli, weixin, cron are all sub-channels of hermes agent
+    const HERMES_SOURCES = new Set(['cli', 'weixin', 'cron']);
     const sessionMap: Record<string, Session[]> = {};
+    const hermeSessions: Session[] = [];
     for (const s of sessions) {
-      // API returns 'source', map to 'platform' for grouping
       if (!s.platform && s.source) s.platform = s.source;
       const key = s.platform || 'hermes';
-      if (!sessionMap[key]) sessionMap[key] = [];
-      sessionMap[key].push(s);
+      if (HERMES_SOURCES.has(key)) {
+        hermeSessions.push(s);
+      } else {
+        if (!sessionMap[key]) sessionMap[key] = [];
+        sessionMap[key].push(s);
+      }
+    }
+
+    // Build source groups for hermes agent
+    const hermesSourceGroups: SourceGroup[] = [];
+    for (const src of ['cli', 'weixin', 'cron']) {
+      const items = hermeSessions.filter(s => (s.platform || s.source) === src);
+      if (items.length > 0) {
+        const meta = SOURCE_META[src] || { labelKey: src, icon: '💬' };
+        hermesSourceGroups.push({
+          source: src, label: t(meta.labelKey), icon: meta.icon,
+          sessions: items, expanded: src !== 'cron',
+        });
+      }
     }
 
     // Build agent list from detect API data — only available (installed) agents
     const agentList: AgentInfo[] = detectedAgents
       .filter(a => a.available)
-      .map(a => ({
-        id: a.id,
-        name: a.name,
-        icon: a.icon || AGENT_ICONS[a.id] || '🤖',
-        description: a.description,
-        installed: a.available,
-        available: a.available,
-        category: a.category,
-        path: a.path,
-        sessions: sessionMap[a.id] || [],
-        expanded: a.id === 'hermes',
-      }));
+      .map(a => {
+        const isHermes = a.id === 'hermes';
+        return {
+          id: a.id,
+          name: a.name,
+          icon: a.icon || AGENT_ICONS[a.id] || '🤖',
+          description: a.description,
+          installed: a.available,
+          available: a.available,
+          category: a.category,
+          path: a.path,
+          sessions: isHermes ? hermeSessions : (sessionMap[a.id] || []),
+          expanded: isHermes,
+          sourceGroups: isHermes ? hermesSourceGroups : undefined,
+        };
+      });
 
-    // Add unknown platform sessions
+    // Add unknown platform sessions (non-hermes sources)
     for (const [key, val] of Object.entries(sessionMap)) {
       if (!agentList.find(a => a.id === key) && val.length > 0) {
         agentList.push({
@@ -451,6 +474,18 @@ export function ChatClient() {
     setAgents(prev => prev.map(a => a.id === agentId ? { ...a, expanded: !a.expanded } : a));
   };
 
+  const toggleSourceGroup = (agentId: string, source: string) => {
+    setAgents(prev => prev.map(a => {
+      if (a.id !== agentId || !a.sourceGroups) return a;
+      return {
+        ...a,
+        sourceGroups: a.sourceGroups.map(g =>
+          g.source === source ? { ...g, expanded: !g.expanded } : g
+        ),
+      };
+    }));
+  };
+
   const selectSession = (session: Session, agent: AgentInfo) => {
     setSelectedSession(session);
     setSelectedAgent(agent);
@@ -518,17 +553,46 @@ export function ChatClient() {
               </div>
 
               {/* Sessions under this agent */}
-              {agent.expanded && agent.sessions.map(session => (
-                <div key={session.id} role="button" tabIndex={0} onClick={() => selectSession(session, agent)}
-                  className={`group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer ${selectedSession?.id === session.id ? 'bg-muted' : ''}`}>
-                  <div className="flex items-center gap-1.5">
-                    <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
-                    <span className="text-xs truncate text-foreground flex-1">{session.name || session.title || "Untitled"}</span>
-                    <button onClick={(e) => { e.stopPropagation(); deleteSession(session.id, e); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
+              {agent.expanded && agent.sourceGroups ? (
+                // Tree view: source groups with sub-sessions
+                agent.sourceGroups.map(group => (
+                  <div key={group.source}>
+                    <button
+                      onClick={() => toggleSourceGroup(agent.id, group.source)}
+                      className="w-full flex items-center gap-1.5 pl-6 pr-3 py-1.5 hover:bg-muted/40 transition-colors"
+                    >
+                      {group.expanded ? <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" /> : <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />}
+                      <span className="text-xs">{group.icon}</span>
+                      <span className="text-xs font-medium text-muted-foreground">{group.label}</span>
+                      <span className="text-[10px] text-muted-foreground ml-auto">{group.sessions.length}</span>
+                    </button>
+                    {group.expanded && group.sessions.map(session => (
+                      <div key={session.id} role="button" tabIndex={0} onClick={() => selectSession(session, agent)}
+                        className={`group w-full text-left pl-12 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer ${selectedSession?.id === session.id ? 'bg-muted' : ''}`}>
+                        <div className="flex items-center gap-1.5">
+                          <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
+                          <span className="text-xs truncate text-foreground flex-1">{session.name || session.title || "Untitled"}</span>
+                          <button onClick={(e) => { e.stopPropagation(); deleteSession(session.id, e); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
+                        </div>
+                        {(session.last_active || session.updated_at) && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{formatRelativeTime(session.last_active || session.updated_at!)}</div>}
+                      </div>
+                    ))}
                   </div>
-                  {(session.last_active || session.updated_at) && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{formatRelativeTime(session.last_active || session.updated_at!)}</div>}
-                </div>
-              ))}
+                ))
+              ) : (
+                // Flat view: sessions directly under agent
+                agent.expanded && agent.sessions.map(session => (
+                  <div key={session.id} role="button" tabIndex={0} onClick={() => selectSession(session, agent)}
+                    className={`group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer ${selectedSession?.id === session.id ? 'bg-muted' : ''}`}>
+                    <div className="flex items-center gap-1.5">
+                      <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
+                      <span className="text-xs truncate text-foreground flex-1">{session.name || session.title || "Untitled"}</span>
+                      <button onClick={(e) => { e.stopPropagation(); deleteSession(session.id, e); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
+                    </div>
+                    {(session.last_active || session.updated_at) && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{formatRelativeTime(session.last_active || session.updated_at!)}</div>}
+                  </div>
+                ))
+              )}
 
               {/* Empty state */}
               {agent.expanded && agent.sessions.length === 0 && (
