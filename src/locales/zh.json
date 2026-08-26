@@ -5762,6 +5762,10 @@
     "sourceCli": "CLI 终端",
     "sourceWeixin": "微信",
     "sourceCron": "定时任务",
+    "sourceAcp": "ACP 通信",
+    "sourceTui": "TUI 终端",
+    "sourceTool": "工具调用",
+    "sourceSubagent": "子代理",
     "sessionSummary": "{{count}} 会话 · {{messages}} 消息"
   }
 }

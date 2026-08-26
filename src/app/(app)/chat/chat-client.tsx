@@ -65,6 +65,10 @@ const SOURCE_META: Record<string, { labelKey: string; icon: string }> = {
   cli:    { labelKey: 'sessions.sourceCli',  icon: '⌨️' },
   weixin: { labelKey: 'sessions.sourceWeixin', icon: '💬' },
   cron:   { labelKey: 'sessions.sourceCron', icon: '⏰' },
+  acp:    { labelKey: 'sessions.sourceAcp', icon: '🔗' },
+  tui:    { labelKey: 'sessions.sourceTui', icon: '🖥️' },
+  tool:   { labelKey: 'sessions.sourceTool', icon: '🔧' },
+  subagent: { labelKey: 'sessions.sourceSubagent', icon: '🤖' },
 };
 
 // Known agent icons (fallback for detect API)
@@ -233,8 +237,8 @@ export function ChatClient() {
     const agentSessionMap: Record<string, Session[]> = {};
     for (const s of sessions) {
       if (!s.platform && s.source) s.platform = s.source;
-      // hermes sub-sources (cli/weixin/cron) all belong to hermes agent
-      const HERMES_SOURCES = new Set(['cli', 'weixin', 'cron']);
+      // hermes sub-sources (cli/weixin/cron/acp/tui/tool/subagent) all belong to hermes agent
+      const HERMES_SOURCES = new Set(['cli', 'weixin', 'cron', 'acp', 'tui', 'tool', 'subagent']);
       const src = s.platform || s.source || '';
       const agentKey = HERMES_SOURCES.has(src) ? 'hermes' : (s.platform || 'hermes');
       if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
