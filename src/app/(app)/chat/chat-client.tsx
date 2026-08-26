@@ -467,7 +467,7 @@ export function ChatClient() {
         } else if (waited >= 10000) {
           clearInterval(waitConnect);
           setLoading(false);
-          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: '连接已断开，请稍后重试' }], timestamp: new Date() }]);
+          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: t('chat.connectionLost') }], timestamp: new Date() }]);
         }
       }, 500);
       return;
