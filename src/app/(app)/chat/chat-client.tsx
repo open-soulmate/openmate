@@ -356,7 +356,7 @@ export function ChatClient() {
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    const ws = new WebSocket(`${getWsUrl()}/ws/chat?token=${token}`);
+    const ws = new WebSocket(`${getWsUrl()}/api/ws/chat?token=${token}`);
     wsRef.current = ws;
     ws.onopen = () => setWsConnected(true);
     ws.onclose = () => setWsConnected(false);
