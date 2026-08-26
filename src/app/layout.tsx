@@ -37,7 +37,7 @@ export default function RootLayout({
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInitScript }} />
       </head>
-      <body className="min-h-screen bg-background text-foreground antialiased">
+      <body className="h-screen overflow-hidden bg-background text-foreground antialiased">
         <I18nProvider>{children}</I18nProvider>
       <script dangerouslySetInnerHTML={{ __html: "if('serviceWorker' in navigator){navigator.serviceWorker.register('/sw.js')}" }} />
       </body>
