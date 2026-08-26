@@ -5753,6 +5753,10 @@
     "sourceCli": "CLI Terminal",
     "sourceWeixin": "WeChat",
     "sourceCron": "Scheduled Tasks",
+    "sourceAcp": "ACP",
+    "sourceTui": "TUI Terminal",
+    "sourceTool": "Tool Call",
+    "sourceSubagent": "Subagent",
     "sessionSummary": "{{count}} sessions · {{messages}} messages"
   }
 }

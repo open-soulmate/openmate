@@ -7,6 +7,7 @@ import {
   History, Loader2, Search, RefreshCw, Trash2,
   MessageSquare, Clock, ChevronDown, ChevronRight,
   XCircle, Bot, Terminal, Smartphone, Timer,
+  Link, Monitor, Wrench, Users,
 } from "lucide-react"
 
 interface Session {
@@ -38,15 +39,23 @@ const SOURCE_META: Record<string, { icon: typeof Terminal; color: string; bg: st
   cli:    { icon: Terminal,    color: "text-green-400",  bg: "bg-green-900/20" },
   weixin: { icon: Smartphone,  color: "text-emerald-400", bg: "bg-emerald-900/20" },
   cron:   { icon: Timer,       color: "text-amber-400",  bg: "bg-amber-900/20" },
+  acp:    { icon: Link,        color: "text-blue-400",   bg: "bg-blue-900/20" },
+  tui:    { icon: Monitor,     color: "text-purple-400", bg: "bg-purple-900/20" },
+  tool:   { icon: Wrench,      color: "text-orange-400", bg: "bg-orange-900/20" },
+  subagent: { icon: Users,     color: "text-cyan-400",   bg: "bg-cyan-900/20" },
 }
 
 const SOURCE_LABELS: Record<string, string> = {
   cli: "sessions.sourceCli",
   weixin: "sessions.sourceWeixin",
   cron: "sessions.sourceCron",
+  acp: "sessions.sourceAcp",
+  tui: "sessions.sourceTui",
+  tool: "sessions.sourceTool",
+  subagent: "sessions.sourceSubagent",
 }
 
-const ALL_SOURCES = ["cli", "weixin", "cron"]
+const ALL_SOURCES = ["cli", "weixin", "cron", "acp", "tui", "tool", "subagent"]
 
 function groupByAgent(sessions: Session[]) {
   // All non-cron sessions are from the same agent (Hermes)
@@ -74,7 +83,7 @@ export function SessionsClient() {
   // Expand state: agent-level and source-level
   const [agentExpanded, setAgentExpanded] = useState(true)
   const [sourceExpanded, setSourceExpanded] = useState<Record<string, boolean>>({
-    cli: true, weixin: true, cron: false,
+    cli: true, weixin: true, cron: false, acp: false, tui: false, tool: false, subagent: false,
   })
 
   const fetchSessions = useCallback(async () => {

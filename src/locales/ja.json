@@ -5762,6 +5762,10 @@
     "sourceCli": "CLI ターミナル",
     "sourceWeixin": "WeChat",
     "sourceCron": "定時タスク",
+    "sourceAcp": "ACP 通信",
+    "sourceTui": "TUI ターミナル",
+    "sourceTool": "ツール呼び出し",
+    "sourceSubagent": "サブエージェント",
     "sessionSummary": "{{count}} セッション · {{messages}} メッセージ"
   }
 }
