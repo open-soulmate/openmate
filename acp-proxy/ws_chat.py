@@ -1,4 +1,11 @@
-"""WebSocket chat endpoint — standalone, no OpenSoul dependency."""
+"""WebSocket chat endpoint — stable version.
+
+Key improvements:
+1. Never expose raw Python exceptions to frontend
+2. Proper WebSocket lifecycle management
+3. Robust error recovery with user-friendly messages
+4. Logging to file for debugging
+"""
 
 import asyncio
 import logging
@@ -10,7 +17,7 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from proxy import get_acp_process
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger("acp-proxy.ws")
 router = APIRouter()
 
 # Read JWT config from OpenSoul's .env (shared secret)
@@ -24,7 +31,7 @@ try:
                 k, v = line.split("=", 1)
                 _OPSOUL_ENV[k.strip()] = v.strip()
 except FileNotFoundError:
-    pass
+    logger.warning(f"OpenSoul .env not found at {_env_path}")
 
 JWT_SECRET = _OPSOUL_ENV.get("JWT_SECRET", "change-me-in-production")
 JWT_ALGORITHM = _OPSOUL_ENV.get("JWT_ALGORITHM", "HS256")
@@ -73,7 +80,17 @@ async def run_agent_proxy(agent_id: str, text: str) -> tuple[str, str, bool]:
     except TimeoutError:
         return "Agent响应超时 (120s)", "error", False
     except Exception as e:
-        return str(e), "error", False
+        logger.error(f"Agent proxy error: {e}")
+        return f"Agent执行出错: {type(e).__name__}", "error", False
+
+
+async def _safe_send_ws(websocket: WebSocket, data: dict) -> bool:
+    """Send JSON to WebSocket, return False if send fails."""
+    try:
+        await websocket.send_json(data)
+        return True
+    except Exception:
+        return False
 
 
 @router.get("/health")
@@ -101,9 +118,10 @@ async def acp_send(data: dict):
         result = await acp.send_message(data.get("text", ""), data.get("session_id"))
         return {"ok": True, "content": result.get("response_text", ""), "source": result.get("source", "acp")}
     except TimeoutError:
-        return {"ok": False, "error": "ACP timeout"}
+        return {"ok": False, "error": "请求超时，请重试"}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        logger.error(f"HTTP send error: {e}")
+        return {"ok": False, "error": "处理消息时出错，请重试"}
 
 
 @router.post("/acp/send-image")
@@ -117,9 +135,10 @@ async def acp_send_image(data: dict):
         )
         return {"ok": True, "content": result.get("response_text", ""), "source": result.get("source", "acp")}
     except TimeoutError:
-        return {"ok": False, "error": "ACP timeout"}
+        return {"ok": False, "error": "图片处理超时，请重试"}
     except Exception as e:
-        return {"ok": False, "error": str(e)}
+        logger.error(f"HTTP image send error: {e}")
+        return {"ok": False, "error": "处理图片时出错，请重试"}
 
 
 @router.websocket("/ws/chat")
@@ -134,17 +153,18 @@ async def chat_websocket(websocket: WebSocket):
 
     token = websocket.query_params.get("token", "")
     if not token:
-        await websocket.send_json({"type": "error", "message": "Missing token"})
+        await _safe_send_ws(websocket, {"type": "error", "message": "缺少认证令牌"})
         await websocket.close()
         return
 
     user_id = decode_token(token)
     if not user_id:
-        await websocket.send_json({"type": "error", "message": "Invalid token"})
+        await _safe_send_ws(websocket, {"type": "error", "message": "认证令牌无效或已过期"})
         await websocket.close()
         return
 
-    await websocket.send_json({"type": "connected", "user_id": str(user_id)})
+    await _safe_send_ws(websocket, {"type": "connected", "user_id": str(user_id)})
+    logger.info(f"WebSocket connected: user={user_id}")
 
     try:
         while True:
@@ -167,10 +187,10 @@ async def chat_websocket(websocket: WebSocket):
                         text = f"用户发送了文件: {', '.join(a.get('name', 'file') for a in file_parts)}"
 
                 if not text:
-                    await websocket.send_json({"type": "error", "message": "Empty message"})
+                    await _safe_send_ws(websocket, {"type": "error", "message": "消息内容为空"})
                     continue
 
-                await websocket.send_json({"type": "thinking"})
+                await _safe_send_ws(websocket, {"type": "thinking"})
 
                 try:
                     image_attachments = [a for a in attachments if a.get("type") == "image"]
@@ -192,42 +212,48 @@ async def chat_websocket(websocket: WebSocket):
                             source = result.get("source", "hermes")
 
                     if response_text:
+                        # Stream in chunks for real-time feel
                         chunk_size = 20
                         for i in range(0, len(response_text), chunk_size):
                             chunk = response_text[i : i + chunk_size]
-                            await websocket.send_json({"type": "chunk", "text": chunk})
+                            if not await _safe_send_ws(websocket, {"type": "chunk", "text": chunk}):
+                                break
                             await asyncio.sleep(0.05)
-                        await websocket.send_json({"type": "done", "text": response_text, "source": source})
+                        await _safe_send_ws(websocket, {"type": "done", "text": response_text, "source": source})
                     else:
-                        await websocket.send_json({"type": "error", "message": "无响应"})
+                        await _safe_send_ws(websocket, {"type": "error", "message": "未收到响应，请重试"})
 
+                except TimeoutError:
+                    logger.warning("WS chat prompt timeout")
+                    await _safe_send_ws(websocket, {"type": "error", "message": "响应超时，请重试"})
                 except (BrokenPipeError, OSError, ConnectionResetError) as e:
-                    logger.warning(f"WS chat pipe error: {e}, retrying...")
+                    logger.warning(f"WS chat pipe error: {e}")
+                    # Try once more
                     try:
                         acp = get_acp_process()
                         result = await acp.send_message(text, session_id)
                         response_text = result.get("response_text", "")
                         source = result.get("source", "hermes")
                         if response_text:
-                            await websocket.send_json({"type": "chunk", "text": response_text})
-                            await websocket.send_json({"type": "done", "text": response_text, "source": source})
+                            await _safe_send_ws(websocket, {"type": "chunk", "text": response_text})
+                            await _safe_send_ws(websocket, {"type": "done", "text": response_text, "source": source})
                         else:
-                            await websocket.send_json({"type": "error", "message": "连接已断开，请重试"})
+                            await _safe_send_ws(websocket, {"type": "error", "message": "连接已断开，请重试"})
                     except Exception as retry_e:
                         logger.error(f"WS chat retry failed: {retry_e}")
-                        await websocket.send_json({"type": "error", "message": "连接已断开，请重试"})
+                        await _safe_send_ws(websocket, {"type": "error", "message": "连接已断开，请重试"})
                 except Exception as e:
-                    logger.error(f"WS chat error: {e}")
-                    await websocket.send_json({"type": "error", "message": "处理消息时出错，请重试"})
+                    logger.error(f"WS chat error: {type(e).__name__}: {e}", exc_info=True)
+                    await _safe_send_ws(websocket, {"type": "error", "message": "处理消息时出错，请重试"})
 
             elif msg_type == "ping":
-                await websocket.send_json({"type": "pong"})
+                await _safe_send_ws(websocket, {"type": "pong"})
 
     except WebSocketDisconnect:
-        logger.info("WebSocket client disconnected")
+        logger.info(f"WebSocket disconnected: user={user_id}")
     except Exception as e:
-        logger.error(f"WebSocket error: {e}")
+        logger.error(f"WebSocket error: {type(e).__name__}: {e}")
         try:
-            await websocket.send_json({"type": "error", "message": str(e)})
+            await _safe_send_ws(websocket, {"type": "error", "message": "连接异常断开"})
         except Exception:
             pass

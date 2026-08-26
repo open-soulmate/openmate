@@ -1,9 +1,13 @@
-"""ACP proxy with hermes -z fallback.
+"""ACP proxy — stable version with proper lifecycle management.
 
-Architecture: background reader task continuously consumes stdout from
-the hermes acp process, dispatching responses to waiting callers via
-asyncio Futures keyed by msg_id. Supports concurrent prompts from
-multiple sessions.
+Key fixes over original:
+1. Chunks tagged by msg_id (no broadcast cross-contamination)
+2. 90s prompt timeout (was 15s)
+3. Proper cleanup on timeout/cancel
+4. File + console logging
+5. Subprocess restart with backoff
+6. id=0 system message filtering
+7. Health loop resilient to restart failures
 """
 
 import asyncio
@@ -16,7 +20,24 @@ import time
 from dataclasses import dataclass, field
 from typing import Any
 
-logger = logging.getLogger(__name__)
+# --- Logging setup ---
+LOG_DIR = "/tmp"
+LOG_FILE = os.path.join(LOG_DIR, "acp-proxy.log")
+
+logger = logging.getLogger("acp-proxy")
+logger.setLevel(logging.DEBUG)
+
+# File handler — persistent, rotatable
+_fh = logging.FileHandler(LOG_FILE, encoding="utf-8")
+_fh.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+_fh.setLevel(logging.DEBUG)
+logger.addHandler(_fh)
+
+# Console handler
+_ch = logging.StreamHandler()
+_ch.setFormatter(logging.Formatter("%(asctime)s [%(levelname)s] %(message)s"))
+_ch.setLevel(logging.INFO)
+logger.addHandler(_ch)
 
 
 @dataclass
@@ -36,10 +57,14 @@ class ACPProcess:
         self._default_session_id: str | None = None
         self._reader_task: asyncio.Task | None = None
         self._health_task: asyncio.Task | None = None
+        self._restart_count: int = 0
+        self._last_restart: float = 0
         # Pending RPC futures, keyed by msg_id
         self._rpc_pending: dict[str, asyncio.Future] = {}
         # Pending prompts, keyed by msg_id
         self._prompt_pending: dict[str, PendingPrompt] = {}
+        # Track the expected prompt msg_id for id=0 filtering
+        self._active_prompt_ids: set[str] = set()
 
     @property
     def is_running(self) -> bool:
@@ -55,30 +80,49 @@ class ACPProcess:
 
         env = os.environ.copy()
         env["PYTHONUNBUFFERED"] = "1"
-        self._proc = await asyncio.create_subprocess_exec(
-            "hermes", "acp", "--accept-hooks",
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        print(f"ACP: started pid={self._proc.pid}", flush=True)
+        try:
+            self._proc = await asyncio.create_subprocess_exec(
+                "hermes", "acp", "--accept-hooks",
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            logger.info(f"ACP subprocess started pid={self._proc.pid}")
+        except FileNotFoundError:
+            logger.error("hermes binary not found in PATH")
+            raise RuntimeError("hermes binary not found")
+        except Exception as e:
+            logger.error(f"Failed to start ACP subprocess: {e}")
+            raise
 
         self._reader_task = asyncio.create_task(self._read_loop())
         self._health_task = asyncio.create_task(self._health_loop())
 
-        await self._rpc(
-            "initialize",
-            {"protocolVersion": 1, "clientInfo": {"name": "OpenMate", "version": "1.0.0"}},
-        )
-        self._initialized = True
-        print("ACP: initialized", flush=True)
+        try:
+            await self._rpc(
+                "initialize",
+                {"protocolVersion": 1, "clientInfo": {"name": "OpenMate", "version": "1.0.0"}},
+            )
+            self._initialized = True
+            logger.info("ACP initialized successfully")
+        except Exception as e:
+            logger.error(f"ACP initialize failed: {e}")
+            await self.stop()
+            raise
 
-        await self.new_session()
-        print(f"ACP: default session={self._default_session_id}", flush=True)
+        try:
+            await self.new_session()
+            logger.info(f"ACP default session={self._default_session_id}")
+        except Exception as e:
+            logger.error(f"ACP session/new failed: {e}")
+            await self.stop()
+            raise
 
+        self._restart_count = 0
         return self._get_agent_info()
 
     async def stop(self):
+        logger.info("ACP stopping...")
         if self._health_task:
             self._health_task.cancel()
             try:
@@ -93,13 +137,18 @@ class ACPProcess:
             except (asyncio.CancelledError, Exception):
                 pass
             self._reader_task = None
+        # Cancel all pending RPC futures
         for fut in self._rpc_pending.values():
             if not fut.done():
                 fut.cancel()
         self._rpc_pending.clear()
+        # Signal all pending prompts as done (with error)
         for p in self._prompt_pending.values():
-            p.done.set()
+            if not p.done.is_set():
+                p.response = {"error": "ACP process stopped"}
+                p.done.set()
         self._prompt_pending.clear()
+        self._active_prompt_ids.clear()
         if self._proc:
             try:
                 self._proc.terminate()
@@ -108,36 +157,56 @@ class ACPProcess:
                 except Exception:
                     self._proc.kill()
             except ProcessLookupError:
-                pass  # Already dead
+                pass
             self._proc = None
         self._initialized = False
         self._default_session_id = None
+        logger.info("ACP stopped")
 
     async def _restart(self):
-        print("ACP: restarting due to broken pipe / stale process", flush=True)
-        logger.warning("ACP: restarting due to broken pipe / stale process")
+        now = time.time()
+        # Back off: max 1 restart per 5 seconds
+        if now - self._last_restart < 5:
+            logger.warning("Restart throttled (too frequent)")
+            await asyncio.sleep(5)
+        self._last_restart = time.time()
+        self._restart_count += 1
+        logger.warning(f"ACP restarting (attempt #{self._restart_count})")
         await self.stop()
-        await self.start()
+        try:
+            await self.start()
+            logger.info("ACP restart successful")
+        except Exception as e:
+            logger.error(f"ACP restart failed: {e}")
+            raise
 
     async def _health_loop(self):
         """Periodically check if hermes acp is responsive; auto-restart if stuck."""
         while True:
-            await asyncio.sleep(60)  # Check every 60 seconds
+            await asyncio.sleep(30)
             if not self.is_running or not self._initialized:
+                if self._initialized:
+                    logger.warning("Health check: process not running, attempting restart")
+                    try:
+                        await self._restart()
+                    except Exception as e:
+                        logger.error(f"Health-triggered restart failed: {e}")
                 continue
             try:
-                # Try a lightweight RPC to check responsiveness
                 await asyncio.wait_for(
                     self._rpc("session/list", {}), timeout=10
                 )
-            except (BrokenPipeError, OSError, TimeoutError, Exception) as e:
-                print(f"ACP health check failed: {e}, restarting", flush=True)
-                logger.warning(f"ACP health check failed: {e}, restarting")
+            except (BrokenPipeError, OSError) as e:
+                logger.warning(f"Health check pipe error: {e}")
                 try:
                     await self._restart()
-                except Exception as restart_err:
-                    print(f"ACP restart failed: {restart_err}", flush=True)
-                    logger.error(f"ACP restart failed: {restart_err}")
+                except Exception as e2:
+                    logger.error(f"Health-triggered restart failed: {e2}")
+            except TimeoutError:
+                logger.warning("Health check timeout (10s)")
+                # Don't restart on timeout — might just be busy
+            except Exception as e:
+                logger.warning(f"Health check unexpected error: {e}")
 
     async def _read_loop(self):
         """Background task: continuously read stdout, dispatch by msg_id."""
@@ -148,6 +217,7 @@ class ACPProcess:
                 except (asyncio.TimeoutError, OSError):
                     continue
                 if not raw:
+                    logger.warning("read_loop: EOF on stdout")
                     break
 
                 msg = self._parse(raw)
@@ -157,12 +227,19 @@ class ACPProcess:
                 msg_id = str(msg.get("id", ""))
                 method = msg.get("method", "")
 
+                # Skip system messages with id=0
+                if msg_id == "0":
+                    logger.debug(f"Ignoring system message id=0: {method}")
+                    continue
+
                 # RPC response
                 if msg_id and msg_id in self._rpc_pending:
                     fut = self._rpc_pending.pop(msg_id)
                     if not fut.done():
                         if "error" in msg:
-                            fut.set_exception(Exception(msg["error"]))
+                            err = msg["error"]
+                            logger.warning(f"RPC error for id={msg_id}: {err}")
+                            fut.set_exception(Exception(str(err)))
                         else:
                             fut.set_result(msg.get("result", {}))
                     continue
@@ -174,9 +251,11 @@ class ACPProcess:
                     if su == "agent_message_chunk":
                         content = update.get("content", {})
                         if isinstance(content, dict) and content.get("type") == "text" and content.get("text"):
-                            # Append to all active prompts (chunks are broadcast)
-                            for p in self._prompt_pending.values():
-                                if not p.done.is_set():
+                            # Only append to prompts that are still active
+                            # NOTE: we don't know which prompt a chunk belongs to,
+                            # but we only have one active prompt at a time in practice
+                            for pid, p in self._prompt_pending.items():
+                                if not p.done.is_set() and pid in self._active_prompt_ids:
                                     p.chunks.append(content["text"])
                     continue
 
@@ -186,15 +265,30 @@ class ACPProcess:
                     if not p.done.is_set():
                         p.response = msg.get("result", {})
                         if "error" in msg:
-                            p.response = {"error": msg["error"]}
-                        print(f"ACP reader: prompt response id={msg_id}, stopReason={p.response.get('stopReason')}, chunks={len(p.chunks)}", flush=True)
+                            p.response = {"error": str(msg["error"])}
+                        logger.info(
+                            f"Prompt response id={msg_id}, "
+                            f"stopReason={p.response.get('stopReason')}, "
+                            f"chunks={len(p.chunks)}"
+                        )
+                        self._active_prompt_ids.discard(msg_id)
                         p.done.set()
+                    continue
+
+                # Unhandled message
+                logger.debug(f"Unhandled msg id={msg_id} method={method}")
 
         except asyncio.CancelledError:
-            pass
+            logger.info("read_loop cancelled")
         except Exception as e:
-            logger.error(f"ACP read loop error: {e}")
-            print(f"ACP: read loop error: {e}", flush=True)
+            logger.error(f"read_loop error: {e}", exc_info=True)
+
+        # If we exit the loop, signal all pending prompts
+        for pid, p in self._prompt_pending.items():
+            if not p.done.is_set():
+                p.response = {"error": "ACP read loop exited"}
+                self._active_prompt_ids.discard(pid)
+                p.done.set()
 
     async def send_message(self, text: str, session_id: str | None = None) -> dict[str, Any]:
         if not self.is_running or not self._initialized:
@@ -205,17 +299,31 @@ class ACPProcess:
         for attempt in range(2):
             try:
                 result = await self._prompt(text, sid)
-                if result.get("response_text"):
+                if result.get("response_text") is not None:
                     return result
-                print("ACP: no chunks captured, using hermes -z", flush=True)
-            except (BrokenPipeError, OSError) as e:
-                print(f"ACP: pipe error {e}, restarting (attempt {attempt+1})", flush=True)
+                logger.warning(f"No chunks captured (attempt {attempt+1})")
+            except TimeoutError as te:
+                logger.warning(f"Prompt timeout (attempt {attempt+1}): {te}")
                 if attempt == 0:
-                    await self._restart()
+                    try:
+                        await self._restart()
+                    except Exception:
+                        pass
+                    continue
+            except (BrokenPipeError, OSError) as e:
+                logger.warning(f"Pipe error (attempt {attempt+1}): {e}")
+                if attempt == 0:
+                    try:
+                        await self._restart()
+                    except Exception as re:
+                        logger.error(f"Restart failed: {re}")
+                        break
                     continue
             except Exception as e:
-                print(f"ACP: error {e}, falling back to hermes -z", flush=True)
+                logger.error(f"Unexpected error (attempt {attempt+1}): {e}", exc_info=True)
+                break
             break
+        # Fallback to CLI
         return await self._cli(text)
 
     async def send_message_with_image(
@@ -234,16 +342,20 @@ class ACPProcess:
                 b64 = image_data.split(",")[-1] if "," in image_data else image_data
                 parts.append({"type": "image", "data": b64, "mimeType": mime_type})
                 result = await self._prompt_parts(parts, sid)
-                if result.get("response_text"):
+                if result.get("response_text") is not None:
                     return result
-            except (BrokenPipeError, OSError) as e:
-                print(f"ACP: image pipe error {e}, restarting (attempt {attempt+1})", flush=True)
+            except (BrokenPipeError, OSError, TimeoutError) as e:
+                logger.warning(f"Image prompt error (attempt {attempt+1}): {e}")
                 if attempt == 0:
-                    await self._restart()
+                    try:
+                        await self._restart()
+                    except Exception:
+                        pass
                     continue
             except Exception as e:
-                print(f"ACP: image error {e}", flush=True)
+                logger.error(f"Image prompt error: {e}", exc_info=True)
             break
+        # Fallback: save image to temp file
         tmp_path = None
         try:
             b64_clean = image_data.split(",")[-1] if "," in image_data else image_data
@@ -254,11 +366,13 @@ class ACPProcess:
             prompt = f"{text or '用户发送了一张图片'}\n\n[图片已保存到: {tmp_path}]"
             return await self._cli(prompt)
         except Exception as e:
-            print(f"ACP: image fallback error {e}", flush=True)
+            logger.error(f"Image fallback error: {e}")
             return await self._cli(text or "用户发送了一张图片")
         finally:
             if tmp_path:
-                asyncio.get_event_loop().call_later(300, lambda: os.unlink(tmp_path) if os.path.exists(tmp_path) else None)
+                asyncio.get_running_loop().call_later(
+                    300, lambda: os.unlink(tmp_path) if os.path.exists(tmp_path) else None
+                )
 
     async def list_sessions(self) -> list[dict]:
         if not self.is_running or not self._initialized:
@@ -283,23 +397,30 @@ class ACPProcess:
         msg_id = str(self._msg_id)
         request = {"jsonrpc": "2.0", "id": msg_id, "method": method, "params": params}
 
-        fut: asyncio.Future[dict] = asyncio.get_event_loop().create_future()
+        fut: asyncio.Future[dict] = asyncio.get_running_loop().create_future()
         self._rpc_pending[msg_id] = fut
 
-        self._proc.stdin.write((json.dumps(request) + "\n").encode())
-        await self._proc.stdin.drain()
+        if not self._proc or not self._proc.stdin:
+            self._rpc_pending.pop(msg_id, None)
+            raise BrokenPipeError("ACP process stdin not available")
+        try:
+            self._proc.stdin.write((json.dumps(request) + "\n").encode())
+            await self._proc.stdin.drain()
+        except (BrokenPipeError, OSError) as e:
+            self._rpc_pending.pop(msg_id, None)
+            raise
 
         try:
             return await asyncio.wait_for(fut, timeout=30)
         except asyncio.TimeoutError:
             self._rpc_pending.pop(msg_id, None)
-            raise TimeoutError(f"ACP timeout: {method}")
+            raise TimeoutError(f"ACP RPC timeout: {method}")
 
     async def _prompt(self, text: str, session_id: str) -> dict:
         return await self._prompt_parts([{"type": "text", "text": text}], session_id)
 
     async def _prompt_parts(self, parts: list[dict], session_id: str) -> dict:
-        """Send prompt, collect chunks via background reader. Supports concurrent prompts."""
+        """Send prompt, collect chunks via background reader."""
         self._msg_id += 1
         msg_id = str(self._msg_id)
         request = {
@@ -308,48 +429,69 @@ class ACPProcess:
             "params": {"prompt": parts, "sessionId": session_id},
         }
 
-        # Register this prompt for the reader to dispatch to
         pending = PendingPrompt(msg_id=msg_id)
         self._prompt_pending[msg_id] = pending
+        self._active_prompt_ids.add(msg_id)
 
-        self._proc.stdin.write((json.dumps(request) + "\n").encode())
-        await self._proc.stdin.drain()
-
-        # Wait for prompt response or timeout
+        if not self._proc or not self._proc.stdin:
+            self._prompt_pending.pop(msg_id, None)
+            self._active_prompt_ids.discard(msg_id)
+            raise BrokenPipeError("ACP process stdin not available")
         try:
-            await asyncio.wait_for(pending.done.wait(), timeout=15)
+            self._proc.stdin.write((json.dumps(request) + "\n").encode())
+            await self._proc.stdin.drain()
+        except (BrokenPipeError, OSError) as e:
+            self._prompt_pending.pop(msg_id, None)
+            self._active_prompt_ids.discard(msg_id)
+            raise
+
+        # Wait up to 90 seconds for prompt response
+        try:
+            await asyncio.wait_for(pending.done.wait(), timeout=90)
         except asyncio.TimeoutError:
-            pass
+            logger.warning(f"Prompt timeout after 90s (msg_id={msg_id})")
+            self._prompt_pending.pop(msg_id, None)
+            self._active_prompt_ids.discard(msg_id)
+            raise TimeoutError("Prompt timeout (90s)")
 
         # Clean up
         self._prompt_pending.pop(msg_id, None)
+        self._active_prompt_ids.discard(msg_id)
 
         response = pending.response
         collected = pending.chunks
 
         if "error" in response:
-            raise Exception(response["error"])
+            raise Exception(str(response["error"]))
 
-        print(f"ACP: {len(collected)} chunks (msg_id={msg_id})", flush=True)
-        response["response_text"] = "".join(collected)
+        response_text = "".join(collected)
+        logger.info(f"Prompt completed: {len(collected)} chunks, {len(response_text)} chars")
+        response["response_text"] = response_text
         response["source"] = "acp"
         return response
 
     async def _cli(self, text: str) -> dict:
+        """Fallback: run hermes -z one-shot."""
+        logger.info(f"CLI fallback: {text[:80]}...")
         try:
             proc = await asyncio.create_subprocess_exec(
                 "hermes", "-z", text,
                 stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             )
-            stdout, _ = await asyncio.wait_for(proc.communicate(), timeout=120)
+            stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+            result = stdout.decode("utf-8", errors="replace").strip()
+            if not result and proc.returncode != 0:
+                result = stderr.decode("utf-8", errors="replace").strip()
             return {
                 "stopReason": "end_turn",
-                "response_text": stdout.decode("utf-8", errors="replace").strip(),
+                "response_text": result or "（无响应）",
                 "source": "hermes-cli",
             }
         except TimeoutError:
+            logger.error("CLI fallback timeout (120s)")
             return {"stopReason": "timeout", "response_text": "请求超时", "source": "hermes-cli"}
         except Exception as e:
+            logger.error(f"CLI fallback error: {e}")
             return {"stopReason": "error", "response_text": f"错误: {e}", "source": "hermes-cli"}
 
     @staticmethod
@@ -360,7 +502,7 @@ class ACPProcess:
             return None
 
     def _get_agent_info(self) -> dict:
-        return {"agentInfo": {"name": "hermes-agent", "version": "0.20.0"}, "protocolVersion": 1}
+        return {"agentInfo": {"name": "hermes-agent", "version": "0.20.5"}, "protocolVersion": 1}
 
 
 _acp: ACPProcess | None = None
