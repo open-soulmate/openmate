@@ -188,7 +188,7 @@ export function SessionsClient() {
         {/* Session List */}
         <div className={`${selectedSession ? "w-1/3 border-r border-zinc-800" : "w-full"} flex flex-col overflow-hidden transition-all`}>
           {/* Search */}
-          <form onSubmit={handleSearch} className="px-4 py-3 border-b border-zinc-800">
+          <form onSubmit={handleSearch} className="px-4 h-12 flex items-center border-b border-zinc-800">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
