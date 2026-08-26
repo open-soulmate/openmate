@@ -31,6 +31,14 @@ function formatRelativeTime(dateStr: string): string {
 }
 
 // Agent definitions with detection
+interface SourceGroup {
+  source: string;
+  label: string;
+  icon: string;
+  sessions: Session[];
+  expanded: boolean;
+}
+
 interface AgentInfo {
   id: string;
   name: string;
@@ -42,7 +50,15 @@ interface AgentInfo {
   path?: string;
   sessions: Session[];
   expanded: boolean;
+  sourceGroups?: SourceGroup[];
 }
+
+// Source metadata for sub-group display
+const SOURCE_META: Record<string, { label: string; icon: string }> = {
+  cli:    { label: 'CLI 终端',  icon: '⌨️' },
+  weixin: { label: '微信',      icon: '💬' },
+  cron:   { label: '定时任务',  icon: '⏰' },
+};
 
 // Known agent icons (fallback for detect API)
 const AGENT_ICONS: Record<string, string> = {
