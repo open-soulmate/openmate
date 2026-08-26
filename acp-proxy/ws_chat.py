@@ -201,9 +201,24 @@ async def chat_websocket(websocket: WebSocket):
                     else:
                         await websocket.send_json({"type": "error", "message": "无响应"})
 
+                except (BrokenPipeError, OSError, ConnectionResetError) as e:
+                    logger.warning(f"WS chat pipe error: {e}, retrying...")
+                    try:
+                        acp = get_acp_process()
+                        result = await acp.send_message(text, session_id)
+                        response_text = result.get("response_text", "")
+                        source = result.get("source", "hermes")
+                        if response_text:
+                            await websocket.send_json({"type": "chunk", "text": response_text})
+                            await websocket.send_json({"type": "done", "text": response_text, "source": source})
+                        else:
+                            await websocket.send_json({"type": "error", "message": "连接已断开，请重试"})
+                    except Exception as retry_e:
+                        logger.error(f"WS chat retry failed: {retry_e}")
+                        await websocket.send_json({"type": "error", "message": "连接已断开，请重试"})
                 except Exception as e:
                     logger.error(f"WS chat error: {e}")
-                    await websocket.send_json({"type": "error", "message": str(e)})
+                    await websocket.send_json({"type": "error", "message": "处理消息时出错，请重试"})
 
             elif msg_type == "ping":
                 await websocket.send_json({"type": "pong"})
