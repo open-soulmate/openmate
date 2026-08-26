@@ -227,40 +227,43 @@ export function ChatClient() {
       if (r.ok) { const d = await r.json(); sessions = d.sessions || []; }
     } catch {}
 
-    // Group sessions by platform/source
-    // cli, weixin, cron are all sub-channels of hermes agent
-    const HERMES_SOURCES = new Set(['cli', 'weixin', 'cron']);
-    const sessionMap: Record<string, Session[]> = {};
-    const hermeSessions: Session[] = [];
+    // Group sessions by agent id, then by source within each agent
+    const agentSessionMap: Record<string, Session[]> = {};
     for (const s of sessions) {
       if (!s.platform && s.source) s.platform = s.source;
-      const key = s.platform || 'hermes';
-      if (HERMES_SOURCES.has(key)) {
-        hermeSessions.push(s);
-      } else {
-        if (!sessionMap[key]) sessionMap[key] = [];
-        sessionMap[key].push(s);
-      }
+      // hermes sub-sources (cli/weixin/cron) all belong to hermes agent
+      const HERMES_SOURCES = new Set(['cli', 'weixin', 'cron']);
+      const src = s.platform || s.source || '';
+      const agentKey = HERMES_SOURCES.has(src) ? 'hermes' : (s.platform || 'hermes');
+      if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
+      agentSessionMap[agentKey].push(s);
     }
 
-    // Build source groups for hermes agent
-    const hermesSourceGroups: SourceGroup[] = [];
-    for (const src of ['cli', 'weixin', 'cron']) {
-      const items = hermeSessions.filter(s => (s.platform || s.source) === src);
-      if (items.length > 0) {
-        const meta = SOURCE_META[src] || { labelKey: src, icon: '💬' };
-        hermesSourceGroups.push({
-          source: src, label: t(meta.labelKey), icon: meta.icon,
-          sessions: items, expanded: src !== 'cron',
-        });
+    // Build source groups for any agent that has multiple sources
+    const buildSourceGroups = (agentSessions: Session[], agentId: string): SourceGroup[] | undefined => {
+      const sourceMap: Record<string, Session[]> = {};
+      for (const s of agentSessions) {
+        const src = (s.platform || s.source || agentId) as string;
+        if (!sourceMap[src]) sourceMap[src] = [];
+        sourceMap[src].push(s);
       }
-    }
+      const sources = Object.keys(sourceMap);
+      if (sources.length <= 1) return undefined; // no need for tree if only one source
+      return sources.map(src => {
+        const meta = SOURCE_META[src] || { labelKey: src, icon: '💬' };
+        return {
+          source: src, label: t(meta.labelKey), icon: meta.icon,
+          sessions: sourceMap[src], expanded: true,
+        };
+      });
+    };
 
     // Build agent list from detect API data — only available (installed) agents
     const agentList: AgentInfo[] = detectedAgents
       .filter(a => a.available)
       .map(a => {
-        const isHermes = a.id === 'hermes';
+        const agentSessions = agentSessionMap[a.id] || [];
+        const sourceGroups = buildSourceGroups(agentSessions, a.id);
         return {
           id: a.id,
           name: a.name,
@@ -270,18 +273,20 @@ export function ChatClient() {
           available: a.available,
           category: a.category,
           path: a.path,
-          sessions: isHermes ? hermeSessions : (sessionMap[a.id] || []),
-          expanded: isHermes,
-          sourceGroups: isHermes ? hermesSourceGroups : undefined,
+          sessions: agentSessions,
+          expanded: a.id === 'hermes',
+          sourceGroups,
         };
       });
 
-    // Add unknown platform sessions (non-hermes sources)
-    for (const [key, val] of Object.entries(sessionMap)) {
+    // Add unknown platform sessions (agents not in detect API)
+    for (const [key, val] of Object.entries(agentSessionMap)) {
       if (!agentList.find(a => a.id === key) && val.length > 0) {
+        const sourceGroups = buildSourceGroups(val, key);
         agentList.push({
           id: key, name: key, icon: '💬', description: key,
           installed: false, sessions: val, expanded: false,
+          sourceGroups,
         });
       }
     }
@@ -315,10 +320,14 @@ export function ChatClient() {
         headers: { Authorization: `Bearer ${getToken()}` },
       });
       if (res.ok) {
-        // Remove from local state
+        // Remove from local state (both flat sessions and sourceGroups)
         setAgents(prev => prev.map(a => ({
           ...a,
           sessions: a.sessions.filter(s => s.id !== sessionId),
+          sourceGroups: a.sourceGroups?.map(g => ({
+            ...g,
+            sessions: g.sessions.filter(s => s.id !== sessionId),
+          })).filter(g => g.sessions.length > 0),
         })));
         if (selectedSession?.id === sessionId) {
           setSelectedSession(null);
@@ -584,7 +593,7 @@ export function ChatClient() {
               </div>
 
               {/* Sessions under this agent */}
-              {agent.expanded && agent.sourceGroups ? (
+              {agent.expanded && agent.sourceGroups && agent.sourceGroups.length > 0 ? (
                 // Tree view: source groups with sub-sessions
                 agent.sourceGroups.map(group => (
                   <div key={group.source}>
