@@ -83,7 +83,9 @@
     "kbSharing": "KB共有",
     "knowledgeRequests": "KBリクエスト",
     "enterprise": "エンタープライズ",
-    "sessions": "セッション"
+    "sessions": "セッション",
+    "tags": "タグ管理",
+    "permission": "権限管理"
   },
   "dashboard": {
     "title": "システム概要",
