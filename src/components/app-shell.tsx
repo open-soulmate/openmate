@@ -21,6 +21,7 @@ import {
   Gauge,
   BarChart3,
   Package,
+  Tag,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getUserName, getApiBaseUrl } from "@/lib/api-client";
@@ -156,6 +157,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         { href: "/workspace", label: t("nav.workspace"), icon: FolderKanban },
         { href: "/capture", label: t("nav.capture"), icon: Camera },
         { href: "/download", label: t("nav.download"), icon: Download },
+        { href: "/tags", label: t("nav.tags", "Tags"), icon: Tag },
       ],
     },
     {
@@ -194,6 +196,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         { href: "/soul", label: t("nav.soul"), icon: Brain },
         { href: "/soma-admin", label: t("nav.somaAdmin"), icon: Bot },
         { href: "/admin", label: t("nav.admin"), icon: Shield },
+        { href: "/permission", label: t("nav.permission", "Permissions"), icon: Shield },
         { href: "/enterprise", label: t("nav.enterprise", "Enterprise"), icon: Shield },
         { href: "/sessions", label: t("nav.sessions", "Sessions"), icon: History },
         { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope },

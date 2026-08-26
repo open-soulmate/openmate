@@ -83,7 +83,9 @@
     "kbSharing": "知识库共享",
     "knowledgeRequests": "知识库申请",
     "enterprise": "企业管理",
-    "sessions": "会话管理"
+    "sessions": "会话管理",
+    "tags": "标签管理",
+    "permission": "权限管理"
   },
   "dashboard": {
     "title": "系统概览",

@@ -83,7 +83,9 @@
     "kbSharing": "KB Sharing",
     "knowledgeRequests": "KB Requests",
     "enterprise": "Enterprise",
-    "sessions": "Sessions"
+    "sessions": "Sessions",
+    "tags": "Tags",
+    "permission": "Permissions"
   },
   "dashboard": {
     "title": "System Overview",
