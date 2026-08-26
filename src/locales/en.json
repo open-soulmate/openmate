@@ -172,6 +172,8 @@
     "searching": "Searching...",
     "noSearchResults": "No matching results",
     "confirmDeleteSession": "Delete this session?",
+    "confirmDelete": "Confirm",
+    "cancelDelete": "Cancel",
     "noSessions": "No sessions",
     "newSession": "New Session",
     "welcomeMessage": "Hello, what would you like to do today?",

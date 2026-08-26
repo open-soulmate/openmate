@@ -171,6 +171,7 @@ export function ChatClient() {
   const [agentMode, setAgentMode] = useState<AgentMode>('act');
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [showCheckpoints, setShowCheckpoints] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
   const { t } = useTranslation();
   const wsRef = useRef<WebSocket | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -311,9 +312,7 @@ export function ChatClient() {
   }, []);
 
   // Delete session
-  const deleteSession = useCallback(async (sessionId: string, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (!confirm(t("chat.confirmDeleteSession"))) return;
+  const deleteSession = useCallback(async (sessionId: string) => {
     try {
       const res = await fetch(`${getApiBaseUrl()}/api/sessions/${sessionId}`, {
         method: "DELETE",
@@ -333,8 +332,12 @@ export function ChatClient() {
           setSelectedSession(null);
           setMessages([]);
         }
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        console.error("Delete failed:", res.status, errData);
       }
     } catch (e) { console.error("Delete failed:", e); }
+    setDeleteConfirm(null);
   }, [selectedSession]);
 
   const loadHistory = useCallback(async (sessionId: string) => {
@@ -529,6 +532,7 @@ export function ChatClient() {
   const selectSession = (session: Session, agent: AgentInfo) => {
     setSelectedSession(session);
     setSelectedAgent(agent);
+    setDeleteConfirm(null);
     loadHistory(session.id);
   };
 
@@ -612,7 +616,20 @@ export function ChatClient() {
                         <div className="flex items-center gap-1.5">
                           <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
                           <span className="text-xs truncate text-foreground flex-1">{session.name || session.title || "Untitled"}</span>
-                          <button onClick={(e) => { e.stopPropagation(); deleteSession(session.id, e); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
+                          {deleteConfirm === session.id ? (
+                            <div className="flex items-center gap-0.5 shrink-0">
+                              <button onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
+                                className="px-1 py-0.5 bg-red-600 hover:bg-red-700 rounded text-[10px] text-white font-medium">
+                                {t("chat.confirmDelete", "确认")}
+                              </button>
+                              <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
+                                className="px-1 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-[10px] text-zinc-300">
+                                {t("chat.cancelDelete", "取消")}
+                              </button>
+                            </div>
+                          ) : (
+                            <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(session.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
+                          )}
                         </div>
                         {(session.last_active || session.updated_at) && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{formatRelativeTime(session.last_active || session.updated_at!)}</div>}
                       </div>
@@ -627,7 +644,20 @@ export function ChatClient() {
                     <div className="flex items-center gap-1.5">
                       <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
                       <span className="text-xs truncate text-foreground flex-1">{session.name || session.title || "Untitled"}</span>
-                      <button onClick={(e) => { e.stopPropagation(); deleteSession(session.id, e); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
+                      {deleteConfirm === session.id ? (
+                        <div className="flex items-center gap-0.5 shrink-0">
+                          <button onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
+                            className="px-1 py-0.5 bg-red-600 hover:bg-red-700 rounded text-[10px] text-white font-medium">
+                            {t("chat.confirmDelete", "确认")}
+                          </button>
+                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
+                            className="px-1 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-[10px] text-zinc-300">
+                            {t("chat.cancelDelete", "取消")}
+                          </button>
+                        </div>
+                      ) : (
+                        <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(session.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
+                      )}
                     </div>
                     {(session.last_active || session.updated_at) && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{formatRelativeTime(session.last_active || session.updated_at!)}</div>}
                   </div>
