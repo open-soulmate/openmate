@@ -557,7 +557,7 @@ export function GroupsClient() {
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         title={t("groups.deleteGroup") || "Delete Group"}
-        description={t("groups.confirmDelete", { name: deleteTarget?.name }) || `确定要删除 "${deleteTarget?.name}" 吗？此操作不可撤销。`}
+        description={t("groups.confirmDelete", { name: deleteTarget?.name }) || `确定要删除「${deleteTarget?.name}」吗？`}
         footer={
           <>
             <button

@@ -4,6 +4,7 @@ import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu, Trash2, Search as SearchIcon, Bookmark, RotateCcw, Zap, Brain } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
+import { Dialog } from '@/components/ui/dialog';
 import { useTranslation } from 'react-i18next';
 
 const getApiUrl = () => getApiBaseUrl();
@@ -171,7 +172,7 @@ export function ChatClient() {
   const [agentMode, setAgentMode] = useState<AgentMode>('act');
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [showCheckpoints, setShowCheckpoints] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const { t } = useTranslation();
   const wsRef = useRef<WebSocket | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -616,20 +617,7 @@ export function ChatClient() {
                         <div className="flex items-center gap-1.5">
                           <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
                           <span className="text-xs truncate text-foreground flex-1">{session.name || session.title || "Untitled"}</span>
-                          {deleteConfirm === session.id ? (
-                            <div className="flex items-center gap-0.5 shrink-0">
-                              <button onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
-                                className="px-1 py-0.5 bg-red-600 hover:bg-red-700 rounded text-[10px] text-white font-medium">
-                                {t("chat.confirmDelete", "确认")}
-                              </button>
-                              <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
-                                className="px-1 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-[10px] text-zinc-300">
-                                {t("chat.cancelDelete", "取消")}
-                              </button>
-                            </div>
-                          ) : (
-                            <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(session.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
-                          )}
+                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: session.id, name: session.name || session.title || "Untitled" }); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
                         </div>
                         {(session.last_active || session.updated_at) && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{formatRelativeTime(session.last_active || session.updated_at!)}</div>}
                       </div>
@@ -644,20 +632,7 @@ export function ChatClient() {
                     <div className="flex items-center gap-1.5">
                       <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
                       <span className="text-xs truncate text-foreground flex-1">{session.name || session.title || "Untitled"}</span>
-                      {deleteConfirm === session.id ? (
-                        <div className="flex items-center gap-0.5 shrink-0">
-                          <button onClick={(e) => { e.stopPropagation(); deleteSession(session.id); }}
-                            className="px-1 py-0.5 bg-red-600 hover:bg-red-700 rounded text-[10px] text-white font-medium">
-                            {t("chat.confirmDelete", "确认")}
-                          </button>
-                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null); }}
-                            className="px-1 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-[10px] text-zinc-300">
-                            {t("chat.cancelDelete", "取消")}
-                          </button>
-                        </div>
-                      ) : (
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(session.id); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
-                      )}
+                      <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: session.id, name: session.name || session.title || "Untitled" }); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
                     </div>
                     {(session.last_active || session.updated_at) && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{formatRelativeTime(session.last_active || session.updated_at!)}</div>}
                   </div>
@@ -940,6 +915,25 @@ export function ChatClient() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog
+        open={!!deleteConfirm}
+        onClose={() => setDeleteConfirm(null)}
+        title={t("chat.deleteSessionTitle", "删除会话")}
+        description={t("chat.deleteSessionDesc", `确定要删除「${deleteConfirm?.name}」吗？`, { name: deleteConfirm?.name })}
+        className="max-w-xs"
+        footer={
+          <>
+            <button onClick={() => setDeleteConfirm(null)} className="px-4 py-2 rounded-lg text-sm bg-zinc-700 hover:bg-zinc-600 text-zinc-300 transition-colors">
+              {t("chat.cancelDelete", "取消")}
+            </button>
+            <button onClick={() => { if (deleteConfirm) { deleteSession(deleteConfirm.id); setDeleteConfirm(null); } }} className="px-4 py-2 rounded-lg text-sm bg-red-600 hover:bg-red-700 text-white font-medium transition-colors">
+              {t("chat.confirmDelete", "确认删除")}
+            </button>
+          </>
+        }
+      />
     </div>
   );
 }

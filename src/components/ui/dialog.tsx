@@ -9,7 +9,7 @@ interface DialogProps {
   onClose: () => void;
   title?: string;
   description?: string;
-  children: React.ReactNode;
+  children?: React.ReactNode;
   footer?: React.ReactNode;
   className?: string;
 }
