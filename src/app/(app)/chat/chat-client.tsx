@@ -856,7 +856,7 @@ export function ChatClient() {
       {/* Column 4: Details Panel */}
       {showDetails && (
         <div className="hidden md:flex w-72 shrink-0 border-l border-border bg-card flex-col">
-          <div className="p-3 border-b border-border flex items-center justify-between">
+          <div className="h-12 px-3 flex items-center border-b border-border justify-between">
             <span className="text-sm font-medium flex items-center gap-1.5"><Info className="w-4 h-4" />{t("chat.sessionDetails")}</span>
             <button onClick={() => setShowDetails(false)} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
           </div>
