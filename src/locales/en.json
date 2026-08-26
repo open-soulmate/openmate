@@ -409,6 +409,13 @@
     "policySecurity": "Data Security",
     "policyLocal": "All data stored locally",
     "policyNoUpload": "No data uploaded to cloud",
+    "policyManualCreate": "Manual course creation supports custom chapters",
+    "policyLearningCard": "Learning cards generated only after course completion",
+    "policyExport": "Export supports JSON format",
+    "policyScoring": "Scoring Policy",
+    "policyAutoGrade": "Chapter quizzes are auto-graded",
+    "policyPassRate": "80%+ accuracy required to pass",
+    "policyRetry": "Failed attempts can be retried",
     "save": "Save",
     "saving": "Saving...",
     "cancel": "Cancel"
@@ -5740,6 +5747,10 @@
     "confirmDelete": "Confirm",
     "cancel": "Cancel",
     "noMessages": "No messages in this session",
-    "messages": "messages"
+    "messages": "messages",
+    "sourceCli": "CLI Terminal",
+    "sourceWeixin": "WeChat",
+    "sourceCron": "Scheduled Tasks",
+    "sessionSummary": "{{count}} sessions · {{messages}} messages"
   }
 }

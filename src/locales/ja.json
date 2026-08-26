@@ -411,7 +411,14 @@
     "policyComplete": "全チャプター完了時に自動でコース完了としてマーク",
     "policySecurity": "データセキュリティ",
     "policyLocal": "すべてのデータはローカルに保存",
-    "policyNoUpload": "データはクラウドにアップロードされません"
+    "policyNoUpload": "データはクラウドにアップロードされません",
+    "policyManualCreate": "手動コース作成はカスタムチャプターに対応",
+    "policyLearningCard": "学習カードはコース完了後にのみ生成",
+    "policyExport": "エクスポートはJSON形式に対応",
+    "policyScoring": "採点ポリシー",
+    "policyAutoGrade": "チャプタークイズは自動採点",
+    "policyPassRate": "80%以上の正答率で合格",
+    "policyRetry": "不合格の場合は再挑戦可能"
   },
   "agents": {
     "title": "エージェント管理",
@@ -5749,6 +5756,10 @@
     "confirmDelete": "確認",
     "cancel": "キャンセル",
     "noMessages": "このセッションにメッセージがありません",
-    "messages": "メッセージ"
+    "messages": "メッセージ",
+    "sourceCli": "CLI ターミナル",
+    "sourceWeixin": "WeChat",
+    "sourceCron": "定時タスク",
+    "sessionSummary": "{{count}} セッション · {{messages}} メッセージ"
   }
 }

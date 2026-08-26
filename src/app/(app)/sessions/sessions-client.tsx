@@ -33,11 +33,17 @@ interface SessionDetail {
   messages: Message[]
 }
 
-// Source → icon + label + color
-const SOURCE_META: Record<string, { icon: typeof Terminal; label: string; color: string; bg: string }> = {
-  cli:    { icon: Terminal,    label: "CLI 终端",      color: "text-green-400",  bg: "bg-green-900/20" },
-  weixin: { icon: Smartphone,  label: "微信",          color: "text-emerald-400", bg: "bg-emerald-900/20" },
-  cron:   { icon: Timer,       label: "定时任务",      color: "text-amber-400",  bg: "bg-amber-900/20" },
+// Source → icon + color (labels come from i18n)
+const SOURCE_META: Record<string, { icon: typeof Terminal; color: string; bg: string }> = {
+  cli:    { icon: Terminal,    color: "text-green-400",  bg: "bg-green-900/20" },
+  weixin: { icon: Smartphone,  color: "text-emerald-400", bg: "bg-emerald-900/20" },
+  cron:   { icon: Timer,       color: "text-amber-400",  bg: "bg-amber-900/20" },
+}
+
+const SOURCE_LABELS: Record<string, string> = {
+  cli: "sessions.sourceCli",
+  weixin: "sessions.sourceWeixin",
+  cron: "sessions.sourceCron",
 }
 
 const ALL_SOURCES = ["cli", "weixin", "cron"]
@@ -200,7 +206,7 @@ export function SessionsClient() {
                   {agentExpanded ? <ChevronDown className="w-4 h-4 text-zinc-500" /> : <ChevronRight className="w-4 h-4 text-zinc-500" />}
                   <Bot className="w-5 h-5 text-cyan-400" />
                   <span className="text-sm font-semibold text-zinc-100">Hermes Agent</span>
-                  <span className="ml-auto text-xs text-zinc-500">{sessions.length} 会话 · {totalMessages} 消息</span>
+                  <span className="ml-auto text-xs text-zinc-500">{t("sessions.sessionSummary", { count: sessions.length, messages: totalMessages })}</span>
                 </button>
 
                 {agentExpanded && (
@@ -221,7 +227,7 @@ export function SessionsClient() {
                           >
                             {expanded ? <ChevronDown className="w-3.5 h-3.5 text-zinc-600" /> : <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />}
                             <Icon className={`w-4 h-4 ${meta.color}`} />
-                            <span className="text-xs font-medium text-zinc-300">{meta.label}</span>
+                            <span className="text-xs font-medium text-zinc-300">{t(SOURCE_LABELS[src] || src)}</span>
                             <span className="ml-auto text-[11px] text-zinc-600">{items.length}</span>
                           </button>
 

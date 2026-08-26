@@ -409,6 +409,13 @@
     "policySecurity": "数据安全",
     "policyLocal": "所有数据本地存储",
     "policyNoUpload": "数据不会上传至云端",
+    "policyManualCreate": "手动创建课程支持自定义章节",
+    "policyLearningCard": "学习卡仅在课程完成后可生成",
+    "policyExport": "导出功能支持JSON格式",
+    "policyScoring": "评分政策",
+    "policyAutoGrade": "章节测验自动评分",
+    "policyPassRate": "正确率80%以上视为通过",
+    "policyRetry": "未通过可重新作答",
     "save": "保存",
     "saving": "保存中...",
     "cancel": "取消"
@@ -5749,6 +5756,10 @@
     "confirmDelete": "确认",
     "cancel": "取消",
     "noMessages": "该会话暂无消息",
-    "messages": "条消息"
+    "messages": "条消息",
+    "sourceCli": "CLI 终端",
+    "sourceWeixin": "微信",
+    "sourceCron": "定时任务",
+    "sessionSummary": "{{count}} 会话 · {{messages}} 消息"
   }
 }
