@@ -410,15 +410,24 @@ export function ChatClient() {
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify({
         type: 'message', text: messageText, mode: 'hermes', session_id: selectedSession?.id,
-        attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name })),
+        attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
       }));
       return;
     }
     try {
-      const r = await fetch(`${getApiUrl()}/api/acp/send`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ text: messageText, session_id: selectedSession?.id, mode: agentMode }),
-      });
+      const imageAttachment = attachments.find(a => a.type === 'image');
+      let r: Response;
+      if (imageAttachment) {
+        r = await fetch(`${getApiUrl()}/api/acp/send-image`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+          body: JSON.stringify({ text: messageText, image_data: imageAttachment.data, mime_type: imageAttachment.mime_type || 'image/png', session_id: selectedSession?.id }),
+        });
+      } else {
+        r = await fetch(`${getApiUrl()}/api/acp/send`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+          body: JSON.stringify({ text: messageText, session_id: selectedSession?.id, mode: agentMode }),
+        });
+      }
       const d = await r.json();
       const content = d.content || d.error || t("chat.noResponse");
       const tokenUsage = d.tokenUsage || simulateTokenUsage(content);
