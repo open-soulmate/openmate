@@ -2,7 +2,8 @@
 
 Architecture: background reader task continuously consumes stdout from
 the hermes acp process, dispatching responses to waiting callers via
-asyncio Futures. This prevents stale event accumulation.
+asyncio Futures keyed by msg_id. Supports concurrent prompts from
+multiple sessions.
 """
 
 import asyncio
@@ -12,9 +13,19 @@ import logging
 import os
 import tempfile
 import time
+from dataclasses import dataclass, field
 from typing import Any
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class PendingPrompt:
+    """State for a single in-flight prompt."""
+    msg_id: str
+    chunks: list[str] = field(default_factory=list)
+    response: dict = field(default_factory=dict)
+    done: asyncio.Event = field(default_factory=asyncio.Event)
 
 
 class ACPProcess:
@@ -24,12 +35,10 @@ class ACPProcess:
         self._initialized: bool = False
         self._default_session_id: str | None = None
         self._reader_task: asyncio.Task | None = None
-        # Pending RPC/prompt futures, keyed by msg_id
-        self._pending: dict[str, asyncio.Future] = {}
-        # Current prompt chunk collector
-        self._prompt_chunks: list[str] = []
-        self._prompt_done: asyncio.Event | None = None
-        self._prompt_response: dict = {}
+        # Pending RPC futures, keyed by msg_id
+        self._rpc_pending: dict[str, asyncio.Future] = {}
+        # Pending prompts, keyed by msg_id
+        self._prompt_pending: dict[str, PendingPrompt] = {}
 
     @property
     def is_running(self) -> bool:
@@ -53,7 +62,6 @@ class ACPProcess:
         )
         print(f"ACP: started pid={self._proc.pid}", flush=True)
 
-        # Start background reader
         self._reader_task = asyncio.create_task(self._read_loop())
 
         await self._rpc(
@@ -76,11 +84,13 @@ class ACPProcess:
             except (asyncio.CancelledError, Exception):
                 pass
             self._reader_task = None
-        # Cancel pending futures
-        for fut in self._pending.values():
+        for fut in self._rpc_pending.values():
             if not fut.done():
                 fut.cancel()
-        self._pending.clear()
+        self._rpc_pending.clear()
+        for p in self._prompt_pending.values():
+            p.done.set()
+        self._prompt_pending.clear()
         if self._proc:
             self._proc.terminate()
             try:
@@ -98,7 +108,7 @@ class ACPProcess:
         await self.start()
 
     async def _read_loop(self):
-        """Background task: continuously read stdout, dispatch to pending futures."""
+        """Background task: continuously read stdout, dispatch by msg_id."""
         try:
             while self._proc and self._proc.returncode is None:
                 try:
@@ -115,9 +125,9 @@ class ACPProcess:
                 msg_id = str(msg.get("id", ""))
                 method = msg.get("method", "")
 
-                # RPC response (has matching id in _pending)
-                if msg_id and msg_id in self._pending:
-                    fut = self._pending.pop(msg_id)
+                # RPC response
+                if msg_id and msg_id in self._rpc_pending:
+                    fut = self._rpc_pending.pop(msg_id)
                     if not fut.done():
                         if "error" in msg:
                             fut.set_exception(Exception(msg["error"]))
@@ -132,19 +142,21 @@ class ACPProcess:
                     if su == "agent_message_chunk":
                         content = update.get("content", {})
                         if isinstance(content, dict) and content.get("type") == "text" and content.get("text"):
-                            self._prompt_chunks.append(content["text"])
-                    elif su == "usage_update" and self._prompt_done and self._prompt_response:
-                        print(f"ACP reader: usage_update, setting prompt_done", flush=True)
-                        self._prompt_done.set()
+                            # Append to all active prompts (chunks are broadcast)
+                            for p in self._prompt_pending.values():
+                                if not p.done.is_set():
+                                    p.chunks.append(content["text"])
+                    continue
 
-                # Prompt response (id matches current prompt)
-                if msg_id and self._prompt_done and not self._prompt_done.is_set():
-                    self._prompt_response = msg.get("result", {})
-                    if "error" in msg:
-                        self._prompt_response = {"error": msg["error"]}
-                    print(f"ACP reader: prompt response id={msg_id}, stopReason={self._prompt_response.get('stopReason')}", flush=True)
-                    # Set done immediately — don't wait for usage_update (may not come)
-                    self._prompt_done.set()
+                # Prompt response (id matches a pending prompt)
+                if msg_id and msg_id in self._prompt_pending:
+                    p = self._prompt_pending[msg_id]
+                    if not p.done.is_set():
+                        p.response = msg.get("result", {})
+                        if "error" in msg:
+                            p.response = {"error": msg["error"]}
+                        print(f"ACP reader: prompt response id={msg_id}, stopReason={p.response.get('stopReason')}, chunks={len(p.chunks)}", flush=True)
+                        p.done.set()
 
         except asyncio.CancelledError:
             pass
@@ -200,7 +212,6 @@ class ACPProcess:
             except Exception as e:
                 print(f"ACP: image error {e}", flush=True)
             break
-        # Fallback: save image to temp file
         tmp_path = None
         try:
             b64_clean = image_data.split(",")[-1] if "," in image_data else image_data
@@ -241,7 +252,7 @@ class ACPProcess:
         request = {"jsonrpc": "2.0", "id": msg_id, "method": method, "params": params}
 
         fut: asyncio.Future[dict] = asyncio.get_event_loop().create_future()
-        self._pending[msg_id] = fut
+        self._rpc_pending[msg_id] = fut
 
         self._proc.stdin.write((json.dumps(request) + "\n").encode())
         await self._proc.stdin.drain()
@@ -249,14 +260,14 @@ class ACPProcess:
         try:
             return await asyncio.wait_for(fut, timeout=30)
         except asyncio.TimeoutError:
-            self._pending.pop(msg_id, None)
+            self._rpc_pending.pop(msg_id, None)
             raise TimeoutError(f"ACP timeout: {method}")
 
     async def _prompt(self, text: str, session_id: str) -> dict:
         return await self._prompt_parts([{"type": "text", "text": text}], session_id)
 
     async def _prompt_parts(self, parts: list[dict], session_id: str) -> dict:
-        """Send prompt, collect chunks via background reader."""
+        """Send prompt, collect chunks via background reader. Supports concurrent prompts."""
         self._msg_id += 1
         msg_id = str(self._msg_id)
         request = {
@@ -265,30 +276,29 @@ class ACPProcess:
             "params": {"prompt": parts, "sessionId": session_id},
         }
 
-        # Set up chunk collector
-        self._prompt_chunks = []
-        self._prompt_response = {}
-        self._prompt_done = asyncio.Event()
+        # Register this prompt for the reader to dispatch to
+        pending = PendingPrompt(msg_id=msg_id)
+        self._prompt_pending[msg_id] = pending
 
         self._proc.stdin.write((json.dumps(request) + "\n").encode())
         await self._proc.stdin.drain()
 
-        # Wait for usage_update (signaled by _read_loop) or timeout
+        # Wait for prompt response or timeout
         try:
-            await asyncio.wait_for(self._prompt_done.wait(), timeout=60)
+            await asyncio.wait_for(pending.done.wait(), timeout=15)
         except asyncio.TimeoutError:
             pass
 
         # Clean up
-        self._prompt_done = None
+        self._prompt_pending.pop(msg_id, None)
 
-        response = self._prompt_response
-        collected = self._prompt_chunks
+        response = pending.response
+        collected = pending.chunks
 
         if "error" in response:
             raise Exception(response["error"])
 
-        print(f"ACP: {len(collected)} chunks", flush=True)
+        print(f"ACP: {len(collected)} chunks (msg_id={msg_id})", flush=True)
         response["response_text"] = "".join(collected)
         response["source"] = "acp"
         return response

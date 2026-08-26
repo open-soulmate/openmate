@@ -172,6 +172,8 @@
     "searching": "検索中...",
     "noSearchResults": "未找到一致結果",
     "confirmDeleteSession": "OK削除这个会话？",
+    "confirmDelete": "確認",
+    "cancelDelete": "キャンセル",
     "noSessions": "暂なし会话",
     "newSession": "新しいセッション",
     "welcomeMessage": "你好，今日打算做点什么？",

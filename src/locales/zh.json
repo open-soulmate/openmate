@@ -172,6 +172,8 @@
     "searching": "搜索中...",
     "noSearchResults": "未找到匹配结果",
     "confirmDeleteSession": "确定删除这个会话？",
+    "confirmDelete": "确认",
+    "cancelDelete": "取消",
     "noSessions": "暂无会话",
     "newSession": "新会话",
     "welcomeMessage": "你好，今天打算做点什么？",
