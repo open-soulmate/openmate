@@ -168,7 +168,7 @@ export function SessionsClient() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-6 h-12 border-b border-zinc-800">
         <div className="flex items-center gap-3">
           <History className="w-6 h-6 text-cyan-400" />
           <div>
@@ -302,7 +302,7 @@ export function SessionsClient() {
         {/* Session Detail */}
         {selectedSession && (
           <div className="flex-1 flex flex-col overflow-hidden">
-            <div className="flex items-center justify-between px-4 py-3 border-b border-zinc-800">
+            <div className="flex items-center justify-between px-4 h-12 border-b border-zinc-800">
               <div className="flex items-center gap-2">
                 <MessageSquare className="w-4 h-4 text-cyan-400" />
                 <span className="text-sm font-medium text-zinc-200 truncate">
