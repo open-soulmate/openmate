@@ -453,6 +453,25 @@ export function ChatClient() {
       }));
       return;
     }
+    // Wait for WS reconnection instead of falling through to broken HTTP fallback
+    if (wsRef.current?.readyState !== WebSocket.OPEN) {
+      let waited = 0;
+      const waitConnect = setInterval(() => {
+        waited += 500;
+        if (wsRef.current?.readyState === WebSocket.OPEN) {
+          clearInterval(waitConnect);
+          wsRef.current.send(JSON.stringify({
+            type: 'message', text: messageText, mode: 'hermes', session_id: selectedSession?.id,
+            attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
+          }));
+        } else if (waited >= 10000) {
+          clearInterval(waitConnect);
+          setLoading(false);
+          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: '连接已断开，请稍后重试' }], timestamp: new Date() }]);
+        }
+      }, 500);
+      return;
+    }
     try {
       const imageAttachment = attachments.find(a => a.type === 'image');
       let r: Response;
