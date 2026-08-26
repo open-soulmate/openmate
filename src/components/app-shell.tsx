@@ -262,7 +262,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SidebarProvider open={!collapsed} onOpenChange={(open) => { if (open === collapsed) toggle(); }}>
+    <SidebarProvider open={!collapsed} onOpenChange={(open) => { if (open === collapsed) toggle(); }} className="h-svh overflow-hidden">
       {/* Desktop sidebar - shadcn/ui Sidebar component */}
       <Sidebar collapsible="icon" className="hidden md:flex">
         <SidebarHeader>
@@ -407,7 +407,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Sidebar>
 
       {/* Main content area */}
-      <SidebarInset>
+      <SidebarInset className="min-h-0 overflow-hidden">
         <header className="flex h-10 shrink-0 items-center border-b border-border px-4">
           <SidebarTrigger className="-ml-1" />
         </header>

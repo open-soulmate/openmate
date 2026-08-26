@@ -42,7 +42,16 @@ body {
   -moz-osx-font-smoothing: grayscale;
 }
 
-/* Scrollbar */
+/* ─── Scrollbar 统一自动隐藏样式 ─────────────────────────── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -53,12 +62,22 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border);
+  background: transparent;
   border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-muted-foreground);
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Chat 消息区保留 scrollbar-gutter 防止布局抖动 */
+.chat-scrollbar {
+  scrollbar-gutter: stable;
 }
 
 /* Selection */
@@ -90,6 +109,22 @@ body {
   --color-sidebar: #111118;
   --color-sidebar-foreground: #a1a1aa;
   --color-sidebar-accent: #1a1a20;
+}
+
+.light * {
+  scrollbar-color: transparent transparent;
+}
+
+.light *:hover {
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.light *:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
 }
 
 /* ─── Purple Theme ────────────────────────────────────────────────────── */

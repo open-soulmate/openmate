@@ -8,6 +8,12 @@ import { useTranslation } from 'react-i18next';
 
 const getApiUrl = () => getApiBaseUrl();
 const getWsUrl = () => getApiUrl().replace('http', 'ws');
+const getAcpProxyUrl = () => {
+  const base = getApiUrl();
+  // ACP Proxy runs on port 8092, same hostname as OpenSoul
+  return base.replace(/:\d+$/, ':8092');
+};
+const getAcpWsUrl = () => getAcpProxyUrl().replace('http', 'ws');
 
 interface MessagePart { type: string; text?: string; data?: string; name?: string; mime_type?: string; url?: string; }
 interface TokenUsage { input: number; output: number; }
@@ -356,42 +362,58 @@ export function ChatClient() {
   useEffect(() => {
     const token = getToken();
     if (!token) return;
-    const ws = new WebSocket(`${getWsUrl()}/api/ws/chat?token=${token}`);
-    wsRef.current = ws;
-    ws.onopen = () => setWsConnected(true);
-    ws.onclose = () => setWsConnected(false);
-    ws.onerror = () => setWsConnected(false);
-    ws.onmessage = (e) => {
-      try {
-        const data = JSON.parse(e.data);
-        if (data.type === 'done') {
-          setLoading(false);
-          if (data.text) initAgents();
-          // Parse file changes from the completed message and add token usage
-          setMessages(prev => {
-            const last = prev[prev.length - 1];
-            if (last?.role === 'agent' && last?.source === 'streaming') {
-              const content = last.parts[0]?.text || '';
-              const fileChanges = parseFileChanges(content);
-              const tokenUsage = data.tokenUsage || simulateTokenUsage(content);
-              return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
-            }
-            return prev;
-          });
-        }
-        else if (data.type === 'chunk') {
-          setMessages(prev => {
-            const last = prev[prev.length - 1];
-            if (last?.role === 'agent' && last?.source === 'streaming') {
-              return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + data.text }] }];
-            }
-            return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: data.text }], timestamp: new Date(), source: 'streaming' }];
-          });
-        }
-        else if (data.type === 'error') { setLoading(false); setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${data.message}` }], timestamp: new Date() }]); }
-      } catch {}
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let unmounted = false;
+    let retryDelay = 1000;
+
+    const connect = () => {
+      if (unmounted) return;
+      ws = new WebSocket(`${getAcpWsUrl()}/ws/chat?token=${token}`);
+      wsRef.current = ws;
+      ws.onopen = () => { setWsConnected(true); retryDelay = 1000; };
+      ws.onclose = () => {
+        setWsConnected(false);
+        if (!unmounted) reconnectTimer = setTimeout(connect, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 30000);
+      };
+      ws.onerror = () => { setWsConnected(false); };
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === 'done') {
+            setLoading(false);
+            if (data.text) initAgents();
+            setMessages(prev => {
+              const last = prev[prev.length - 1];
+              if (last?.role === 'agent' && last?.source === 'streaming') {
+                const content = last.parts[0]?.text || '';
+                const fileChanges = parseFileChanges(content);
+                const tokenUsage = data.tokenUsage || simulateTokenUsage(content);
+                return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
+              }
+              return prev;
+            });
+          }
+          else if (data.type === 'chunk') {
+            setMessages(prev => {
+              const last = prev[prev.length - 1];
+              if (last?.role === 'agent' && last?.source === 'streaming') {
+                return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + data.text }] }];
+              }
+              return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: data.text }], timestamp: new Date(), source: 'streaming' }];
+            });
+          }
+          else if (data.type === 'error') { setLoading(false); setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${data.message}` }], timestamp: new Date() }]); }
+        } catch {}
+      };
     };
-    return () => ws.close();
+    connect();
+    return () => {
+      unmounted = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws) ws.close();
+    };
   }, [initAgents]);
 
   useEffect(() => { initAgents(); const timer = setInterval(initAgents, 30000); return () => clearInterval(timer); }, [initAgents]);
@@ -418,12 +440,12 @@ export function ChatClient() {
       const imageAttachment = attachments.find(a => a.type === 'image');
       let r: Response;
       if (imageAttachment) {
-        r = await fetch(`${getApiUrl()}/api/acp/send-image`, {
+        r = await fetch(`${getAcpProxyUrl()}/acp/send-image`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
           body: JSON.stringify({ text: messageText, image_data: imageAttachment.data, mime_type: imageAttachment.mime_type || 'image/png', session_id: selectedSession?.id }),
         });
       } else {
-        r = await fetch(`${getApiUrl()}/api/acp/send`, {
+        r = await fetch(`${getAcpProxyUrl()}/acp/send`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
           body: JSON.stringify({ text: messageText, session_id: selectedSession?.id, mode: agentMode }),
         });
@@ -635,7 +657,7 @@ export function ChatClient() {
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4 chat-scrollbar">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto">
               <h2 className="text-2xl font-semibold mb-8">{t("chat.welcomeMessage")}</h2>

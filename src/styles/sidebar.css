@@ -231,6 +231,4 @@
 }
 
 /* ── Scrollbar ─────────────────────────────────────────── */
-.shared-sidebar-nav::-webkit-scrollbar { width: 4px; }
-.shared-sidebar-nav::-webkit-scrollbar-track { background: transparent; }
-.shared-sidebar-nav::-webkit-scrollbar-thumb { background: var(--sidebar-border); border-radius: 2px; }
+/* 统一使用 globals.css 全局滚动条样式，不覆盖 */
