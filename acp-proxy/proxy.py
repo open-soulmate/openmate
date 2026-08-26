@@ -101,11 +101,14 @@ class ACPProcess:
             p.done.set()
         self._prompt_pending.clear()
         if self._proc:
-            self._proc.terminate()
             try:
-                await asyncio.wait_for(self._proc.wait(), timeout=5)
-            except Exception:
-                self._proc.kill()
+                self._proc.terminate()
+                try:
+                    await asyncio.wait_for(self._proc.wait(), timeout=5)
+                except Exception:
+                    self._proc.kill()
+            except ProcessLookupError:
+                pass  # Already dead
             self._proc = None
         self._initialized = False
         self._default_session_id = None
