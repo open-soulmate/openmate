@@ -154,7 +154,7 @@
     "rename": "重命名",
     "delete": "删除",
     "cancel": "取消",
-    "confirmDelete": "确定要删除这个对话吗？此操作不可撤销。",
+    "confirmDelete": "确认",
     "references": "参考来源",
     "selectAgent": "选择 Agent",
     "registeredAgents": "已接入 Agent",
@@ -172,7 +172,6 @@
     "searching": "搜索中...",
     "noSearchResults": "未找到匹配结果",
     "confirmDeleteSession": "确定删除这个会话？",
-    "confirmDelete": "确认",
     "cancelDelete": "取消",
     "noSessions": "暂无会话",
     "newSession": "新会话",
@@ -211,7 +210,8 @@
     "rollback": "回滚",
     "error": "错误",
     "noResponse": "无响应",
-    "requestTimeout": "请求超时"
+    "requestTimeout": "请求超时",
+    "connectionLost": "连接已断开，请稍后重试"
   },
   "knowledge": {
     "title": "知识库",

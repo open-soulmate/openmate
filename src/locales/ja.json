@@ -154,7 +154,7 @@
     "rename": "名前を変更",
     "delete": "削除",
     "cancel": "キャンセル",
-    "confirmDelete": "この会話を削除してもよろしいですか？この操作は元に戻せません。",
+    "confirmDelete": "確認",
     "references": "参考ソース",
     "selectAgent": "エージェントを選択",
     "registeredAgents": "登録済みエージェント",
@@ -172,7 +172,6 @@
     "searching": "検索中...",
     "noSearchResults": "未找到一致結果",
     "confirmDeleteSession": "OK削除这个会话？",
-    "confirmDelete": "確認",
     "cancelDelete": "キャンセル",
     "noSessions": "暂なし会话",
     "newSession": "新しいセッション",
@@ -211,7 +210,8 @@
     "rollback": "ロールバック",
     "error": "エラー",
     "noResponse": "なし响应",
-    "requestTimeout": "请求タイムアウト"
+    "requestTimeout": "请求タイムアウト",
+    "connectionLost": "接続が切断されました。後でもう一度お試しください"
   },
   "knowledge": {
     "title": "ナレッジベース",
