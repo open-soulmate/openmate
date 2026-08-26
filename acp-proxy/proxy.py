@@ -35,6 +35,7 @@ class ACPProcess:
         self._initialized: bool = False
         self._default_session_id: str | None = None
         self._reader_task: asyncio.Task | None = None
+        self._health_task: asyncio.Task | None = None
         # Pending RPC futures, keyed by msg_id
         self._rpc_pending: dict[str, asyncio.Future] = {}
         # Pending prompts, keyed by msg_id
@@ -63,6 +64,7 @@ class ACPProcess:
         print(f"ACP: started pid={self._proc.pid}", flush=True)
 
         self._reader_task = asyncio.create_task(self._read_loop())
+        self._health_task = asyncio.create_task(self._health_loop())
 
         await self._rpc(
             "initialize",
@@ -77,6 +79,13 @@ class ACPProcess:
         return self._get_agent_info()
 
     async def stop(self):
+        if self._health_task:
+            self._health_task.cancel()
+            try:
+                await self._health_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._health_task = None
         if self._reader_task:
             self._reader_task.cancel()
             try:
@@ -106,6 +115,26 @@ class ACPProcess:
         logger.warning("ACP: restarting due to broken pipe / stale process")
         await self.stop()
         await self.start()
+
+    async def _health_loop(self):
+        """Periodically check if hermes acp is responsive; auto-restart if stuck."""
+        while True:
+            await asyncio.sleep(60)  # Check every 60 seconds
+            if not self.is_running or not self._initialized:
+                continue
+            try:
+                # Try a lightweight RPC to check responsiveness
+                await asyncio.wait_for(
+                    self._rpc("session/list", {}), timeout=10
+                )
+            except (BrokenPipeError, OSError, TimeoutError, Exception) as e:
+                print(f"ACP health check failed: {e}, restarting", flush=True)
+                logger.warning(f"ACP health check failed: {e}, restarting")
+                try:
+                    await self._restart()
+                except Exception as restart_err:
+                    print(f"ACP restart failed: {restart_err}", flush=True)
+                    logger.error(f"ACP restart failed: {restart_err}")
 
     async def _read_loop(self):
         """Background task: continuously read stdout, dispatch by msg_id."""
