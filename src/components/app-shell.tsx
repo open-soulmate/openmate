@@ -161,6 +161,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     {
       label: t("nav.organsGroup"),
       items: [
+        { href: "/body-map", label: t("nav.bodyMap", "Body Map"), icon: User },
         { href: "/soma", label: t("nav.soma"), icon: Bot },
         { href: "/discovery", label: t("nav.discovery", "Discovery"), icon: Search },
         { href: "/cortex", label: t("nav.cortex"), icon: Cpu },
