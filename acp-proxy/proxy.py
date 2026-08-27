@@ -294,7 +294,12 @@ class ACPProcess:
     async def send_message(self, text: str, session_id: str | None = None) -> dict[str, Any]:
         if not self.is_running or not self._initialized:
             await self.start()
-        sid = session_id or self._default_session_id or "default"
+        # Empty string = explicitly new session (frontend "+" button)
+        if session_id == "":
+            await self.new_session()
+            sid = self._default_session_id or "default"
+        else:
+            sid = session_id or self._default_session_id or "default"
         if sid and len(sid) < 36 and sid != "default":
             sid = self._default_session_id or "default"
         for attempt in range(2):
@@ -332,7 +337,12 @@ class ACPProcess:
     ) -> dict[str, Any]:
         if not self.is_running or not self._initialized:
             await self.start()
-        sid = session_id or self._default_session_id or "default"
+        # Empty string = explicitly new session (frontend "+" button)
+        if session_id == "":
+            await self.new_session()
+            sid = self._default_session_id or "default"
+        else:
+            sid = session_id or self._default_session_id or "default"
         if sid and len(sid) < 36 and sid != "default":
             sid = self._default_session_id or "default"
         for attempt in range(2):
@@ -386,7 +396,12 @@ class ACPProcess:
         """
         if not self.is_running or not self._initialized:
             await self.start()
-        sid = session_id or self._default_session_id or "default"
+        # Empty string = explicitly new session (frontend "+" button)
+        if session_id == "":
+            await self.new_session()
+            sid = self._default_session_id or "default"
+        else:
+            sid = session_id or self._default_session_id or "default"
         if sid and len(sid) < 36 and sid != "default":
             sid = self._default_session_id or "default"
 
