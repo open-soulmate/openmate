@@ -1,5 +1,6 @@
 "use client";
 import { TerminalPanel } from "@/components/terminal-panel";
+import { MobileSidebar } from "@/components/mobile-sidebar";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -62,6 +63,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const storeTheme = useAppStore((s) => s.theme);
   const setStoreTheme = useAppStore((s) => s.setTheme);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const { t } = useTranslation();
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set([t("nav.internalServices")]))
   const [pluginGroups, setPluginGroups] = useState<NavGroup[]>([])
@@ -408,8 +410,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SidebarRail />
       </Sidebar>
 
+      {/* Mobile sidebar (Sheet) - visible below md */}
+      <div className="md:hidden">
+        <MobileSidebar open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen} />
+      </div>
+
       {/* Main content area */}
       <SidebarInset className="min-h-0 overflow-hidden">
+        {/* Mobile header with hamburger */}
+        <div className="flex h-12 shrink-0 items-center border-b border-border bg-background px-4 md:hidden">
+          <button
+            onClick={() => setMobileSidebarOpen(true)}
+            className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors"
+            aria-label="Open menu"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="4" x2="20" y1="6" y2="6" />
+              <line x1="4" x2="20" y1="12" y2="12" />
+              <line x1="4" x2="20" y1="18" y2="18" />
+            </svg>
+          </button>
+          <h1 className="ml-3 text-sm font-semibold tracking-tight">OpenMate</h1>
+        </div>
         <div className="flex flex-1 flex-col overflow-hidden">
           {children}
         </div>
