@@ -2,7 +2,7 @@
 import { MarkdownContent } from "@/components/markdown-content";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu, Trash2, Search as SearchIcon, Bookmark, RotateCcw, Zap, Brain } from "lucide-react";
+import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu, Trash2, Search as SearchIcon, Bookmark, RotateCcw, Zap, Brain, PanelLeft } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { Dialog } from '@/components/ui/dialog';
 import { useTranslation } from 'react-i18next';
@@ -892,14 +892,15 @@ export function ChatClient() {
         </div>
       </div>
 
-      {/* Column 4: Details Panel */}
-      {showDetails && (
-        <div className="hidden md:flex w-72 shrink-0 border-l border-border bg-card flex-col">
-          <div className="h-12 px-3 flex items-center border-b border-border justify-between">
-            <span className="text-sm font-medium flex items-center gap-1.5"><Info className="w-4 h-4" />{t("chat.sessionDetails")}</span>
-            <button onClick={() => setShowDetails(false)} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
-          </div>
-          <div className="flex-1 overflow-y-auto p-3 space-y-4">
+      {/* Column 4: Details Panel - CSS transition like sidebar */}
+      <div className={`hidden md:flex shrink-0 border-l border-border bg-card flex-col transition-[width] duration-200 ease-linear overflow-hidden ${showDetails ? 'w-72' : 'w-0 border-l-0'}`}>
+        <div className="h-12 px-3 flex items-center border-b border-border justify-between w-72 shrink-0">
+          <span className="text-sm font-medium flex items-center gap-1.5"><Info className="w-4 h-4" />{t("chat.sessionDetails")}</span>
+          <button onClick={() => setShowDetails(false)} className="inline-flex items-center justify-center size-7 rounded-md hover:bg-muted text-muted-foreground transition-colors" data-sidebar="trigger" data-slot="sidebar-trigger">
+            <PanelLeft className="w-4 h-4" />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-3 space-y-4 w-72 shrink-0">
             {selectedAgent && (
               <div className="space-y-2">
                 <div className="text-xs text-muted-foreground">Agent</div>
@@ -976,7 +977,6 @@ export function ChatClient() {
             </div>
           </div>
         </div>
-      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog
