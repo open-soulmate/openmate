@@ -652,7 +652,8 @@
     "clearCache": "キャッシュをクリア",
     "switchDark": "ダークテーマに切り替え",
     "switchLight": "ライトテーマに切り替え",
-    "switchPurple": "パープルテーマに切り替え"
+    "switchPurple": "パープルテーマに切り替え",
+    "recent": "最近の使用"
   },
   "workspace": {
     "expand": "ワークスペース展開",
