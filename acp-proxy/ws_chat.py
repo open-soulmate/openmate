@@ -108,7 +108,7 @@ AGENT_ARGS_OVERRIDE: dict[str, list[str]] = {
     "mimo": ["run"],
     "codex": ["exec"],
     "opencode": ["-q"],
-    "openclaw": ["agent", "-m"],
+    "openclaw": ["agent", "--agent", "main", "-m"],
     "copilot": ["copilot", "-p"],
     "amazon-q": ["chat", "--no-interactive", "-p"],
 }
