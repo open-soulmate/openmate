@@ -780,7 +780,7 @@ export function ChatClient() {
                 onClick={startEditTitle}
                 title={selectedSession?.id ? 'Click to rename' : undefined}
               >
-                {selectedSession?.name || (selectedAgent ? `${selectedAgent.name} ${t('chat.newSession')}` : t('chat.newChat'))}
+                {selectedSession?.name || selectedSession?.title || (selectedAgent ? `${selectedAgent.name} ${t('chat.newSession')}` : t('chat.newChat'))}
               </span>
             )}
             {selectedAgent && <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">{selectedAgent.name}</span>}
