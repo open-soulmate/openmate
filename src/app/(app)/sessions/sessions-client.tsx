@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { getApiBaseUrl } from "@/lib/api-client"
 import {
-  History, Loader2, Search, RefreshCw, Trash2,
+  History, Loader2, Search, RefreshCw, Trash2, ArrowLeft,
   MessageSquare, Clock, ChevronDown, ChevronRight,
   XCircle, Bot, Terminal, Smartphone, Timer,
   Link, Monitor, Wrench, Users, Star, Filter, X,
@@ -104,6 +104,8 @@ export function SessionsClient() {
 
   // Tag filter state
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
+  // Mobile: track if we're showing detail view
+  const [mobileShowDetail, setMobileShowDetail] = useState(false)
   const [allTags, setAllTags] = useState<{name: string; count: number}[]>([])
 
   // Tag input state (for adding tags to sessions)
@@ -372,7 +374,7 @@ export function SessionsClient() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 h-12 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-4 md:px-6 h-12 border-b border-zinc-800">
         <div className="flex items-center gap-3">
           <History className="w-6 h-6 text-cyan-400" />
           <div>
@@ -395,9 +397,9 @@ export function SessionsClient() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Session List */}
-        <div className={`${selectedSession ? "w-1/3 border-r border-zinc-800" : "w-full"} flex flex-col overflow-hidden transition-all`}>
+        <div className={`${mobileShowDetail && selectedSession ? "hidden md:flex" : "flex"} ${selectedSession ? "w-full md:w-1/3 md:border-r md:border-zinc-800" : "w-full"} flex-col overflow-hidden transition-all`}>
           {/* Search */}
-          <form onSubmit={handleSearch} className="px-4 h-12 flex items-center border-b border-zinc-800 gap-2">
+          <form onSubmit={handleSearch} className="px-3 md:px-4 h-12 flex items-center border-b border-zinc-800 gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
@@ -407,7 +409,7 @@ export function SessionsClient() {
           </form>
 
           {/* Filter Bar */}
-          <div className="px-4 py-2 border-b border-zinc-800 space-y-2">
+          <div className="px-3 md:px-4 py-2 border-b border-zinc-800 space-y-2">
             {/* Favorites + clear row */}
             <div className="flex items-center gap-2">
               <button
@@ -440,7 +442,7 @@ export function SessionsClient() {
             </div>
 
             {/* Source filter chips */}
-            <div className="flex flex-wrap gap-1.5">
+            <div className="flex flex-nowrap md:flex-wrap gap-1.5 overflow-x-auto">
               {ALL_SOURCES.map(src => {
                 const count = sourceCounts[src] || 0
                 if (count === 0) return null
@@ -467,7 +469,7 @@ export function SessionsClient() {
 
             {/* Tag filter chips */}
             {allTags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
+              <div className="flex flex-nowrap md:flex-wrap gap-1.5 overflow-x-auto">
                 <div className="flex items-center gap-1 mr-1">
                   <Tag className="w-3 h-3 text-zinc-600" />
                   <span className="text-[10px] text-zinc-600">{t("sessions.tags", "Tags")}:</span>
@@ -570,7 +572,7 @@ export function SessionsClient() {
                                     ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] border-l-2 border-[#7c3aed] hover:bg-[rgba(124,58,237,0.18)]"
                                     : "hover:bg-zinc-800/20 border-l-2 border-transparent"
                                 }`}
-                                onClick={() => router.push(`/chat?session=${session.session_id}`)}
+                                onClick={() => { fetchSessionDetail(session.session_id); setMobileShowDetail(true) }}
                               >
                                 {/* Favorite star */}
                                 <button
@@ -695,9 +697,14 @@ export function SessionsClient() {
 
         {/* Session Detail */}
         {selectedSession && (
-          <div className="flex-1 flex flex-col overflow-hidden">
+          <div className={`${mobileShowDetail ? "flex" : "hidden md:flex"} flex-1 flex-col overflow-hidden`}>
             <div className="flex items-center justify-between px-4 h-12 border-b border-zinc-800">
               <div className="flex items-center gap-2">
+                <button onClick={() => setMobileShowDetail(false)}
+                  className="md:hidden p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 mr-1"
+                  title={t("sessions.back", "Back")}>
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
                 <MessageSquare className="w-4 h-4 text-cyan-400" />
                 <span className="text-sm font-medium text-zinc-200 truncate">
                   {selectedSession.title || selectedSession.session_id}
@@ -705,6 +712,12 @@ export function SessionsClient() {
                 <span className="text-xs text-zinc-500">({selectedSession.messages.length} {t("sessions.messages", "messages")})</span>
               </div>
               <div className="flex items-center gap-1">
+                <button onClick={() => router.push(`/chat?session=${selectedSession.session_id}`)}
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/30 text-xs transition-colors"
+                  title={t("sessions.openChat", "Open in Chat")}>
+                  <MessageSquare className="w-3 h-3" />
+                  {t("sessions.openChat", "Chat")}
+                </button>
                 <button onClick={() => exportSession("json")}
                   className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
                   title="Export as JSON">
