@@ -213,7 +213,9 @@
     "error": "Error",
     "noResponse": "No response",
     "requestTimeout": "Request timeout",
-    "connectionLost": "Connection lost, please try again later"
+    "connectionLost": "Connection lost, please try again later",
+    "deleteSessionTitle": "Delete Session",
+    "deleteSessionDesc": "Are you sure you want to delete \"{{name}}\"?"
   },
   "knowledge": {
     "title": "Knowledge Base",
@@ -5761,5 +5763,17 @@
     "sourceTool": "Tool Call",
     "sourceSubagent": "Subagent",
     "sessionSummary": "{{count}} sessions · {{messages}} messages"
+  },
+  "registry": {
+    "title": "Component Registry",
+    "subtitle": "System organ registry — {{total}} components across {{phases}} phases",
+    "totalComponents": "Components",
+    "healthy": "Healthy",
+    "searchPlaceholder": "Search components...",
+    "allCategories": "All Categories",
+    "allPhases": "All Phases",
+    "results": "results",
+    "capabilities": "Capabilities",
+    "dependencies": "Dependencies"
   }
 }
