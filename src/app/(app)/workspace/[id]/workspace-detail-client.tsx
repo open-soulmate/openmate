@@ -75,7 +75,7 @@ function FileTreeNode({
       onClick={() => onSelect(node.path)}
       className={cn(
         "flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs transition-colors hover:bg-accent",
-        selected === node.path && "bg-accent text-foreground",
+        selected === node.path && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]",
       )}
       style={{ paddingLeft: `${depth * 12 + 24}px` }}
     >

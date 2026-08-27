@@ -259,7 +259,7 @@ export function ChatClient() {
         const meta = SOURCE_META[src] || { labelKey: src, icon: '💬' };
         return {
           source: src, label: t(meta.labelKey), icon: meta.icon,
-          sessions: sourceMap[src], expanded: true,
+          sessions: sourceMap[src], expanded: false,
         };
       });
     };
@@ -280,7 +280,7 @@ export function ChatClient() {
           category: a.category,
           path: a.path,
           sessions: agentSessions,
-          expanded: a.id === 'hermes',
+          expanded: false,
           sourceGroups,
         };
       });
@@ -544,7 +544,10 @@ export function ChatClient() {
   };
 
   const toggleAgent = (agentId: string) => {
-    setAgents(prev => prev.map(a => a.id === agentId ? { ...a, expanded: !a.expanded } : a));
+    setAgents(prev => prev.map(a => {
+      if (a.id === agentId) return { ...a, expanded: !a.expanded };
+      return { ...a, expanded: false };
+    }));
   };
 
   const toggleSourceGroup = (agentId: string, source: string) => {
@@ -553,7 +556,7 @@ export function ChatClient() {
       return {
         ...a,
         sourceGroups: a.sourceGroups.map(g =>
-          g.source === source ? { ...g, expanded: !g.expanded } : g
+          g.source === source ? { ...g, expanded: !g.expanded } : { ...g, expanded: false }
         ),
       };
     }));
@@ -642,7 +645,7 @@ export function ChatClient() {
                     </button>
                     {group.expanded && group.sessions.map(session => (
                       <div key={session.id} role="button" tabIndex={0} onClick={() => selectSession(session, agent)}
-                        className={`group w-full text-left pl-12 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer ${selectedSession?.id === session.id ? 'bg-muted' : ''}`}>
+                        className={`group w-full text-left pl-12 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer ${selectedSession?.id === session.id ? 'bg-[rgba(124,58,237,0.12)] text-[#7c3aed]' : ''}`}>
                         <div className="flex items-center gap-1.5">
                           <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
                           <span className="text-xs truncate text-foreground flex-1">{session.name || session.title || "Untitled"}</span>
@@ -657,7 +660,7 @@ export function ChatClient() {
                 // Flat view: sessions directly under agent
                 agent.expanded && agent.sessions.map(session => (
                   <div key={session.id} role="button" tabIndex={0} onClick={() => selectSession(session, agent)}
-                    className={`group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer ${selectedSession?.id === session.id ? 'bg-muted' : ''}`}>
+                    className={`group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer ${selectedSession?.id === session.id ? 'bg-[rgba(124,58,237,0.12)] text-[#7c3aed]' : ''}`}>
                     <div className="flex items-center gap-1.5">
                       <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
                       <span className="text-xs truncate text-foreground flex-1">{session.name || session.title || "Untitled"}</span>

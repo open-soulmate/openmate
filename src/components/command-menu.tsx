@@ -324,7 +324,7 @@ export function CommandMenu() {
                       className={cn(
                         "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
                         isSelected
-                          ? "bg-accent text-foreground"
+                          ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
                           : "text-muted-foreground hover:bg-accent/50",
                       )}
                     >
