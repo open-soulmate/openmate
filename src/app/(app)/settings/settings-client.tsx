@@ -21,7 +21,7 @@ type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "organ
 interface SettingsState {
   theme: ThemeId; fontSize: string; language: string; sidebarPosition: string; animationEnabled: boolean;
   defaultAgent: string; agentTimeout: number; retryStrategy: string; logLevel: string;
-  llmProvider: string; apiKey: string; model: string; temperature: number; maxTokens: number;
+  llmProvider: string; apiKey: string; url: string; model: string; temperature: number; maxTokens: number;
   shellWhitelist: string; fileAccess: string; networkAccess: boolean; mcpConfig: string;
   knowledgePath: string; cacheLimit: number;
 }
@@ -144,7 +144,7 @@ export function SettingsClient() {
   const [settings, setSettings] = useState<SettingsState>({
     theme: "dark", fontSize: "medium", language: "zh", sidebarPosition: "left", animationEnabled: true,
     defaultAgent: "auto", agentTimeout: 30, retryStrategy: "exponential", logLevel: "info",
-    llmProvider: "mimo", apiKey: "", model: "mimo-v2.5-pro",
+    llmProvider: "mimo", apiKey: "", url: "", model: "mimo-v2.5-pro",
     temperature: 0.7, maxTokens: 4096,
     shellWhitelist: "ls, cat, grep, find, git", fileAccess: "full", networkAccess: true, mcpConfig: "",
     knowledgePath: "~/.openmate/knowledge", cacheLimit: 512,
@@ -163,6 +163,18 @@ export function SettingsClient() {
             setSettings(s => ({ ...s, model: data.models.default }));
           }
         }
+        // Load LLM config (api_key, model)
+        try {
+          const llmRes = await fetch(`${apiBase}/api/llm/config`);
+          if (llmRes.ok) {
+            const llmData = await llmRes.json();
+            setSettings(s => ({
+              ...s,
+              ...(llmData.model ? { model: llmData.model } : {}),
+              ...(llmData.base_url ? { url: llmData.base_url } : {}),
+            }));
+          }
+        } catch {}
         // Load version
         const vRes = await fetch(`${apiBase}/api/version`);
         if (vRes.ok) {
@@ -188,7 +200,7 @@ export function SettingsClient() {
     setStoreTheme(settings.theme);
     i18n.changeLanguage(settings.language);
     localStorage.setItem("openmate-language", settings.language);
-    setLLMConfig({ provider: settings.llmProvider, apiKey: settings.apiKey, model: settings.model });
+    setLLMConfig({ provider: settings.llmProvider, apiKey: settings.apiKey, url: settings.url, model: settings.model });
 
     // Save to backend config
     const apiBase = getApiBaseUrl();
@@ -218,6 +230,19 @@ export function SettingsClient() {
               cache_limit_mb: settings.cacheLimit,
             },
           },
+        }),
+      });
+    } catch {}
+
+    // Save LLM config to backend (/api/llm/config)
+    try {
+      await fetch(`${apiBase}/api/llm/config`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          api_key: settings.apiKey || undefined,
+          base_url: settings.url || undefined,
+          model: settings.model || undefined,
         }),
       });
     } catch {}
@@ -324,9 +349,14 @@ export function SettingsClient() {
     setTestStatus("testing");
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/health`);
+      const res = await fetch(`${apiBase}/api/llm/test`, { method: "POST" });
       if (res.ok) {
-        setTestStatus("success");
+        const data = await res.json();
+        if (data.status === "ok") {
+          setTestStatus("success");
+        } else {
+          setTestStatus("error");
+        }
       } else {
         setTestStatus("error");
       }
@@ -443,6 +473,10 @@ export function SettingsClient() {
                     {t("settings.testConnection")}
                   </button>
                 </div>
+              </SettingCard>
+
+              <SettingCard title={t("settings.baseUrl") || "Base URL"} description={t("settings.baseUrlDesc") || "API endpoint base URL (e.g. https://api.openai.com/v1)"}>
+                <TextInput value={settings.url} onChange={(v) => update("url", v)} placeholder="https://api.openai.com/v1" />
               </SettingCard>
 
               <SettingCard title="Temperature" description={`${t("settings.temperatureDesc")}: ${settings.temperature}`}>
