@@ -383,19 +383,40 @@ export function SettingsClient() {
     setTestStatus("testing");
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/llm/test`, { method: "POST" });
+      const res = await fetch(`${apiBase}/api/llm/test`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          base_url: settings.url || undefined,
+          api_key: settings.apiKey || undefined,
+          model: settings.model || undefined,
+        }),
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.status === "ok") {
           setTestStatus("success");
+          toast.success(
+            t("settings.testSuccess") || "连接成功",
+            `${data.model} @ ${data.base_url} — ${data.reply}`
+          );
         } else {
           setTestStatus("error");
         }
       } else {
+        const err = await res.json().catch(() => ({}));
         setTestStatus("error");
+        toast.error(
+          t("settings.testFailed") || "连接失败",
+          err.detail || `HTTP ${res.status}`
+        );
       }
-    } catch {
+    } catch (e) {
       setTestStatus("error");
+      toast.error(
+        t("settings.testFailed") || "连接失败",
+        e instanceof Error ? e.message : t("settings.networkError") || "网络错误"
+      );
     }
     setTimeout(() => setTestStatus("idle"), 3000);
   }
