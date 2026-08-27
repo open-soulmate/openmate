@@ -181,6 +181,7 @@ export function ChatClient() {
   const wsRef = useRef<WebSocket | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  const selectedSessionRef = useRef<Session | null>(null);
 
   // Cost calculation (approximate pricing per 1K tokens)
   const calculateCost = (usage: TokenUsage): number => {
@@ -352,6 +353,7 @@ export function ChatClient() {
         })));
         if (selectedSession?.id === sessionId) {
           setSelectedSession(null);
+          selectedSessionRef.current = null;
           setMessages([]);
         }
       } else {
@@ -417,7 +419,11 @@ export function ChatClient() {
           const data = JSON.parse(e.data);
           if (data.type === 'done') {
             setLoading(false);
-            // Refresh session list removed — preserve expanded state
+            // Update selectedSession with new session_id and refresh list
+            if (selectedSessionRef.current && !selectedSessionRef.current.id && data.session_id) {
+              setSelectedSession(prev => prev ? { ...prev, id: data.session_id } : prev);
+              initAgents();
+            }
             setMessages(prev => {
               const last = prev[prev.length - 1];
               if (last?.role === 'agent' && last?.source === 'streaming') {
@@ -534,6 +540,11 @@ export function ChatClient() {
         fileChanges: parseFileChanges(content),
         tokenUsage,
       }]);
+      // Update selectedSession with new session_id and refresh list
+      if (selectedSession && !selectedSession.id && d.session_id) {
+        setSelectedSession(prev => prev ? { ...prev, id: d.session_id } : prev);
+        initAgents();
+      }
     } catch {
       setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: t("chat.requestTimeout") }], timestamp: new Date() }]);
     }
@@ -594,13 +605,16 @@ export function ChatClient() {
 
   const selectSession = (session: Session, agent: AgentInfo) => {
     setSelectedSession(session);
+    selectedSessionRef.current = session;
     setSelectedAgent(agent);
     setDeleteConfirm(null);
     loadHistory(session.id);
   };
 
   const newSession = (agent: AgentInfo) => {
-    setSelectedSession({ id: '', name: `${agent.name} ${t("chat.newSession")}`, platform: agent.id });
+    const session = { id: '', name: `${agent.name} ${t("chat.newSession")}`, platform: agent.id };
+    setSelectedSession(session);
+    selectedSessionRef.current = session;
     setSelectedAgent(agent);
     setMessages([]);
   };
@@ -716,7 +730,7 @@ export function ChatClient() {
         <div className="h-12 border-b border-border flex items-center px-4 justify-between shrink-0">
           <div className="flex items-center gap-2">
             {/* Back button - mobile only */}
-            <button onClick={() => setSelectedSession(null)} className="md:hidden p-1 rounded hover:bg-muted">
+            <button onClick={() => { setSelectedSession(null); selectedSessionRef.current = null; }} className="md:hidden p-1 rounded hover:bg-muted">
               <ChevronRight className="w-4 h-4 rotate-180" />
             </button>
             {selectedAgent && <span className="text-sm">{selectedAgent.icon}</span>}
