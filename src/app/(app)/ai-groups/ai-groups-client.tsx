@@ -123,7 +123,7 @@ export default function AIGroupsPage() {
   const [loading, setLoading] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(true);
-  const [mobileView, setMobileView] = useState<'list' | 'chat'>('list');
+  const [mobileView, setMobileView] = useState<'list' | 'chat' | 'settings'>('list');
 
   // Create group
   const [showCreate, setShowCreate] = useState(false);
@@ -829,12 +829,12 @@ export default function AIGroupsPage() {
   };
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full relative">
       <style>{`
         @media (max-width: 768px) {
           .ai-groups-sidebar { display: ${mobileView === 'list' ? 'flex' : 'none'} !important; width: 100% !important; }
           .ai-groups-chat { display: ${mobileView === 'chat' ? 'flex' : 'none'} !important; }
-          .ai-groups-right { display: none !important; }
+          .ai-groups-right { display: ${mobileView === 'settings' ? 'flex' : 'none'} !important; width: 100% !important; position: absolute; inset: 0; z-index: 10; }
           .ai-groups-back { display: inline-flex !important; }
         }
       `}</style>
@@ -951,7 +951,14 @@ export default function AIGroupsPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowRightPanel(!showRightPanel)} className="p-1 rounded hover:bg-muted">
+            <button onClick={() => {
+              if (window.innerWidth <= 768) {
+                setMobileView('settings');
+                setShowRightPanel(true);
+              } else {
+                setShowRightPanel(!showRightPanel);
+              }
+            }} className="p-1 rounded hover:bg-muted">
               {showRightPanel ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
             </button>
           </div>
@@ -1198,8 +1205,11 @@ export default function AIGroupsPage() {
       {showRightPanel && selectedGroup && (
         <div className="ai-groups-right w-72 shrink-0 border-l border-border bg-card flex flex-col">
           <div className="p-3 border-b border-border flex items-center justify-between">
-            <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
-            <button onClick={() => setShowRightPanel(false)} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
+            <div className="flex items-center gap-2">
+              <button onClick={() => setMobileView('chat')} className="ai-groups-back hidden p-1 rounded hover:bg-muted">←</button>
+              <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
+            </div>
+            <button onClick={() => { setShowRightPanel(false); setMobileView('chat'); }} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
           </div>
 
           <div className="flex-1 overflow-y-auto">
