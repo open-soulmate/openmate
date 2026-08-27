@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { getApiBaseUrl } from "@/lib/api-client"
@@ -8,7 +8,7 @@ import {
   History, Loader2, Search, RefreshCw, Trash2,
   MessageSquare, Clock, ChevronDown, ChevronRight,
   XCircle, Bot, Terminal, Smartphone, Timer,
-  Link, Monitor, Wrench, Users,
+  Link, Monitor, Wrench, Users, Star, Filter, X,
 } from "lucide-react"
 
 interface Session {
@@ -58,9 +58,20 @@ const SOURCE_LABELS: Record<string, string> = {
 
 const ALL_SOURCES = ["cli", "weixin", "cron", "acp", "tui", "tool", "subagent"]
 
-function groupByAgent(sessions: Session[]) {
-  // All non-cron sessions are from the same agent (Hermes)
-  // Group by source
+// localStorage helpers for favorites
+function loadFavorites(): Set<string> {
+  try {
+    const saved = localStorage.getItem("sessions-favorites")
+    if (saved) return new Set(JSON.parse(saved))
+  } catch {}
+  return new Set()
+}
+
+function saveFavorites(favs: Set<string>) {
+  try { localStorage.setItem("sessions-favorites", JSON.stringify([...favs])) } catch {}
+}
+
+function groupBySource(sessions: Session[]) {
   const groups: Record<string, Session[]> = {}
   for (const s of sessions) {
     const src = s.source || "unknown"
@@ -82,7 +93,14 @@ export function SessionsClient() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  // Expand state: agent-level and source-level (persisted to localStorage)
+  // Favorites state
+  const [favorites, setFavorites] = useState<Set<string>>(new Set())
+  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false)
+
+  // Source filter state
+  const [activeSourceFilter, setActiveSourceFilter] = useState<string | null>(null)
+
+  // Expand state: source-level (persisted to localStorage)
   const [agentExpanded, setAgentExpanded] = useState(true)
   const [sourceExpanded, setSourceExpanded] = useState<Record<string, boolean>>(() => {
     if (typeof window !== "undefined") {
@@ -94,10 +112,28 @@ export function SessionsClient() {
     return { cli: false, weixin: false, cron: false, acp: false, tui: false, tool: false, subagent: false }
   })
 
+  // Load favorites from localStorage on mount
+  useEffect(() => {
+    setFavorites(loadFavorites())
+  }, [])
+
   // Persist sourceExpanded to localStorage on change
   useEffect(() => {
     try { localStorage.setItem("sessions-sourceExpanded", JSON.stringify(sourceExpanded)) } catch {}
   }, [sourceExpanded])
+
+  const toggleFavorite = useCallback((sessionId: string) => {
+    setFavorites(prev => {
+      const next = new Set(prev)
+      if (next.has(sessionId)) {
+        next.delete(sessionId)
+      } else {
+        next.add(sessionId)
+      }
+      saveFavorites(next)
+      return next
+    })
+  }, [])
 
   const fetchSessions = useCallback(async () => {
     setLoading(true)
@@ -121,11 +157,10 @@ export function SessionsClient() {
   }, [apiBase, searchQuery])
 
   const fetchSessionDetail = async (sessionId: string) => {
-    // Auto-expand the source group that contains this session
     const session = sessions.find(s => s.session_id === sessionId)
     if (session?.source) {
       setSourceExpanded(prev => {
-        if (prev[session.source!]) return prev // already expanded, no change
+        if (prev[session.source!]) return prev
         const next: Record<string, boolean> = {}
         for (const key of ALL_SOURCES) next[key] = false
         next[session.source!] = true
@@ -161,6 +196,13 @@ export function SessionsClient() {
       })
       if (res.ok) {
         setSessions(prev => prev.filter(s => s.session_id !== sessionId))
+        // Also remove from favorites if present
+        setFavorites(prev => {
+          const next = new Set(prev)
+          next.delete(sessionId)
+          saveFavorites(next)
+          return next
+        })
         if (selectedSession?.session_id === sessionId) setSelectedSession(null)
         setDeleteConfirm(null)
       } else {
@@ -189,8 +231,33 @@ export function SessionsClient() {
     }
   }
 
-  const groups = groupByAgent(sessions)
-  const totalMessages = sessions.reduce((sum, s) => sum + (s.message_count || 0), 0)
+  // Apply filters: favorites + source
+  const filteredSessions = useMemo(() => {
+    let result = sessions
+    if (showFavoritesOnly) {
+      result = result.filter(s => favorites.has(s.session_id))
+    }
+    if (activeSourceFilter) {
+      result = result.filter(s => s.source === activeSourceFilter)
+    }
+    return result
+  }, [sessions, showFavoritesOnly, favorites, activeSourceFilter])
+
+  const groups = groupBySource(filteredSessions)
+  const totalMessages = filteredSessions.reduce((sum, s) => sum + (s.message_count || 0), 0)
+  const favCount = sessions.filter(s => favorites.has(s.session_id)).length
+
+  // Count sessions per source (from unfiltered list)
+  const sourceCounts = useMemo(() => {
+    const counts: Record<string, number> = {}
+    for (const s of sessions) {
+      const src = s.source || "unknown"
+      counts[src] = (counts[src] || 0) + 1
+    }
+    return counts
+  }, [sessions])
+
+  const activeFilterCount = (showFavoritesOnly ? 1 : 0) + (activeSourceFilter ? 1 : 0)
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -204,7 +271,12 @@ export function SessionsClient() {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-zinc-500">{sessions.length} {t("sessions.count", "sessions")}</span>
+          {activeFilterCount > 0 && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-900/30 text-cyan-400">
+              {activeFilterCount} {t("sessions.filtersActive", "filters")}
+            </span>
+          )}
+          <span className="text-sm text-zinc-500">{filteredSessions.length} {t("sessions.count", "sessions")}</span>
           <button onClick={fetchSessions} className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -215,8 +287,8 @@ export function SessionsClient() {
         {/* Session List */}
         <div className={`${selectedSession ? "w-1/3 border-r border-zinc-800" : "w-full"} flex flex-col overflow-hidden transition-all`}>
           {/* Search */}
-          <form onSubmit={handleSearch} className="px-4 h-12 flex items-center border-b border-zinc-800">
-            <div className="relative">
+          <form onSubmit={handleSearch} className="px-4 h-12 flex items-center border-b border-zinc-800 gap-2">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                 placeholder={t("sessions.searchPlaceholder", "Search sessions...")}
@@ -224,14 +296,88 @@ export function SessionsClient() {
             </div>
           </form>
 
+          {/* Filter Bar */}
+          <div className="px-4 py-2 border-b border-zinc-800 space-y-2">
+            {/* Favorites + clear row */}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowFavoritesOnly(v => !v)}
+                className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                  showFavoritesOnly
+                    ? "bg-yellow-900/30 text-yellow-400 border border-yellow-700/50"
+                    : "bg-zinc-800 text-zinc-500 border border-zinc-700 hover:text-zinc-300 hover:border-zinc-600"
+                }`}
+              >
+                <Star className={`w-3.5 h-3.5 ${showFavoritesOnly ? "fill-yellow-400" : ""}`} />
+                {t("sessions.favorites", "Favorites")}
+                {favCount > 0 && <span className="text-[10px] opacity-70">({favCount})</span>}
+              </button>
+
+              <div className="flex items-center gap-1 ml-1">
+                <Filter className="w-3 h-3 text-zinc-600" />
+                <span className="text-[10px] text-zinc-600">{t("sessions.source", "Source")}:</span>
+              </div>
+
+              {activeFilterCount > 0 && (
+                <button
+                  onClick={() => { setShowFavoritesOnly(false); setActiveSourceFilter(null) }}
+                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
+                >
+                  <X className="w-3 h-3" />
+                  {t("sessions.clearFilters", "Clear")}
+                </button>
+              )}
+            </div>
+
+            {/* Source filter chips */}
+            <div className="flex flex-wrap gap-1.5">
+              {ALL_SOURCES.map(src => {
+                const count = sourceCounts[src] || 0
+                if (count === 0) return null
+                const meta = SOURCE_META[src]
+                const Icon = meta.icon
+                const active = activeSourceFilter === src
+                return (
+                  <button
+                    key={src}
+                    onClick={() => setActiveSourceFilter(prev => prev === src ? null : src)}
+                    className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] transition-colors ${
+                      active
+                        ? `${meta.bg} ${meta.color} border border-current/30 font-medium`
+                        : "bg-zinc-800/60 text-zinc-500 border border-zinc-800 hover:text-zinc-300"
+                    }`}
+                  >
+                    <Icon className="w-3 h-3" />
+                    {t(SOURCE_LABELS[src] || src)}
+                    <span className="opacity-60">{count}</span>
+                  </button>
+                )
+              })}
+            </div>
+          </div>
+
           {/* Tree List */}
           <div className="flex-1 overflow-y-auto">
             {loading ? (
               <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
             ) : error ? (
               <div className="p-4 text-center text-red-400 text-sm">{error}</div>
-            ) : sessions.length === 0 ? (
-              <div className="text-center py-12 text-zinc-500 text-sm">{t("sessions.noSessions", "No sessions found")}</div>
+            ) : filteredSessions.length === 0 ? (
+              <div className="text-center py-12 space-y-2">
+                <p className="text-zinc-500 text-sm">
+                  {showFavoritesOnly
+                    ? t("sessions.noFavorites", "No favorite sessions yet")
+                    : t("sessions.noSessions", "No sessions found")}
+                </p>
+                {showFavoritesOnly && (
+                  <button
+                    onClick={() => setShowFavoritesOnly(false)}
+                    className="text-xs text-cyan-500 hover:text-cyan-400 transition-colors"
+                  >
+                    {t("sessions.showAll", "Show all sessions")}
+                  </button>
+                )}
+              </div>
             ) : (
               <div className="py-2">
                 {/* ── Hermes Agent ── */}
@@ -242,7 +388,7 @@ export function SessionsClient() {
                   {agentExpanded ? <ChevronDown className="w-4 h-4 text-zinc-500" /> : <ChevronRight className="w-4 h-4 text-zinc-500" />}
                   <Bot className="w-5 h-5 text-cyan-400" />
                   <span className="text-sm font-semibold text-zinc-100">Hermes Agent</span>
-                  <span className="ml-auto text-xs text-zinc-500">{t("sessions.sessionSummary", { count: sessions.length, messages: totalMessages })}</span>
+                  <span className="ml-auto text-xs text-zinc-500">{t("sessions.sessionSummary", { count: filteredSessions.length, messages: totalMessages })}</span>
                 </button>
 
                 {agentExpanded && (
@@ -262,7 +408,6 @@ export function SessionsClient() {
                             onClick={() => setSourceExpanded(prev => {
                               const willExpand = !prev[src]
                               const next: Record<string, boolean> = {}
-                              // Accordion: collapse all, then expand clicked one
                               if (willExpand) {
                                 for (const key of ALL_SOURCES) next[key] = false
                                 next[src] = true
@@ -277,58 +422,74 @@ export function SessionsClient() {
                           </button>
 
                           {/* Sessions under this source */}
-                          {expanded && items.map(session => (
-                            <div
-                              key={session.session_id}
-                              className={`flex items-center gap-2 pl-14 pr-4 py-2 cursor-pointer transition-colors ${
-                                selectedSession?.session_id === session.session_id
-                                  ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] border-l-2 border-[#7c3aed] hover:bg-[rgba(124,58,237,0.18)]"
-                                  : "hover:bg-zinc-800/20 border-l-2 border-transparent"
-                              }`}
-                              onClick={() => router.push(`/chat?session=${session.session_id}`)}
-                            >
-                              <div className="flex-1 min-w-0">
-                                <div className={`text-xs truncate ${
-                                  selectedSession?.session_id === session.session_id ? "text-[#7c3aed]" : "text-zinc-300"
-                                }`}>
-                                  {session.title || session.session_id.replace(/^20\d{6}_\d{6}_/, "")}
-                                </div>
-                                <div className={`flex items-center gap-2 mt-0.5 text-[10px] ${
-                                  selectedSession?.session_id === session.session_id ? "text-purple-400/60" : "text-zinc-600"
-                                }`}>
-                                  {session.message_count !== undefined && (
-                                    <span className="flex items-center gap-0.5">
-                                      <MessageSquare className="w-2.5 h-2.5" /> {session.message_count}
-                                    </span>
-                                  )}
-                                  {session.created_at && (
-                                    <span className="flex items-center gap-0.5">
-                                      <Clock className="w-2.5 h-2.5" /> {new Date(session.created_at).toLocaleDateString()}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                              <div className="flex items-center gap-1">
-                                {deleteConfirm === session.session_id ? (
-                                  <div className="flex items-center gap-1">
-                                    <button onClick={(e) => { e.stopPropagation(); deleteSession(session.session_id) }}
-                                      className="px-1.5 py-0.5 bg-red-600 hover:bg-red-700 rounded text-[10px] text-white">
-                                      {t("sessions.confirmDelete", "OK")}
-                                    </button>
-                                    <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null) }}
-                                      className="px-1.5 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-[10px] text-zinc-300">
-                                      {t("sessions.cancel", "Cancel")}
-                                    </button>
+                          {expanded && items.map(session => {
+                            const isFav = favorites.has(session.session_id)
+                            return (
+                              <div
+                                key={session.session_id}
+                                className={`group flex items-center gap-2 pl-14 pr-4 py-2 cursor-pointer transition-colors ${
+                                  selectedSession?.session_id === session.session_id
+                                    ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] border-l-2 border-[#7c3aed] hover:bg-[rgba(124,58,237,0.18)]"
+                                    : "hover:bg-zinc-800/20 border-l-2 border-transparent"
+                                }`}
+                                onClick={() => router.push(`/chat?session=${session.session_id}`)}
+                              >
+                                {/* Favorite star */}
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); toggleFavorite(session.session_id) }}
+                                  className={`p-0.5 rounded transition-colors flex-shrink-0 ${
+                                    isFav
+                                      ? "text-yellow-400 hover:text-yellow-300"
+                                      : "text-zinc-700 opacity-0 group-hover:opacity-100 hover:text-yellow-400"
+                                  }`}
+                                  title={isFav ? t("sessions.removeFavorite", "Remove from favorites") : t("sessions.addFavorite", "Add to favorites")}
+                                >
+                                  <Star className={`w-3.5 h-3.5 ${isFav ? "fill-yellow-400" : ""}`} />
+                                </button>
+
+                                <div className="flex-1 min-w-0">
+                                  <div className={`text-xs truncate ${
+                                    selectedSession?.session_id === session.session_id ? "text-[#7c3aed]" : "text-zinc-300"
+                                  }`}>
+                                    {session.title || session.session_id.replace(/^20\d{6}_\d{6}_/, "")}
                                   </div>
-                                ) : (
-                                  <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(session.session_id) }}
-                                    className="p-1 rounded hover:bg-zinc-700 text-zinc-600 hover:text-red-400 transition-colors">
-                                    <Trash2 className="w-3 h-3" />
-                                  </button>
-                                )}
+                                  <div className={`flex items-center gap-2 mt-0.5 text-[10px] ${
+                                    selectedSession?.session_id === session.session_id ? "text-purple-400/60" : "text-zinc-600"
+                                  }`}>
+                                    {session.message_count !== undefined && (
+                                      <span className="flex items-center gap-0.5">
+                                        <MessageSquare className="w-2.5 h-2.5" /> {session.message_count}
+                                      </span>
+                                    )}
+                                    {session.created_at && (
+                                      <span className="flex items-center gap-0.5">
+                                        <Clock className="w-2.5 h-2.5" /> {new Date(session.created_at).toLocaleDateString()}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                  {deleteConfirm === session.session_id ? (
+                                    <div className="flex items-center gap-1">
+                                      <button onClick={(e) => { e.stopPropagation(); deleteSession(session.session_id) }}
+                                        className="px-1.5 py-0.5 bg-red-600 hover:bg-red-700 rounded text-[10px] text-white">
+                                        {t("sessions.confirmDelete", "OK")}
+                                      </button>
+                                      <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null) }}
+                                        className="px-1.5 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-[10px] text-zinc-300">
+                                        {t("sessions.cancel", "Cancel")}
+                                      </button>
+                                    </div>
+                                  ) : (
+                                    <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(session.session_id) }}
+                                      className="p-1 rounded hover:bg-zinc-700 text-zinc-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  )}
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            )
+                          })}
                         </div>
                       )
                     })}

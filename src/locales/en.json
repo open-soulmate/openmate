@@ -5764,7 +5764,15 @@
     "sourceTui": "TUI Terminal",
     "sourceTool": "Tool Call",
     "sourceSubagent": "Subagent",
-    "sessionSummary": "{{count}} sessions · {{messages}} messages"
+    "sessionSummary": "{{count}} sessions · {{messages}} messages",
+    "favorites": "Favorites",
+    "source": "Source",
+    "clearFilters": "Clear",
+    "filtersActive": "filters",
+    "noFavorites": "No favorite sessions yet",
+    "showAll": "Show all sessions",
+    "addFavorite": "Add to favorites",
+    "removeFavorite": "Remove from favorites"
   },
   "registry": {
     "title": "Component Registry",

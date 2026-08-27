@@ -5773,7 +5773,15 @@
     "sourceTui": "TUI 终端",
     "sourceTool": "工具调用",
     "sourceSubagent": "子代理",
-    "sessionSummary": "{{count}} 会话 · {{messages}} 消息"
+    "sessionSummary": "{{count}} 会话 · {{messages}} 消息",
+    "favorites": "收藏",
+    "source": "来源",
+    "clearFilters": "清除筛选",
+    "filtersActive": "个筛选",
+    "noFavorites": "暂无收藏会话",
+    "showAll": "显示全部会话",
+    "addFavorite": "添加收藏",
+    "removeFavorite": "取消收藏"
   },
   "registry": {
     "title": "组件注册表",
