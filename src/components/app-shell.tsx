@@ -1,6 +1,7 @@
 "use client";
 import { TerminalPanel } from "@/components/terminal-panel";
 import { MobileSidebar } from "@/components/mobile-sidebar";
+import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -94,22 +95,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, []);
 
-  // Fetch event count for notification badge
-  useEffect(() => {
+  // Fetch event count for notification badge (visibility-aware, 30s)
+  useVisibilityPoll(() => {
     const apiBase = getApiBaseUrl();
     if (!apiBase) return;
-    const fetchEvents = () => {
-      fetch(`${apiBase}/api/events/summary`)
-        .then((res) => (res.ok ? res.json() : null))
-        .then((data) => {
-          if (data?.total_events) setEventCount(Math.min(data.total_events, 99));
-        })
-        .catch(() => {});
-    };
-    fetchEvents();
-    const interval = setInterval(fetchEvents, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    fetch(`${apiBase}/api/events/summary`)
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data) => {
+        if (data?.total_events) setEventCount(Math.min(data.total_events, 99));
+      })
+      .catch(() => {});
+  }, 30000, []);
 
   const navGroups: NavGroup[] = [
     {

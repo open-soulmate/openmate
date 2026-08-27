@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 import {
   Bell, Check, CheckCheck, Trash2, X, Info, AlertTriangle,
   AlertCircle, CheckCircle, Loader2,
@@ -89,12 +90,8 @@ export function NotificationCenter() {
     } catch {}
   }, [apiBase]);
 
-  // Poll unread count every 30s
-  useEffect(() => {
-    fetchUnreadCount();
-    const interval = setInterval(fetchUnreadCount, 30000);
-    return () => clearInterval(interval);
-  }, [fetchUnreadCount]);
+  // Poll unread count every 30s, pause when tab hidden
+  useVisibilityPoll(fetchUnreadCount, 30000, [apiBase]);
 
   // Fetch full list when panel opens
   useEffect(() => {
