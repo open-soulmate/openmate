@@ -108,6 +108,7 @@ AGENT_REGISTRY = {
     "aider": {"name": "Aider", "binary": "aider", "args": ["--message"]},
     "pi-agent": {"name": "Pi Agent", "binary": "pi", "args": ["-p"]},
     "opencode": {"name": "OpenCode", "binary": "opencode", "args": ["-q"]},
+    "openclaw": {"name": "OpenClaw", "binary": "openclaw", "args": ["agent", "-m"]},
     "gemini": {"name": "Gemini CLI", "binary": "gemini", "args": ["-p"]},
     "copilot": {"name": "GitHub Copilot", "binary": "gh", "args": ["copilot", "-p"]},
     "amazon-q": {"name": "Amazon Q", "binary": "q", "args": ["chat", "--no-interactive", "-p"]},
