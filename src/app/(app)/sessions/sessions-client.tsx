@@ -9,6 +9,7 @@ import {
   MessageSquare, Clock, ChevronDown, ChevronRight,
   XCircle, Bot, Terminal, Smartphone, Timer,
   Link, Monitor, Wrench, Users, Star, Filter, X,
+  Download, FileJson, FileText,
 } from "lucide-react"
 
 interface Session {
@@ -230,6 +231,47 @@ export function SessionsClient() {
       default: return "text-zinc-400"
     }
   }
+
+  // ── Export helpers ──────────────────────────────────────────
+  const exportSession = useCallback((format: "json" | "markdown") => {
+    if (!selectedSession) return
+    const title = selectedSession.title || selectedSession.session_id
+    let content: string
+    let ext: string
+    let mime: string
+
+    if (format === "json") {
+      content = JSON.stringify({
+        session_id: selectedSession.session_id,
+        title,
+        exported_at: new Date().toISOString(),
+        message_count: selectedSession.messages.length,
+        messages: selectedSession.messages,
+      }, null, 2)
+      ext = "json"
+      mime = "application/json"
+    } else {
+      const lines = [`# ${title}`, "", `Session: \`${selectedSession.session_id}\``, `Exported: ${new Date().toLocaleString()}`, "", "---", ""]
+      for (const msg of selectedSession.messages) {
+        const roleLabel = msg.role === "user" ? "**You**" : msg.role === "assistant" ? "**AI**" : `**${msg.role}**`
+        const ts = msg.timestamp ? ` _(${new Date(msg.timestamp).toLocaleString()})_` : ""
+        lines.push(`### ${roleLabel}${ts}`, "", msg.content, "")
+      }
+      content = lines.join("\n")
+      ext = "md"
+      mime = "text/markdown"
+    }
+
+    const blob = new Blob([content], { type: mime })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement("a")
+    a.href = url
+    a.download = `session-${selectedSession.session_id}.${ext}`
+    document.body.appendChild(a)
+    a.click()
+    document.body.removeChild(a)
+    URL.revokeObjectURL(url)
+  }, [selectedSession])
 
   // Apply filters: favorites + source
   const filteredSessions = useMemo(() => {
@@ -511,10 +553,22 @@ export function SessionsClient() {
                 </span>
                 <span className="text-xs text-zinc-500">({selectedSession.messages.length} {t("sessions.messages", "messages")})</span>
               </div>
-              <button onClick={() => setSelectedSession(null)}
-                className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200">
-                <XCircle className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-1">
+                <button onClick={() => exportSession("json")}
+                  className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  title="Export as JSON">
+                  <FileJson className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => exportSession("markdown")}
+                  className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                  title="Export as Markdown">
+                  <FileText className="w-3.5 h-3.5" />
+                </button>
+                <button onClick={() => setSelectedSession(null)}
+                  className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200">
+                  <XCircle className="w-4 h-4" />
+                </button>
+              </div>
             </div>
             <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
               {detailLoading ? (
