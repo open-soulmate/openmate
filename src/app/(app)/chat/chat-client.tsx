@@ -485,11 +485,16 @@ export function ChatClient() {
     // Add mode prefix for plan mode
     const messageText = agentMode === 'plan' ? `[PLAN MODE] ${text}` : text;
 
+    const wsPayload = {
+      type: 'message', text: messageText,
+      mode: selectedAgent ? 'agent_proxy' : 'hermes',
+      session_id: selectedSession?.id,
+      ...(selectedAgent ? { agent_id: selectedAgent.id } : {}),
+      attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
+    };
+
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'message', text: messageText, mode: 'hermes', session_id: selectedSession?.id,
-        attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
-      }));
+      wsRef.current.send(JSON.stringify(wsPayload));
       return;
     }
     // Wait for WS reconnection instead of falling through to broken HTTP fallback
@@ -499,10 +504,7 @@ export function ChatClient() {
         waited += 500;
         if (wsRef.current?.readyState === WebSocket.OPEN) {
           clearInterval(waitConnect);
-          wsRef.current.send(JSON.stringify({
-            type: 'message', text: messageText, mode: 'hermes', session_id: selectedSession?.id,
-            attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
-          }));
+          wsRef.current.send(JSON.stringify(wsPayload));
         } else if (waited >= 10000) {
           clearInterval(waitConnect);
           setLoading(false);
