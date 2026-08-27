@@ -9,7 +9,7 @@ import {
   MessageSquare, Clock, ChevronDown, ChevronRight,
   XCircle, Bot, Terminal, Smartphone, Timer,
   Link, Monitor, Wrench, Users, Star, Filter, X,
-  Download, FileJson, FileText,
+  Download, FileJson, FileText, Tag, Plus,
 } from "lucide-react"
 
 interface Session {
@@ -21,6 +21,7 @@ interface Session {
   message_count?: number
   status?: string
   source?: string
+  tags?: string[]
 }
 
 interface Message {
@@ -101,6 +102,14 @@ export function SessionsClient() {
   // Source filter state
   const [activeSourceFilter, setActiveSourceFilter] = useState<string | null>(null)
 
+  // Tag filter state
+  const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
+  const [allTags, setAllTags] = useState<{name: string; count: number}[]>([])
+
+  // Tag input state (for adding tags to sessions)
+  const [taggingSession, setTaggingSession] = useState<string | null>(null)
+  const [tagInput, setTagInput] = useState("")
+
   // Expand state: source-level (persisted to localStorage)
   const [agentExpanded, setAgentExpanded] = useState(true)
   const [sourceExpanded, setSourceExpanded] = useState<Record<string, boolean>>(() => {
@@ -140,9 +149,13 @@ export function SessionsClient() {
     setLoading(true)
     setError("")
     try {
+      const params = new URLSearchParams()
+      if (searchQuery.trim()) params.set("q", searchQuery.trim())
+      if (activeTagFilter) params.set("tag", activeTagFilter)
+      const qs = params.toString()
       const url = searchQuery.trim()
-        ? `${apiBase}/api/sessions/search?q=${encodeURIComponent(searchQuery.trim())}`
-        : `${apiBase}/api/sessions`
+        ? `${apiBase}/api/sessions/search?${qs}`
+        : `${apiBase}/api/sessions${qs ? `?${qs}` : ""}`
       const res = await fetch(url, { signal: AbortSignal.timeout(10000) })
       if (res.ok) {
         const data = await res.json()
@@ -155,7 +168,7 @@ export function SessionsClient() {
     } finally {
       setLoading(false)
     }
-  }, [apiBase, searchQuery])
+  }, [apiBase, searchQuery, activeTagFilter])
 
   const fetchSessionDetail = async (sessionId: string) => {
     const session = sessions.find(s => s.session_id === sessionId)
@@ -217,6 +230,61 @@ export function SessionsClient() {
   useEffect(() => {
     fetchSessions()
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Fetch all available tags
+  const fetchTags = useCallback(async () => {
+    try {
+      const res = await fetch(`${apiBase}/api/sessions/tags/all`, { signal: AbortSignal.timeout(5000) })
+      if (res.ok) {
+        const data = await res.json()
+        setAllTags(data.tags || [])
+      }
+    } catch {}
+  }, [apiBase])
+
+  useEffect(() => { fetchTags() }, [fetchTags])
+
+  // Add a tag to a session
+  const addTag = useCallback(async (sessionId: string, tagName: string) => {
+    const name = tagName.trim().toLowerCase()
+    if (!name) return
+    try {
+      const res = await fetch(`${apiBase}/api/sessions/${sessionId}/tags`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tag_name: name }),
+        signal: AbortSignal.timeout(5000),
+      })
+      if (res.ok) {
+        setSessions(prev => prev.map(s =>
+          s.session_id === sessionId
+            ? { ...s, tags: [...new Set([...(s.tags || []), name])].sort() }
+            : s
+        ))
+        setTagInput("")
+        setTaggingSession(null)
+        fetchTags()
+      }
+    } catch {}
+  }, [apiBase, fetchTags])
+
+  // Remove a tag from a session
+  const removeTag = useCallback(async (sessionId: string, tagName: string) => {
+    try {
+      const res = await fetch(`${apiBase}/api/sessions/${sessionId}/tags/${encodeURIComponent(tagName)}`, {
+        method: "DELETE",
+        signal: AbortSignal.timeout(5000),
+      })
+      if (res.ok) {
+        setSessions(prev => prev.map(s =>
+          s.session_id === sessionId
+            ? { ...s, tags: (s.tags || []).filter(t => t !== tagName) }
+            : s
+        ))
+        fetchTags()
+      }
+    } catch {}
+  }, [apiBase, fetchTags])
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault()
@@ -299,7 +367,7 @@ export function SessionsClient() {
     return counts
   }, [sessions])
 
-  const activeFilterCount = (showFavoritesOnly ? 1 : 0) + (activeSourceFilter ? 1 : 0)
+  const activeFilterCount = (showFavoritesOnly ? 1 : 0) + (activeSourceFilter ? 1 : 0) + (activeTagFilter ? 1 : 0)
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
@@ -362,7 +430,7 @@ export function SessionsClient() {
 
               {activeFilterCount > 0 && (
                 <button
-                  onClick={() => { setShowFavoritesOnly(false); setActiveSourceFilter(null) }}
+                  onClick={() => { setShowFavoritesOnly(false); setActiveSourceFilter(null); setActiveTagFilter(null) }}
                   className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
                 >
                   <X className="w-3 h-3" />
@@ -396,6 +464,34 @@ export function SessionsClient() {
                 )
               })}
             </div>
+
+            {/* Tag filter chips */}
+            {allTags.length > 0 && (
+              <div className="flex flex-wrap gap-1.5">
+                <div className="flex items-center gap-1 mr-1">
+                  <Tag className="w-3 h-3 text-zinc-600" />
+                  <span className="text-[10px] text-zinc-600">{t("sessions.tags", "Tags")}:</span>
+                </div>
+                {allTags.map(tag => {
+                  const active = activeTagFilter === tag.name
+                  return (
+                    <button
+                      key={tag.name}
+                      onClick={() => setActiveTagFilter(prev => prev === tag.name ? null : tag.name)}
+                      className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] transition-colors ${
+                        active
+                          ? "bg-indigo-900/30 text-indigo-400 border border-indigo-700/30 font-medium"
+                          : "bg-zinc-800/60 text-zinc-500 border border-zinc-800 hover:text-zinc-300"
+                      }`}
+                    >
+                      <Tag className="w-3 h-3" />
+                      {tag.name}
+                      <span className="opacity-60">{tag.count}</span>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
           </div>
 
           {/* Tree List */}
@@ -509,8 +605,63 @@ export function SessionsClient() {
                                       </span>
                                     )}
                                   </div>
+                                  {/* Tag chips */}
+                                  {(session.tags && session.tags.length > 0) && (
+                                    <div className="flex flex-wrap gap-1 mt-1">
+                                      {session.tags.map(tag => (
+                                        <span
+                                          key={tag}
+                                          onClick={(e) => { e.stopPropagation(); setActiveTagFilter(prev => prev === tag ? null : tag) }}
+                                          className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded text-[9px] bg-indigo-900/20 text-indigo-400 border border-indigo-800/30 cursor-pointer hover:bg-indigo-900/40 transition-colors"
+                                        >
+                                          <Tag className="w-2 h-2" />
+                                          {tag}
+                                          <button
+                                            onClick={(e) => { e.stopPropagation(); removeTag(session.session_id, tag) }}
+                                            className="ml-0.5 hover:text-red-400 transition-colors"
+                                            title={t("sessions.removeTag", "Remove tag")}
+                                          >
+                                            <X className="w-2 h-2" />
+                                          </button>
+                                        </span>
+                                      ))}
+                                    </div>
+                                  )}
+                                  {/* Tag input */}
+                                  {taggingSession === session.session_id && (
+                                    <div className="mt-1" onClick={e => e.stopPropagation()}>
+                                      <form
+                                        onSubmit={e => { e.preventDefault(); addTag(session.session_id, tagInput) }}
+                                        className="flex items-center gap-1"
+                                      >
+                                        <input
+                                          autoFocus
+                                          value={tagInput}
+                                          onChange={e => setTagInput(e.target.value)}
+                                          onKeyDown={e => { if (e.key === "Escape") { setTaggingSession(null); setTagInput("") } }}
+                                          placeholder={t("sessions.tagPlaceholder", "tag name...")}
+                                          className="w-20 px-1.5 py-0.5 text-[10px] bg-zinc-800 border border-zinc-700 rounded text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500"
+                                        />
+                                        <button type="submit" className="p-0.5 text-indigo-400 hover:text-indigo-300">
+                                          <Plus className="w-3 h-3" />
+                                        </button>
+                                      </form>
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="flex items-center gap-1">
+                                  {/* Add tag button */}
+                                  <button
+                                    onClick={(e) => { e.stopPropagation(); setTaggingSession(prev => prev === session.session_id ? null : session.session_id); setTagInput("") }}
+                                    className={`p-1 rounded transition-colors opacity-0 group-hover:opacity-100 ${
+                                      taggingSession === session.session_id
+                                        ? "bg-indigo-800/30 text-indigo-400"
+                                        : "hover:bg-zinc-700 text-zinc-600 hover:text-indigo-400"
+                                    }`}
+                                    title={t("sessions.addTag", "Add tag")}
+                                  >
+                                    <Tag className="w-3 h-3" />
+                                  </button>
                                   {deleteConfirm === session.session_id ? (
                                     <div className="flex items-center gap-1">
                                       <button onClick={(e) => { e.stopPropagation(); deleteSession(session.session_id) }}

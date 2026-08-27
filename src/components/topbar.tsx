@@ -41,7 +41,7 @@ export function Topbar() {
   }
 
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-6">
+    <header className="hidden md:flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-6">
       <div className="flex items-center gap-2">
         <SidebarTrigger className="-ml-1" />
         <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
