@@ -537,6 +537,23 @@ export default function AIGroupsPage() {
     setLoadingProfile(null);
   };
 
+  // Execute a task via real agent (calls backend execute endpoint)
+  const executeAgentTask = async (taskId: string, agentId: string, goal: string) => {
+    if (!selectedGroup) return null;
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/tasks/${taskId}/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ agent_id: agentId, goal }),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      console.error('Failed to execute agent task:', e);
+      return null;
+    }
+  };
+
   // Run the full discussion flow for a task-like message
   const runDiscussionFlow = async (goal: string) => {
     if (!selectedGroup) return;
@@ -559,68 +576,88 @@ export default function AIGroupsPage() {
       intent: 'comment' as const,
     }]);
 
-    // Step 2: Simulate agent responses (each agent gives their input)
+    // Step 2: Each advisor/verifier agent gives input via real LLM call
     const agents = selectedGroup.agents || [];
-    const intentCycle: Array<'claim' | 'suggest' | 'refer' | 'comment'> = ['claim', 'suggest', 'refer', 'comment'];
+    const discussAgents = agents.filter(a => a.role !== 'executor');
+    const executors = agents.filter(a => a.role === 'executor');
 
-    for (let i = 0; i < agents.length; i++) {
-      const agent = agents[i];
-      const intent = intentCycle[i % intentCycle.length];
-      const responses: Record<string, string> = {
-        claim: `我来负责这个任务的相关部分。基于我的角色(${agent.role})，我可以处理核心逻辑。`,
-        suggest: `建议分步骤进行：1) 先分析需求 2) 设计方案 3) 实现核心功能 4) 测试验证。`,
-        refer: `推荐使用相关最佳实践和技术方案来完成这个任务。`,
-        comment: `同意以上方案，补充一点：需要注意边界条件和错误处理。`,
-      };
+    // If no non-executor agents, use all agents for discussion
+    const discussPool = discussAgents.length > 0 ? discussAgents : agents;
 
-      await submitDiscussionResponse(taskId, agent.agent_id, agent.name, intent, responses[intent]);
+    for (const agent of discussPool) {
+      const discussPrompt = `你是AI群组中的${agent.role}角色"${agent.name}"。群组正在讨论以下任务目标：\n\n"${goal}"\n\n请从你的角色角度给出简短建议（100字以内），说明你认为应该如何完成这个任务。`;
+      const result = await executeAgentTask(taskId, agent.agent_id, discussPrompt);
+      const content = result?.response || `${agent.name}(${agent.role}): 建议按标准流程执行此任务。`;
+      const intent = agent.role === 'advisor' ? 'suggest' as const : 'comment' as const;
 
-      // Add message to UI
+      await submitDiscussionResponse(taskId, agent.agent_id, agent.name, intent, content);
+
       setMessages(prev => [...prev, {
         id: `discuss-${agent.agent_id}-${Date.now()}`, role: 'agent',
         agent_id: agent.agent_id, agent_name: agent.name, agent_role: agent.role,
-        content: responses[intent], timestamp: new Date(),
+        content, timestamp: new Date(),
         intent,
       }]);
-
-      // Small delay between responses for visual effect
-      await new Promise(r => setTimeout(r, 600));
     }
 
     // Step 3: Finalize discussion with assignments
-    const assignments = agents.filter(a => a.role === 'executor').map(a => ({
+    const execAgents = executors.length > 0 ? executors : agents;
+    const assignments = execAgents.map(a => ({
       agent_id: a.agent_id,
-      subgoal: `完成任务中与${a.name}相关的部分`,
+      subgoal: `完成任务中与${a.name}(${a.role})相关的部分`,
     }));
 
     await finalizeDiscussion(taskId, assignments);
 
-    // Add assignment summary message
     setMessages(prev => [...prev, {
       id: `assign-${Date.now()}`, role: 'agent',
       agent_name: 'System', agent_role: 'executor',
-      content: `✅ 讨论结束，任务已分配给 ${assignments.length} 个执行者。结果将随后返回。`,
+      content: `✅ 讨论结束，${assignments.length}个Agent开始执行任务...`,
       timestamp: new Date(),
       intent: 'comment' as const,
     }]);
 
-    // Step 4: Simulate task execution result
-    await new Promise(r => setTimeout(r, 1000));
+    // Step 4: Execute tasks via real agents
+    const results: string[] = [];
+    for (const assignment of assignments) {
+      const agentInfo = getAgentById(assignment.agent_id);
+      setMessages(prev => [...prev, {
+        id: `executing-${assignment.agent_id}-${Date.now()}`, role: 'agent',
+        agent_id: assignment.agent_id, agent_name: agentInfo?.name || assignment.agent_id,
+        agent_role: agentInfo?.role || 'executor',
+        content: `⏳ 正在执行: ${assignment.subgoal}...`,
+        timestamp: new Date(),
+        intent: 'comment' as const,
+      }]);
 
-    const resultContent = `任务执行完成。\n\n目标: ${goal}\n执行者: ${assignments.map(a => getAgentById(a.agent_id)?.name || a.agent_id).join(', ')}\n\n结果: 已按讨论方案完成所有子任务。`;
+      const execResult = await executeAgentTask(taskId, assignment.agent_id, goal);
+      const responseText = execResult?.response || '(无响应)';
+      results.push(`${agentInfo?.name || assignment.agent_id}: ${responseText}`);
 
+      // Update the "executing" message with real result
+      setMessages(prev => {
+        const updated = [...prev];
+        const idx = updated.findIndex(m => m.id === `executing-${assignment.agent_id}-${Date.now()}`);
+        if (idx >= 0) {
+          updated[idx] = { ...updated[idx], content: responseText, intent: 'result' as const };
+        } else {
+          updated.push({
+            id: `result-${assignment.agent_id}-${Date.now()}`, role: 'agent',
+            agent_id: assignment.agent_id, agent_name: agentInfo?.name || assignment.agent_id,
+            agent_role: agentInfo?.role || 'executor',
+            content: responseText, timestamp: new Date(),
+            intent: 'result' as const,
+          });
+        }
+        return updated;
+      });
+    }
+
+    // Step 5: Submit combined result for review
+    const resultContent = results.join('\n\n---\n\n');
     await submitTaskResult(taskId, resultContent);
 
-    // Add result message
-    setMessages(prev => [...prev, {
-      id: `result-${Date.now()}`, role: 'agent',
-      agent_id: agents[0]?.agent_id, agent_name: agents[0]?.name || 'Agent',
-      agent_role: agents[0]?.role || 'executor',
-      content: resultContent, timestamp: new Date(),
-      intent: 'result' as const,
-    }]);
-
-    // Step 5: Trigger scoring - each verifier/advisor scores
+    // Step 6: Trigger scoring
     setActiveTaskReview({
       task_id: taskId,
       result: resultContent,
