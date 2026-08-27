@@ -599,7 +599,9 @@
     "detecting": "检测中...",
     "temperatureDesc": "控制输出随机性",
     "shellWhitelistPlaceholder": "ls, cat, grep",
-    "knowledgePathPlaceholder": "~/.openmate/knowledge"
+    "knowledgePathPlaceholder": "~/.openmate/knowledge",
+    "baseUrl": "Base URL 地址",
+    "baseUrlDesc": "API 接口地址，如 https://api.openai.com/v1"
   },
   "search": {
     "title": "搜索一切",

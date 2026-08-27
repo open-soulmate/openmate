@@ -599,7 +599,9 @@
     "detecting": "Detecting...",
     "temperatureDesc": "Control output randomness",
     "shellWhitelistPlaceholder": "ls, cat, grep",
-    "knowledgePathPlaceholder": "~/.openmate/knowledge"
+    "knowledgePathPlaceholder": "~/.openmate/knowledge",
+    "baseUrl": "Base URL",
+    "baseUrlDesc": "API endpoint base URL"
   },
   "search": {
     "title": "Search Everything",

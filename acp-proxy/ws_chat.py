@@ -102,11 +102,11 @@ def decode_token(token: str) -> UUID | None:
 # Agent proxy registry — synced with OpenSoul's AGENT_REGISTRY
 AGENT_REGISTRY = {
     "hermes": {"name": "Hermes Agent", "binary": "hermes", "args": ["-z"]},
-    "mimo": {"name": "MiMo Code", "binary": "mimo", "args": ["run", "--prompt"]},
+    "mimo": {"name": "MiMo Code", "binary": "mimo", "args": ["run"]},
     "claude": {"name": "Claude Code", "binary": "claude", "args": ["-p"]},
-    "codex": {"name": "Codex CLI", "binary": "codex", "args": ["-q"]},
+    "codex": {"name": "Codex CLI", "binary": "codex", "args": ["exec"]},
     "aider": {"name": "Aider", "binary": "aider", "args": ["--message"]},
-    "pi-agent": {"name": "Pi Agent", "binary": "pi", "args": ["--message"]},
+    "pi-agent": {"name": "Pi Agent", "binary": "pi", "args": ["-p"]},
     "opencode": {"name": "OpenCode", "binary": "opencode", "args": ["-q"]},
     "gemini": {"name": "Gemini CLI", "binary": "gemini", "args": ["-p"]},
     "copilot": {"name": "GitHub Copilot", "binary": "gh", "args": ["copilot", "-p"]},
@@ -167,13 +167,11 @@ async def run_agent_proxy(agent_id: str, text: str) -> tuple[str, str, bool]:
             *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             env=env,
         )
-        stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
+        stdout, stderr = await proc.communicate()
         response = stdout.decode("utf-8", errors="replace").strip()
         if not response and proc.returncode != 0:
             response = stderr.decode("utf-8", errors="replace").strip()
         return response or "（无响应）", agent_id, proc.returncode == 0
-    except TimeoutError:
-        return "Agent响应超时 (120s)", "error", False
     except Exception as e:
         logger.error(f"Agent proxy error: {e}")
         return f"Agent执行出错: {type(e).__name__}", "error", False
