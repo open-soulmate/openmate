@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { GitBranch, GitCommit, GitFork, FileDiff, Check, Loader2, RefreshCw } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
+import { useVisibilityPoll } from '@/hooks/use-visibility-poll';
 
 interface GitStatus {
   branch: string;
@@ -58,11 +59,7 @@ export function GitStatusBar({ apiBase, token, onRunCommand }: GitStatusBarProps
     }
   }, [apiBase, token]);
 
-  useEffect(() => {
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 30000);
-    return () => clearInterval(interval);
-  }, [fetchStatus]);
+  useVisibilityPoll(fetchStatus, 30000, [apiBase, token]);
 
   const handleGitCommand = useCallback(
     (command: string) => {

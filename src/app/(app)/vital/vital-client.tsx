@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { getApiBaseUrl } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
+import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 import {
   Activity, RefreshCw, Loader2, CheckCircle2, XCircle, AlertCircle,
   Clock, Wifi, Cpu, HardDrive, MemoryStick, Network, AlertTriangle,
@@ -211,11 +212,7 @@ export function VitalClient() {
     setLastFetch(new Date());
   }, [fetchHealth, fetchMetrics, fetchAlerts, fetchHistory]);
 
-  useEffect(() => {
-    fetchAll();
-    const timer = setInterval(fetchAll, 30_000);
-    return () => clearInterval(timer);
-  }, [fetchAll]);
+  useVisibilityPoll(fetchAll, 30_000, []);
 
   const upCount = health?.components.filter(c => c.status === "up").length || 0;
   const downCount = health?.components.filter(c => c.status === "down").length || 0;

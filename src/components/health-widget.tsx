@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 import {
   Activity, CheckCircle, XCircle, AlertTriangle, Loader2,
   RefreshCw, Stethoscope,
@@ -68,12 +69,8 @@ export function HealthWidget() {
     }
   }, [apiBase]);
 
-  // Poll health every 60s
-  useEffect(() => {
-    checkHealth();
-    const interval = setInterval(checkHealth, 60000);
-    return () => clearInterval(interval);
-  }, [checkHealth]);
+  // Poll health every 60s, pause when tab hidden
+  useVisibilityPoll(checkHealth, 60000, [apiBase]);
 
   // Close on outside click
   useEffect(() => {
