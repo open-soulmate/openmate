@@ -1,231 +1,325 @@
-'use client';
-import { useState, useEffect, useCallback } from 'react';
-import { Tags, Loader2, Plus, Trash2, Edit2, Save, X, Search, Tag } from 'lucide-react';
-import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
-import { useTranslation } from 'react-i18next';
+"use client"
+
+import { useEffect, useState, useCallback } from "react"
+import { useTranslation } from "react-i18next"
+import { getApiBaseUrl } from "@/lib/api-client"
+import { cn } from "@/lib/utils"
+import {
+  Tag, Loader2, Plus, Trash2, Edit3, X, Check, Palette, Hash, RefreshCw,
+} from "lucide-react"
 
 interface TagItem {
-  id: string;
-  name: string;
-  color?: string;
-  description?: string;
-  usage_count?: number;
-  created_at?: string;
+  id: string
+  name: string
+  color?: string
+  count?: number
+  usage_count?: number
+  created_at?: string
+  [key: string]: unknown
 }
 
+const DEFAULT_COLORS = [
+  "#ef4444", "#f97316", "#f59e0b", "#eab308",
+  "#84cc16", "#22c55e", "#10b981", "#14b8a6",
+  "#06b6d4", "#0ea5e9", "#3b82f6", "#6366f1",
+  "#8b5cf6", "#a855f7", "#d946ef", "#ec4899",
+]
+
 export function TagsClient() {
-  const { t } = useTranslation();
-  const [tags, setTags] = useState<TagItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [search, setSearch] = useState('');
-  const [showCreate, setShowCreate] = useState(false);
-  const [newName, setNewName] = useState('');
-  const [newColor, setNewColor] = useState('#3b82f6');
-  const [newDesc, setNewDesc] = useState('');
-  const [creating, setCreating] = useState(false);
-  const [editId, setEditId] = useState<string | null>(null);
-  const [editName, setEditName] = useState('');
-  const [editColor, setEditColor] = useState('');
-  const [editDesc, setEditDesc] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState<TagItem | null>(null);
+  const { t } = useTranslation()
+  const apiBase = getApiBaseUrl()
+  const [tags, setTags] = useState<TagItem[]>([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [formName, setFormName] = useState("")
+  const [formColor, setFormColor] = useState(DEFAULT_COLORS[6])
+  const [submitting, setSubmitting] = useState(false)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
 
-  const loadTags = useCallback(async () => {
-    setLoading(true);
-    setError('');
+  const fetchTags = useCallback(async () => {
     try {
-      const base = getApiBaseUrl();
-      const token = getToken();
-      const userId = getUserId() || 'default';
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch(`${base}/api/tags/?user_id=${userId}`, { headers });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const data = await res.json();
-      setTags(Array.isArray(data) ? data : data.items || data.tags || []);
-    } catch (e) { setError(`${t('common.error', 'Error')}: ${(e as Error).message}`); }
-    setLoading(false);
-  }, [t]);
+      const res = await fetch(`${apiBase}/api/tags/`)
+      if (res.ok) {
+        const data = await res.json()
+        setTags(Array.isArray(data) ? data : data.tags || data.items || [])
+      }
+    } catch {} finally {
+      setLoading(false)
+    }
+  }, [apiBase])
 
-  useEffect(() => { loadTags(); }, [loadTags]);
+  useEffect(() => { fetchTags() }, [fetchTags])
+
+  const resetForm = () => {
+    setFormName("")
+    setFormColor(DEFAULT_COLORS[6])
+    setEditingId(null)
+    setShowForm(false)
+  }
 
   const handleCreate = async () => {
-    if (!newName.trim()) return;
-    setCreating(true);
+    if (!formName.trim()) return
+    setSubmitting(true)
     try {
-      const base = getApiBaseUrl();
-      const token = getToken();
-      const userId = getUserId() || 'default';
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch(`${base}/api/tags/?user_id=${userId}`, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ name: newName, color: newColor, description: newDesc }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setShowCreate(false);
-      setNewName('');
-      setNewColor('#3b82f6');
-      setNewDesc('');
-      loadTags();
-    } catch (e) { setError(`${t('common.error', 'Error')}: ${(e as Error).message}`); }
-    setCreating(false);
-  };
+      const res = await fetch(`${apiBase}/api/tags/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: formName.trim(), color: formColor }),
+      })
+      if (res.ok) {
+        resetForm()
+        await fetchTags()
+      }
+    } catch {} finally {
+      setSubmitting(false)
+    }
+  }
 
-  const handleUpdate = async (id: string) => {
+  const handleUpdate = async () => {
+    if (!formName.trim() || !editingId) return
+    setSubmitting(true)
     try {
-      const base = getApiBaseUrl();
-      const token = getToken();
-      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch(`${base}/api/tags/${id}`, {
-        method: 'PATCH',
-        headers,
-        body: JSON.stringify({ name: editName, color: editColor, description: editDesc }),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setEditId(null);
-      loadTags();
-    } catch (e) { setError(`${t('common.error', 'Error')}: ${(e as Error).message}`); }
-  };
+      const res = await fetch(`${apiBase}/api/tags/${editingId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: formName.trim(), color: formColor }),
+      })
+      if (res.ok) {
+        resetForm()
+        await fetchTags()
+      }
+    } catch {} finally {
+      setSubmitting(false)
+    }
+  }
 
   const handleDelete = async (id: string) => {
+    setDeletingId(id)
     try {
-      const base = getApiBaseUrl();
-      const token = getToken();
-      const headers: Record<string, string> = {};
-      if (token) headers['Authorization'] = `Bearer ${token}`;
-      const res = await fetch(`${base}/api/tags/${id}`, { method: 'DELETE', headers });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      setDeleteTarget(null);
-      loadTags();
-    } catch (e) { setError(`${t('common.error', 'Error')}: ${(e as Error).message}`); }
-  };
+      const res = await fetch(`${apiBase}/api/tags/${id}`, { method: "DELETE" })
+      if (res.ok) await fetchTags()
+    } catch {} finally {
+      setDeletingId(null)
+    }
+  }
 
   const startEdit = (tag: TagItem) => {
-    setEditId(tag.id);
-    setEditName(tag.name);
-    setEditColor(tag.color || '#3b82f6');
-    setEditDesc(tag.description || '');
-  };
+    setEditingId(tag.id)
+    setFormName(tag.name)
+    setFormColor(tag.color || DEFAULT_COLORS[6])
+    setShowForm(true)
+  }
 
-  const filtered = tags.filter((tag) =>
-    !search || tag.name.toLowerCase().includes(search.toLowerCase()) ||
-    (tag.description && tag.description.toLowerCase().includes(search.toLowerCase()))
-  );
-
-  const COLORS = ['#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#06b6d4', '#f97316'];
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
   return (
-    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
+      {/* Header */}
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Tags className="w-6 h-6" /> {t('nav.tags', '标签管理')}
-          </h1>
-          <p className="text-muted-foreground mt-1">{t('tags.description', '管理知识库和内容的标签分类')}</p>
+        <div className="flex items-center gap-3">
+          <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20">
+            <Tag className="w-6 h-6 text-amber-400" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold">{t("tags.title") || "Tags"}</h1>
+            <p className="text-sm text-muted-foreground">
+              {t("tags.subtitle") || "Organize your content with tags"}
+            </p>
+          </div>
         </div>
-        <button onClick={() => setShowCreate(!showCreate)} className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 flex items-center gap-2">
-          <Plus className="w-4 h-4" /> {t('tags.newTag', '新建标签')}
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => fetchTags()}
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border text-sm hover:bg-muted/50 transition-colors"
+          >
+            <RefreshCw className="w-4 h-4" />
+            {t("common.refresh") || "Refresh"}
+          </button>
+          <button
+            onClick={() => { resetForm(); setShowForm(!showForm) }}
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors"
+          >
+            <Plus className="w-4 h-4" />
+            {t("tags.addTag") || "Add Tag"}
+          </button>
+        </div>
       </div>
 
-      {error && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-600 text-sm">{error}</div>}
+      {/* Create / Edit Form */}
+      {showForm && (
+        <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-semibold flex items-center gap-2">
+              {editingId ? (
+                <>
+                  <Edit3 className="w-4 h-4 text-amber-400" />
+                  {t("tags.editTag") || "Edit Tag"}
+                </>
+              ) : (
+                <>
+                  <Plus className="w-4 h-4 text-amber-400" />
+                  {t("tags.createTag") || "Create Tag"}
+                </>
+              )}
+            </h3>
+            <button
+              onClick={resetForm}
+              className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
 
-      {showCreate && (
-        <div className="p-4 border rounded-lg bg-card space-y-4">
-          <h3 className="font-medium">{t('tags.createTitle', '创建新标签')}</h3>
-          <div className="grid grid-cols-3 gap-4">
-            <div>
-              <label className="text-sm font-medium mb-1 block">{t('tags.name', '标签名称')}</label>
-              <input value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full px-3 py-2 border rounded-md bg-background" placeholder={t('tags.namePlaceholder', '输入标签名称')} />
-            </div>
-            <div>
-              <label className="text-sm font-medium mb-1 block">{t('tags.color', '颜色')}</label>
-              <div className="flex gap-1 flex-wrap">
-                {COLORS.map((c) => (
-                  <button key={c} onClick={() => setNewColor(c)} className={`w-7 h-7 rounded-full border-2 transition-all ${newColor === c ? 'border-foreground scale-110' : 'border-transparent'}`} style={{ backgroundColor: c }} />
-                ))}
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1">
+              <label className="text-xs text-muted-foreground mb-1 block">
+                {t("tags.nameLabel") || "Tag name"}
+              </label>
+              <div className="relative">
+                <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  value={formName}
+                  onChange={(e) => setFormName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && (editingId ? handleUpdate() : handleCreate())}
+                  placeholder={t("tags.namePlaceholder") || "Enter tag name..."}
+                  className="w-full bg-muted/30 border border-border rounded-lg pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
+                  autoFocus
+                />
               </div>
             </div>
+
             <div>
-              <label className="text-sm font-medium mb-1 block">{t('tags.desc', '描述')}</label>
-              <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="w-full px-3 py-2 border rounded-md bg-background" placeholder={t('tags.descPlaceholder', '可选描述')} />
+              <label className="text-xs text-muted-foreground mb-1 block">
+                {t("tags.colorLabel") || "Color"}
+              </label>
+              <div className="flex items-center gap-2">
+                <div
+                  className="w-8 h-8 rounded-lg border border-border shrink-0"
+                  style={{ backgroundColor: formColor }}
+                />
+                <div className="flex flex-wrap gap-1.5">
+                  {DEFAULT_COLORS.map(c => (
+                    <button
+                      key={c}
+                      onClick={() => setFormColor(c)}
+                      className={cn(
+                        "w-5 h-5 rounded-md border transition-all",
+                        formColor === c
+                          ? "border-white scale-125 shadow-lg"
+                          : "border-transparent hover:scale-110"
+                      )}
+                      style={{ backgroundColor: c }}
+                    />
+                  ))}
+                </div>
+              </div>
             </div>
           </div>
-          <div className="flex gap-2">
-            <button onClick={handleCreate} disabled={creating || !newName.trim()} className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2">
-              {creating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />} {t('common.create', '创建')}
+
+          <div className="flex justify-end gap-2">
+            <button
+              onClick={resetForm}
+              className="px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted/50 border border-border transition-colors"
+            >
+              {t("common.cancel") || "Cancel"}
             </button>
-            <button onClick={() => setShowCreate(false)} className="px-4 py-2 border rounded-md hover:bg-accent">{t('common.cancel', '取消')}</button>
+            <button
+              onClick={editingId ? handleUpdate : handleCreate}
+              disabled={submitting || !formName.trim()}
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {submitting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Check className="w-4 h-4" />
+              )}
+              {editingId
+                ? (t("tags.updateBtn") || "Update")
+                : (t("tags.createBtn") || "Create")}
+            </button>
           </div>
         </div>
       )}
 
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t('tags.search', '搜索标签...')} className="w-full pl-9 pr-3 py-2 border rounded-md bg-background" />
-        </div>
-        <span className="text-sm text-muted-foreground">{t('tags.total', '共 {count} 个标签').replace('{count}', String(tags.length))}</span>
-        <button onClick={loadTags} className="ml-auto text-sm text-muted-foreground hover:text-foreground">{t('common.refresh', '刷新')}</button>
-      </div>
-
-      {loading ? (
-        <div className="flex items-center justify-center py-12"><Loader2 className="w-6 h-6 animate-spin text-muted-foreground" /></div>
-      ) : filtered.length === 0 ? (
-        <div className="text-center py-12 text-muted-foreground">
-          <Tag className="w-12 h-12 mx-auto mb-3 opacity-30" />
-          <p>{t('tags.empty', '暂无标签')}</p>
+      {/* Tags Grid */}
+      {tags.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground/50">
+          <Tag className="w-12 h-12 mx-auto mb-2" />
+          <p className="text-sm">
+            {t("tags.empty") || "No tags yet. Create your first tag to get started."}
+          </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-          {filtered.map((tag) => (
-            <div key={tag.id} className="p-4 border rounded-lg bg-card hover:shadow-sm transition-shadow">
-              {editId === tag.id ? (
-                <div className="space-y-3">
-                  <input value={editName} onChange={(e) => setEditName(e.target.value)} className="w-full px-2 py-1 border rounded text-sm bg-background" />
-                  <div className="flex gap-1">
-                    {COLORS.map((c) => (
-                      <button key={c} onClick={() => setEditColor(c)} className={`w-5 h-5 rounded-full border ${editColor === c ? 'border-foreground' : 'border-transparent'}`} style={{ backgroundColor: c }} />
-                    ))}
-                  </div>
-                  <input value={editDesc} onChange={(e) => setEditDesc(e.target.value)} className="w-full px-2 py-1 border rounded text-sm bg-background" placeholder={t('tags.desc', '描述')} />
-                  <div className="flex gap-1">
-                    <button onClick={() => handleUpdate(tag.id)} className="px-2 py-1 bg-primary text-primary-foreground rounded text-xs">{t('common.save', '保存')}</button>
-                    <button onClick={() => setEditId(null)} className="px-2 py-1 border rounded text-xs">{t('common.cancel', '取消')}</button>
-                  </div>
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+          {tags.map(tag => {
+            const tagColor = tag.color || "#6366f1"
+            const usageCount = tag.count ?? tag.usage_count
+            return (
+              <div
+                key={tag.id}
+                className="bg-card border border-border rounded-xl p-3 hover:border-border/80 transition-all group relative"
+              >
+                <div className="flex items-center gap-2.5 mb-2">
+                  <div
+                    className="w-3 h-3 rounded-full shrink-0 ring-2 ring-offset-1 ring-offset-card"
+                    style={{
+                      backgroundColor: tagColor,
+                      boxShadow: `0 0 0 2px var(--bg-card, #1a1a2e), 0 0 0 4px ${tagColor}40`,
+                    }}
+                  />
+                  <span className="text-sm font-medium truncate">{tag.name}</span>
                 </div>
-              ) : (
-                <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: tag.color || '#3b82f6' }} />
-                    <span className="font-medium">{tag.name}</span>
-                    {tag.usage_count !== undefined && (
-                      <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{tag.usage_count}</span>
-                    )}
+
+                {usageCount != null && (
+                  <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
+                    <Palette className="w-3 h-3" />
+                    {usageCount} {t("tags.uses") || "uses"}
                   </div>
-                  <div className="flex gap-1">
-                    <button onClick={() => startEdit(tag)} className="p-1 text-muted-foreground hover:text-foreground"><Edit2 className="w-3.5 h-3.5" /></button>
-                    {deleteTarget?.id === tag.id ? (
-                      <div className="flex gap-1">
-                        <button onClick={() => handleDelete(tag.id)} className="px-1.5 py-0.5 bg-red-500 text-white rounded text-xs">{t('common.confirm', '确认')}</button>
-                        <button onClick={() => setDeleteTarget(null)} className="px-1.5 py-0.5 border rounded text-xs"><X className="w-3 h-3" /></button>
-                      </div>
+                )}
+
+                {tag.created_at && (
+                  <div className="text-xs text-muted-foreground/50 mb-2">
+                    {new Date(tag.created_at).toLocaleDateString()}
+                  </div>
+                )}
+
+                {/* Action buttons */}
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => startEdit(tag)}
+                    className="flex-1 flex items-center justify-center gap-1 p-1.5 rounded-lg bg-muted/30 text-muted-foreground hover:bg-amber-500/10 hover:text-amber-400 transition-colors"
+                    title={t("tags.edit") || "Edit"}
+                  >
+                    <Edit3 className="w-3 h-3" />
+                    <span className="text-[10px]">{t("tags.edit") || "Edit"}</span>
+                  </button>
+                  <button
+                    onClick={() => handleDelete(tag.id)}
+                    disabled={deletingId === tag.id}
+                    className="flex-1 flex items-center justify-center gap-1 p-1.5 rounded-lg bg-muted/30 text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-colors disabled:opacity-50"
+                    title={t("common.delete") || "Delete"}
+                  >
+                    {deletingId === tag.id ? (
+                      <Loader2 className="w-3 h-3 animate-spin" />
                     ) : (
-                      <button onClick={() => setDeleteTarget(tag)} className="p-1 text-muted-foreground hover:text-red-500"><Trash2 className="w-3.5 h-3.5" /></button>
+                      <Trash2 className="w-3 h-3" />
                     )}
-                  </div>
+                    <span className="text-[10px]">{t("common.delete") || "Delete"}</span>
+                  </button>
                 </div>
-              )}
-              {tag.description && editId !== tag.id && (
-                <p className="text-xs text-muted-foreground mt-2">{tag.description}</p>
-              )}
-            </div>
-          ))}
+              </div>
+            )
+          })}
         </div>
       )}
     </div>
-  );
+  )
 }
