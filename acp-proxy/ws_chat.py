@@ -9,13 +9,63 @@ Key improvements:
 
 import asyncio
 import logging
+import os
 import shutil
+import sqlite3
+import time
 from uuid import UUID
 
 import jwt
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from proxy import get_acp_process
+
+_OPENSOUL_DB = "/home/climbing/opensoul/data/opensoul.db"
+
+
+def _get_agent_db():
+    """Get a connection to the OpenSoul database for agent session storage."""
+    db = sqlite3.connect(_OPENSOUL_DB)
+    db.row_factory = sqlite3.Row
+    return db
+
+
+def _create_or_get_agent_session(agent_id: str, session_id: str | None = None) -> str:
+    """Create a new agent session or return existing one. Returns session_id."""
+    db = _get_agent_db()
+    try:
+        if session_id:
+            row = db.execute("SELECT id FROM agent_sessions WHERE id = ?", (session_id,)).fetchone()
+            if row:
+                return session_id
+        # Create new session
+        new_id = session_id or f"agent_{agent_id}_{int(time.time() * 1000)}"
+        db.execute(
+            "INSERT OR IGNORE INTO agent_sessions (id, agent_id, title, created_at, last_activity_at) VALUES (?, ?, ?, ?, ?)",
+            (new_id, agent_id, "New Chat", time.time(), time.time()),
+        )
+        db.commit()
+        return new_id
+    finally:
+        db.close()
+
+
+def _store_agent_message(session_id: str, role: str, content: str):
+    """Store a message in an agent session."""
+    db = _get_agent_db()
+    try:
+        now = time.time()
+        db.execute(
+            "INSERT INTO agent_messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
+            (session_id, role, content, now),
+        )
+        db.execute(
+            "UPDATE agent_sessions SET last_activity_at = ?, message_count = message_count + 1 WHERE id = ?",
+            (now, session_id),
+        )
+        db.commit()
+    finally:
+        db.close()
 
 logger = logging.getLogger("acp-proxy.ws")
 router = APIRouter()
@@ -49,13 +99,21 @@ def decode_token(token: str) -> UUID | None:
     return None
 
 
-# Agent proxy registry
+# Agent proxy registry — synced with OpenSoul's AGENT_REGISTRY
 AGENT_REGISTRY = {
     "hermes": {"name": "Hermes Agent", "binary": "hermes", "args": ["-z"]},
     "mimo": {"name": "MiMo Code", "binary": "mimo", "args": ["run", "--prompt"]},
     "claude": {"name": "Claude Code", "binary": "claude", "args": ["-p"]},
     "codex": {"name": "Codex CLI", "binary": "codex", "args": ["-q"]},
     "aider": {"name": "Aider", "binary": "aider", "args": ["--message"]},
+    "pi-agent": {"name": "Pi Agent", "binary": "pi", "args": ["--message"]},
+    "opencode": {"name": "OpenCode", "binary": "opencode", "args": ["-q"]},
+    "gemini": {"name": "Gemini CLI", "binary": "gemini", "args": ["-p"]},
+    "copilot": {"name": "GitHub Copilot", "binary": "gh", "args": ["copilot", "-p"]},
+    "amazon-q": {"name": "Amazon Q", "binary": "q", "args": ["chat", "--no-interactive", "-p"]},
+    "qwen": {"name": "Qwen Coder", "binary": "qwen", "args": ["--message"]},
+    "deepseek": {"name": "DeepSeek", "binary": "deepseek", "args": ["--message"]},
+    "perplexity": {"name": "Perplexity CLI", "binary": "pplx", "args": ["--message"]},
 }
 
 
@@ -215,7 +273,23 @@ async def chat_websocket(websocket: WebSocket):
                     file_attachments = [a for a in attachments if a.get("type") == "file"]
 
                     if mode == "agent_proxy" and agent_id:
+                        # Create or get agent session for persistence
+                        agent_session_id = _create_or_get_agent_session(agent_id, session_id)
+                        _store_agent_message(agent_session_id, "user", text)
                         response_text, source, success = await run_agent_proxy(agent_id, text)
+                        if response_text:
+                            _store_agent_message(agent_session_id, "assistant", response_text)
+                        # Update title from first user message
+                        if not session_id:
+                            db = _get_agent_db()
+                            try:
+                                db.execute(
+                                    "UPDATE agent_sessions SET title = ? WHERE id = ? AND title = 'New Chat'",
+                                    (text[:50], agent_session_id),
+                                )
+                                db.commit()
+                            finally:
+                                db.close()
                     else:
                         acp = get_acp_process()
                         if image_attachments and mode in ("hermes", "acp"):
@@ -235,9 +309,11 @@ async def chat_websocket(websocket: WebSocket):
                             response_text = result.get("response_text", "")
                             source = result.get("source", "acp")
                         else:
-                            result = await acp.send_message(text, session_id)
-                            response_text = result.get("response_text", "")
-                            source = result.get("source", "hermes")
+                            # Real streaming: forward chunks as they arrive
+                            async for chunk_data in acp.stream_message(text, session_id):
+                                if not await _safe_send_ws(websocket, chunk_data):
+                                    break
+                            continue
 
                     if response_text:
                         # Stream in chunks for real-time feel
@@ -249,7 +325,9 @@ async def chat_websocket(websocket: WebSocket):
                             await asyncio.sleep(0.05)
                         # Include session_id in done message for new sessions
                         done_msg = {"type": "done", "text": response_text, "source": source}
-                        if result.get("session_id"):
+                        if mode == "agent_proxy" and agent_id:
+                            done_msg["session_id"] = agent_session_id
+                        elif result.get("session_id"):
                             done_msg["session_id"] = result["session_id"]
                         await _safe_send_ws(websocket, done_msg)
                     else:

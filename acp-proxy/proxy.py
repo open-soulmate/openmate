@@ -509,6 +509,73 @@ class ACPProcess:
             self._rpc_pending.pop(msg_id, None)
             raise TimeoutError(f"ACP RPC timeout: {method}")
 
+    async def stream_message(self, text: str, session_id: str | None = None):
+        """Stream message chunks as they arrive via async generator."""
+        if not self.is_running or not self._initialized:
+            await self.start()
+        if session_id == "":
+            await self.new_session()
+            sid = self._default_session_id or "default"
+        else:
+            sid = session_id or self._default_session_id or "default"
+        if sid and len(sid) < 36 and sid != "default":
+            sid = self._default_session_id or "default"
+
+        self._msg_id += 1
+        msg_id = str(self._msg_id)
+        request = {
+            "jsonrpc": "2.0", "id": msg_id,
+            "method": "session/prompt",
+            "params": {"prompt": [{"type": "text", "text": text}], "sessionId": sid},
+        }
+
+        pending = PendingPrompt(msg_id=msg_id)
+        self._prompt_pending[msg_id] = pending
+        self._active_prompt_ids.add(msg_id)
+
+        if not self._proc or not self._proc.stdin:
+            self._prompt_pending.pop(msg_id, None)
+            self._active_prompt_ids.discard(msg_id)
+            raise BrokenPipeError("ACP process stdin not available")
+        try:
+            self._proc.stdin.write((json.dumps(request) + "\n").encode())
+            await self._proc.stdin.drain()
+        except (BrokenPipeError, OSError) as e:
+            self._prompt_pending.pop(msg_id, None)
+            self._active_prompt_ids.discard(msg_id)
+            raise
+
+        # Yield chunks as they arrive
+        last_idx = 0
+        chunk_count = 0
+        try:
+            while not pending.done.is_set():
+                await asyncio.sleep(0.05)
+                while last_idx < len(pending.chunks):
+                    chunk = pending.chunks[last_idx]
+                    last_idx += 1
+                    chunk_count += 1
+                    logger.info(f"Stream chunk #{chunk_count}: {len(chunk)} chars")
+                    yield {"type": "chunk", "text": chunk}
+            # Yield any remaining chunks
+            while last_idx < len(pending.chunks):
+                chunk = pending.chunks[last_idx]
+                last_idx += 1
+                chunk_count += 1
+                logger.info(f"Stream final chunk #{chunk_count}: {len(chunk)} chars")
+                yield {"type": "chunk", "text": chunk}
+            logger.info(f"Stream done: {chunk_count} chunks total")
+        finally:
+            self._prompt_pending.pop(msg_id, None)
+            self._active_prompt_ids.discard(msg_id)
+
+        response = pending.response
+        if "error" in response:
+            yield {"type": "error", "message": str(response["error"])}
+        else:
+            response_text = "".join(pending.chunks)
+            yield {"type": "done", "text": response_text, "source": "acp", "session_id": sid}
+
     async def _prompt(self, text: str, session_id: str) -> dict:
         return await self._prompt_parts([{"type": "text", "text": text}], session_id)
 
@@ -538,14 +605,8 @@ class ACPProcess:
             self._active_prompt_ids.discard(msg_id)
             raise
 
-        # Wait up to 90 seconds for prompt response
-        try:
-            await asyncio.wait_for(pending.done.wait(), timeout=90)
-        except asyncio.TimeoutError:
-            logger.warning(f"Prompt timeout after 90s (msg_id={msg_id})")
-            self._prompt_pending.pop(msg_id, None)
-            self._active_prompt_ids.discard(msg_id)
-            raise TimeoutError("Prompt timeout (90s)")
+        # Wait for prompt response (no timeout - ACP handles its own lifecycle)
+        await pending.done.wait()
 
         # Clean up
         self._prompt_pending.pop(msg_id, None)
