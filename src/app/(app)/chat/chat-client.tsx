@@ -614,8 +614,14 @@ export function ChatClient() {
     <div className="flex h-full">
       {/* Column 2: Agent + Session List - hidden on mobile when chat is active */}
       <div className={`${selectedSession ? 'hidden md:flex' : 'flex'} w-full md:w-64 shrink-0 flex-col border-r border-border bg-card`}>
-        <div className="h-12 px-3 flex items-center border-b border-border">
-          <input placeholder={t("chat.searchSessions")} value={searchQuery} onChange={(e) => handleSearch(e.target.value)} className="w-full px-3 py-1.5 rounded-lg bg-muted text-sm outline-none" />
+        <div className="h-12 px-3 flex items-center gap-2 border-b border-border">
+          <input placeholder={t("chat.searchSessions")} value={searchQuery} onChange={(e) => handleSearch(e.target.value)} className="flex-1 px-3 py-1.5 rounded-lg bg-muted text-sm outline-none" />
+          <div className="flex items-center gap-1 shrink-0">
+            {wsConnected ? <Wifi className="w-3.5 h-3.5 text-green-500" /> : <WifiOff className="w-3.5 h-3.5 text-muted-foreground" />}
+            <button onClick={() => setShowDetails(!showDetails)} className="p-1 rounded hover:bg-muted" title={t("chat.sessionDetails")}>
+              {showDetails ? <PanelRightClose className="w-3.5 h-3.5 text-muted-foreground" /> : <PanelRightOpen className="w-3.5 h-3.5 text-muted-foreground" />}
+            </button>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto">
           {/* Search Results */}
@@ -712,26 +718,6 @@ export function ChatClient() {
 
       {/* Column 3: Chat Window - on mobile, only show when session selected */}
       <div className={`${selectedSession ? 'flex' : 'hidden md:flex'} flex-1 flex-col min-w-0`}>
-        {/* Chat header */}
-        <div className="h-12 border-b border-border flex items-center px-4 justify-between shrink-0">
-          <div className="flex items-center gap-2">
-            {/* Back button - mobile only */}
-            <button onClick={() => setSelectedSession(null)} className="md:hidden p-1 rounded hover:bg-muted">
-              <ChevronRight className="w-4 h-4 rotate-180" />
-            </button>
-            {selectedAgent && <span className="text-sm">{selectedAgent.icon}</span>}
-            <span className="font-medium text-sm">{selectedSession?.name || (selectedAgent ? `${selectedAgent.name} ${t('chat.newSession')}` : t('chat.newChat'))}</span>
-            {selectedAgent && <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">{selectedAgent.name}</span>}
-          </div>
-          <div className="flex items-center gap-2">
-            {wsConnected ? <Wifi className="w-4 h-4 text-green-500" /> : <WifiOff className="w-4 h-4 text-muted-foreground" />}
-            <span className="text-xs text-muted-foreground">{wsConnected ? 'WS' : 'HTTP'}</span>
-            <button onClick={() => setShowDetails(!showDetails)} className="p-1 rounded hover:bg-muted">
-              {showDetails ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4 chat-scrollbar">
           {messages.length === 0 && (
