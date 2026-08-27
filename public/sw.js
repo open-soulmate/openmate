@@ -1,4 +1,4 @@
-const CACHE_NAME = 'openmate-v1';
+const CACHE_NAME = 'openmate-v3';
 const STATIC_ASSETS = [
   '/chat',
   '/manifest.json',
