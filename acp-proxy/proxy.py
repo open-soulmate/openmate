@@ -306,6 +306,7 @@ class ACPProcess:
             try:
                 result = await self._prompt(text, sid)
                 if result.get("response_text") is not None:
+                    result["session_id"] = sid
                     return result
                 logger.warning(f"No chunks captured (attempt {attempt+1})")
             except TimeoutError as te:

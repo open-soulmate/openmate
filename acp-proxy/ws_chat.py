@@ -247,7 +247,11 @@ async def chat_websocket(websocket: WebSocket):
                             if not await _safe_send_ws(websocket, {"type": "chunk", "text": chunk}):
                                 break
                             await asyncio.sleep(0.05)
-                        await _safe_send_ws(websocket, {"type": "done", "text": response_text, "source": source})
+                        # Include session_id in done message for new sessions
+                        done_msg = {"type": "done", "text": response_text, "source": source}
+                        if result.get("session_id"):
+                            done_msg["session_id"] = result["session_id"]
+                        await _safe_send_ws(websocket, done_msg)
                     else:
                         await _safe_send_ws(websocket, {"type": "error", "message": "未收到响应，请重试"})
 
