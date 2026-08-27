@@ -154,13 +154,15 @@ async def run_agent_proxy(agent_id: str, text: str) -> tuple[str, str, bool]:
         # Inject system LLM config as env vars for the agent subprocess
         env = os.environ.copy()
         llm_cfg = _get_llm_config()
-        if llm_cfg.get("api_key"):
-            env.setdefault("OPENAI_API_KEY", llm_cfg["api_key"])
-        if llm_cfg.get("base_url"):
-            env.setdefault("OPENAI_BASE_URL", llm_cfg["base_url"])
+        if llm_cfg.get("api_key") and not env.get("OPENAI_API_KEY"):
+            env["OPENAI_API_KEY"] = llm_cfg["api_key"]
+        if llm_cfg.get("base_url") and not env.get("OPENAI_BASE_URL"):
+            env["OPENAI_BASE_URL"] = llm_cfg["base_url"]
         if llm_cfg.get("model"):
-            env.setdefault("OPENAI_MODEL", llm_cfg["model"])
-            env.setdefault("MODEL", llm_cfg["model"])
+            if not env.get("OPENAI_MODEL"):
+                env["OPENAI_MODEL"] = llm_cfg["model"]
+            if not env.get("MODEL"):
+                env["MODEL"] = llm_cfg["model"]
         proc = await asyncio.create_subprocess_exec(
             *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             env=env,
