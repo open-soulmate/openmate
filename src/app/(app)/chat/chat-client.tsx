@@ -2,6 +2,7 @@
 import { MarkdownContent } from "@/components/markdown-content";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu, Trash2, Search as SearchIcon, Bookmark, RotateCcw, Zap, Brain } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { Dialog } from '@/components/ui/dialog';
@@ -178,6 +179,7 @@ export function ChatClient() {
   const [showCheckpoints, setShowCheckpoints] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
   const { t } = useTranslation();
+  const searchParams = useSearchParams();
   const wsRef = useRef<WebSocket | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -452,6 +454,20 @@ export function ChatClient() {
 
   useEffect(() => { initAgents(); }, [initAgents]);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
+
+  // Auto-select session from URL param ?session=SESSION_ID
+  useEffect(() => {
+    const sid = searchParams.get('session');
+    if (!sid || selectedSession) return;
+    // Find the session in agents
+    for (const agent of agents) {
+      const session = agent.sessions.find(s => s.id === sid);
+      if (session) {
+        selectSession(session, agent);
+        return;
+      }
+    }
+  }, [searchParams, agents, selectedSession]);
 
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || loading) return;
