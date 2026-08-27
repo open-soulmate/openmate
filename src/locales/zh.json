@@ -213,7 +213,9 @@
     "error": "错误",
     "noResponse": "无响应",
     "requestTimeout": "请求超时",
-    "connectionLost": "连接已断开，请稍后重试"
+    "connectionLost": "连接已断开，请稍后重试",
+    "deleteSessionTitle": "删除会话",
+    "deleteSessionDesc": "确定要删除「{{name}}」吗？"
   },
   "knowledge": {
     "title": "知识库",
@@ -5770,5 +5772,17 @@
     "sourceTool": "工具调用",
     "sourceSubagent": "子代理",
     "sessionSummary": "{{count}} 会话 · {{messages}} 消息"
+  },
+  "registry": {
+    "title": "组件注册表",
+    "subtitle": "系统器官注册表 — {{total}} 个组件，{{phases}} 个阶段",
+    "totalComponents": "组件总数",
+    "healthy": "健康",
+    "searchPlaceholder": "搜索组件...",
+    "allCategories": "所有分类",
+    "allPhases": "所有阶段",
+    "results": "条结果",
+    "capabilities": "能力",
+    "dependencies": "依赖"
   }
 }

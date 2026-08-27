@@ -213,7 +213,9 @@
     "error": "エラー",
     "noResponse": "なし响应",
     "requestTimeout": "请求タイムアウト",
-    "connectionLost": "接続が切断されました。後でもう一度お試しください"
+    "connectionLost": "接続が切断されました。後でもう一度お試しください",
+    "deleteSessionTitle": "セッションを削除",
+    "deleteSessionDesc": "「{{name}}」を削除してもよろしいですか？"
   },
   "knowledge": {
     "title": "ナレッジベース",
@@ -5770,5 +5772,17 @@
     "sourceTool": "ツール呼び出し",
     "sourceSubagent": "サブエージェント",
     "sessionSummary": "{{count}} セッション · {{messages}} メッセージ"
+  },
+  "registry": {
+    "title": "コンポーネントレジストリ",
+    "subtitle": "システム器官レジストリ — {{total}} コンポーネント、{{phases}} フェーズ",
+    "totalComponents": "コンポーネント",
+    "healthy": "正常",
+    "searchPlaceholder": "コンポーネントを検索...",
+    "allCategories": "すべてのカテゴリ",
+    "allPhases": "すべてのフェーズ",
+    "results": "件",
+    "capabilities": "機能",
+    "dependencies": "依存関係"
   }
 }
