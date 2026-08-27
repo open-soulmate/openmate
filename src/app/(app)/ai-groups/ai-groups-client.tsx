@@ -600,12 +600,46 @@ export default function AIGroupsPage() {
       }]);
     }
 
-    // Step 3: Finalize discussion with assignments
-    const execAgents = executors.length > 0 ? executors : agents;
-    const assignments = execAgents.map(a => ({
-      agent_id: a.agent_id,
-      subgoal: `完成任务中与${a.name}(${a.role})相关的部分`,
-    }));
+    // Step 3: Smart assignment based on capability scores
+    let assignments: { agent_id: string; subgoal: string }[] = [];
+    let assignReasoning: string[] = [];
+    try {
+      const smartRes = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/smart-assign`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ goal, constraints: [] }),
+      });
+      if (smartRes.ok) {
+        const smartData = await smartRes.json();
+        assignments = (smartData.assignments || []).map((a: any) => ({
+          agent_id: a.agent_id,
+          subgoal: a.subgoal,
+        }));
+        assignReasoning = smartData.reasoning || [];
+
+        // Show smart assignment info
+        if (smartData.task_tags?.length) {
+          setMessages(prev => [...prev, {
+            id: `smart-tags-${Date.now()}`, role: 'agent',
+            agent_name: 'System', agent_role: 'executor',
+            content: `🏷️ 任务标签: ${smartData.task_tags.join(', ')} | 智能分配: ${assignReasoning.join(' → ')}`,
+            timestamp: new Date(),
+            intent: 'comment' as const,
+          }]);
+        }
+      }
+    } catch (e) {
+      console.warn('Smart assign failed, falling back to all executors:', e);
+    }
+
+    // Fallback: if smart-assign returned nothing, assign to all executors
+    if (assignments.length === 0) {
+      const execAgents = executors.length > 0 ? executors : agents;
+      assignments = execAgents.map(a => ({
+        agent_id: a.agent_id,
+        subgoal: `完成任务中与${a.name}(${a.role})相关的部分`,
+      }));
+    }
 
     await finalizeDiscussion(taskId, assignments);
 
