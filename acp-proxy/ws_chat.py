@@ -141,6 +141,24 @@ async def acp_send_image(data: dict):
         return {"ok": False, "error": "处理图片时出错，请重试"}
 
 
+@router.post("/acp/send-file")
+async def acp_send_file(data: dict):
+    """HTTP fallback for sending file attachments."""
+    acp = get_acp_process()
+    try:
+        result = await acp.send_message_with_file(
+            data.get("text", ""), data.get("file_data", ""),
+            data.get("file_name", "file"), data.get("mime_type", "application/octet-stream"),
+            data.get("session_id")
+        )
+        return {"ok": True, "content": result.get("response_text", ""), "source": result.get("source", "acp")}
+    except TimeoutError:
+        return {"ok": False, "error": "文件处理超时，请重试"}
+    except Exception as e:
+        logger.error(f"HTTP file send error: {e}")
+        return {"ok": False, "error": "处理文件时出错，请重试"}
+
+
 @router.websocket("/ws/chat")
 async def chat_websocket(websocket: WebSocket):
     """WebSocket endpoint for real-time chat.
@@ -194,6 +212,7 @@ async def chat_websocket(websocket: WebSocket):
 
                 try:
                     image_attachments = [a for a in attachments if a.get("type") == "image"]
+                    file_attachments = [a for a in attachments if a.get("type") == "file"]
 
                     if mode == "agent_proxy" and agent_id:
                         response_text, source, success = await run_agent_proxy(agent_id, text)
@@ -203,6 +222,15 @@ async def chat_websocket(websocket: WebSocket):
                             img = image_attachments[0]
                             result = await acp.send_message_with_image(
                                 text, img.get("data", ""), img.get("mime_type", "image/png"), session_id
+                            )
+                            response_text = result.get("response_text", "")
+                            source = result.get("source", "acp")
+                        elif file_attachments and mode in ("hermes", "acp"):
+                            # Handle file attachments - save to temp, pass path to agent
+                            f = file_attachments[0]
+                            result = await acp.send_message_with_file(
+                                text, f.get("data", ""), f.get("name", "file"),
+                                f.get("mime_type", "application/octet-stream"), session_id
                             )
                             response_text = result.get("response_text", "")
                             source = result.get("source", "acp")
