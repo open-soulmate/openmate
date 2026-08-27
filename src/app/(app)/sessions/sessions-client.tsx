@@ -80,11 +80,22 @@ export function SessionsClient() {
   const [detailLoading, setDetailLoading] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
 
-  // Expand state: agent-level and source-level
+  // Expand state: agent-level and source-level (persisted to localStorage)
   const [agentExpanded, setAgentExpanded] = useState(true)
-  const [sourceExpanded, setSourceExpanded] = useState<Record<string, boolean>>({
-    cli: false, weixin: false, cron: false, acp: false, tui: false, tool: false, subagent: false,
+  const [sourceExpanded, setSourceExpanded] = useState<Record<string, boolean>>(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("sessions-sourceExpanded")
+        if (saved) return JSON.parse(saved)
+      } catch {}
+    }
+    return { cli: false, weixin: false, cron: false, acp: false, tui: false, tool: false, subagent: false }
   })
+
+  // Persist sourceExpanded to localStorage on change
+  useEffect(() => {
+    try { localStorage.setItem("sessions-sourceExpanded", JSON.stringify(sourceExpanded)) } catch {}
+  }, [sourceExpanded])
 
   const fetchSessions = useCallback(async () => {
     setLoading(true)
@@ -108,6 +119,17 @@ export function SessionsClient() {
   }, [apiBase, searchQuery])
 
   const fetchSessionDetail = async (sessionId: string) => {
+    // Auto-expand the source group that contains this session
+    const session = sessions.find(s => s.session_id === sessionId)
+    if (session?.source) {
+      setSourceExpanded(prev => {
+        if (prev[session.source!]) return prev // already expanded, no change
+        const next: Record<string, boolean> = {}
+        for (const key of ALL_SOURCES) next[key] = false
+        next[session.source!] = true
+        return next
+      })
+    }
     setDetailLoading(true)
     try {
       const res = await fetch(`${apiBase}/api/sessions/${sessionId}/messages`, { signal: AbortSignal.timeout(10000) })
