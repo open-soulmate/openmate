@@ -118,38 +118,6 @@ _available_agents: dict[str, dict] = {}
 _agents_cache_ts: float = 0.0
 
 
-def _clean_agent_output(text: str) -> str:
-    """Remove OpenClaw doctor notices, config warnings, and migration notes from output."""
-    lines = text.split('\n')
-    cleaned = []
-    skip = False
-    for line in lines:
-        # Skip doctor notice blocks
-        if 'Doctor notices' in line or 'Config warnings' in line:
-            skip = True
-            continue
-        if skip and ('───╯' in line or '───╮' in line):
-            skip = False
-            continue
-        if skip:
-            continue
-        # Skip migration notes
-        if '[state-migrations]' in line or 'Legacy state migration' in line:
-            continue
-        if 'Left plugin install index' in line or 'conflicting plugin install metadata' in line:
-            continue
-        if 'duplicate' in line and 'plugin id detected' in line:
-            continue
-        if 'global plugin will be overridden by global' in line:
-            continue
-        # Skip box-drawing characters that are part of doctor notices
-        stripped = line.strip()
-        if stripped and all(c in '─│├╮╯╰' for c in stripped):
-            continue
-        cleaned.append(line)
-    return '\n'.join(cleaned).strip()
-
-
 async def _refresh_agent_list():
     """Fetch installed agents from OpenSoul (cached 60s)."""
     global _available_agents, _agents_cache_ts
@@ -230,9 +198,6 @@ async def run_agent_proxy(agent_id: str, text: str) -> tuple[str, str, bool]:
         response = stdout.decode("utf-8", errors="replace").strip()
         if not response and proc.returncode != 0:
             response = stderr.decode("utf-8", errors="replace").strip()
-        # Filter out OpenClaw doctor notices
-        if response:
-            response = _clean_agent_output(response)
         return response or "（无响应）", agent_id, proc.returncode == 0
     except Exception as e:
         logger.error(f"Agent proxy error: {e}")
