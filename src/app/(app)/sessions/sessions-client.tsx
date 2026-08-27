@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useState, useCallback } from "react"
+import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { getApiBaseUrl } from "@/lib/api-client"
 import {
@@ -71,6 +72,7 @@ function groupByAgent(sessions: Session[]) {
 
 export function SessionsClient() {
   const { t } = useTranslation()
+  const router = useRouter()
   const apiBase = getApiBaseUrl()
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
@@ -283,7 +285,7 @@ export function SessionsClient() {
                                   ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] border-l-2 border-[#7c3aed] hover:bg-[rgba(124,58,237,0.18)]"
                                   : "hover:bg-zinc-800/20 border-l-2 border-transparent"
                               }`}
-                              onClick={() => fetchSessionDetail(session.session_id)}
+                              onClick={() => router.push(`/chat?session=${session.session_id}`)}
                             >
                               <div className="flex-1 min-w-0">
                                 <div className={`text-xs truncate ${
