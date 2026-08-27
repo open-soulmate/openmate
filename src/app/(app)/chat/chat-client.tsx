@@ -417,7 +417,7 @@ export function ChatClient() {
           const data = JSON.parse(e.data);
           if (data.type === 'done') {
             setLoading(false);
-            if (data.text) initAgents();
+            // Refresh session list removed — preserve expanded state
             setMessages(prev => {
               const last = prev[prev.length - 1];
               if (last?.role === 'agent' && last?.source === 'streaming') {
@@ -664,8 +664,8 @@ export function ChatClient() {
                       <div key={session.id} role="button" tabIndex={0} onClick={() => selectSession(session, agent)}
                         className={`group w-full text-left pl-12 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer ${selectedSession?.id === session.id ? 'bg-[rgba(124,58,237,0.12)] text-[#7c3aed]' : ''}`}>
                         <div className="flex items-center gap-1.5">
-                          <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
-                          <span className="text-xs truncate text-foreground flex-1">{session.name || session.title || "Untitled"}</span>
+                          <MessageSquare className={`w-3 h-3 shrink-0 ${selectedSession?.id === session.id ? 'text-[#7c3aed]' : 'text-muted-foreground'}`} />
+                          <span className={`text-xs truncate flex-1 ${selectedSession?.id === session.id ? 'text-[#7c3aed]' : 'text-foreground'}`}>{session.name || session.title || "Untitled"}</span>
                           <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: session.id, name: session.name || session.title || "Untitled" }); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
                         </div>
                         {(session.last_active || session.updated_at) && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{formatRelativeTime(session.last_active || session.updated_at!)}</div>}
@@ -679,8 +679,8 @@ export function ChatClient() {
                   <div key={session.id} role="button" tabIndex={0} onClick={() => selectSession(session, agent)}
                     className={`group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer ${selectedSession?.id === session.id ? 'bg-[rgba(124,58,237,0.12)] text-[#7c3aed]' : ''}`}>
                     <div className="flex items-center gap-1.5">
-                      <MessageSquare className="w-3 h-3 text-muted-foreground shrink-0" />
-                      <span className="text-xs truncate text-foreground flex-1">{session.name || session.title || "Untitled"}</span>
+                      <MessageSquare className={`w-3 h-3 shrink-0 ${selectedSession?.id === session.id ? 'text-[#7c3aed]' : 'text-muted-foreground'}`} />
+                      <span className={`text-xs truncate flex-1 ${selectedSession?.id === session.id ? 'text-[#7c3aed]' : 'text-foreground'}`}>{session.name || session.title || "Untitled"}</span>
                       <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: session.id, name: session.name || session.title || "Untitled" }); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
                     </div>
                     {(session.last_active || session.updated_at) && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{formatRelativeTime(session.last_active || session.updated_at!)}</div>}

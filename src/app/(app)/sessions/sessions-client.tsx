@@ -132,7 +132,10 @@ export function SessionsClient() {
     }
     setDetailLoading(true)
     try {
-      const res = await fetch(`${apiBase}/api/sessions/${sessionId}/messages`, { signal: AbortSignal.timeout(10000) })
+      const token = typeof window !== "undefined" ? localStorage.getItem("openmate-token") : null
+      const headers: Record<string, string> = {}
+      if (token) headers["Authorization"] = `Bearer ${token}`
+      const res = await fetch(`${apiBase}/api/sessions/${sessionId}/messages`, { signal: AbortSignal.timeout(10000), headers })
       if (res.ok) {
         const data = await res.json()
         setSelectedSession({
@@ -277,16 +280,20 @@ export function SessionsClient() {
                               key={session.session_id}
                               className={`flex items-center gap-2 pl-14 pr-4 py-2 cursor-pointer transition-colors ${
                                 selectedSession?.session_id === session.session_id
-                                  ? `${meta.bg} border-l-2 border-cyan-500`
+                                  ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] border-l-2 border-[#7c3aed] hover:bg-[rgba(124,58,237,0.18)]"
                                   : "hover:bg-zinc-800/20 border-l-2 border-transparent"
                               }`}
                               onClick={() => fetchSessionDetail(session.session_id)}
                             >
                               <div className="flex-1 min-w-0">
-                                <div className="text-xs text-zinc-300 truncate">
+                                <div className={`text-xs truncate ${
+                                  selectedSession?.session_id === session.session_id ? "text-[#7c3aed]" : "text-zinc-300"
+                                }`}>
                                   {session.title || session.session_id.replace(/^20\d{6}_\d{6}_/, "")}
                                 </div>
-                                <div className="flex items-center gap-2 mt-0.5 text-[10px] text-zinc-600">
+                                <div className={`flex items-center gap-2 mt-0.5 text-[10px] ${
+                                  selectedSession?.session_id === session.session_id ? "text-purple-400/60" : "text-zinc-600"
+                                }`}>
                                   {session.message_count !== undefined && (
                                     <span className="flex items-center gap-0.5">
                                       <MessageSquare className="w-2.5 h-2.5" /> {session.message_count}
