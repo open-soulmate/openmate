@@ -297,7 +297,24 @@ export function ChatClient() {
       }
     }
 
-    setAgents(agentList);
+    setAgents(prev => {
+      const expandedIds = new Set(prev.filter(a => a.expanded).map(a => a.id));
+      const expandedSrcs = new Map();
+      prev.forEach(a => a.sourceGroups?.forEach(g => {
+        if (g.expanded) {
+          if (!expandedSrcs.has(a.id)) expandedSrcs.set(a.id, new Set());
+          expandedSrcs.get(a.id).add(g.source);
+        }
+      }));
+      return agentList.map(a => ({
+        ...a,
+        expanded: expandedIds.has(a.id),
+        sourceGroups: a.sourceGroups?.map(g => ({
+          ...g,
+          expanded: expandedSrcs.get(a.id)?.has(g.source) ?? false,
+        })),
+      }));
+    });
   }, []);
 
   // Load history for a session
@@ -433,7 +450,7 @@ export function ChatClient() {
     };
   }, [initAgents]);
 
-  useEffect(() => { initAgents(); const timer = setInterval(initAgents, 30000); return () => clearInterval(timer); }, [initAgents]);
+  useEffect(() => { initAgents(); }, [initAgents]);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
 
   const handleSend = async () => {
