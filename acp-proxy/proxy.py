@@ -15,6 +15,7 @@ import base64
 import json
 import logging
 import os
+import shutil
 import tempfile
 import time
 from dataclasses import dataclass, field
@@ -373,6 +374,82 @@ class ACPProcess:
                 asyncio.get_running_loop().call_later(
                     300, lambda: os.unlink(tmp_path) if os.path.exists(tmp_path) else None
                 )
+
+    async def send_message_with_file(
+        self, text: str, file_data: str, file_name: str = "file",
+        mime_type: str = "application/octet-stream", session_id: str | None = None,
+    ) -> dict[str, Any]:
+        """Send a file attachment to the agent.
+
+        Saves the base64-encoded file to a temp directory and passes the path
+        to the agent so it can read/process the file.
+        """
+        if not self.is_running or not self._initialized:
+            await self.start()
+        sid = session_id or self._default_session_id or "default"
+        if sid and len(sid) < 36 and sid != "default":
+            sid = self._default_session_id or "default"
+
+        # Decode and save file
+        tmp_path = None
+        try:
+            b64_clean = file_data.split(",")[-1] if "," in file_data else file_data
+            # Preserve original extension if present
+            ext = ""
+            if "." in file_name:
+                ext = "." + file_name.rsplit(".", 1)[-1]
+            elif "/" in mime_type:
+                ext = "." + mime_type.split("/")[-1].split(";")[0]
+
+            tmp_dir = tempfile.mkdtemp(prefix="openmate_file_")
+            safe_name = file_name.replace("/", "_").replace("\\", "_") or "file"
+            tmp_path = os.path.join(tmp_dir, safe_name if "." in safe_name else safe_name + ext)
+            with open(tmp_path, "wb") as f:
+                f.write(base64.b64decode(b64_clean))
+
+            file_size = os.path.getsize(tmp_path)
+            logger.info(f"File saved: {tmp_path} ({file_size} bytes, {mime_type})")
+
+            # Build prompt with file path
+            prompt_text = text or f"用户发送了文件: {file_name}"
+            prompt_text += f"\n\n[文件已保存到: {tmp_path}]"
+
+            # Try ACP prompt first
+            for attempt in range(2):
+                try:
+                    result = await self._prompt(prompt_text, sid)
+                    if result.get("response_text") is not None:
+                        return result
+                except (BrokenPipeError, OSError, TimeoutError) as e:
+                    logger.warning(f"File prompt error (attempt {attempt+1}): {e}")
+                    if attempt == 0:
+                        try:
+                            await self._restart()
+                        except Exception:
+                            pass
+                        continue
+                except Exception as e:
+                    logger.error(f"File prompt error: {e}", exc_info=True)
+                break
+
+            # Fallback to CLI
+            return await self._cli(prompt_text)
+
+        except Exception as e:
+            logger.error(f"File send error: {e}")
+            return await self._cli(text or f"用户发送了文件: {file_name}")
+        finally:
+            # Schedule cleanup after 10 minutes
+            if tmp_path:
+                def _cleanup():
+                    try:
+                        if os.path.exists(tmp_path):
+                            os.unlink(tmp_path)
+                        if tmp_path.rsplit("/", 1)[0] != "/tmp":
+                            shutil.rmtree(tmp_path.rsplit("/", 1)[0], ignore_errors=True)
+                    except Exception:
+                        pass
+                asyncio.get_running_loop().call_later(600, _cleanup)
 
     async def list_sessions(self) -> list[dict]:
         if not self.is_running or not self._initialized:

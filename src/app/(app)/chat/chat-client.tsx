@@ -474,11 +474,17 @@ export function ChatClient() {
     }
     try {
       const imageAttachment = attachments.find(a => a.type === 'image');
+      const fileAttachment = attachments.find(a => a.type === 'file');
       let r: Response;
       if (imageAttachment) {
         r = await fetch(`${getAcpProxyUrl()}/acp/send-image`, {
           method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
           body: JSON.stringify({ text: messageText, image_data: imageAttachment.data, mime_type: imageAttachment.mime_type || 'image/png', session_id: selectedSession?.id }),
+        });
+      } else if (fileAttachment) {
+        r = await fetch(`${getAcpProxyUrl()}/acp/send-file`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+          body: JSON.stringify({ text: messageText, file_data: fileAttachment.data, file_name: fileAttachment.name || 'file', mime_type: fileAttachment.mime_type || 'application/octet-stream', session_id: selectedSession?.id }),
         });
       } else {
         r = await fetch(`${getAcpProxyUrl()}/acp/send`, {
@@ -732,7 +738,7 @@ export function ChatClient() {
                       // Handle code apply - copy to clipboard
                       navigator.clipboard.writeText(code);
                     }} />}
-                    {p.type === 'image' && p.data && <img src={`data:${p.mime_type || 'image/png'};base64,${p.data}`} alt={p.name || 'image'} className="max-w-xs rounded-lg mt-1" />}
+                    {p.type === 'image' && p.data && <img src={`data:${p.mime_type || 'image/png'};base64,${p.data}`} alt={p.name || 'image'} className="max-w-xs w-auto max-h-64 rounded-lg mt-1 object-contain" />}
                     {p.type === 'file' && <div className="flex items-center gap-2 mt-1 p-2 bg-background/50 rounded"><FileText className="w-4 h-4" /><span className="text-xs">{p.name || 'file'}</span></div>}
                   </div>
                 ))}
