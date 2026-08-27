@@ -412,9 +412,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content area */}
       <SidebarInset className="min-h-0 overflow-hidden">
-        <header className="flex h-10 shrink-0 items-center border-b border-border px-4">
-          <SidebarTrigger className="-ml-1" />
-        </header>
         <div className="flex flex-1 flex-col overflow-hidden">
           {children}
         </div>
