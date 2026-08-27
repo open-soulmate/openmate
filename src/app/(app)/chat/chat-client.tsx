@@ -177,6 +177,9 @@ export function ChatClient() {
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [showCheckpoints, setShowCheckpoints] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<{ id: string; name: string } | null>(null);
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [editTitleValue, setEditTitleValue] = useState('');
+  const titleInputRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
   const wsRef = useRef<WebSocket | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -608,6 +611,7 @@ export function ChatClient() {
     selectedSessionRef.current = session;
     setSelectedAgent(agent);
     setDeleteConfirm(null);
+    setEditingTitle(false);
     loadHistory(session.id);
   };
 
@@ -617,6 +621,33 @@ export function ChatClient() {
     selectedSessionRef.current = session;
     setSelectedAgent(agent);
     setMessages([]);
+  };
+
+  const startEditTitle = () => {
+    if (!selectedSession?.id) return; // can't rename unsaved sessions
+    setEditTitleValue(selectedSession.name || selectedSession.title || '');
+    setEditingTitle(true);
+    setTimeout(() => titleInputRef.current?.select(), 50);
+  };
+
+  const saveTitle = async () => {
+    if (!selectedSession?.id || !editTitleValue.trim()) {
+      setEditingTitle(false);
+      return;
+    }
+    const newTitle = editTitleValue.trim();
+    setEditingTitle(false);
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/sessions/${selectedSession.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: newTitle }),
+      });
+      if (res.ok) {
+        setSelectedSession(prev => prev ? { ...prev, name: newTitle, title: newTitle } : prev);
+        initAgents(); // refresh sidebar list
+      }
+    } catch (e) { console.error('Rename failed:', e); }
   };
 
   // Collect attachments from conversation
@@ -734,7 +765,24 @@ export function ChatClient() {
               <ChevronRight className="w-4 h-4 rotate-180" />
             </button>
             {selectedAgent && <span className="text-sm">{selectedAgent.icon}</span>}
-            <span className="font-medium text-sm">{selectedSession?.name || (selectedAgent ? `${selectedAgent.name} ${t('chat.newSession')}` : t('chat.newChat'))}</span>
+            {editingTitle ? (
+              <input
+                ref={titleInputRef}
+                value={editTitleValue}
+                onChange={e => setEditTitleValue(e.target.value)}
+                onBlur={saveTitle}
+                onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') setEditingTitle(false); }}
+                className="font-medium text-sm bg-transparent border-b border-primary outline-none px-0.5 min-w-0 max-w-[200px]"
+              />
+            ) : (
+              <span
+                className={`font-medium text-sm truncate max-w-[200px] ${selectedSession?.id ? 'cursor-pointer hover:text-primary' : ''}`}
+                onClick={startEditTitle}
+                title={selectedSession?.id ? 'Click to rename' : undefined}
+              >
+                {selectedSession?.name || (selectedAgent ? `${selectedAgent.name} ${t('chat.newSession')}` : t('chat.newChat'))}
+              </span>
+            )}
             {selectedAgent && <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">{selectedAgent.name}</span>}
           </div>
           <div className="flex items-center gap-2">
