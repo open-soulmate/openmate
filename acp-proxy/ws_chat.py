@@ -16,6 +16,7 @@ import time
 from uuid import UUID
 
 import jwt
+import httpx
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from proxy import get_acp_process
@@ -99,30 +100,49 @@ def decode_token(token: str) -> UUID | None:
     return None
 
 
-# Agent proxy registry — synced with OpenSoul's AGENT_REGISTRY
-AGENT_REGISTRY = {
-    "hermes": {"name": "Hermes Agent", "binary": "hermes", "args": ["-z"]},
-    "mimo": {"name": "MiMo Code", "binary": "mimo", "args": ["run"]},
-    "claude": {"name": "Claude Code", "binary": "claude", "args": ["-p"]},
-    "codex": {"name": "Codex CLI", "binary": "codex", "args": ["exec"]},
-    "aider": {"name": "Aider", "binary": "aider", "args": ["--message"]},
-    "pi-agent": {"name": "Pi Agent", "binary": "pi", "args": ["-p"]},
-    "opencode": {"name": "OpenCode", "binary": "opencode", "args": ["-q"]},
-    "openclaw": {"name": "OpenClaw", "binary": "openclaw", "args": ["agent", "-m"]},
-    "gemini": {"name": "Gemini CLI", "binary": "gemini", "args": ["-p"]},
-    "copilot": {"name": "GitHub Copilot", "binary": "gh", "args": ["copilot", "-p"]},
-    "amazon-q": {"name": "Amazon Q", "binary": "q", "args": ["chat", "--no-interactive", "-p"]},
-    "qwen": {"name": "Qwen Coder", "binary": "qwen", "args": ["--message"]},
-    "deepseek": {"name": "DeepSeek", "binary": "deepseek", "args": ["--message"]},
-    "perplexity": {"name": "Perplexity CLI", "binary": "pplx", "args": ["--message"]},
+# Agent CLI arg overrides — only for agents with non-standard args.
+# All other agents default to: binary -p "message"
+# System LLM config (OPENAI_API_KEY etc.) is injected for ALL agents automatically.
+AGENT_ARGS_OVERRIDE: dict[str, list[str]] = {
+    "hermes": ["-z"],
+    "mimo": ["run"],
+    "codex": ["exec"],
+    "opencode": ["-q"],
+    "openclaw": ["agent", "-m"],
+    "copilot": ["copilot", "-p"],
+    "amazon-q": ["chat", "--no-interactive", "-p"],
 }
+
+# Cache: available agents from OpenSoul /api/agents/detect
+_available_agents: dict[str, dict] = {}
+_agents_cache_ts: float = 0.0
+
+
+async def _refresh_agent_list():
+    """Fetch installed agents from OpenSoul (cached 60s)."""
+    global _available_agents, _agents_cache_ts
+    now = time.time()
+    if now - _agents_cache_ts < 60 and _available_agents:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=5) as client:
+            resp = await client.get("http://localhost:8090/api/agents/detect")
+            if resp.status_code == 200:
+                data = resp.json()
+                _available_agents = {
+                    a["id"]: a for a in data.get("agents", []) if a.get("available")
+                }
+                _agents_cache_ts = now
+                logger.info(f"Agent list refreshed: {len(_available_agents)} available")
+    except Exception as e:
+        logger.warning(f"Agent list refresh failed: {e}")
 
 
 def _get_llm_config() -> dict:
     """Read system LLM config from OpenSoul .env or /api/llm/config."""
     # Try reading from .env first (fast, no network)
     env_path = os.path.join(os.path.dirname(__file__), "..", "..", "opensoul", ".env")
-    cfg = {}
+    cfg: dict[str, str] = {}
     try:
         with open(os.path.abspath(env_path)) as f:
             for line in f:
@@ -143,27 +163,33 @@ def _get_llm_config() -> dict:
 
 
 async def run_agent_proxy(agent_id: str, text: str) -> tuple[str, str, bool]:
-    """Run a message through agent proxy."""
-    agent_config = AGENT_REGISTRY.get(agent_id)
-    if not agent_config:
-        return f"未知Agent: {agent_id}", "error", False
-    binary = agent_config["binary"]
+    """Run a message through any installed agent with system LLM config injected."""
+    await _refresh_agent_list()
+
+    # Determine binary: from OpenSoul detect API, fallback to agent_id itself
+    agent_info = _available_agents.get(agent_id)
+    binary = agent_info["binary"] if agent_info else agent_id
+
     if not shutil.which(binary):
         return f"Agent未安装: {binary}", "error", False
-    cmd = [binary] + agent_config["args"] + [text]
+
+    # Args: use override if known, default to -p for all others
+    args = AGENT_ARGS_OVERRIDE.get(agent_id, ["-p"])
+    cmd = [binary] + args + [text]
     try:
-        # Inject system LLM config as env vars for the agent subprocess
+        # Always inject system LLM config — works for ALL agents
         env = os.environ.copy()
         llm_cfg = _get_llm_config()
-        if llm_cfg.get("api_key") and not env.get("OPENAI_API_KEY"):
+        if llm_cfg.get("api_key"):
             env["OPENAI_API_KEY"] = llm_cfg["api_key"]
-        if llm_cfg.get("base_url") and not env.get("OPENAI_BASE_URL"):
+            env["ANTHROPIC_API_KEY"] = llm_cfg["api_key"]  # Claude-style agents
+        if llm_cfg.get("base_url"):
             env["OPENAI_BASE_URL"] = llm_cfg["base_url"]
+            env["OPENAI_API_BASE"] = llm_cfg["base_url"]   # compat alias
         if llm_cfg.get("model"):
-            if not env.get("OPENAI_MODEL"):
-                env["OPENAI_MODEL"] = llm_cfg["model"]
-            if not env.get("MODEL"):
-                env["MODEL"] = llm_cfg["model"]
+            env["OPENAI_MODEL"] = llm_cfg["model"]
+            env["MODEL"] = llm_cfg["model"]
+
         proc = await asyncio.create_subprocess_exec(
             *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
             env=env,

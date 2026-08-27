@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
+import { getApiBaseUrl, getToken } from '@/lib/api-client';
 import {
   Users, Plus, Send, Bot, Shield, Zap, User, Trash2, ChevronDown,
   ChevronRight, Settings, X, Loader2, Search, UserPlus, Edit3, Check,
@@ -8,8 +9,6 @@ import {
   ArrowUp, ArrowRight, ArrowDown, Star, Trophy, Target, Lightbulb,
   MessageCircle, Hand, FileText, Award, TrendingUp,
 } from 'lucide-react';
-
-const API_BASE = typeof window !== 'undefined' ? `${window.location.protocol}//${window.location.hostname}:8090` : '';
 
 interface AgentRole {
   agent_id: string;
@@ -113,6 +112,10 @@ function getAgentAvatarColor(index: number) {
 
 export default function AIGroupsPage() {
   const { t } = useTranslation();
+  const authHeaders = (): Record<string, string> => {
+    const token = getToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  };
   const [groups, setGroups] = useState<AIGroup[]>([]);
   const [selectedGroup, setSelectedGroup] = useState<AIGroup | null>(null);
   const [messages, setMessages] = useState<GroupMessage[]>([]);
@@ -173,7 +176,7 @@ export default function AIGroupsPage() {
 
   const fetchGroups = async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/ai-groups`);
+      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups`, { headers: authHeaders() });
       const data = await res.json();
       setGroups(data);
       // Sync selectedGroup with latest data
@@ -192,7 +195,7 @@ export default function AIGroupsPage() {
     setMobileView('chat');
     setMessages([]);
     try {
-      const res = await fetch(`${API_BASE}/api/ai-groups/${group.id}`);
+      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${group.id}`, { headers: authHeaders() });
       const data = await res.json();
       const updated = { ...group, ...data };
       setSelectedGroup(updated);
@@ -224,9 +227,9 @@ export default function AIGroupsPage() {
     if (!newName.trim()) return;
     setLoading(true);
     try {
-      await fetch(`${API_BASE}/api/ai-groups`, {
+      await fetch(`${getApiBaseUrl()}/api/ai-groups`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           name: newName, description: newDesc, agents: []
         })
@@ -238,15 +241,15 @@ export default function AIGroupsPage() {
 
   const deleteGroup = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await fetch(`${API_BASE}/api/ai-groups/${id}`, { method: 'DELETE' });
+    await fetch(`${getApiBaseUrl()}/api/ai-groups/${id}`, { method: 'DELETE', headers: authHeaders() });
     if (selectedGroup?.id === id) { setSelectedGroup(null); setMessages([]); }
     fetchGroups();
   };
 
   const renameGroup = async (id: string) => {
     if (!editingName.trim()) { setEditingGroupId(null); return; }
-    await fetch(`${API_BASE}/api/ai-groups/${id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    await fetch(`${getApiBaseUrl()}/api/ai-groups/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ name: editingName }),
     });
     setEditingGroupId(null);
@@ -259,8 +262,8 @@ export default function AIGroupsPage() {
 
   const saveGroupSettings = async () => {
     if (!selectedGroup) return;
-    await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ name: editGroupName, description: editGroupDesc }),
     });
     setShowGroupSettings(false);
@@ -276,8 +279,8 @@ export default function AIGroupsPage() {
       role: newAgent.role, model: newAgent.model, status: 'online',
     };
     const updated = [...(selectedGroup.agents || []), agent];
-    await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ agents: updated }),
     });
     setNewAgent({ name: '', role: 'executor', model: 'claude-sonnet' });
@@ -288,8 +291,8 @@ export default function AIGroupsPage() {
   const removeAgent = async (agentId: string) => {
     if (!selectedGroup) return;
     const updated = (selectedGroup.agents || []).filter(a => a.agent_id !== agentId);
-    await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ agents: updated }),
     });
     selectGroup(selectedGroup);
@@ -305,8 +308,8 @@ export default function AIGroupsPage() {
     const updated = (selectedGroup.agents || []).map(a =>
       a.agent_id === agentId ? { ...a, name: editAgentData.name, model: editAgentData.model, temperature: editAgentData.temperature, role: editAgentData.role } : a
     );
-    await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+    await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() },
       body: JSON.stringify({ agents: updated }),
     });
     setEditingAgent(null);
@@ -345,8 +348,8 @@ export default function AIGroupsPage() {
     // Otherwise, send as a regular message (existing behavior)
     setSendingMessage(true);
     try {
-      const res = await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}/tasks`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/tasks`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ goal: text, target_agent: target }),
       });
       const data = await res.json();
@@ -433,9 +436,9 @@ export default function AIGroupsPage() {
   const startDiscussion = async (goal: string) => {
     if (!selectedGroup) return null;
     try {
-      const res = await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}/discuss`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/discuss`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({
           goal,
           constraints: [],
@@ -454,7 +457,7 @@ export default function AIGroupsPage() {
   const fetchDiscussionMessages = async (taskId: string): Promise<DiscussionMessage[]> => {
     if (!selectedGroup) return [];
     try {
-      const res = await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}/discuss/${taskId}/messages`);
+      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/discuss/${taskId}/messages`, { headers: authHeaders() });
       return await res.json();
     } catch (e) {
       console.error('Failed to fetch discussion messages:', e);
@@ -466,9 +469,9 @@ export default function AIGroupsPage() {
   const submitDiscussionResponse = async (taskId: string, agentId: string, agentName: string, intent: string, content: string) => {
     if (!selectedGroup) return;
     try {
-      await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}/discuss/${taskId}/respond`, {
+      await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/discuss/${taskId}/respond`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ agent_id: agentId, agent_name: agentName, intent, content }),
       });
     } catch (e) {
@@ -480,9 +483,9 @@ export default function AIGroupsPage() {
   const finalizeDiscussion = async (taskId: string, assignments: { agent_id: string; subgoal: string }[]) => {
     if (!selectedGroup) return;
     try {
-      await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}/discuss/${taskId}/decide`, {
+      await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/discuss/${taskId}/decide`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ assignments }),
       });
     } catch (e) {
@@ -494,9 +497,9 @@ export default function AIGroupsPage() {
   const submitTaskResult = async (taskId: string, result: string) => {
     if (!selectedGroup) return;
     try {
-      await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}/tasks/${taskId}/review`, {
+      await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/tasks/${taskId}/review`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ result }),
       });
     } catch (e) {
@@ -508,9 +511,9 @@ export default function AIGroupsPage() {
   const submitScore = async (taskId: string, scorerAgentId: string, score: number, reason: string, capability: string) => {
     if (!selectedGroup) return null;
     try {
-      const res = await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}/tasks/${taskId}/score`, {
+      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/tasks/${taskId}/score`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
         body: JSON.stringify({ scorer_agent_id: scorerAgentId, score, reason, capability }),
       });
       return await res.json();
@@ -525,7 +528,7 @@ export default function AIGroupsPage() {
     if (!selectedGroup) return;
     setLoadingProfile(agentId);
     try {
-      const res = await fetch(`${API_BASE}/api/ai-groups/${selectedGroup.id}/agents/${agentId}/capabilities`);
+      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/agents/${agentId}/capabilities`, { headers: authHeaders() });
       const data = await res.json();
       setAgentProfiles(prev => ({ ...prev, [agentId]: data }));
     } catch (e) {

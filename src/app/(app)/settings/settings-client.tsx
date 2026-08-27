@@ -195,57 +195,91 @@ export function SettingsClient() {
   }, []);
 
   async function handleSave() {
-    // Save local settings
-    persistTheme(settings.theme);
-    setStoreTheme(settings.theme);
-    i18n.changeLanguage(settings.language);
-    localStorage.setItem("openmate-language", settings.language);
-    setLLMConfig({ provider: settings.llmProvider, apiKey: settings.apiKey, url: settings.url, model: settings.model });
-
-    // Save to backend config
     const apiBase = getApiBaseUrl();
-    try {
-      await fetch(`${apiBase}/api/config`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          data: {
-            models: {
-              default: settings.model,
-              provider: settings.llmProvider,
-            },
-            agent: {
-              default: settings.defaultAgent,
-              timeout: settings.agentTimeout,
-              retry_strategy: settings.retryStrategy,
-              log_level: settings.logLevel,
-            },
-            tools: {
-              shell_whitelist: settings.shellWhitelist,
-              file_access: settings.fileAccess,
-              network_access: settings.networkAccess,
-            },
-            storage: {
-              knowledge_path: settings.knowledgePath,
-              cache_limit_mb: settings.cacheLimit,
-            },
-          },
-        }),
-      });
-    } catch {}
 
-    // Save LLM config to backend (/api/llm/config)
-    try {
-      await fetch(`${apiBase}/api/llm/config`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          api_key: settings.apiKey || undefined,
-          base_url: settings.url || undefined,
-          model: settings.model || undefined,
-        }),
-      });
-    } catch {}
+    // Only save settings for the current tab
+    switch (active) {
+      case "appearance":
+        persistTheme(settings.theme);
+        setStoreTheme(settings.theme);
+        i18n.changeLanguage(settings.language);
+        localStorage.setItem("openmate-language", settings.language);
+        break;
+
+      case "model":
+        setLLMConfig({ provider: settings.llmProvider, apiKey: settings.apiKey, url: settings.url, model: settings.model });
+        // Save LLM config to backend
+        try {
+          await fetch(`${apiBase}/api/llm/config`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              api_key: settings.apiKey || undefined,
+              base_url: settings.url || undefined,
+              model: settings.model || undefined,
+            }),
+          });
+        } catch {}
+        break;
+
+      case "agent":
+        // Save agent config to backend
+        try {
+          await fetch(`${apiBase}/api/config`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              data: {
+                agent: {
+                  default: settings.defaultAgent,
+                  timeout: settings.agentTimeout,
+                  retry_strategy: settings.retryStrategy,
+                  log_level: settings.logLevel,
+                },
+              },
+            }),
+          });
+        } catch {}
+        break;
+
+      case "tools":
+        try {
+          await fetch(`${apiBase}/api/config`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              data: {
+                tools: {
+                  shell_whitelist: settings.shellWhitelist,
+                  file_access: settings.fileAccess,
+                  network_access: settings.networkAccess,
+                },
+              },
+            }),
+          });
+        } catch {}
+        break;
+
+      case "storage":
+        try {
+          await fetch(`${apiBase}/api/config`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              data: {
+                storage: {
+                  knowledge_path: settings.knowledgePath,
+                  cache_limit_mb: settings.cacheLimit,
+                },
+              },
+            }),
+          });
+        } catch {}
+        break;
+
+      default:
+        break;
+    }
 
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
