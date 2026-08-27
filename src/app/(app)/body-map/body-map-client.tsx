@@ -508,7 +508,7 @@ export function BodyMapClient() {
                     href={organ.href}
                     className={cn(
                       "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-muted",
-                      selectedOrgan === organ.key && "bg-muted"
+                      selectedOrgan === organ.key && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
                     )}
                     onMouseEnter={() => setHoveredOrgan(organ.key)}
                     onMouseLeave={() => setHoveredOrgan(null)}

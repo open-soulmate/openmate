@@ -83,7 +83,7 @@ export function SessionsClient() {
   // Expand state: agent-level and source-level
   const [agentExpanded, setAgentExpanded] = useState(true)
   const [sourceExpanded, setSourceExpanded] = useState<Record<string, boolean>>({
-    cli: true, weixin: true, cron: false, acp: false, tui: false, tool: false, subagent: false,
+    cli: false, weixin: false, cron: false, acp: false, tui: false, tool: false, subagent: false,
   })
 
   const fetchSessions = useCallback(async () => {
@@ -225,14 +225,23 @@ export function SessionsClient() {
                       if (!items || items.length === 0) return null
                       const meta = SOURCE_META[src] || { icon: MessageSquare, label: src, color: "text-zinc-400", bg: "bg-zinc-900/20" }
                       const Icon = meta.icon
-                      const expanded = sourceExpanded[src] ?? true
+                      const expanded = sourceExpanded[src] ?? false
 
                       return (
                         <div key={src}>
                           {/* Source group header */}
                           <button
                             className="w-full flex items-center gap-2 px-4 py-2 hover:bg-zinc-800/30 transition-colors"
-                            onClick={() => setSourceExpanded(prev => ({ ...prev, [src]: !prev[src] }))}
+                            onClick={() => setSourceExpanded(prev => {
+                              const willExpand = !prev[src]
+                              const next: Record<string, boolean> = {}
+                              // Accordion: collapse all, then expand clicked one
+                              if (willExpand) {
+                                for (const key of ALL_SOURCES) next[key] = false
+                                next[src] = true
+                              }
+                              return next
+                            })}
                           >
                             {expanded ? <ChevronDown className="w-3.5 h-3.5 text-zinc-600" /> : <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />}
                             <Icon className={`w-4 h-4 ${meta.color}`} />

@@ -308,7 +308,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               isActive={active}
                               tooltip={item.label}
                               className={cn(
-                                active && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] hover:bg-[rgba(124,58,237,0.18)] hover:text-[#7c3aed]"
+                                active && "[&]:bg-[rgba(124,58,237,0.12)] [&]:text-[#7c3aed] [&]:hover:bg-[rgba(124,58,237,0.18)] [&]:hover:text-[#7c3aed]"
                               )}
                             >
                               <Link href={item.href}>

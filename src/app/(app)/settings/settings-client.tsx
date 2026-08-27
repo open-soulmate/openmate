@@ -362,7 +362,7 @@ export function SettingsClient() {
               <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-3 mb-1.5">{group}</div>
               {items.map((s) => (
                 <button key={s.id} onClick={() => setActive(s.id)}
-                  className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors", active === s.id ? "bg-accent text-foreground font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground")}>
+                  className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors", active === s.id ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground")}>
                   <s.icon size={15} />{s.label}
                 </button>
               ))}

@@ -183,7 +183,7 @@ function AddMemberDialog({
               return (
                 <button key={a.id} onClick={() => setSelected(a.id)}
                   className={cn('flex items-center gap-3 w-full rounded-md px-3 py-2 text-left text-sm transition-colors',
-                    selected === a.id ? 'bg-accent border' : 'hover:bg-accent/50 border border-transparent'
+                    selected === a.id ? 'bg-[rgba(124,58,237,0.12)] text-[#7c3aed] border border-[#7c3aed]/30' : 'hover:bg-accent/50 border border-transparent'
                   )}>
                   <Icon size={14} className={cn(AGENT_COLORS[a.type], 'shrink-0')} />
                   <span className="flex-1 truncate">{a.name}</span>
