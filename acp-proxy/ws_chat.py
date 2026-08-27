@@ -117,6 +117,30 @@ AGENT_REGISTRY = {
 }
 
 
+def _get_llm_config() -> dict:
+    """Read system LLM config from OpenSoul .env or /api/llm/config."""
+    # Try reading from .env first (fast, no network)
+    env_path = os.path.join(os.path.dirname(__file__), "..", "..", "opensoul", ".env")
+    cfg = {}
+    try:
+        with open(os.path.abspath(env_path)) as f:
+            for line in f:
+                line = line.strip()
+                if line.startswith("LLM_API_KEY="):
+                    cfg["api_key"] = line.split("=", 1)[1].strip()
+                elif line.startswith("LLM_BASE_URL="):
+                    cfg["base_url"] = line.split("=", 1)[1].strip()
+                elif line.startswith("LLM_MODEL="):
+                    cfg["model"] = line.split("=", 1)[1].strip()
+    except Exception:
+        pass
+    # Fallback to environment variables
+    cfg.setdefault("api_key", os.environ.get("LLM_API_KEY", ""))
+    cfg.setdefault("base_url", os.environ.get("LLM_BASE_URL", ""))
+    cfg.setdefault("model", os.environ.get("LLM_MODEL", ""))
+    return cfg
+
+
 async def run_agent_proxy(agent_id: str, text: str) -> tuple[str, str, bool]:
     """Run a message through agent proxy."""
     agent_config = AGENT_REGISTRY.get(agent_id)
@@ -127,8 +151,19 @@ async def run_agent_proxy(agent_id: str, text: str) -> tuple[str, str, bool]:
         return f"Agent未安装: {binary}", "error", False
     cmd = [binary] + agent_config["args"] + [text]
     try:
+        # Inject system LLM config as env vars for the agent subprocess
+        env = os.environ.copy()
+        llm_cfg = _get_llm_config()
+        if llm_cfg.get("api_key"):
+            env.setdefault("OPENAI_API_KEY", llm_cfg["api_key"])
+        if llm_cfg.get("base_url"):
+            env.setdefault("OPENAI_BASE_URL", llm_cfg["base_url"])
+        if llm_cfg.get("model"):
+            env.setdefault("OPENAI_MODEL", llm_cfg["model"])
+            env.setdefault("MODEL", llm_cfg["model"])
         proc = await asyncio.create_subprocess_exec(
-            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE
+            *cmd, stdout=asyncio.subprocess.PIPE, stderr=asyncio.subprocess.PIPE,
+            env=env,
         )
         stdout, stderr = await asyncio.wait_for(proc.communicate(), timeout=120)
         response = stdout.decode("utf-8", errors="replace").strip()
@@ -294,20 +329,34 @@ async def chat_websocket(websocket: WebSocket):
                         acp = get_acp_process()
                         if image_attachments and mode in ("hermes", "acp"):
                             img = image_attachments[0]
-                            result = await acp.send_message_with_image(
-                                text, img.get("data", ""), img.get("mime_type", "image/png"), session_id
-                            )
-                            response_text = result.get("response_text", "")
-                            source = result.get("source", "acp")
+                            b64 = img.get("data", "")
+                            if "," in b64:
+                                b64 = b64.split(",")[-1]
+                            parts = []
+                            if text:
+                                parts.append({"type": "text", "text": text})
+                            parts.append({"type": "image", "data": b64, "mimeType": img.get("mime_type", "image/png")})
+                            async for chunk_data in acp.stream_message_parts(parts, session_id):
+                                if not await _safe_send_ws(websocket, chunk_data):
+                                    break
+                            continue
                         elif file_attachments and mode in ("hermes", "acp"):
-                            # Handle file attachments - save to temp, pass path to agent
                             f = file_attachments[0]
-                            result = await acp.send_message_with_file(
-                                text, f.get("data", ""), f.get("name", "file"),
-                                f.get("mime_type", "application/octet-stream"), session_id
-                            )
-                            response_text = result.get("response_text", "")
-                            source = result.get("source", "acp")
+                            import tempfile, base64 as b64mod, os
+                            b64 = f.get("data", "")
+                            if "," in b64:
+                                b64 = b64.split(",")[-1]
+                            ext = os.path.splitext(f.get("name", "file"))[1] or ".bin"
+                            fd, tmp_path = tempfile.mkstemp(suffix=ext, prefix="openmate_file_")
+                            with os.fdopen(fd, "wb") as fp:
+                                fp.write(b64mod.b64decode(b64))
+                            prompt_text = text or f"用户发送了文件: {f.get('name', 'file')}"
+                            prompt_text += f"\n\n[文件已保存到: {tmp_path}]"
+                            parts = [{"type": "text", "text": prompt_text}]
+                            async for chunk_data in acp.stream_message_parts(parts, session_id):
+                                if not await _safe_send_ws(websocket, chunk_data):
+                                    break
+                            continue
                         else:
                             # Real streaming: forward chunks as they arrive
                             async for chunk_data in acp.stream_message(text, session_id):
@@ -316,19 +365,16 @@ async def chat_websocket(websocket: WebSocket):
                             continue
 
                     if response_text:
-                        # Stream in chunks for real-time feel
+                        # agent_proxy: stream in chunks for real-time feel
                         chunk_size = 20
                         for i in range(0, len(response_text), chunk_size):
                             chunk = response_text[i : i + chunk_size]
                             if not await _safe_send_ws(websocket, {"type": "chunk", "text": chunk}):
                                 break
                             await asyncio.sleep(0.05)
-                        # Include session_id in done message for new sessions
                         done_msg = {"type": "done", "text": response_text, "source": source}
                         if mode == "agent_proxy" and agent_id:
                             done_msg["session_id"] = agent_session_id
-                        elif result.get("session_id"):
-                            done_msg["session_id"] = result["session_id"]
                         await _safe_send_ws(websocket, done_msg)
                     else:
                         await _safe_send_ws(websocket, {"type": "error", "message": "未收到响应，请重试"})
