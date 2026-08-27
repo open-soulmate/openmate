@@ -192,7 +192,7 @@ export function CommandMenu() {
       const rest = displayList.filter((c) => !recentCmds.includes(c));
       const groups: Record<string, CommandItem[]> = {};
       if (recentCmds.length > 0) {
-        const recentLabel = lang === "zh" ? "最近使用" : lang === "ja" ? "最近の使用" : "Recent";
+        const recentLabel = t("command.recent", "Recent");
         groups[recentLabel] = recentCmds;
       }
       for (const cmd of rest) {
@@ -264,12 +264,12 @@ export function CommandMenu() {
 
   if (!open) return null;
 
-  const noResultsText = lang === "zh" ? "未找到匹配命令" : lang === "ja" ? "一致するコマンドが見つかりません" : "No matching commands";
-  const navText = lang === "zh" ? "导航" : lang === "ja" ? "ナビ" : "Navigate";
-  const execText = lang === "zh" ? "执行" : lang === "ja" ? "実行" : "Execute";
-  const closeText = lang === "zh" ? "关闭" : lang === "ja" ? "閉じる" : "Close";
-  const cmdCountText = lang === "zh" ? "条命令" : lang === "ja" ? "コマンド" : "commands";
-  const placeholderText = lang === "zh" ? "搜索页面、命令..." : lang === "ja" ? "ページ・コマンドを検索..." : "Search pages, commands...";
+  const noResultsText = t("command.noMatch", "No matching commands");
+  const navText = t("command.navigate", "Navigate");
+  const execText = t("command.execute", "Execute");
+  const closeText = t("command.close", "Close");
+  const cmdCountText = t("command.commandCount", "commands");
+  const placeholderText = t("command.searchCommands", "Search pages, commands...");
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]">

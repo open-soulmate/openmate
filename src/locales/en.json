@@ -652,7 +652,8 @@
     "clearCache": "Clear Cache",
     "switchDark": "Switch to Dark Theme",
     "switchLight": "Switch to Light Theme",
-    "switchPurple": "Switch to Purple Theme"
+    "switchPurple": "Switch to Purple Theme",
+    "recent": "Recent"
   },
   "workspace": {
     "expand": "Expand Workspace",

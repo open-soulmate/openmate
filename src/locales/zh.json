@@ -652,7 +652,8 @@
     "clearCache": "清除缓存",
     "switchDark": "切换深色主题",
     "switchLight": "切换浅色主题",
-    "switchPurple": "切换紫色主题"
+    "switchPurple": "切换紫色主题",
+    "recent": "最近使用"
   },
   "workspace": {
     "expand": "展开工作区",
