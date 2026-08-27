@@ -123,8 +123,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       items: [
         { href: "/ai-groups", label: t("nav.aiGroups"), icon: Users },
         { href: "/agents", label: t("nav.agents"), icon: Server },
-        { href: "/groups", label: t("nav.groups"), icon: Users },
-        { href: "/team", label: t("nav.team"), icon: Users },
       ],
     },
     {
