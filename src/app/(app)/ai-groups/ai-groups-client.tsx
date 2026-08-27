@@ -228,11 +228,7 @@ export default function AIGroupsPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          name: newName, description: newDesc, agents: [
-            { agent_id: 'advisor-1', name: 'Claude Opus', role: 'advisor', model: 'claude-opus' },
-            { agent_id: 'executor-1', name: 'Claude Sonnet', role: 'executor', model: 'claude-sonnet' },
-            { agent_id: 'verifier-1', name: 'GPT-4o', role: 'verifier', model: 'gpt-4o' },
-          ]
+          name: newName, description: newDesc, agents: []
         })
       });
       setNewName(''); setNewDesc(''); setShowCreate(false);
