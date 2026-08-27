@@ -1,421 +1,431 @@
-'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { Bot, CheckCircle, XCircle, Loader2, Download, RefreshCw, Play, Pause, Trash2, ArrowUpCircle, Terminal, Monitor, Apple, ChevronDown, ChevronRight, Square, CheckSquare, RotateCcw } from 'lucide-react';
-import { getApiBaseUrl, getToken } from '@/lib/api-client';
-import { useTranslation } from 'react-i18next';
+"use client";
 
-interface AgentInfo {
-  id: string; name: string; binary: string; description: string; icon: string;
-  available: boolean; version?: string; path?: string; installCommand?: string; os?: string;
-  skillsManaged?: boolean;
-  provider?: string; model?: string;
+import { useState, useEffect, useCallback } from "react";
+import { getApiBaseUrl } from "@/lib/api-client";
+import { cn } from "@/lib/utils";
+import {
+  Server, Bot, Users, RefreshCw, Loader2, Trash2,
+  CheckCircle2, XCircle, AlertCircle, Zap, Activity,
+  Search, Clock, Wifi, WifiOff,
+} from "lucide-react";
+import { useTranslation } from "react-i18next";
+
+interface AgentNode {
+  node_id: string;
+  name?: string;
+  status: string;
+  last_heartbeat?: string;
+  capabilities?: string[];
+  endpoint?: string;
+  version?: string;
 }
 
-interface InstallState {
-  status: 'idle' | 'starting' | 'running' | 'done' | 'error';
-  progress: number;
-  lines: string[];
-  error?: string;
+interface AgentStats {
+  total_nodes: number;
+  online_count: number;
+  offline_count: number;
+  degraded_count?: number;
+  uptime_hours?: number;
+  requests_total?: number;
+}
+
+interface HealthStatus {
+  status: string;
+  message?: string;
+  timestamp?: string;
 }
 
 export function AgentsClient() {
   const { t } = useTranslation();
-  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [nodes, setNodes] = useState<AgentNode[]>([]);
+  const [stats, setStats] = useState<AgentStats | null>(null);
+  const [health, setHealth] = useState<HealthStatus | null>(null);
   const [loading, setLoading] = useState(true);
-  const [os, setOs] = useState('linux');
-  const [filter, setFilter] = useState<'all' | 'available' | 'unavailable'>('all');
-  const [category, setCategory] = useState("all");
-  const [installs, setInstalls] = useState<Record<string, InstallState>>({});
-  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
-  const [selected, setSelected] = useState<Set<string>>(new Set());
-  const [batchAction, setBatchAction] = useState<string | null>(null);
-  const [configuringAgent, setConfiguringAgent] = useState<string | null>(null);
-  const [agentConfigs, setAgentConfigs] = useState<Record<string, {provider: string; model: string; custom?: boolean}>>({});
-  const [providers, setProviders] = useState<Array<{name: string; base_url: string; models: Record<string, string>}>>([]);
-  const eventSources = useRef<Record<string, EventSource>>({});
+  const [error, setError] = useState("");
+  const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+  const [detecting, setDetecting] = useState(false);
+  const [detectResult, setDetectResult] = useState<string | null>(null);
 
-  const detect = useCallback(async () => {
+  const fetchAll = useCallback(async () => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) {
+      setError(t("agents.noApiBase", "API base URL not configured"));
+      setLoading(false);
+      return;
+    }
+    
     setLoading(true);
+    setError("");
+    
     try {
-      const res = await fetch(`${getApiBaseUrl()}/api/agents/detect`, { headers: { Authorization: `Bearer ${getToken()}` } });
+      const [nodesRes, statsRes, healthRes] = await Promise.all([
+        fetch(`${apiBase}/api/agent/nodes`, { signal: AbortSignal.timeout(10000) })
+          .then(r => r.json())
+          .catch(() => ({ nodes: [] })),
+        fetch(`${apiBase}/api/agent/stats`, { signal: AbortSignal.timeout(10000) })
+          .then(r => r.json())
+          .catch(() => null),
+        fetch(`${apiBase}/api/agent/health`, { signal: AbortSignal.timeout(10000) })
+          .then(r => r.json())
+          .catch(() => null),
+      ]);
+      
+      setNodes(Array.isArray(nodesRes) ? nodesRes : nodesRes.nodes || []);
+      setStats(statsRes);
+      setHealth(healthRes);
+    } catch (e: unknown) {
+      setError(t("agents.fetchError", "Failed to load agent data: {{error}}", {
+        error: e instanceof Error ? e.message : String(e)
+      }));
+    } finally {
+      setLoading(false);
+    }
+  }, [t]);
+
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
+
+  const removeNode = async (nodeId: string) => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    
+    try {
+      const res = await fetch(`${apiBase}/api/agent/nodes/${nodeId}`, {
+        method: "DELETE",
+        signal: AbortSignal.timeout(10000),
+      });
+      
+      if (res.ok) {
+        setNodes(prev => prev.filter(n => n.node_id !== nodeId));
+        setDeleteConfirm(null);
+      } else {
+        setError(t("agents.deleteFailed", "Failed to remove node: {{status}}", { status: res.status }));
+      }
+    } catch (e: unknown) {
+      setError(t("agents.deleteError", "Delete error: {{error}}", {
+        error: e instanceof Error ? e.message : String(e)
+      }));
+    }
+  };
+
+  const detectAgents = async () => {
+    const apiBase = getApiBaseUrl();
+    if (!apiBase) return;
+    
+    setDetecting(true);
+    setDetectResult(null);
+    
+    try {
+      const res = await fetch(`${apiBase}/api/agents/detect`, { signal: AbortSignal.timeout(15000) });
       if (res.ok) {
         const data = await res.json();
-        setOs(data.os || 'linux');
-        setAgents(data.agents || []);
+        setDetectResult(t("agents.detectSuccess", "Detected {{count}} agents", { 
+          count: data.agents?.length || data.count || 0 
+        }));
+        // Refresh the list after detection
+        fetchAll();
+      } else {
+        setDetectResult(t("agents.detectFailed", "Detection failed: {{status}}", { status: res.status }));
       }
-    } catch (e) { console.error('Agent detection failed:', e); }
-    setLoading(false);
-  }, []);
-
-  useEffect(() => { 
-    detect();
-    // Load Gland providers
-    fetch(`${getApiBaseUrl()}/api/gland/providers`, { headers: { Authorization: `Bearer ${getToken()}` } })
-      .then(r => r.json()).then(d => setProviders(d.providers || [])).catch(() => {});
-    // Load saved agent configs from localStorage
-    try {
-      const saved = localStorage.getItem('openmate-agent-configs');
-      if (saved) setAgentConfigs(JSON.parse(saved));
-    } catch {}
-  }, [detect]);
-  useEffect(() => { return () => { Object.values(eventSources.current).forEach(es => es.close()); }; }, []);
-
-  // ─── Actions ──────────────────────────────────────────────────
-
-  const startInstall = async (agent: AgentInfo) => {
-    if (!agent.installCommand) return;
-    setInstalls(prev => ({ ...prev, [agent.id]: { status: 'starting', progress: 0, lines: [] } }));
-    setExpanded(prev => ({ ...prev, [agent.id]: true }));
-
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/api/agents/install`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ agent_id: agent.id }),
-      });
-      const data = await res.json();
-      if (!data.success) {
-        setInstalls(prev => ({ ...prev, [agent.id]: { status: 'error', progress: 0, lines: [], error: data.error } }));
-        return;
-      }
-      setInstalls(prev => ({ ...prev, [agent.id]: { status: 'running', progress: 5, lines: [] } }));
-      const es = new EventSource(`${getApiBaseUrl()}/api/agents/install/${agent.id}/progress`);
-      eventSources.current[agent.id] = es;
-      es.onmessage = (event) => {
-        try {
-          const d = JSON.parse(event.data);
-          setInstalls(prev => {
-            const cur = prev[agent.id] || { status: 'running', progress: 0, lines: [] };
-            return { ...prev, [agent.id]: { status: d.status || cur.status, progress: d.progress ?? cur.progress, lines: d.line ? [...cur.lines, d.line] : cur.lines, error: d.error || cur.error } };
-          });
-          if (d.status === 'done' || d.status === 'error') { es.close(); delete eventSources.current[agent.id]; if (d.status === 'done') setTimeout(detect, 2000); }
-        } catch {}
-      };
-      es.onerror = () => { es.close(); delete eventSources.current[agent.id]; };
-    } catch { setInstalls(prev => ({ ...prev, [agent.id]: { status: 'error', progress: 0, lines: [], error: 'Network error' } })); }
-  };
-
-  const handleUninstall = async (agent: AgentInfo) => {
-    if (!confirm(t('agents.confirmUninstall', { name: agent.name }))) return;
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/api/agents/uninstall`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ agent_id: agent.id }),
-      });
-      const data = await res.json();
-      if (data.success) setTimeout(detect, 1000);
-    } catch {}
-  };
-
-  const handleUpdate = async (agent: AgentInfo) => {
-    setInstalls(prev => ({ ...prev, [agent.id]: { status: 'starting', progress: 0, lines: [] } }));
-    setExpanded(prev => ({ ...prev, [agent.id]: true }));
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/api/agents/update`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-        body: JSON.stringify({ agent_id: agent.id }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setInstalls(prev => ({ ...prev, [agent.id]: { status: 'running', progress: 5, lines: [] } }));
-        const es = new EventSource(`${getApiBaseUrl()}/api/agents/install/${agent.id}/progress`);
-        eventSources.current[agent.id] = es;
-        es.onmessage = (event) => {
-          try {
-            const d = JSON.parse(event.data);
-            setInstalls(prev => {
-              const cur = prev[agent.id] || { status: 'running', progress: 0, lines: [] };
-              return { ...prev, [agent.id]: { status: d.status || cur.status, progress: d.progress ?? cur.progress, lines: d.line ? [...cur.lines, d.line] : cur.lines, error: d.error || cur.error } };
-            });
-            if (d.status === 'done' || d.status === 'error') { es.close(); delete eventSources.current[agent.id]; if (d.status === 'done') setTimeout(detect, 2000); }
-          } catch {}
-        };
-        es.onerror = () => { es.close(); delete eventSources.current[agent.id]; };
-      }
-    } catch {}
-  };
-
-  // ─── Batch Operations ─────────────────────────────────────────
-
-  const toggleSelect = (id: string) => {
-    setSelected(prev => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
-  const toggleSelectAll = () => {
-    const visible = filtered.map(a => a.id);
-    if (visible.every(id => selected.has(id))) {
-      setSelected(new Set());
-    } else {
-      setSelected(new Set(visible));
+    } catch (e: unknown) {
+      setDetectResult(t("agents.detectError", "Detection error: {{error}}", {
+        error: e instanceof Error ? e.message : String(e)
+      }));
+    } finally {
+      setDetecting(false);
     }
   };
 
-  const batchInstall = async () => {
-    setBatchAction('install');
-    const toInstall = agents.filter(a => selected.has(a.id) && !a.available);
-    for (const agent of toInstall) {
-      await startInstall(agent);
-      await new Promise(r => setTimeout(r, 500));
+  const getStatusColor = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "online":
+      case "healthy":
+      case "active":
+        return { bg: "bg-emerald-500/10", text: "text-emerald-400", border: "border-emerald-500/20" };
+      case "offline":
+      case "unhealthy":
+      case "inactive":
+        return { bg: "bg-red-500/10", text: "text-red-400", border: "border-red-500/20" };
+      case "degraded":
+      case "warning":
+        return { bg: "bg-amber-500/10", text: "text-amber-400", border: "border-amber-500/20" };
+      default:
+        return { bg: "bg-muted", text: "text-muted-foreground", border: "border-border" };
     }
-    setBatchAction(null);
   };
 
-  const batchUninstall = async () => {
-    if (!confirm(t('agents.confirmBatchUninstall', { count: selected.size }))) return;
-    setBatchAction('uninstall');
-    const toUninstall = agents.filter(a => selected.has(a.id) && a.available);
-    for (const agent of toUninstall) {
-      await handleUninstall(agent);
-      await new Promise(r => setTimeout(r, 300));
+  const getStatusIcon = (status: string) => {
+    switch (status.toLowerCase()) {
+      case "online":
+      case "healthy":
+      case "active":
+        return <CheckCircle2 className="h-3.5 w-3.5" />;
+      case "offline":
+      case "unhealthy":
+      case "inactive":
+        return <XCircle className="h-3.5 w-3.5" />;
+      case "degraded":
+      case "warning":
+        return <AlertCircle className="h-3.5 w-3.5" />;
+      default:
+        return <Activity className="h-3.5 w-3.5" />;
     }
-    setBatchAction(null);
-    setSelected(new Set());
   };
 
-  // ─── Filter ───────────────────────────────────────────────────
-
-  const filtered = agents.filter(a => {
-    const matchCategory = category === "all" || (a as any).category === category;
-    if (!matchCategory) return false;
-    if (filter === 'available') return a.available;
-    if (filter === 'unavailable') return !a.available;
-    return true;
-  });
-  const availableCount = agents.filter(a => a.available).length;
-
-  if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
+  if (loading) {
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 h-full overflow-y-auto">
+    <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Bot className="w-6 h-6" /> {t('agents.title')}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t('agents.autoDetect')} · {agents.length} {t('agents.category')}</p>
-        </div>
-        <button onClick={detect} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> {t('agents.autoDetect')}</button>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-primary">{agents.length}</p><p className="text-sm text-muted-foreground">{t('agents.title')}</p></div>
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-green-500">{availableCount}</p><p className="text-sm text-muted-foreground">{t('agents.available')}</p></div>
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-muted-foreground">{agents.length - availableCount}</p><p className="text-sm text-muted-foreground">{t('agents.unavailable')}</p></div>
-      </div>
-
-      {/* Filter + Batch */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-2">
-          {(['all', 'available', 'unavailable'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'border hover:bg-muted'}`}>
-              {f === 'all' ? t('agents.allAgents') : f === 'available' ? t('agents.onlyAvailable') : t('agents.onlyUnavailable')}
-            </button>
-          ))}
-        </div>
-        {selected.size > 0 && (
+      <div className="shrink-0 border-b border-border px-6 py-4">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
+              <Server className="h-5 w-5 text-primary" />
+              {t("agents.title", "Agent Nodes")}
+            </h1>
+            <p className="mt-1 text-sm text-muted-foreground">
+              {t("agents.subtitle", "Manage and monitor registered agent nodes")}
+            </p>
+          </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">{t('agents.selectAll')} {selected.size}</span>
-            <button onClick={batchInstall} disabled={!!batchAction}
-              className="px-3 py-1.5 rounded-lg text-xs bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1 disabled:opacity-50">
-              {batchAction === 'install' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} {t('agents.batchInstall')}
+            <button
+              onClick={detectAgents}
+              disabled={detecting}
+              className={cn(
+                "flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm transition-colors",
+                detecting 
+                  ? "bg-muted text-muted-foreground cursor-not-allowed" 
+                  : "hover:bg-accent hover:text-accent-foreground"
+              )}
+            >
+              {detecting ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+              {t("agents.detect", "Detect Agents")}
             </button>
-            <button onClick={batchUninstall} disabled={!!batchAction}
-              className="px-3 py-1.5 rounded-lg text-xs border border-red-500/30 text-red-500 hover:bg-red-500/5 flex items-center gap-1 disabled:opacity-50">
-              {batchAction === 'uninstall' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} {t('agents.deleteAgent')}
+            <button
+              onClick={fetchAll}
+              className="rounded-lg border border-border p-2 hover:bg-accent transition-colors"
+            >
+              <RefreshCw className="h-4 w-4" />
             </button>
-            <button onClick={() => setSelected(new Set())} className="px-2 py-1.5 rounded-lg text-xs border hover:bg-muted">{t('agents.deselectAll')}</button>
+          </div>
+        </div>
+
+        {/* Detect Result */}
+        {detectResult && (
+          <div className="mt-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+            {detectResult}
           </div>
         )}
-      </div>
 
-      {/* Select all */}
-      <div className="flex items-center gap-2 mb-3">
-        <button onClick={toggleSelectAll} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
-          {filtered.length > 0 && filtered.every(a => selected.has(a.id)) ? <CheckSquare size={14} /> : <Square size={14} />}
-          {t('agents.selectAll')}
-        </button>
-      </div>
+        {/* Error Message */}
+        {error && (
+          <div className="mt-2 rounded-lg bg-red-500/10 border border-red-500/20 px-3 py-2 text-sm text-red-400">
+            {error}
+          </div>
+        )}
 
-      {/* Agent Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {filtered.map(agent => {
-          const install = installs[agent.id];
-          const isInstalling = install && (install.status === 'running' || install.status === 'starting');
-          const isExpanded = expanded[agent.id];
-          const isSelected = selected.has(agent.id);
-
-          return (
-            <div key={agent.id} className={`rounded-xl border bg-card transition-all ${isSelected ? 'border-primary ring-1 ring-primary/30' : agent.available ? 'border-green-500/30' : 'border-border'}`}>
-              <div className="p-4">
-                <div className="flex items-start gap-3 mb-3">
-                  {/* Checkbox */}
-                  <button onClick={() => toggleSelect(agent.id)} className="mt-1 shrink-0">
-                    {isSelected ? <CheckSquare size={16} className="text-primary" /> : <Square size={16} className="text-muted-foreground" />}
-                  </button>
-                  {(agent as any).logo ? <img src={(agent as any).logo} alt={agent.name} className="w-10 h-10 rounded-lg object-contain bg-muted" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} /> : null}
-                  <span className={`text-2xl ${(agent as any).logo ? "hidden" : ""}`}>{agent.icon}</span>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-medium truncate">{agent.name}</h3>
-                    <p className="text-xs text-muted-foreground truncate">{agent.description}</p>
-                  </div>
-                  {agent.available ? <CheckCircle className="w-5 h-5 text-green-500 shrink-0" /> : <XCircle className="w-5 h-5 text-muted-foreground shrink-0" />}
-                </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="text-xs text-muted-foreground">
-                    {agent.available ? (
-                      <span className="text-green-500">● {t('agents.installed')}{agent.version ? ` v${agent.version}` : ''}</span>
-                    ) : (
-                      <span>● {t('agents.unavailable')}</span>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    {agent.available ? (
-                      <>
-                        <button onClick={() => setConfiguringAgent(configuringAgent === agent.id ? null : agent.id)}
-                          className="px-2 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1" title={t('agents.modelConfig')}>
-                          ⚙️
-                        </button>
-                        <button onClick={() => handleUpdate(agent)} disabled={!!isInstalling}
-                          className="px-2 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50" title={t('agents.restart')}>
-                          <ArrowUpCircle className="w-3 h-3" />
-                        </button>
-                        <button onClick={() => handleUninstall(agent)}
-                          className="px-2 py-1 rounded-lg text-xs border border-red-500/30 text-red-500 hover:bg-red-500/5 flex items-center gap-1" title={t('agents.deleteAgent')}>
-                          <Trash2 className="w-3 h-3" />
-                        </button>
-                      </>
-                    ) : (
-                      <button onClick={() => startInstall(agent)} disabled={!!isInstalling}
-                        className="px-2.5 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50 transition-colors">
-                        {isInstalling ? <><Loader2 className="w-3 h-3 animate-spin" /> {t('agents.installing')}</> : <><Download className="w-3 h-3" /> {t('agents.install')}</>}
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Install progress */}
-              {install && install.status !== 'idle' && (
-                <div className="border-t border-border">
-                  <div className="h-1 bg-muted">
-                    <div className={`h-full transition-all duration-500 ${install.status === 'done' ? 'bg-green-500' : install.status === 'error' ? 'bg-red-500' : 'bg-primary'}`}
-                      style={{ width: `${install.progress}%` }} />
-                  </div>
-                  <div className="px-4 py-2 flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-xs">
-                      {install.status === 'done' && <span className="text-green-500 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> {t('agents.installDone')}</span>}
-                      {install.status === 'error' && <span className="text-red-500">{install.error}</span>}
-                      {install.status === 'running' && <span className="text-muted-foreground flex items-center gap-1"><Loader2 className="w-3 h-3 animate-spin" /> {install.progress}%</span>}
-                      {install.status === 'starting' && <span className="text-muted-foreground">{t('agents.detecting')}</span>}
-                    </div>
-                    {install.lines.length > 0 && (
-                      <button onClick={() => setExpanded(prev => ({ ...prev, [agent.id]: !prev[agent.id] }))} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
-                        {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}{t('agents.logs')}
-                      </button>
-                    )}
-                  </div>
-                  {isExpanded && install.lines.length > 0 && (
-                    <div className="px-4 pb-3 max-h-40 overflow-y-auto">
-                      <pre className="text-[10px] text-muted-foreground font-mono whitespace-pre-wrap">{install.lines.slice(-20).join('\n')}</pre>
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {/* Install command hint */}
-              {agent.installCommand && !agent.available && !install && (
-                <div className="px-4 pb-3">
-                  <div className="p-2 rounded-lg bg-muted text-xs font-mono flex items-center gap-1.5 text-muted-foreground"><Terminal className="w-3 h-3 shrink-0" />{agent.installCommand}</div>
-                </div>
-              )}
-
-              {/* Model config panel */}
-              {agent.available && configuringAgent === agent.id && (
-                <div className="border-t border-border px-4 py-3 space-y-2">
-                  <div className="text-xs font-medium text-muted-foreground mb-2">{t('agents.modelConfig')}</div>
-                  <label className="flex items-center gap-2 text-xs cursor-pointer">
-                    <input type="checkbox" checked={!agentConfigs[agent.id]?.custom}
-                      onChange={() => {
-                        const newConfigs = { ...agentConfigs };
-                        delete newConfigs[agent.id];
-                        setAgentConfigs(newConfigs);
-                        localStorage.setItem('openmate-agent-configs', JSON.stringify(newConfigs));
-                      }} />
-                    {t('agents.useGlobalDefault')}
-                  </label>
-                  <label className="flex items-center gap-2 text-xs cursor-pointer">
-                    <input type="checkbox" checked={!!agentConfigs[agent.id]?.custom}
-                      onChange={() => {
-                        const newConfigs = { ...agentConfigs, [agent.id]: { custom: true, provider: '', model: '' } };
-                        setAgentConfigs(newConfigs);
-                        localStorage.setItem('openmate-agent-configs', JSON.stringify(newConfigs));
-                      }} />
-                    {t('agents.customModel')}
-                  </label>
-                  {agentConfigs[agent.id]?.custom && (
-                    <>
-                      <div className="flex gap-2 items-center">
-                        <label className="text-xs text-muted-foreground w-16">Provider</label>
-                        <select
-                          value={agentConfigs[agent.id]?.provider || ''}
-                          onChange={e => {
-                            const cfg = { ...agentConfigs[agent.id], provider: e.target.value, model: '' };
-                            const newConfigs = { ...agentConfigs, [agent.id]: cfg };
-                            setAgentConfigs(newConfigs);
-                            localStorage.setItem('openmate-agent-configs', JSON.stringify(newConfigs));
-                          }}
-                          className="flex-1 px-2 py-1 rounded border border-border bg-background text-xs"
-                        >
-                          <option value="">{t('agents.selectProvider')}</option>
-                          {providers.map(p => (
-                            <option key={p.name} value={p.name}>{p.name}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="flex gap-2 items-center">
-                        <label className="text-xs text-muted-foreground w-16">Model</label>
-                        <select
-                          value={agentConfigs[agent.id]?.model || ''}
-                          onChange={e => {
-                            const cfg = { ...agentConfigs[agent.id], model: e.target.value };
-                            const newConfigs = { ...agentConfigs, [agent.id]: cfg };
-                            setAgentConfigs(newConfigs);
-                            localStorage.setItem('openmate-agent-configs', JSON.stringify(newConfigs));
-                          }}
-                          className="flex-1 px-2 py-1 rounded border border-border bg-background text-xs"
-                        >
-                          <option value="">{t('agents.selectModel')}</option>
-                          {(() => {
-                            const cfg = agentConfigs[agent.id];
-                            const prov = providers.find(p => p.name === cfg?.provider);
-                            if (!prov) return null;
-                            return Object.entries(prov.models).map(([type, model]) => (
-                              <option key={`${type}-${model}`} value={model}>{type}: {model}</option>
-                            ));
-                          })()}
-                        </select>
-                      </div>
-                    </>
-                  )}
-                  <div className="text-xs text-muted-foreground">
-                    {agentConfigs[agent.id]?.custom 
-                      ? (agentConfigs[agent.id]?.provider && agentConfigs[agent.id]?.model 
-                          ? <span className="text-green-500">✓ {agentConfigs[agent.id].provider}/{agentConfigs[agent.id].model}</span>
-                          : t('agents.selectProviderAndModel'))
-                      : t('agents.usingGlobalConfig')}
-                  </div>
-                </div>
-              )}
+        {/* Stats Cards */}
+        <div className="mt-4 flex flex-wrap gap-3">
+          <div className="rounded-lg border border-border bg-card px-4 py-3">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Server className="h-3.5 w-3.5" />
+              {t("agents.totalNodes", "Total Nodes")}
             </div>
-          );
-        })}
+            <div className="mt-1 text-2xl font-semibold text-foreground">
+              {stats?.total_nodes || nodes.length}
+            </div>
+          </div>
+          
+          <div className="rounded-lg border border-emerald-500/20 bg-emerald-500/5 px-4 py-3">
+            <div className="flex items-center gap-2 text-xs text-emerald-400">
+              <Wifi className="h-3.5 w-3.5" />
+              {t("agents.online", "Online")}
+            </div>
+            <div className="mt-1 text-2xl font-semibold text-emerald-400">
+              {stats?.online_count ?? nodes.filter(n => n.status === "online" || n.status === "healthy" || n.status === "active").length}
+            </div>
+          </div>
+          
+          <div className="rounded-lg border border-red-500/20 bg-red-500/5 px-4 py-3">
+            <div className="flex items-center gap-2 text-xs text-red-400">
+              <WifiOff className="h-3.5 w-3.5" />
+              {t("agents.offline", "Offline")}
+            </div>
+            <div className="mt-1 text-2xl font-semibold text-red-400">
+              {stats?.offline_count ?? nodes.filter(n => n.status === "offline" || n.status === "unhealthy" || n.status === "inactive").length}
+            </div>
+          </div>
+          
+          {stats?.degraded_count !== undefined && stats.degraded_count > 0 && (
+            <div className="rounded-lg border border-amber-500/20 bg-amber-500/5 px-4 py-3">
+              <div className="flex items-center gap-2 text-xs text-amber-400">
+                <AlertCircle className="h-3.5 w-3.5" />
+                {t("agents.degraded", "Degraded")}
+              </div>
+              <div className="mt-1 text-2xl font-semibold text-amber-400">
+                {stats.degraded_count}
+              </div>
+            </div>
+          )}
+          
+          {health && (
+            <div className={cn(
+              "rounded-lg border px-4 py-3",
+              health.status === "ok" || health.status === "healthy"
+                ? "border-emerald-500/20 bg-emerald-500/5"
+                : "border-red-500/20 bg-red-500/5"
+            )}>
+              <div className={cn(
+                "flex items-center gap-2 text-xs",
+                health.status === "ok" || health.status === "healthy"
+                  ? "text-emerald-400"
+                  : "text-red-400"
+              )}>
+                <Zap className="h-3.5 w-3.5" />
+                {t("agents.healthStatus", "Health")}
+              </div>
+              <div className={cn(
+                "mt-1 text-2xl font-semibold",
+                health.status === "ok" || health.status === "healthy"
+                  ? "text-emerald-400"
+                  : "text-red-400"
+              )}>
+                {health.status.toUpperCase()}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Node List */}
+      <div className="flex-1 overflow-y-auto p-6">
+        {nodes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+            <Server className="h-12 w-12 mb-4 opacity-50" />
+            <p className="text-lg font-medium">{t("agents.noNodes", "No agent nodes found")}</p>
+            <p className="mt-1 text-sm">
+              {t("agents.noNodesHint", "Try detecting available agents or check your configuration")}
+            </p>
+          </div>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {nodes.map((node) => {
+              const statusColors = getStatusColor(node.status);
+              const isDeleting = deleteConfirm === node.node_id;
+              
+              return (
+                <div
+                  key={node.node_id}
+                  className={cn(
+                    "group rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md"
+                  )}
+                >
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                        <Bot className="h-5 w-5 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <div className="font-medium text-foreground">
+                          {node.name || node.node_id}
+                        </div>
+                        <div className="text-xs text-muted-foreground font-mono">
+                          {node.node_id}
+                        </div>
+                      </div>
+                    </div>
+                    <div className={cn(
+                      "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-medium",
+                      statusColors.bg, statusColors.text, statusColors.border, "border"
+                    )}>
+                      {getStatusIcon(node.status)}
+                      {node.status}
+                    </div>
+                  </div>
+
+                  {node.endpoint && (
+                    <div className="mt-3 text-xs text-muted-foreground">
+                      <span className="font-medium">{t("agents.endpoint", "Endpoint")}:</span>{" "}
+                      <code className="rounded bg-muted px-1.5 py-0.5">{node.endpoint}</code>
+                    </div>
+                  )}
+
+                  {node.version && (
+                    <div className="mt-1 text-xs text-muted-foreground">
+                      <span className="font-medium">{t("agents.version", "Version")}:</span> {node.version}
+                    </div>
+                  )}
+
+                  {node.capabilities && node.capabilities.length > 0 && (
+                    <div className="mt-3">
+                      <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1.5">
+                        {t("agents.capabilities", "Capabilities")}
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {node.capabilities.map((cap) => (
+                          <span
+                            key={cap}
+                            className="rounded bg-accent px-2 py-0.5 text-[11px] text-foreground"
+                          >
+                            {cap}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {node.last_heartbeat && (
+                    <div className="mt-3 flex items-center gap-1.5 text-xs text-muted-foreground">
+                      <Clock className="h-3.5 w-3.5" />
+                      {t("agents.lastHeartbeat", "Last heartbeat: {{time}}", {
+                        time: new Date(node.last_heartbeat).toLocaleString()
+                      })}
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex items-center justify-end border-t border-border pt-3">
+                    {isDeleting ? (
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => removeNode(node.node_id)}
+                          className="rounded-lg bg-red-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-700 transition-colors"
+                        >
+                          {t("agents.confirmDelete", "Confirm")}
+                        </button>
+                        <button
+                          onClick={() => setDeleteConfirm(null)}
+                          className="rounded-lg bg-muted px-3 py-1.5 text-xs font-medium text-foreground hover:bg-accent transition-colors"
+                        >
+                          {t("agents.cancel", "Cancel")}
+                        </button>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => setDeleteConfirm(node.node_id)}
+                        className="flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-red-500/10 hover:text-red-400 transition-colors"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                        {t("agents.remove", "Remove")}
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

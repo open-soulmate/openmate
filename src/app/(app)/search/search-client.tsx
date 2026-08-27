@@ -1,294 +1,326 @@
-'use client';
-import { useState, useCallback } from 'react';
-import { Search as SearchIcon, FileText, Tag, Loader2, Zap, BookOpen, Layers, RotateCcw, Clock, Bot, Activity, FileCode, GraduationCap } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { getApiBaseUrl } from '@/lib/api-client';
-import { useTranslation } from 'react-i18next';
+"use client"
+
+import { useEffect, useState, useCallback } from "react"
+import { useTranslation } from "react-i18next"
+import { getApiBaseUrl } from "@/lib/api-client"
+import { cn } from "@/lib/utils"
+import {
+  Search, Loader2, Clock, Filter, X, Zap, BarChart3,
+  Globe, FileText, Database, Layers, ChevronDown,
+} from "lucide-react"
 
 interface SearchResult {
-  id: string;
-  title: string;
-  content?: string;
-  snippet?: string;
-  score?: number;
-  type?: string;
-  tags?: string[];
-  source?: string;
-  created_at?: string;
-  icon?: string;
+  id: string
+  title: string
+  source?: string
+  snippet?: string
+  content?: string
+  score?: number
+  relevance?: number
+  created_at?: string
+  timestamp?: string
+  type?: string
+  [key: string]: unknown
 }
 
-interface UnifiedResults {
-  query: string;
-  total: number;
-  by_source: Record<string, SearchResult[]>;
-  sources_searched: string[];
+interface SearchStats {
+  total_results?: number
+  search_time_ms?: number
+  query?: string
+  [key: string]: unknown
+}
+
+const sourceIcons: Record<string, typeof Globe> = {
+  web: Globe,
+  document: FileText,
+  knowledge: Database,
+  default: Layers,
+}
+
+const sourceColors: Record<string, string> = {
+  web: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+  document: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+  knowledge: "bg-violet-500/10 text-violet-400 border-violet-500/20",
+  default: "bg-muted/30 text-muted-foreground border-border",
 }
 
 export function SearchClient() {
-  const { t } = useTranslation();
-  const apiBase = getApiBaseUrl();
-  const [query, setQuery] = useState('');
-  const [mode, setMode] = useState<"hybrid" | "semantic" | "fulltext" | "unified">("unified");
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [unifiedResults, setUnifiedResults] = useState<UnifiedResults | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
-  const [searchTime, setSearchTime] = useState(0);
-  const [activeSource, setActiveSource] = useState<string>('all');
+  const { t } = useTranslation()
+  const apiBase = getApiBaseUrl()
+  const [query, setQuery] = useState("")
+  const [results, setResults] = useState<SearchResult[]>([])
+  const [stats, setStats] = useState<SearchStats | null>(null)
+  const [loading, setLoading] = useState(false)
+  const [searched, setSearched] = useState(false)
+  const [useUnified, setUseUnified] = useState(false)
+  const [sourceFilter, setSourceFilter] = useState<string>("all")
+  const [showFilters, setShowFilters] = useState(false)
 
-  const SOURCE_CONFIG: Record<string, { label: string; icon: React.ElementType; color: string }> = {
-    knowledge: { label: t('search.sourceKnowledge'), icon: BookOpen, color: 'text-blue-500 bg-blue-500/10' },
-    files: { label: t('search.sourceFiles'), icon: FileCode, color: 'text-emerald-500 bg-emerald-500/10' },
-    events: { label: t('search.sourceEvents'), icon: Activity, color: 'text-amber-500 bg-amber-500/10' },
-    agents: { label: t('search.sourceAgents') || 'Agent', icon: Bot, color: 'text-purple-500 bg-purple-500/10' },
-    courses: { label: t('search.sourceCourses'), icon: GraduationCap, color: 'text-pink-500 bg-pink-500/10' },
-    trajectory: { label: t('search.sourceTrajectory'), icon: Clock, color: 'text-cyan-500 bg-cyan-500/10' },
-    cron: { label: t('search.sourceCron'), icon: RotateCcw, color: 'text-orange-500 bg-orange-500/10' },
-    gene: { label: t('search.sourceGene'), icon: Layers, color: 'text-lime-500 bg-lime-500/10' },
-    echo: { label: t('search.sourceEcho'), icon: Zap, color: 'text-rose-500 bg-rose-500/10' },
-  };
-
-  const MODES = [
-    { id: "unified" as const, label: t('search.unified') || "Global Search", icon: Layers, desc: t('search.unifiedDesc') || "Search across knowledge, files, events, agents, courses, trajectories, schedules, templates, messages" },
-    { id: "hybrid" as const, label: t('search.hybrid'), icon: Layers, desc: t('search.hybridDesc') },
-    { id: "semantic" as const, label: t('search.semantic'), icon: Zap, desc: t('search.semanticDesc') },
-    { id: "fulltext" as const, label: t('search.fulltext'), icon: BookOpen, desc: t('search.fulltextDesc') },
-  ];
+  // Fetch search stats on mount
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const res = await fetch(`${apiBase}/api/search/stats`)
+        if (res.ok) setStats(await res.json())
+      } catch {}
+    }
+    fetchStats()
+  }, [apiBase])
 
   const handleSearch = useCallback(async () => {
-    if (!query.trim()) return;
-    setLoading(true);
-    setSearched(true);
-    setActiveSource('all');
-    const start = Date.now();
+    if (!query.trim()) return
+    setLoading(true)
+    setSearched(true)
+    const startTime = Date.now()
     try {
-      if (mode === 'unified') {
-        const res = await fetch(`${apiBase}/api/search/unified?q=${encodeURIComponent(query)}&limit=20`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data: UnifiedResults = await res.json();
-        setUnifiedResults(data);
-        setResults([]);
+      const endpoint = useUnified
+        ? `/api/search/unified?q=${encodeURIComponent(query)}`
+        : `/api/search/?q=${encodeURIComponent(query)}`
+      const res = await fetch(`${apiBase}${endpoint}`)
+      if (res.ok) {
+        const data = await res.json()
+        const items = Array.isArray(data) ? data : data.results || data.items || []
+        setResults(items)
+        setStats(prev => ({
+          ...prev,
+          total_results: items.length,
+          search_time_ms: Date.now() - startTime,
+        }))
       } else {
-        const res = await fetch(`${apiBase}/api/search/?q=${encodeURIComponent(query)}&mode=${mode}&limit=20`);
-        if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = await res.json();
-        setResults(Array.isArray(data) ? data : data.results || data.items || []);
-        setUnifiedResults(null);
+        setResults([])
       }
-      setSearchTime(Date.now() - start);
     } catch {
-      setResults([]);
-      setUnifiedResults(null);
+      setResults([])
+    } finally {
+      setLoading(false)
     }
-    setLoading(false);
-  }, [query, mode, apiBase]);
+  }, [query, apiBase, useUnified])
 
-  // Get filtered results for unified mode
-  const getDisplayResults = (): SearchResult[] => {
-    if (mode !== 'unified' || !unifiedResults) return results;
-    if (activeSource === 'all') {
-      return Object.values(unifiedResults.by_source).flat();
-    }
-    return unifiedResults.by_source[activeSource] || [];
-  };
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter") handleSearch()
+  }
 
-  const displayResults = getDisplayResults();
+  // Collect unique sources for filter
+  const sources = Array.from(new Set(results.map(r => r.source || r.type || "default")))
+  const filtered = sourceFilter === "all"
+    ? results
+    : results.filter(r => (r.source || r.type || "default") === sourceFilter)
+
+  const getSourceStyle = (source: string) => {
+    const key = source.toLowerCase()
+    return sourceColors[key] || sourceColors.default
+  }
+
+  const getSourceIcon = (source: string) => {
+    const key = source.toLowerCase()
+    return sourceIcons[key] || sourceIcons.default
+  }
 
   return (
-    <div className="flex h-full flex-col overflow-hidden">
+    <div className="p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="border-b border-border px-6 py-4">
-        <h1 className="flex items-center gap-2 text-lg font-semibold">
-          <SearchIcon size={18} className="text-primary" />
-          {t('search.title')}
-        </h1>
-        <p className="text-xs text-muted-foreground mt-0.5">{t('search.subtitle')}</p>
-      </div>
-
-      {/* Search area */}
-      <div className="border-b border-border px-6 py-4 space-y-3">
-        {/* Mode selector */}
-        <div className="flex gap-1.5">
-          {MODES.map(m => (
-            <button
-              key={m.id}
-              onClick={() => setMode(m.id)}
-              className={cn(
-                "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-colors border",
-                mode === m.id
-                  ? "border-primary/30 bg-primary/5 text-primary font-medium"
-                  : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/50"
-              )}
-            >
-              <m.icon size={13} />
-              {m.label}
-            </button>
-          ))}
+      <div className="flex items-center gap-3">
+        <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20">
+          <Search className="w-6 h-6 text-cyan-400" />
         </div>
-
-        {/* Search input */}
-        <div className="flex gap-2">
-          <div className="relative flex-1">
-            <SearchIcon size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={query}
-              onChange={e => setQuery(e.target.value)}
-              onKeyDown={e => e.key === 'Enter' && handleSearch()}
-              placeholder={t('search.inputPlaceholder')}
-              className="w-full rounded-lg border border-border bg-background pl-10 pr-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
-            />
-          </div>
-          <button
-            onClick={handleSearch}
-            disabled={loading || !query.trim()}
-            className="flex items-center gap-2 rounded-lg bg-primary px-5 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors"
-          >
-            {loading ? <Loader2 size={15} className="animate-spin" /> : <SearchIcon size={15} />}
-            {t('search.button')}
-          </button>
+        <div>
+          <h1 className="text-2xl font-bold">{t("search.title") || "Search"}</h1>
+          <p className="text-sm text-muted-foreground">
+            {t("search.subtitle") || "Search across all your data sources"}
+          </p>
         </div>
       </div>
 
-      {/* Results */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
-        {loading && (
-          <div className="flex flex-col items-center justify-center py-16">
-            <Loader2 size={28} className="animate-spin text-primary mb-3" />
-            <p className="text-sm text-muted-foreground">{t('search.searching')}</p>
-          </div>
-        )}
-
-        {!loading && searched && displayResults.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <SearchIcon size={40} className="mb-3 opacity-30" />
-            <p className="text-sm">{t('search.noResultsGeneric')}</p>
-            <p className="text-xs mt-1">{t('search.tryDifferent')}</p>
-          </div>
-        )}
-
-        {!loading && displayResults.length > 0 && (
-          <div className="space-y-2">
-            {/* Source filter tabs (unified mode only) */}
-            {mode === 'unified' && unifiedResults && (
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                <button
-                  onClick={() => setActiveSource('all')}
-                  className={cn(
-                    "rounded-lg px-3 py-1.5 text-xs transition-colors border",
-                    activeSource === 'all'
-                      ? "border-primary/30 bg-primary/5 text-primary font-medium"
-                      : "border-border text-muted-foreground hover:bg-muted"
-                  )}
-                >
-                  {t("search.all") || "All"} ({unifiedResults.total})
-                </button>
-                {Object.entries(unifiedResults.by_source).map(([source, items]) => {
-                  const config = SOURCE_CONFIG[source];
-                  if (!config || items.length === 0) return null;
-                  const Icon = config.icon;
-                  return (
-                    <button
-                      key={source}
-                      onClick={() => setActiveSource(source)}
-                      className={cn(
-                        "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs transition-colors border",
-                        activeSource === source
-                          ? "border-primary/30 bg-primary/5 text-primary font-medium"
-                          : "border-border text-muted-foreground hover:bg-muted"
-                      )}
-                    >
-                      <Icon size={12} />
-                      {config.label} ({items.length})
-                    </button>
-                  );
-                })}
-              </div>
+      {/* Search Input */}
+      <div className="max-w-3xl mx-auto space-y-3">
+        <div className="relative">
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-muted-foreground" />
+          <input
+            type="text"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder={t("search.placeholder") || "Search everything..."}
+            className="w-full bg-card border border-border rounded-xl pl-12 pr-28 py-4 text-base outline-none focus:ring-2 focus:ring-cyan-500/30 focus:border-cyan-500/50 transition-all"
+          />
+          <div className="absolute right-2 top-1/2 -translate-y-1/2 flex items-center gap-2">
+            {query && (
+              <button
+                onClick={() => { setQuery(""); setResults([]); setSearched(false) }}
+                className="p-1.5 rounded-lg text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <X className="w-4 h-4" />
+              </button>
             )}
+            <button
+              onClick={handleSearch}
+              disabled={loading || !query.trim()}
+              className="px-4 py-2 rounded-lg bg-cyan-500 text-white text-sm font-medium hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {loading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Zap className="w-4 h-4" />
+              )}
+              {t("search.searchBtn") || "Search"}
+            </button>
+          </div>
+        </div>
 
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-sm text-muted-foreground">
-                {t('search.foundResults', { count: displayResults.length })}
-              </p>
-              <span className="text-xs text-muted-foreground flex items-center gap-1">
-                <Clock size={11} />
-                {searchTime}ms
+        {/* Options row */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+              <input
+                type="checkbox"
+                checked={useUnified}
+                onChange={(e) => setUseUnified(e.target.checked)}
+                className="rounded border-border"
+              />
+              <Globe className="w-3.5 h-3.5" />
+              {t("search.unified") || "Unified search"}
+            </label>
+            {results.length > 0 && (
+              <button
+                onClick={() => setShowFilters(!showFilters)}
+                className={cn(
+                  "flex items-center gap-1.5 text-sm px-2.5 py-1 rounded-lg border transition-colors",
+                  showFilters
+                    ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
+                    : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/50"
+                )}
+              >
+                <Filter className="w-3.5 h-3.5" />
+                {t("search.filters") || "Filters"}
+                <ChevronDown className={cn("w-3 h-3 transition-transform", showFilters && "rotate-180")} />
+              </button>
+            )}
+          </div>
+          {stats?.search_time_ms != null && searched && (
+            <div className="flex items-center gap-3 text-xs text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <BarChart3 className="w-3 h-3" />
+                {stats.total_results ?? filtered.length} {t("search.results") || "results"}
+              </span>
+              <span className="flex items-center gap-1">
+                <Clock className="w-3 h-3" />
+                {stats.search_time_ms}ms
               </span>
             </div>
-            {displayResults.map((r, i) => {
-              const sourceConfig = r.source ? SOURCE_CONFIG[r.source] : null;
+          )}
+        </div>
+
+        {/* Source filters */}
+        {showFilters && sources.length > 1 && (
+          <div className="flex flex-wrap gap-2 p-3 bg-card border border-border rounded-lg">
+            <button
+              onClick={() => setSourceFilter("all")}
+              className={cn(
+                "px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+                sourceFilter === "all"
+                  ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
+                  : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/50"
+              )}
+            >
+              {t("search.allSources") || "All sources"}
+            </button>
+            {sources.map(src => {
+              const Icon = getSourceIcon(src)
               return (
-                <div
-                  key={r.id || i}
-                  className="rounded-lg border border-border bg-card p-4 hover:border-primary/30 transition-colors cursor-pointer group"
+                <button
+                  key={src}
+                  onClick={() => setSourceFilter(src)}
+                  className={cn(
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-colors",
+                    sourceFilter === src
+                      ? getSourceStyle(src)
+                      : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/50"
+                  )}
                 >
-                  <div className="flex items-start gap-3">
-                    <div className={cn(
-                      "flex h-8 w-8 shrink-0 items-center justify-center rounded-lg mt-0.5",
-                      sourceConfig ? sourceConfig.color : "bg-primary/10"
-                    )}>
-                      {r.icon ? (
-                        <span className="text-sm">{r.icon}</span>
-                      ) : sourceConfig ? (
-                        <sourceConfig.icon size={15} className="text-primary" />
-                      ) : (
-                        <FileText size={15} className="text-primary" />
-                      )}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-medium group-hover:text-primary transition-colors">{r.title}</h3>
-                      {(r.content || r.snippet) && (
-                        <p className="text-xs text-muted-foreground mt-1 line-clamp-3 leading-relaxed">{r.content || r.snippet}</p>
-                      )}
-                      <div className="flex items-center gap-2 mt-2 flex-wrap">
-                        {r.source && sourceConfig && (
-                          <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", sourceConfig.color)}>
-                            {sourceConfig.label}
-                          </span>
-                        )}
-                        {r.type && (
-                          <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-muted text-muted-foreground">
-                            {r.type}
-                          </span>
-                        )}
-                        {r.score !== undefined && (
-                          <span className="rounded-full px-2 py-0.5 text-[10px] font-medium bg-primary/10 text-primary">
-                            {t('search.matchScore', { score: (r.score * 100).toFixed(0) })}
-                          </span>
-                        )}
-                        {r.tags?.map(t => (
-                          <span key={t} className="flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] bg-primary/10 text-primary">
-                            <Tag size={9} />
-                            {t}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              );
+                  <Icon className="w-3 h-3" />
+                  {src}
+                </button>
+              )
             })}
           </div>
         )}
-
-        {!searched && (
-          <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <SearchIcon size={40} className="mb-3 opacity-30" />
-            <p className="text-sm">{t('search.enterKeywords')}</p>
-            <div className="mt-4 flex gap-2">
-              {[t('search.hintDocs'), t('search.hintMeetings'), t('search.hintTech')].map(hint => (
-                <button
-                  key={hint}
-                  onClick={() => { setQuery(hint); }}
-                  className="rounded-full border border-border px-3 py-1 text-xs text-muted-foreground hover:text-foreground hover:border-primary/30 transition-colors"
-                >
-                  {hint}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
+
+      {/* Results */}
+      {!searched ? (
+        /* Empty state: no search yet */
+        <div className="text-center py-20 text-muted-foreground/50">
+          <Search className="w-16 h-16 mx-auto mb-4" />
+          <p className="text-lg font-medium mb-1">
+            {t("search.emptyTitle") || "Search your data"}
+          </p>
+          <p className="text-sm">
+            {t("search.emptyHint") || "Enter a query to search across knowledge, documents, and more"}
+          </p>
+        </div>
+      ) : loading ? (
+        <div className="flex items-center justify-center h-48">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : filtered.length === 0 ? (
+        <div className="text-center py-16 text-muted-foreground/50">
+          <Search className="w-12 h-12 mx-auto mb-2" />
+          <p className="text-sm">
+            {t("search.noResults") || `No results found for "${query}"`}
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {filtered.map((result, idx) => {
+            const source = result.source || result.type || "unknown"
+            const SourceIcon = getSourceIcon(source)
+            const score = result.score ?? result.relevance
+            return (
+              <div
+                key={result.id || idx}
+                className="bg-card border border-border rounded-xl p-4 hover:border-border/80 transition-all group"
+              >
+                <div className="flex items-start gap-3">
+                  <div className={cn(
+                    "p-2 rounded-lg border shrink-0 mt-0.5",
+                    getSourceStyle(source)
+                  )}>
+                    <SourceIcon className="w-4 h-4" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h4 className="font-semibold text-sm">{result.title || result.id}</h4>
+                      <span className={cn(
+                        "px-1.5 py-0.5 rounded text-[10px] font-medium border",
+                        getSourceStyle(source)
+                      )}>
+                        {source}
+                      </span>
+                      {score != null && (
+                        <span className="ml-auto text-xs text-muted-foreground flex items-center gap-1 shrink-0">
+                          <BarChart3 className="w-3 h-3" />
+                          {(typeof score === "number" ? score * 100 : parseFloat(String(score)) * 100).toFixed(0)}%
+                        </span>
+                      )}
+                    </div>
+                    {(result.snippet || result.content) && (
+                      <p className="text-xs text-muted-foreground mt-1 line-clamp-2">
+                        {result.snippet || result.content}
+                      </p>
+                    )}
+                    {(result.created_at || result.timestamp) && (
+                      <div className="flex items-center gap-1 mt-2 text-xs text-muted-foreground">
+                        <Clock className="w-3 h-3" />
+                        {new Date(result.created_at || result.timestamp as string).toLocaleDateString()}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )
+          })}
+        </div>
+      )}
     </div>
-  );
+  )
 }
