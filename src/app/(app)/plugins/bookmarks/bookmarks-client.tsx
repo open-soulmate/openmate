@@ -7,7 +7,10 @@ import {
   ExternalLink, Folder, Tag, BarChart3, Grid3X3, List,
   Loader2, Check, X, ChevronRight, Heart, Clock, MousePointerClick,
   ArrowUpRight, BookmarkCheck, FolderPlus, Hash,
+  PanelLeft,
 } from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useMediaQuery } from "@/hooks/use-mobile";
 
 interface BookmarkItem {
   id: string;
@@ -52,6 +55,8 @@ export function BookmarksClient() {
   const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const pluginBase = `${apiBase}/api/plugins/bookmarks`;
+  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const [showSidebar, setShowSidebar] = useState(true);
 
   const [tab, setTab] = useState<Tab>("bookmarks");
   const [viewMode, setViewMode] = useState<ViewMode>("grid");

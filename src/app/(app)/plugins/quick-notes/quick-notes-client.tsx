@@ -141,6 +141,7 @@ export function QuickNotesClient() {
     setIsCreating(true);
     setEditingNote(null);
     setPreview(false);
+    if (isMobile) setShowSidebar(false);
   };
 
   const openEdit = (note: Note) => {
@@ -426,7 +427,14 @@ export function QuickNotesClient() {
         </div>
       ) : (
         /* Empty state */
-        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
+        <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground relative">
+          {isMobile && (
+            <div className="absolute top-2.5 left-3">
+              <button onClick={() => setShowSidebar(true)} className="p-1.5 rounded hover:bg-muted">
+                <PanelLeft size={18} className="text-muted-foreground" />
+              </button>
+            </div>
+          )}
           <StickyNote size={48} className="mb-4 opacity-20" />
           <p className="text-sm mb-2">{t('plugins.selectOrCreate')}</p>
           <button onClick={openCreate}
