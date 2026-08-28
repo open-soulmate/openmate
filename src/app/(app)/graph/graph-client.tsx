@@ -384,13 +384,13 @@ export function GraphClient() {
 
         {/* Toolbar */}
         <div className="absolute top-4 left-4 flex gap-2">
-          <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm hover:bg-primary/90 shadow-lg">
-            <Plus size={14} /> {t("graph.addEntity") || "Add Entity"}
+          <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm hover:bg-primary/90 shadow-lg touch-manipulation">
+            <Plus size={14} /> <span className="hidden sm:inline">{t("graph.addEntity") || "Add Entity"}</span><span className="sm:hidden">+</span>
           </button>
-          <button onClick={() => setShowRelCreate(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border text-xs lg:text-sm hover:bg-muted shadow-lg">
-            <Plus size={14} /> {t("graph.addRelation") || "Add Relation"}
+          <button onClick={() => setShowRelCreate(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border text-xs lg:text-sm hover:bg-muted shadow-lg touch-manipulation">
+            <Plus size={14} /> <span className="hidden sm:inline">{t("graph.addRelation") || "Add Relation"}</span><span className="sm:hidden">↗</span>
           </button>
-          <button onClick={loadGraph} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border text-xs lg:text-sm hover:bg-muted shadow-lg">
+          <button onClick={loadGraph} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border text-xs lg:text-sm hover:bg-muted shadow-lg touch-manipulation">
             <RefreshCw size={14} />
           </button>
         </div>
@@ -410,7 +410,7 @@ export function GraphClient() {
         {/* Create entity dialog */}
         {showCreate && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
-            <div className="bg-card border rounded-xl p-3 lg:p-6 w-96 shadow-2xl">
+            <div className="bg-card border rounded-xl p-3 lg:p-6 w-[90vw] max-w-96 shadow-2xl">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold">{t("graph.addEntity") || "Add Entity"}</h3>
                 <button onClick={() => setShowCreate(false)}><X size={16} /></button>
@@ -430,7 +430,7 @@ export function GraphClient() {
         {/* Create relation dialog */}
         {showRelCreate && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
-            <div className="bg-card border rounded-xl p-3 lg:p-6 w-96 shadow-2xl">
+            <div className="bg-card border rounded-xl p-3 lg:p-6 w-[90vw] max-w-96 shadow-2xl">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold">{t("graph.addRelation") || "Add Relation"}</h3>
                 <button onClick={() => setShowRelCreate(false)}><X size={16} /></button>

@@ -702,34 +702,46 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
         className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors z-10"
       />
 
-      {/* Tab bar — browser-style wave tabs */}
-      <div className="flex items-end h-12 bg-muted/30 shrink-0 overflow-hidden px-1 border-b border-border">
-        <div className="flex items-end flex-1 overflow-x-auto no-scrollbar h-full gap-1">
-          {tabs.map((tab) => (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTabId(tab.id)}
-              className={cn(
-                'group flex items-center gap-1.5 px-3 text-xs shrink-0 transition-all min-w-0 max-w-[140px]',
-                tab.id === activeTabId
-                  ? 'bg-background text-foreground h-[calc(100%+1px)] rounded-xl border border-border mb-[-1px] shadow-[0_0_8px_rgba(124,58,237,0.15)]'
-                  : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60 h-[calc(100%-8px)] rounded-xl border border-transparent'
-              )}
-            >
-              <TabIcon type={tab.type} />
-              <span className="truncate">{tab.title}</span>
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  closeTab(tab.id);
-                }}
-                className="ml-auto shrink-0 p-0.5 rounded hover:bg-muted opacity-0 group-hover:opacity-100 transition-opacity"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            </button>
-          ))}
-        </div>
+      {/* Tab bar — wave tabs with SVG skirt shape */}
+      {(() => {
+        // Skirt-shaped tab mask: top concave corners, bottom convex skirt flare
+        // viewBox(-4, 0, 108, 40): body 100px wide, skirt extends4px each side
+        const skirtSvg = `%3Csvg xmlns='http://www.w3.org/2000/svg' width='108' height='40' viewBox='-4 0 108 40'%3E%3Cpath d='M8,0 Q0,0 0,8 L0,32 Q-4,40 0,36 L100,36 Q104,40 100,32 L100,8 Q100,0 92,0 Z' fill='black'/%3E%3C/svg%3E`;
+        const skirtMask = `url("data:image/svg+xml,${skirtSvg}")`;
+        const bgMaskStyle: React.CSSProperties = {
+          WebkitMaskImage: skirtMask, maskImage: skirtMask,
+          WebkitMaskSize: '100% 100%', maskSize: '100% 100%',
+          WebkitMaskRepeat: 'no-repeat', maskRepeat: 'no-repeat',
+        };
+        return (
+          <div className="flex items-end h-12 shrink-0 px-1" style={{ background: '#1e1e1e' }}>
+            <div className="flex items-end flex-1 overflow-x-auto no-scrollbar h-full" style={{ gap: '2px', paddingBottom: '4px' }}>
+              {tabs.map((tab) => {
+                const isActive = tab.id === activeTabId;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTabId(tab.id)}
+                    className="group relative shrink-0"
+                    style={{ height: '36px', minWidth: '120px', maxWidth: '240px', width: 'fit-content', border: 'none', outline: 'none', cursor: 'pointer', padding: 0, background: 'transparent' }}
+                  >
+                    {/* Skirt-shaped background */}
+                    <div className="absolute inset-0 transition-colors" style={{ background: isActive ? '#2d2d2d' : 'transparent', ...bgMaskStyle }} />
+                    {!isActive && <div className="absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: '#2a2a2a', ...bgMaskStyle }} />}
+                    {/* Content */}
+                    <div className="relative flex items-center h-full gap-1.5" style={{ padding: '0 12px 0 14px', minWidth: 0 }}>
+                      <span className="shrink-0 flex items-center justify-center rounded-full" style={{ width: 16, height: 16, background: isActive ? '#9aa0a6' : 'rgba(154,160,166,0.6)' }}>
+                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#1e1e1e" strokeWidth="2" /><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z" fill="#1e1e1e" /></svg>
+                      </span>
+                      <span className="truncate" style={{ color: isActive ? '#e8eaed' : 'rgba(232,234,237,0.6)', fontSize: '13px', fontWeight: 400, lineHeight: 1 }}>{tab.title}</span>
+                      <button onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className="shrink-0 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 hover:bg-[rgba(255,255,255,0.1)] transition-all" style={{ width: 16, height: 16, marginLeft: 'auto' }}>
+                        <X className="w-3 h-3" style={{ color: '#9aa0a6' }} />
+                      </button>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
 
         {/* Add tab button */}
         <Button
@@ -752,7 +764,9 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
         >
           <PanelRightClose className="w-3.5 h-3.5" />
         </Button>
-      </div>
+          </div>
+        );
+      })()}
 
       {/* Content area */}
       <div className="flex-1 overflow-hidden min-h-0">
