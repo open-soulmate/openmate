@@ -930,7 +930,7 @@ export function ChatClient() {
           </SheetContent>
         </Sheet>
       ) : (
-      <div className={`hidden lg:flex shrink-0 border-l border-border bg-card flex-col transition-[width] duration-200 ease-linear overflow-hidden ${showDetails ? 'w-72' : 'w-0 border-l-0'}`}>
+      <div className={`flex shrink-0 border-l border-border bg-card flex-col transition-[width] duration-200 ease-linear overflow-hidden ${showDetails ? 'w-72' : 'w-0 border-l-0'}`}>
         <div className="h-12 px-3 flex items-center border-b border-border justify-between w-72 shrink-0">
           <span className="text-sm font-medium flex items-center gap-1.5"><Info className="w-4 h-4" />{t("chat.sessionDetails")}</span>
           <button onClick={() => setShowDetails(false)} className="inline-flex items-center justify-center size-7 rounded-md hover:bg-muted text-muted-foreground transition-colors">
