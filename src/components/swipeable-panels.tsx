@@ -1,310 +1,163 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useAppStore } from "@/stores/app-store";
 import { cn } from "@/lib/utils";
-import {
-  MessageSquare,
-  BookOpen,
-  Server,
-  Workflow,
-  Puzzle,
-} from "lucide-react";
 
-// ── Panel definitions ──────────────────────────────────────────────
+// ── Panel route order for swipe navigation ─────────────────────────
 
-interface PanelDef {
-  id: string;
-  label: string;
-  href: string;
-  icon: React.ElementType;
-  description: string;
-  gradient: string;
-  iconColor: string;
-}
-
-const PANELS: PanelDef[] = [
-  {
-    id: "chat",
-    label: "对话",
-    href: "/chat",
-    icon: MessageSquare,
-    description: "与 AI 助手对话",
-    gradient: "from-blue-500/10 to-purple-500/10",
-    iconColor: "text-blue-500",
-  },
-  {
-    id: "knowledge",
-    label: "知识库",
-    href: "/knowledge",
-    icon: BookOpen,
-    description: "管理和搜索知识",
-    gradient: "from-green-500/10 to-emerald-500/10",
-    iconColor: "text-green-500",
-  },
-  {
-    id: "agents",
-    label: "Agent",
-    href: "/agents",
-    icon: Server,
-    description: "查看和管理 Agent",
-    gradient: "from-orange-500/10 to-amber-500/10",
-    iconColor: "text-orange-500",
-  },
-  {
-    id: "workflow",
-    label: "工作流",
-    href: "/workflow",
-    icon: Workflow,
-    description: "自动化工作流",
-    gradient: "from-pink-500/10 to-rose-500/10",
-    iconColor: "text-pink-500",
-  },
-  {
-    id: "skills",
-    label: "技能",
-    href: "/skills",
-    icon: Puzzle,
-    description: "AI 技能管理",
-    gradient: "from-violet-500/10 to-indigo-500/10",
-    iconColor: "text-violet-500",
-  },
+const PANEL_ROUTES = [
+  "/chat",
+  "/knowledge",
+  "/agents",
+  "/workflow",
+  "/skills",
 ];
 
 const SWIPE_THRESHOLD = 50;
-const TRANSITION_DURATION = 300;
 
-// ── Swipeable Panels Component ────────────────────────────────────
+// ── SwipeablePanels ───────────────────────────────────────────────
 
 interface SwipeablePanelsProps {
   children: React.ReactNode;
-  /** Whether the current route is a "home" page eligible for swipe */
   isHomePage: boolean;
 }
 
 export function SwipeablePanels({ children, isHomePage }: SwipeablePanelsProps) {
   const isMobile = useIsMobile();
   const router = useRouter();
-  const currentPanel = useAppStore((s) => s.currentPanel);
-  const setCurrentPanel = useAppStore((s) => s.setCurrentPanel);
+  const pathname = usePathname();
 
-  const containerRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef<{ x: number; y: number; time: number } | null>(null);
-  const [dragOffset, setDragOffset] = useState(0);
-  const [isDragging, setIsDragging] = useState(false);
-  const [isTransitioning, setIsTransitioning] = useState(false);
   const lockedAxisRef = useRef<"horizontal" | "vertical" | null>(null);
+  const [swipeDir, setSwipeDir] = useState<"left" | "right" | null>(null);
 
-  const panelCount = PANELS.length;
+  // Get current panel index
+  const currentIndex = PANEL_ROUTES.findIndex((r) => pathname.startsWith(r));
 
-  const goToPanel = useCallback(
-    (index: number) => {
-      const clamped = Math.max(0, Math.min(panelCount - 1, index));
-      setCurrentPanel(clamped);
-      setIsTransitioning(true);
-      setDragOffset(0);
-      setTimeout(() => setIsTransitioning(false), TRANSITION_DURATION);
+  const handleSwipe = useCallback(
+    (direction: "left" | "right") => {
+      if (currentIndex < 0) return;
+      const nextIndex = direction === "left" ? currentIndex + 1 : currentIndex - 1;
+      if (nextIndex < 0 || nextIndex >= PANEL_ROUTES.length) return;
+      setSwipeDir(direction);
+      router.push(PANEL_ROUTES[nextIndex]);
+      setTimeout(() => setSwipeDir(null), 300);
     },
-    [panelCount, setCurrentPanel],
+    [currentIndex, router],
   );
 
   const handleTouchStart = useCallback(
     (e: React.TouchEvent) => {
-      if (isTransitioning) return;
+      if (!isHomePage) return;
       const touch = e.touches[0];
-      touchStartRef.current = {
-        x: touch.clientX,
-        y: touch.clientY,
-        time: Date.now(),
-      };
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
       lockedAxisRef.current = null;
-      setIsDragging(true);
     },
-    [isTransitioning],
+    [isHomePage],
   );
 
   const handleTouchMove = useCallback(
     (e: React.TouchEvent) => {
-      if (!touchStartRef.current || isTransitioning) return;
+      if (!touchStartRef.current || !isHomePage) return;
       const touch = e.touches[0];
       const dx = touch.clientX - touchStartRef.current.x;
       const dy = touch.clientY - touchStartRef.current.y;
 
-      // Lock axis on first significant movement
       if (lockedAxisRef.current === null) {
         if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
-          lockedAxisRef.current =
-            Math.abs(dx) >= Math.abs(dy) ? "horizontal" : "vertical";
+          lockedAxisRef.current = Math.abs(dx) >= Math.abs(dy) ? "horizontal" : "vertical";
         }
         return;
       }
 
-      // If vertical locked, let browser scroll
-      if (lockedAxisRef.current === "vertical") return;
-
-      // Horizontal locked — prevent vertical scroll interference
-      e.preventDefault();
-
-      // Apply rubber-band at edges
-      let offset = dx;
-      if (
-        (currentPanel === 0 && dx > 0) ||
-        (currentPanel === panelCount - 1 && dx < 0)
-      ) {
-        offset = dx * 0.3; // rubber-band resistance
+      // Horizontal swipe — prevent vertical scroll
+      if (lockedAxisRef.current === "horizontal") {
+        e.preventDefault();
       }
-
-      setDragOffset(offset);
     },
-    [currentPanel, panelCount, isTransitioning],
+    [isHomePage],
   );
 
   const handleTouchEnd = useCallback(
     (e: React.TouchEvent) => {
-      if (!touchStartRef.current || isTransitioning) return;
-
+      if (!touchStartRef.current || !isHomePage) return;
       const touch = e.changedTouches[0];
       const dx = touch.clientX - touchStartRef.current.x;
       const elapsed = Date.now() - touchStartRef.current.time;
-
-      // Momentum: fast swipe with smaller distance also counts
       const velocity = Math.abs(dx) / elapsed;
       const isQuickSwipe = velocity > 0.3 && Math.abs(dx) > 20;
 
       if (lockedAxisRef.current === "horizontal" || isQuickSwipe) {
         if (dx < -SWIPE_THRESHOLD || (isQuickSwipe && dx < 0)) {
-          goToPanel(currentPanel + 1);
+          handleSwipe("left");
         } else if (dx > SWIPE_THRESHOLD || (isQuickSwipe && dx > 0)) {
-          goToPanel(currentPanel - 1);
-        } else {
-          // Snap back
-          setDragOffset(0);
+          handleSwipe("right");
         }
-      } else {
-        setDragOffset(0);
       }
 
       touchStartRef.current = null;
       lockedAxisRef.current = null;
-      setIsDragging(false);
     },
-    [currentPanel, goToPanel, isTransitioning],
+    [isHomePage, handleSwipe],
   );
 
-  // On desktop or not a home page, render children normally
-  if (!isMobile || !isHomePage) {
+  // Desktop or not a swipeable page — render children directly
+  if (!isMobile || !isHomePage || currentIndex < 0) {
     return <>{children}</>;
   }
 
-  const translateX =
-    -currentPanel * 100 + (dragOffset / (typeof window !== "undefined" ? window.innerWidth : 375)) * 100;
-
   return (
     <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
-      {/* Swipeable panel track */}
+      {/* Content area with swipe gesture */}
       <div
-        ref={containerRef}
-        className="flex-1 min-h-0 overflow-hidden relative touch-pan-y"
+        className={cn(
+          "flex-1 min-h-0 overflow-auto",
+          swipeDir === "left" && "animate-swipe-left",
+          swipeDir === "right" && "animate-swipe-right",
+        )}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
       >
-        <div
-          className={cn("flex h-full", isTransitioning && "transition-transform")}
-          style={{
-            transform: `translateX(${translateX}%)`,
-            transitionDuration: isTransitioning ? `${TRANSITION_DURATION}ms` : "0ms",
-            transitionTimingFunction: "cubic-bezier(0.25, 0.46, 0.45, 0.94)",
-            width: `${panelCount * 100}%`,
-          }}
-        >
-          {PANELS.map((panel, index) => (
-            <PanelCard
-              key={panel.id}
-              panel={panel}
-              isActive={currentPanel === index}
-              onTap={() => router.push(panel.href)}
-            />
-          ))}
-        </div>
+        {children}
       </div>
 
       {/* Dot indicators */}
-      <div className="flex items-center justify-center gap-1.5 py-2 shrink-0">
-        {PANELS.map((panel, index) => (
+      <div className="flex items-center justify-center gap-1.5 py-1.5 shrink-0">
+        {PANEL_ROUTES.map((route, index) => (
           <button
-            key={panel.id}
-            onClick={() => goToPanel(index)}
+            key={route}
+            onClick={() => router.push(route)}
             className={cn(
               "rounded-full transition-all duration-300",
-              currentPanel === index
+              currentIndex === index
                 ? "w-5 h-2 bg-primary"
-                : "w-2 h-2 bg-muted-foreground/30 hover:bg-muted-foreground/50",
+                : "w-2 h-2 bg-muted-foreground/30",
             )}
-            aria-label={`Go to ${panel.label}`}
           />
         ))}
       </div>
+
+      <style jsx global>{`
+        @keyframes swipe-left {
+          from { opacity: 1; transform: translateX(0); }
+          to { opacity: 0; transform: translateX(-30px); }
+        }
+        @keyframes swipe-right {
+          from { opacity: 1; transform: translateX(0); }
+          to { opacity: 0; transform: translateX(30px); }
+        }
+        .animate-swipe-left { animation: swipe-left 0.2s ease-out; }
+        .animate-swipe-right { animation: swipe-right 0.2s ease-out; }
+      `}</style>
     </div>
   );
 }
 
-// ── Panel Preview Card ─────────────────────────────────────────────
+// ── Exports ───────────────────────────────────────────────────────
 
-function PanelCard({
-  panel,
-  isActive,
-  onTap,
-}: {
-  panel: PanelDef;
-  isActive: boolean;
-  onTap: () => void;
-}) {
-  const Icon = panel.icon;
-
-  return (
-    <div
-      className="flex items-center justify-center p-4"
-      style={{ width: `${100 / PANELS.length}%` }}
-    >
-      <button
-        onClick={onTap}
-        className={cn(
-          "w-full max-w-sm rounded-2xl border border-border/50 bg-gradient-to-br p-6",
-          "flex flex-col items-center gap-4 text-center",
-          "transition-all duration-300 active:scale-[0.97]",
-          "shadow-sm hover:shadow-md",
-          panel.gradient,
-        )}
-      >
-        <div
-          className={cn(
-            "flex h-16 w-16 items-center justify-center rounded-2xl",
-            "bg-background/80 border border-border/50 shadow-sm",
-          )}
-        >
-          <Icon size={28} className={panel.iconColor} />
-        </div>
-        <div>
-          <h3 className="text-lg font-semibold text-foreground">{panel.label}</h3>
-          <p className="mt-1 text-sm text-muted-foreground leading-relaxed">
-            {panel.description}
-          </p>
-        </div>
-        <span className="text-xs text-muted-foreground/70">Tap to open →</span>
-      </button>
-    </div>
-  );
-}
-
-// ── Exports for use in app-shell ───────────────────────────────────
-
-/** Panel route prefixes that are eligible for swipe */
-export const SWIPE_PANEL_ROUTES = PANELS.map((p) => p.href);
-
-/** Get panel index from a pathname, or -1 if not a panel route */
 export function getPanelIndex(pathname: string): number {
-  return PANELS.findIndex((p) => pathname.startsWith(p.href));
+  return PANEL_ROUTES.findIndex((r) => pathname.startsWith(r));
 }
