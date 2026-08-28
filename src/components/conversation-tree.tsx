@@ -165,11 +165,15 @@ export function ConversationTree({
                           <span className={cn("text-xs truncate flex-1", unread > 0 ? "font-bold" : "", isActive && "text-[#7c3aed]")}>{session.name || session.title || "Untitled"}</span>
                           <UnreadBadge count={unread} />
                         </div>
-                        {(session.last_active || session.updated_at) && (
+                        {isMobile && session.last_message ? (
+                          <div className="text-[10px] text-muted-foreground/70 truncate ml-4.5 mt-0.5">
+                            {session.last_message}
+                          </div>
+                        ) : (session.last_active || session.updated_at) ? (
                           <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">
                             {session.last_active || session.updated_at}
                           </div>
-                        )}
+                        ) : null}
                       </button>
                     );
                   })}
@@ -191,11 +195,15 @@ export function ConversationTree({
                       <span className={cn("text-xs truncate flex-1", unread > 0 ? "font-bold" : "", isActive && "text-[#7c3aed]")}>{session.name || session.title || "Untitled"}</span>
                       <UnreadBadge count={unread} />
                     </div>
-                    {(session.last_active || session.updated_at) && (
+                    {isMobile && session.last_message ? (
+                      <div className="text-[10px] text-muted-foreground/70 truncate ml-4.5 mt-0.5">
+                        {session.last_message}
+                      </div>
+                    ) : (session.last_active || session.updated_at) ? (
                       <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">
                         {session.last_active || session.updated_at}
                       </div>
-                    )}
+                    ) : null}
                   </button>
                 );
               })
