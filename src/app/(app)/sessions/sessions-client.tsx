@@ -387,7 +387,7 @@ export function SessionsClient() {
           </button>
           <History className="w-6 h-6 text-cyan-400" />
           <div>
-            <h1 className="text-xl font-semibold text-foreground">{t("sessions.title", "Sessions")}</h1>
+            <h1 className="text-lg lg:text-xl font-semibold text-foreground">{t("sessions.title", "Sessions")}</h1>
             <p className="text-xs lg:text-sm text-muted-foreground">{t("sessions.subtitle", "Browse and manage conversation sessions")}</p>
           </div>
         </div>
