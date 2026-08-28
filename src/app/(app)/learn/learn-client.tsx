@@ -513,7 +513,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
                   className="group relative rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40"
                 >
                   {/* Actions */}
-                  <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                  <div className="absolute right-2 top-2 flex items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
                     <button
                       onClick={(e) => openEdit(e, course)}
                       className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
