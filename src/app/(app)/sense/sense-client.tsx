@@ -240,7 +240,7 @@ export function SenseClient() {
   ]
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20">
