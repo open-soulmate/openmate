@@ -513,8 +513,8 @@ export function GlandClient() {
             <div>
               <h3 className="text-xs lg:text-sm font-semibold text-foreground mb-3">{t("gland.form.recentCalls") || "Recent Calls"}</h3>
               {recentRecords.length > 0 ? (
-                <div className="rounded-xl border border-border overflow-hidden">
-                  <table className="w-full text-xs lg:text-sm">
+                <div className="rounded-xl border border-border overflow-x-auto">
+                  <table className="w-full text-xs lg:text-sm min-w-[500px]">
                     <thead>
                       <tr className="bg-muted/50">
                         <th className="text-left px-3 py-2 text-xs font-medium text-muted-foreground">Provider</th>

@@ -787,14 +787,14 @@ export function ImmuneClient() {
                 <RefreshCw className="w-3 h-3" /> {t('common.refresh')}
               </button>
             </div>
-            <div className="max-h-[400px] overflow-y-auto">
+            <div className="max-h-[400px] overflow-y-auto overflow-x-auto">
               {threats.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
                   <Shield className="w-12 h-12 mb-2" />
                   <p className="text-xs lg:text-sm">{t('immune.noThreats')}</p>
                 </div>
               ) : (
-                <table className="w-full text-xs lg:text-sm">
+                <table className="w-full text-xs lg:text-sm min-w-[600px]">
                   <thead className="sticky top-0 bg-muted/50">
                     <tr className="text-xs text-muted-foreground">
                       <th className="text-left p-3 font-medium">{t('immune.time')}</th>
@@ -857,7 +857,7 @@ export function ImmuneClient() {
             </span>
           </div>
 
-          <div className="bg-card border border-border rounded-xl overflow-hidden">
+          <div className="bg-card border border-border rounded-xl overflow-x-auto">
             <div className="max-h-[600px] overflow-y-auto">
               {auditEntries.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
@@ -865,7 +865,7 @@ export function ImmuneClient() {
                   <p className="text-xs lg:text-sm">{t('immune.noAudit')}</p>
                 </div>
               ) : (
-                <table className="w-full text-xs lg:text-sm">
+                <table className="w-full text-xs lg:text-sm min-w-[550px]">
                   <thead className="sticky top-0 bg-muted/50">
                     <tr className="text-xs text-muted-foreground">
                       <th className="text-left p-3 font-medium">{t('immune.time3')}</th>
