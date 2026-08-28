@@ -260,7 +260,7 @@ export function DiscoveryClient() {
         {tab === "scan" && (
           <div className="space-y-6">
             {/* Stats Cards */}
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { icon: Cpu, label: "Processes", value: processes.length, color: "cyan" },
                 { icon: Terminal, label: "CLI Tools", value: cliTools.length, color: "emerald" },
@@ -281,7 +281,7 @@ export function DiscoveryClient() {
             <div className="rounded-xl border border-border bg-card/30">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <h3 className="font-semibold flex items-center gap-2"><Cpu className="w-4 h-4 text-cyan-400" /> Running Processes ({filteredProcesses.length})</h3>
-                <input value={processFilter} onChange={e => setProcessFilter(e.target.value)} placeholder="Filter processes..." className="w-64 px-3 py-1.5 rounded-lg border border-border bg-background text-sm" />
+                <input value={processFilter} onChange={e => setProcessFilter(e.target.value)} placeholder="Filter processes..." className="w-full sm:w-64 px-3 py-1.5 rounded-lg border border-border bg-background text-sm" />
               </div>
               <div className="max-h-80 overflow-y-auto">
                 <table className="w-full text-sm">
@@ -316,7 +316,7 @@ export function DiscoveryClient() {
             <div className="rounded-xl border border-border bg-card/30">
               <div className="flex items-center justify-between px-4 py-3 border-b border-border">
                 <h3 className="font-semibold flex items-center gap-2"><Terminal className="w-4 h-4 text-emerald-400" /> CLI Tools ({filteredTools.length})</h3>
-                <input value={toolFilter} onChange={e => setToolFilter(e.target.value)} placeholder="Filter tools..." className="w-64 px-3 py-1.5 rounded-lg border border-border bg-background text-sm" />
+                <input value={toolFilter} onChange={e => setToolFilter(e.target.value)} placeholder="Filter tools..." className="w-full sm:w-64 px-3 py-1.5 rounded-lg border border-border bg-background text-sm" />
               </div>
               <div className="max-h-60 overflow-y-auto p-4 grid grid-cols-3 gap-2">
                 {filteredTools.map(tool => (
@@ -487,7 +487,7 @@ export function DiscoveryClient() {
             )}
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {/* REST Probe */}
               <div className="rounded-xl border border-border bg-card/30 p-4 space-y-3">
                 <h4 className="font-medium flex items-center gap-2 text-sm"><Globe className="w-4 h-4 text-blue-400" /> REST Probe</h4>

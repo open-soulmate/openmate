@@ -106,7 +106,7 @@ export function AdminClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-3 lg:py-4">
         <div className="flex items-center gap-2">
           <Shield size={20} className="text-primary" />
           <h1 className="text-lg font-semibold">System Admin</h1>
@@ -120,7 +120,7 @@ export function AdminClient() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {/* System Status */}
         <div className="mb-6 grid gap-4 sm:grid-cols-4">
           <div className="rounded-lg border border-border bg-card p-4">

@@ -304,7 +304,7 @@ export function MarrowClient() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-6 pb-4">
+      <div className="shrink-0 px-3 lg:px-6 pt-6 pb-4">
         <div className="flex items-center gap-3 mb-1">
           <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20">
             <Bone className="w-5 h-5 text-amber-400" />
@@ -352,7 +352,7 @@ export function MarrowClient() {
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="flex-1 overflow-y-auto px-3 lg:px-6 pb-6">
 
         {/* ── Overview Tab ── */}
         {activeTab === "overview" && (
@@ -669,7 +669,7 @@ export function MarrowClient() {
             <div>
               <h3 className="text-sm font-semibold text-foreground mb-3">{t("marrow.exportHistory") || "Export History"}</h3>
               {exports.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground text-sm">{t("marrow.noExports") || "No exports yet"}</div>
+                <div className="text-center py-3 lg:py-6 text-muted-foreground text-sm">{t("marrow.noExports") || "No exports yet"}</div>
               ) : (
                 <div className="space-y-2">
                   {exports.map(exp => (

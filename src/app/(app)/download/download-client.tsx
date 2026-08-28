@@ -147,7 +147,7 @@ export function DownloadClient() {
 
       {showAdd && (
         <div className="mb-6 p-4 rounded-xl border bg-card">
-          <div className="flex gap-3">
+          <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
               <input value={newUrl} onChange={e => setNewUrl(e.target.value)}
                 placeholder={t('download.urlPlaceholder')}

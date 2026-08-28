@@ -1299,13 +1299,13 @@ export default function AIGroupsPage() {
             );
           })}
           {sendingMessage && (
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"><Bot className="w-4 h-4 text-primary" /></div>
               <div className="bg-muted rounded-xl px-4 py-2.5"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
             </div>
           )}
           {discussionLoading && (
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <div className="w-8 h-8 rounded-full bg-violet-500/10 flex items-center justify-center"><MessageCircle className="w-4 h-4 text-violet-400" /></div>
               <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl px-4 py-2.5">
                 <div className="flex items-center gap-2">

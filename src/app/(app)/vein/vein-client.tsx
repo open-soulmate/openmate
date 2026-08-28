@@ -230,12 +230,12 @@ function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
       {expanded && (
         <div className="rounded-lg border border-border bg-muted/20 overflow-hidden">
           {loading ? (
-            <div className="flex items-center justify-center py-6 text-muted-foreground">
+            <div className="flex items-center justify-center py-3 lg:py-6 text-muted-foreground">
               <RefreshCw size={14} className="animate-spin mr-2" />
               <span className="text-xs">{t("vein.loadingVersionHistoryText")}</span>
             </div>
           ) : versions.length === 0 ? (
-            <div className="py-6 text-center text-xs text-muted-foreground">
+            <div className="py-3 lg:py-6 text-center text-xs text-muted-foreground">
               {t("vein.noVersionHistoryText")}
             </div>
           ) : (
@@ -663,7 +663,7 @@ export function VeinClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <Folder size={20} className="text-red-500" />
           <h1 className="text-lg font-semibold">{t("vein.title") || "Vein · File Management"}</h1>
@@ -695,7 +695,7 @@ export function VeinClient() {
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-border px-6">
+      <div className="flex border-b border-border px-3 lg:px-6">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -713,7 +713,7 @@ export function VeinClient() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
         {/* Upload progress */}
         {uploadProgress && (
           <div className={cn(
@@ -1273,7 +1273,7 @@ export function VeinClient() {
             {/* Cache Actions */}
             <div className="rounded-xl border border-border bg-card p-4">
               <h3 className="text-sm font-medium mb-3">{t("vein.cacheOperationsTitle")}</h3>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <button
                   onClick={handleCacheCleanup}
                   className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"

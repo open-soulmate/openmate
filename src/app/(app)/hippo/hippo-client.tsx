@@ -273,7 +273,7 @@ export function HippoClient() {
             {/* Create Memory */}
             <div className="rounded-xl border border-border p-4 space-y-3">
               <h3 className="text-sm font-medium">{t("hippo.createMemory") || "Create Memory"}</h3>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input value={newSessionId} onChange={(e) => setNewSessionId(e.target.value)}
                   placeholder={t("hippo.sessionId") || "Session ID"}
                   className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20" />

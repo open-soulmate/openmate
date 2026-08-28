@@ -216,7 +216,7 @@ export function BenchmarkClient() {
   return (
     <div className="flex h-full flex-col bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
             <Gauge size={18} className="text-primary" />
@@ -243,7 +243,7 @@ export function BenchmarkClient() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {/* ── Run Tab ── */}
         {tab === "run" && (
           <div className="space-y-6">
@@ -458,7 +458,7 @@ export function BenchmarkClient() {
                   const item = comparison.find(c => c.organ === expandedOrgan)!;
                   return (
                     <div className="ml-11 rounded-lg border border-border bg-muted/30 p-4">
-                      <div className="grid grid-cols-3 gap-4 text-xs">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
                         <div>
                           <span className="text-muted-foreground">{t("benchmark.minLatency")}</span>
                           <p className="font-mono font-medium">{formatMs(item.min_ms)}</p>

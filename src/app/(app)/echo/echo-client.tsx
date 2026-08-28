@@ -284,7 +284,7 @@ export function EchoClient() {
         {/* Send Tab */}
         {tab === "send" && (
           <div className="space-y-4 max-w-xl">
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <select value={sendChannel} onChange={(e) => setSendChannel(e.target.value)}
                 className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
                 <option value="webhook">Webhook</option>
@@ -426,7 +426,7 @@ export function EchoClient() {
                           )}
 
                           {/* Channel Override */}
-                          <div className="flex gap-3">
+                          <div className="flex flex-col sm:flex-row gap-3">
                             <select value={sendChannel} onChange={(e) => setSendChannel(e.target.value)}
                               className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
                               <option value="console">Console</option>
@@ -528,7 +528,7 @@ export function EchoClient() {
                     )}
 
                     {/* Channel Override */}
-                    <div className="flex gap-3">
+                    <div className="flex flex-col sm:flex-row gap-3">
                       <select value={sendChannel} onChange={(e) => setSendChannel(e.target.value)}
                         className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
                         <option value="console">Console</option>
@@ -627,7 +627,7 @@ export function EchoClient() {
                 <label className="text-xs text-muted-foreground">Endpoint</label>
                 <input value={chEndpoint} onChange={(e) => setChEndpoint(e.target.value)}
                   placeholder="Webhook URL / SMTP host"
-                  className="block rounded-lg border border-border bg-background px-3 py-2 text-sm w-80" />
+                  className="block rounded-lg border border-border bg-background px-3 py-2 text-sm w-full sm:w-80" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">Token / Password</label>
@@ -639,7 +639,7 @@ export function EchoClient() {
                 <label className="text-xs text-muted-foreground">Extra (JSON)</label>
                 <input value={chExtra} onChange={(e) => setChExtra(e.target.value)}
                   placeholder='{"smtp_port":587,"username":"..."}'
-                  className="block rounded-lg border border-border bg-background px-3 py-2 text-sm w-64" />
+                  className="block rounded-lg border border-border bg-background px-3 py-2 text-sm w-full sm:w-64" />
               </div>
               <button onClick={fetchChannelHealth} disabled={testingHealth}
                 className="flex items-center gap-1.5 rounded-lg bg-emerald-500 px-3 py-2 text-sm text-white hover:bg-emerald-600 disabled:opacity-50">

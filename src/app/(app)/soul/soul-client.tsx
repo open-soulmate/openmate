@@ -159,7 +159,7 @@ export default function SoulClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <Brain size={20} className="text-violet-500" />
           <h1 className="text-lg font-semibold">{t("soul.title")}</h1>
@@ -176,7 +176,7 @@ export default function SoulClient() {
       </div>
 
       {/* Tab Bar */}
-      <div className="flex items-center gap-1 border-b border-border px-6 py-2 overflow-x-auto">
+      <div className="flex items-center gap-1 border-b border-border px-3 lg:px-6 py-2 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
@@ -194,7 +194,7 @@ export default function SoulClient() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
 
         {/* ── Dashboard Tab ───────────────────────────────────────── */}
         {activeTab === "dashboard" && (

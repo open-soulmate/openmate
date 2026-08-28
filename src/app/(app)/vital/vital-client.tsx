@@ -231,7 +231,7 @@ export function VitalClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/10">
             <Activity size={18} className="text-emerald-500" />
@@ -264,7 +264,7 @@ export function VitalClient() {
 
       {/* Overview Cards */}
       {metrics && (
-        <div className="border-b border-border px-6 py-4">
+        <div className="border-b border-border px-3 lg:px-6 py-4">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             <MetricCard
               icon={Cpu}
@@ -298,7 +298,7 @@ export function VitalClient() {
       )}
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 border-b border-border px-6">
+      <div className="flex items-center gap-1 border-b border-border px-3 lg:px-6">
         {tabs.map(tab => {
           const Icon = tab.icon;
           return (
@@ -325,7 +325,7 @@ export function VitalClient() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {/* Error banner */}
         {healthError && activeTab === "health" && (
           <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500 flex items-center gap-2">
