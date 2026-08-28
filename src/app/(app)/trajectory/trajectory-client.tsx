@@ -4,6 +4,9 @@ import { useEffect, useState, useCallback, useRef } from "react"
 import { cn } from "@/lib/utils"
 import { getApiBaseUrl } from "@/lib/api-client"
 import { useTranslation } from "react-i18next"
+import { useIsMobile } from "@/hooks/use-mobile"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
+import { PanelLeft } from "lucide-react"
 import {
   Activity, Search, GitBranch, Play, Pause, SkipForward, SkipBack,
   RefreshCw, Clock, Zap, Hash, Filter, ChevronRight, ChevronDown,
@@ -541,6 +544,8 @@ export function TrajectoryClient() {
   const [sessions, setSessions] = useState<TrajectorySession[]>([])
   const [events, setEvents] = useState<TrajectoryEvent[]>([])
   const [eventTypes, setEventTypes] = useState<EventType[]>([])
+  const isMobile = useIsMobile()
+  const [sessionListOpen, setSessionListOpen] = useState(false)
   const [selectedSession, setSelectedSession] = useState<string | null>(null)
   const [searchResults, setSearchResults] = useState<TrajectoryEvent[] | null>(null)
   const [loading, setLoading] = useState(true)
@@ -664,6 +669,7 @@ export function TrajectoryClient() {
   const selectSession = useCallback((id: string) => {
     setSelectedSession(id)
     setView("detail")
+    setSessionListOpen(false)
     setReplayMode(false)
     setReplayPlaying(false)
     setReplayIdx(0)
@@ -718,33 +724,24 @@ export function TrajectoryClient() {
   // ── Render ─────────────────────────────────────────────────
 
   return (
-    <div style={{ padding: 20, height: "100%", overflow: "auto" }}>
+    <div className="px-3 lg:px-5 py-4 lg:py-5 h-full overflow-auto">
       {/* Title bar */}
-      <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 20 }}>
+      <div className="flex items-center gap-2 lg:gap-3 mb-4 lg:mb-5">
         {view !== "list" && (
           <button
             onClick={() => { setView("list"); setSearchResults(null) }}
-            style={{
-              padding: "6px 8px", borderRadius: 6, border: "1px solid hsl(var(--border))",
-              background: "transparent", cursor: "pointer", color: "hsl(var(--foreground))",
-              display: "flex", alignItems: "center",
-            }}
+            className="p-1.5 rounded-md border border-border hover:bg-muted transition-colors"
           >
             <ArrowLeft size={16} />
           </button>
         )}
-        <BarChart3 size={22} style={{ color: "hsl(var(--primary))" }} />
-        <h2 style={{ fontSize: 20, fontWeight: 700, margin: 0, color: "hsl(var(--foreground))" }}>
+        <BarChart3 size={20} className="text-primary" />
+        <h2 className="text-lg lg:text-xl font-bold">
         {t("trajectory.title")}
         </h2>
         <button
           onClick={() => { fetchStats(); fetchSessions() }}
-          style={{
-            marginLeft: "auto", padding: "6px 12px", borderRadius: 6,
-            border: "1px solid hsl(var(--border))", background: "transparent",
-            cursor: "pointer", fontSize: 12, color: "hsl(var(--muted-foreground))",
-            display: "flex", alignItems: "center", gap: 4,
-          }}
+          className="ml-auto px-2.5 py-1.5 rounded-md border border-border text-xs text-muted-foreground hover:bg-muted flex items-center gap-1 transition-colors"
         >
           <RefreshCw size={12} /> {t("trajectory.refresh")}
         </button>
@@ -753,14 +750,12 @@ export function TrajectoryClient() {
             if (view === "analytics") { setView("list") }
             else { setView("analytics"); fetchAnalytics() }
           }}
-          style={{
-            padding: "6px 12px", borderRadius: 6,
-            border: view === "analytics" ? "1px solid hsl(var(--primary))" : "1px solid hsl(var(--border))",
-            background: view === "analytics" ? "hsl(var(--primary) / 0.1)" : "transparent",
-            cursor: "pointer", fontSize: 12,
-            color: view === "analytics" ? "hsl(var(--primary))" : "hsl(var(--muted-foreground))",
-            display: "flex", alignItems: "center", gap: 4,
-          }}
+          className={cn(
+            "px-2.5 py-1.5 rounded-md text-xs flex items-center gap-1 transition-colors",
+            view === "analytics"
+              ? "border border-primary text-primary bg-primary/10"
+              : "border border-border text-muted-foreground hover:bg-muted"
+          )}
         >
           <BarChart3 size={12} /> {t("trajectory.analytics")}
         </button>
@@ -932,18 +927,12 @@ export function TrajectoryClient() {
         </div>
       ) : (
       <div style={{ display: "flex", gap: 16, minHeight: 400 }}>
-        {/* Left: Session List */}
-        {(view === "list" || view === "detail") && (
-          <div style={{
-            width: view === "list" ? "100%" : 300, flexShrink: 0,
-            borderRight: view === "detail" ? "1px solid hsl(var(--border))" : "none",
-            paddingRight: view === "detail" ? 16 : 0,
-          }}>
-            {view === "list" ? (
-              // Full-width session list
-              <div style={{
+        {/* Left: Session List — Sheet on mobile, inline on desktop */}
+        {view === "list" && (
+          <div style={{ width: "100%" }}>
+            <div style={{
                 display: "grid",
-                gridTemplateColumns: "repeat(auto-fill, minmax(320px, 1fr))",
+                gridTemplateColumns: isMobile ? "1fr" : "repeat(auto-fill, minmax(320px, 1fr))",
                 gap: 8,
               }}>
                 {loading ? (
@@ -970,8 +959,16 @@ export function TrajectoryClient() {
                   ))
                 )}
               </div>
-            ) : (
-              // Sidebar session list
+          </div>
+        )}
+
+        {/* Detail view: sidebar session list */}
+        {view === "detail" && !isMobile && (
+          <div style={{
+            width: 300, flexShrink: 0,
+            borderRight: "1px solid hsl(var(--border))",
+            paddingRight: 16,
+          }}>
               <div>
                 {sessions.map(s => (
                   <SessionCard
@@ -982,8 +979,28 @@ export function TrajectoryClient() {
                   />
                 ))}
               </div>
-            )}
           </div>
+        )}
+
+        {/* Mobile: session list Sheet for detail view */}
+        {view === "detail" && isMobile && (
+          <Sheet open={sessionListOpen} onOpenChange={setSessionListOpen}>
+            <SheetContent side="left" size="md" className="p-0 flex flex-col">
+              <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
+                <SheetTitle className="text-sm font-semibold">{t("trajectory.sessions")}</SheetTitle>
+              </SheetHeader>
+              <div className="flex-1 overflow-y-auto p-2">
+                {sessions.map(s => (
+                  <SessionCard
+                    key={s.id}
+                    session={s}
+                    selected={selectedSession === s.id}
+                    onSelect={() => selectSession(s.id)}
+                  />
+                ))}
+              </div>
+            </SheetContent>
+          </Sheet>
         )}
 
         {/* Right: Event Timeline */}
@@ -992,6 +1009,20 @@ export function TrajectoryClient() {
             {/* Toolbar */}
             {view === "detail" && events.length > 0 && (
               <div style={{ display: "flex", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+                {isMobile && (
+                  <button
+                    onClick={() => setSessionListOpen(true)}
+                    style={{
+                      padding: "5px 12px", borderRadius: 6, fontSize: 12,
+                      border: "1px solid hsl(var(--border))",
+                      background: "transparent",
+                      color: "hsl(var(--muted-foreground))",
+                      cursor: "pointer", display: "flex", alignItems: "center", gap: 4,
+                    }}
+                  >
+                    <PanelLeft size={12} /> {t("trajectory.sessions")}
+                  </button>
+                )}
                 <button
                   onClick={() => { setReplayMode(!replayMode); setReplayIdx(0); setReplayPlaying(false) }}
                   style={{
