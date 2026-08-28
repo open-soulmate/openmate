@@ -187,22 +187,27 @@ export function BottomNav() {
         })}
       </div>
 
-      {/* Center semicircle button — protrudes upward from nav top */}
-      <div className="absolute left-1/2 -translate-x-1/2 top-0 -translate-y-1/2 z-10">
+      {/* Center semicircle — part of the nav bar, protruding upward */}
+      <div className="absolute left-1/2 -translate-x-1/2 bottom-0 z-10">
         <button
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerLeave}
           onContextMenu={(e) => e.preventDefault()}
-          className="flex h-14 w-14 items-center justify-center transition-transform hover:scale-105 active:scale-95"
+          className="flex items-center justify-center transition-transform hover:scale-105 active:scale-95"
           style={{
+            width: "64px",
+            height: "32px",
             borderRadius: "999px 999px 0 0",
-            background: "linear-gradient(180deg, #c4b5fd 0%, #7c3aed 100%)",
-            boxShadow: "0 -2px 10px rgba(124,58,237,0.3), 0 2px 8px rgba(0,0,0,0.2)",
+            background: "hsl(var(--background))",
+            borderTop: "1px solid hsl(var(--border))",
+            borderLeft: "1px solid hsl(var(--border))",
+            borderRight: "1px solid hsl(var(--border))",
+            boxShadow: "0 -2px 8px rgba(0,0,0,0.08)",
           }}
           title="Click: Search · Hold: Voice"
         >
-          <Search size={20} className="text-white drop-shadow-sm" />
+          <Search size={20} className="text-muted-foreground" />
         </button>
       </div>
     </nav>
