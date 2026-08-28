@@ -113,6 +113,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { t } = useTranslation();
   const [eventCount, setEventCount] = useState(0);
+  const [rightPanelWidth, setRightPanelWidth] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // ── Conversation list state ──────────────────────────────────────
@@ -329,6 +330,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMidScreenExpanded(false);
   }, [isMidScreen]);
 
+  // Track right panel width (responsive to window resize)
+  useEffect(() => {
+    const update = () => setRightPanelWidth(Math.round(window.innerWidth / 2));
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
   useEffect(() => { setMenuOpen(false); setRightPanelOpen(false); setMobileConvOpen(false); }, [pathname]);
 
   // Sync swipeable panel index with current route
@@ -498,8 +507,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Right Panel — workspace tabs (mobile: Sheet, desktop: inline with transition) */}
       {!isMobile && (
         <div
-          className="flex flex-col h-full overflow-hidden border-l border-border shrink-0 transition-all duration-250 ease-in-out"
-          style={{ width: rightPanelOpen ? Math.round(window.innerWidth / 2) : 0 }}
+          className="flex flex-col h-full overflow-hidden border-l border-border shrink-0 transition-all duration-[250ms] ease-in-out"
+          style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
         >
           <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
         </div>
