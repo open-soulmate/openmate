@@ -874,28 +874,28 @@ export function ChatClient() {
               className="w-full resize-none bg-transparent px-4 py-3 text-sm focus:outline-none min-h-[44px] max-h-[120px]" />
 
             {/* Action buttons row */}
-            <div className="flex items-center gap-1 px-2 pb-2">
-              <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted transition-colors">
+            <div className="flex items-center gap-0.5 lg:gap-1 px-1.5 lg:px-2 pb-2">
+              <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center w-9 h-9 lg:w-auto lg:h-auto lg:px-2.5 lg:py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors">
                 <Plus className="w-4 h-4" />
               </button>
               <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
 
-              <div className="w-px h-4 bg-border mx-1" />
+              <div className="w-px h-4 bg-border mx-0.5 lg:mx-1" />
 
               <button
                 onClick={() => setAgentMode(prev => prev === 'plan' ? 'act' : 'plan')}
-                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                className={`flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs font-medium touch-manipulation transition-colors ${
                   agentMode === 'plan'
                     ? 'text-blue-400 hover:bg-blue-500/10'
                     : 'text-green-400 hover:bg-green-500/10'
                 }`}
               >
                 {agentMode === 'plan' ? <Brain className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-                <span>{agentMode === 'plan' ? 'Plan' : 'Act'}</span>
-                <ChevronDown className="w-3 h-3" />
+                <span className="hidden sm:inline">{agentMode === 'plan' ? 'Plan' : 'Act'}</span>
+                <ChevronDown className="w-3 h-3 hidden sm:inline" />
               </button>
 
-              <button onClick={() => setShowCheckpoints(!showCheckpoints)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted transition-colors relative">
+              <button onClick={() => setShowCheckpoints(!showCheckpoints)} className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors relative">
                 <RotateCcw className="w-4 h-4" />
                 <span className="hidden sm:inline">{t("chat.history", "历史")}</span>
                 {checkpoints.length > 0 && (
@@ -908,7 +908,7 @@ export function ChatClient() {
               <div className="flex-1" />
 
               <button onClick={handleSend} disabled={loading || (!input.trim() && attachments.length === 0)}
-                className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                className="flex items-center justify-center w-10 h-10 lg:w-8 lg:h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 touch-manipulation transition-colors">
                 <Send className="w-4 h-4" />
               </button>
             </div>

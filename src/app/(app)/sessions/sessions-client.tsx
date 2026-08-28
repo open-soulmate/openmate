@@ -569,20 +569,20 @@ export function SessionsClient() {
                             return (
                               <div
                                 key={session.session_id}
-                                className={`group flex items-center gap-2 pl-14 pr-4 py-2 cursor-pointer transition-colors ${
+                                className={`group flex items-center gap-2 pl-8 lg:pl-14 pr-3 lg:pr-4 py-2.5 cursor-pointer transition-colors ${
                                   selectedSession?.session_id === session.session_id
                                     ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] border-l-2 border-[#7c3aed] hover:bg-[rgba(124,58,237,0.18)]"
                                     : "hover:bg-zinc-800/20 border-l-2 border-transparent"
                                 }`}
                                 onClick={() => fetchSessionDetail(session.session_id)}
                               >
-                                {/* Favorite star */}
+                                {/* Favorite star — always visible on mobile, hover-reveal on desktop */}
                                 <button
                                   onClick={(e) => { e.stopPropagation(); toggleFavorite(session.session_id) }}
-                                  className={`p-0.5 rounded transition-colors flex-shrink-0 ${
+                                  className={`p-1 lg:p-0.5 rounded transition-colors flex-shrink-0 touch-manipulation ${
                                     isFav
                                       ? "text-yellow-400 hover:text-yellow-300"
-                                      : "text-zinc-700 opacity-0 group-hover:opacity-100 hover:text-yellow-400"
+                                      : "text-zinc-700 lg:opacity-0 lg:group-hover:opacity-100 hover:text-yellow-400"
                                   }`}
                                   title={isFav ? t("sessions.removeFavorite", "Remove from favorites") : t("sessions.addFavorite", "Add to favorites")}
                                 >
