@@ -485,7 +485,7 @@ export function SettingsClient() {
       {/* Mobile: Sheet drawer for sidebar */}
       {isMobile ? (
         <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
-          <SheetContent side="left" className="w-64 p-4 flex flex-col">
+          <SheetContent side="left" size="sm" className="p-4 flex flex-col">
             <SidebarNav />
           </SheetContent>
         </Sheet>
