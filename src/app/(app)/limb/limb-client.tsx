@@ -298,7 +298,7 @@ export function LimbClient() {
             {/* Detail Panel — Sheet on mobile, inline on desktop */}
             {selected && isMobile ? (
               <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-                <SheetContent side="right" className="w-full p-0 flex flex-col overflow-y-auto">
+                <SheetContent side="right" size="full" className="p-0 flex flex-col overflow-y-auto">
                   <div className="p-4 space-y-4">
                     <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                       <div className="flex items-center justify-between">
