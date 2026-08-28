@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import {
   MessageSquare, Users, BookOpen, Workflow, Settings, Brain, Activity,
   LayoutDashboard, Bell, Server, GraduationCap, Network, Share2, Search,
@@ -12,7 +12,7 @@ import {
   Camera, Download, Tag, User, Bot, Droplets, Dna, Eye, Shield, Bone,
   Volume2, Layers, Link2, Home, MousePointer, Mic, ImageIcon, Smile,
   Stethoscope, Cpu, Bolt, Heart, Gauge, BarChart3, Package, ScrollText,
-  History, Store, Pill,
+  History, Store, Pill, X,
 } from "lucide-react";
 
 interface BottomNavItem {
@@ -102,61 +102,128 @@ const navItems: BottomNavItem[] = [
 export function BottomNav() {
   const pathname = usePathname();
   const { t } = useTranslation();
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const leftRef = useRef<HTMLDivElement>(null);
+  const rightRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLAnchorElement>(null);
+  const [centerOpen, setCenterOpen] = useState(false);
 
-  // Mouse wheel → horizontal scroll
+  // Split items: left half and right half
+  const mid = Math.ceil(navItems.length / 2);
+  const leftItems = navItems.slice(0, mid);
+  const rightItems = navItems.slice(mid);
+
+  // Mouse wheel → horizontal scroll for both sides
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const handler = (e: WheelEvent) => {
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY;
-      }
-    };
-    el.addEventListener("wheel", handler, { passive: false });
-    return () => el.removeEventListener("wheel", handler);
+    const handlers: Array<{ el: HTMLDivElement; fn: (e: WheelEvent) => void }> = [];
+    for (const el of [leftRef.current, rightRef.current]) {
+      if (!el) continue;
+      const fn = (e: WheelEvent) => {
+        if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
+          e.preventDefault();
+          el.scrollLeft += e.deltaY;
+        }
+      };
+      el.addEventListener("wheel", fn, { passive: false });
+      handlers.push({ el, fn });
+    }
+    return () => handlers.forEach(({ el, fn }) => el.removeEventListener("wheel", fn));
   }, []);
 
-  // Auto-scroll to active item on mount / pathname change
+  // Auto-scroll to active item
   useEffect(() => {
-    if (activeRef.current && scrollRef.current) {
-      const container = scrollRef.current;
-      const active = activeRef.current;
-      const left = active.offsetLeft - container.clientWidth / 2 + active.clientWidth / 2;
-      container.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+    if (activeRef.current) {
+      const container = activeRef.current.closest("[data-scroll-container]") as HTMLDivElement;
+      if (container) {
+        const left = activeRef.current.offsetLeft - container.clientWidth / 2 + activeRef.current.clientWidth / 2;
+        container.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+      }
     }
   }, [pathname]);
 
+  const renderItems = (items: BottomNavItem[], scrollRef: React.RefObject<HTMLDivElement | null>) => (
+    <div
+      ref={scrollRef}
+      data-scroll-container
+      className="flex h-full flex-1 items-center gap-0.5 overflow-x-auto px-1.5"
+      style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+    >
+      {items.map((item) => {
+        const active = pathname.startsWith(item.href);
+        const Icon = item.icon;
+        return (
+          <Link
+            key={item.href}
+            href={item.href}
+            ref={active ? activeRef : undefined}
+            className={cn(
+              "flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2 py-1 text-[9px] font-medium transition-colors min-w-[46px]",
+              active
+                ? "text-primary bg-primary/10"
+                : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            )}
+          >
+            <Icon size={16} strokeWidth={active ? 2.2 : 1.5} />
+            <span className="truncate max-w-[42px] leading-tight">{t(item.label)}</span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+
   return (
-    <nav className="flex h-12 shrink-0 items-center border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      <div
-        ref={scrollRef}
-        className="flex h-full flex-1 items-center gap-0.5 overflow-x-auto px-2"
-        style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
-      >
-        {navItems.map((item) => {
-          const active = pathname.startsWith(item.href);
-          const Icon = item.icon;
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              ref={active ? activeRef : undefined}
-              className={cn(
-                "flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1 text-[10px] font-medium transition-colors min-w-[52px]",
-                active
-                  ? "text-primary bg-primary/10"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              )}
-            >
-              <Icon size={18} strokeWidth={active ? 2.2 : 1.5} />
-              <span className="truncate max-w-[48px] leading-tight">{t(item.label)}</span>
-            </Link>
-          );
-        })}
-      </div>
-    </nav>
+    <>
+      <nav className="relative flex h-14 shrink-0 items-center border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+        {/* Left items */}
+        {renderItems(leftItems, leftRef)}
+
+        {/* Center logo button */}
+        <div className="relative flex shrink-0 items-center justify-center px-2">
+          <button
+            onClick={() => setCenterOpen(!centerOpen)}
+            className={cn(
+              "flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all shadow-lg",
+              centerOpen
+                ? "border-primary bg-primary text-primary-foreground scale-110 shadow-primary/30"
+                : "border-primary/50 bg-card text-primary hover:border-primary hover:shadow-primary/20 hover:scale-105"
+            )}
+            title="Search & Voice"
+          >
+            {centerOpen ? <X size={20} /> : (
+              <span className="text-sm font-bold tracking-tighter">OM</span>
+            )}
+          </button>
+
+          {/* Popup menu: search + voice */}
+          {centerOpen && (
+            <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+              <button
+                onClick={() => {
+                  setCenterOpen(false);
+                  document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
+                }}
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-card border border-border shadow-lg hover:bg-accent transition-colors"
+                title="Search (Ctrl+K)"
+              >
+                <Search size={20} className="text-foreground" />
+              </button>
+              <button
+                onClick={() => {
+                  setCenterOpen(false);
+                  // Trigger voice input — dispatch custom event for chat to handle
+                  document.dispatchEvent(new CustomEvent("openmate-voice-input"));
+                }}
+                className="flex h-12 w-12 items-center justify-center rounded-full bg-primary border border-primary shadow-lg shadow-primary/30 hover:bg-primary/90 transition-colors"
+                title="Voice Input"
+              >
+                <Mic size={20} className="text-primary-foreground" />
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Right items */}
+        {renderItems(rightItems, rightRef)}
+      </nav>
+    </>
   );
 }
