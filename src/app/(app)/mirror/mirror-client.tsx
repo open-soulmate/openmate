@@ -234,20 +234,21 @@ export function MirrorClient() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
-        <div className="flex items-center gap-3">
-          <Layers size={20} className="text-indigo-500" />
-          <h1 className="text-lg font-semibold">{t("mirror.title") || "Mirror · Sandbox Testing"}</h1>
-          <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-500">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-3 lg:py-4 gap-2">
+        <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
+          <Layers size={18} className="text-indigo-500 shrink-0" />
+          <h1 className="text-sm lg:text-lg font-semibold truncate">{t("mirror.title") || "Mirror · Sandbox Testing"}</h1>
+          <span className="rounded-full bg-indigo-500/10 px-1.5 lg:px-2 py-0.5 text-[10px] lg:text-xs font-medium text-indigo-500 shrink-0 hidden sm:inline">
             {t("mirror.t13347") || "Isolated environment"}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 lg:gap-2 shrink-0">
           {tab === "sandboxes" && (
             <>
               <button onClick={handleCleanup}
-                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted">
-                <Sparkles size={12} /> {t("mirror.cleanup") || "Cleanup Expired"}
+                className="flex items-center gap-1 rounded-lg border border-border px-2 lg:px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted touch-manipulation">
+                <Sparkles size={12} />
+                <span className="hidden sm:inline">{t("mirror.cleanup") || "Cleanup"}</span>
               </button>
               <button onClick={() => setShowCreate(true)}
                 className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-1.5 text-xs lg:text-sm text-white hover:bg-indigo-600">

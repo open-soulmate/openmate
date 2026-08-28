@@ -92,11 +92,11 @@ export function VisionClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
-        <div className="flex items-center gap-3">
-          <ImageIcon size={20} className="text-indigo-500" />
-          <h1 className="text-lg font-semibold">{t("vision.title") || "Vision Engine"}</h1>
-          <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-500">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-3 lg:py-4 gap-2">
+        <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
+          <ImageIcon size={18} className="text-indigo-500 shrink-0" />
+          <h1 className="text-sm lg:text-lg font-semibold truncate">{t("vision.title") || "Vision Engine"}</h1>
+          <span className="rounded-full bg-indigo-500/10 px-1.5 lg:px-2 py-0.5 text-[10px] lg:text-xs font-medium text-indigo-500 shrink-0">
             {t("vision.badge") || "Charts"}
           </span>
           {stats && <StatusBadge online={stats.status === "ok"} />}
@@ -104,7 +104,7 @@ export function VisionClient() {
         <button
           onClick={() => { fetchStats(); fetchOutputs(); }}
           disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg border border-border px-2 lg:px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors disabled:opacity-50 shrink-0 touch-manipulation"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           {t("common.refresh") || "Refresh"}
