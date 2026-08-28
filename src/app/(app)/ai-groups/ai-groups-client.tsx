@@ -6,7 +6,7 @@ import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useMediaQuery } from '@/hooks/use-mobile';
 import {
   Users, Plus, Send, Bot, Shield, Zap, User, Trash2, ChevronDown,
-  ChevronRight, Settings, X, Loader2, Search, UserPlus, Edit3, Check,
+  ChevronRight, ChevronLeft, Settings, X, Loader2, Search, UserPlus, Edit3, Check,
   MessageSquare, AtSign, PanelRightClose, PanelRightOpen,
   ArrowUp, ArrowRight, ArrowDown, Star, Trophy, Target, Lightbulb,
   MessageCircle, Hand, FileText, Award, TrendingUp,
@@ -992,7 +992,7 @@ export default function AIGroupsPage() {
         <div className="h-12 border-b border-border flex items-center px-4 justify-between shrink-0">
           <div className="flex items-center gap-2">
             <button onClick={() => setMobileView('list')} className={`${isMobile ? 'inline-flex' : 'hidden'} mr-2 p-1 rounded hover:bg-muted`}>
-              ←
+              <ChevronLeft className="w-4 h-4" />
             </button>
             <Users className="w-4 h-4 text-primary" />
             <span className="font-medium text-sm">{selectedGroup?.name || t('aiGroups.selectGroup')}</span>
@@ -1008,20 +1008,14 @@ export default function AIGroupsPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => {
-              if (isMobile) {
-                setShowRightPanel(!showRightPanel);
-              } else {
-                setShowRightPanel(!showRightPanel);
-              }
-            }} className="p-1 rounded hover:bg-muted">
+            <button onClick={() => setShowRightPanel(!showRightPanel)} className="p-1 rounded hover:bg-muted">
               {showRightPanel ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
             </button>
           </div>
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 md:px-6 py-4 space-y-4">
           {!selectedGroup && (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <MessageSquare className="w-12 h-12 mb-4 opacity-40" />
@@ -1264,7 +1258,7 @@ export default function AIGroupsPage() {
             <div className="p-3 border-b border-border flex items-center justify-between">
               <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
             </div>
-            <div className="flex-1 overflow-y-auto h-[calc(100vh-3rem)]">
+            <div className="flex-1 overflow-y-auto">
               {/* Group info */}
               {selectedGroup && (
                 <>
@@ -1364,7 +1358,7 @@ export default function AIGroupsPage() {
         <div className="w-72 shrink-0 border-l border-border bg-card flex flex-col">
           <div className="p-3 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <button onClick={() => setMobileView('chat')} className="hidden p-1 rounded hover:bg-muted">←</button>
+              <button onClick={() => setMobileView('chat')} className="hidden p-1 rounded hover:bg-muted"><ChevronLeft className="w-4 h-4" /></button>
               <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
             </div>
             <button onClick={() => { setShowRightPanel(false); setMobileView('chat'); }} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
