@@ -701,7 +701,7 @@ export function SessionsClient() {
         {selectedSession && (
           isMobile ? (
             <Sheet open={!!selectedSession} onOpenChange={(open) => { if (!open) setSelectedSession(null) }}>
-              <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col">
+              <SheetContent side="right" size="full" className="p-0 flex flex-col sm:w-96">
                 <div className="flex items-center justify-between px-4 h-12 border-b border-zinc-800">
                   <div className="flex items-center gap-2 min-w-0">
                     <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />

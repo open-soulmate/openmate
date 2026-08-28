@@ -920,7 +920,7 @@ export function ChatClient() {
           setShowDetails(open);
           if (open) setMobileConvOpen(false); // mutual exclusion: close left Sheet
         }}>
-          <SheetContent side="right" className="w-80 p-0 flex flex-col">
+          <SheetContent side="right" size="md" className="p-0 flex flex-col">
             <div className="h-12 px-3 flex items-center border-b border-border">
               <span className="text-sm font-medium flex items-center gap-1.5"><Info className="w-4 h-4" />{t("chat.sessionDetails")}</span>
             </div>
