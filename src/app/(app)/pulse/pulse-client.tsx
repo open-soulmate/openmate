@@ -327,7 +327,7 @@ export function PulseClient() {
                 <p className="text-xs lg:text-sm">{t("pulse.noTicks") || t('pulse.noTicks')}</p>
               </div>
             ) : (
-              <div className="rounded-xl border border-border overflow-hidden">
+              <div className="rounded-xl border border-border overflow-x-auto">
                 <table className="w-full text-xs lg:text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/50">

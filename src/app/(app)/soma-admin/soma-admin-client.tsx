@@ -171,13 +171,13 @@ export default function SomaAdminClient() {
       </div>
 
       {/* Tab Bar */}
-      <div className="flex items-center gap-1 border-b border-border px-3 lg:px-6 py-2">
+      <div className="flex items-center gap-1 border-b border-border px-3 lg:px-6 py-2 overflow-x-auto">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs lg:text-sm transition-colors",
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs lg:text-sm transition-colors whitespace-nowrap",
               activeTab === tab.id
                 ? "bg-cyan-500/10 text-cyan-600 font-medium"
                 : "text-muted-foreground hover:bg-muted"

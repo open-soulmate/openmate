@@ -237,7 +237,7 @@ export function ChangelogClient() {
                 <p className="text-xs text-muted-foreground mt-1">{t("heredity.versionChanges", "Version changes will appear here")}</p>
               </div>
             ) : (
-              <div className="rounded-xl border border-border overflow-hidden">
+              <div className="rounded-xl border border-border overflow-x-auto">
                 <table className="w-full text-xs lg:text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
