@@ -60,8 +60,8 @@ export function Topbar() {
           className="flex h-8 items-center gap-2 rounded-md border border-border bg-muted px-3 text-sm text-muted-foreground transition-colors hover:border-primary/40 hover:text-foreground"
         >
           <Search size={14} />
-          <span className="hidden sm:inline">{t("search.placeholder").split("...")[0]}...</span>
-          <kbd className="pointer-events-none hidden select-none rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground sm:inline-block">
+          <span className="hidden lg:inline">{t("search.placeholder").split("...")[0]}...</span>
+          <kbd className="pointer-events-none hidden select-none rounded border border-border px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground lg:inline-block">
             ⌘K
           </kbd>
         </button>

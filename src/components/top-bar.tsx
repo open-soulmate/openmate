@@ -73,8 +73,8 @@ export function TopBar({ rightPanelOpen, onToggleRightPanel, eventCount = 0, pag
           title={t("nav.search", "搜索")}
         >
           <Search size={14} />
-          <span className="hidden sm:inline truncate">{t("nav.search", "搜索")}</span>
-          <kbd className="hidden sm:inline pointer-events-none select-none rounded border border-border bg-muted px-1 text-[9px] font-mono text-muted-foreground">⌘K</kbd>
+          <span className="hidden lg:inline truncate">{t("nav.search", "搜索")}</span>
+          <kbd className="hidden lg:inline pointer-events-none select-none rounded border border-border bg-muted px-1 text-[9px] font-mono text-muted-foreground">⌘K</kbd>
         </button>
 
         {utilityItems.map((item) => {
@@ -101,7 +101,7 @@ export function TopBar({ rightPanelOpen, onToggleRightPanel, eventCount = 0, pag
                   </span>
                 )}
               </div>
-              <span className="hidden sm:inline truncate">{item.label}</span>
+              <span className="hidden lg:inline truncate">{item.label}</span>
             </Link>
           );
         })}
@@ -118,7 +118,7 @@ export function TopBar({ rightPanelOpen, onToggleRightPanel, eventCount = 0, pag
           title={rightPanelOpen ? "关闭工作区" : "打开工作区"}
         >
           {rightPanelOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
-          <span className="hidden sm:inline truncate">{t("nav.workspace", "工作区")}</span>
+          <span className="hidden lg:inline truncate">{t("nav.workspace", "工作区")}</span>
         </button>
       </div>
     </div>

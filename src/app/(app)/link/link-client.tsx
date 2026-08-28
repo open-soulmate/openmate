@@ -172,11 +172,11 @@ export function LinkClient() {
               "flex items-center gap-1 md:gap-1.5 rounded-lg px-2.5 md:px-3 py-1.5 text-xs md:text-xs lg:text-sm transition-colors",
               showEvents ? "bg-teal-500 text-white" : "border border-border hover:bg-muted"
             )}>
-            <Activity size={14} /> <span className="hidden sm:inline">{t("link.t65547")}</span>
+            <Activity size={14} /> <span className="hidden lg:inline">{t("link.t65547")}</span>
           </button>
           <button onClick={() => setShowCreate(true)}
             className="flex items-center gap-1 md:gap-1.5 rounded-lg bg-teal-500 px-2.5 md:px-3 py-1.5 text-xs md:text-xs lg:text-sm text-white hover:bg-teal-600">
-            <Plus size={14} /> <span className="hidden sm:inline">{t("link.t73119")}</span>
+            <Plus size={14} /> <span className="hidden lg:inline">{t("link.t73119")}</span>
           </button>
           <button onClick={() => { fetchHealth(); fetchConnectors(); }}
             className="flex items-center gap-1 md:gap-1.5 rounded-lg border border-border px-2.5 md:px-3 py-1.5 text-xs md:text-xs lg:text-sm hover:bg-muted">

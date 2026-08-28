@@ -180,7 +180,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
               className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent"
             >
               <BrainCircuit size={14} />
-              <span className="hidden sm:inline">{showQuiz ? t("learn.hideQuiz") || "Hide Quiz" : t("learn.takeQuiz") || "Take Quiz"}</span>
+              <span className="hidden lg:inline">{showQuiz ? t("learn.hideQuiz") || "Hide Quiz" : t("learn.takeQuiz") || "Take Quiz"}</span>
             </button>
           )}
         </div>

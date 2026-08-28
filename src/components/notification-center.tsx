@@ -205,7 +205,7 @@ export function NotificationCenter() {
                   title={t("notifications.markAllRead") || "Mark all read"}
                 >
                   <CheckCheck size={12} />
-                  <span className="hidden sm:inline">{t("notifications.markAllRead") || "Mark all read"}</span>
+                  <span className="hidden lg:inline">{t("notifications.markAllRead") || "Mark all read"}</span>
                 </button>
               )}
               <button
