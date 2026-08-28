@@ -100,7 +100,6 @@ export function BottomNav() {
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPress = useRef(false);
 
-  // Mouse wheel → horizontal scroll
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -114,7 +113,6 @@ export function BottomNav() {
     return () => el.removeEventListener("wheel", handler);
   }, []);
 
-  // Auto-scroll to active item
   useEffect(() => {
     if (activeRef.current && scrollRef.current) {
       const container = scrollRef.current;
@@ -124,7 +122,6 @@ export function BottomNav() {
     }
   }, [pathname]);
 
-  // Long press → voice, click → search
   const handlePointerDown = useCallback(() => {
     isLongPress.current = false;
     longPressTimer.current = setTimeout(() => {
@@ -151,38 +148,29 @@ export function BottomNav() {
   }, []);
 
   return (
-    <nav className="relative shrink-0" style={{ height: "52px" }}>
-      {/* SVG wave top edge */}
-      <svg
-        className="absolute bottom-0 left-0 w-full pointer-events-none"
-        viewBox="0 0 1000 80"
-        preserveAspectRatio="none"
-        style={{ height: "80px", transform: "translateY(-100%)" }}
-      >
-        {/* The wave shape filled with bg color */}
-        <path
-          d="M0,40 Q250,40 350,30 Q450,10 500,10 Q550,10 650,30 Q750,40 1000,40 L1000,80 L0,80 Z"
-          fill="hsl(var(--background))"
-        />
-        {/* Top border line following the wave */}
-        <path
-          d="M0,40 Q250,40 350,30 Q450,10 500,10 Q550,10 650,30 Q750,40 1000,40"
-          fill="none"
-          stroke="hsl(var(--border))"
-          strokeWidth="1.5"
-        />
-      </svg>
+    <nav className="nav-wave relative shrink-0 h-12 bg-background border-t border-border">
+      {/* CSS wave bump — pure CSS, no SVG */}
+      <div className="nav-wave-bump" />
+      <div className="nav-wave-border" />
 
-      {/* Flat nav bar body below the wave */}
-      <div
-        className="absolute bottom-0 left-0 right-0 h-12 border-t border-border bg-background"
-        style={{ borderTop: "none" }}
-      />
+      {/* Center voice button in the bump */}
+      <div className="nav-wave-btn">
+        <button
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerLeave}
+          onContextMenu={(e) => e.preventDefault()}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-background border border-border transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
+          title="Click: Search · Hold: Voice"
+        >
+          <Mic size={18} className="text-muted-foreground" />
+        </button>
+      </div>
 
       {/* Scrollable items */}
       <div
         ref={scrollRef}
-        className="absolute bottom-0 left-0 right-0 flex h-12 items-center gap-0.5 overflow-x-auto px-2"
+        className="flex h-full items-center gap-0.5 overflow-x-auto px-2"
         style={{
           scrollbarWidth: "none",
           WebkitOverflowScrolling: "touch",
@@ -212,22 +200,45 @@ export function BottomNav() {
         })}
       </div>
 
-      {/* Center voice button — sits in the wave peak */}
-      <div
-        className="absolute left-1/2 -translate-x-1/2 z-10"
-        style={{ bottom: "28px" }}
-      >
-        <button
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerLeave}
-          onContextMenu={(e) => e.preventDefault()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-background border border-border transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-          title="Click: Search · Hold: Voice"
-        >
-          <Mic size={18} className="text-muted-foreground" />
-        </button>
-      </div>
+      <style jsx global>{`
+        .nav-wave {
+          overflow: visible;
+        }
+        /* The curved bump — a big circle clipped to show only bottom arc */
+        .nav-wave-bump {
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
+          bottom: 100%;
+          width: 80px;
+          height: 40px;
+          border-radius: 80px 80px 0 0;
+          background: hsl(var(--background));
+          z-index: 5;
+        }
+        /* Border arc that follows the curve */
+        .nav-wave-border {
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
+          bottom: 100%;
+          width: 80px;
+          height: 40px;
+          border-radius: 80px 80px 0 0;
+          border: 1px solid hsl(var(--border));
+          border-bottom: none;
+          z-index: 6;
+          pointer-events: none;
+        }
+        /* Button sits centered in the bump */
+        .nav-wave-btn {
+          position: absolute;
+          left: 50%;
+          transform: translateX(-50%);
+          bottom: calc(100% + 4px);
+          z-index: 10;
+        }
+      `}</style>
     </nav>
   );
 }
