@@ -375,7 +375,7 @@ export function NerveClient() {
       {/* Events Tab */}
       {activeTab === "events" && (
         <div className="space-y-4">
-          <div className="flex items-center gap-3">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
             <div className="flex items-center gap-2 flex-1">
               <Filter className="w-4 h-4 text-muted-foreground" />
               <input
@@ -386,13 +386,15 @@ export function NerveClient() {
                 className="flex-1 bg-card border border-border rounded-lg px-3 py-2 text-sm"
               />
             </div>
-            <button
-              onClick={fetchEvents}
-              className="flex items-center gap-1 px-3 py-2 bg-muted/30 border border-border rounded-lg text-sm hover:bg-muted/50 transition-colors"
-            >
-              <RefreshCw className="w-3.5 h-3.5" /> {t('nerve.refresh')}
-            </button>
-            <span className="text-xs text-muted-foreground">{t('nerve.total')} {events.length} {t('nerve.items')}</span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={fetchEvents}
+                className="flex items-center gap-1 px-3 py-2 bg-muted/30 border border-border rounded-lg text-sm hover:bg-muted/50 transition-colors"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> {t('nerve.refresh')}
+              </button>
+              <span className="text-xs text-muted-foreground">{t('nerve.total')} {events.length} {t('nerve.items')}</span>
+            </div>
           </div>
 
           <div className="bg-card border border-border rounded-xl overflow-hidden">
@@ -460,7 +462,7 @@ export function NerveClient() {
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <Plus className="w-4 h-4" /> {t('nerve.addSubscription')}
             </h3>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <input
                 type="text"
                 value={newSubId}
@@ -542,7 +544,7 @@ export function NerveClient() {
             <h3 className="font-semibold mb-4 flex items-center gap-2">
               <Plus className="w-4 h-4" /> {t('nerve.registerNode')}
             </h3>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
                 value={newNodeId}

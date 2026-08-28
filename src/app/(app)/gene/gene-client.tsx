@@ -255,7 +255,7 @@ export function GeneClient() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {[
           { label: t("gene.text9"), value: health?.total_templates ?? 0 },
           { label: t("gene.text10"), value: health?.builtin_count ?? 0 },
@@ -270,7 +270,7 @@ export function GeneClient() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 border-b border-border pb-2">
+      <div className="flex gap-1 sm:gap-2 border-b border-border pb-2 overflow-x-auto scrollbar-none">
         {tabs.map(tab => {
           const Icon = tab.icon
           return (

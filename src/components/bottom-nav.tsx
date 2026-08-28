@@ -140,12 +140,12 @@ export function BottomNav() {
     }
   }, [pathname]);
 
-  const renderItems = (items: BottomNavItem[], scrollRef: React.RefObject<HTMLDivElement | null>) => (
+  const renderItems = (items: BottomNavItem[], scrollRef: React.RefObject<HTMLDivElement | null>, side: "left" | "right") => (
     <div
       ref={scrollRef}
       data-scroll-container
       className="flex h-full flex-1 items-center gap-0.5 overflow-x-auto px-1.5"
-      style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
+      style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch", [side === "left" ? "paddingRight" : "paddingLeft"]: "4px" }}
     >
       {items.map((item) => {
         const active = pathname.startsWith(item.href);
@@ -174,7 +174,7 @@ export function BottomNav() {
     <>
       <nav className="relative flex h-14 shrink-0 items-center border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
         {/* Left items */}
-        {renderItems(leftItems, leftRef)}
+        {renderItems(leftItems, leftRef, "left")}
 
         {/* Center logo button */}
         <div className="relative flex shrink-0 items-center justify-center px-2">
@@ -187,18 +187,16 @@ export function BottomNav() {
             )}
             style={{
               background: centerOpen
-                ? "radial-gradient(circle at 35% 30%, #a78bfa, #7c3aed 50%, #5b21b6)"
-                : "radial-gradient(circle at 35% 30%, #c4b5fd, #7c3aed 50%, #4c1d95)",
-              boxShadow: centerOpen
-                ? "0 0 20px rgba(124,58,237,0.6), 0 4px 12px rgba(0,0,0,0.4), inset 0 -2px 4px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2)"
-                : "0 0 12px rgba(124,58,237,0.3), 0 6px 16px rgba(0,0,0,0.5), inset 0 -3px 6px rgba(0,0,0,0.3), inset 0 3px 6px rgba(255,255,255,0.15)",
+                ? "radial-gradient(circle at 50% 40%, #a78bfa, #7c3aed 60%, #5b21b6)"
+                : "radial-gradient(circle at 50% 40%, #c4b5fd, #7c3aed 60%, #4c1d95)",
+              boxShadow: "0 4px 12px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1)",
             }}
             title="Search & Voice"
           >
             {/* Glossy highlight */}
             <div
-              className="absolute top-1 left-2 h-3 w-5 rounded-full opacity-40"
-              style={{ background: "radial-gradient(ellipse, rgba(255,255,255,0.8), transparent)" }}
+              className="absolute h-3 w-4 rounded-full opacity-25"
+              style={{ top: "25%", left: "50%", transform: "translateX(-50%)", background: "radial-gradient(ellipse, rgba(255,255,255,0.7), transparent)" }}
             />
             {centerOpen ? (
               <X size={18} className="relative z-10 text-white drop-shadow-sm" />
@@ -217,12 +215,12 @@ export function BottomNav() {
                 }}
                 className="flex h-11 w-11 items-center justify-center rounded-full transition-transform hover:scale-110"
                 style={{
-                  background: "radial-gradient(circle at 35% 30%, #e5e7eb, #9ca3af 50%, #4b5563)",
-                  boxShadow: "0 0 10px rgba(156,163,175,0.3), 0 5px 14px rgba(0,0,0,0.4), inset 0 -2px 4px rgba(0,0,0,0.25), inset 0 2px 4px rgba(255,255,255,0.2)",
+                  background: "radial-gradient(circle at 50% 40%, #e5e7eb, #9ca3af 60%, #4b5563)",
+                  boxShadow: "0 4px 10px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1)",
                 }}
                 title="Search (Ctrl+K)"
               >
-                <div className="absolute top-0.5 left-1.5 h-2 w-4 rounded-full opacity-30" style={{ background: "radial-gradient(ellipse, rgba(255,255,255,0.9), transparent)" }} />
+                <div className="absolute h-2.5 w-3.5 rounded-full opacity-20" style={{ top: "22%", left: "50%", transform: "translateX(-50%)", background: "radial-gradient(ellipse, rgba(255,255,255,0.7), transparent)" }} />
                 <Search size={18} className="relative z-10 text-white drop-shadow-sm" />
               </button>
               <button
@@ -232,12 +230,12 @@ export function BottomNav() {
                 }}
                 className="flex h-11 w-11 items-center justify-center rounded-full transition-transform hover:scale-110"
                 style={{
-                  background: "radial-gradient(circle at 35% 30%, #fca5a5, #ef4444 50%, #991b1b)",
-                  boxShadow: "0 0 14px rgba(239,68,68,0.4), 0 5px 14px rgba(0,0,0,0.4), inset 0 -2px 4px rgba(0,0,0,0.25), inset 0 2px 4px rgba(255,255,255,0.2)",
+                  background: "radial-gradient(circle at 50% 40%, #fca5a5, #ef4444 60%, #991b1b)",
+                  boxShadow: "0 4px 10px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1)",
                 }}
                 title="Voice Input"
               >
-                <div className="absolute top-0.5 left-1.5 h-2 w-4 rounded-full opacity-30" style={{ background: "radial-gradient(ellipse, rgba(255,255,255,0.9), transparent)" }} />
+                <div className="absolute h-2.5 w-3.5 rounded-full opacity-20" style={{ top: "22%", left: "50%", transform: "translateX(-50%)", background: "radial-gradient(ellipse, rgba(255,255,255,0.7), transparent)" }} />
                 <Mic size={18} className="relative z-10 text-white drop-shadow-sm" />
               </button>
             </div>
@@ -245,7 +243,7 @@ export function BottomNav() {
         </div>
 
         {/* Right items */}
-        {renderItems(rightItems, rightRef)}
+        {renderItems(rightItems, rightRef, "right")}
       </nav>
     </>
   );
