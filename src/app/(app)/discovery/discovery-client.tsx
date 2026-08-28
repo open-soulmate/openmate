@@ -283,8 +283,8 @@ export function DiscoveryClient() {
                 <h3 className="font-semibold flex items-center gap-2"><Cpu className="w-4 h-4 text-cyan-400" /> Running Processes ({filteredProcesses.length})</h3>
                 <input value={processFilter} onChange={e => setProcessFilter(e.target.value)} placeholder="Filter processes..." className="w-full sm:w-64 px-3 py-1.5 rounded-lg border border-border bg-background text-xs lg:text-sm" />
               </div>
-              <div className="max-h-80 overflow-y-auto">
-                <table className="w-full text-xs lg:text-sm">
+              <div className="max-h-80 overflow-y-auto overflow-x-auto">
+                <table className="w-full text-xs lg:text-sm min-w-[550px]">
                   <thead className="sticky top-0 bg-card/90 backdrop-blur">
                     <tr className="text-left text-muted-foreground">
                       <th className="px-2 lg:px-4 py-2">PID</th>
@@ -334,8 +334,8 @@ export function DiscoveryClient() {
               <div className="px-2 lg:px-4 py-2 lg:py-3 border-b border-border">
                 <h3 className="font-semibold flex items-center gap-2"><Network className="w-4 h-4 text-violet-400" /> Listening Services ({services.length})</h3>
               </div>
-              <div className="max-h-60 overflow-y-auto">
-                <table className="w-full text-xs lg:text-sm">
+              <div className="max-h-60 overflow-y-auto overflow-x-auto">
+                <table className="w-full text-xs lg:text-sm min-w-[500px]">
                   <thead className="sticky top-0 bg-card/90 backdrop-blur">
                     <tr className="text-left text-muted-foreground">
                       <th className="px-2 lg:px-4 py-2">Protocol</th>
