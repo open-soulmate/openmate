@@ -1,6 +1,7 @@
 "use client";
 import { TerminalPanel } from "@/components/terminal-panel";
 import { MobileSidebar } from "@/components/mobile-sidebar";
+import { NotificationCenter } from "@/components/notification-center";
 import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 
 import Link from "next/link";
@@ -413,20 +414,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content area */}
       <SidebarInset className="min-h-0 overflow-hidden">
-        {/* Mobile header with hamburger */}
-        <div className="flex h-12 shrink-0 items-center border-b border-border bg-background px-4 md:hidden">
-          <button
-            onClick={() => setMobileSidebarOpen(true)}
-            className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors"
-            aria-label="Open menu"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="4" x2="20" y1="6" y2="6" />
-              <line x1="4" x2="20" y1="12" y2="12" />
-              <line x1="4" x2="20" y1="18" y2="18" />
-            </svg>
-          </button>
-          <h1 className="ml-3 text-sm font-semibold tracking-tight">OpenMate</h1>
+        {/* Mobile header with hamburger, page title, notifications, search */}
+        <div className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-3 md:hidden">
+          <div className="flex items-center gap-2 min-w-0">
+            <button
+              onClick={() => setMobileSidebarOpen(true)}
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors"
+              aria-label="Open menu"
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <line x1="4" x2="20" y1="6" y2="6" />
+                <line x1="4" x2="20" y1="12" y2="12" />
+                <line x1="4" x2="20" y1="18" y2="18" />
+              </svg>
+            </button>
+            <MobilePageTitle />
+          </div>
+          <div className="flex items-center gap-1">
+            <NotificationCenter />
+            <button
+              onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))}
+              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors text-muted-foreground"
+              aria-label="Search"
+            >
+              <Search size={16} />
+            </button>
+          </div>
         </div>
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           {children}
@@ -450,4 +463,43 @@ function MenuItem({ icon: Icon, label, description, onClick }: { icon: React.Ele
       </div>
     </button>
   );
+}
+
+function MobilePageTitle() {
+  const pathname = usePathname();
+  const { t } = useTranslation();
+
+  const titles: Record<string, string> = {
+    "/chat": t("nav.chat"),
+    "/knowledge": t("nav.knowledge"),
+    "/graph": t("nav.graph"),
+    "/search": t("nav.search"),
+    "/skills": t("nav.skills"),
+    "/agents": t("nav.agents"),
+    "/workflow": t("nav.workflow"),
+    "/workflow-builder": t("nav.workflowBuilder"),
+    "/settings": t("nav.settings"),
+    "/learn": t("nav.learn"),
+    "/mcp": t("nav.mcp"),
+    "/groups": t("nav.groups"),
+    "/dashboard": t("nav.dashboard"),
+    "/team": t("nav.team") || "Team",
+    "/workspace": t("nav.workspace") || "Workspace",
+    "/graph-builder": t("nav.graphBuilder") || "Graph Builder",
+    "/ai-groups": t("nav.aiGroups") || "AI Groups",
+    "/cron": t("nav.cron"),
+    "/download": t("nav.download"),
+    "/notifications": t("nav.notifications") || "Notifications",
+    "/sessions": t("nav.sessions") || "Sessions",
+    "/diagnostics": t("nav.diagnostics") || "Diagnostics",
+    "/system": t("nav.system") || "System",
+    "/pipeline": t("nav.pipeline") || "Pipeline",
+    "/will": t("nav.will") || "Will",
+    "/capture": t("nav.capture") || "Capture",
+    "/soma": t("nav.soma") || "Soma",
+    "/cortex": t("nav.cortex") || "Cortex",
+  };
+
+  const title = titles[pathname] || "OpenMate";
+  return <h1 className="text-sm font-semibold tracking-tight truncate">{title}</h1>;
 }
