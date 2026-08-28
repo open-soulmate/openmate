@@ -230,7 +230,7 @@ export function WillClient() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 px-6 pt-6 pb-4">
+      <div className="shrink-0 px-3 lg:px-6 pt-6 pb-4">
         <div className="flex items-center gap-3 mb-1">
           <div className="p-2 rounded-lg bg-gradient-to-br from-indigo-500/20 to-violet-500/20">
             <Sparkles className="w-5 h-5 text-indigo-400" />
@@ -277,7 +277,7 @@ export function WillClient() {
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 pb-6">
+      <div className="flex-1 overflow-y-auto px-3 lg:px-6 pb-6">
 
         {/* ── Overview Tab ── */}
         {activeTab === "overview" && (

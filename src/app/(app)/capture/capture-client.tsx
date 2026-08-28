@@ -138,7 +138,7 @@ export function CaptureClient() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-3 gap-3 border-b border-border px-6 py-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 border-b border-border px-6 py-3">
           <div className="rounded-lg bg-muted/50 px-3 py-2">
             <div className="text-[10px] text-muted-foreground">{t("capture.total")}</div>
             <div className="text-lg font-bold">{stats.total_captures}</div>

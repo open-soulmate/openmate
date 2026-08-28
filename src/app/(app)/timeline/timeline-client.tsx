@@ -208,7 +208,7 @@ export function TimelineClient() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+      <div className="flex items-center justify-between px-3 lg:px-6 py-4 border-b border-border">
         <div className="flex items-center gap-3">
           <Clock className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-semibold">{t("timeline.title")}</h1>
@@ -248,7 +248,7 @@ export function TimelineClient() {
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-1 px-6 pt-3">
+      <div className="flex items-center gap-1 px-3 lg:px-6 pt-3">
         {(["events", "stats", "organs"] as const).map(tab => (
           <button
             key={tab}
@@ -269,7 +269,7 @@ export function TimelineClient() {
 
       {/* Search & Filters */}
       {activeTab === "events" && (
-        <div className="px-6 py-3 border-b border-border space-y-2">
+        <div className="px-3 lg:px-6 py-3 border-b border-border space-y-2">
           <div className="flex items-center gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
@@ -331,7 +331,7 @@ export function TimelineClient() {
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-4">
         {loading ? (
           <div className="flex items-center justify-center py-20 text-muted-foreground">
             <RefreshCw className="w-4 h-4 animate-spin mr-2" /> {t("timeline.loadingAction")}

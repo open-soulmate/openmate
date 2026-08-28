@@ -172,7 +172,7 @@ export function CronClient() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 lg:gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4 mb-6">
         <div className="p-4 rounded-xl border bg-card">
           <p className="text-xl lg:text-2xl font-bold text-primary">{jobs.length}</p>
           <p className="text-xs lg:text-sm text-muted-foreground">{t('cron.totalTasks', 'Total Jobs')}</p>

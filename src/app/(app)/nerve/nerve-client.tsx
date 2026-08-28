@@ -351,7 +351,7 @@ export function NerveClient() {
               </button>
             </div>
             {events.length === 0 ? (
-              <p className="text-sm text-muted-foreground/50 text-center py-6">{t('nerve.empty')}</p>
+              <p className="text-sm text-muted-foreground/50 text-center py-3 lg:py-6">{t('nerve.empty')}</p>
             ) : (
               <div className="space-y-2">
                 {events.slice(-5).reverse().map(evt => (
@@ -503,7 +503,7 @@ export function NerveClient() {
               </button>
             </div>
             {subscriptions.length === 0 ? (
-              <p className="text-sm text-muted-foreground/50 text-center py-6">{t('nerve.text22')}</p>
+              <p className="text-sm text-muted-foreground/50 text-center py-3 lg:py-6">{t('nerve.text22')}</p>
             ) : (
               <div className="space-y-2">
                 {subscriptions.map(sub => (
@@ -582,7 +582,7 @@ export function NerveClient() {
               </button>
             </div>
             {nodes.length === 0 ? (
-              <p className="text-sm text-muted-foreground/50 text-center py-6">{t('nerve.text28')}</p>
+              <p className="text-sm text-muted-foreground/50 text-center py-3 lg:py-6">{t('nerve.text28')}</p>
             ) : (
               <div className="space-y-2">
                 {nodes.map(node => (

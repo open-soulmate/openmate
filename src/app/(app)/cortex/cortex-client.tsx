@@ -408,7 +408,7 @@ export function CortexClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border px-6 py-4">
+      <div className="flex items-center gap-3 border-b border-border px-3 lg:px-6 py-4">
         <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
           <Brain size={18} className="text-primary" />
         </div>
@@ -419,7 +419,7 @@ export function CortexClient() {
       </div>
 
       {/* Tab bar */}
-      <div className="flex gap-1 border-b border-border px-6 py-2 overflow-x-auto">
+      <div className="flex gap-1 border-b border-border px-3 lg:px-6 py-2 overflow-x-auto">
         {tabs.map((t) => (
           <button
             key={t.id}
@@ -439,7 +439,7 @@ export function CortexClient() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {error && (
           <div className="mb-4 flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-500">
             <AlertCircle size={16} />

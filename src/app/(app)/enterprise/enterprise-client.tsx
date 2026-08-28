@@ -301,7 +301,7 @@ export function EnterpriseClient() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-3 lg:px-6 py-3 lg:py-4 border-b border-zinc-800">
         <div className="flex items-center gap-3">
           <Shield className="w-6 h-6 text-blue-400" />
           <div>
@@ -322,7 +322,7 @@ export function EnterpriseClient() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 px-6 pt-3 border-b border-zinc-800">
+      <div className="flex gap-1 px-3 lg:px-6 pt-3 border-b border-zinc-800">
         {tabs.map(tab => (
           <button key={tab.id} onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2.5 text-sm font-medium rounded-t-lg transition-colors ${
@@ -338,7 +338,7 @@ export function EnterpriseClient() {
 
       {/* Error banner */}
       {error && (
-        <div className="mx-6 mt-3 px-4 py-2.5 bg-red-950/30 border border-red-900/50 rounded-lg flex items-center gap-2 text-sm text-red-300">
+        <div className="mx-3 lg:mx-6 mt-3 px-4 py-2.5 bg-red-950/30 border border-red-900/50 rounded-lg flex items-center gap-2 text-sm text-red-300">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
           <span className="flex-1">{error}</span>
           <button onClick={() => setError("")} className="text-red-400 hover:text-red-200"><XCircle className="w-4 h-4" /></button>
@@ -346,7 +346,7 @@ export function EnterpriseClient() {
       )}
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-3 lg:py-4">
         {loading ? (
           <div className="flex items-center justify-center h-40"><Loader2 className="w-6 h-6 animate-spin text-zinc-500" /></div>
         ) : (
@@ -359,7 +359,7 @@ export function EnterpriseClient() {
                   <h3 className="text-sm font-medium text-zinc-300 mb-3 flex items-center gap-2">
                     <UserPlus className="w-4 h-4" /> {t("enterprise.assignRole", "Assign Role to User")}
                   </h3>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <input value={assignUserId} onChange={e => setAssignUserId(e.target.value)}
                       placeholder={t("enterprise.userIdPlaceholder", "User ID")}
                       className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500" />
@@ -379,7 +379,7 @@ export function EnterpriseClient() {
                   <h3 className="text-sm font-medium text-zinc-300 mb-3 flex items-center gap-2">
                     <Key className="w-4 h-4" /> {t("enterprise.assignPermission", "Assign Permission")}
                   </h3>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <input value={permUserId} onChange={e => setPermUserId(e.target.value)}
                       placeholder={t("enterprise.userIdPlaceholder", "User ID")}
                       className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500" />
@@ -453,7 +453,7 @@ export function EnterpriseClient() {
                   <h3 className="text-sm font-medium text-zinc-300 mb-3 flex items-center gap-2">
                     <Plus className="w-4 h-4" /> {t("enterprise.createRole", "Create Role")}
                   </h3>
-                  <div className="flex gap-3">
+                  <div className="flex flex-col sm:flex-row gap-3">
                     <input value={newRoleName} onChange={e => setNewRoleName(e.target.value)}
                       placeholder={t("enterprise.roleNamePlaceholder", "Role name (e.g. editor, viewer)")}
                       className="flex-1 px-3 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500" />

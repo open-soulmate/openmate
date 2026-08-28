@@ -559,7 +559,7 @@ export function ImmuneClient() {
           {/* Add IP */}
           <div className="bg-card border border-border rounded-xl p-5">
             <h3 className="font-semibold mb-4">{t('immune.t80747')}</h3>
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <input
                 type="text"
                 value={newIp}

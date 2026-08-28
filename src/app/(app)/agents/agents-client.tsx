@@ -203,7 +203,7 @@ export function AgentsClient() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-6">
         <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-primary">{agents.length}</p><p className="text-sm text-muted-foreground">{t('agents.title')}</p></div>
         <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-green-500">{availableCount}</p><p className="text-sm text-muted-foreground">{t('agents.available')}</p></div>
         <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-muted-foreground">{agents.length - availableCount}</p><p className="text-sm text-muted-foreground">{t('agents.unavailable')}</p></div>

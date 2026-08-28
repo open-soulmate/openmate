@@ -212,7 +212,7 @@ export function ReflexClient() {
                   placeholder={t("reflex.responsePlaceholder") || "Enter response content..."}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-yellow-500/20" />
               </div>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input value={newCategory} onChange={(e) => setNewCategory(e.target.value)}
                   placeholder={t("reflex.category") || "Category"}
                   className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-yellow-500/20" />
@@ -312,7 +312,7 @@ export function ReflexClient() {
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
               <h3 className="text-sm font-semibold">{t("reflex.testLookup") || "Test Lookup"}</h3>
               <p className="text-xs text-muted-foreground">{t("reflex.lookupDesc") || "Test the reflex cache with a query"}</p>
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3">
                 <input value={lookupQuery} onChange={(e) => setLookupQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleLookup()}
                   placeholder={t("reflex.lookupPlaceholder") || "Enter query to look up..."}
