@@ -120,42 +120,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const storeTheme = useAppStore((s) => s.theme);
   const setStoreTheme = useAppStore((s) => s.setTheme);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const { t } = useTranslation();
-  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set([t("nav.internalServices")]))
-  const [pluginGroups, setPluginGroups] = useState<NavGroup[]>([])
   const [eventCount, setEventCount] = useState(0)
   const menuRef = useRef<HTMLDivElement>(null);
-  const moreMenuRef = useRef<HTMLDivElement>(null);
 
   // ── Conversation list state ──────────────────────────────────────
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [sessionSearch, setSessionSearch] = useState('');
   const [collapsedAgents, setCollapsedAgents] = useState<Set<string>>(new Set());
-
-  useEffect(() => {
-    const apiBase = getApiBaseUrl();
-    if (!apiBase) return;
-    fetch(`${apiBase}/api/plugins/sidebar`)
-      .then((res) => (res.ok ? res.json() : []))
-      .then((items: { group: string; label: string; href: string; icon?: string }[]) => {
-        if (!Array.isArray(items) || items.length === 0) return;
-        const grouped = new Map<string, NavItem[]>();
-        for (const item of items) {
-          const groupName = (item.group || "Plugins").toUpperCase() === "PLUGINS" ? "Plugins" : item.group || "Plugins";
-          const arr = grouped.get(groupName) || [];
-          arr.push({ href: item.href, label: item.label, icon: Plug });
-          grouped.set(groupName, arr);
-        }
-        setPluginGroups(
-          Array.from(grouped.entries()).map(([label, navItems]) => ({
-            label: label === "Plugins" || label === "PLUGINS" ? t("nav.plugins") : label,
-            items: navItems
-          }))
-        );
-      })
-      .catch(() => {});
-  }, []);
 
   // Fetch sessions for conversation list (visibility-aware, 30s)
   useVisibilityPoll(() => {
@@ -224,134 +196,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return sorted;
   }, [sessions, sessionSearch]);
 
-  const navGroups: NavGroup[] = [
-    {
-      label: t("nav.core"),
-      items: [
-        { href: "/chat", label: t("nav.chat"), icon: MessageSquare },
-        { href: "/dashboard", label: t("nav.dashboard"), icon: LayoutDashboard },
-        { href: "/notifications", label: t("nav.notifications"), icon: Bell },
-      ],
-    },
-    {
-      label: t("nav.aiGroup"),
-      items: [
-        { href: "/ai-groups", label: t("nav.aiGroups"), icon: Users },
-        { href: "/agents", label: t("nav.agents"), icon: Server },
-      ],
-    },
-    {
-      label: t("nav.knowledgeGroup"),
-      items: [
-        { href: "/knowledge", label: t("nav.knowledge"), icon: BookOpen },
-        { href: "/learn", label: t("nav.learn"), icon: GraduationCap },
-        { href: "/graph", label: t("nav.graph"), icon: Network },
-        { href: "/graph-builder", label: t("nav.graphBuilder"), icon: Share2 },
-        { href: "/search", label: t("nav.search"), icon: Search },
-        { href: "/kb-sharing", label: t("nav.kbSharing", "KB Sharing"), icon: Share2 },
-        { href: "/knowledge-requests", label: t("nav.knowledgeRequests", "KB Requests"), icon: FileText },
-      ],
-    },
-    {
-      label: t("nav.automationGroup"),
-      items: [
-        { href: "/cron", label: t("nav.cron"), icon: Clock },
-        { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
-        { href: "/workflow-builder", label: t("nav.workflowBuilder"), icon: GitBranch },
-        { href: "/pipeline", label: t("nav.pipeline"), icon: Zap },
-        { href: "/will", label: t("nav.will"), icon: Sparkles },
-      ],
-    },
-    {
-      label: t("nav.toolsGroup"),
-      items: [
-        { href: "/skills", label: t("nav.skills"), icon: Puzzle },
-        { href: "/mcp", label: t("nav.mcp"), icon: Plug },
-        { href: "/workspace", label: t("nav.workspace"), icon: FolderKanban },
-        { href: "/capture", label: t("nav.capture"), icon: Camera },
-        { href: "/download", label: t("nav.download"), icon: Download },
-        { href: "/tags", label: t("nav.tags", "Tags"), icon: Tag },
-      ],
-    },
-    {
-      label: t("nav.organsGroup"),
-      items: [
-        { href: "/body-map", label: t("nav.bodyMap", "Body Map"), icon: User },
-        { href: "/soma", label: t("nav.soma"), icon: Bot },
-        { href: "/discovery", label: t("nav.discovery", "Discovery"), icon: Search },
-        { href: "/cortex", label: t("nav.cortex"), icon: Cpu },
-        { href: "/vein", label: t("nav.vein"), icon: Droplets },
-        { href: "/gene", label: t("nav.gene"), icon: Dna },
-        { href: "/vital", label: t("nav.vital"), icon: Activity },
-        { href: "/gland", label: t("nav.gland"), icon: Zap },
-        { href: "/hippo", label: t("nav.hippo"), icon: Brain },
-        { href: "/reflex", label: t("nav.reflex"), icon: Bolt },
-        { href: "/heredity", label: t("nav.heredity"), icon: GitBranch },
-        { href: "/pulse", label: t("nav.pulse"), icon: Heart },
-        { href: "/nerve", label: t("nav.nerve"), icon: Zap },
-        { href: "/sense", label: t("nav.sense"), icon: Eye },
-        { href: "/immune", label: t("nav.immune"), icon: Shield },
-        { href: "/marrow", label: t("nav.marrow"), icon: Bone },
-        { href: "/echo", label: t("nav.echo"), icon: Volume2 },
-        { href: "/mirror", label: t("nav.mirror"), icon: Layers },
-        { href: "/link", label: t("nav.link"), icon: Link2 },
-        { href: "/nest", label: t("nav.nest"), icon: Home },
-        { href: "/limb", label: t("nav.limb"), icon: MousePointer },
-        { href: "/voice", label: t("nav.voice"), icon: Mic },
-        { href: "/vision", label: t("nav.vision"), icon: ImageIcon },
-        { href: "/mind", label: t("nav.mind"), icon: Smile },
-      ],
-    },
-    {
-      label: t("nav.systemGroup"),
-      items: [
-        { href: "/system", label: t("nav.system") || "System", icon: Server },
-        { href: "/soul", label: t("nav.soul"), icon: Brain },
-        { href: "/soma-admin", label: t("nav.somaAdmin"), icon: Bot },
-        { href: "/admin", label: t("nav.admin"), icon: Shield },
-        { href: "/permission", label: t("nav.permission", "Permissions"), icon: Shield },
-        { href: "/enterprise", label: t("nav.enterprise", "Enterprise"), icon: Shield },
-        { href: "/sessions", label: t("nav.sessions", "Sessions"), icon: History },
-        { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope },
-        { href: "/metrics", label: t("nav.metrics") || "Metrics", icon: BarChart3 },
-        { href: "/benchmark", label: t("nav.benchmark"), icon: Gauge },
-        { href: "/intelligence", label: t("nav.intelligence"), icon: Brain },
-        { href: "/ai-engine", label: t("nav.aiEngine", "AI Engine"), icon: Cpu },
-        { href: "/healer", label: t("nav.healer"), icon: Pill },
-        { href: "/topology", label: t("nav.topology"), icon: Network },
-        { href: "/registry", label: t("nav.registry", "Registry"), icon: Package },
-        { href: "/trajectory", label: t("nav.trajectory"), icon: Activity },
-        { href: "/timeline", label: t("nav.timeline"), icon: History },
-        { href: "/changelog", label: t("nav.changelog"), icon: ScrollText },
-        { href: "/plugins", label: t("nav.plugins"), icon: Puzzle },
-        { href: "/marketplace", label: t("nav.marketplace"), icon: Store },
-        { href: "/settings", label: t("nav.settings"), icon: Settings },
-      ],
-    },
-  ];
-
-  // Insert plugin groups between organs and system
-  const allNavGroups: NavGroup[] = (() => {
-    if (pluginGroups.length === 0) return navGroups;
-    const result: NavGroup[] = [];
-    for (const group of navGroups) {
-      result.push(group);
-      if (group.label === (t("nav.internalServices"))) {
-        result.push(...pluginGroups);
-      }
-    }
-    return result;
-  })();
-
-  const toggleGroup = (label: string) => {
-    setCollapsedGroups((prev) => {
-      const next = new Set(prev);
-      if (next.has(label)) next.delete(label);
-      else next.add(label);
-      return next;
-    });
-  };
-
   const userId = getUserName() || getUserId() || "User";
 
   // Close menu on outside click
@@ -364,17 +208,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
-  // Close more menu on outside click
-  useEffect(() => {
-    if (!moreMenuOpen) return;
-    const handler = (e: MouseEvent) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target as Node)) setMoreMenuOpen(false);
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [moreMenuOpen]);
-
-  useEffect(() => { setMenuOpen(false); setMoreMenuOpen(false); }, [pathname]);
+  useEffect(() => { setMenuOpen(false); }, [pathname]);
 
   function toggleTheme() {
     const next: ThemeId = storeTheme === "dark" ? "light" : storeTheme === "light" ? "purple" : "dark";
@@ -554,65 +388,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               </SidebarMenuButton>
             </SidebarMenuItem>
           </SidebarMenu>
-
-          {/* More menu — all navigation groups */}
-          <div className="relative" ref={moreMenuRef}>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  onClick={() => setMoreMenuOpen(!moreMenuOpen)}
-                  tooltip={t("sidebar.moreMenu", "更多导航")}
-                  className="cursor-pointer"
-                >
-                  <MoreHorizontal size={16} />
-                  <span className="group-data-[collapsible=icon]:hidden">{t("sidebar.moreMenu", "更多导航")}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-
-            {moreMenuOpen && (
-              <div className="absolute bottom-full left-0 mb-1 w-64 max-h-[70vh] overflow-y-auto rounded-xl border border-border bg-card shadow-lg z-50">
-                {allNavGroups.map((group) => {
-                  const groupCollapsed = collapsedGroups.has(group.label);
-                  return (
-                    <div key={group.label} className="border-b border-border last:border-b-0">
-                      <button
-                        onClick={() => toggleGroup(group.label)}
-                        className="flex w-full items-center px-3 py-2 text-xs font-semibold text-muted-foreground hover:bg-muted/50 transition-colors"
-                      >
-                        <span className="flex-1 text-left">{group.label}</span>
-                        <ChevronDown
-                          size={12}
-                          className={cn("transition-transform", groupCollapsed && "-rotate-90")}
-                        />
-                      </button>
-                      {!groupCollapsed && (
-                        <div className="pb-1">
-                          {group.items.map((item) => {
-                            const active = pathname.startsWith(item.href);
-                            return (
-                              <Link
-                                key={item.href}
-                                href={item.href}
-                                onClick={() => setMoreMenuOpen(false)}
-                                className={cn(
-                                  "flex items-center gap-2.5 px-3 py-1.5 text-sm transition-colors hover:bg-muted/50",
-                                  active && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] hover:bg-[rgba(124,58,237,0.18)] hover:text-[#7c3aed]"
-                                )}
-                              >
-                                <item.icon size={14} className="text-muted-foreground" />
-                                <span>{item.label}</span>
-                              </Link>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
 
           {/* User Account */}
           <div className="relative" ref={menuRef}>
