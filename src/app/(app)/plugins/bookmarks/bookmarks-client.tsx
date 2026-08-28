@@ -240,86 +240,42 @@ export function BookmarksClient() {
 
   return (
     <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
-      {/* Sidebar */}
+      {/* Sidebar — Sheet on mobile, inline on desktop */}
+      {isMobile ? (
+        <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
+          <SheetContent side="left" showCloseButton={false} className="w-64 p-0 flex flex-col bg-zinc-950/95">
+            <BookmarkSidebar
+              allCollections={allCollections} collections={collections} tags={tags}
+              activeCollection={activeCollection} setActiveCollection={setActiveCollection}
+              activeTag={activeTag} setActiveTag={setActiveTag}
+              showFavoritesOnly={showFavoritesOnly} setShowFavoritesOnly={setShowFavoritesOnly}
+              openAdd={openAdd} setShowColModal={setShowColModal}
+              bookmarks={bookmarks} t={t}
+            />
+          </SheetContent>
+        </Sheet>
+      ) : (
       <aside className="w-64 border-r border-zinc-800 bg-zinc-950/50 flex flex-col shrink-0">
-        <div className="p-4 border-b border-zinc-800">
-          <div className="flex items-center gap-2 mb-3">
-            <Bookmark className="w-5 h-5 text-violet-400" />
-            <h2 className="text-sm font-semibold text-zinc-100">Bookmarks</h2>
-          </div>
-          <button onClick={openAdd} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-sm transition">
-            <Plus className="w-4 h-4" /> Add Bookmark
-          </button>
-        </div>
-
-        {/* Collections */}
-        <div className="flex-1 overflow-y-auto p-3">
-          <div className="flex items-center justify-between mb-2">
-            <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Collections</span>
-            <button onClick={() => setShowColModal(true)} className="text-zinc-500 hover:text-violet-400 transition">
-              <FolderPlus className="w-3.5 h-3.5" />
-            </button>
-          </div>
-          {allCollections.map(col => (
-            <button
-              key={col.id}
-              onClick={() => { setActiveCollection(col.id === "__all__" ? null : col.name); setActiveTag(null); }}
-              className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition mb-0.5 ${
-                (col.id === "__all__" && !activeCollection) || activeCollection === col.name
-                  ? "bg-violet-600/20 text-violet-300"
-                  : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
-              }`}
-            >
-              <span>{col.icon}</span>
-              <span className="flex-1 text-left truncate">{col.name}</span>
-              <span className="text-xs text-zinc-600">{col.bookmark_count}</span>
-            </button>
-          ))}
-
-          {/* Tags */}
-          {tags.length > 0 && (
-            <>
-              <div className="flex items-center gap-1 mt-4 mb-2">
-                <Tag className="w-3 h-3 text-zinc-500" />
-                <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Tags</span>
-              </div>
-              <div className="flex flex-wrap gap-1">
-                {tags.slice(0, 20).map(t => (
-                  <button
-                    key={t.name}
-                    onClick={() => { setActiveTag(activeTag === t.name ? null : t.name); setActiveCollection(null); }}
-                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition ${
-                      activeTag === t.name
-                        ? "bg-violet-600/30 text-violet-300"
-                        : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
-                    }`}
-                  >
-                    <Hash className="w-2.5 h-2.5" />{t.name}
-                    <span className="text-zinc-600">{t.count}</span>
-                  </button>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
-
-        {/* Favorites toggle */}
-        <div className="p-3 border-t border-zinc-800">
-          <button
-            onClick={() => { setShowFavoritesOnly(!showFavoritesOnly); setActiveCollection(null); setActiveTag(null); }}
-            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition ${
-              showFavoritesOnly ? "bg-yellow-600/20 text-yellow-300" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
-            }`}
-          >
-            <Star className="w-4 h-4" /> Favorites
-          </button>
-        </div>
+        <BookmarkSidebar
+          allCollections={allCollections} collections={collections} tags={tags}
+          activeCollection={activeCollection} setActiveCollection={setActiveCollection}
+          activeTag={activeTag} setActiveTag={setActiveTag}
+          showFavoritesOnly={showFavoritesOnly} setShowFavoritesOnly={setShowFavoritesOnly}
+          openAdd={openAdd} setShowColModal={setShowColModal}
+          bookmarks={bookmarks} t={t}
+        />
       </aside>
+      )}
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex items-center gap-3 px-6 py-3 border-b border-zinc-800 bg-zinc-950/30">
+        <header className="flex items-center gap-3 px-4 md:px-6 py-3 border-b border-zinc-800 bg-zinc-950/30">
+          {isMobile && (
+            <button onClick={() => setShowSidebar(true)} className="p-1.5 rounded hover:bg-zinc-800 shrink-0">
+              <PanelLeft className="w-4 h-4 text-zinc-400" />
+            </button>
+          )}
           <div className="flex-1 relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
             <input
@@ -549,5 +505,105 @@ export function BookmarksClient() {
         </div>
       )}
     </div>
+  );
+}
+
+function BookmarkSidebar({
+  allCollections, collections, tags,
+  activeCollection, setActiveCollection,
+  activeTag, setActiveTag,
+  showFavoritesOnly, setShowFavoritesOnly,
+  openAdd, setShowColModal,
+  bookmarks, t,
+}: {
+  allCollections: { id: string; name: string; icon: string; bookmark_count: number; description: string }[];
+  collections: Collection[];
+  tags: TagInfo[];
+  activeCollection: string | null;
+  setActiveCollection: (c: string | null) => void;
+  activeTag: string | null;
+  setActiveTag: (t: string | null) => void;
+  showFavoritesOnly: boolean;
+  setShowFavoritesOnly: (v: boolean) => void;
+  openAdd: () => void;
+  setShowColModal: (v: boolean) => void;
+  bookmarks: BookmarkItem[];
+  t: (k: string, o?: Record<string, unknown>) => string;
+}) {
+  return (
+    <>
+      <div className="p-4 border-b border-zinc-800">
+        <div className="flex items-center gap-2 mb-3">
+          <Bookmark className="w-5 h-5 text-violet-400" />
+          <h2 className="text-sm font-semibold text-zinc-100">Bookmarks</h2>
+        </div>
+        <button onClick={openAdd} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-sm transition">
+          <Plus className="w-4 h-4" /> Add Bookmark
+        </button>
+      </div>
+
+      {/* Collections */}
+      <div className="flex-1 overflow-y-auto p-3">
+        <div className="flex items-center justify-between mb-2">
+          <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Collections</span>
+          <button onClick={() => setShowColModal(true)} className="text-zinc-500 hover:text-violet-400 transition">
+            <FolderPlus className="w-3.5 h-3.5" />
+          </button>
+        </div>
+        {allCollections.map(col => (
+          <button
+            key={col.id}
+            onClick={() => { setActiveCollection(col.id === "__all__" ? null : col.name); setActiveTag(null); }}
+            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition mb-0.5 ${
+              (col.id === "__all__" && !activeCollection) || activeCollection === col.name
+                ? "bg-violet-600/20 text-violet-300"
+                : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+            }`}
+          >
+            <span>{col.icon}</span>
+            <span className="flex-1 text-left truncate">{col.name}</span>
+            <span className="text-xs text-zinc-600">{col.bookmark_count}</span>
+          </button>
+        ))}
+
+        {/* Tags */}
+        {tags.length > 0 && (
+          <>
+            <div className="flex items-center gap-1 mt-4 mb-2">
+              <Tag className="w-3 h-3 text-zinc-500" />
+              <span className="text-xs font-medium text-zinc-500 uppercase tracking-wider">Tags</span>
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {tags.slice(0, 20).map(tag => (
+                <button
+                  key={tag.name}
+                  onClick={() => { setActiveTag(activeTag === tag.name ? null : tag.name); setActiveCollection(null); }}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs transition ${
+                    activeTag === tag.name
+                      ? "bg-violet-600/30 text-violet-300"
+                      : "bg-zinc-800 text-zinc-400 hover:text-zinc-200"
+                  }`}
+                >
+                  <Hash className="w-2.5 h-2.5" />{tag.name}
+                  <span className="text-zinc-600">{tag.count}</span>
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      {/* Favorites toggle */}
+      <div className="p-3 border-t border-zinc-800">
+        <button
+          onClick={() => { setShowFavoritesOnly(!showFavoritesOnly); setActiveCollection(null); setActiveTag(null); }}
+          className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition ${
+            showFavoritesOnly ? "bg-yellow-600/20 text-yellow-300" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
+          }`}
+        >
+          <Star className="w-4 h-4" /> Favorites
+        </button>
+      </div>
+    </>
   );
 }
