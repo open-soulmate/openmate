@@ -701,14 +701,17 @@ export function SessionsClient() {
         {isMobile ? (
           selectedSession && (
             <Sheet open={!!selectedSession} onOpenChange={(open) => { if (!open) setSelectedSession(null) }}>
-              <SheetContent side="right" size="full" className="p-0 flex flex-col">
-                <div className="flex items-center justify-between px-2 lg:px-4 h-12 border-b border-zinc-800">
+              <SheetContent side="right" size="full" showCloseButton={false} className="p-0 flex flex-col">
+                <div className="flex items-center justify-between px-2 h-12 border-b border-zinc-800">
                   <div className="flex items-center gap-2 min-w-0">
+                    <button onClick={() => setSelectedSession(null)} className="p-1.5 -ml-1 rounded-lg hover:bg-zinc-800 touch-manipulation">
+                      <XCircle className="w-4 h-4 text-zinc-400" />
+                    </button>
                     <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                    <span className="text-xs lg:text-sm font-medium text-zinc-200 truncate">
+                    <span className="text-xs font-medium text-zinc-200 truncate">
                       {selectedSession.title || selectedSession.session_id}
                     </span>
-                    <span className="text-xs text-zinc-500 flex-shrink-0">({selectedSession.messages.length} {t("sessions.messages", "messages")})</span>
+                    <span className="text-xs text-zinc-500 flex-shrink-0">({selectedSession.messages.length})</span>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button onClick={() => router.push(`/chat?session=${selectedSession.session_id}`)}
@@ -728,7 +731,7 @@ export function SessionsClient() {
                     </button>
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto px-2 lg:px-4 py-3 space-y-3">
+                <div className="flex-1 overflow-y-auto px-2 py-3 space-y-3">
                   {detailLoading ? (
                     <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
                   ) : selectedSession.messages.length === 0 ? (
