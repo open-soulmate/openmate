@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   Folder, HardDrive, Upload, FolderOpen, Search,
   Image, FileText, Code, Paperclip, RefreshCw,
@@ -324,6 +326,7 @@ export function VeinClient() {
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const apiBase = getApiBaseUrl();
+  const isMobile = useIsMobile();
 
   // Chunked upload state
   const [chunkedUploads, setChunkedUploads] = useState<any[]>([]);
@@ -908,7 +911,55 @@ export function VeinClient() {
                     {search ? (t("vein.noMatch") || "No matching files") : (t("vein.startUpload") || "Upload File")}
                   </p>
                 </div>
+              ) : isMobile ? (
+                /* Mobile: card list */
+                <div className="space-y-2">
+                  {filteredFiles.map((f) => {
+                    const FileIcon = getFileIcon(f.mime_type);
+                    return (
+                      <div
+                        key={f.file_id}
+                        className={cn(
+                          "rounded-lg border border-border p-3 hover:bg-muted/30 transition-colors cursor-pointer active:bg-muted/50 touch-manipulation",
+                          selectedFile?.file_id === f.file_id && "border-primary/50 bg-primary/5"
+                        )}
+                        onClick={() => handleSelectFile(f)}
+                      >
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <FileIcon size={14} className="shrink-0 text-muted-foreground" />
+                          <span className="text-xs font-medium truncate flex-1">{f.name}</span>
+                        </div>
+                        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                          <span>{formatBytes(f.size)}</span>
+                          <span>{getFileTypeLabel(f.mime_type)}</span>
+                          <span className="flex-1 text-right">{formatTime(f.created_at)}</span>
+                        </div>
+                        <div className="flex gap-1.5 mt-2">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDownload(f.file_id, f.name); }}
+                            className="rounded-md border border-border px-2 py-1 text-[10px] text-muted-foreground hover:bg-muted transition-colors flex items-center gap-1"
+                          >
+                            <Download size={10} /> {t("vein.download") || "Download"}
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handleDelete(f.file_id); }}
+                            className="rounded-md border border-red-500/30 px-2 py-1 text-[10px] text-red-500 hover:bg-red-500/10 transition-colors flex items-center gap-1"
+                          >
+                            <Trash2 size={10} />
+                          </button>
+                          <button
+                            onClick={(e) => { e.stopPropagation(); handlePromote(f.file_id); }}
+                            className="rounded-md border border-emerald-500/30 px-2 py-1 text-[10px] text-emerald-500 hover:bg-emerald-500/10 transition-colors flex items-center gap-1"
+                          >
+                            <BookOpen size={10} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
               ) : (
+                /* Desktop: table */
                 <div className="rounded-xl border border-border overflow-x-auto">
                   <table className="w-full text-xs lg:text-sm min-w-[500px]">
                     <thead>
@@ -992,8 +1043,72 @@ export function VeinClient() {
                 </div>
               )}
 
-              {/* File Detail Panel */}
-              {selectedFile && (
+              {/* File Detail Panel — Sheet on mobile, inline on desktop */}
+              {selectedFile && isMobile ? (
+                <Sheet open={!!selectedFile} onOpenChange={(open) => { if (!open) { setSelectedFile(null); setPreviewContent(null); } }}>
+                  <SheetContent side="right" size="md" className="p-0 flex flex-col overflow-y-auto">
+                    <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
+                      <SheetTitle className="text-sm font-medium flex items-center gap-2">
+                        {(() => { const Icon = getFileIcon(selectedFile.mime_type); return <Icon size={16} className="shrink-0 text-primary" />; })()}
+                        <span className="truncate">{selectedFile.name}</span>
+                      </SheetTitle>
+                    </SheetHeader>
+                    <div className="flex-1 overflow-y-auto p-3 space-y-3">
+                      {/* Preview Area */}
+                      {loadingPreview ? (
+                        <div className="flex items-center justify-center py-8 text-muted-foreground">
+                          <RefreshCw size={16} className="animate-spin mr-2" />
+                          <span className="text-xs">{t("vein.loadingPreviewText")}</span>
+                        </div>
+                      ) : previewType === "image" && previewContent ? (
+                        <div className="rounded-lg border border-border bg-muted/20 p-2 flex items-center justify-center">
+                          <img src={previewContent} alt={selectedFile.name} className="max-h-48 max-w-full object-contain rounded" />
+                        </div>
+                      ) : previewType === "text" && previewContent ? (
+                        <div className="rounded-lg border border-border bg-muted/20 p-2">
+                          <pre className="text-[11px] font-mono whitespace-pre-wrap break-words max-h-36 overflow-y-auto text-foreground/80">{previewContent}</pre>
+                        </div>
+                      ) : null}
+
+                      {/* Metadata */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground"><HardDrive size={10} /> {t("vein.fileSizeLabel")}</div>
+                          <p className="text-xs font-medium">{formatBytes(selectedFile.size)}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground"><FileType size={10} /> {t("vein.mimeTypeLabel")}</div>
+                          <p className="text-xs font-medium">{selectedFile.mime_type}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground"><Clock size={10} /> {t("vein.uploadTimeLabel")}</div>
+                          <p className="text-xs font-medium">{formatTime(selectedFile.created_at)}</p>
+                        </div>
+                        <div className="space-y-0.5">
+                          <div className="flex items-center gap-1 text-[10px] text-muted-foreground"><Tag size={10} /> {t("vein.tagsLabel")}</div>
+                          <p className="text-xs font-medium">{selectedFile.tags.length > 0 ? selectedFile.tags.join(", ") : "—"}</p>
+                        </div>
+                      </div>
+
+                      {/* Actions */}
+                      <div className="flex gap-2 pt-2 border-t border-border">
+                        <button onClick={() => handleDownload(selectedFile.file_id, selectedFile.name)}
+                          className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs text-white hover:bg-primary/90 transition-colors">
+                          <Download size={14} /> {t("vein.downloadFileAction")}
+                        </button>
+                        <button onClick={() => { if (confirm(t("vein.confirmDeleteFile", { name: selectedFile.name }))) handleDelete(selectedFile.file_id); }}
+                          className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-xs text-red-500 hover:bg-red-500/10 transition-colors">
+                          <Trash2 size={14} />
+                        </button>
+                        <button onClick={() => handleAutoProcess(selectedFile.file_id)} disabled={autoProcessing}
+                          className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-2 text-xs text-amber-500 hover:bg-amber-500/10 transition-colors disabled:opacity-50">
+                          {autoProcessing ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
+                        </button>
+                      </div>
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              ) : selectedFile && (
                 <div className="rounded-xl border border-border bg-card overflow-hidden">
                   <div className="flex items-center justify-between px-2 lg:px-4 py-3 border-b border-border bg-muted/20">
                     <div className="flex items-center gap-2 min-w-0">
