@@ -459,7 +459,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             const isActive = activeSessionId === session.id;
                             return (
                           <button key={session.id}
-                            onClick={() => { clearSessionUnread(session.id); router.push(`/chat?agent=${agent.id}&session=${session.id}`); }}
+                            onClick={() => { clearSessionUnread(session.id); router.push(`/chat?agent=${agent.id}&session=${session.id}`); window.dispatchEvent(new CustomEvent('openmate-select-session', { detail: { sessionId: session.id, agentId: agent.id } })); }}
                             className={cn(
                               "group w-full text-left pl-12 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer group-data-[collapsible=icon]:hidden",
                               isActive && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
@@ -495,7 +495,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         const isActive = activeSessionId === session.id;
                         return (
                       <button key={session.id}
-                        onClick={() => { clearSessionUnread(session.id); router.push(`/chat?agent=${agent.id}&session=${session.id}`); }}
+                        onClick={() => { clearSessionUnread(session.id); router.push(`/chat?agent=${agent.id}&session=${session.id}`); window.dispatchEvent(new CustomEvent('openmate-select-session', { detail: { sessionId: session.id, agentId: agent.id } })); }}
                         className={cn(
                           "group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer group-data-[collapsible=icon]:hidden",
                           isActive && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
