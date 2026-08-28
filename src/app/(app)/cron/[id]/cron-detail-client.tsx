@@ -163,7 +163,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
   const icon = agentIcons[agent] || agentIcons.default;
 
   return (
-    <div className="p-6 h-full overflow-y-auto max-w-4xl mx-auto">
+    <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto max-w-4xl mx-auto">
       {/* Header */}
       <div className="flex items-center gap-3 mb-6">
         <button
