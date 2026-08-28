@@ -414,7 +414,7 @@ export function SomaConnectorClient() {
               {/* Detail Panel — Sheet on mobile, inline on desktop */}
               {selected && isMobile ? (
                 <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-                  <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col overflow-y-auto">
+                  <SheetContent side="right" className="w-full p-0 flex flex-col overflow-y-auto">
                     <div className="p-4 space-y-4">
                       <div className="flex items-center justify-between">
                         <div>

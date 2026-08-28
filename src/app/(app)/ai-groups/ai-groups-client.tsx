@@ -1219,7 +1219,7 @@ export default function AIGroupsPage() {
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 md:px-3 lg:px-6 py-4 space-y-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 lg:px-6 py-4 space-y-4">
           {!selectedGroup && (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <MessageSquare className="w-12 h-12 mb-4 opacity-40" />

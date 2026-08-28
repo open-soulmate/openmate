@@ -376,7 +376,7 @@ export function SessionsClient() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-2 lg:px-4 md:px-3 lg:px-6 h-12 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-2 lg:px-6 h-12 border-b border-zinc-800">
         <div className="flex items-center gap-3">
           <History className="w-6 h-6 text-cyan-400" />
           <div>
@@ -701,7 +701,7 @@ export function SessionsClient() {
         {selectedSession && (
           isMobile ? (
             <Sheet open={!!selectedSession} onOpenChange={(open) => { if (!open) setSelectedSession(null) }}>
-              <SheetContent side="right" size="full" className="p-0 flex flex-col sm:w-96">
+              <SheetContent side="right" size="full" className="p-0 flex flex-col">
                 <div className="flex items-center justify-between px-2 lg:px-4 h-12 border-b border-zinc-800">
                   <div className="flex items-center gap-2 min-w-0">
                     <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
