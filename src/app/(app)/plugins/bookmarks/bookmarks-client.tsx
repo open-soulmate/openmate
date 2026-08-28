@@ -341,7 +341,7 @@ export function BookmarksClient() {
                     </div>
                     <div className="flex items-center justify-between text-[10px] text-zinc-600">
                       <span className="flex items-center gap-1"><Clock className="w-2.5 h-2.5" />{timeAgo(bm.created_at)}</span>
-                      <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">
+                      <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition">
                         <button onClick={() => openEdit(bm)} className="p-1 hover:text-zinc-300"><Edit3 className="w-3 h-3" /></button>
                         <a href={bm.url} target="_blank" rel="noopener" className="p-1 hover:text-zinc-300"><ExternalLink className="w-3 h-3" /></a>
                         <button onClick={() => promoteBookmark(bm.id)} className="p-1 hover:text-zinc-300" title="Promote to Knowledge"><BookmarkCheck className="w-3 h-3" /></button>
@@ -367,7 +367,7 @@ export function BookmarksClient() {
                       ))}
                     </div>
                     <span className="text-[10px] text-zinc-600 w-16 text-right">{timeAgo(bm.created_at)}</span>
-                    <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition">
+                    <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition">
                       <button onClick={() => openEdit(bm)} className="p-1 hover:text-zinc-300 text-zinc-600"><Edit3 className="w-3 h-3" /></button>
                       <button onClick={() => deleteBookmark(bm.id)} className="p-1 hover:text-red-400 text-zinc-600"><Trash2 className="w-3 h-3" /></button>
                     </div>

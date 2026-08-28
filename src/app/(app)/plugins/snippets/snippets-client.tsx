@@ -357,7 +357,7 @@ export function SnippetsClient() {
                       {s.filename && <span className="truncate text-[10px] text-muted-foreground">{s.filename}</span>}
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                     <button onClick={() => handleStar(s.id)} className="rounded p-1 hover:bg-accent" title={t('plugins.starred')}>
                       <Star className={`h-3.5 w-3.5 ${s.starred ? 'fill-yellow-500 text-yellow-500' : ''}`} />
                     </button>
@@ -411,7 +411,7 @@ export function SnippetsClient() {
                   ))}
                 </div>
                 <span className="shrink-0 text-[10px] text-muted-foreground">{timeAgo(s.updated_at)}</span>
-                <div className="flex shrink-0 items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex shrink-0 items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button onClick={() => handleCopy(s)} className="rounded p-1 hover:bg-accent" title={t('plugins.copy')}>
                     {copiedId === s.id ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
                   </button>
