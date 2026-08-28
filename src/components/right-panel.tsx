@@ -640,6 +640,12 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
                 title: 'Terminal',
               });
             }}
+            onOpenDetails={() => {
+              updateTab(activeTab.id, {
+                type: 'details',
+                title: 'Details',
+              });
+            }}
           />
         );
 
@@ -696,18 +702,18 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
         className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors z-10"
       />
 
-      {/* Tab bar */}
-      <div className="flex items-center h-9 border-b border-border bg-muted/20 shrink-0 overflow-hidden">
-        <div className="flex items-center flex-1 overflow-x-auto no-scrollbar">
+      {/* Tab bar — browser-style wave tabs */}
+      <div className="flex items-end h-12 bg-muted/30 shrink-0 overflow-hidden px-1 border-b border-border">
+        <div className="flex items-end flex-1 overflow-x-auto no-scrollbar h-full gap-1">
           {tabs.map((tab) => (
             <button
               key={tab.id}
               onClick={() => setActiveTabId(tab.id)}
               className={cn(
-                'group flex items-center gap-1.5 px-2.5 h-full text-xs border-r border-border/50 shrink-0 transition-colors min-w-0 max-w-[140px]',
+                'group flex items-center gap-1.5 px-3 text-xs shrink-0 transition-all min-w-0 max-w-[140px]',
                 tab.id === activeTabId
-                  ? 'bg-background text-foreground'
-                  : 'bg-transparent text-muted-foreground hover:bg-muted/50'
+                  ? 'bg-background text-foreground h-[calc(100%+1px)] rounded-xl border border-border mb-[-1px] shadow-[0_0_8px_rgba(124,58,237,0.15)]'
+                  : 'bg-transparent text-muted-foreground hover:text-foreground hover:bg-muted/60 h-[calc(100%-8px)] rounded-xl border border-transparent'
               )}
             >
               <TabIcon type={tab.type} />
