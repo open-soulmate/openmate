@@ -5,9 +5,11 @@ import { getApiBaseUrl } from "@/lib/api-client";
 import { useTranslation } from "react-i18next";
 import {
   RefreshCw, Maximize2, Minimize2, Activity,
-  CheckCircle, XCircle, Loader2, Clock,
+  CheckCircle, XCircle, Loader2, Clock, PanelRightOpen, PanelRightClose,
 } from "lucide-react";
 import Link from "next/link";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface OrganStatus {
   key: string;
