@@ -4,9 +4,12 @@ import {
   StickyNote, Plus, Search, Tag, Pin, Trash2, Save, X, Check,
   Loader2, CheckCircle2, XCircle, BookOpen, Hash, RefreshCw,
   ChevronDown, Edit3, Eye, ArrowUpRight,
+  PanelLeft,
 } from 'lucide-react';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { useMediaQuery } from '@/hooks/use-mobile';
 
 interface Note {
   id: string;
@@ -58,6 +61,8 @@ function MarkdownPreview({ content }: { content: string }) {
 
 export function QuickNotesClient() {
   const { t } = useTranslation();
+  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const [showSidebar, setShowSidebar] = useState(true);
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -146,11 +151,13 @@ export function QuickNotesClient() {
     setEditingNote(note);
     setIsCreating(false);
     setPreview(false);
+    if (isMobile) setShowSidebar(false);
   };
 
   const closeEditor = () => {
     setEditingNote(null);
     setIsCreating(false);
+    if (isMobile) setShowSidebar(true);
   };
 
   const handleSave = async () => {
@@ -277,125 +284,36 @@ export function QuickNotesClient() {
         </div>
       )}
 
-      {/* Note List Panel */}
-      <div className="w-80 border-r border-border flex flex-col shrink-0">
-        {/* Header */}
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-2">
-              <StickyNote size={18} className="text-primary" />
-              <h2 className="font-semibold text-sm">{t('plugins.quickNotesTitle')}</h2>
-            </div>
-            <div className="flex gap-1.5">
-              <button onClick={() => { fetchNotes(); fetchTags(); fetchStats(); }}
-                className="p-1.5 rounded-lg hover:bg-muted transition-colors" title="Refresh">
-                <RefreshCw size={14} className="text-muted-foreground" />
-              </button>
-              <button onClick={openCreate}
-                className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-                <Plus size={14} />
-              </button>
-            </div>
-          </div>
-
-          {/* Search */}
-          <div className="relative mb-3">
-            <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder={t('plugins.searchNotes')}
-              className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-border bg-muted text-xs outline-none focus:ring-2 focus:ring-primary/30"
+      {/* Note List Panel — Sheet on mobile, inline on desktop */}
+      {isMobile ? (
+        <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
+          <SheetContent side="left" showCloseButton={false} className="w-80 p-0 flex flex-col">
+            <NoteListContent
+              notes={notes} pinnedNotes={pinnedNotes} regularNotes={regularNotes}
+              searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+              filterTag={filterTag} setFilterTag={setFilterTag}
+              allTags={allTags} stats={stats}
+              editingNote={editingNote} openEdit={openEdit} openCreate={openCreate}
+              handleTogglePin={handleTogglePin} handleDelete={handleDelete}
+              fetchNotes={fetchNotes} fetchTags={fetchTags} fetchStats={fetchStats}
+              loading={loading} t={t}
             />
-          </div>
-
-          {/* Stats */}
-          <div className="flex gap-3 text-[10px] text-muted-foreground">
-            <span>{t('plugins.notesCount', { count: stats.total })}</span>
-            <span>{t('plugins.pinnedCount', { count: stats.pinned })}</span>
-            <span>{t('plugins.todayCount', { count: stats.created_today })}</span>
-          </div>
-        </div>
-
-        {/* Tags */}
-        {allTags.length > 0 && (
-          <div className="px-4 py-2 border-b border-border flex flex-wrap gap-1">
-            <button
-              onClick={() => setFilterTag(null)}
-              className={`px-2 py-0.5 rounded-md text-[10px] transition-colors ${
-                !filterTag ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t('plugins.all')}
-            </button>
-            {allTags.map(tag => (
-              <button
-                key={tag}
-                onClick={() => setFilterTag(filterTag === tag ? null : tag)}
-                className={`px-2 py-0.5 rounded-md text-[10px] transition-colors flex items-center gap-1 ${
-                  filterTag === tag
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                <Hash size={8} />
-                {tag}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Notes list */}
-        <div className="flex-1 overflow-y-auto">
-          {pinnedNotes.length > 0 && (
-            <div className="px-3 pt-2">
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 px-1 flex items-center gap-1">
-                <Pin size={8} /> {t('plugins.pinnedSection')}
-              </p>
-              {pinnedNotes.map(note => (
-                <NoteCard
-                  key={note.id}
-                  note={note}
-                  active={editingNote?.id === note.id}
-                  onClick={() => openEdit(note)}
-                  onTogglePin={() => handleTogglePin(note)}
-                  onDelete={() => handleDelete(note.id)}
-                  t={t}
-                />
-              ))}
-            </div>
-          )}
-
-          <div className="px-3 pt-2 pb-4">
-            {pinnedNotes.length > 0 && regularNotes.length > 0 && (
-              <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 px-1">
-                {t('plugins.recentSection')}
-              </p>
-            )}
-            {regularNotes.length === 0 && pinnedNotes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-                <StickyNote size={32} className="mb-2 opacity-30" />
-                <p className="text-xs">{t('plugins.noNotesYet')}</p>
-                <button onClick={openCreate} className="text-xs text-primary mt-2 hover:underline">
-                  {t('plugins.createFirstNote')}
-                </button>
-              </div>
-            ) : (
-              regularNotes.map(note => (
-                <NoteCard
-                  key={note.id}
-                  note={note}
-                  active={editingNote?.id === note.id}
-                  onClick={() => openEdit(note)}
-                  onTogglePin={() => handleTogglePin(note)}
-                  onDelete={() => handleDelete(note.id)}
-                  t={t}
-                />
-              ))
-            )}
-          </div>
-        </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+      <div className="w-80 border-r border-border flex flex-col shrink-0">
+        <NoteListContent
+          notes={notes} pinnedNotes={pinnedNotes} regularNotes={regularNotes}
+          searchQuery={searchQuery} setSearchQuery={setSearchQuery}
+          filterTag={filterTag} setFilterTag={setFilterTag}
+          allTags={allTags} stats={stats}
+          editingNote={editingNote} openEdit={openEdit} openCreate={openCreate}
+          handleTogglePin={handleTogglePin} handleDelete={handleDelete}
+          fetchNotes={fetchNotes} fetchTags={fetchTags} fetchStats={fetchStats}
+          loading={loading} t={t}
+        />
       </div>
+      )}
 
       {/* Editor Panel */}
       {(editingNote || isCreating) ? (
@@ -403,6 +321,11 @@ export function QuickNotesClient() {
           {/* Editor toolbar */}
           <div className="flex items-center justify-between px-4 py-2.5 border-b border-border">
             <div className="flex items-center gap-2">
+              {isMobile && (
+                <button onClick={() => { closeEditor(); setShowSidebar(true); }} className="p-1 rounded hover:bg-muted">
+                  <PanelLeft size={16} className="text-muted-foreground" />
+                </button>
+              )}
               <Edit3 size={14} className="text-muted-foreground" />
               <span className="text-sm font-medium">
                 {isCreating ? t('plugins.newNote') : t('plugins.editNote')}
@@ -514,6 +437,147 @@ export function QuickNotesClient() {
         </div>
       )}
     </div>
+  );
+}
+
+function NoteListContent({
+  notes, pinnedNotes, regularNotes,
+  searchQuery, setSearchQuery,
+  filterTag, setFilterTag,
+  allTags, stats,
+  editingNote, openEdit, openCreate,
+  handleTogglePin, handleDelete,
+  fetchNotes, fetchTags, fetchStats,
+  loading, t,
+}: {
+  notes: Note[]; pinnedNotes: Note[]; regularNotes: Note[];
+  searchQuery: string; setSearchQuery: (q: string) => void;
+  filterTag: string | null; setFilterTag: (tag: string | null) => void;
+  allTags: string[]; stats: { total: number; pinned: number; created_today: number };
+  editingNote: Note | null; openEdit: (note: Note) => void; openCreate: () => void;
+  handleTogglePin: (note: Note) => void; handleDelete: (id: string) => void;
+  fetchNotes: () => void; fetchTags: () => void; fetchStats: () => void;
+  loading: boolean; t: (k: string, o?: Record<string, unknown>) => string;
+}) {
+  return (
+    <>
+      {/* Header */}
+      <div className="p-4 border-b border-border">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <StickyNote size={18} className="text-primary" />
+            <h2 className="font-semibold text-sm">{t('plugins.quickNotesTitle')}</h2>
+          </div>
+          <div className="flex gap-1.5">
+            <button onClick={() => { fetchNotes(); fetchTags(); fetchStats(); }}
+              className="p-1.5 rounded-lg hover:bg-muted transition-colors" title="Refresh">
+              <RefreshCw size={14} className="text-muted-foreground" />
+            </button>
+            <button onClick={openCreate}
+              className="p-1.5 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+              <Plus size={14} />
+            </button>
+          </div>
+        </div>
+
+        {/* Search */}
+        <div className="relative mb-3">
+          <Search size={13} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <input
+            value={searchQuery}
+            onChange={e => setSearchQuery(e.target.value)}
+            placeholder={t('plugins.searchNotes')}
+            className="w-full pl-8 pr-3 py-1.5 rounded-lg border border-border bg-muted text-xs outline-none focus:ring-2 focus:ring-primary/30"
+          />
+        </div>
+
+        {/* Stats */}
+        <div className="flex gap-3 text-[10px] text-muted-foreground">
+          <span>{t('plugins.notesCount', { count: stats.total })}</span>
+          <span>{t('plugins.pinnedCount', { count: stats.pinned })}</span>
+          <span>{t('plugins.todayCount', { count: stats.created_today })}</span>
+        </div>
+      </div>
+
+      {/* Tags */}
+      {allTags.length > 0 && (
+        <div className="px-4 py-2 border-b border-border flex flex-wrap gap-1">
+          <button
+            onClick={() => setFilterTag(null)}
+            className={`px-2 py-0.5 rounded-md text-[10px] transition-colors ${
+              !filterTag ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {t('plugins.all')}
+          </button>
+          {allTags.map(tag => (
+            <button
+              key={tag}
+              onClick={() => setFilterTag(filterTag === tag ? null : tag)}
+              className={`px-2 py-0.5 rounded-md text-[10px] transition-colors flex items-center gap-1 ${
+                filterTag === tag
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-muted text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              <Hash size={8} />
+              {tag}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Notes list */}
+      <div className="flex-1 overflow-y-auto">
+        {pinnedNotes.length > 0 && (
+          <div className="px-3 pt-2">
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 px-1 flex items-center gap-1">
+              <Pin size={8} /> {t('plugins.pinnedSection')}
+            </p>
+            {pinnedNotes.map(note => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                active={editingNote?.id === note.id}
+                onClick={() => openEdit(note)}
+                onTogglePin={() => handleTogglePin(note)}
+                onDelete={() => handleDelete(note.id)}
+                t={t}
+              />
+            ))}
+          </div>
+        )}
+
+        <div className="px-3 pt-2 pb-4">
+          {pinnedNotes.length > 0 && regularNotes.length > 0 && (
+            <p className="text-[10px] text-muted-foreground uppercase tracking-wider mb-1 px-1">
+              {t('plugins.recentSection')}
+            </p>
+          )}
+          {regularNotes.length === 0 && pinnedNotes.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+              <StickyNote size={32} className="mb-2 opacity-30" />
+              <p className="text-xs">{t('plugins.noNotesYet')}</p>
+              <button onClick={openCreate} className="text-xs text-primary mt-2 hover:underline">
+                {t('plugins.createFirstNote')}
+              </button>
+            </div>
+          ) : (
+            regularNotes.map(note => (
+              <NoteCard
+                key={note.id}
+                note={note}
+                active={editingNote?.id === note.id}
+                onClick={() => openEdit(note)}
+                onTogglePin={() => handleTogglePin(note)}
+                onDelete={() => handleDelete(note.id)}
+                t={t}
+              />
+            ))
+          )}
+        </div>
+      </div>
+    </>
   );
 }
 
