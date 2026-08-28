@@ -147,10 +147,10 @@ export function SkillsClient() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-primary">{skills.length}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('skills.available')}</p></div>
-        <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-green-500">{installedCount}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('skills.installed')}</p></div>
-        <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-muted-foreground">{skills.length - installedCount}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('skills.available')}</p></div>
+      <div className="grid grid-cols-3 gap-2 lg:gap-4 mb-6">
+        <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold text-primary">{skills.length}</p><p className="text-[10px] lg:text-sm text-muted-foreground truncate">{t('skills.available')}</p></div>
+        <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold text-green-500">{installedCount}</p><p className="text-[10px] lg:text-sm text-muted-foreground truncate">{t('skills.installed')}</p></div>
+        <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold text-muted-foreground">{skills.length - installedCount}</p><p className="text-[10px] lg:text-sm text-muted-foreground truncate">{t('skills.available')}</p></div>
       </div>
 
       {/* Search & Filter */}
