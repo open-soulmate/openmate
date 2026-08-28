@@ -286,7 +286,7 @@ export function CronClient() {
                       {job.status === 'active' ? (
                         <button onClick={() => handleAction(jobId, 'pause')}
                           disabled={actionLoading === jobId + 'pause'}
-                          className="p-1.5 rounded-lg hover:bg-muted text-amber-500"
+                          className="p-1.5 rounded-lg hover:bg-muted text-amber-500 touch-manipulation"
                           title={t('cron.pauseBtn', 'Pause')}>
                           {actionLoading === jobId + 'pause'
                             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -295,7 +295,7 @@ export function CronClient() {
                       ) : (
                         <button onClick={() => handleAction(jobId, 'resume')}
                           disabled={actionLoading === jobId + 'resume'}
-                          className="p-1.5 rounded-lg hover:bg-muted text-green-500"
+                          className="p-1.5 rounded-lg hover:bg-muted text-green-500 touch-manipulation"
                           title={t('cron.resumeBtn', 'Resume')}>
                           {actionLoading === jobId + 'resume'
                             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -304,14 +304,14 @@ export function CronClient() {
                       )}
                       <button onClick={() => handleAction(jobId, 'run')}
                         disabled={actionLoading === jobId + 'run'}
-                        className="p-1.5 rounded-lg hover:bg-muted text-primary"
+                        className="p-1.5 rounded-lg hover:bg-muted text-primary touch-manipulation"
                         title={t('cron.runNow', 'Run Now')}>
                         {actionLoading === jobId + 'run'
                           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
                           : <Zap className="w-3.5 h-3.5" />}
                       </button>
                       <button onClick={() => toggleHistory(jobId)}
-                        className={cn('p-1.5 rounded-lg hover:bg-muted',
+                        className={cn('p-1.5 rounded-lg hover:bg-muted touch-manipulation',
                           isExpanded ? 'text-primary bg-muted' : 'text-muted-foreground'
                         )}
                         title={t('cron.history', 'History')}>
@@ -319,7 +319,7 @@ export function CronClient() {
                       </button>
                       <button onClick={() => handleAction(jobId, 'delete')}
                         disabled={actionLoading === jobId + 'delete'}
-                        className="p-1.5 rounded-lg hover:bg-muted text-destructive"
+                        className="p-1.5 rounded-lg hover:bg-muted text-destructive touch-manipulation"
                         title={t('cron.deleteBtn', 'Delete')}>
                         {actionLoading === jobId + 'delete'
                           ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
