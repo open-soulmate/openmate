@@ -849,6 +849,13 @@ export function ChatClient() {
 
   return (
     <div className="flex flex-1 min-h-0">
+      {/* Mobile: Session List Sheet */}
+      <Sheet open={isMobile && showSidebar} onOpenChange={(open) => { setShowSidebar(open); if (open) setShowDetails(false); }}>
+        <SheetContent side="left" className="w-72 p-0 flex flex-col">
+          {renderSidebarContent()}
+        </SheetContent>
+      </Sheet>
+
       {/* Chat Window */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Chat header */}
@@ -876,9 +883,15 @@ export function ChatClient() {
             {selectedAgent && <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">{selectedAgent.name}</span>}
           </div>
           <div className="flex items-center gap-2">
+            {/* Mobile: session list toggle */}
+            {isMobile && (
+              <button onClick={() => { setShowSidebar(true); setShowDetails(false); }} className="p-1 rounded hover:bg-muted">
+                <PanelLeft className="w-4 h-4" />
+              </button>
+            )}
             {wsConnected ? <Wifi className="w-4 h-4 text-green-500" /> : <WifiOff className="w-4 h-4 text-muted-foreground" />}
             <span className="text-xs text-muted-foreground">{wsConnected ? 'WS' : 'HTTP'}</span>
-            <button onClick={() => setShowDetails(!showDetails)} className="p-1 rounded hover:bg-muted">
+            <button onClick={() => { if (isMobile) setShowSidebar(false); setShowDetails(!showDetails); }} className="p-1 rounded hover:bg-muted">
               {showDetails ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
             </button>
           </div>
@@ -1046,7 +1059,7 @@ export function ChatClient() {
 
       {/* Details Panel: Sheet on mobile, inline on desktop */}
       {isMobile ? (
-        <Sheet open={showDetails} onOpenChange={setShowDetails}>
+        <Sheet open={showDetails} onOpenChange={(open) => { setShowDetails(open); if (open) setShowSidebar(false); }}>
           <SheetContent side="right" className="w-80 p-0 flex flex-col">
             {renderDetailsContent()}
           </SheetContent>
