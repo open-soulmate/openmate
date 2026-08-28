@@ -2,6 +2,7 @@
 
 import { TerminalPanel } from "@/components/terminal-panel";
 import { BottomNav } from "@/components/bottom-nav";
+import { TopBar } from "@/components/top-bar";
 import { NotificationCenter } from "@/components/notification-center";
 import { RightPanel } from "@/components/right-panel";
 import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
@@ -585,30 +586,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content area */}
       <SidebarInset className="min-h-0 overflow-hidden">
-        {/* Mobile: minimal top bar with title + actions */}
-        <div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-background px-3 md:hidden">
-          <MobilePageTitle />
-          <div className="flex items-center gap-1">
-            <NotificationCenter />
-            <button
-              onClick={() => setRightPanelOpen((v) => !v)}
-              className="p-1.5 rounded-md hover:bg-muted/50 transition-colors"
-              title={rightPanelOpen ? "Close workspace" : "Open workspace"}
-            >
-              {rightPanelOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
-            </button>
-          </div>
-        </div>
-        {/* Desktop: right-panel toggle in top-right corner */}
-        <div className="hidden md:flex h-9 shrink-0 items-center justify-end border-b border-border bg-background px-3">
-          <button
-            onClick={() => setRightPanelOpen((v) => !v)}
-            className="p-1.5 rounded-md hover:bg-muted/50 transition-colors text-muted-foreground"
-            title={rightPanelOpen ? "Close workspace" : "Open workspace"}
-          >
-            {rightPanelOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
-          </button>
-        </div>
+        {/* Top utility bar — scrollable, all screens */}
+        <TopBar
+          rightPanelOpen={rightPanelOpen}
+          onToggleRightPanel={() => setRightPanelOpen(v => !v)}
+          eventCount={eventCount}
+          pageTitle={<MobilePageTitle />}
+        />
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           {children}
         </div>
