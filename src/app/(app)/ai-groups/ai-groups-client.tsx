@@ -670,6 +670,7 @@ export default function AIGroupsPage() {
 
     // Step 4: Execute tasks via real agents
     const results: string[] = [];
+    const agentScores: { agent_id: string; name: string; score: number; capability: string; success: boolean }[] = [];
     for (const assignment of assignments) {
       const agentInfo = getAgentById(assignment.agent_id);
       setMessages(prev => [...prev, {
@@ -683,20 +684,33 @@ export default function AIGroupsPage() {
 
       const execResult = await executeAgentTask(taskId, assignment.agent_id, goal);
       const responseText = execResult?.response || '(无响应)';
+      const execSuccess = execResult?.success ?? false;
       results.push(`${agentInfo?.name || assignment.agent_id}: ${responseText}`);
 
-      // Update the "executing" message with real result
+      // Collect inline auto-score from execute response
+      if (execResult?.auto_score != null) {
+        agentScores.push({
+          agent_id: assignment.agent_id,
+          name: agentInfo?.name || assignment.agent_id,
+          score: execResult.auto_score,
+          capability: execResult.capability || '',
+          success: execSuccess,
+        });
+      }
+
+      // Update the "executing" message with real result + score badge
+      const scoreBadge = execResult?.auto_score != null ? ` [${execResult.auto_score}/10]` : '';
       setMessages(prev => {
         const updated = [...prev];
         const idx = updated.findIndex(m => m.id === `executing-${assignment.agent_id}-${Date.now()}`);
         if (idx >= 0) {
-          updated[idx] = { ...updated[idx], content: responseText, intent: 'result' as const };
+          updated[idx] = { ...updated[idx], content: responseText + scoreBadge, intent: 'result' as const };
         } else {
           updated.push({
             id: `result-${assignment.agent_id}-${Date.now()}`, role: 'agent',
             agent_id: assignment.agent_id, agent_name: agentInfo?.name || assignment.agent_id,
             agent_role: agentInfo?.role || 'executor',
-            content: responseText, timestamp: new Date(),
+            content: responseText + scoreBadge, timestamp: new Date(),
             intent: 'result' as const,
           });
         }
@@ -708,42 +722,37 @@ export default function AIGroupsPage() {
     const resultContent = results.join('\n\n---\n\n');
     await submitTaskResult(taskId, resultContent);
 
-    // Step 6: Auto-evaluate (closes the feedback loop automatically)
-    const anyFailed = results.some(r => r.includes('(无响应)') || r.includes('(执行失败)'));
-    const autoResult = await autoEvaluateTask(taskId, !anyFailed);
-
-    if (autoResult) {
-      const autoScore = autoResult.auto_score;
-      const autoReason = autoResult.reason;
-      const autoCap = autoResult.capability;
+    // Step 6: Show inline auto-scores (already calculated by backend during execute)
+    if (agentScores.length > 0) {
+      const avgScore = Math.round(agentScores.reduce((s, a) => s + a.score, 0) / agentScores.length);
+      const scoreLines = agentScores.map(a => `${a.name}: ${a.score}/10 (${a.capability})`).join('\n');
 
       setMessages(prev => [...prev, {
         id: `auto-eval-${Date.now()}`, role: 'agent',
         agent_name: 'Auto-Evaluator', agent_role: 'verifier',
-        content: `📊 自动评分: ${autoScore}/10\n能力维度: ${autoCap}\n${autoReason}${autoResult.capability_profile?.length ? `\n能力画像已更新 (${autoResult.capability_profile.length}个维度)` : ''}`,
+        content: `📊 自动评分 (平均 ${avgScore}/10)\n${scoreLines}\n能力画像已自动更新`,
         timestamp: new Date(),
         intent: 'score' as const,
       }]);
 
-      // Set review state with auto-score
       setActiveTaskReview({
         task_id: taskId,
         result: resultContent,
         status: 'scored',
         round: 1,
         assignments,
-        scores: [{
-          scorer_agent_id: 'auto-evaluator',
-          scorer_name: 'Auto-Evaluator',
-          score: autoScore,
-          reason: autoReason,
-          capability: autoCap,
-        }],
-        avg_score: autoScore,
+        scores: agentScores.map(a => ({
+          scorer_agent_id: 'auto-scorer',
+          scorer_name: a.name,
+          score: a.score,
+          reason: `自动评分: ${a.success ? '执行成功' : '执行失败'}`,
+          capability: a.capability,
+        })),
+        avg_score: avgScore,
         discussion_messages: await fetchDiscussionMessages(taskId),
       });
     } else {
-      // Fallback to manual scoring if auto-evaluate fails
+      // Fallback: no auto-score available
       setActiveTaskReview({
         task_id: taskId,
         result: resultContent,
