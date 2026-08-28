@@ -3,10 +3,12 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   RefreshCw, Plus, Trash2, Home, Shield, Users,
   Settings, BarChart3, Loader2, AlertTriangle,
-  CheckCircle, XCircle, Search, Activity,
+  CheckCircle, XCircle, Search, Activity, PanelRightOpen,
 } from "lucide-react";
 
 interface Tenant {
@@ -83,6 +85,7 @@ export function NestClient() {
   const [selected, setSelected] = useState<Tenant | null>(null);
   const [showCreate, setShowCreate] = useState(false);
   const [loading, setLoading] = useState(false);
+  const isMobile = useIsMobile();
 
   // Create form
   const [newName, setNewName] = useState("");
@@ -256,7 +259,7 @@ export function NestClient() {
         {/* Tenants Tab */}
         {tab === "tenants" && (
           <div className="flex gap-6">
-            <div className="flex-1 space-y-3">
+            <div className={`flex-1 space-y-3 ${isMobile ? 'w-full' : ''}`}>
               {tenants.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <Users size={40} className="mb-3 opacity-30" />
@@ -308,86 +311,175 @@ export function NestClient() {
               ))}
             </div>
 
-            {/* Detail Panel */}
-            {selected && (
-              <div className="w-80 space-y-4">
-                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold text-sm">{selected.name}</h3>
-                    <div className="flex gap-1">
-                      {selected.status === "active" ? (
-                        <button onClick={() => handleSuspend(selected.tenant_id)}
-                          className="rounded-md p-1.5 text-amber-500 hover:bg-amber-500/10" title={t('nest.suspend')}>
-                          <AlertTriangle size={14} />
+            {/* Detail Panel — Sheet on mobile, inline on desktop */}
+            {isMobile ? (
+              <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
+                <SheetContent side="right" className="w-80 p-0 flex flex-col">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {selected && (
+                      <>
+                        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                          <div className="flex items-center justify-between">
+                            <h3 className="font-semibold text-sm">{selected.name}</h3>
+                            <div className="flex gap-1">
+                              {selected.status === "active" ? (
+                                <button onClick={() => handleSuspend(selected.tenant_id)}
+                                  className="rounded-md p-1.5 text-amber-500 hover:bg-amber-500/10" title={t('nest.suspend')}>
+                                  <AlertTriangle size={14} />
+                                </button>
+                              ) : (
+                                <button onClick={() => handleReactivate(selected.tenant_id)}
+                                  className="rounded-md p-1.5 text-emerald-500 hover:bg-emerald-500/10" title={t('nest.activate')}>
+                                  <CheckCircle size={14} />
+                                </button>
+                              )}
+                              <button onClick={() => handleDelete(selected.tenant_id)}
+                                className="rounded-md p-1.5 text-red-500 hover:bg-red-500/10" title={t('nest.delete3')}>
+                                <Trash2 size={14} />
+                              </button>
+                            </div>
+                          </div>
+                          <div className="space-y-2 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">ID</span>
+                              <span className="font-mono">{selected.tenant_id}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{t('nest.text13')}</span>
+                              <span className="font-mono">{selected.namespace}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{t('nest.text14')}</span>
+                              <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", tierColor(selected.tier))}>
+                                {selected.tier}
+                              </span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-muted-foreground">{t('nest.status')}</span>
+                              <span>{selected.status}</span>
+                            </div>
+                            {selected.description && (
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">{t('nest.text15')}</span>
+                                <span className="text-right max-w-[160px] truncate">{selected.description}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Quota Check */}
+                        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                          <h4 className="text-sm font-medium">{t('nest.text16')}</h4>
+                          <div className="flex gap-2">
+                            <select value={quotaResource} onChange={(e) => setQuotaResource(e.target.value)}
+                              className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs">
+                              <option value="storage">{t('nest.text17')}</option>
+                              <option value="documents">{t('nest.text18')}</option>
+                              <option value="api_calls">{t('nest.apiCalls')}</option>
+                              <option value="tokens">Token</option>
+                              <option value="agents">Agent</option>
+                            </select>
+                            <button onClick={() => handleQuotaCheck(selected.tenant_id)}
+                              className="rounded-lg bg-rose-500 px-3 py-1.5 text-xs text-white hover:bg-rose-600">
+                              {t('nest.checkBtn')}
+                            </button>
+                          </div>
+                          {quotaResult && (
+                            <div className={cn("rounded-lg p-3 text-xs",
+                              quotaResult.allowed ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500")}>
+                              <p>{quotaResult.allowed ? t('nest.text20') : t('nest.text21')}</p>
+                              {quotaResult.current !== undefined && (
+                                <p>{t('nest.currentLimit', { current: quotaResult.current, limit: quotaResult.limit, percent: quotaResult.percent }) || `当前: ${quotaResult.current} / 上限: ${quotaResult.limit} (${quotaResult.percent}%)`}</p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
+            ) : (
+              selected && (
+                <div className="w-80 space-y-4">
+                  <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-sm">{selected.name}</h3>
+                      <div className="flex gap-1">
+                        {selected.status === "active" ? (
+                          <button onClick={() => handleSuspend(selected.tenant_id)}
+                            className="rounded-md p-1.5 text-amber-500 hover:bg-amber-500/10" title={t('nest.suspend')}>
+                            <AlertTriangle size={14} />
+                          </button>
+                        ) : (
+                          <button onClick={() => handleReactivate(selected.tenant_id)}
+                            className="rounded-md p-1.5 text-emerald-500 hover:bg-emerald-500/10" title={t('nest.activate')}>
+                            <CheckCircle size={14} />
+                          </button>
+                        )}
+                        <button onClick={() => handleDelete(selected.tenant_id)}
+                          className="rounded-md p-1.5 text-red-500 hover:bg-red-500/10" title={t('nest.delete3')}>
+                          <Trash2 size={14} />
                         </button>
-                      ) : (
-                        <button onClick={() => handleReactivate(selected.tenant_id)}
-                          className="rounded-md p-1.5 text-emerald-500 hover:bg-emerald-500/10" title={t('nest.activate')}>
-                          <CheckCircle size={14} />
-                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">ID</span>
+                        <span className="font-mono">{selected.tenant_id}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t('nest.text13')}</span>
+                        <span className="font-mono">{selected.namespace}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t('nest.text14')}</span>
+                        <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", tierColor(selected.tier))}>
+                          {selected.tier}
+                        </span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">{t('nest.status')}</span>
+                        <span>{selected.status}</span>
+                      </div>
+                      {selected.description && (
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">{t('nest.text15')}</span>
+                          <span className="text-right max-w-[160px] truncate">{selected.description}</span>
+                        </div>
                       )}
-                      <button onClick={() => handleDelete(selected.tenant_id)}
-                        className="rounded-md p-1.5 text-red-500 hover:bg-red-500/10" title={t('nest.delete3')}>
-                        <Trash2 size={14} />
-                      </button>
                     </div>
                   </div>
-                  <div className="space-y-2 text-xs">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">ID</span>
-                      <span className="font-mono">{selected.tenant_id}</span>
+
+                  {/* Quota Check */}
+                  <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                    <h4 className="text-sm font-medium">{t('nest.text16')}</h4>
+                    <div className="flex gap-2">
+                      <select value={quotaResource} onChange={(e) => setQuotaResource(e.target.value)}
+                        className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs">
+                        <option value="storage">{t('nest.text17')}</option>
+                        <option value="documents">{t('nest.text18')}</option>
+                        <option value="api_calls">{t('nest.apiCalls')}</option>
+                        <option value="tokens">Token</option>
+                        <option value="agents">Agent</option>
+                      </select>
+                      <button onClick={() => handleQuotaCheck(selected.tenant_id)}
+                        className="rounded-lg bg-rose-500 px-3 py-1.5 text-xs text-white hover:bg-rose-600">
+                        {t('nest.checkBtn')}
+                      </button>
                     </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('nest.text13')}</span>
-                      <span className="font-mono">{selected.namespace}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('nest.text14')}</span>
-                      <span className={cn("rounded-full px-2 py-0.5 text-[10px] font-medium", tierColor(selected.tier))}>
-                        {selected.tier}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">{t('nest.status')}</span>
-                      <span>{selected.status}</span>
-                    </div>
-                    {selected.description && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">{t('nest.text15')}</span>
-                        <span className="text-right max-w-[160px] truncate">{selected.description}</span>
+                    {quotaResult && (
+                      <div className={cn("rounded-lg p-3 text-xs",
+                        quotaResult.allowed ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500")}>
+                        <p>{quotaResult.allowed ? t('nest.text20') : t('nest.text21')}</p>
+                        {quotaResult.current !== undefined && (
+                          <p>{t('nest.currentLimit', { current: quotaResult.current, limit: quotaResult.limit, percent: quotaResult.percent }) || `当前: ${quotaResult.current} / 上限: ${quotaResult.limit} (${quotaResult.percent}%)`}</p>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
-
-                {/* Quota Check */}
-                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                  <h4 className="text-sm font-medium">{t('nest.text16')}</h4>
-                  <div className="flex gap-2">
-                    <select value={quotaResource} onChange={(e) => setQuotaResource(e.target.value)}
-                      className="flex-1 rounded-lg border border-border bg-background px-2 py-1.5 text-xs">
-                      <option value="storage">{t('nest.text17')}</option>
-                      <option value="documents">{t('nest.text18')}</option>
-                      <option value="api_calls">{t('nest.apiCalls')}</option>
-                      <option value="tokens">Token</option>
-                      <option value="agents">Agent</option>
-                    </select>
-                    <button onClick={() => handleQuotaCheck(selected.tenant_id)}
-                      className="rounded-lg bg-rose-500 px-3 py-1.5 text-xs text-white hover:bg-rose-600">
-                      {t('nest.checkBtn')}
-                    </button>
-                  </div>
-                  {quotaResult && (
-                    <div className={cn("rounded-lg p-3 text-xs",
-                      quotaResult.allowed ? "bg-emerald-500/10 text-emerald-500" : "bg-red-500/10 text-red-500")}>
-                      <p>{quotaResult.allowed ? t('nest.text20') : t('nest.text21')}</p>
-                      {quotaResult.current !== undefined && (
-                        <p>{t('nest.currentLimit', { current: quotaResult.current, limit: quotaResult.limit, percent: quotaResult.percent }) || `当前: ${quotaResult.current} / 上限: ${quotaResult.limit} (${quotaResult.percent}%)`}</p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
+              )
             )}
           </div>
         )}
