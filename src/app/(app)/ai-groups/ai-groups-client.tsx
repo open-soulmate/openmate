@@ -98,7 +98,7 @@ const INTENT_CONFIG: Record<string, { label: string; color: string; bg: string; 
   claim: { label: '认领', color: 'text-emerald-400', bg: 'bg-emerald-500/20', icon: Hand },
   suggest: { label: '建议', color: 'text-sky-400', bg: 'bg-sky-500/20', icon: Lightbulb },
   refer: { label: '推荐', color: 'text-amber-400', bg: 'bg-amber-500/20', icon: Target },
-  comment: { label: '评论', color: 'text-zinc-400', bg: 'bg-zinc-500/20', icon: MessageCircle },
+  comment: { label: '评论', color: 'text-muted-foreground', bg: 'bg-muted/20', icon: MessageCircle },
   result: { label: '结果', color: 'text-violet-400', bg: 'bg-violet-500/20', icon: FileText },
   score: { label: '评分', color: 'text-orange-400', bg: 'bg-orange-500/20', icon: Star },
 };
@@ -824,7 +824,7 @@ export default function AIGroupsPage() {
   const TrendIcon = ({ trend }: { trend: 'up' | 'down' | 'stable' }) => {
     if (trend === 'up') return <ArrowUp className="w-3 h-3 text-emerald-400" />;
     if (trend === 'down') return <ArrowDown className="w-3 h-3 text-red-400" />;
-    return <ArrowRight className="w-3 h-3 text-zinc-400" />;
+    return <ArrowRight className="w-3 h-3 text-muted-foreground" />;
   };
 
   // Render capability profile for an agent
@@ -1078,7 +1078,7 @@ export default function AIGroupsPage() {
                         <p className="text-[11px] text-muted-foreground truncate">{agent.model}</p>
                       </div>
                       <div className="flex items-center gap-1.5">
-                        <span className={`w-2 h-2 rounded-full ${agent.status === 'online' ? 'bg-emerald-500' : 'bg-zinc-500'}`} />
+                        <span className={`w-2 h-2 rounded-full ${agent.status === 'online' ? 'bg-emerald-500' : 'bg-muted-foreground'}`} />
                         {isExpanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground" />}
                       </div>
                     </div>
@@ -1129,7 +1129,7 @@ export default function AIGroupsPage() {
                           <div className="space-y-2">
                             <div className="grid grid-cols-2 gap-2 text-xs">
                               <div><span className="text-muted-foreground">{t("aiGroups.model")}:</span> <span className="font-medium">{agent.model}</span></div>
-                              <div><span className="text-muted-foreground">{t("aiGroups.status")}:</span> <span className={`font-medium ${agent.status === 'online' ? 'text-emerald-500' : 'text-zinc-500'}`}>{agent.status || 'offline'}</span></div>
+                              <div><span className="text-muted-foreground">{t("aiGroups.status")}:</span> <span className={`font-medium ${agent.status === 'online' ? 'text-emerald-500' : 'text-muted-foreground'}`}>{agent.status || 'offline'}</span></div>
                               <div><span className="text-muted-foreground">{t("aiGroups.temperature")}:</span> <span className="font-medium">{agent.temperature || 0.7}</span></div>
                               <div><span className="text-muted-foreground">ID:</span> <span className="font-medium truncate">{agent.agent_id}</span></div>
                             </div>
