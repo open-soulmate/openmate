@@ -188,22 +188,22 @@ export function HeredityClient() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
-        <div className="flex items-center gap-2 lg:gap-3">
-          <GitBranch size={20} className="text-teal-500" />
-          <h1 className="text-lg font-semibold">{t('heredity.title') || t('heredity.text4')}</h1>
-          <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-500">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-3 lg:py-4 gap-2">
+        <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
+          <GitBranch size={18} className="text-teal-500 shrink-0" />
+          <h1 className="text-sm lg:text-lg font-semibold truncate">{t('heredity.title') || t('heredity.text4')}</h1>
+          <span className="rounded-full bg-teal-500/10 px-1.5 lg:px-2 py-0.5 text-[10px] lg:text-xs font-medium text-teal-500 shrink-0 hidden sm:inline">
             {t('heredity.subtitle') || t('heredity.text5')}
           </span>
           {platform && (
-            <span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">
+            <span className="rounded-full bg-muted px-1.5 lg:px-2 py-0.5 text-[10px] lg:text-xs text-muted-foreground shrink-0">
               v{platform.platform_version}
             </span>
           )}
         </div>
         <button onClick={() => { fetchPlatform(); tab === "migrations" && fetchMigrations(); tab === "changelog" && fetchChangelog(); }}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors">
-          <RefreshCw size={14} /> {t('common.refresh') || t('heredity.refresh')}
+          className="flex items-center gap-1.5 rounded-lg border border-border px-2 lg:px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors shrink-0 touch-manipulation">
+          <RefreshCw size={14} />
         </button>
       </div>
 
