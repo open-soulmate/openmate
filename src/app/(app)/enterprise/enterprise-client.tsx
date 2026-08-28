@@ -305,7 +305,7 @@ export function EnterpriseClient() {
         <div className="flex items-center gap-2 lg:gap-3">
           <Shield className="w-6 h-6 text-blue-400" />
           <div>
-            <h1 className="text-xl font-semibold text-foreground">{t("enterprise.title", "Enterprise Management")}</h1>
+            <h1 className="text-lg lg:text-xl font-semibold text-foreground">{t("enterprise.title", "Enterprise Management")}</h1>
             <p className="text-xs lg:text-sm text-muted-foreground">{t("enterprise.subtitle", "Users, roles, permissions & audit trail")}</p>
           </div>
         </div>

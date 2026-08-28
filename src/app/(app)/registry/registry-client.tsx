@@ -134,7 +134,7 @@ export function RegistryClient() {
       <div className="shrink-0 border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
+            <h1 className="text-lg lg:text-xl font-semibold text-foreground flex items-center gap-2">
               <Package className="h-5 w-5 text-primary" />
               {t("registry.title", "Component Registry")}
             </h1>

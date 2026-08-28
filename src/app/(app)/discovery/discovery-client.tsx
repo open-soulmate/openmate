@@ -224,7 +224,7 @@ export function DiscoveryClient() {
             <Search className="w-5 h-5 text-cyan-400" />
           </div>
           <div>
-            <h1 className="text-xl font-bold">Discovery Engine</h1>
+            <h1 className="text-lg lg:text-xl font-bold">Discovery Engine</h1>
             <p className="text-xs text-muted-foreground">Local software scanning & adapter management</p>
           </div>
         </div>
