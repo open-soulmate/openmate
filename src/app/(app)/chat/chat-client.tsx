@@ -158,7 +158,7 @@ export function ChatClient() {
   const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
   const [attachments, setAttachments] = useState<MessagePart[]>([]);
   const [wsConnected, setWsConnected] = useState(false);
-  const [showDetails, setShowDetails] = useState(true);
+  const [showDetails, setShowDetails] = useState(false);
   const [agentMode, setAgentMode] = useState<AgentMode>('act');
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [showCheckpoints, setShowCheckpoints] = useState(false);
@@ -168,8 +168,19 @@ export function ChatClient() {
   const titleInputRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
   const isMobile = useMediaQuery("(max-width: 1023px)");
+  const mobileConvOpen = useAppStore((s) => s.mobileConvOpen);
   const setMobileConvOpen = useAppStore((s) => s.setMobileConvOpen);
   const wsRef = useRef<WebSocket | null>(null);
+
+  // Mutual exclusion: close details when conversation Sheet opens on mobile
+  useEffect(() => {
+    if (mobileConvOpen && isMobile) setShowDetails(false);
+  }, [mobileConvOpen, isMobile]);
+
+  // Default details open on desktop
+  useEffect(() => {
+    if (!isMobile) setShowDetails(true);
+  }, [isMobile]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const selectedSessionRef = useRef<Session | null>(null);
@@ -734,7 +745,11 @@ export function ChatClient() {
           <div className="flex items-center gap-2">
             {wsConnected ? <Wifi className="w-4 h-4 text-green-500" /> : <WifiOff className="w-4 h-4 text-muted-foreground" />}
             <span className="text-xs text-muted-foreground">{wsConnected ? 'WS' : 'HTTP'}</span>
-            <button onClick={() => setShowDetails(!showDetails)} className="p-1 rounded hover:bg-muted">
+            <button onClick={() => {
+              const next = !showDetails;
+              setShowDetails(next);
+              if (next && isMobile) setMobileConvOpen(false); // mutual exclusion: close left Sheet
+            }} className="p-1 rounded hover:bg-muted">
               {showDetails ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
             </button>
           </div>
@@ -906,7 +921,10 @@ export function ChatClient() {
 
       {/* Details Panel: Sheet on mobile, inline on desktop */}
       {isMobile ? (
-        <Sheet open={showDetails} onOpenChange={setShowDetails}>
+        <Sheet open={showDetails} onOpenChange={(open) => {
+          setShowDetails(open);
+          if (open) setMobileConvOpen(false); // mutual exclusion: close left Sheet
+        }}>
           <SheetContent side="right" className="w-80 p-0 flex flex-col">
             {renderDetailsContent()}
           </SheetContent>
