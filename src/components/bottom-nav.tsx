@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { useRef, useEffect, useState, useCallback } from "react";
+import { useRef, useEffect, useCallback } from "react";
 import {
   MessageSquare, Users, BookOpen, Workflow, Settings, Brain, Activity,
   LayoutDashboard, Bell, Server, GraduationCap, Network, Share2, Search,
@@ -129,7 +129,6 @@ export function BottomNav() {
     isLongPress.current = false;
     longPressTimer.current = setTimeout(() => {
       isLongPress.current = true;
-      // Voice input
       document.dispatchEvent(new CustomEvent("openmate-voice-input"));
     }, 500);
   }, []);
@@ -140,7 +139,6 @@ export function BottomNav() {
       longPressTimer.current = null;
     }
     if (!isLongPress.current) {
-      // Short click → search
       document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
     }
   }, []);
@@ -153,16 +151,43 @@ export function BottomNav() {
   }, []);
 
   return (
-    <nav className="relative flex h-12 shrink-0 items-center border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      {/* Single scrollable row */}
+    <nav className="relative shrink-0" style={{ height: "52px" }}>
+      {/* SVG wave top edge */}
+      <svg
+        className="absolute bottom-0 left-0 w-full pointer-events-none"
+        viewBox="0 0 1000 80"
+        preserveAspectRatio="none"
+        style={{ height: "80px", transform: "translateY(-100%)" }}
+      >
+        {/* The wave shape filled with bg color */}
+        <path
+          d="M0,40 Q250,40 350,30 Q450,10 500,10 Q550,10 650,30 Q750,40 1000,40 L1000,80 L0,80 Z"
+          fill="hsl(var(--background))"
+        />
+        {/* Top border line following the wave */}
+        <path
+          d="M0,40 Q250,40 350,30 Q450,10 500,10 Q550,10 650,30 Q750,40 1000,40"
+          fill="none"
+          stroke="hsl(var(--border))"
+          strokeWidth="1.5"
+        />
+      </svg>
+
+      {/* Flat nav bar body below the wave */}
+      <div
+        className="absolute bottom-0 left-0 right-0 h-12 border-t border-border bg-background"
+        style={{ borderTop: "none" }}
+      />
+
+      {/* Scrollable items */}
       <div
         ref={scrollRef}
-        className="flex h-full flex-1 items-center gap-0.5 overflow-x-auto px-2"
+        className="absolute bottom-0 left-0 right-0 flex h-12 items-center gap-0.5 overflow-x-auto px-2"
         style={{
           scrollbarWidth: "none",
           WebkitOverflowScrolling: "touch",
-          paddingLeft: "42px",
-          paddingRight: "42px",
+          paddingLeft: "40px",
+          paddingRight: "40px",
         }}
       >
         {navItems.map((item) => {
@@ -187,27 +212,20 @@ export function BottomNav() {
         })}
       </div>
 
-      {/* Center semicircle — nav bar bumps up in the middle */}
-      <div className="absolute left-1/2 -translate-x-1/2 z-10" style={{ bottom: "100%" }}>
+      {/* Center voice button — sits in the wave peak */}
+      <div
+        className="absolute left-1/2 -translate-x-1/2 z-10"
+        style={{ bottom: "28px" }}
+      >
         <button
           onPointerDown={handlePointerDown}
           onPointerUp={handlePointerUp}
           onPointerLeave={handlePointerLeave}
           onContextMenu={(e) => e.preventDefault()}
-          className="flex items-center justify-center transition-transform hover:scale-105 active:scale-95 cursor-pointer"
-          style={{
-            width: "64px",
-            height: "28px",
-            borderRadius: "999px 999px 0 0",
-            background: "hsl(var(--background))",
-            borderTop: "1px solid hsl(var(--border))",
-            borderLeft: "1px solid hsl(var(--border))",
-            borderRight: "1px solid hsl(var(--border))",
-            borderBottom: "none",
-          }}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-background border border-border transition-transform hover:scale-105 active:scale-95 cursor-pointer"
           title="Click: Search · Hold: Voice"
         >
-          <Search size={18} className="text-muted-foreground" />
+          <Mic size={18} className="text-muted-foreground" />
         </button>
       </div>
     </nav>
