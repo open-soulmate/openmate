@@ -379,7 +379,7 @@ export function BookmarksClient() {
             /* Stats Tab */
             stats ? (
               <div className="space-y-6 max-w-4xl">
-                <div className="grid grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                   {[
                     { label: "Total Bookmarks", value: stats.total_bookmarks, icon: Bookmark, color: "violet" },
                     { label: "Favorites", value: stats.favorites, icon: Star, color: "yellow" },

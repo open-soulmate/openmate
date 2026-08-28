@@ -318,7 +318,7 @@ export function DiscoveryClient() {
                 <h3 className="font-semibold flex items-center gap-2"><Terminal className="w-4 h-4 text-emerald-400" /> CLI Tools ({filteredTools.length})</h3>
                 <input value={toolFilter} onChange={e => setToolFilter(e.target.value)} placeholder="Filter tools..." className="w-full sm:w-64 px-3 py-1.5 rounded-lg border border-border bg-background text-xs lg:text-sm" />
               </div>
-              <div className="max-h-60 overflow-y-auto p-4 grid grid-cols-3 gap-2">
+              <div className="max-h-60 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {filteredTools.map(tool => (
                   <div key={tool.name} className="flex items-center gap-2 px-3 py-2 rounded-lg border text-xs lg:text-sm border-emerald-500/30 bg-emerald-500/5">
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
