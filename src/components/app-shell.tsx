@@ -507,7 +507,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Right Panel — workspace tabs (mobile: Sheet, desktop: inline with transition) */}
       {!isMobile && (
         <div
-          className="flex flex-col h-full overflow-hidden border-l border-border shrink-0 transition-all duration-[250ms] ease-in-out"
+          className="flex flex-col h-full overflow-hidden border-l border-border shrink-0 transition-all duration-250 ease-in-out"
           style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
         >
           <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
