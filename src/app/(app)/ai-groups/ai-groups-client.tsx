@@ -554,6 +554,23 @@ export default function AIGroupsPage() {
     }
   };
 
+  // Auto-evaluate task result (closes the feedback loop)
+  const autoEvaluateTask = async (taskId: string, success: boolean, capability?: string) => {
+    if (!selectedGroup) return null;
+    try {
+      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/tasks/${taskId}/auto-evaluate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', ...authHeaders() },
+        body: JSON.stringify({ success, capability: capability || '' }),
+      });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (e) {
+      console.error('Auto-evaluate failed:', e);
+      return null;
+    }
+  };
+
   // Run the full discussion flow for a task-like message
   const runDiscussionFlow = async (goal: string) => {
     if (!selectedGroup) return;
@@ -691,17 +708,53 @@ export default function AIGroupsPage() {
     const resultContent = results.join('\n\n---\n\n');
     await submitTaskResult(taskId, resultContent);
 
-    // Step 6: Trigger scoring
-    setActiveTaskReview({
-      task_id: taskId,
-      result: resultContent,
-      status: 'reviewing',
-      round: 1,
-      assignments,
-      scores: [],
-      avg_score: 0,
-      discussion_messages: await fetchDiscussionMessages(taskId),
-    });
+    // Step 6: Auto-evaluate (closes the feedback loop automatically)
+    const anyFailed = results.some(r => r.includes('(无响应)') || r.includes('(执行失败)'));
+    const autoResult = await autoEvaluateTask(taskId, !anyFailed);
+
+    if (autoResult) {
+      const autoScore = autoResult.auto_score;
+      const autoReason = autoResult.reason;
+      const autoCap = autoResult.capability;
+
+      setMessages(prev => [...prev, {
+        id: `auto-eval-${Date.now()}`, role: 'agent',
+        agent_name: 'Auto-Evaluator', agent_role: 'verifier',
+        content: `📊 自动评分: ${autoScore}/10\n能力维度: ${autoCap}\n${autoReason}${autoResult.capability_profile?.length ? `\n能力画像已更新 (${autoResult.capability_profile.length}个维度)` : ''}`,
+        timestamp: new Date(),
+        intent: 'score' as const,
+      }]);
+
+      // Set review state with auto-score
+      setActiveTaskReview({
+        task_id: taskId,
+        result: resultContent,
+        status: 'scored',
+        round: 1,
+        assignments,
+        scores: [{
+          scorer_agent_id: 'auto-evaluator',
+          scorer_name: 'Auto-Evaluator',
+          score: autoScore,
+          reason: autoReason,
+          capability: autoCap,
+        }],
+        avg_score: autoScore,
+        discussion_messages: await fetchDiscussionMessages(taskId),
+      });
+    } else {
+      // Fallback to manual scoring if auto-evaluate fails
+      setActiveTaskReview({
+        task_id: taskId,
+        result: resultContent,
+        status: 'reviewing',
+        round: 1,
+        assignments,
+        scores: [],
+        avg_score: 0,
+        discussion_messages: await fetchDiscussionMessages(taskId),
+      });
+    }
 
     setDiscussionLoading(false);
     setScoringTaskId(taskId);
