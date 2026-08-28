@@ -205,23 +205,23 @@ export function LimbClient() {
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2 lg:gap-4">
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("limb.t26095") || "TotalTask"}</span>
               <p className="text-xl lg:text-2xl font-bold">{stats.total_tasks}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("limb.running") || "Running"}</span>
               <p className="text-xl lg:text-2xl font-bold text-blue-500">{stats.running}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("limb.t54694") || "Queue"}</span>
               <p className="text-xl lg:text-2xl font-bold text-amber-500">{stats.queue_length}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("limb.successRate") || "Success Rate"}</span>
               <p className="text-xl lg:text-2xl font-bold text-emerald-500">{stats.success_rate}%</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("limb.templates") || "Templates"}</span>
               <p className="text-xl lg:text-2xl font-bold text-indigo-500">{stats.templates}</p>
             </div>
@@ -252,7 +252,7 @@ export function LimbClient() {
                 <div key={task.task_id}
                   onClick={() => setSelected(task)}
                   className={cn(
-                    "rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-md",
+                    "rounded-xl border border-border bg-card p-3 lg:p-4 cursor-pointer transition-all hover:shadow-md",
                     selected?.task_id === task.task_id && "ring-2 ring-orange-500"
                   )}>
                   <div className="flex items-center justify-between mb-2">
@@ -300,7 +300,7 @@ export function LimbClient() {
               <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
                 <SheetContent side="right" size="full" className="p-0 flex flex-col overflow-y-auto">
                   <div className="p-4 space-y-4">
-                    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                    <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
                       <div className="flex items-center justify-between">
                         <h3 className="font-semibold text-xs lg:text-sm">{selected.name}</h3>
                         <button onClick={() => handleDelete(selected.task_id)}
@@ -330,7 +330,7 @@ export function LimbClient() {
                     </div>
 
                     {selected.results && selected.results.length > 0 && (
-                      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+                      <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-2">
                         <h4 className="text-xs lg:text-sm font-medium">{t("limb.t62005") || "Execution steps"}</h4>
                         {selected.results.map((r, i) => (
                           <div key={i} className="flex items-start gap-2 text-xs">
@@ -350,7 +350,7 @@ export function LimbClient() {
                     )}
 
                     {selected.actions && selected.actions.length > 0 && (
-                      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+                      <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-2">
                         <h4 className="text-xs lg:text-sm font-medium">{t("limb.t47867") || "Action List"}</h4>
                         {selected.actions.map((a, i) => (
                           <div key={i} className="flex items-center gap-2 text-xs">
@@ -367,7 +367,7 @@ export function LimbClient() {
               </Sheet>
             ) : selected ? (
               <div className="w-96 space-y-4">
-                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
                   <div className="flex items-center justify-between">
                     <h3 className="font-semibold text-xs lg:text-sm">{selected.name}</h3>
                     <button onClick={() => handleDelete(selected.task_id)}
@@ -398,7 +398,7 @@ export function LimbClient() {
 
                 {/* Step Results */}
                 {selected.results && selected.results.length > 0 && (
-                  <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+                  <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-2">
                     <h4 className="text-xs lg:text-sm font-medium">{t("limb.t62005") || "Execution steps"}</h4>
                     {selected.results.map((r, i) => (
                       <div key={i} className="flex items-start gap-2 text-xs">
@@ -419,7 +419,7 @@ export function LimbClient() {
 
                 {/* Actions list */}
                 {selected.actions && selected.actions.length > 0 && (
-                  <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+                  <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-2">
                     <h4 className="text-xs lg:text-sm font-medium">{t("limb.t47867") || "Action List"}</h4>
                     {selected.actions.map((a, i) => (
                       <div key={i} className="flex items-center gap-2 text-xs">

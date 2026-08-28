@@ -77,7 +77,7 @@ function LayerCard({
   const isActive = layer.status === "active";
   const entries = Object.entries(layer).filter(([k]) => k !== "status");
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Icon size={16} className="text-primary" />
@@ -239,21 +239,21 @@ export function AiEngineClient() {
 
       {/* Overview Cards */}
       <div className="grid grid-cols-2 gap-2 lg:gap-4 sm:grid-cols-4">
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs text-muted-foreground mb-1">{t("aiEngine.totalTasks", "Total Tasks")}</div>
           <div className="text-xl lg:text-2xl font-bold">{engineStatus?.total_tasks ?? 0}</div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs text-muted-foreground mb-1">{t("aiEngine.successRate", "Success Rate")}</div>
           <div className={cn("text-xl lg:text-2xl font-bold", successPct >= 90 ? "text-emerald-500" : successPct >= 70 ? "text-yellow-500" : "text-red-500")}>
             {successPct}%
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs text-muted-foreground mb-1">{t("aiEngine.avgResponse", "Avg Response")}</div>
           <div className="text-xl lg:text-2xl font-bold">{engineStatus?.avg_response_time ?? "—"}</div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs text-muted-foreground mb-1">{t("aiEngine.agents", "Agents")}</div>
           <div className="text-xl lg:text-2xl font-bold">{graphStatus?.total_agents ?? 0}</div>
           <div className="text-[10px] text-muted-foreground">{graphStatus?.running_tasks ?? 0} running</div>
@@ -276,7 +276,7 @@ export function AiEngineClient() {
 
       {/* Context Usage */}
       {contextState && (
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
               <Gauge size={14} />{t("aiEngine.contextUsage", "Context Token Usage")}
@@ -322,7 +322,7 @@ export function AiEngineClient() {
 
       {/* Graph Status */}
       {graphStatus && (
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <h2 className="text-xs lg:text-sm font-semibold mb-3 flex items-center gap-2"><GitBranch size={14} />{t("aiEngine.graphStatus", "Graph Status")}</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 mb-4">
             <div className="text-center">
@@ -363,7 +363,7 @@ export function AiEngineClient() {
       )}
 
       {/* Harness Routes */}
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
         <button
           onClick={() => setShowRoutes(!showRoutes)}
           className="flex items-center justify-between w-full"
@@ -410,7 +410,7 @@ export function AiEngineClient() {
       </div>
 
       {/* Analyze Task */}
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
         <h2 className="text-xs lg:text-sm font-semibold mb-3 flex items-center gap-2"><Search size={14} />{t("aiEngine.analyzeTask", "Analyze Task")}</h2>
         <div className="flex gap-2">
           <input

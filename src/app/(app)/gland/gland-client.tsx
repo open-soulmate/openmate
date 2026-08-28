@@ -229,7 +229,7 @@ export function GlandClient() {
                 { label: "API Keys", value: health?.keys.total ?? 0, icon: Key, color: "text-purple-400", bg: "from-purple-500/20 to-purple-600/10" },
                 { label: t("gland.totalCalls") || "Total Calls", value: health?.token_meter.call_count ?? 0, icon: Activity, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
               ].map(s => (
-                <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-4", s.bg)}>
+                <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-3 lg:p-4", s.bg)}>
                   <div className="flex items-center justify-between mb-2">
                     <s.icon className={cn("w-4 h-4", s.color)} />
                   </div>

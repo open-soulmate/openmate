@@ -197,7 +197,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
                   <ChevronLeft size={16} />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex-1 overflow-y-auto p-3 lg:p-4">
                 {/* Progress */}
                 <div className="mb-4">
                   <div className="mb-1 flex items-center justify-between text-xs">
@@ -237,7 +237,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
             </SheetContent>
           </Sheet>
         ) : (
-          <aside className="w-64 shrink-0 overflow-y-auto border-r border-border p-4">
+          <aside className="w-64 shrink-0 overflow-y-auto border-r border-border p-3 lg:p-4">
             {/* Progress */}
             <div className="mb-4">
               <div className="mb-1 flex items-center justify-between text-xs">
@@ -294,7 +294,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
                 {currentQuiz.map((q, qi) => (
                   <div
                     key={qi}
-                    className="rounded-lg border border-border bg-card p-4"
+                    className="rounded-lg border border-border bg-card p-3 lg:p-4"
                   >
                     <p className="mb-3 text-xs lg:text-sm font-medium">
                       {qi + 1}. {q.question}

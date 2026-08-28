@@ -113,7 +113,7 @@ export function VisionClient() {
 
       <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xs lg:text-sm text-red-500">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 lg:p-4 text-xs lg:text-sm text-red-500">
             {error}
           </div>
         )}
@@ -122,28 +122,28 @@ export function VisionClient() {
           <>
             {/* Stats Overview */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("vision.totalGenerated") || "Generated"}</span>
                   <div className="rounded-lg p-1.5 bg-indigo-500/10"><BarChart3 size={14} className="text-indigo-500" /></div>
                 </div>
                 <p className="text-xl lg:text-2xl font-bold">{stats.total_generated}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("vision.savedOutputs") || "Saved"}</span>
                   <div className="rounded-lg p-1.5 bg-emerald-500/10"><FileImage size={14} className="text-emerald-500" /></div>
                 </div>
                 <p className="text-xl lg:text-2xl font-bold">{stats.saved_outputs}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("vision.engine") || "Engine"}</span>
                   <div className="rounded-lg p-1.5 bg-violet-500/10"><Paintbrush size={14} className="text-violet-500" /></div>
                 </div>
                 <p className="text-lg font-bold">{stats.engine}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("vision.errors") || "Errors"}</span>
                   <div className="rounded-lg p-1.5 bg-red-500/10"><AlertTriangle size={14} className="text-red-500" /></div>
@@ -210,7 +210,7 @@ export function VisionClient() {
                 </span>
               </h3>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4 p-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4 p-3 lg:p-4">
               {outputs.map((f) => (
                 <div key={f.filename} className="rounded-lg border border-border bg-background p-3 space-y-2">
                   <div className="aspect-square rounded bg-muted flex items-center justify-center overflow-hidden">

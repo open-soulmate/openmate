@@ -225,19 +225,19 @@ export function NestClient() {
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t('nest.text6')}</span>
               <p className="text-xl lg:text-2xl font-bold">{stats.tenants.total_tenants}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t('nest.text7')}</span>
               <p className="text-xl lg:text-2xl font-bold text-indigo-500">{formatBytes(stats.tenants.total_storage_bytes)}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t('nest.text8')}</span>
               <p className="text-xl lg:text-2xl font-bold text-emerald-500">{stats.tenants.total_documents.toLocaleString()}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t('nest.text9')}</span>
               <p className="text-xl lg:text-2xl font-bold text-amber-500">{stats.isolation.blocked_attempts}</p>
               <span className="text-xs text-muted-foreground">{t('nest.blockRate', { rate: stats.isolation.block_rate }) || `拦截率 ${stats.isolation.block_rate}%`}</span>
@@ -269,7 +269,7 @@ export function NestClient() {
                 <div key={tenant.tenant_id}
                   onClick={() => { setSelected(tenant); setQuotaResult(null); }}
                   className={cn(
-                    "rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-md",
+                    "rounded-xl border border-border bg-card p-3 lg:p-4 cursor-pointer transition-all hover:shadow-md",
                     selected?.tenant_id === tenant.tenant_id && "ring-2 ring-rose-500"
                   )}>
                   <div className="flex items-center justify-between mb-2">
@@ -315,10 +315,10 @@ export function NestClient() {
             {isMobile ? (
               <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
                 <SheetContent side="right" size="md" className="p-0 flex flex-col">
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-4">
                     {selected && (
                       <>
-                        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                        <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
                           <div className="flex items-center justify-between">
                             <h3 className="font-semibold text-xs lg:text-sm">{selected.name}</h3>
                             <div className="flex gap-1">
@@ -368,7 +368,7 @@ export function NestClient() {
                         </div>
 
                         {/* Quota Check */}
-                        <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                        <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
                           <h4 className="text-xs lg:text-sm font-medium">{t('nest.text16')}</h4>
                           <div className="flex gap-2">
                             <select value={quotaResource} onChange={(e) => setQuotaResource(e.target.value)}
@@ -402,7 +402,7 @@ export function NestClient() {
             ) : (
               selected && (
                 <div className="w-80 space-y-4">
-                  <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <h3 className="font-semibold text-xs lg:text-sm">{selected.name}</h3>
                       <div className="flex gap-1">
@@ -452,7 +452,7 @@ export function NestClient() {
                   </div>
 
                   {/* Quota Check */}
-                  <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
                     <h4 className="text-xs lg:text-sm font-medium">{t('nest.text16')}</h4>
                     <div className="flex gap-2">
                       <select value={quotaResource} onChange={(e) => setQuotaResource(e.target.value)}

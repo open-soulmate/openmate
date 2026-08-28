@@ -154,7 +154,7 @@ export function TagsClient() {
 
       {/* Create / Edit Form */}
       {showForm && (
-        <div className="bg-card border border-border rounded-xl p-4 space-y-4">
+        <div className="bg-card border border-border rounded-xl p-3 lg:p-4 space-y-4">
           <div className="flex items-center justify-between">
             <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
               {editingId ? (

@@ -318,7 +318,7 @@ export function DiscoveryClient() {
                 <h3 className="font-semibold flex items-center gap-2"><Terminal className="w-4 h-4 text-emerald-400" /> CLI Tools ({filteredTools.length})</h3>
                 <input value={toolFilter} onChange={e => setToolFilter(e.target.value)} placeholder="Filter tools..." className="w-full sm:w-64 px-3 py-1.5 rounded-lg border border-border bg-background text-xs lg:text-sm" />
               </div>
-              <div className="max-h-60 overflow-y-auto p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+              <div className="max-h-60 overflow-y-auto p-3 lg:p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
                 {filteredTools.map(tool => (
                   <div key={tool.name} className="flex items-center gap-2 px-3 py-2 rounded-lg border text-xs lg:text-sm border-emerald-500/30 bg-emerald-500/5">
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
@@ -489,7 +489,7 @@ export function DiscoveryClient() {
             {/* Quick Actions */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4">
               {/* REST Probe */}
-              <div className="rounded-xl border border-border bg-card/30 p-4 space-y-3">
+              <div className="rounded-xl border border-border bg-card/30 p-3 lg:p-4 space-y-3">
                 <h4 className="font-medium flex items-center gap-2 text-xs lg:text-sm"><Globe className="w-4 h-4 text-blue-400" /> REST Probe</h4>
                 <input value={restProbeUrl} onChange={e => setRestProbeUrl(e.target.value)} placeholder="https://httpbin.org/get" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" />
                 <button onClick={probeRest} disabled={testingAdapter || !restProbeUrl} className="w-full px-3 py-2 rounded-lg bg-blue-600 text-white text-xs lg:text-sm hover:bg-blue-500 disabled:opacity-50 transition-colors">
@@ -499,7 +499,7 @@ export function DiscoveryClient() {
               </div>
 
               {/* DB Query */}
-              <div className="rounded-xl border border-border bg-card/30 p-4 space-y-3">
+              <div className="rounded-xl border border-border bg-card/30 p-3 lg:p-4 space-y-3">
                 <h4 className="font-medium flex items-center gap-2 text-xs lg:text-sm"><Database className="w-4 h-4 text-purple-400" /> Database Query</h4>
                 <input value={dbQueryInput} onChange={e => setDbQueryInput(e.target.value)} placeholder="SELECT * FROM table LIMIT 10" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm font-mono" onKeyDown={e => e.key === "Enter" && queryDb()} />
                 <div className="flex gap-2">
@@ -514,7 +514,7 @@ export function DiscoveryClient() {
               </div>
 
               {/* Filesystem Browse */}
-              <div className="rounded-xl border border-border bg-card/30 p-4 space-y-3">
+              <div className="rounded-xl border border-border bg-card/30 p-3 lg:p-4 space-y-3">
                 <h4 className="font-medium flex items-center gap-2 text-xs lg:text-sm"><FolderOpen className="w-4 h-4 text-emerald-400" /> Filesystem Browse</h4>
                 <div className="flex gap-2">
                   <input value={fsPath} onChange={e => setFsPath(e.target.value)} placeholder="/" className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" onKeyDown={e => e.key === "Enter" && listFs()} />

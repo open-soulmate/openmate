@@ -67,7 +67,7 @@ function MetricBar({ label, value, max, icon: Icon, color, unit }: {
 }) {
   const pct = max > 0 ? (value / max) * 100 : 0;
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <div className={cn("rounded-lg p-1.5", color === "text-blue-500" ? "bg-blue-500/10" : color === "text-emerald-500" ? "bg-emerald-500/10" : "bg-violet-500/10")}>
@@ -175,14 +175,14 @@ export function SystemOverviewClient() {
 
       <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {error && (
-          <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-4 text-xs lg:text-sm text-red-500">
+          <div className="rounded-lg border border-red-500/20 bg-red-500/5 p-3 lg:p-4 text-xs lg:text-sm text-red-500">
             {error}
           </div>
         )}
 
         {/* System Status Banner */}
         {data && (
-          <div className={cn("rounded-xl border p-4 flex items-center justify-between",
+          <div className={cn("rounded-xl border p-3 lg:p-4 flex items-center justify-between",
             data.system_status === "ok" ? "border-emerald-500/20 bg-emerald-500/5" : "border-amber-500/20 bg-amber-500/5")}>
             <div className="flex items-center gap-3">
               <Activity size={20} className={data.system_status === "ok" ? "text-emerald-500" : "text-amber-500"} />
@@ -209,28 +209,28 @@ export function SystemOverviewClient() {
         {/* Quick Stats */}
         {data && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Database size={14} className="text-blue-500" />
                 <span className="text-xs text-muted-foreground">{t("system.knowledge")}</span>
               </div>
               <p className="text-xl lg:text-2xl font-bold">{data.knowledge.total_entries}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Puzzle size={14} className="text-emerald-500" />
                 <span className="text-xs text-muted-foreground">{t("system.plugins")}</span>
               </div>
               <p className="text-xl lg:text-2xl font-bold">{data.plugins.active_plugins}<span className="text-xs lg:text-sm text-muted-foreground">/{data.plugins.total_plugins}</span></p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Zap size={14} className="text-amber-500" />
                 <span className="text-xs text-muted-foreground">{t("system.tokensUsed")}</span>
               </div>
               <p className="text-xl lg:text-2xl font-bold">{data.gland.total_tokens.toLocaleString()}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Clock size={14} className="text-violet-500" />
                 <span className="text-xs text-muted-foreground">{t("system.apiCalls")}</span>

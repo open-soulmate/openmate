@@ -127,25 +127,25 @@ export function ChangelogClient() {
         {/* Stats */}
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2 lg:gap-4">
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("heredity.components", "Components")}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.registry.total_components}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("heredity.versions", "Total Versions")}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.registry.total_versions}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("heredity.changelogEntries", "Changelog Entries")}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.registry.total_changelog_entries}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("heredity.active", "Active")}</span>
               <p className="text-xl lg:text-2xl font-bold text-emerald-500">
                 {health.registry.version_statuses?.active || 0}
               </p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("heredity.platformVersion", "Platform Version")}</span>
               <p className="text-xl lg:text-2xl font-bold">v{health.registry.platform_version}</p>
             </div>
@@ -191,7 +191,7 @@ export function ChangelogClient() {
         {tab === "components" && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
             {filtered.map((c) => (
-              <div key={c.component_id} className="rounded-xl border border-border bg-card p-4 space-y-3 hover:border-primary/20 transition-colors">
+              <div key={c.component_id} className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3 hover:border-primary/20 transition-colors">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <Package size={16} className="text-primary" />
@@ -274,7 +274,7 @@ export function ChangelogClient() {
         {/* Dependencies Tab */}
         {tab === "dependencies" && (
           <div className="space-y-4">
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <h3 className="text-xs lg:text-sm font-medium mb-3">{t("heredity.dependencyGraph", "Dependency Graph")}</h3>
               <div className="space-y-2">
                 {edges.map((edge, i) => {
@@ -301,7 +301,7 @@ export function ChangelogClient() {
 
             {/* Dependency summary */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:gap-4">
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <h3 className="text-xs lg:text-sm font-medium mb-3">{t("heredity.mostDepended", "Most Depended On")}</h3>
                 <div className="space-y-2">
                   {Object.entries(
@@ -322,7 +322,7 @@ export function ChangelogClient() {
                     })}
                 </div>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <h3 className="text-xs lg:text-sm font-medium mb-3">{t("heredity.independent", "Independent Components")}</h3>
                 <div className="space-y-2">
                   {components

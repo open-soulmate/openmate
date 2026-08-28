@@ -118,7 +118,7 @@ export function IntelligenceClient() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border">
+      <div className="flex items-center justify-between p-3 lg:p-4 border-b border-border">
         <div className="flex items-center gap-3">
           <Brain className="w-6 h-6 text-primary" />
           <h1 className="text-lg font-semibold">{t("intelligence.title") || "System Intelligence"}</h1>
@@ -170,7 +170,7 @@ export function IntelligenceClient() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-4">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-4">
         {/* Overview Tab */}
         {tab === "overview" && summary && (
           <div className="space-y-4">

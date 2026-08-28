@@ -271,7 +271,7 @@ export function HippoClient() {
         {tab === "memories" && (
           <div className="space-y-4">
             {/* Create Memory */}
-            <div className="rounded-xl border border-border p-4 space-y-3">
+            <div className="rounded-xl border border-border p-3 lg:p-4 space-y-3">
               <h3 className="text-xs lg:text-sm font-medium">{t("hippo.createMemory") || "Create Memory"}</h3>
               <div className="flex flex-col sm:flex-row gap-2 lg:gap-3">
                 <input value={newSessionId} onChange={(e) => setNewSessionId(e.target.value)}
@@ -320,7 +320,7 @@ export function HippoClient() {
             ) : (
               <div className="space-y-2">
                 {memories.map((m) => (
-                  <div key={m.memory_id} className={cn("rounded-xl border border-border bg-card p-4 space-y-2", m.archived && "opacity-60")}>
+                  <div key={m.memory_id} className={cn("rounded-xl border border-border bg-card p-3 lg:p-4 space-y-2", m.archived && "opacity-60")}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
                         <p className="text-xs lg:text-sm">{m.content}</p>
@@ -504,7 +504,7 @@ export function HippoClient() {
               </button>
 
               {simResult && (
-                <div className="mt-4 rounded-lg border border-border p-4 space-y-2">
+                <div className="mt-4 rounded-lg border border-border p-3 lg:p-4 space-y-2">
                   <div className="flex items-center gap-2 lg:gap-4">
                     <div>
                       <span className="text-xs text-muted-foreground">{t("hippo.retention") || "Retention"}: </span>
@@ -539,7 +539,7 @@ function StatCard({ icon: Icon, label, value, sub, color, bg }: {
   icon: React.ElementType; label: string; value: string; sub: string; color: string; bg: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className={cn("rounded-lg p-1.5", bg)}><Icon size={14} className={color} /></div>

@@ -131,7 +131,7 @@ export function GraphBuilderClient() {
 
         {/* Create Entity Form */}
         {showAdd && (
-          <div className="mb-4 p-4 rounded-lg border bg-card">
+          <div className="mb-4 p-3 lg:p-4 rounded-lg border bg-card">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs lg:text-sm font-medium">{t('graphBuilder.newEntity')}</h3>
               <button onClick={() => setShowAdd(false)} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
@@ -156,7 +156,7 @@ export function GraphBuilderClient() {
 
         {/* Create Relation Form */}
         {showAddRelation && (
-          <div className="mb-4 p-4 rounded-lg border bg-card">
+          <div className="mb-4 p-3 lg:p-4 rounded-lg border bg-card">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs lg:text-sm font-medium">{t('graphBuilder.newRelation')}</h3>
               <button onClick={() => setShowAddRelation(false)} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>

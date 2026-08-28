@@ -193,19 +193,19 @@ export function HealerClient() {
         {/* Stats Cards */}
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("healer.monitoredOrgans")}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.monitored_organs || 0}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("healer.totalDiagnoses")}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.stats?.total_diagnoses || 0}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("healer.healSuccessRate")}</span>
               <p className="text-xl lg:text-2xl font-bold text-teal-500">{health.stats?.success_rate || 0}%</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("healer.recentHealthRate")}</span>
               <p className={cn("text-xl lg:text-2xl font-bold", (health.stats?.recent_healthy_rate || 100) >= 90 ? "text-emerald-500" : "text-amber-500")}>
                 {health.stats?.recent_healthy_rate || 100}%
@@ -227,7 +227,7 @@ export function HealerClient() {
 
         {/* Cycle Result Banner */}
         {cycleResult && (
-          <div className="rounded-xl border border-teal-500/30 bg-teal-500/5 p-4">
+          <div className="rounded-xl border border-teal-500/30 bg-teal-500/5 p-3 lg:p-4">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Zap size={16} className="text-teal-500" />
@@ -258,7 +258,7 @@ export function HealerClient() {
                 !r.healthy && r.severity === "critical" ? "border-red-500/30" :
                 !r.healthy ? "border-amber-500/30" :
                 r.severity === "recovered" ? "border-blue-500/30" : "border-border")}>
-                <div className="flex items-center justify-between p-4 cursor-pointer"
+                <div className="flex items-center justify-between p-3 lg:p-4 cursor-pointer"
                   onClick={() => toggleExpand(r.organ)}>
                   <div className="flex items-center gap-2 lg:gap-3">
                     {expanded.has(r.organ) ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -356,27 +356,27 @@ export function HealerClient() {
         {tab === "stats" && stats && (
           <div className="space-y-3 lg:space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4">
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("healer.totalDiagnosesLabel")}</span>
                 <p className="text-xl lg:text-2xl font-bold">{stats.total_diagnoses}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("healer.healedLabel")}</span>
                 <p className="text-xl lg:text-2xl font-bold text-emerald-500">{stats.healed}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("healer.failedLabel")}</span>
                 <p className="text-xl lg:text-2xl font-bold text-red-500">{stats.failed}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("healer.actionsExecuted")}</span>
                 <p className="text-xl lg:text-2xl font-bold">{stats.actions_taken}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("healer.actionsSucceeded")}</span>
                 <p className="text-xl lg:text-2xl font-bold text-emerald-500">{stats.actions_succeeded}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("healer.successRateLabel")}</span>
                 <p className="text-xl lg:text-2xl font-bold text-teal-500">{stats.success_rate}%</p>
               </div>
@@ -384,7 +384,7 @@ export function HealerClient() {
 
             {/* Organ failure frequency */}
             {stats.organ_failure_frequency && Object.keys(stats.organ_failure_frequency).length > 0 && (
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <h3 className="text-xs lg:text-sm font-medium mb-3">{t("healer.organFaultFrequency")}</h3>
                 <div className="space-y-2">
                   {Object.entries(stats.organ_failure_frequency).map(([organ, count]) => (

@@ -202,7 +202,7 @@ export function ReflexClient() {
         {tab === "cache" && (
           <div className="space-y-4">
             {/* Create */}
-            <div className="rounded-xl border border-border p-4 space-y-3">
+            <div className="rounded-xl border border-border p-3 lg:p-4 space-y-3">
               <h3 className="text-xs lg:text-sm font-medium">{t("reflex.addEntry") || "Add Entry"}</h3>
               <div className="grid grid-cols-2 gap-2 lg:gap-3">
                 <input value={newQuery} onChange={(e) => setNewQuery(e.target.value)}
@@ -255,7 +255,7 @@ export function ReflexClient() {
             ) : (
               <div className="space-y-2">
                 {entries.map((e) => (
-                  <div key={e.entry_id} className="rounded-xl border border-border bg-card p-4">
+                  <div key={e.entry_id} className="rounded-xl border border-border bg-card p-3 lg:p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0 space-y-2">
                         <div className="flex items-center gap-2">
@@ -337,7 +337,7 @@ export function ReflexClient() {
                         <span>{t("reflex.hitCount") || "Hit Count"}: {lookupResult.hit_count}</span>
                         {lookupResult.category && <span>{t("reflex.category") || "Category"}: {lookupResult.category}</span>}
                       </div>
-                      <div className="rounded-lg bg-muted p-4">
+                      <div className="rounded-lg bg-muted p-3 lg:p-4">
                         <p className="text-xs lg:text-sm">{lookupResult.response}</p>
                       </div>
                     </>
@@ -407,7 +407,7 @@ function StatCard({ icon: Icon, label, value, sub, color, bg }: {
   icon: React.ElementType; label: string; value: string; sub: string; color: string; bg: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className={cn("rounded-lg p-1.5", bg)}><Icon size={14} className={color} /></div>

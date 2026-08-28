@@ -399,7 +399,7 @@ export function ActivityFeedClient() {
             </SheetContent>
           </Sheet>
         ) : (
-        <div className="w-64 border-l border-border overflow-y-auto p-4 space-y-4">
+        <div className="w-64 border-l border-border overflow-y-auto p-3 lg:p-4 space-y-4">
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t('activity.summary')}</h3>
             {summary ? (

@@ -317,7 +317,7 @@ export function BookmarksClient() {
             ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 lg:gap-4">
                 {bookmarks.map(bm => (
-                  <div key={bm.id} className="group bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition">
+                  <div key={bm.id} className="group bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 lg:p-4 hover:border-zinc-700 transition">
                     <div className="flex items-start gap-2 lg:gap-3 mb-3">
                       <img src={getFaviconUrl(bm.url)} alt="" className="w-5 h-5 rounded mt-0.5" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
                       <div className="flex-1 min-w-0">
@@ -385,7 +385,7 @@ export function BookmarksClient() {
                     { label: "Favorites", value: stats.favorites, icon: Star, color: "yellow" },
                     { label: "Collections", value: stats.collections, icon: Folder, color: "blue" },
                   ].map(s => (
-                    <div key={s.label} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                    <div key={s.label} className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 lg:p-4">
                       <div className="flex items-center gap-2 mb-2">
                         <s.icon className={`w-4 h-4 text-${s.color}-400`} />
                         <span className="text-xs text-zinc-500">{s.label}</span>
@@ -396,7 +396,7 @@ export function BookmarksClient() {
                 </div>
 
                 {stats.top_domains.length > 0 && (
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 lg:p-4">
                     <h3 className="text-xs lg:text-sm font-medium text-zinc-300 mb-3">Top Domains</h3>
                     <div className="space-y-2">
                       {stats.top_domains.map(d => (
@@ -413,7 +413,7 @@ export function BookmarksClient() {
                 )}
 
                 {stats.most_clicked.length > 0 && (
-                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                  <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 lg:p-4">
                     <h3 className="text-xs lg:text-sm font-medium text-zinc-300 mb-3">Most Clicked</h3>
                     <div className="space-y-2">
                       {stats.most_clicked.map((bm, i) => (

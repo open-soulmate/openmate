@@ -493,7 +493,7 @@ export function CortexClient() {
                   {planResult.tasks.map((task, i) => (
                     <div
                       key={i}
-                      className="flex items-start gap-2 lg:gap-3 rounded-lg border border-border bg-background p-4"
+                      className="flex items-start gap-2 lg:gap-3 rounded-lg border border-border bg-background p-3 lg:p-4"
                     >
                       <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
                         {task.index + 1}
@@ -721,7 +721,7 @@ export function CortexClient() {
                 )}
               </div>
               {graphragBuildResult && (
-                <div className="mt-4 rounded-lg border border-border bg-background p-4">
+                <div className="mt-4 rounded-lg border border-border bg-background p-3 lg:p-4">
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3">
                     <div className="text-center">
                       <p className="text-xl lg:text-2xl font-bold text-primary">{graphragBuildResult.entities_new || 0}</p>

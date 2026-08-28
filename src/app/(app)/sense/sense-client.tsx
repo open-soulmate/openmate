@@ -400,7 +400,7 @@ export function SenseClient() {
                   </button>
                 )}
               </div>
-              <div className="min-h-[300px] max-h-[500px] overflow-y-auto bg-card border border-border rounded-xl p-4">
+              <div className="min-h-[300px] max-h-[500px] overflow-y-auto bg-card border border-border rounded-xl p-3 lg:p-4">
                 {ocrResult ? (
                   <div className="space-y-4">
                     <div className="flex gap-2 lg:gap-4 text-xs text-muted-foreground">
@@ -513,7 +513,7 @@ export function SenseClient() {
                   </button>
                 )}
               </div>
-              <div className="min-h-[300px] max-h-[500px] overflow-y-auto bg-card border border-border rounded-xl p-4">
+              <div className="min-h-[300px] max-h-[500px] overflow-y-auto bg-card border border-border rounded-xl p-3 lg:p-4">
                 {asrResult ? (
                   <div className="space-y-4">
                     <div className="flex gap-2 lg:gap-4 text-xs text-muted-foreground">
@@ -606,7 +606,7 @@ export function SenseClient() {
             {/* Result Area */}
             <div className="space-y-4">
               <h3 className="font-semibold">{t("sense.text41")}</h3>
-              <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
+              <div className="min-h-[300px] bg-card border border-border rounded-xl p-3 lg:p-4">
                 {analyzeResult ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-2 lg:gap-3">
@@ -768,7 +768,7 @@ export function SenseClient() {
             {/* Result Area */}
             <div className="space-y-4">
               <h3 className="font-semibold">{t("sense.text41")}</h3>
-              <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
+              <div className="min-h-[300px] bg-card border border-border rounded-xl p-3 lg:p-4">
                 {videoResult ? (
                   <div className="space-y-4">
                     <div className="grid grid-cols-2 gap-2 lg:gap-3">

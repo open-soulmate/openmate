@@ -276,7 +276,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
 
       {/* Deliver Target */}
       {job.deliver && (
-        <div className="mb-6 p-4 rounded-xl border bg-card">
+        <div className="mb-6 p-3 lg:p-4 rounded-xl border bg-card">
           <div className="flex items-center gap-2 mb-2">
             <Send className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">{t('cronDetail.deliverTarget')}</span>
@@ -287,7 +287,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
 
       {/* Prompt */}
       {job.prompt && (
-        <div className="mb-6 p-4 rounded-xl border bg-card">
+        <div className="mb-6 p-3 lg:p-4 rounded-xl border bg-card">
           <div className="flex items-center gap-2 mb-2">
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">{t('cronDetail.execPrompt')}</span>
@@ -300,7 +300,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
 
       {/* Last Error */}
       {job.last_error && (
-        <div className="mb-6 p-4 rounded-xl border border-destructive/30 bg-destructive/5">
+        <div className="mb-6 p-3 lg:p-4 rounded-xl border border-destructive/30 bg-destructive/5">
           <div className="flex items-center gap-2 mb-2">
             <AlertCircle className="w-4 h-4 text-destructive" />
             <span className="text-xs text-destructive font-medium">{t('cronDetail.recentError')}</span>

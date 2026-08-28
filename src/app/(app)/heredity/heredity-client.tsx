@@ -252,7 +252,7 @@ export function HeredityClient() {
                 {filteredComponents.map((c) => (
                   <button key={c.component_id}
                     onClick={() => setSelectedComponent(c.component_id)}
-                    className={cn("w-full text-left rounded-xl border p-4 transition-colors",
+                    className={cn("w-full text-left rounded-xl border p-3 lg:p-4 transition-colors",
                       selectedComponent === c.component_id ? "border-teal-500/50 bg-teal-500/5" : "border-border bg-card hover:border-teal-500/30")}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
@@ -344,7 +344,7 @@ export function HeredityClient() {
         {tab === "migrations" && (
           <div className="space-y-4">
             {/* Create Migration */}
-            <div className="rounded-xl border border-border p-4 space-y-3">
+            <div className="rounded-xl border border-border p-3 lg:p-4 space-y-3">
               <h3 className="text-xs lg:text-sm font-medium">{t('heredity.createMigration') || t('heredity.t45504')}</h3>
               <div className="grid grid-cols-4 gap-2 lg:gap-3">
                 <select value={migComponentId} onChange={(e) => setMigComponentId(e.target.value)}
@@ -377,7 +377,7 @@ export function HeredityClient() {
             ) : (
               <div className="space-y-2">
                 {migrations.map((m) => (
-                  <div key={m.migration_id} className="rounded-xl border border-border bg-card p-4">
+                  <div key={m.migration_id} className="rounded-xl border border-border bg-card p-3 lg:p-4">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2 lg:gap-3">
                         <span className={cn("rounded-full px-2 py-0.5 text-[10px]", STATUS_COLORS[m.status] || "bg-muted")}>
@@ -478,15 +478,15 @@ export function HeredityClient() {
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2 lg:gap-4 text-center">
-                <div className="rounded-lg bg-muted p-4">
+                <div className="rounded-lg bg-muted p-3 lg:p-4">
                   <p className="text-xl lg:text-2xl font-bold">{platform.total_components}</p>
                   <p className="text-xs text-muted-foreground">{t('heredity.components') || t('heredity.components')}</p>
                 </div>
-                <div className="rounded-lg bg-muted p-4">
+                <div className="rounded-lg bg-muted p-3 lg:p-4">
                   <p className="text-xl lg:text-2xl font-bold">{platform.total_migrations}</p>
                   <p className="text-xs text-muted-foreground">{t('heredity.migrations') || t('heredity.migrations')}</p>
                 </div>
-                <div className="rounded-lg bg-muted p-4">
+                <div className="rounded-lg bg-muted p-3 lg:p-4">
                   <p className="text-xl lg:text-2xl font-bold">{platform.total_changelog_entries}</p>
                   <p className="text-xs text-muted-foreground">{t('heredity.changes') || t('heredity.changes')}</p>
                 </div>
@@ -527,7 +527,7 @@ function StatCard({ icon: Icon, label, value, sub, color, bg }: {
   icon: React.ElementType; label: string; value: string; sub: string; color: string; bg: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className={cn("rounded-lg p-1.5", bg)}><Icon size={14} className={color} /></div>

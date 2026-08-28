@@ -376,7 +376,7 @@ function SourceCard({ source, syncing, onSync }: { source: SourceItem; syncing: 
 
   return (
     <div className={cn(
-      "flex flex-col rounded-lg border bg-card p-4 transition-colors hover:border-primary/30",
+      "flex flex-col rounded-lg border bg-card p-3 lg:p-4 transition-colors hover:border-primary/30",
       source.enabled ? "border-border" : "border-border/50 opacity-60"
     )}>
       <div className="flex items-start justify-between">
