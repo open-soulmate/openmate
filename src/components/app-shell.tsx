@@ -8,7 +8,7 @@ import { RightPanel } from "@/components/right-panel";
 import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
@@ -96,6 +96,8 @@ const AGENT_ICONS: Record<string, string> = {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeSessionId = searchParams.get('session');
   const collapsed = useAppStore((s) => s.sidebarCollapsed);
   const toggle = useAppStore((s) => s.toggleSidebar);
   const storeTheme = useAppStore((s) => s.theme);
@@ -454,13 +456,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           })
                           .map(session => {
                             const unread = getUnread(session);
+                            const isActive = activeSessionId === session.id;
                             return (
                           <button key={session.id}
-                            onClick={() => { clearSessionUnread(session.id); router.push(`/chat?agent=${agent.id}&session=${session.id}`); setMenuOpen(false); }}
-                            className="group w-full text-left pl-12 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer group-data-[collapsible=icon]:hidden">
+                            onClick={() => { clearSessionUnread(session.id); router.push(`/chat?agent=${agent.id}&session=${session.id}`); }}
+                            className={cn(
+                              "group w-full text-left pl-12 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer group-data-[collapsible=icon]:hidden",
+                              isActive && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
+                            )}>
                             <div className="flex items-center gap-1.5">
-                              <MessageSquare className="w-3 h-3 shrink-0 text-muted-foreground" />
-                              <span className={cn("text-xs truncate flex-1", unread > 0 && "font-bold")}>{session.name || session.title || "Untitled"}</span>
+                              <MessageSquare className={cn("w-3 h-3 shrink-0", isActive ? "text-[#7c3aed]" : "text-muted-foreground")} />
+                              <span className={cn("text-xs truncate flex-1", unread > 0 ? "font-bold" : "", isActive && "text-[#7c3aed]")}>{session.name || session.title || "Untitled"}</span>
                               <UnreadBadge count={unread} />
                             </div>
                             {(session.last_active || session.updated_at) && (
@@ -486,13 +492,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       })
                       .map(session => {
                         const unread = getUnread(session);
+                        const isActive = activeSessionId === session.id;
                         return (
                       <button key={session.id}
-                        onClick={() => { clearSessionUnread(session.id); router.push(`/chat?agent=${agent.id}&session=${session.id}`); setMenuOpen(false); }}
-                        className="group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer group-data-[collapsible=icon]:hidden">
+                        onClick={() => { clearSessionUnread(session.id); router.push(`/chat?agent=${agent.id}&session=${session.id}`); }}
+                        className={cn(
+                          "group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer group-data-[collapsible=icon]:hidden",
+                          isActive && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
+                        )}>
                         <div className="flex items-center gap-1.5">
-                          <MessageSquare className="w-3 h-3 shrink-0 text-muted-foreground" />
-                          <span className={cn("text-xs truncate flex-1", unread > 0 && "font-bold")}>{session.name || session.title || "Untitled"}</span>
+                          <MessageSquare className={cn("w-3 h-3 shrink-0", isActive ? "text-[#7c3aed]" : "text-muted-foreground")} />
+                          <span className={cn("text-xs truncate flex-1", unread > 0 ? "font-bold" : "", isActive && "text-[#7c3aed]")}>{session.name || session.title || "Untitled"}</span>
                           <UnreadBadge count={unread} />
                         </div>
                         {(session.last_active || session.updated_at) && (

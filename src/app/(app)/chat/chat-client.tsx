@@ -2,6 +2,7 @@
 import { MarkdownContent } from "@/components/markdown-content";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu, Trash2, Search as SearchIcon, Bookmark, RotateCcw, Zap, Brain, PanelLeft } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { Dialog } from '@/components/ui/dialog';
@@ -163,6 +164,7 @@ function parseFileChanges(content: string): FileChange[] {
 }
 
 export function ChatClient() {
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -469,7 +471,9 @@ export function ChatClient() {
   // Auto-select session from URL param ?session=SESSION_ID
   useEffect(() => {
     const sid = new URLSearchParams(window.location.search).get('session');
-    if (!sid || selectedSession) return;
+    if (!sid) return;
+    // Already selected this session, skip
+    if (selectedSession?.id === sid) return;
     for (const agent of agents) {
       const session = agent.sessions.find(s => s.id === sid);
       if (session) {
@@ -477,7 +481,7 @@ export function ChatClient() {
         return;
       }
     }
-  }, [agents, selectedSession]);
+  }, [agents, searchParams]);
 
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || loading) return;
