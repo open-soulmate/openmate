@@ -134,7 +134,7 @@ export function DownloadClient() {
   const urlType = detectUrlType(newUrl);
 
   return (
-    <div className="p-6 h-full overflow-y-auto">
+    <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Download className="w-6 h-6" /> {t('download.title')}</h1>
