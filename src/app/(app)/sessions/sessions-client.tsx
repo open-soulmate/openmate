@@ -5,12 +5,14 @@ import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
 import { getApiBaseUrl } from "@/lib/api-client"
 import {
-  History, Loader2, Search, RefreshCw, Trash2, ArrowLeft,
+  History, Loader2, Search, RefreshCw, Trash2,
   MessageSquare, Clock, ChevronDown, ChevronRight,
   XCircle, Bot, Terminal, Smartphone, Timer,
   Link, Monitor, Wrench, Users, Star, Filter, X,
   Download, FileJson, FileText, Tag, Plus,
 } from "lucide-react"
+import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { useMediaQuery } from "@/hooks/use-mobile"
 
 interface Session {
   session_id: string
@@ -105,7 +107,7 @@ export function SessionsClient() {
   // Tag filter state
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
   // Mobile: track if we're showing detail view
-  const [mobileShowDetail, setMobileShowDetail] = useState(false)
+  const isMobile = useMediaQuery("(max-width: 1023px)")
   const [allTags, setAllTags] = useState<{name: string; count: number}[]>([])
 
   // Tag input state (for adding tags to sessions)
@@ -397,7 +399,7 @@ export function SessionsClient() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Session List */}
-        <div className={`${mobileShowDetail && selectedSession ? "hidden lg:flex" : "flex"} ${selectedSession ? "w-full lg:w-1/3 lg:border-r lg:border-zinc-800" : "w-full"} flex-col overflow-hidden transition-all`}>
+        <div className={`${isMobile ? "flex w-full" : selectedSession ? "flex w-1/3 border-r border-zinc-800" : "flex w-full"} flex-col overflow-hidden transition-all`}>
           {/* Search */}
           <form onSubmit={handleSearch} className="px-3 md:px-4 h-12 flex items-center border-b border-zinc-800 gap-2">
             <div className="relative flex-1">
@@ -572,7 +574,7 @@ export function SessionsClient() {
                                     ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] border-l-2 border-[#7c3aed] hover:bg-[rgba(124,58,237,0.18)]"
                                     : "hover:bg-zinc-800/20 border-l-2 border-transparent"
                                 }`}
-                                onClick={() => { fetchSessionDetail(session.session_id); setMobileShowDetail(true) }}
+                                onClick={() => fetchSessionDetail(session.session_id)}
                               >
                                 {/* Favorite star */}
                                 <button
@@ -695,82 +697,146 @@ export function SessionsClient() {
           </div>
         </div>
 
-        {/* Session Detail */}
+        {/* Session Detail — Sheet on mobile, inline on desktop */}
         {selectedSession && (
-          <div className={`${mobileShowDetail ? "flex" : "hidden lg:flex"} flex-1 flex-col overflow-hidden`}>
-            <div className="flex items-center justify-between px-4 h-12 border-b border-zinc-800">
-              <div className="flex items-center gap-2">
-                <button onClick={() => setMobileShowDetail(false)}
-                  className="lg:hidden p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 mr-1"
-                  title={t("sessions.back", "Back")}>
-                  <ArrowLeft className="w-4 h-4" />
-                </button>
-                <MessageSquare className="w-4 h-4 text-cyan-400" />
-                <span className="text-sm font-medium text-zinc-200 truncate">
-                  {selectedSession.title || selectedSession.session_id}
-                </span>
-                <span className="text-xs text-zinc-500">({selectedSession.messages.length} {t("sessions.messages", "messages")})</span>
-              </div>
-              <div className="flex items-center gap-1">
-                <button onClick={() => router.push(`/chat?session=${selectedSession.session_id}`)}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/30 text-xs transition-colors"
-                  title={t("sessions.openChat", "Open in Chat")}>
-                  <MessageSquare className="w-3 h-3" />
-                  {t("sessions.openChat", "Chat")}
-                </button>
-                <button onClick={() => exportSession("json")}
-                  className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
-                  title="Export as JSON">
-                  <FileJson className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => exportSession("markdown")}
-                  className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
-                  title="Export as Markdown">
-                  <FileText className="w-3.5 h-3.5" />
-                </button>
-                <button onClick={() => setSelectedSession(null)}
-                  className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200">
-                  <XCircle className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-              {detailLoading ? (
-                <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
-              ) : selectedSession.messages.length === 0 ? (
-                <div className="text-center py-12 text-zinc-500 text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
-              ) : (
-                selectedSession.messages.map((msg, i) => (
-                  <div key={msg.id || i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
-                    {msg.role !== "user" && (
-                      <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
-                        <span className={`text-xs font-medium ${roleColor(msg.role)}`}>
-                          {msg.role === "assistant" ? "AI" : msg.role[0].toUpperCase()}
-                        </span>
+          isMobile ? (
+            <Sheet open={!!selectedSession} onOpenChange={(open) => { if (!open) setSelectedSession(null) }}>
+              <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col">
+                <div className="flex items-center justify-between px-4 h-12 border-b border-zinc-800">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                    <span className="text-sm font-medium text-zinc-200 truncate">
+                      {selectedSession.title || selectedSession.session_id}
+                    </span>
+                    <span className="text-xs text-zinc-500 flex-shrink-0">({selectedSession.messages.length} {t("sessions.messages", "messages")})</span>
+                  </div>
+                  <div className="flex items-center gap-1 flex-shrink-0">
+                    <button onClick={() => router.push(`/chat?session=${selectedSession.session_id}`)}
+                      className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/30 text-xs transition-colors"
+                      title={t("sessions.openChat", "Open in Chat")}>
+                      <MessageSquare className="w-3 h-3" />
+                    </button>
+                    <button onClick={() => exportSession("json")}
+                      className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                      title="Export as JSON">
+                      <FileJson className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => exportSession("markdown")}
+                      className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                      title="Export as Markdown">
+                      <FileText className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                  {detailLoading ? (
+                    <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+                  ) : selectedSession.messages.length === 0 ? (
+                    <div className="text-center py-12 text-zinc-500 text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
+                  ) : (
+                    selectedSession.messages.map((msg, i) => (
+                      <div key={msg.id || i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
+                        {msg.role !== "user" && (
+                          <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                            <span className={`text-xs font-medium ${roleColor(msg.role)}`}>
+                              {msg.role === "assistant" ? "AI" : msg.role[0].toUpperCase()}
+                            </span>
+                          </div>
+                        )}
+                        <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 text-sm ${
+                          msg.role === "user"
+                            ? "bg-blue-600/20 text-blue-100"
+                            : msg.role === "system"
+                            ? "bg-yellow-900/20 text-yellow-200 border border-yellow-800/30"
+                            : "bg-zinc-800/50 text-zinc-300"
+                        }`}>
+                          <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                          {msg.timestamp && (
+                            <div className="text-[10px] text-zinc-600 mt-1">{new Date(msg.timestamp).toLocaleString()}</div>
+                          )}
+                        </div>
+                        {msg.role === "user" && (
+                          <div className="w-7 h-7 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
+                            <span className="text-xs font-medium text-blue-400">U</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                    <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 text-sm ${
-                      msg.role === "user"
-                        ? "bg-blue-600/20 text-blue-100"
-                        : msg.role === "system"
-                        ? "bg-yellow-900/20 text-yellow-200 border border-yellow-800/30"
-                        : "bg-zinc-800/50 text-zinc-300"
-                    }`}>
-                      <div className="whitespace-pre-wrap break-words">{msg.content}</div>
-                      {msg.timestamp && (
-                        <div className="text-[10px] text-zinc-600 mt-1">{new Date(msg.timestamp).toLocaleString()}</div>
+                    ))
+                  )}
+                </div>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            <div className="flex flex-1 flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-4 h-12 border-b border-zinc-800">
+                <div className="flex items-center gap-2 min-w-0">
+                  <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
+                  <span className="text-sm font-medium text-zinc-200 truncate">
+                    {selectedSession.title || selectedSession.session_id}
+                  </span>
+                  <span className="text-xs text-zinc-500 flex-shrink-0">({selectedSession.messages.length} {t("sessions.messages", "messages")})</span>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button onClick={() => router.push(`/chat?session=${selectedSession.session_id}`)}
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/30 text-xs transition-colors"
+                    title={t("sessions.openChat", "Open in Chat")}>
+                    <MessageSquare className="w-3 h-3" />
+                    {t("sessions.openChat", "Chat")}
+                  </button>
+                  <button onClick={() => exportSession("json")}
+                    className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    title="Export as JSON">
+                    <FileJson className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => exportSession("markdown")}
+                    className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    title="Export as Markdown">
+                    <FileText className="w-3.5 h-3.5" />
+                  </button>
+                  <button onClick={() => setSelectedSession(null)}
+                    className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200">
+                    <XCircle className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                {detailLoading ? (
+                  <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+                ) : selectedSession.messages.length === 0 ? (
+                  <div className="text-center py-12 text-zinc-500 text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
+                ) : (
+                  selectedSession.messages.map((msg, i) => (
+                    <div key={msg.id || i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
+                      {msg.role !== "user" && (
+                        <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                          <span className={`text-xs font-medium ${roleColor(msg.role)}`}>
+                            {msg.role === "assistant" ? "AI" : msg.role[0].toUpperCase()}
+                          </span>
+                        </div>
+                      )}
+                      <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 text-sm ${
+                        msg.role === "user"
+                          ? "bg-blue-600/20 text-blue-100"
+                          : msg.role === "system"
+                          ? "bg-yellow-900/20 text-yellow-200 border border-yellow-800/30"
+                          : "bg-zinc-800/50 text-zinc-300"
+                      }`}>
+                        <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+                        {msg.timestamp && (
+                          <div className="text-[10px] text-zinc-600 mt-1">{new Date(msg.timestamp).toLocaleString()}</div>
+                        )}
+                      </div>
+                      {msg.role === "user" && (
+                        <div className="w-7 h-7 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
+                          <span className="text-xs font-medium text-blue-400">U</span>
+                        </div>
                       )}
                     </div>
-                    {msg.role === "user" && (
-                      <div className="w-7 h-7 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
-                        <span className="text-xs font-medium text-blue-400">U</span>
-                      </div>
-                    )}
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
-          </div>
+          )
         )}
       </div>
     </div>
