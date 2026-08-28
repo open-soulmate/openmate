@@ -280,7 +280,7 @@ export function DashboardClient() {
 
   return (
     <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-6 py-8">
+      <div className="mx-auto max-w-5xl px-3 lg:px-6 py-4 lg:py-8">
         {/* Header */}
         <div className="mb-8">
           <h2 className="text-2xl font-bold tracking-tight">

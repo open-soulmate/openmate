@@ -361,12 +361,18 @@ export function BodyMapClient() {
           >
             {fullscreen ? <Minimize2 size={12} /> : <Maximize2 size={12} />}
           </button>
+          <button
+            onClick={() => setShowDetails(!showDetails)}
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted transition-colors"
+          >
+            {showDetails ? <PanelRightClose size={12} /> : <PanelRightOpen size={12} />}
+          </button>
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* SVG Body Map */}
-        <div className="body-map-content flex-1 flex items-center justify-center p-6">
+        <div className="body-map-content flex-1 flex items-center justify-center p-3 lg:p-6">
           <svg
             viewBox="0 0 100 100"
             className="w-full max-w-2xl h-auto"
@@ -441,11 +447,14 @@ export function BodyMapClient() {
           </svg>
         </div>
 
-        {/* Side panel */}
-        <div className="body-map-side w-72 border-l border-border overflow-y-auto p-4 space-y-4">
-          {/* System legend */}
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t("bodyMap.systemsTitle", "Systems")}</h3>
+        {/* Side panel: Sheet on mobile, inline on desktop */}
+        {isMobile ? (
+          <Sheet open={showDetails} onOpenChange={setShowDetails}>
+            <SheetContent side="right" className="w-80 p-0 flex flex-col overflow-y-auto">
+              <div className="p-4 space-y-4">
+                {/* System legend */}
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t("bodyMap.systemsTitle", "Systems")}</h3>
             <div className="space-y-1.5">
               {Object.entries(SYSTEM_COLORS).map(([system, colors]) => (
                 <div key={system} className="flex items-center gap-2">
@@ -519,7 +528,91 @@ export function BodyMapClient() {
               })}
             </div>
           </div>
-        </div>
+              </div>
+            </SheetContent>
+          </Sheet>
+        ) : (
+          showDetails && (
+            <div className="w-72 shrink-0 border-l border-border overflow-y-auto p-4 space-y-4">
+              {/* System legend */}
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t("bodyMap.systemsTitle", "Systems")}</h3>
+                <div className="space-y-1.5">
+                  {Object.entries(SYSTEM_COLORS).map(([system, colors]) => (
+                    <div key={system} className="flex items-center gap-2">
+                      <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: colors.fill }} />
+                      <span className="text-xs capitalize">{system}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Selected organ detail */}
+              {selectedOrganData && selectedStatus && (
+                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                  <div className="flex items-center gap-2">
+                    <span className="text-2xl">{selectedOrganData.emoji}</span>
+                    <div>
+                      <h3 className="font-semibold text-sm">{selectedOrganData.label}</h3>
+                      <p className="text-xs text-muted-foreground capitalize">{selectedOrganData.system} system</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {selectedStatus.status === "ok" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-medium text-emerald-500">
+                        <CheckCircle size={10} /> {t("bodyMap.healthy", "Healthy")}
+                      </span>
+                    ) : selectedStatus.status === "error" ? (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-red-500/10 px-2 py-0.5 text-[10px] font-medium text-red-500">
+                        <XCircle size={10} /> {t("bodyMap.errors", "Error")}
+                      </span>
+                    ) : (
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                        <Loader2 size={10} className="animate-spin" /> {t("bodyMap.loading", "Checking...")}
+                      </span>
+                    )}
+                  </div>
+                  <Link
+                    href={selectedOrganData.href}
+                    className="block w-full rounded-lg bg-primary px-3 py-2 text-center text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                  >
+                    {t("bodyMap.open", "Open")} {selectedOrganData.label} →
+                  </Link>
+                </div>
+              )}
+
+              {/* Organ list */}
+              <div>
+                <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">
+                  {t("bodyMap.allOrgans", "All Organs")} ({okCount}/{totalCount})
+                </h3>
+                <div className="space-y-1">
+                  {ORGAN_LAYOUT.map((organ) => {
+                    const status = organStatuses[organ.key];
+                    return (
+                      <Link
+                        key={organ.key}
+                        href={organ.href}
+                        className={cn(
+                          "flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs transition-colors hover:bg-muted",
+                          selectedOrgan === organ.key && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
+                        )}
+                        onMouseEnter={() => setHoveredOrgan(organ.key)}
+                        onMouseLeave={() => setHoveredOrgan(null)}
+                      >
+                        <span>{organ.emoji}</span>
+                        <span className="flex-1 truncate">{organ.label}</span>
+                        {status?.status === "ok" && <CheckCircle size={12} className="text-emerald-500" />}
+                        {status?.status === "error" && <XCircle size={12} className="text-red-500" />}
+                        {status?.status === "loading" && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          )
+        )}
       </div>
     </div>
   );
