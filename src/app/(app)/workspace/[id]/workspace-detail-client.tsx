@@ -6,6 +6,8 @@ import { cn } from "@/lib/utils";
 import { useAppStore, type FileNode, type TerminalLine } from "@/stores/app-store";
 import { listDir, readFile, executeCommand } from "@/lib/tauri-bridge";
 import { SCMPanel } from "@/components/scm-panel";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useMediaQuery } from "@/hooks/use-mobile";
 import {
   FolderOpen,
   File,
@@ -19,6 +21,7 @@ import {
   GitBranch,
   PanelRightOpen,
   PanelRightClose,
+  PanelLeft,
   ArrowLeft,
 } from "lucide-react";
 import Link from "next/link";
@@ -328,6 +331,8 @@ export function WorkspaceDetailClient() {
       timestamp: Date.now(),
     },
   ]);
+  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const [showFileTree, setShowFileTree] = useState(false);
   const [scmOpen, setScmOpen] = useState(true);
   const [termHeight, setTermHeight] = useState(200);
   const [isDragging, setIsDragging] = useState(false);
@@ -470,41 +475,99 @@ export function WorkspaceDetailClient() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Left: File tree */}
-      <div className="w-56 shrink-0 border-r border-border bg-sidebar flex flex-col">
-        <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
-          <FolderOpen size={14} className="text-muted-foreground" />
-          <span className="text-xs font-medium text-foreground truncate">
-            {workspace.name}
-          </span>
-        </div>
-        <div className="flex-1 overflow-y-auto p-1">
-          {fileTree.length === 0 ? (
-            <div className="flex flex-col items-center py-8 text-center">
-              <FolderOpen
-                size={24}
-                className="mb-2 text-muted-foreground"
-              />
-              <p className="text-[10px] text-muted-foreground">
-                No files loaded
-              </p>
+      {/* Left: File tree — Sheet on mobile, inline on desktop */}
+      {isMobile ? (
+        <Sheet open={showFileTree} onOpenChange={setShowFileTree}>
+          <SheetContent side="left" className="w-64 p-0 flex flex-col">
+            <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
+              <FolderOpen size={14} className="text-muted-foreground" />
+              <span className="text-xs font-medium text-foreground truncate">
+                {workspace.name}
+              </span>
             </div>
-          ) : (
-            fileTree.map((node) => (
-              <FileTreeNode
-                key={node.path}
-                node={node}
-                depth={0}
-                onSelect={setSelectedFile}
-                selected={selectedFile}
-              />
-            ))
-          )}
+            <div className="flex-1 overflow-y-auto p-1">
+              {fileTree.length === 0 ? (
+                <div className="flex flex-col items-center py-8 text-center">
+                  <FolderOpen size={24} className="mb-2 text-muted-foreground" />
+                  <p className="text-[10px] text-muted-foreground">No files loaded</p>
+                </div>
+              ) : (
+                fileTree.map((node) => (
+                  <FileTreeNode
+                    key={node.path}
+                    node={node}
+                    depth={0}
+                    onSelect={(p) => { setSelectedFile(p); setShowFileTree(false); }}
+                    selected={selectedFile}
+                  />
+                ))
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <div className="w-56 shrink-0 border-r border-border bg-sidebar flex flex-col">
+          <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
+            <FolderOpen size={14} className="text-muted-foreground" />
+            <span className="text-xs font-medium text-foreground truncate">
+              {workspace.name}
+            </span>
+          </div>
+          <div className="flex-1 overflow-y-auto p-1">
+            {fileTree.length === 0 ? (
+              <div className="flex flex-col items-center py-8 text-center">
+                <FolderOpen
+                  size={24}
+                  className="mb-2 text-muted-foreground"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  No files loaded
+                </p>
+              </div>
+            ) : (
+              fileTree.map((node) => (
+                <FileTreeNode
+                  key={node.path}
+                  node={node}
+                  depth={0}
+                  onSelect={setSelectedFile}
+                  selected={selectedFile}
+                />
+              ))
+            )}
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Center: Editor + Terminal */}
       <div className="flex flex-1 flex-col overflow-hidden">
+        {/* Editor toolbar with mobile toggles */}
+        <div className="flex shrink-0 items-center gap-1 border-b border-border px-2 py-1">
+          {isMobile && (
+            <button
+              onClick={() => setShowFileTree(true)}
+              className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              title="File tree"
+            >
+              <PanelLeft size={16} />
+            </button>
+          )}
+          {selectedFile && (
+            <span className="text-xs text-muted-foreground truncate flex-1">
+              {selectedFile.split("/").pop()}
+            </span>
+          )}
+          {isMobile && (
+            <button
+              onClick={() => setScmOpen(!scmOpen)}
+              className="p-1.5 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
+              title="SCM"
+            >
+              <GitBranch size={16} />
+            </button>
+          )}
+        </div>
+
         {/* Editor area */}
         <div className="flex-1 overflow-hidden">
           {selectedFile ? (
@@ -516,7 +579,7 @@ export function WorkspaceDetailClient() {
                 Select a file to view
               </p>
               <p className="mt-1 text-xs text-muted-foreground">
-                Click on a file in the tree to open it
+                {isMobile ? "Tap the file icon to browse files" : "Click on a file in the tree to open it"}
               </p>
             </div>
           )}
@@ -541,8 +604,18 @@ export function WorkspaceDetailClient() {
         </div>
       </div>
 
-      {/* Right: SCM Panel */}
-      {scmOpen ? (
+      {/* Right: SCM Panel — Sheet on mobile, inline on desktop */}
+      {isMobile ? (
+        <Sheet open={scmOpen} onOpenChange={setScmOpen}>
+          <SheetContent side="right" className="w-80 p-0 flex flex-col">
+            <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
+              <GitBranch size={14} className="text-primary" />
+              <span className="text-xs font-medium text-foreground">SCM</span>
+            </div>
+            <SCMPanel workspacePath={workspace.path} className="flex-1" />
+          </SheetContent>
+        </Sheet>
+      ) : scmOpen ? (
         <div className="w-72 shrink-0 border-l border-border bg-sidebar flex flex-col">
           <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">
             <div className="flex items-center gap-2">
