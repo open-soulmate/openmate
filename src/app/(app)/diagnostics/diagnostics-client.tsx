@@ -157,7 +157,7 @@ export function DiagnosticsClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <Activity size={20} className="text-orange-500" />
           <h1 className="text-lg font-semibold">{t("diagnostics.title") || "Diagnostics"}</h1>
@@ -179,16 +179,16 @@ export function DiagnosticsClient() {
         <button
           onClick={runCheck}
           disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors disabled:opacity-50"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           {loading ? (t("diagnostics.checking") || "Checking...") : (t("diagnostics.refresh") || "Refresh")}
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xs lg:text-sm text-red-500">
             {error}
           </div>
         )}
@@ -196,13 +196,13 @@ export function DiagnosticsClient() {
         {data && (
           <>
             {/* Health Summary */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.totalOrgans") || "Total"}</span>
                   <div className="rounded-lg p-1.5 bg-blue-500/10"><Server size={14} className="text-blue-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{data.summary.total}</p>
+                <p className="text-xl lg:text-2xl font-bold">{data.summary.total}</p>
                 <p className="text-xs text-muted-foreground mt-0.5">
                   <span className="text-emerald-500">{data.summary.healthy}</span> ok ·
                   <span className="text-red-500 ml-1">{data.summary.unhealthy}</span> error
@@ -213,7 +213,7 @@ export function DiagnosticsClient() {
                   <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.avgResponse") || "Avg Response"}</span>
                   <div className="rounded-lg p-1.5 bg-amber-500/10"><Clock size={14} className="text-amber-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{data.summary.avg_response_ms}<span className="text-sm font-normal ml-0.5">ms</span></p>
+                <p className="text-xl lg:text-2xl font-bold">{data.summary.avg_response_ms}<span className="text-xs lg:text-sm font-normal ml-0.5">ms</span></p>
                 <p className="text-xs text-muted-foreground mt-0.5">max {data.summary.max_response_ms.toFixed(1)}ms</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
@@ -221,7 +221,7 @@ export function DiagnosticsClient() {
                   <span className="text-xs font-medium text-muted-foreground">CPU</span>
                   <div className="rounded-lg p-1.5 bg-violet-500/10"><Cpu size={14} className="text-violet-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{data.system.cpu_percent}%</p>
+                <p className="text-xl lg:text-2xl font-bold">{data.system.cpu_percent}%</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{data.system.cpu_count} cores</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
@@ -229,14 +229,14 @@ export function DiagnosticsClient() {
                   <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.memory") || "Memory"}</span>
                   <div className="rounded-lg p-1.5 bg-emerald-500/10"><MemoryStick size={14} className="text-emerald-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{data.system.memory_percent}%</p>
+                <p className="text-xl lg:text-2xl font-bold">{data.system.memory_percent}%</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{data.system.memory_used_gb}G / {data.system.memory_total_gb}G</p>
               </div>
             </div>
 
             {/* System Gauges */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
+              <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Gauge size={14} className="text-orange-500" />
                 {t("diagnostics.systemGauges") || "System Gauges"}
               </h3>
@@ -247,11 +247,11 @@ export function DiagnosticsClient() {
 
             {/* System Info */}
             <div className="rounded-xl border border-border bg-card p-5">
-              <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
+              <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2 mb-4">
                 <Info size={14} className="text-blue-500" />
                 {t("diagnostics.systemInfo") || "System Info"}
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4 text-xs lg:text-sm">
                 <div><span className="text-muted-foreground">{t("diagnostics.hostname") || "Hostname"}: </span><span className="font-mono">{data.system.hostname}</span></div>
                 <div><span className="text-muted-foreground">{t("diagnostics.os") || "OS"}: </span>{data.system.os}</div>
                 <div><span className="text-muted-foreground">{t("diagnostics.arch") || "Arch"}: </span>{data.system.arch}</div>
@@ -265,7 +265,7 @@ export function DiagnosticsClient() {
               <div key={category} className="rounded-xl border border-border bg-card overflow-hidden">
                 <div className="px-5 py-3 border-b border-border bg-muted/30">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                       <Gauge size={14} className="text-orange-500" />
                       {categoryLabels[category] || category}
                     </h3>
@@ -276,9 +276,9 @@ export function DiagnosticsClient() {
                 </div>
                 <div className="divide-y divide-border">
                   {organs.map((organ) => (
-                    <div key={organ.key} className="flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors">
+                    <div key={organ.key} className="flex items-center gap-2 lg:gap-4 px-5 py-3 hover:bg-muted/30 transition-colors">
                       <StatusBadge status={organ.status} />
-                      <span className="text-sm font-medium flex-1">{organ.label}</span>
+                      <span className="text-xs lg:text-sm font-medium flex-1">{organ.label}</span>
                       <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-mono text-muted-foreground">
                         {organ.key}
                       </span>
@@ -292,7 +292,7 @@ export function DiagnosticsClient() {
             {/* Overall Status Banner */}
             <div
               className={cn(
-                "rounded-xl border p-5 flex items-center gap-4",
+                "rounded-xl border p-5 flex items-center gap-2 lg:gap-4",
                 data.summary.overall === "ok"
                   ? "border-emerald-500/30 bg-emerald-500/5"
                   : "border-amber-500/30 bg-amber-500/5"
@@ -304,7 +304,7 @@ export function DiagnosticsClient() {
                 <AlertTriangle size={24} className="text-amber-500 shrink-0" />
               )}
               <div>
-                <p className="text-sm font-semibold">
+                <p className="text-xs lg:text-sm font-semibold">
                   {data.summary.overall === "ok"
                     ? (t("diagnostics.allOk") || "All systems operational")
                     : (t("diagnostics.partialError") || "Some systems have issues")}

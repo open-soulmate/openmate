@@ -133,7 +133,7 @@ function PluginCard({
             <Package size={18} />
           </div>
           <div>
-            <h3 className="text-sm font-semibold leading-tight">{plugin.name}</h3>
+            <h3 className="text-xs lg:text-sm font-semibold leading-tight">{plugin.name}</h3>
             <p className="text-[11px] text-muted-foreground mt-0.5">v{plugin.version}</p>
           </div>
         </div>
@@ -229,7 +229,7 @@ function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstal
         className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
+        <div className="flex items-center justify-between px-6 py-2 lg:py-4 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Plus size={16} />
@@ -241,16 +241,16 @@ function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstal
           </button>
         </div>
 
-        <div className="px-3 lg:px-6 py-4 space-y-4">
+        <div className="px-3 lg:px-6 py-2 lg:py-4 space-y-4">
           <div>
-            <label className="text-sm font-medium mb-1.5 block">Plugin Manifest (JSON)</label>
+            <label className="text-xs lg:text-sm font-medium mb-1.5 block">Plugin Manifest (JSON)</label>
             <p className="text-xs text-muted-foreground mb-2">{t("plugins.manifestPlaceholder") || "Paste plugin manifest JSON configuration"}</p>
             <textarea
               value={manifest}
               onChange={(e) => setManifest(e.target.value)}
               placeholder={`{\n  "name": "my-plugin",\n  "version": "1.0.0",\n  "type": "tool",\n  "description": "A sample plugin"\n}`}
               rows={10}
-              className="w-full rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-primary/30 resize-none"
+              className="w-full rounded-lg border border-border bg-muted/50 px-3 py-2.5 text-xs lg:text-sm font-mono outline-none focus:ring-2 focus:ring-primary/30 resize-none"
             />
           </div>
 
@@ -262,14 +262,14 @@ function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstal
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-6 py-4 border-t border-border bg-muted/30">
-          <button onClick={onClose} className="rounded-lg px-4 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
+        <div className="flex items-center justify-end gap-2 px-6 py-2 lg:py-4 border-t border-border bg-muted/30">
+          <button onClick={onClose} className="rounded-lg px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
             {t("plugins.cancel") || "Cancel"}
           </button>
           <button
             onClick={handleInstall}
             disabled={!manifest.trim() || installing}
-            className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
           >
             {installing ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
             {t("plugins.install") || "Install"}
@@ -339,7 +339,7 @@ export function PluginsClient() {
               </div>
               {t("plugins.pluginManagement") || "Plugin Management"}
             </h1>
-            <p className="text-sm text-muted-foreground mt-1.5">
+            <p className="text-xs lg:text-sm text-muted-foreground mt-1.5">
               {t("plugins.managePlugins") || "Install, configure, and manage system plugins"}
               {plugins.length > 0 && (
                 <span className="ml-2 text-xs">
@@ -351,14 +351,14 @@ export function PluginsClient() {
           <div className="flex items-center gap-2">
             <button
               onClick={loadPlugins}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs lg:text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
               <RefreshCw size={14} />
               {t("plugins.refresh") || "Refresh"}
             </button>
             <button
               onClick={() => setShowInstall(true)}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="flex items-center gap-1.5 rounded-lg bg-primary px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <Plus size={14} />
               {t("plugins.installPlugin") || "Install Plugin"}
@@ -375,14 +375,14 @@ export function PluginsClient() {
               placeholder={t("plugins.searchPlugins") || "Search plugins..."}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-border bg-muted/50 pl-9 pr-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              className="w-full rounded-lg border border-border bg-muted/50 pl-9 pr-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30"
             />
           </div>
           {types.length > 2 && (
             <select
               value={filterType}
               onChange={(e) => setFilterType(e.target.value)}
-              className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30"
             >
               {types.map((tp) => (
                 <option key={tp} value={tp}>{tp === "all" ? (t("plugins.allTypes") || "All Types") : tp}</option>
@@ -395,18 +395,18 @@ export function PluginsClient() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
             <Loader2 size={32} className="animate-spin mb-4" />
-            <p className="text-sm">{t("plugins.loadingPlugins") || "Loading plugins..."}</p>
+            <p className="text-xs lg:text-sm">{t("plugins.loadingPlugins") || "Loading plugins..."}</p>
           </div>
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-24">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-4">
               <AlertCircle size={24} />
             </div>
-            <p className="text-sm font-medium mb-1">{t("plugins.loadFailed") || "Load failed"}</p>
+            <p className="text-xs lg:text-sm font-medium mb-1">{t("plugins.loadFailed") || "Load failed"}</p>
             <p className="text-xs text-muted-foreground mb-4">{error}</p>
             <button
               onClick={loadPlugins}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              className="flex items-center gap-1.5 rounded-lg bg-primary px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
             >
               <RefreshCw size={14} />
               {t("plugins.retry") || "Retry"}
@@ -417,7 +417,7 @@ export function PluginsClient() {
             <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-4">
               <Package size={32} />
             </div>
-            <p className="text-sm font-medium mb-1">
+            <p className="text-xs lg:text-sm font-medium mb-1">
               {searchQuery || filterType !== "all" ? (t("plugins.noMatchPlugins") || "No matching plugins") : (t("plugins.noPlugins") || "No plugins")}
             </p>
             <p className="text-xs text-muted-foreground mb-4">
@@ -428,7 +428,7 @@ export function PluginsClient() {
             {!searchQuery && filterType === "all" && (
               <button
                 onClick={() => setShowInstall(true)}
-                className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
               >
                 <Plus size={14} />
                 {t("plugins.installPlugin") || "Install Plugin"}

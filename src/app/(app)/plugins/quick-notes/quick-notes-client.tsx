@@ -53,7 +53,7 @@ function MarkdownPreview({ content }: { content: string }) {
 
   return (
     <div
-      className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed"
+      className="prose prose-sm dark:prose-invert max-w-none text-xs lg:text-sm leading-relaxed"
       dangerouslySetInnerHTML={{ __html: `<p class="mb-2">${html}</p>` }}
     />
   );
@@ -328,7 +328,7 @@ export function QuickNotesClient() {
                 </button>
               )}
               <Edit3 size={14} className="text-muted-foreground" />
-              <span className="text-sm font-medium">
+              <span className="text-xs lg:text-sm font-medium">
                 {isCreating ? t('plugins.newNote') : t('plugins.editNote')}
               </span>
             </div>
@@ -412,7 +412,7 @@ export function QuickNotesClient() {
                 {formContent ? (
                   <MarkdownPreview content={formContent} />
                 ) : (
-                  <p className="text-muted-foreground text-sm italic">{t('plugins.nothingToPreview')}</p>
+                  <p className="text-muted-foreground text-xs lg:text-sm italic">{t('plugins.nothingToPreview')}</p>
                 )}
               </div>
             ) : (
@@ -420,7 +420,7 @@ export function QuickNotesClient() {
                 value={formContent}
                 onChange={e => setFormContent(e.target.value)}
                 placeholder={t('plugins.contentPlaceholder')}
-                className="w-full min-h-[300px] bg-transparent outline-none resize-none text-sm leading-relaxed font-mono placeholder:text-muted-foreground/50"
+                className="w-full min-h-[300px] bg-transparent outline-none resize-none text-xs lg:text-sm leading-relaxed font-mono placeholder:text-muted-foreground/50"
               />
             )}
           </div>
@@ -436,9 +436,9 @@ export function QuickNotesClient() {
             </div>
           )}
           <StickyNote size={48} className="mb-4 opacity-20" />
-          <p className="text-sm mb-2">{t('plugins.selectOrCreate')}</p>
+          <p className="text-xs lg:text-sm mb-2">{t('plugins.selectOrCreate')}</p>
           <button onClick={openCreate}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 flex items-center gap-2">
+            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm hover:bg-primary/90 flex items-center gap-2">
             <Plus size={14} />
             {t('plugins.newNoteBtn')}
           </button>
@@ -474,7 +474,7 @@ function NoteListContent({
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
             <StickyNote size={18} className="text-primary" />
-            <h2 className="font-semibold text-sm">{t('plugins.quickNotesTitle')}</h2>
+            <h2 className="font-semibold text-xs lg:text-sm">{t('plugins.quickNotesTitle')}</h2>
           </div>
           <div className="flex gap-1.5">
             <button onClick={() => { fetchNotes(); fetchTags(); fetchStats(); }}

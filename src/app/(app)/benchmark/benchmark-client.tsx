@@ -250,7 +250,7 @@ export function BenchmarkClient() {
             {/* Config Panel */}
             <div className="rounded-xl border border-border bg-card p-5">
               <div className="mb-4 flex items-center justify-between">
-                <h2 className="text-sm font-semibold">{t("benchmark.testConfig")}</h2>
+                <h2 className="text-xs lg:text-sm font-semibold">{t("benchmark.testConfig")}</h2>
                 <div className="flex items-center gap-2">
                   <button onClick={selectAll} className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">{t("benchmark.selectAll")}</button>
                   <button onClick={selectNone} className="rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">{t("benchmark.clearAll")}</button>
@@ -313,7 +313,7 @@ export function BenchmarkClient() {
             {currentRun && currentRun.results && (
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-sm font-semibold">
+                  <h2 className="text-xs lg:text-sm font-semibold">
                     {t("benchmark.testResults", { organs: currentRun.organs_benchmarked, iterations: currentRun.iterations })}
                   </h2>
                   <span className="text-xs text-muted-foreground">Run ID: {currentRun.run_id}</span>
@@ -391,7 +391,7 @@ export function BenchmarkClient() {
             {!currentRun && !running && (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <Gauge size={48} className="mb-4 opacity-30" />
-                <p className="text-sm">{t("benchmark.selectOrgans")}</p>
+                <p className="text-xs lg:text-sm">{t("benchmark.selectOrgans")}</p>
                 <p className="text-xs">{t("benchmark.resultsHint")}</p>
               </div>
             )}
@@ -402,7 +402,7 @@ export function BenchmarkClient() {
         {tab === "comparison" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">{t("benchmark.comparisonTitle")}</h2>
+              <h2 className="text-xs lg:text-sm font-semibold">{t("benchmark.comparisonTitle")}</h2>
               <button onClick={fetchComparison} className="flex items-center gap-1 rounded px-2 py-1 text-xs text-muted-foreground hover:bg-accent hover:text-foreground">
                 <RefreshCw size={12} /> {t("common.refresh")}
               </button>
@@ -411,7 +411,7 @@ export function BenchmarkClient() {
             {comparison.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <BarChart3 size={48} className="mb-4 opacity-30" />
-                <p className="text-sm">{t("benchmark.noData")}</p>
+                <p className="text-xs lg:text-sm">{t("benchmark.noData")}</p>
                 <p className="text-xs">{t("benchmark.noDataHint")}</p>
               </div>
             ) : (
@@ -426,7 +426,7 @@ export function BenchmarkClient() {
                       className="flex items-center gap-3 rounded-lg border border-border bg-card p-3 cursor-pointer hover:border-primary/30 transition-colors"
                       onClick={() => setExpandedOrgan(expandedOrgan === item.organ ? null : item.organ)}
                     >
-                      <span className="w-8 text-center text-sm">{medal}</span>
+                      <span className="w-8 text-center text-xs lg:text-sm">{medal}</span>
                       <span className="w-24 shrink-0 text-xs font-medium">{item.label}</span>
                       <div className="flex-1 h-6 rounded-full bg-muted/50 overflow-hidden">
                         <div
@@ -496,7 +496,7 @@ export function BenchmarkClient() {
         {tab === "history" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold">{t("benchmark.historyTitle")}</h2>
+              <h2 className="text-xs lg:text-sm font-semibold">{t("benchmark.historyTitle")}</h2>
               <div className="flex items-center gap-2">
                 <select
                   value={historyFilter}
@@ -520,7 +520,7 @@ export function BenchmarkClient() {
             {history.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <History size={48} className="mb-4 opacity-30" />
-                <p className="text-sm">{t("benchmark.noHistory")}</p>
+                <p className="text-xs lg:text-sm">{t("benchmark.noHistory")}</p>
               </div>
             ) : (
               <div className="overflow-x-auto rounded-xl border border-border">

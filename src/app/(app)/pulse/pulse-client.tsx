@@ -171,7 +171,7 @@ export function PulseClient() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <Heart size={20} className="text-red-500 animate-pulse" />
           <h1 className="text-lg font-semibold">{t("pulse.title") || t('pulse.text7')}</h1>
@@ -180,12 +180,12 @@ export function PulseClient() {
           </span>
         </div>
         <button onClick={() => { fetchStats(); tab === "signals" && fetchSignals(); tab === "ticks" && fetchTicks(); }}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors">
           <RefreshCw size={14} /> {t("common.refresh") || t('pulse.refresh')}
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
         {/* Stats */}
         {stats && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -204,7 +204,7 @@ export function PulseClient() {
         <div className="flex gap-2">
           {tabs.map((tabItem) => (
             <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
-              className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
+              className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs lg:text-sm transition-colors",
                 tab === tabItem.id ? "bg-red-500/10 text-red-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
               <tabItem.icon size={14} /> {tabItem.label}
             </button>
@@ -216,25 +216,25 @@ export function PulseClient() {
           <div className="space-y-4">
             {/* Create */}
             <div className="rounded-xl border border-border p-4 space-y-3">
-              <h3 className="text-sm font-medium">{t("pulse.createSignal") || t('pulse.create')}</h3>
+              <h3 className="text-xs lg:text-sm font-medium">{t("pulse.createSignal") || t('pulse.create')}</h3>
               <div className="grid grid-cols-5 gap-3">
                 <input value={newName} onChange={(e) => setNewName(e.target.value)}
                   placeholder={t("pulse.signalName") || "Signal Name"}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
                 <select value={newType} onChange={(e) => setNewType(e.target.value)}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none">
                   <option value="interval">{t("pulse.interval") || "Interval (ms)"}</option>
                   <option value="tick">{t("pulse.tick") || "Tick"}</option>
                   <option value="once">{t("pulse.once") || "Once"}</option>
                 </select>
                 <input value={newInterval} onChange={(e) => setNewInterval(e.target.value)}
                   placeholder={t("pulse.intervalPlaceholder") || "e.g. 5m, 1h"}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
                 <input value={newMaxFires} onChange={(e) => setNewMaxFires(e.target.value)}
                   placeholder={t("pulse.maxCountPlaceholder") || "Max count"}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
                 <button onClick={handleCreate} disabled={loading}
-                  className="flex items-center justify-center gap-1.5 rounded-lg bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600 disabled:opacity-50">
+                  className="flex items-center justify-center gap-1.5 rounded-lg bg-red-500 px-2 lg:px-4 py-2 text-xs lg:text-sm text-white hover:bg-red-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                   {t("common.create") || t('pulse.text18')}
                 </button>
@@ -245,7 +245,7 @@ export function PulseClient() {
             {signals.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Heart size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("pulse.noSignals") || t('pulse.empty')}</p>
+                <p className="text-xs lg:text-sm">{t("pulse.noSignals") || t('pulse.empty')}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -258,7 +258,7 @@ export function PulseClient() {
                         <Heart size={16} className={cn(s.status === "active" ? "text-red-500 animate-pulse" : "text-muted-foreground")} />
                         <div>
                           <div className="flex items-center gap-2">
-                            <span className="text-sm font-medium">{s.name}</span>
+                            <span className="text-xs lg:text-sm font-medium">{s.name}</span>
                             <span className={cn("rounded-full px-2 py-0.5 text-[10px]", STATUS_COLORS[s.status] || "bg-muted")}>
                               {s.status}
                             </span>
@@ -312,7 +312,7 @@ export function PulseClient() {
           <div className="space-y-4">
             <div className="flex items-center gap-3">
               <select value={selectedSignal || ""} onChange={(e) => setSelectedSignal(e.target.value || null)}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
+                className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none">
                 <option value="">{t("pulse.allSignals") || t('pulse.allSignals')}</option>
                 {signals.map((s) => (
                   <option key={s.signal_id} value={s.signal_id}>{s.name}</option>
@@ -324,29 +324,29 @@ export function PulseClient() {
             {ticks.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Timer size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("pulse.noTicks") || t('pulse.noTicks')}</p>
+                <p className="text-xs lg:text-sm">{t("pulse.noTicks") || t('pulse.noTicks')}</p>
               </div>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs lg:text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("pulse.signal") || "Signal"}</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("pulse.time") || "Interval"}</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">{t("pulse.drift") || "Drift"}</th>
-                      <th className="px-4 py-2 text-right text-xs font-medium text-muted-foreground">{t("pulse.latency") || "Latency"}</th>
+                      <th className="px-2 lg:px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("pulse.signal") || "Signal"}</th>
+                      <th className="px-2 lg:px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("pulse.time") || "Interval"}</th>
+                      <th className="px-2 lg:px-4 py-2 text-right text-xs font-medium text-muted-foreground">{t("pulse.drift") || "Drift"}</th>
+                      <th className="px-2 lg:px-4 py-2 text-right text-xs font-medium text-muted-foreground">{t("pulse.latency") || "Latency"}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {ticks.map((t) => (
                       <tr key={t.tick_id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-2 font-mono text-xs">{t.signal_id.slice(-8)}</td>
-                        <td className="px-4 py-2 text-xs">{formatTime(t.timestamp)}</td>
-                        <td className={cn("px-4 py-2 text-right text-xs font-mono",
+                        <td className="px-2 lg:px-4 py-2 font-mono text-xs">{t.signal_id.slice(-8)}</td>
+                        <td className="px-2 lg:px-4 py-2 text-xs">{formatTime(t.timestamp)}</td>
+                        <td className={cn("px-2 lg:px-4 py-2 text-right text-xs font-mono",
                           Math.abs(t.drift_ms) > 10 ? "text-red-500" : Math.abs(t.drift_ms) > 5 ? "text-yellow-500" : "text-emerald-500")}>
                           {t.drift_ms > 0 ? "+" : ""}{t.drift_ms.toFixed(3)}ms
                         </td>
-                        <td className="px-4 py-2 text-right text-xs font-mono text-muted-foreground">
+                        <td className="px-2 lg:px-4 py-2 text-right text-xs font-mono text-muted-foreground">
                           {t.latency_ms.toFixed(3)}ms
                         </td>
                       </tr>
@@ -362,26 +362,26 @@ export function PulseClient() {
         {tab === "config" && stats && (
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <h3 className="text-sm font-semibold">{t("pulse.precisionStats") || t('pulse.precisionStats')}</h3>
+              <h3 className="text-xs lg:text-sm font-semibold">{t("pulse.precisionStats") || t('pulse.precisionStats')}</h3>
               <div className="grid grid-cols-3 gap-6">
                 <div>
                   <label className="text-xs text-muted-foreground">{t("pulse.avgDrift") || t('pulse.avgDrift')}</label>
-                  <div className="mt-1 text-2xl font-bold">{formatMs(stats.precision.avg_drift_ms)}</div>
+                  <div className="mt-1 text-xl lg:text-2xl font-bold">{formatMs(stats.precision.avg_drift_ms)}</div>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">{t("pulse.maxDrift") || t('pulse.maxDrift')}</label>
-                  <div className="mt-1 text-2xl font-bold">{formatMs(stats.precision.max_drift_ms)}</div>
+                  <div className="mt-1 text-xl lg:text-2xl font-bold">{formatMs(stats.precision.max_drift_ms)}</div>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">{t("pulse.samples") || t('pulse.samples')}</label>
-                  <div className="mt-1 text-2xl font-bold">{stats.precision.sample_size}</div>
+                  <div className="mt-1 text-xl lg:text-2xl font-bold">{stats.precision.sample_size}</div>
                 </div>
               </div>
             </div>
 
             {/* Type breakdown */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <h3 className="text-sm font-semibold">{t("pulse.byType") || t('pulse.byType')}</h3>
+              <h3 className="text-xs lg:text-sm font-semibold">{t("pulse.byType") || t('pulse.byType')}</h3>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(stats.by_type).map(([type, count]) => (
                   <span key={type} className="rounded-full bg-red-500/10 px-3 py-1 text-xs text-red-600">
@@ -393,7 +393,7 @@ export function PulseClient() {
 
             {/* Status breakdown */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <h3 className="text-sm font-semibold">{t("pulse.byStatus") || t('pulse.byStatus')}</h3>
+              <h3 className="text-xs lg:text-sm font-semibold">{t("pulse.byStatus") || t('pulse.byStatus')}</h3>
               <div className="flex flex-wrap gap-2">
                 {Object.entries(stats.by_status).map(([status, count]) => (
                   <span key={status} className={cn("rounded-full px-3 py-1 text-xs", STATUS_COLORS[status] || "bg-muted")}>
@@ -418,7 +418,7 @@ function StatCard({ icon: Icon, label, value, sub, color, bg }: {
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className={cn("rounded-lg p-1.5", bg)}><Icon size={14} className={color} /></div>
       </div>
-      <p className="text-2xl font-bold">{value}</p>
+      <p className="text-xl lg:text-2xl font-bold">{value}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
     </div>
   );

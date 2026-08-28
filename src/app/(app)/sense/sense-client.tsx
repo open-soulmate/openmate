@@ -240,20 +240,20 @@ export function SenseClient() {
   ]
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-3 lg:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 lg:gap-3">
         <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20">
           <Eye className="w-6 h-6 text-amber-500" />
         </div>
         <div>
           <h1 className="text-2xl font-bold">👁️ Sense — {t("sense.text6")}</h1>
-          <p className="text-sm text-muted-foreground">{t("sense.t22285")}</p>
+          <p className="text-xs lg:text-sm text-muted-foreground">{t("sense.t22285")}</p>
         </div>
       </div>
 
       {/* Engine Status */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 lg:gap-3 sm:gap-2 lg:gap-4">
         {Object.entries(health?.engines || {}).map(([name, eng]) => (
           <div
             key={name}
@@ -265,7 +265,7 @@ export function SenseClient() {
           >
             <div className="flex items-center gap-2 mb-2">
               <div className={`w-2.5 h-2.5 rounded-full ${eng.available ? "bg-green-500" : "bg-muted-foreground/40"}`} />
-              <span className="font-semibold text-sm uppercase">{name}</span>
+              <span className="font-semibold text-xs lg:text-sm uppercase">{name}</span>
             </div>
             <div className="text-xs text-muted-foreground">
               Engine: {eng.engine as string}
@@ -287,7 +287,7 @@ export function SenseClient() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-t-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-t-lg text-xs sm:text-xs lg:text-sm font-medium transition-all whitespace-nowrap ${
                 activeTab === tab.key
                   ? "bg-card border border-b-0 border-border text-foreground"
                   : tab.available
@@ -326,7 +326,7 @@ export function SenseClient() {
                 ) : (
                   <div className="space-y-2">
                     <Upload className="w-10 h-10 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">{t("sense.t15784")}</p>
+                    <p className="text-xs lg:text-sm text-muted-foreground">{t("sense.t15784")}</p>
                     <p className="text-xs text-muted-foreground/60">{t("sense.t61542")}</p>
                   </div>
                 )}
@@ -348,13 +348,13 @@ export function SenseClient() {
                 </div>
               )}
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 lg:gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground mb-1 block">{t("sense.text12")}</label>
                   <select
                     value={ocrLanguage}
                     onChange={(e) => setOcrLanguage(e.target.value)}
-                    className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+                    className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm"
                   >
                     <option value="chi_sim+eng">{t("sense.t14168")}</option>
                     <option value="eng">English</option>
@@ -365,7 +365,7 @@ export function SenseClient() {
                   </select>
                 </div>
                 <div className="flex items-end">
-                  <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <label className="flex items-center gap-2 text-xs lg:text-sm cursor-pointer">
                     <input
                       type="checkbox"
                       checked={ocrPreprocess}
@@ -380,7 +380,7 @@ export function SenseClient() {
               <button
                 onClick={handleOCR}
                 disabled={!ocrFile || ocrLoading}
-                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-xs lg:text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {ocrLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <FileText className="w-4 h-4" />}
                 {ocrLoading ? t("sense.t15992") : t("sense.t60548")}
@@ -403,12 +403,12 @@ export function SenseClient() {
               <div className="min-h-[300px] max-h-[500px] overflow-y-auto bg-card border border-border rounded-xl p-4">
                 {ocrResult ? (
                   <div className="space-y-4">
-                    <div className="flex gap-4 text-xs text-muted-foreground">
+                    <div className="flex gap-2 lg:gap-4 text-xs text-muted-foreground">
                       <span>{t("sense.text19")}: <b className="text-foreground">{ocrResult.confidence}%</b></span>
                       {t("sense.text12")}:<span> <b className="text-foreground">{ocrResult.language}</b></span>
                       <span>{t("sense.text20")}: <b className="text-foreground">{ocrResult.engine}</b></span>
                     </div>
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    <div className="whitespace-pre-wrap text-xs lg:text-sm leading-relaxed">
                       {ocrResult.text || t("sense.t97826")}
                     </div>
                     {ocrResult.pages.length > 1 && (
@@ -417,7 +417,7 @@ export function SenseClient() {
                         {ocrResult.pages.map((p) => (
                           <div key={p.page} className="bg-muted/30 rounded-lg p-3">
                             <div className="text-xs text-muted-foreground mb-1">{t("sense.text23")} {p.page} {t("sense.text24")} {p.confidence}%</div>
-                            <div className="text-sm whitespace-pre-wrap">{p.text}</div>
+                            <div className="text-xs lg:text-sm whitespace-pre-wrap">{p.text}</div>
                           </div>
                         ))}
                       </div>
@@ -426,7 +426,7 @@ export function SenseClient() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                     <FileText className="w-12 h-12 mb-2" />
-                    <p className="text-sm">{t("sense.t21375")}</p>
+                    <p className="text-xs lg:text-sm">{t("sense.t21375")}</p>
                   </div>
                 )}
               </div>
@@ -454,7 +454,7 @@ export function SenseClient() {
               >
                 <div className="space-y-2">
                   <Mic className="w-10 h-10 mx-auto text-muted-foreground" />
-                  <p className="text-sm text-muted-foreground">{t("sense.t70266")}</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground">{t("sense.t70266")}</p>
                   <p className="text-xs text-muted-foreground/60">{t("sense.t98479")}</p>
                 </div>
               </div>
@@ -480,7 +480,7 @@ export function SenseClient() {
                 <select
                   value={asrLanguage}
                   onChange={(e) => setAsrLanguage(e.target.value)}
-                  className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+                  className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm"
                 >
                   <option value="">{t("sense.text30")}</option>
                   <option value="zh">{t("sense.text31")}</option>
@@ -493,7 +493,7 @@ export function SenseClient() {
               <button
                 onClick={handleASR}
                 disabled={!asrFile || asrLoading}
-                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-xs lg:text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {asrLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Volume2 className="w-4 h-4" />}
                 {asrLoading ? t("sense.text32") : t("sense.text33")}
@@ -516,19 +516,19 @@ export function SenseClient() {
               <div className="min-h-[300px] max-h-[500px] overflow-y-auto bg-card border border-border rounded-xl p-4">
                 {asrResult ? (
                   <div className="space-y-4">
-                    <div className="flex gap-4 text-xs text-muted-foreground">
+                    <div className="flex gap-2 lg:gap-4 text-xs text-muted-foreground">
                       <span>{t("sense.text35")}: <b className="text-foreground">{formatDuration(asrResult.duration_seconds)}</b></span>
                       {t("sense.text12")}:<span> <b className="text-foreground">{asrResult.language || t("sense.unknown")}</b></span>
                       <span>{t("sense.text20")}: <b className="text-foreground">{asrResult.engine}</b></span>
                     </div>
-                    <div className="whitespace-pre-wrap text-sm leading-relaxed">
+                    <div className="whitespace-pre-wrap text-xs lg:text-sm leading-relaxed">
                       {asrResult.text || t("sense.t30307")}
                     </div>
                     {asrResult.segments.length > 0 && (
                       <div className="space-y-2 pt-4 border-t border-border">
                         <h4 className="text-xs font-medium text-muted-foreground">{t("sense.timeline")}</h4>
                         {asrResult.segments.map((seg, i) => (
-                          <div key={i} className="flex gap-3 text-sm">
+                          <div key={i} className="flex gap-2 lg:gap-3 text-xs lg:text-sm">
                             <span className="text-xs text-muted-foreground font-mono whitespace-nowrap">
                               {formatDuration(seg.start)} → {formatDuration(seg.end)}
                             </span>
@@ -541,7 +541,7 @@ export function SenseClient() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                     <Mic className="w-12 h-12 mb-2" />
-                    <p className="text-sm">{t("sense.t81838")}</p>
+                    <p className="text-xs lg:text-sm">{t("sense.t81838")}</p>
                   </div>
                 )}
               </div>
@@ -572,7 +572,7 @@ export function SenseClient() {
                 ) : (
                   <div className="space-y-2">
                     <ImageIcon className="w-10 h-10 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">{t("sense.t15784")}</p>
+                    <p className="text-xs lg:text-sm text-muted-foreground">{t("sense.t15784")}</p>
                   </div>
                 )}
               </div>
@@ -596,7 +596,7 @@ export function SenseClient() {
               <button
                 onClick={handleAnalyze}
                 disabled={!analyzeFile || analyzeLoading}
-                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-xs lg:text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {analyzeLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
                 {analyzeLoading ? t("sense.text39") : t("sense.text40")}
@@ -609,7 +609,7 @@ export function SenseClient() {
               <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
                 {analyzeResult ? (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2 lg:gap-3">
                       {[
                         { label: t("sense.text42"), value: `${analyzeResult.width} × ${analyzeResult.height}` },
                         { label: t("sense.text43"), value: analyzeResult.format },
@@ -618,7 +618,7 @@ export function SenseClient() {
                       ].map(item => (
                         <div key={item.label} className="bg-muted/30 rounded-lg p-3">
                           <div className="text-xs text-muted-foreground">{item.label}</div>
-                          <div className="text-sm font-semibold">{item.value}</div>
+                          <div className="text-xs lg:text-sm font-semibold">{item.value}</div>
                         </div>
                       ))}
                     </div>
@@ -661,7 +661,7 @@ export function SenseClient() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                     <ImageIcon className="w-12 h-12 mb-2" />
-                    <p className="text-sm">{t("sense.t71759")}</p>
+                    <p className="text-xs lg:text-sm">{t("sense.t71759")}</p>
                   </div>
                 )}
               </div>
@@ -690,13 +690,13 @@ export function SenseClient() {
                 {videoFile ? (
                   <div className="space-y-2">
                     <Film className="w-10 h-10 mx-auto text-amber-500" />
-                    <p className="text-sm font-medium">{videoFile.name}</p>
+                    <p className="text-xs lg:text-sm font-medium">{videoFile.name}</p>
                     <p className="text-xs text-muted-foreground">{formatFileSize(videoFile.size)}</p>
                   </div>
                 ) : (
                   <div className="space-y-2">
                     <Video className="w-10 h-10 mx-auto text-muted-foreground" />
-                    <p className="text-sm text-muted-foreground">{t("sense.t00665")}</p>
+                    <p className="text-xs lg:text-sm text-muted-foreground">{t("sense.t00665")}</p>
                     <p className="text-xs text-muted-foreground/60">{t("sense.t81283")}</p>
                   </div>
                 )}
@@ -721,7 +721,7 @@ export function SenseClient() {
               <button
                 onClick={handleVideoAnalyze}
                 disabled={!videoFile || videoLoading}
-                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white rounded-lg font-medium text-xs lg:text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-amber-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
               >
                 {videoLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Film className="w-4 h-4" />}
                 {videoLoading ? t("sense.text39") : t("sense.text50")}
@@ -729,8 +729,8 @@ export function SenseClient() {
 
               {/* Frame extraction controls */}
               <div className="border-t border-border pt-4 space-y-3">
-                <h4 className="text-sm font-medium">{t("sense.text51")}</h4>
-                <div className="grid grid-cols-2 gap-3">
+                <h4 className="text-xs lg:text-sm font-medium">{t("sense.text51")}</h4>
+                <div className="grid grid-cols-2 gap-2 lg:gap-3">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">{t("sense.text52")}</label>
                     <input
@@ -739,7 +739,7 @@ export function SenseClient() {
                       step={0.5}
                       value={frameInterval}
                       onChange={(e) => setFrameInterval(Number(e.target.value))}
-                      className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+                      className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm"
                     />
                   </div>
                   <div>
@@ -750,14 +750,14 @@ export function SenseClient() {
                       max={30}
                       value={maxFrames}
                       onChange={(e) => setMaxFrames(Number(e.target.value))}
-                      className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+                      className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm"
                     />
                   </div>
                 </div>
                 <button
                   onClick={handleExtractFrames}
                   disabled={!videoFile || frameExtracting}
-                  className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-orange-600 hover:to-red-600 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-gradient-to-r from-orange-500 to-red-500 text-white rounded-lg font-medium text-xs lg:text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-orange-600 hover:to-red-600 transition-all flex items-center justify-center gap-2"
                 >
                   {frameExtracting ? <Loader2 className="w-4 h-4 animate-spin" /> : <ImageIcon className="w-4 h-4" />}
                   {frameExtracting ? t("sense.text54") : t("sense.text55")}
@@ -771,7 +771,7 @@ export function SenseClient() {
               <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
                 {videoResult ? (
                   <div className="space-y-4">
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2 lg:gap-3">
                       {[
                         { label: t("sense.text35"), value: formatDuration(videoResult.duration) },
                         { label: t("sense.text56"), value: `${videoResult.width} × ${videoResult.height}` },
@@ -781,7 +781,7 @@ export function SenseClient() {
                       ].map(item => (
                         <div key={item.label} className="bg-muted/30 rounded-lg p-3">
                           <div className="text-xs text-muted-foreground">{item.label}</div>
-                          <div className="text-sm font-semibold">{item.value}</div>
+                          <div className="text-xs lg:text-sm font-semibold">{item.value}</div>
                         </div>
                       ))}
                     </div>
@@ -789,7 +789,7 @@ export function SenseClient() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                     <Video className="w-12 h-12 mb-2" />
-                    <p className="text-sm">{t("sense.t80833")}</p>
+                    <p className="text-xs lg:text-sm">{t("sense.t80833")}</p>
                   </div>
                 )}
 

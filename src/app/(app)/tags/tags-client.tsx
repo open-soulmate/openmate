@@ -129,7 +129,7 @@ export function TagsClient() {
           </div>
           <div>
             <h1 className="text-2xl font-bold">{t("tags.title") || "Tags"}</h1>
-            <p className="text-sm text-muted-foreground">
+            <p className="text-xs lg:text-sm text-muted-foreground">
               {t("tags.subtitle") || "Organize your content with tags"}
             </p>
           </div>
@@ -137,14 +137,14 @@ export function TagsClient() {
         <div className="flex items-center gap-2">
           <button
             onClick={() => fetchTags()}
-            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border text-sm hover:bg-muted/50 transition-colors"
+            className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border text-xs lg:text-sm hover:bg-muted/50 transition-colors"
           >
             <RefreshCw className="w-4 h-4" />
             {t("common.refresh") || "Refresh"}
           </button>
           <button
             onClick={() => { resetForm(); setShowForm(!showForm) }}
-            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white text-xs lg:text-sm font-medium hover:bg-amber-600 transition-colors"
           >
             <Plus className="w-4 h-4" />
             {t("tags.addTag") || "Add Tag"}
@@ -156,7 +156,7 @@ export function TagsClient() {
       {showForm && (
         <div className="bg-card border border-border rounded-xl p-4 space-y-4">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold flex items-center gap-2">
+            <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
               {editingId ? (
                 <>
                   <Edit3 className="w-4 h-4 text-amber-400" />
@@ -190,7 +190,7 @@ export function TagsClient() {
                   onChange={(e) => setFormName(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && (editingId ? handleUpdate() : handleCreate())}
                   placeholder={t("tags.namePlaceholder") || "Enter tag name..."}
-                  className="w-full bg-muted/30 border border-border rounded-lg pl-9 pr-4 py-2 text-sm outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
+                  className="w-full bg-muted/30 border border-border rounded-lg pl-9 pr-4 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-amber-500/30 focus:border-amber-500/50 transition-all"
                   autoFocus
                 />
               </div>
@@ -227,14 +227,14 @@ export function TagsClient() {
           <div className="flex justify-end gap-2">
             <button
               onClick={resetForm}
-              className="px-3 py-2 rounded-lg text-sm text-muted-foreground hover:bg-muted/50 border border-border transition-colors"
+              className="px-3 py-2 rounded-lg text-xs lg:text-sm text-muted-foreground hover:bg-muted/50 border border-border transition-colors"
             >
               {t("common.cancel") || "Cancel"}
             </button>
             <button
               onClick={editingId ? handleUpdate : handleCreate}
               disabled={submitting || !formName.trim()}
-              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white text-sm font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 text-white text-xs lg:text-sm font-medium hover:bg-amber-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {submitting ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -253,7 +253,7 @@ export function TagsClient() {
       {tags.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground/50">
           <Tag className="w-12 h-12 mx-auto mb-2" />
-          <p className="text-sm">
+          <p className="text-xs lg:text-sm">
             {t("tags.empty") || "No tags yet. Create your first tag to get started."}
           </p>
         </div>
@@ -275,7 +275,7 @@ export function TagsClient() {
                       boxShadow: `0 0 0 2px var(--bg-card, #1a1a2e), 0 0 0 4px ${tagColor}40`,
                     }}
                   />
-                  <span className="text-sm font-medium truncate">{tag.name}</span>
+                  <span className="text-xs lg:text-sm font-medium truncate">{tag.name}</span>
                 </div>
 
                 {usageCount != null && (

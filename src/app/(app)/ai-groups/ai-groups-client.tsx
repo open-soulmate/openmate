@@ -844,7 +844,7 @@ export default function AIGroupsPage() {
           <span className="text-[11px] text-muted-foreground">综合排名</span>
           <div className="flex items-center gap-1">
             <Trophy className="w-3.5 h-3.5 text-amber-400" />
-            <span className="text-sm font-bold text-amber-400">{profile.overall_rank.toFixed(1)}</span>
+            <span className="text-xs lg:text-sm font-bold text-amber-400">{profile.overall_rank.toFixed(1)}</span>
           </div>
         </div>
         {/* Capability bars */}
@@ -900,7 +900,7 @@ export default function AIGroupsPage() {
     <>
       <div className="p-3 border-b border-border">
         <div className="flex items-center justify-between mb-2">
-          <span className="text-sm font-medium flex items-center gap-1.5">
+          <span className="text-xs lg:text-sm font-medium flex items-center gap-1.5">
             <Users className="w-4 h-4" /> {t("aiGroups.title")}
           </span>
           <button onClick={() => setShowCreate(!showCreate)}
@@ -952,7 +952,7 @@ export default function AIGroupsPage() {
                     </div>
                   ) : (
                     <div className="flex items-center gap-1">
-                      <span className="text-sm font-medium truncate">{group.name}</span>
+                      <span className="text-xs lg:text-sm font-medium truncate">{group.name}</span>
                       <button className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted/50 transition-opacity"
                         onClick={e => { e.stopPropagation(); setEditingGroupId(group.id); setEditingName(group.name); }}>
                         <Edit3 className="w-2.5 h-2.5 text-muted-foreground" />
@@ -1012,7 +1012,7 @@ export default function AIGroupsPage() {
               </div>
             ) : (
               <div>
-                <p className="text-sm font-medium">{selectedGroup.name}</p>
+                <p className="text-xs lg:text-sm font-medium">{selectedGroup.name}</p>
                 {selectedGroup.description && <p className="text-xs text-muted-foreground mt-0.5">{selectedGroup.description}</p>}
               </div>
             )}
@@ -1069,7 +1069,7 @@ export default function AIGroupsPage() {
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="text-sm font-medium truncate">{agent.name}</span>
+                          <span className="text-xs lg:text-sm font-medium truncate">{agent.name}</span>
                           <span className={`text-[10px] px-1.5 py-0.5 rounded ${ROLE_BG_COLORS[agent.role]} ${ROLE_COLORS[agent.role]}`}>
                             {agent.role}
                           </span>
@@ -1161,7 +1161,7 @@ export default function AIGroupsPage() {
             </div>
 
             {(selectedGroup.agents || []).length === 0 && (
-              <div className="text-center py-6 text-muted-foreground">
+              <div className="text-center py-3 lg:py-6 text-muted-foreground">
                 <Bot className="w-8 h-8 mx-auto mb-2 opacity-40" />
                 <p className="text-xs">{t("aiGroups.noAgents")}</p>
                 <p className="text-[11px] mt-0.5">{t("aiGroups.addAgentHint")}</p>
@@ -1193,13 +1193,13 @@ export default function AIGroupsPage() {
       {/* Center: Chat Messages (flex-1) */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Chat header */}
-        <div className="h-12 border-b border-border flex items-center px-4 justify-between shrink-0">
+        <div className="h-12 border-b border-border flex items-center px-2 lg:px-4 justify-between shrink-0">
           <div className="flex items-center gap-2">
             <button onClick={() => setShowSidebar(true)} className="lg:hidden mr-2 p-1 rounded hover:bg-muted">
               <PanelLeft className="w-4 h-4" />
             </button>
             <Users className="w-4 h-4 text-primary" />
-            <span className="font-medium text-sm">{selectedGroup?.name || t('aiGroups.selectGroup')}</span>
+            <span className="font-medium text-xs lg:text-sm">{selectedGroup?.name || t('aiGroups.selectGroup')}</span>
             {selectedGroup && (
               <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
                 {selectedGroup.agents?.length || 0} Agent
@@ -1219,11 +1219,11 @@ export default function AIGroupsPage() {
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 md:px-6 py-4 space-y-4">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 md:px-3 lg:px-6 py-4 space-y-4">
           {!selectedGroup && (
             <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
               <MessageSquare className="w-12 h-12 mb-4 opacity-40" />
-              <p className="text-sm">{t("aiGroups.selectOrCreateGroup")}</p>
+              <p className="text-xs lg:text-sm">{t("aiGroups.selectOrCreateGroup")}</p>
             </div>
           )}
           {selectedGroup && messages.length === 0 && (
@@ -1232,7 +1232,7 @@ export default function AIGroupsPage() {
                 <Users className="w-8 h-8 text-primary" />
               </div>
               <h3 className="text-lg font-semibold mb-2">{selectedGroup.name}</h3>
-              <p className="text-sm text-muted-foreground mb-4">{selectedGroup.description || t('aiGroups.multiAgentGroup')}</p>
+              <p className="text-xs lg:text-sm text-muted-foreground mb-4">{selectedGroup.description || t('aiGroups.multiAgentGroup')}</p>
               <div className="flex flex-wrap gap-2 justify-center">
                 {(selectedGroup.agents || []).map((a, i) => {
                   const Icon = ROLE_ICONS[a.role] || Bot;
@@ -1280,7 +1280,7 @@ export default function AIGroupsPage() {
                       )}
                     </div>
                   )}
-                  <div className={`rounded-xl px-4 py-2.5 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted rounded-tl-sm'}`}>
+                  <div className={`rounded-xl px-2 lg:px-4 py-2.5 text-xs lg:text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted rounded-tl-sm'}`}>
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                     <div className="text-[10px] mt-1.5 opacity-60">
                       {msg.timestamp.toLocaleTimeString()}
@@ -1301,16 +1301,16 @@ export default function AIGroupsPage() {
           {sendingMessage && (
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"><Bot className="w-4 h-4 text-primary" /></div>
-              <div className="bg-muted rounded-xl px-4 py-2.5"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
+              <div className="bg-muted rounded-xl px-2 lg:px-4 py-2.5"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
             </div>
           )}
           {discussionLoading && (
             <div className="flex flex-col sm:flex-row gap-3">
               <div className="w-8 h-8 rounded-full bg-violet-500/10 flex items-center justify-center"><MessageCircle className="w-4 h-4 text-violet-400" /></div>
-              <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl px-4 py-2.5">
+              <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl px-2 lg:px-4 py-2.5">
                 <div className="flex items-center gap-2">
                   <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
-                  <span className="text-sm text-violet-400">讨论中...</span>
+                  <span className="text-xs lg:text-sm text-violet-400">讨论中...</span>
                 </div>
               </div>
             </div>
@@ -1321,9 +1321,9 @@ export default function AIGroupsPage() {
             <div className="mx-auto max-w-lg bg-muted/50 border border-border rounded-xl p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Award className="w-4 h-4 text-amber-400" />
-                <span className="text-sm font-medium">任务评审</span>
+                <span className="text-xs lg:text-sm font-medium">任务评审</span>
                 {activeTaskReview.avg_score > 0 && (
-                  <span className="ml-auto text-sm font-bold text-amber-400">
+                  <span className="ml-auto text-xs lg:text-sm font-bold text-amber-400">
                     平均分: {activeTaskReview.avg_score.toFixed(1)}/10
                   </span>
                 )}
@@ -1363,7 +1363,7 @@ export default function AIGroupsPage() {
                     <input type="range" min="1" max="10" value={scoreValue}
                       onChange={e => setScoreValue(parseInt(e.target.value))}
                       className="flex-1" />
-                    <span className="text-sm font-bold w-6 text-center">{scoreValue}</span>
+                    <span className="text-xs lg:text-sm font-bold w-6 text-center">{scoreValue}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <label className="text-[11px] text-muted-foreground w-16">能力维度</label>
@@ -1419,14 +1419,14 @@ export default function AIGroupsPage() {
                 <textarea ref={inputRef} value={input} onChange={handleInputChange} onKeyDown={handleKeyDown}
                   placeholder={selectedTarget === 'all' ? t('aiGroups.inputPlaceholder') : `@${getAgentById(selectedTarget)?.name || 'Agent'} ...`}
                   rows={1}
-                  className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                  className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-xs lg:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
 
                 {/* @mention dropdown */}
                 {showMention && (
                   <div className="absolute bottom-full left-0 mb-1 w-56 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-50">
                     <div className="p-1">
                       <button onClick={() => insertMention({ name: 'all', agent_id: 'all' })}
-                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-sm hover:bg-muted transition-colors ${mentionIndex === 0 ? 'bg-muted' : ''}`}>
+                        className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-xs lg:text-sm hover:bg-muted transition-colors ${mentionIndex === 0 ? 'bg-muted' : ''}`}>
                         <AtSign className="w-3.5 h-3.5 text-muted-foreground" />
                         <span>{t("aiGroups.everyone")}</span>
                       </button>
@@ -1434,7 +1434,7 @@ export default function AIGroupsPage() {
                         const Icon = ROLE_ICONS[a.role] || Bot;
                         return (
                           <button key={a.agent_id} onClick={() => insertMention(a)}
-                            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-sm hover:bg-muted transition-colors ${mentionIndex === i + 1 ? 'bg-muted' : ''}`}>
+                            className={`w-full flex items-center gap-2 px-2.5 py-1.5 rounded text-xs lg:text-sm hover:bg-muted transition-colors ${mentionIndex === i + 1 ? 'bg-muted' : ''}`}>
                             <Icon className={`w-3.5 h-3.5 ${ROLE_COLORS[a.role]}`} />
                             <span className="flex-1 text-left">{a.name}</span>
                             <span className="text-[10px] text-muted-foreground">{a.role}</span>
@@ -1447,7 +1447,7 @@ export default function AIGroupsPage() {
               </div>
 
               <button onClick={handleSend} disabled={sendingMessage || !input.trim()}
-                className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                className="px-2 lg:px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
                 <Send className="w-4 h-4" />
               </button>
             </div>
@@ -1460,7 +1460,7 @@ export default function AIGroupsPage() {
         <Sheet open={showRightPanel && !!selectedGroup} onOpenChange={(open) => { if (!open) setShowRightPanel(false); else setShowSidebar(false); }}>
           <SheetContent side="right" size="md" className="p-0 flex flex-col">
             <div className="h-12 shrink-0 px-3 flex items-center border-b border-border">
-              <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
+              <span className="text-xs lg:text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
             </div>
             <div className="flex-1 overflow-y-auto">
               {renderAgentManagement()}
@@ -1471,7 +1471,7 @@ export default function AIGroupsPage() {
         showRightPanel && selectedGroup && (
         <div className="w-72 shrink-0 border-l border-border bg-card flex flex-col">
           <div className="h-12 shrink-0 px-3 flex items-center border-b border-border justify-between">
-            <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
+            <span className="text-xs lg:text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
             <button onClick={() => { setShowRightPanel(false); }} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -1484,7 +1484,7 @@ export default function AIGroupsPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
           <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md mx-4 p-5 space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
+              <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Star className="w-4 h-4 text-amber-400" /> 任务评分
               </h3>
               <button onClick={() => setScoringTaskId(null)} className="p-1 rounded hover:bg-muted">
@@ -1496,7 +1496,7 @@ export default function AIGroupsPage() {
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">评分Agent</label>
               <select value={scorerAgentId} onChange={e => setScorerAgentId(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary">
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs lg:text-sm focus:outline-none focus:ring-1 focus:ring-primary">
                 <option value="">选择评分者...</option>
                 {(selectedGroup?.agents || []).map(a => (
                   <option key={a.agent_id} value={a.agent_id}>{a.name} ({a.role})</option>
@@ -1522,7 +1522,7 @@ export default function AIGroupsPage() {
               <label className="text-xs text-muted-foreground mb-1 block">能力维度</label>
               <input value={scoreCapability} onChange={e => setScoreCapability(e.target.value)}
                 placeholder="e.g. coding, reasoning, collaboration"
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs lg:text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
             </div>
 
             {/* Reason */}
@@ -1531,7 +1531,7 @@ export default function AIGroupsPage() {
               <textarea value={scoreReason} onChange={e => setScoreReason(e.target.value)}
                 placeholder="说明评分依据..."
                 rows={2}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none" />
+                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs lg:text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none" />
             </div>
 
             {/* Current scores */}
@@ -1553,7 +1553,7 @@ export default function AIGroupsPage() {
             )}
 
             <button onClick={handleSubmitScore} disabled={!scorerAgentId}
-              className="w-full px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
+              className="w-full px-2 lg:px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-xs lg:text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
               提交评分
             </button>
           </div>

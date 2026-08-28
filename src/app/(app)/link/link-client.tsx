@@ -158,7 +158,7 @@ export function LinkClient() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-4 md:px-6 py-3 md:py-4">
+      <div className="flex items-center justify-between border-b border-border px-4 md:px-3 lg:px-6 py-3 md:py-4">
         <div className="flex items-center gap-2 md:gap-3">
           <Link2 size={18} className="text-teal-500" />
           <h1 className="text-base md:text-lg font-semibold">{t("link.title") || "Link · Integration Gateway"}</h1>
@@ -169,23 +169,23 @@ export function LinkClient() {
         <div className="flex items-center gap-1.5 md:gap-2">
           <button onClick={() => setShowEvents(!showEvents)}
             className={cn(
-              "flex items-center gap-1 md:gap-1.5 rounded-lg px-2.5 md:px-3 py-1.5 text-xs md:text-sm transition-colors",
+              "flex items-center gap-1 md:gap-1.5 rounded-lg px-2.5 md:px-3 py-1.5 text-xs md:text-xs lg:text-sm transition-colors",
               showEvents ? "bg-teal-500 text-white" : "border border-border hover:bg-muted"
             )}>
             <Activity size={14} /> <span className="hidden sm:inline">{t("link.t65547")}</span>
           </button>
           <button onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1 md:gap-1.5 rounded-lg bg-teal-500 px-2.5 md:px-3 py-1.5 text-xs md:text-sm text-white hover:bg-teal-600">
+            className="flex items-center gap-1 md:gap-1.5 rounded-lg bg-teal-500 px-2.5 md:px-3 py-1.5 text-xs md:text-xs lg:text-sm text-white hover:bg-teal-600">
             <Plus size={14} /> <span className="hidden sm:inline">{t("link.t73119")}</span>
           </button>
           <button onClick={() => { fetchHealth(); fetchConnectors(); }}
-            className="flex items-center gap-1 md:gap-1.5 rounded-lg border border-border px-2.5 md:px-3 py-1.5 text-xs md:text-sm hover:bg-muted">
+            className="flex items-center gap-1 md:gap-1.5 rounded-lg border border-border px-2.5 md:px-3 py-1.5 text-xs md:text-xs lg:text-sm hover:bg-muted">
             <RefreshCw size={14} />
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-3 lg:p-6 space-y-4 md:space-y-6">
         {/* Stats */}
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -212,7 +212,7 @@ export function LinkClient() {
         {showEvents && (
           <div className="rounded-xl border border-border bg-card p-4">
             <div className="flex items-center justify-between mb-3">
-              <h3 className="text-sm font-medium flex items-center gap-2">
+              <h3 className="text-xs lg:text-sm font-medium flex items-center gap-2">
                 <Activity size={14} className="text-teal-500" />
                 {t("link.t65547")}
               </h3>
@@ -272,14 +272,14 @@ export function LinkClient() {
           <div className={`${isMobile ? (selected ? "hidden" : "w-full") : "w-80"} space-y-3`}>
             {isMobile && (
               <div className="flex items-center justify-between pb-2 border-b border-border">
-                <h3 className="text-sm font-medium">{t("link.connectors") || "Connectors"}</h3>
+                <h3 className="text-xs lg:text-sm font-medium">{t("link.connectors") || "Connectors"}</h3>
                 <span className="text-xs text-muted-foreground">{connectors.length}</span>
               </div>
             )}
             {connectors.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Plug size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("link.noConnectors")}</p>
+                <p className="text-xs lg:text-sm">{t("link.noConnectors")}</p>
               </div>
             ) : connectors.map((c) => {
               const Icon = typeIcons[c.type] || Plug;
@@ -293,7 +293,7 @@ export function LinkClient() {
                   )}>
                   <div className="flex items-center gap-2 mb-1">
                     <div className={cn("rounded-lg p-1.5", colorCls)}><Icon size={14} /></div>
-                    <span className="font-medium text-sm">{c.name}</span>
+                    <span className="font-medium text-xs lg:text-sm">{c.name}</span>
                     <span className={cn("text-xs ml-auto", c.status === "active" ? "text-emerald-500" : "text-muted-foreground")}>
                       {c.status}
                     </span>
@@ -331,7 +331,7 @@ export function LinkClient() {
                           </button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-2 gap-4 text-xs lg:text-sm">
                         <div><span className="text-muted-foreground">{t("link.t10867")}</span> {selected.type}</div>
                         <div><span className="text-muted-foreground">{t("link.t50013")}</span> {selected.status}</div>
                         <div className="col-span-2"><span className="text-muted-foreground">Endpoint:</span> <span className="font-mono text-xs">{selected.endpoint}</span></div>
@@ -339,7 +339,7 @@ export function LinkClient() {
                       <div>
                         <label className="text-xs text-muted-foreground">{t("link.t90867")}</label>
                         <textarea value={testPayload} onChange={(e) => setTestPayload(e.target.value)}
-                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono min-h-[80px] mt-1" />
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm font-mono min-h-[80px] mt-1" />
                       </div>
                       {testResult && (
                         <div className="rounded-lg border border-border bg-muted p-3">
@@ -373,7 +373,7 @@ export function LinkClient() {
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-4 text-sm">
+                <div className="grid grid-cols-2 gap-4 text-xs lg:text-sm">
                   <div><span className="text-muted-foreground">{t("link.t10867")}</span> {selected.type}</div>
                   <div><span className="text-muted-foreground">{t("link.t50013")}</span> {selected.status}</div>
                   <div className="col-span-2"><span className="text-muted-foreground">Endpoint:</span> <span className="font-mono text-xs">{selected.endpoint}</span></div>
@@ -381,7 +381,7 @@ export function LinkClient() {
                 <div>
                   <label className="text-xs text-muted-foreground">{t("link.t90867")}</label>
                   <textarea value={testPayload} onChange={(e) => setTestPayload(e.target.value)}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono min-h-[80px] mt-1" />
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm font-mono min-h-[80px] mt-1" />
                 </div>
                 {testResult && (
                   <div className="rounded-lg border border-border bg-muted p-3">
@@ -396,12 +396,12 @@ export function LinkClient() {
         {/* Create Modal */}
         {showCreate && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4">
+            <div className="w-full max-w-md rounded-xl border border-border bg-card p-3 lg:p-6 space-y-4">
               <h3 className="font-semibold">{t("link.t30523")}</h3>
               <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                placeholder={t("link.connectorName")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("link.connectorName")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
               <select value={newType} onChange={(e) => setNewType(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm">
                 <option value="webhook_in">Webhook ({t("link.t27996")})</option>
                 <option value="webhook_out">Webhook ({t("link.t65703")})</option>
                 <option value="rest_api">REST API</option>
@@ -409,14 +409,14 @@ export function LinkClient() {
                 <option value="custom">{t("link.custom")}</option>
               </select>
               <input value={newEndpoint} onChange={(e) => setNewEndpoint(e.target.value)}
-                placeholder={t("link.endpointUrlPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("link.endpointUrlPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
               <input value={newSecret} onChange={(e) => setNewSecret(e.target.value)}
-                placeholder={t("link.t09336")} type="password" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("link.t09336")} type="password" className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowCreate(false)}
-                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t("common.cancel")}</button>
+                  className="rounded-lg border border-border px-4 py-2 text-xs lg:text-sm hover:bg-muted">{t("common.cancel")}</button>
                 <button onClick={handleCreate} disabled={loading}
-                  className="rounded-lg bg-teal-500 px-4 py-2 text-sm text-white hover:bg-teal-600 disabled:opacity-50">
+                  className="rounded-lg bg-teal-500 px-4 py-2 text-xs lg:text-sm text-white hover:bg-teal-600 disabled:opacity-50">
                   {loading ? t("link.creating") : t("link.create")}
                 </button>
               </div>

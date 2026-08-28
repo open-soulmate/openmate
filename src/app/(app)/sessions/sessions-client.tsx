@@ -376,12 +376,12 @@ export function SessionsClient() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-4 md:px-6 h-12 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-2 lg:px-4 md:px-3 lg:px-6 h-12 border-b border-zinc-800">
         <div className="flex items-center gap-3">
           <History className="w-6 h-6 text-cyan-400" />
           <div>
             <h1 className="text-xl font-semibold text-zinc-100">{t("sessions.title", "Sessions")}</h1>
-            <p className="text-sm text-zinc-500">{t("sessions.subtitle", "Browse and manage conversation sessions")}</p>
+            <p className="text-xs lg:text-sm text-zinc-500">{t("sessions.subtitle", "Browse and manage conversation sessions")}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -390,7 +390,7 @@ export function SessionsClient() {
               {activeFilterCount} {t("sessions.filtersActive", "filters")}
             </span>
           )}
-          <span className="text-sm text-zinc-500">{filteredSessions.length} {t("sessions.count", "sessions")}</span>
+          <span className="text-xs lg:text-sm text-zinc-500">{filteredSessions.length} {t("sessions.count", "sessions")}</span>
           <button onClick={fetchSessions} className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
@@ -401,17 +401,17 @@ export function SessionsClient() {
         {/* Session List */}
         <div className={`${isMobile ? "flex w-full" : selectedSession ? "flex w-1/3 border-r border-zinc-800" : "flex w-full"} flex-col overflow-hidden transition-all`}>
           {/* Search */}
-          <form onSubmit={handleSearch} className="px-3 md:px-4 h-12 flex items-center border-b border-zinc-800 gap-2">
+          <form onSubmit={handleSearch} className="px-3 md:px-2 lg:px-4 h-12 flex items-center border-b border-zinc-800 gap-2">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                 placeholder={t("sessions.searchPlaceholder", "Search sessions...")}
-                className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500" />
+                className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs lg:text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500" />
             </div>
           </form>
 
           {/* Filter Bar */}
-          <div className="px-3 md:px-4 py-2 border-b border-zinc-800 space-y-2">
+          <div className="px-3 md:px-2 lg:px-4 py-2 border-b border-zinc-800 space-y-2">
             {/* Favorites + clear row */}
             <div className="flex items-center gap-2">
               <button
@@ -503,10 +503,10 @@ export function SessionsClient() {
             {loading ? (
               <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
             ) : error ? (
-              <div className="p-4 text-center text-red-400 text-sm">{error}</div>
+              <div className="p-4 text-center text-red-400 text-xs lg:text-sm">{error}</div>
             ) : filteredSessions.length === 0 ? (
               <div className="text-center py-12 space-y-2">
-                <p className="text-zinc-500 text-sm">
+                <p className="text-zinc-500 text-xs lg:text-sm">
                   {showFavoritesOnly
                     ? t("sessions.noFavorites", "No favorite sessions yet")
                     : t("sessions.noSessions", "No sessions found")}
@@ -524,12 +524,12 @@ export function SessionsClient() {
               <div className="py-2">
                 {/* ── Hermes Agent ── */}
                 <button
-                  className="w-full flex items-center gap-2 px-4 py-2.5 hover:bg-zinc-800/40 transition-colors"
+                  className="w-full flex items-center gap-2 px-2 lg:px-4 py-2.5 hover:bg-zinc-800/40 transition-colors"
                   onClick={() => setAgentExpanded(v => !v)}
                 >
                   {agentExpanded ? <ChevronDown className="w-4 h-4 text-zinc-500" /> : <ChevronRight className="w-4 h-4 text-zinc-500" />}
                   <Bot className="w-5 h-5 text-cyan-400" />
-                  <span className="text-sm font-semibold text-zinc-100">Hermes Agent</span>
+                  <span className="text-xs lg:text-sm font-semibold text-zinc-100">Hermes Agent</span>
                   <span className="ml-auto text-xs text-zinc-500">{t("sessions.sessionSummary", { count: filteredSessions.length, messages: totalMessages })}</span>
                 </button>
 
@@ -546,7 +546,7 @@ export function SessionsClient() {
                         <div key={src}>
                           {/* Source group header */}
                           <button
-                            className="w-full flex items-center gap-2 px-4 py-2 hover:bg-zinc-800/30 transition-colors"
+                            className="w-full flex items-center gap-2 px-2 lg:px-4 py-2 hover:bg-zinc-800/30 transition-colors"
                             onClick={() => setSourceExpanded(prev => {
                               const willExpand = !prev[src]
                               const next: Record<string, boolean> = {}
@@ -702,10 +702,10 @@ export function SessionsClient() {
           isMobile ? (
             <Sheet open={!!selectedSession} onOpenChange={(open) => { if (!open) setSelectedSession(null) }}>
               <SheetContent side="right" size="full" className="p-0 flex flex-col sm:w-96">
-                <div className="flex items-center justify-between px-4 h-12 border-b border-zinc-800">
+                <div className="flex items-center justify-between px-2 lg:px-4 h-12 border-b border-zinc-800">
                   <div className="flex items-center gap-2 min-w-0">
                     <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                    <span className="text-sm font-medium text-zinc-200 truncate">
+                    <span className="text-xs lg:text-sm font-medium text-zinc-200 truncate">
                       {selectedSession.title || selectedSession.session_id}
                     </span>
                     <span className="text-xs text-zinc-500 flex-shrink-0">({selectedSession.messages.length} {t("sessions.messages", "messages")})</span>
@@ -728,11 +728,11 @@ export function SessionsClient() {
                     </button>
                   </div>
                 </div>
-                <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+                <div className="flex-1 overflow-y-auto px-2 lg:px-4 py-3 space-y-3">
                   {detailLoading ? (
                     <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
                   ) : selectedSession.messages.length === 0 ? (
-                    <div className="text-center py-12 text-zinc-500 text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
+                    <div className="text-center py-12 text-zinc-500 text-xs lg:text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
                   ) : (
                     selectedSession.messages.map((msg, i) => (
                       <div key={msg.id || i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
@@ -743,7 +743,7 @@ export function SessionsClient() {
                             </span>
                           </div>
                         )}
-                        <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 text-sm ${
+                        <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 text-xs lg:text-sm ${
                           msg.role === "user"
                             ? "bg-blue-600/20 text-blue-100"
                             : msg.role === "system"
@@ -768,10 +768,10 @@ export function SessionsClient() {
             </Sheet>
           ) : (
             <div className="flex flex-1 flex-col overflow-hidden">
-              <div className="flex items-center justify-between px-4 h-12 border-b border-zinc-800">
+              <div className="flex items-center justify-between px-2 lg:px-4 h-12 border-b border-zinc-800">
                 <div className="flex items-center gap-2 min-w-0">
                   <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                  <span className="text-sm font-medium text-zinc-200 truncate">
+                  <span className="text-xs lg:text-sm font-medium text-zinc-200 truncate">
                     {selectedSession.title || selectedSession.session_id}
                   </span>
                   <span className="text-xs text-zinc-500 flex-shrink-0">({selectedSession.messages.length} {t("sessions.messages", "messages")})</span>
@@ -799,11 +799,11 @@ export function SessionsClient() {
                   </button>
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              <div className="flex-1 overflow-y-auto px-2 lg:px-4 py-3 space-y-3">
                 {detailLoading ? (
                   <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
                 ) : selectedSession.messages.length === 0 ? (
-                  <div className="text-center py-12 text-zinc-500 text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
+                  <div className="text-center py-12 text-zinc-500 text-xs lg:text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
                 ) : (
                   selectedSession.messages.map((msg, i) => (
                     <div key={msg.id || i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
@@ -814,7 +814,7 @@ export function SessionsClient() {
                           </span>
                         </div>
                       )}
-                      <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 text-sm ${
+                      <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 text-xs lg:text-sm ${
                         msg.role === "user"
                           ? "bg-blue-600/20 text-blue-100"
                           : msg.role === "system"

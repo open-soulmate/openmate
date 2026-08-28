@@ -283,16 +283,16 @@ export function DashboardClient() {
       <div className="mx-auto max-w-5xl px-3 lg:px-6 py-4 lg:py-8">
         {/* Header */}
         <div className="mb-8">
-          <h2 className="text-2xl font-bold tracking-tight">
+          <h2 className="text-xl lg:text-2xl font-bold tracking-tight">
             {t("dashboard.title")}
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="mt-1 text-xs lg:text-sm text-muted-foreground">
             {t("dashboard.subtitle")}
           </p>
         </div>
 
         {/* Stat cards */}
-        <div className="mb-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mb-8 grid grid-cols-1 gap-2 lg:gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((stat) => (
             <Link
               key={stat.label}
@@ -306,8 +306,8 @@ export function DashboardClient() {
                 <ArrowRight size={14} className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
               </div>
               <div className="mt-4">
-                <p className="text-2xl font-bold">{stat.value}</p>
-                <p className="text-sm text-muted-foreground">{stat.label}</p>
+                <p className="text-xl lg:text-2xl font-bold">{stat.value}</p>
+                <p className="text-xs lg:text-sm text-muted-foreground">{stat.label}</p>
                 <p className="mt-1 text-xs text-muted-foreground">{stat.sub}</p>
               </div>
             </Link>
@@ -315,30 +315,30 @@ export function DashboardClient() {
         </div>
 
         {/* Cost Statistics Card */}
-        <div className="mb-8 rounded-xl border border-border bg-card p-6">
+        <div className="mb-8 rounded-xl border border-border bg-card p-3 lg:p-6">
           <div className="flex items-center justify-between mb-6">
             <div>
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <DollarSign className="w-5 h-5 text-yellow-500" />
                 {t("dashboard.costStats")}
               </h3>
-              <p className="text-sm text-muted-foreground mt-1">
+              <p className="text-xs lg:text-sm text-muted-foreground mt-1">
                 {t("dashboard.costStatsDesc")}
               </p>
             </div>
             <div className="text-right">
-              <div className="text-2xl font-bold text-yellow-500">${costStats.estimatedCost.toFixed(2)}</div>
+              <div className="text-xl lg:text-2xl font-bold text-yellow-500">${costStats.estimatedCost.toFixed(2)}</div>
               <div className="text-xs text-muted-foreground">{t("dashboard.totalCost")}</div>
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 lg:gap-4 mb-6">
             <div className="p-4 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2 mb-2">
                 <Cpu className="w-4 h-4 text-blue-500" />
-                <span className="text-sm font-medium">{t("dashboard.totalTokens")}</span>
+                <span className="text-xs lg:text-sm font-medium">{t("dashboard.totalTokens")}</span>
               </div>
-              <div className="text-2xl font-bold">{(costStats.totalTokens / 1000000).toFixed(1)}M</div>
+              <div className="text-xl lg:text-2xl font-bold">{(costStats.totalTokens / 1000000).toFixed(1)}M</div>
               <div className="text-xs text-muted-foreground mt-1">
                 {t("dashboard.input")}: {(costStats.inputTokens / 1000000).toFixed(1)}M | 
                 {t("dashboard.output")}: {(costStats.outputTokens / 1000000).toFixed(1)}M
@@ -348,9 +348,9 @@ export function DashboardClient() {
             <div className="p-4 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2 mb-2">
                 <Zap className="w-4 h-4 text-green-500" />
-                <span className="text-sm font-medium">{t("dashboard.todayCost")}</span>
+                <span className="text-xs lg:text-sm font-medium">{t("dashboard.todayCost")}</span>
               </div>
-              <div className="text-2xl font-bold text-green-500">${costStats.todayCost.toFixed(2)}</div>
+              <div className="text-xl lg:text-2xl font-bold text-green-500">${costStats.todayCost.toFixed(2)}</div>
               <div className="text-xs text-muted-foreground mt-1">
                 {t("dashboard.vsYesterday")}
               </div>
@@ -359,9 +359,9 @@ export function DashboardClient() {
             <div className="p-4 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2 mb-2">
                 <TrendingUp className="w-4 h-4 text-violet-500" />
-                <span className="text-sm font-medium">{t("dashboard.avgCostPerMsg")}</span>
+                <span className="text-xs lg:text-sm font-medium">{t("dashboard.avgCostPerMsg")}</span>
               </div>
-              <div className="text-2xl font-bold">${(costStats.estimatedCost / Math.max(totalMessages, 1)).toFixed(4)}</div>
+              <div className="text-xl lg:text-2xl font-bold">${(costStats.estimatedCost / Math.max(totalMessages, 1)).toFixed(4)}</div>
               <div className="text-xs text-muted-foreground mt-1">
                 {totalMessages} {t("dashboard.messages")}
               </div>
@@ -369,7 +369,7 @@ export function DashboardClient() {
           </div>
 
           <div>
-            <h4 className="text-sm font-medium mb-3">{t("dashboard.modelBreakdown")}</h4>
+            <h4 className="text-xs lg:text-sm font-medium mb-3">{t("dashboard.modelBreakdown")}</h4>
             <div className="space-y-2">
               {costStats.modelBreakdown.map((model) => (
                 <div key={model.model} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
@@ -378,12 +378,12 @@ export function DashboardClient() {
                       <Cpu className="w-4 h-4 text-primary" />
                     </div>
                     <div>
-                      <div className="text-sm font-medium">{model.model}</div>
+                      <div className="text-xs lg:text-sm font-medium">{model.model}</div>
                       <div className="text-xs text-muted-foreground">{(model.tokens / 1000).toFixed(0)}K tokens</div>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-sm font-bold">${model.cost.toFixed(2)}</div>
+                    <div className="text-xs lg:text-sm font-bold">${model.cost.toFixed(2)}</div>
                     <div className="text-xs text-muted-foreground">{((model.cost / costStats.estimatedCost) * 100).toFixed(1)}%</div>
                   </div>
                 </div>
@@ -394,14 +394,14 @@ export function DashboardClient() {
 
         {/* System Metrics */}
         {sysMetrics && (
-          <div className="mb-8 rounded-xl border border-border bg-card p-6">
+          <div className="mb-8 rounded-xl border border-border bg-card p-3 lg:p-6">
             <div className="flex items-center justify-between mb-4">
               <div>
                 <h3 className="text-lg font-semibold flex items-center gap-2">
                   <Activity className="w-5 h-5 text-emerald-500" />
                   {t("dashboard.systemMetrics")}
                 </h3>
-                <p className="text-sm text-muted-foreground mt-1">
+                <p className="text-xs lg:text-sm text-muted-foreground mt-1">
                   {t("dashboard.systemMetricsDesc")}
                 </p>
               </div>
@@ -410,13 +410,13 @@ export function DashboardClient() {
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 lg:gap-4 mb-4">
               {/* CPU */}
               <div className="p-4 rounded-lg bg-muted/50">
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <Cpu className="w-4 h-4 text-blue-500" />
-                    <span className="text-sm font-medium">CPU</span>
+                    <span className="text-xs lg:text-sm font-medium">CPU</span>
                   </div>
                   <span className={cn("text-lg font-bold", sysMetrics.system.cpu_percent > 80 ? "text-red-500" : sysMetrics.system.cpu_percent > 50 ? "text-amber-500" : "text-emerald-500")}>
                     {sysMetrics.system.cpu_percent.toFixed(1)}%
@@ -435,7 +435,7 @@ export function DashboardClient() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <HardDrive className="w-4 h-4 text-violet-500" />
-                    <span className="text-sm font-medium">{t("dashboard.memory")}</span>
+                    <span className="text-xs lg:text-sm font-medium">{t("dashboard.memory")}</span>
                   </div>
                   <span className={cn("text-lg font-bold", sysMetrics.system.memory_percent > 85 ? "text-red-500" : sysMetrics.system.memory_percent > 60 ? "text-amber-500" : "text-emerald-500")}>
                     {sysMetrics.system.memory_percent.toFixed(1)}%
@@ -457,7 +457,7 @@ export function DashboardClient() {
                 <div className="flex items-center justify-between mb-2">
                   <div className="flex items-center gap-2">
                     <HardDrive className="w-4 h-4 text-amber-500" />
-                    <span className="text-sm font-medium">{t("dashboard.disk")}</span>
+                    <span className="text-xs lg:text-sm font-medium">{t("dashboard.disk")}</span>
                   </div>
                   <span className={cn("text-lg font-bold", sysMetrics.system.disk_percent > 90 ? "text-red-500" : sysMetrics.system.disk_percent > 75 ? "text-amber-500" : "text-emerald-500")}>
                     {sysMetrics.system.disk_percent.toFixed(1)}%
@@ -481,28 +481,28 @@ export function DashboardClient() {
                 <Zap className="w-4 h-4 text-blue-500" />
                 <div>
                   <div className="text-xs text-muted-foreground">QPS</div>
-                  <div className="text-sm font-bold">{sysMetrics.app.request_qps.toFixed(1)}</div>
+                  <div className="text-xs lg:text-sm font-bold">{sysMetrics.app.request_qps.toFixed(1)}</div>
                 </div>
               </div>
               <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
                 <Clock className="w-4 h-4 text-amber-500" />
                 <div>
                   <div className="text-xs text-muted-foreground">P99 {t("dashboard.latency")}</div>
-                  <div className="text-sm font-bold">{sysMetrics.app.latency_p99_ms.toFixed(0)}ms</div>
+                  <div className="text-xs lg:text-sm font-bold">{sysMetrics.app.latency_p99_ms.toFixed(0)}ms</div>
                 </div>
               </div>
               <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
                 <Activity className="w-4 h-4 text-emerald-500" />
                 <div>
                   <div className="text-xs text-muted-foreground">{t("dashboard.totalRequests")}</div>
-                  <div className="text-sm font-bold">{sysMetrics.app.total_requests.toLocaleString()}</div>
+                  <div className="text-xs lg:text-sm font-bold">{sysMetrics.app.total_requests.toLocaleString()}</div>
                 </div>
               </div>
               <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
                 <AlertTriangle className="w-4 h-4 text-red-500" />
                 <div>
                   <div className="text-xs text-muted-foreground">{t("dashboard.activeAlerts")}</div>
-                  <div className={cn("text-sm font-bold", sysMetrics.alerts.active > 0 ? "text-red-500" : "text-emerald-500")}>{sysMetrics.alerts.active}</div>
+                  <div className={cn("text-xs lg:text-sm font-bold", sysMetrics.alerts.active > 0 ? "text-red-500" : "text-emerald-500")}>{sysMetrics.alerts.active}</div>
                 </div>
               </div>
             </div>
@@ -511,7 +511,7 @@ export function DashboardClient() {
 
         {/* Quick links */}
         <div className="mb-8">
-          <h3 className="mb-4 text-sm font-medium text-muted-foreground">
+          <h3 className="mb-4 text-xs lg:text-sm font-medium text-muted-foreground">
             {t("dashboard.quickLinks")}
           </h3>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -525,7 +525,7 @@ export function DashboardClient() {
                   <link.icon size={18} className="text-muted-foreground" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium">{link.label}</p>
+                  <p className="text-xs lg:text-sm font-medium">{link.label}</p>
                   <p className="text-xs text-muted-foreground">
                     {link.count} {t("dashboard.items")}
                   </p>
@@ -539,7 +539,7 @@ export function DashboardClient() {
         {/* Organ Health Overview */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-muted-foreground">
+            <h3 className="text-xs lg:text-sm font-medium text-muted-foreground">
               {t("dashboard.organHealth")}
             </h3>
             <button
@@ -573,7 +573,7 @@ export function DashboardClient() {
               );
             })}
           </div>
-          <div className="mt-2 flex items-center gap-4 text-[10px] text-muted-foreground">
+          <div className="mt-2 flex items-center gap-2 lg:gap-4 text-[10px] text-muted-foreground">
             <span className="flex items-center gap-1">
               <CheckCircle size={10} className="text-emerald-500" />
               {Object.values(organHealth).filter((s) => s === "ok").length} {t("dashboard.healthy")}
@@ -588,7 +588,7 @@ export function DashboardClient() {
         {/* Recent activity — from recent usage records */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-medium text-muted-foreground">
+            <h3 className="text-xs lg:text-sm font-medium text-muted-foreground">
               {t("dashboard.recentActivity")}
             </h3>
             <button
@@ -600,26 +600,26 @@ export function DashboardClient() {
           </div>
           {recentRecords.length > 0 ? (
             <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <table className="w-full text-sm">
+              <table className="w-full text-xs lg:text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/30">
-                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.time")}</th>
-                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.model")}</th>
-                    <th className="px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.provider")}</th>
-                    <th className="px-4 py-2.5 text-right font-medium text-muted-foreground text-xs">{t("dashboard.tokens")}</th>
+                    <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.time")}</th>
+                    <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.model")}</th>
+                    <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.provider")}</th>
+                    <th className="px-2 lg:px-4 py-2.5 text-right font-medium text-muted-foreground text-xs">{t("dashboard.tokens")}</th>
                   </tr>
                 </thead>
                 <tbody>
                   {recentRecords.slice(0, 10).map((r, i) => (
                     <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="px-4 py-2 text-xs text-muted-foreground">
+                      <td className="px-2 lg:px-4 py-2 text-xs text-muted-foreground">
                         {new Date(r.timestamp * 1000).toLocaleString(undefined, {
                           month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
                         })}
                       </td>
-                      <td className="px-4 py-2 text-xs font-medium">{r.model}</td>
-                      <td className="px-4 py-2 text-xs text-muted-foreground">{r.provider}</td>
-                      <td className="px-4 py-2 text-xs text-right">
+                      <td className="px-2 lg:px-4 py-2 text-xs font-medium">{r.model}</td>
+                      <td className="px-2 lg:px-4 py-2 text-xs text-muted-foreground">{r.provider}</td>
+                      <td className="px-2 lg:px-4 py-2 text-xs text-right">
                         <span className="text-blue-500">{r.prompt_tokens.toLocaleString()}</span>
                         <span className="text-muted-foreground mx-1">→</span>
                         <span className="text-emerald-500">{r.completion_tokens.toLocaleString()}</span>
@@ -628,19 +628,19 @@ export function DashboardClient() {
                   ))}
                 </tbody>
               </table>
-              <div className="px-4 py-2 text-[10px] text-muted-foreground bg-muted/20 border-t border-border">
+              <div className="px-2 lg:px-4 py-2 text-[10px] text-muted-foreground bg-muted/20 border-t border-border">
                 {t("dashboard.showingRecent")} 10 / {recentRecords.length} {t("dashboard.records")} · {callCount} {t("dashboard.totalCalls")}
               </div>
             </div>
           ) : cronJobs.length > 0 ? (
             <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="px-4 py-3 space-y-2">
+              <div className="px-2 lg:px-4 py-3 space-y-2">
                 <p className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.cronJobs")}</p>
                 {cronJobs.slice(0, 5).map((job, i) => (
                   <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
                     <div className="flex items-center gap-2">
                       <div className={cn("w-2 h-2 rounded-full", job.enabled ? "bg-emerald-500" : "bg-muted-foreground/30")} />
-                      <span className="text-sm font-medium">{job.name || job.id}</span>
+                      <span className="text-xs lg:text-sm font-medium">{job.name || job.id}</span>
                       <span className="text-[10px] text-muted-foreground font-mono">{job.schedule}</span>
                     </div>
                     {job.next_run && (
@@ -655,7 +655,7 @@ export function DashboardClient() {
           ) : (
             <div className="rounded-xl border border-border bg-card p-8 text-center">
               <TrendingUp size={32} className="mx-auto mb-3 text-muted-foreground/50" />
-              <p className="text-sm text-muted-foreground">
+              <p className="text-xs lg:text-sm text-muted-foreground">
                 {t("dashboard.noActivity")}
               </p>
               <p className="text-xs text-muted-foreground mt-1">

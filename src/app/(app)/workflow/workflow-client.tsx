@@ -199,7 +199,7 @@ export function WorkflowClient() {
     <div className="flex h-full flex-col">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 text-sm shadow-lg animate-in slide-in-from-top-2 ${
+        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 text-xs lg:text-sm shadow-lg animate-in slide-in-from-top-2 ${
           toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
         }`}>
           {toast.type === "success" ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
@@ -214,7 +214,7 @@ export function WorkflowClient() {
             <Workflow size={18} />
           </div>
           <div>
-            <h2 className="text-sm font-medium">Workflows</h2>
+            <h2 className="text-xs lg:text-sm font-medium">Workflows</h2>
             <p className="text-xs text-muted-foreground">
               {workflows.filter((w) => w.status === "active").length} active · {workflows.length} total
             </p>
@@ -222,7 +222,7 @@ export function WorkflowClient() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={fetchWorkflows}
-            className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent transition-colors">
+            className="rounded-lg border border-border px-3 py-2 text-xs lg:text-sm hover:bg-accent transition-colors">
             <RefreshCw size={14} />
           </button>
           <button onClick={() => setShowCreate(!showCreate)}
@@ -255,16 +255,16 @@ export function WorkflowClient() {
         {/* Create form */}
         {showCreate && (
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">
-            <h3 className="text-sm font-medium flex items-center gap-2">
+            <h3 className="text-xs lg:text-sm font-medium flex items-center gap-2">
               <Plus size={14} /> {t("workflow.createNew") || "Create New Workflow"}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
               <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                placeholder={t("workflow.workflowName") || "Workflow Name *"} className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                placeholder={t("workflow.workflowName") || "Workflow Name *"} className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30" />
               <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
-                placeholder={t("workflow.descriptionPlaceholder") || "Description"} className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                placeholder={t("workflow.descriptionPlaceholder") || "Description"} className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30" />
               <select value={newTrigger} onChange={(e) => setNewTrigger(e.target.value)}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30">
+                className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30">
                 <option value="manual">{t("workflow.triggerManual") || "Manual Trigger"}</option>
                 <option value="cron">{t("workflow.triggerCron") || "Cron Trigger"}</option>
                 <option value="event">{t("workflow.triggerEvent") || "Event Trigger"}</option>
@@ -272,8 +272,8 @@ export function WorkflowClient() {
               </select>
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowCreate(false)} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent">{t("common.cancel") || "Cancel"}</button>
-              <button onClick={handleCreate} className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">{t("workflow.create") || "Create"}</button>
+              <button onClick={() => setShowCreate(false)} className="rounded-lg border border-border px-4 py-2 text-xs lg:text-sm hover:bg-accent">{t("common.cancel") || "Cancel"}</button>
+              <button onClick={handleCreate} className="rounded-lg bg-primary px-4 py-2 text-xs lg:text-sm text-primary-foreground hover:bg-primary/90">{t("workflow.create") || "Create"}</button>
             </div>
           </div>
         )}
@@ -288,7 +288,7 @@ export function WorkflowClient() {
             <div className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-muted">
               <Workflow className="h-7 w-7 text-muted-foreground" />
             </div>
-            <h3 className="mb-2 text-sm font-medium">
+            <h3 className="mb-2 text-xs lg:text-sm font-medium">
               {activeFilter === "all" ? "No workflows yet" : `No ${activeFilter} workflows`}
             </h3>
             <p className="mb-4 max-w-xs text-xs text-muted-foreground">
@@ -314,7 +314,7 @@ export function WorkflowClient() {
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="mb-1 flex items-center gap-2">
-                        <h3 className="text-sm font-medium">{wf.name}</h3>
+                        <h3 className="text-xs lg:text-sm font-medium">{wf.name}</h3>
                         <Badge variant={config.variant}>{config.label}</Badge>
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{wf.trigger}</span>
                       </div>
@@ -376,15 +376,15 @@ export function WorkflowClient() {
       {/* Delete confirmation */}
       {deleteTarget && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 shadow-xl">
-            <h3 className="text-sm font-medium mb-2">{t("workflow.deleteWorkflow") || "Delete Workflow"}</h3>
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-3 lg:p-6 shadow-xl">
+            <h3 className="text-xs lg:text-sm font-medium mb-2">{t("workflow.deleteWorkflow") || "Delete Workflow"}</h3>
             <p className="text-xs text-muted-foreground mb-4">
               {t("workflow.confirmDeleteText", { name: deleteTarget.name }) || `Delete "${deleteTarget.name}"? This cannot be undone.`}
             </p>
             <div className="rounded-lg border border-border bg-muted/50 p-3 mb-4">
               <div className="flex items-center gap-2">
                 <Workflow size={14} className="text-muted-foreground" />
-                <span className="text-sm font-medium">{deleteTarget.name}</span>
+                <span className="text-xs lg:text-sm font-medium">{deleteTarget.name}</span>
               </div>
               {deleteTarget.description && (
                 <p className="mt-1 text-xs text-muted-foreground">{deleteTarget.description}</p>

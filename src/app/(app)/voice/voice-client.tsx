@@ -110,7 +110,7 @@ export function VoiceClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <Volume2 size={20} className="text-rose-500" />
           <h1 className="text-lg font-semibold">{t("voice.title") || "Voice Engine"}</h1>
@@ -122,16 +122,16 @@ export function VoiceClient() {
         <button
           onClick={() => { fetchStats(); fetchProfiles(); }}
           disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors disabled:opacity-50"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           {t("common.refresh") || "Refresh"}
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xs lg:text-sm text-red-500">
             {error}
           </div>
         )}
@@ -140,11 +140,11 @@ export function VoiceClient() {
           <>
             {/* Backend Status */}
             <div className="rounded-xl border border-border bg-card p-5">
-              <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
+              <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2 mb-4">
                 <Settings size={14} className="text-rose-500" />
                 {t("voice.backendStatus") || "Backend Status"}
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4">
                 {Object.entries(backends).map(([name, available]) => (
                   <div
                     key={name}
@@ -161,7 +161,7 @@ export function VoiceClient() {
                       <XCircle size={16} className="text-red-500 shrink-0" />
                     )}
                     <div>
-                      <p className="text-sm font-medium">{name}</p>
+                      <p className="text-xs lg:text-sm font-medium">{name}</p>
                       <p className="text-[10px] text-muted-foreground">
                         {available ? (t("voice.available") || "Available") : (t("voice.unavailable") || "Unavailable")}
                       </p>
@@ -176,27 +176,27 @@ export function VoiceClient() {
             </div>
 
             {/* Synthesis Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("voice.totalSynthesized") || "Synthesized"}</span>
                   <div className="rounded-lg p-1.5 bg-rose-500/10"><Mic size={14} className="text-rose-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{stats.engine.total_synthesized}</p>
+                <p className="text-xl lg:text-2xl font-bold">{stats.engine.total_synthesized}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("voice.totalCharacters") || "Characters"}</span>
                   <div className="rounded-lg p-1.5 bg-blue-500/10"><Hash size={14} className="text-blue-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{stats.engine.total_characters.toLocaleString()}</p>
+                <p className="text-xl lg:text-2xl font-bold">{stats.engine.total_characters.toLocaleString()}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("voice.cacheHits") || "Cache Hits"}</span>
                   <div className="rounded-lg p-1.5 bg-emerald-500/10"><Database size={14} className="text-emerald-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{stats.engine.cache_hits}</p>
+                <p className="text-xl lg:text-2xl font-bold">{stats.engine.cache_hits}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">
                   {stats.engine.cache.entries} entries · {formatBytes(stats.engine.cache.size_bytes)}
                 </p>
@@ -206,18 +206,18 @@ export function VoiceClient() {
                   <span className="text-xs font-medium text-muted-foreground">{t("voice.errors") || "Errors"}</span>
                   <div className="rounded-lg p-1.5 bg-red-500/10"><XCircle size={14} className="text-red-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{stats.engine.errors}</p>
+                <p className="text-xl lg:text-2xl font-bold">{stats.engine.errors}</p>
               </div>
             </div>
 
             {/* Profile Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("voice.totalProfiles") || "Total Profiles"}</span>
                   <div className="rounded-lg p-1.5 bg-violet-500/10"><Settings size={14} className="text-violet-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{stats.profiles.total_profiles}</p>
+                <p className="text-xl lg:text-2xl font-bold">{stats.profiles.total_profiles}</p>
                 <p className="text-[10px] text-muted-foreground mt-0.5">
                   {stats.profiles.builtin_count} {t("voice.builtin") || "builtin"} · {stats.profiles.user_count} {t("voice.user") || "user"}
                 </p>
@@ -250,7 +250,7 @@ export function VoiceClient() {
         {profiles.length > 0 && (
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="px-5 py-3 border-b border-border bg-muted/30">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
+              <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Mic size={14} className="text-rose-500" />
                 {t("voice.voiceProfiles") || "Voice Profiles"}
                 <span className="rounded-full bg-rose-500/10 px-2 py-0.5 text-[10px] font-medium text-rose-500">
@@ -260,10 +260,10 @@ export function VoiceClient() {
             </div>
             <div className="divide-y divide-border">
               {profiles.map((p) => (
-                <div key={p.profile_id} className="flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors">
+                <div key={p.profile_id} className="flex items-center gap-2 lg:gap-4 px-5 py-3 hover:bg-muted/30 transition-colors">
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">{p.name}</span>
+                      <span className="text-xs lg:text-sm font-medium">{p.name}</span>
                       {p.builtin && (
                         <span className="rounded-full bg-blue-500/10 px-1.5 py-0.5 text-[9px] text-blue-500">
                           {t("voice.builtin") || "builtin"}

@@ -160,7 +160,7 @@ export default function SoulClient() {
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 lg:gap-3">
           <Brain size={20} className="text-violet-500" />
           <h1 className="text-lg font-semibold">{t("soul.title")}</h1>
           <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-xs font-medium text-violet-500">
@@ -169,7 +169,7 @@ export default function SoulClient() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => { fetchDashboard(); }}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted">
             <RefreshCw size={14} />
           </button>
         </div>
@@ -182,7 +182,7 @@ export default function SoulClient() {
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors whitespace-nowrap",
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs lg:text-sm transition-colors whitespace-nowrap",
               activeTab === tab.id
                 ? "bg-violet-500/10 text-violet-600 font-medium"
                 : "text-muted-foreground hover:bg-muted"
@@ -201,14 +201,14 @@ export default function SoulClient() {
           <>
             {/* Health Overview Cards */}
             {healthAll && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
                 {Object.entries(healthAll).map(([key, check]) => (
                   <div key={key} className="rounded-xl border border-border bg-card p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs text-muted-foreground capitalize">{key}</span>
                       {getStatusIcon(check.status)}
                     </div>
-                    <p className={cn("text-sm font-semibold", getStatusColor(check.status))}>
+                    <p className={cn("text-xs lg:text-sm font-semibold", getStatusColor(check.status))}>
                       {check.status}
                     </p>
                     {check.latency_ms !== undefined && (
@@ -222,11 +222,11 @@ export default function SoulClient() {
             {/* Vital Health Detail */}
             {vitalHealth && (
               <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
+                <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                   <Activity size={14} className="text-violet-500" />
                   {t("soul.vitalHealth")}
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3 text-xs">
                   <div>
                     <span className="text-muted-foreground">{t("soul.status")}:</span>{" "}
                     <span className={cn("font-medium", getStatusColor(vitalHealth.status))}>
@@ -246,21 +246,21 @@ export default function SoulClient() {
             {/* Service Grid */}
             {healthAll && (
               <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
+                <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                   <Server size={14} className="text-violet-500" />
                   {t("soul.serviceStatus")}
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:gap-3">
                   {Object.entries(healthAll).map(([key, check]) => (
                     <div key={key} className="flex items-center justify-between rounded-lg border border-border p-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 lg:gap-3">
                         <div className={cn("rounded-lg p-2",
                           check.status === "ok" || check.status === "healthy" ? "bg-emerald-500/10" :
                           check.status === "degraded" ? "bg-amber-500/10" : "bg-red-500/10")}>
                           {getStatusIcon(check.status)}
                         </div>
                         <div>
-                          <p className="text-sm font-medium capitalize">{key}</p>
+                          <p className="text-xs lg:text-sm font-medium capitalize">{key}</p>
                           {check.service && <p className="text-xs text-muted-foreground">{check.service}</p>}
                         </div>
                       </div>
@@ -279,7 +279,7 @@ export default function SoulClient() {
             )}
 
             {loading && (
-              <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+              <div className="flex items-center justify-center py-16 text-muted-foreground text-xs lg:text-sm">
                 {t("soul.loading")}
               </div>
             )}
@@ -290,7 +290,7 @@ export default function SoulClient() {
         {activeTab === "knowledge" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
+              <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <BookOpen size={16} className="text-violet-500" />
                 {t("soul.knowledgeTitle")}
               </h2>
@@ -305,7 +305,7 @@ export default function SoulClient() {
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center gap-2 mb-1">
                   {getStatusIcon(knowledgeHealth.status)}
-                  <span className="text-sm font-medium">{t("soul.knowledgeHealth")}</span>
+                  <span className="text-xs lg:text-sm font-medium">{t("soul.knowledgeHealth")}</span>
                   <span className={cn("text-xs font-medium", getStatusColor(knowledgeHealth.status))}>
                     {knowledgeHealth.status}
                   </span>
@@ -317,45 +317,45 @@ export default function SoulClient() {
             )}
 
             {/* Knowledge Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">{t("soul.totalEntries")}</span>
-                <p className="text-2xl font-bold">{knowledgeItems.length}</p>
+                <p className="text-xl lg:text-2xl font-bold">{knowledgeItems.length}</p>
               </div>
             </div>
 
             {/* Knowledge List */}
             {knowledgeLoading ? (
-              <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">{t("soul.loading")}</div>
+              <div className="flex items-center justify-center py-16 text-muted-foreground text-xs lg:text-sm">{t("soul.loading")}</div>
             ) : knowledgeItems.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Database size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("soul.noKnowledge")}</p>
+                <p className="text-xs lg:text-sm">{t("soul.noKnowledge")}</p>
               </div>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs lg:text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soul.kbTitle")}</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soul.kbDomain")}</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soul.kbTags")}</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soul.kbCreated")}</th>
+                      <th className="px-2 lg:px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soul.kbTitle")}</th>
+                      <th className="px-2 lg:px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soul.kbDomain")}</th>
+                      <th className="px-2 lg:px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soul.kbTags")}</th>
+                      <th className="px-2 lg:px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soul.kbCreated")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {knowledgeItems.slice(0, 50).map((item: any, idx: number) => (
                       <tr key={item.id || idx} className="border-b border-border last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-2 font-medium">{item.title || "-"}</td>
-                        <td className="px-4 py-2 text-muted-foreground">{item.domain || "-"}</td>
-                        <td className="px-4 py-2">
+                        <td className="px-2 lg:px-4 py-2 font-medium">{item.title || "-"}</td>
+                        <td className="px-2 lg:px-4 py-2 text-muted-foreground">{item.domain || "-"}</td>
+                        <td className="px-2 lg:px-4 py-2">
                           <div className="flex flex-wrap gap-1">
                             {(item.tags || []).map((tag: string) => (
                               <span key={tag} className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] text-violet-600">{tag}</span>
                             ))}
                           </div>
                         </td>
-                        <td className="px-4 py-2 text-xs text-muted-foreground">
+                        <td className="px-2 lg:px-4 py-2 text-xs text-muted-foreground">
                           {item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}
                         </td>
                       </tr>
@@ -371,7 +371,7 @@ export default function SoulClient() {
         {activeTab === "graph" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
+              <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Network size={16} className="text-violet-500" />
                 {t("soul.graphTitle")}
               </h2>
@@ -386,7 +386,7 @@ export default function SoulClient() {
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center gap-2 mb-1">
                   {getStatusIcon(graphHealth.status)}
-                  <span className="text-sm font-medium">{t("soul.graphHealth")}</span>
+                  <span className="text-xs lg:text-sm font-medium">{t("soul.graphHealth")}</span>
                   <span className={cn("text-xs font-medium", getStatusColor(graphHealth.status))}>
                     {graphHealth.status}
                   </span>
@@ -396,24 +396,24 @@ export default function SoulClient() {
 
             {/* Graph Stats */}
             {graphStats && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
                 <div className="rounded-xl border border-border bg-card p-4">
                   <span className="text-xs text-muted-foreground">{t("soul.graphNodes")}</span>
-                  <p className="text-2xl font-bold">{graphStats.entities ?? graphStats.nodes ?? 0}</p>
+                  <p className="text-xl lg:text-2xl font-bold">{graphStats.entities ?? graphStats.nodes ?? 0}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4">
                   <span className="text-xs text-muted-foreground">{t("soul.graphEdges")}</span>
-                  <p className="text-2xl font-bold">{graphStats.relations ?? graphStats.edges ?? 0}</p>
+                  <p className="text-xl lg:text-2xl font-bold">{graphStats.relations ?? graphStats.edges ?? 0}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4">
                   <span className="text-xs text-muted-foreground">{t("soul.graphTypes")}</span>
-                  <p className="text-2xl font-bold">{graphStats.types ?? graphStats.entity_types ?? 0}</p>
+                  <p className="text-xl lg:text-2xl font-bold">{graphStats.types ?? graphStats.entity_types ?? 0}</p>
                 </div>
               </div>
             )}
 
             {graphLoading && (
-              <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">{t("soul.loading")}</div>
+              <div className="flex items-center justify-center py-16 text-muted-foreground text-xs lg:text-sm">{t("soul.loading")}</div>
             )}
           </div>
         )}
@@ -422,7 +422,7 @@ export default function SoulClient() {
         {activeTab === "agent" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
+              <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Bot size={16} className="text-violet-500" />
                 {t("soul.agentTitle")}
               </h2>
@@ -437,7 +437,7 @@ export default function SoulClient() {
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center gap-2 mb-1">
                   {getStatusIcon(agentHealth.status)}
-                  <span className="text-sm font-medium">{t("soul.agentHealth")}</span>
+                  <span className="text-xs lg:text-sm font-medium">{t("soul.agentHealth")}</span>
                   <span className={cn("text-xs font-medium", getStatusColor(agentHealth.status))}>
                     {agentHealth.status}
                   </span>
@@ -447,23 +447,23 @@ export default function SoulClient() {
 
             {/* Agent List */}
             {agentLoading ? (
-              <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">{t("soul.loading")}</div>
+              <div className="flex items-center justify-center py-16 text-muted-foreground text-xs lg:text-sm">{t("soul.loading")}</div>
             ) : agentList.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Plug size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("soul.noAgents")}</p>
+                <p className="text-xs lg:text-sm">{t("soul.noAgents")}</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {agentList.map((agent: any, idx: number) => (
                   <div key={agent.id || agent.agent_id || idx} className="rounded-xl border border-border bg-card p-4">
                     <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 lg:gap-3">
                         <div className="rounded-lg bg-violet-500/10 p-2">
                           <Bot size={14} className="text-violet-500" />
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{agent.name || agent.agent_id || `Agent ${idx + 1}`}</p>
+                          <p className="font-medium text-xs lg:text-sm">{agent.name || agent.agent_id || `Agent ${idx + 1}`}</p>
                           <p className="text-xs text-muted-foreground font-mono">{agent.type || agent.agent_type || "-"}</p>
                         </div>
                       </div>
@@ -492,7 +492,7 @@ export default function SoulClient() {
         {activeTab === "llm" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
+              <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Cpu size={16} className="text-violet-500" />
                 {t("soul.llmTitle")}
               </h2>
@@ -507,7 +507,7 @@ export default function SoulClient() {
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center gap-2 mb-1">
                   {getStatusIcon(llmHealth.status)}
-                  <span className="text-sm font-medium">{t("soul.llmHealth")}</span>
+                  <span className="text-xs lg:text-sm font-medium">{t("soul.llmHealth")}</span>
                   <span className={cn("text-xs font-medium", getStatusColor(llmHealth.status))}>
                     {llmHealth.status}
                   </span>
@@ -521,11 +521,11 @@ export default function SoulClient() {
             {/* LLM Config */}
             {llmConfig && (
               <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
+                <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                   <Settings size={14} className="text-violet-500" />
                   {t("soul.llmConfig")}
                 </h3>
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-2 gap-2 lg:gap-3 text-xs">
                   {llmConfig.provider && (
                     <div>
                       <span className="text-muted-foreground">{t("soul.llmProvider")}:</span>{" "}
@@ -549,7 +549,7 @@ export default function SoulClient() {
             )}
 
             {llmLoading && (
-              <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">{t("soul.loading")}</div>
+              <div className="flex items-center justify-center py-16 text-muted-foreground text-xs lg:text-sm">{t("soul.loading")}</div>
             )}
           </div>
         )}
@@ -558,7 +558,7 @@ export default function SoulClient() {
         {activeTab === "settings" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
+              <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Settings size={16} className="text-violet-500" />
                 {t("soul.settingsTitle")}
               </h2>
@@ -570,7 +570,7 @@ export default function SoulClient() {
 
             {/* System Metrics */}
             {settings && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
                 <div className="rounded-xl border border-border bg-card p-4">
                   <span className="text-xs text-muted-foreground">{t("soul.systemUptime")}</span>
                   <p className="text-lg font-bold">{settings.uptime || settings.uptime_seconds || "-"}</p>
@@ -592,11 +592,11 @@ export default function SoulClient() {
 
             {/* System Info */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
+              <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Gauge size={14} className="text-violet-500" />
                 {t("soul.systemInfo")}
               </h3>
-              <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-2 gap-2 lg:gap-3 text-xs">
                 <div>
                   <span className="text-muted-foreground">{t("soul.apiUrl")}:</span>{" "}
                   <span className="font-mono">{apiBase}</span>
@@ -609,7 +609,7 @@ export default function SoulClient() {
             </div>
 
             {settingsLoading && (
-              <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">{t("soul.loading")}</div>
+              <div className="flex items-center justify-center py-16 text-muted-foreground text-xs lg:text-sm">{t("soul.loading")}</div>
             )}
           </div>
         )}

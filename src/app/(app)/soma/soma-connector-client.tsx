@@ -254,8 +254,8 @@ export function SomaConnectorClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
+        <div className="flex items-center gap-2 lg:gap-3">
           <Bot size={20} className="text-cyan-500" />
           <h1 className="text-lg font-semibold">{t("soma.title")}</h1>
           <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-xs font-medium text-cyan-500">
@@ -264,29 +264,29 @@ export function SomaConnectorClient() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => setShowCapabilities(!showCapabilities)}
-            className={cn("flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
+            className={cn("flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs lg:text-sm transition-colors",
               showCapabilities ? "bg-cyan-500 text-white" : "border border-border hover:bg-muted")}>
             <Info size={14} /> {t("soma.platformCapabilities")}
           </button>
           <button onClick={() => setShowRegister(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-cyan-500 px-3 py-1.5 text-sm text-white hover:bg-cyan-600">
+            className="flex items-center gap-1.5 rounded-lg bg-cyan-500 px-3 py-1.5 text-xs lg:text-sm text-white hover:bg-cyan-600">
             <Plus size={14} /> {t("soma.registerComponent")}
           </button>
           <button onClick={() => { fetchHealth(); fetchComponents(); }}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted">
             <RefreshCw size={14} />
           </button>
         </div>
       </div>
 
       {/* Tab Bar */}
-      <div className="flex items-center gap-1 border-b border-border px-6 py-2">
+      <div className="flex items-center gap-1 border-b border-border px-3 lg:px-6 py-2">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs lg:text-sm transition-colors",
               activeTab === tab.id
                 ? "bg-cyan-500/10 text-cyan-600 font-medium"
                 : "text-muted-foreground hover:bg-muted"
@@ -298,25 +298,25 @@ export function SomaConnectorClient() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
 
         {/* ── Overview Tab ───────────────────────────────────────── */}
         {activeTab === "overview" && (
           <>
             {/* Stats */}
             {health && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
                 <div className="rounded-xl border border-border bg-card p-4">
                   <span className="text-xs text-muted-foreground">{t("soma.registeredComponents")}</span>
-                  <p className="text-2xl font-bold">{health.registry?.total || 0}</p>
+                  <p className="text-xl lg:text-2xl font-bold">{health.registry?.total || 0}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4">
                   <span className="text-xs text-muted-foreground">{t("soma.online")}</span>
-                  <p className="text-2xl font-bold text-emerald-500">{health.registry?.online || 0}</p>
+                  <p className="text-xl lg:text-2xl font-bold text-emerald-500">{health.registry?.online || 0}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4">
                   <span className="text-xs text-muted-foreground">{t("soma.offline")}</span>
-                  <p className="text-2xl font-bold text-red-500">{health.registry?.offline || 0}</p>
+                  <p className="text-xl lg:text-2xl font-bold text-red-500">{health.registry?.offline || 0}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4">
                   <span className="text-xs text-muted-foreground">{t("soma.typeDistribution")}</span>
@@ -330,11 +330,11 @@ export function SomaConnectorClient() {
             {/* Platform Capabilities */}
             {showCapabilities && capabilities && (
               <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
+                <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                   <Info size={14} className="text-cyan-500" />
                   {t("soma.platformDiscovery")} — {capabilities.platform} v{capabilities.version}
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3">
                   {Object.entries(capabilities.capabilities).map(([key, value]) => (
                     <div key={key} className="flex items-center gap-2 text-xs">
                       {value === true ? (
@@ -362,7 +362,7 @@ export function SomaConnectorClient() {
 
             {/* Quick Start Guide */}
             <div className="rounded-xl border border-dashed border-cyan-500/30 bg-cyan-500/5 p-5">
-              <h3 className="text-sm font-semibold text-cyan-600 mb-2">🚀 {t("soma.quickStartGuide")}</h3>
+              <h3 className="text-xs lg:text-sm font-semibold text-cyan-600 mb-2">🚀 {t("soma.quickStartGuide")}</h3>
               <div className="text-xs text-muted-foreground space-y-2">
                 <p>{t("soma.quickStartDesc")}</p>
                 <div className="font-mono bg-background rounded p-3 text-[11px] space-y-1">
@@ -380,7 +380,7 @@ export function SomaConnectorClient() {
                 {components.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                     <Plug size={40} className="mb-3 opacity-30" />
-                    <p className="text-sm">{t("soma.noComponents")}</p>
+                    <p className="text-xs lg:text-sm">{t("soma.noComponents")}</p>
                     <p className="text-xs mt-1">{t("soma.noComponentsHint")}</p>
                   </div>
                 ) : components.map((c) => (
@@ -395,14 +395,14 @@ export function SomaConnectorClient() {
                         <div className={cn("rounded-lg p-1.5", TYPE_COLORS[c.component_type] || TYPE_COLORS.custom)}>
                           <Bot size={14} />
                         </div>
-                        <span className="font-medium text-sm">{c.name}</span>
+                        <span className="font-medium text-xs lg:text-sm">{c.name}</span>
                       </div>
                       <span className={cn("text-xs font-medium", STATUS_COLORS[c.status] || "text-muted-foreground")}>
                         {c.status === "online" ? t("soma.statusOnline") : c.status === "offline" ? t("soma.statusOffline") : c.status}
                       </span>
                     </div>
                     <div className="text-xs text-muted-foreground font-mono">{c.component_id}</div>
-                    <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                    <div className="flex gap-2 lg:gap-3 mt-2 text-xs text-muted-foreground">
                       <span>v{c.version}</span>
                       <span>{t("soma.push")}: {c.data_push_count}</span>
                       {c.error_count > 0 && <span className="text-red-500">{t("soma.error")}: {c.error_count}</span>}
@@ -433,7 +433,7 @@ export function SomaConnectorClient() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
                         <div><span className="text-muted-foreground">{t("soma.type")}:</span> {selected.component_type}</div>
                         <div><span className="text-muted-foreground">{t("soma.version")}:</span> v{selected.version}</div>
                         <div><span className="text-muted-foreground">{t("soma.registeredAt")}:</span> {formatTime(selected.registered_at, t)}</div>
@@ -486,7 +486,7 @@ export function SomaConnectorClient() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div className="grid grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
                     <div><span className="text-muted-foreground">{t("soma.type")}:</span> {selected.component_type}</div>
                     <div><span className="text-muted-foreground">{t("soma.version")}:</span> v{selected.version}</div>
                     <div><span className="text-muted-foreground">{t("soma.registeredAt")}:</span> {formatTime(selected.registered_at, t)}</div>
@@ -529,7 +529,7 @@ export function SomaConnectorClient() {
         {activeTab === "collectors" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
+              <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Database size={16} className="text-cyan-500" />
                 {t("soma.collectorsTitle")}
               </h2>
@@ -540,11 +540,11 @@ export function SomaConnectorClient() {
             </div>
 
             {collectorLoading ? (
-              <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">{t("soma.loading")}</div>
+              <div className="flex items-center justify-center py-16 text-muted-foreground text-xs lg:text-sm">{t("soma.loading")}</div>
             ) : collectors.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Database size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("soma.noCollectors")}</p>
+                <p className="text-xs lg:text-sm">{t("soma.noCollectors")}</p>
                 <p className="text-xs mt-1">{t("soma.noCollectorsHint")}</p>
               </div>
             ) : (
@@ -553,7 +553,7 @@ export function SomaConnectorClient() {
                   <div key={col.id}
                     className="rounded-xl border border-border bg-card p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 lg:gap-3">
                         <div className={cn("rounded-lg p-2",
                           col.status === "running" ? "bg-emerald-500/10" :
                           col.status === "error" ? "bg-red-500/10" : "bg-gray-500/10")}>
@@ -562,7 +562,7 @@ export function SomaConnectorClient() {
                            <Square size={16} className="text-gray-500" />}
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{col.name}</p>
+                          <p className="font-medium text-xs lg:text-sm">{col.name}</p>
                           <p className="text-xs text-muted-foreground font-mono">{col.id}</p>
                         </div>
                       </div>
@@ -598,7 +598,7 @@ export function SomaConnectorClient() {
                         </div>
                       </div>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3 text-xs">
                       <div>
                         <span className="text-muted-foreground">{t("soma.collectorType")}:</span>{" "}
                         <span className="font-mono">{col.type}</span>
@@ -634,7 +634,7 @@ export function SomaConnectorClient() {
         {activeTab === "sync" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
+              <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <History size={16} className="text-cyan-500" />
                 {t("soma.syncTitle")}
               </h2>
@@ -645,56 +645,56 @@ export function SomaConnectorClient() {
             </div>
 
             {/* Sync Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">{t("soma.totalSyncs")}</span>
-                <p className="text-2xl font-bold">{syncHistory.length}</p>
+                <p className="text-xl lg:text-2xl font-bold">{syncHistory.length}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">{t("soma.syncSuccess")}</span>
-                <p className="text-2xl font-bold text-emerald-500">{syncHistory.filter(s => s.status === "success").length}</p>
+                <p className="text-xl lg:text-2xl font-bold text-emerald-500">{syncHistory.filter(s => s.status === "success").length}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">{t("soma.syncFailed")}</span>
-                <p className="text-2xl font-bold text-red-500">{syncHistory.filter(s => s.status === "failed").length}</p>
+                <p className="text-xl lg:text-2xl font-bold text-red-500">{syncHistory.filter(s => s.status === "failed").length}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">{t("soma.totalItems")}</span>
-                <p className="text-2xl font-bold">{syncHistory.reduce((sum, s) => sum + s.items_count, 0)}</p>
+                <p className="text-xl lg:text-2xl font-bold">{syncHistory.reduce((sum, s) => sum + s.items_count, 0)}</p>
               </div>
             </div>
 
             {/* Sync History Table */}
             {syncLoading ? (
-              <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">{t("soma.loading")}</div>
+              <div className="flex items-center justify-center py-16 text-muted-foreground text-xs lg:text-sm">{t("soma.loading")}</div>
             ) : syncHistory.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <History size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("soma.noSyncHistory")}</p>
+                <p className="text-xs lg:text-sm">{t("soma.noSyncHistory")}</p>
                 <p className="text-xs mt-1">{t("soma.noSyncHistoryHint")}</p>
               </div>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs lg:text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/50">
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soma.syncComponent")}</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soma.syncDataType")}</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soma.syncStatus")}</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soma.syncItems")}</th>
-                      <th className="px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soma.syncTime")}</th>
+                      <th className="px-2 lg:px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soma.syncComponent")}</th>
+                      <th className="px-2 lg:px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soma.syncDataType")}</th>
+                      <th className="px-2 lg:px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soma.syncStatus")}</th>
+                      <th className="px-2 lg:px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soma.syncItems")}</th>
+                      <th className="px-2 lg:px-4 py-2 text-left text-xs font-medium text-muted-foreground">{t("soma.syncTime")}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {syncHistory.map((record) => (
                       <tr key={record.id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-2">
+                        <td className="px-2 lg:px-4 py-2">
                           <span className="font-mono text-xs">{record.component_id}</span>
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-2 lg:px-4 py-2">
                           <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-xs text-cyan-600">{record.data_type}</span>
                         </td>
-                        <td className="px-4 py-2">
+                        <td className="px-2 lg:px-4 py-2">
                           <span className={cn("flex items-center gap-1 text-xs",
                             record.status === "success" ? "text-emerald-500" :
                             record.status === "failed" ? "text-red-500" : "text-amber-500")}>
@@ -706,8 +706,8 @@ export function SomaConnectorClient() {
                              t("soma.syncStatusPending")}
                           </span>
                         </td>
-                        <td className="px-4 py-2 font-mono text-xs">{record.items_count}</td>
-                        <td className="px-4 py-2 text-xs text-muted-foreground">
+                        <td className="px-2 lg:px-4 py-2 font-mono text-xs">{record.items_count}</td>
+                        <td className="px-2 lg:px-4 py-2 text-xs text-muted-foreground">
                           {formatTime(record.timestamp, t)}
                         </td>
                       </tr>
@@ -736,14 +736,14 @@ export function SomaConnectorClient() {
         {/* Register Modal */}
         {showRegister && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-            <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4">
+            <div className="w-full max-w-md rounded-xl border border-border bg-card p-3 lg:p-6 space-y-4">
               <h3 className="font-semibold">{t("soma.registerExternal")}</h3>
               <input value={regId} onChange={(e) => setRegId(e.target.value)}
-                placeholder={t("soma.componentIdPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("soma.componentIdPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
               <input value={regName} onChange={(e) => setRegName(e.target.value)}
-                placeholder={t("soma.componentNamePlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("soma.componentNamePlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
               <select value={regType} onChange={(e) => setRegType(e.target.value)}
-                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm">
                 <option value="collector">{t("soma.collector")}</option>
                 <option value="processor">{t("soma.processor")}</option>
                 <option value="connector">{t("soma.connector")}</option>
@@ -751,14 +751,14 @@ export function SomaConnectorClient() {
                 <option value="custom">{t("soma.custom")}</option>
               </select>
               <input value={regVersion} onChange={(e) => setRegVersion(e.target.value)}
-                placeholder={t("soma.versionPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("soma.versionPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
               <input value={regCaps} onChange={(e) => setRegCaps(e.target.value)}
-                placeholder={t("soma.capsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                placeholder={t("soma.capsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
               <div className="flex justify-end gap-2">
                 <button onClick={() => setShowRegister(false)}
-                  className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t("soma.cancel")}</button>
+                  className="rounded-lg border border-border px-2 lg:px-4 py-2 text-xs lg:text-sm hover:bg-muted">{t("soma.cancel")}</button>
                 <button onClick={handleRegister} disabled={loading || !regId.trim() || !regName.trim()}
-                  className="rounded-lg bg-cyan-500 px-4 py-2 text-sm text-white hover:bg-cyan-600 disabled:opacity-50">
+                  className="rounded-lg bg-cyan-500 px-2 lg:px-4 py-2 text-xs lg:text-sm text-white hover:bg-cyan-600 disabled:opacity-50">
                   {loading ? t("soma.registering") : t("soma.register")}
                 </button>
               </div>

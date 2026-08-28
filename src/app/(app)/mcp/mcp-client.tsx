@@ -215,7 +215,7 @@ export function McpClient() {
     <div className="flex flex-col h-full overflow-hidden">
       {/* Toast */}
       {toast && (
-        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-3 text-sm shadow-lg animate-in slide-in-from-top-2 ${
+        <div className={`fixed top-4 right-4 z-50 flex items-center gap-2 rounded-lg px-4 py-2 lg:py-3 text-xs lg:text-sm shadow-lg animate-in slide-in-from-top-2 ${
           toast.type === "success" ? "bg-green-600 text-white" : "bg-red-600 text-white"
         }`}>
           {toast.type === "success" ? <CheckCircle size={16} /> : <AlertCircle size={16} />}
@@ -224,7 +224,7 @@ export function McpClient() {
       )}
 
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border px-3 lg:px-6 py-3 lg:py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border px-3 lg:px-6 py-2 lg:py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
             <Plug size={18} className="text-primary" />
@@ -245,17 +245,17 @@ export function McpClient() {
             </span>
           </div>
           <button onClick={() => { fetchServers(); fetchStats(); }}
-            className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-accent transition-colors">
+            className="rounded-lg border border-border px-3 py-2 text-xs lg:text-sm hover:bg-accent transition-colors">
             <RefreshCw size={14} />
           </button>
           <button onClick={() => setShowAdd(!showAdd)}
-            className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm text-primary-foreground hover:bg-primary/90 transition-colors">
+            className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs lg:text-sm text-primary-foreground hover:bg-primary/90 transition-colors">
             <Plus size={14} /> {t("mcp.addServer") || "Add Server"}
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-3 lg:py-4 space-y-4">
+      <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-2 lg:py-4 space-y-4">
         {/* Search */}
         <div className="relative">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
@@ -263,33 +263,33 @@ export function McpClient() {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder={t("mcp.searchPlaceholder") || "Search servers or tools..."}
-            className="w-full rounded-lg border border-border bg-muted/50 pl-9 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
+            className="w-full rounded-lg border border-border bg-muted/50 pl-9 pr-4 py-2.5 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30 transition-shadow"
           />
         </div>
 
         {/* Add Server Form */}
         {showAdd && (
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">
-            <h3 className="text-sm font-medium flex items-center gap-2">
+            <h3 className="text-xs lg:text-sm font-medium flex items-center gap-2">
               <Plus size={14} /> {t("mcp.registerNewServer") || "Register New MCP Server"}
             </h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-3">
               <input value={newName} onChange={(e) => setNewName(e.target.value)}
-                placeholder={t("mcp.serverNamePlaceholder") || "Server Name *"} className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                placeholder={t("mcp.serverNamePlaceholder") || "Server Name *"} className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30" />
               <input value={newUrl} onChange={(e) => setNewUrl(e.target.value)}
-                placeholder="URL (e.g. stdio://server-name) *" className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                placeholder="URL (e.g. stdio://server-name) *" className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30" />
               <input value={newDesc} onChange={(e) => setNewDesc(e.target.value)}
-                placeholder={t("mcp.descriptionPlaceholder") || "Description"} className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+                placeholder={t("mcp.descriptionPlaceholder") || "Description"} className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30" />
               <select value={newTransport} onChange={(e) => setNewTransport(e.target.value)}
-                className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30">
+                className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30">
                 <option value="stdio">stdio</option>
                 <option value="sse">SSE</option>
                 <option value="http">HTTP</option>
               </select>
             </div>
             <div className="flex gap-2 justify-end">
-              <button onClick={() => setShowAdd(false)} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent">{t("common.cancel") || "Cancel"}</button>
-              <button onClick={handleAdd} className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">{t("common.add") || "Add"}</button>
+              <button onClick={() => setShowAdd(false)} className="rounded-lg border border-border px-4 py-2 text-xs lg:text-sm hover:bg-accent">{t("common.cancel") || "Cancel"}</button>
+              <button onClick={handleAdd} className="rounded-lg bg-primary px-4 py-2 text-xs lg:text-sm text-primary-foreground hover:bg-primary/90">{t("common.add") || "Add"}</button>
             </div>
           </div>
         )}
@@ -302,7 +302,7 @@ export function McpClient() {
         ) : filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
             <Plug size={32} className="mb-3 opacity-30" />
-            <p className="text-sm">{query ? (t("mcp.noMatch") || "No matching servers") : (t("mcp.noServers") || "No MCP servers yet")}</p>
+            <p className="text-xs lg:text-sm">{query ? (t("mcp.noMatch") || "No matching servers") : (t("mcp.noServers") || "No MCP servers yet")}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -313,7 +313,7 @@ export function McpClient() {
               return (
                 <div key={server.id} className="group rounded-xl border border-border bg-card overflow-hidden transition-all hover:border-border/80">
                   {/* Server header */}
-                  <div className="flex items-center gap-3 px-3 lg:px-5 py-3 lg:py-4">
+                  <div className="flex items-center gap-3 px-3 lg:px-5 py-2 lg:py-4">
                     <button onClick={() => toggleExpand(server.id)} className="text-muted-foreground hover:text-foreground transition-colors">
                       {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
                     </button>
@@ -324,7 +324,7 @@ export function McpClient() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{server.name}</span>
+                        <span className="text-xs lg:text-sm font-medium">{server.name}</span>
                         <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">{server.transport}</span>
                         {server.connected ? (
                           <span className="flex items-center gap-1 text-[10px] text-green-400">
@@ -364,7 +364,7 @@ export function McpClient() {
 
                   {/* Expanded: tools + config */}
                   {isExpanded && (
-                    <div className="border-t border-border bg-muted/30 px-3 lg:px-5 py-3 lg:py-4 space-y-4">
+                    <div className="border-t border-border bg-muted/30 px-3 lg:px-5 py-2 lg:py-4 space-y-4">
                       {/* Server info */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
                         <div><span className="text-muted-foreground">URL:</span> <span className="font-mono">{server.url}</span></div>

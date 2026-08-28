@@ -165,13 +165,13 @@ export function SystemDoctorClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
+        <div className="flex items-center gap-2 lg:gap-3">
           <Stethoscope size={20} className="text-rose-500" />
           <h1 className="text-lg font-semibold">System Doctor</h1>
           {report && (
             <span className={cn(
-              'rounded-full border px-2.5 py-0.5 text-sm font-bold',
+              'rounded-full border px-2.5 py-0.5 text-xs lg:text-sm font-bold',
               GRADE_COLORS[report.grade] || 'text-gray-400'
             )}>
               {report.grade}
@@ -186,7 +186,7 @@ export function SystemDoctorClient() {
         <button
           onClick={runFullReport}
           disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-sm text-white hover:bg-rose-600 disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg bg-rose-500 px-3 py-1.5 text-xs lg:text-sm text-white hover:bg-rose-600 disabled:opacity-50"
         >
           {loading ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
           {loading ? 'Scanning...' : 'Run Diagnostics'}
@@ -194,7 +194,7 @@ export function SystemDoctorClient() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-border px-6">
+      <div className="flex gap-1 border-b border-border px-3 lg:px-6">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -202,7 +202,7 @@ export function SystemDoctorClient() {
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
               className={cn(
-                'flex items-center gap-1.5 px-3 py-2.5 text-sm transition-colors border-b-2',
+                'flex items-center gap-1.5 px-3 py-2.5 text-xs lg:text-sm transition-colors border-b-2',
                 activeTab === tab.id
                   ? 'border-rose-500 text-rose-500'
                   : 'border-transparent text-muted-foreground hover:text-foreground'
@@ -215,11 +215,11 @@ export function SystemDoctorClient() {
         })}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
         {loading && !report && (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 size={32} className="animate-spin text-rose-500 mb-3" />
-            <p className="text-sm text-muted-foreground">Running comprehensive diagnostics...</p>
+            <p className="text-xs lg:text-sm text-muted-foreground">Running comprehensive diagnostics...</p>
           </div>
         )}
 
@@ -230,7 +230,7 @@ export function SystemDoctorClient() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">Health Score</span>
-                <p className="text-3xl font-bold mt-1">{report.health_score}<span className="text-base text-muted-foreground">/100</span></p>
+                <p className="text-2xl lg:text-3xl font-bold mt-1">{report.health_score}<span className="text-base text-muted-foreground">/100</span></p>
                 <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
                   <div
                     className={cn(
@@ -244,7 +244,7 @@ export function SystemDoctorClient() {
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">Organs OK</span>
-                <p className="text-3xl font-bold mt-1">
+                <p className="text-2xl lg:text-3xl font-bold mt-1">
                   <span className="text-emerald-500">{report.summary.organs.ok}</span>
                   <span className="text-base text-muted-foreground">/{report.summary.organs.total}</span>
                 </p>
@@ -254,7 +254,7 @@ export function SystemDoctorClient() {
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">Integrations</span>
-                <p className="text-3xl font-bold mt-1">
+                <p className="text-2xl lg:text-3xl font-bold mt-1">
                   <span className="text-emerald-500">{report.summary.integrations.ok}</span>
                   <span className="text-base text-muted-foreground">/{report.summary.integrations.total}</span>
                 </p>
@@ -272,7 +272,7 @@ export function SystemDoctorClient() {
             {/* Recommendations */}
             {report.recommendations.length > 0 && (
               <div className="rounded-xl border border-border bg-card p-4">
-                <h3 className="text-sm font-medium flex items-center gap-2 mb-3">
+                <h3 className="text-xs lg:text-sm font-medium flex items-center gap-2 mb-3">
                   <Info size={14} className="text-blue-500" />
                   Recommendations
                 </h3>
@@ -285,7 +285,7 @@ export function SystemDoctorClient() {
                         </span>
                         <span className="text-xs font-medium">{rec.category}</span>
                       </div>
-                      <p className="text-sm">{rec.message}</p>
+                      <p className="text-xs lg:text-sm">{rec.message}</p>
                       <p className="text-xs text-muted-foreground mt-1">→ {rec.action}</p>
                     </div>
                   ))}
@@ -295,7 +295,7 @@ export function SystemDoctorClient() {
 
             {/* Slowest Organs */}
             <div className="rounded-xl border border-border bg-card p-4">
-              <h3 className="text-sm font-medium mb-3">Slowest Organs</h3>
+              <h3 className="text-xs lg:text-sm font-medium mb-3">Slowest Organs</h3>
               <div className="space-y-1">
                 {report.organs
                   .filter((o) => o.status !== 'ok')
@@ -304,9 +304,9 @@ export function SystemDoctorClient() {
                   .map((organ) => {
                     const Icon = STATUS_ICON[organ.status] || CheckCircle;
                     return (
-                      <div key={organ.id} className="flex items-center gap-3 rounded-lg px-3 py-2 hover:bg-muted/50">
+                      <div key={organ.id} className="flex items-center gap-2 lg:gap-3 rounded-lg px-3 py-2 hover:bg-muted/50">
                         <Icon size={14} className={STATUS_COLOR[organ.status]} />
-                        <span className="text-sm font-medium flex-1">{organ.label}</span>
+                        <span className="text-xs lg:text-sm font-medium flex-1">{organ.label}</span>
                         <span className={cn(
                           'text-xs font-mono',
                           organ.response_ms > 5000 ? 'text-red-500' :
@@ -332,11 +332,11 @@ export function SystemDoctorClient() {
                 <div key={organ.id} className="rounded-lg border border-border bg-card overflow-hidden">
                   <div
                     onClick={() => setExpandedOrgan(isExpanded ? null : organ.id)}
-                    className="flex items-center gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50"
+                    className="flex items-center gap-2 lg:gap-3 px-4 py-3 cursor-pointer hover:bg-muted/50"
                   >
                     {isExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
                     <Icon size={14} className={STATUS_COLOR[organ.status]} />
-                    <span className="text-sm font-medium flex-1">{organ.label}</span>
+                    <span className="text-xs lg:text-sm font-medium flex-1">{organ.label}</span>
                     <span className="text-xs text-muted-foreground font-mono">{organ.id}</span>
                     <span className={cn(
                       'text-xs font-mono px-2 py-0.5 rounded',
@@ -383,10 +383,10 @@ export function SystemDoctorClient() {
               const Icon = STATUS_ICON[integration.status] || CheckCircle;
               return (
                 <div key={integration.id} className="rounded-xl border border-border bg-card p-4">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 lg:gap-3">
                     <Icon size={16} className={STATUS_COLOR[integration.status]} />
                     <div className="flex-1">
-                      <p className="text-sm font-medium">{integration.name}</p>
+                      <p className="text-xs lg:text-sm font-medium">{integration.name}</p>
                       <p className="text-xs text-muted-foreground">{integration.description}</p>
                     </div>
                     <span className={cn(
@@ -410,13 +410,13 @@ export function SystemDoctorClient() {
         {activeTab === 'storage' && report && (
           <>
             <div className="rounded-xl border border-border bg-card p-4">
-              <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <h3 className="text-xs lg:text-sm font-medium mb-3 flex items-center gap-2">
                 <HardDrive size={14} className="text-blue-500" />
                 Storage Breakdown
               </h3>
               <div className="space-y-2">
                 {report.storage_breakdown.map((item) => (
-                  <div key={item.name} className="flex items-center gap-3">
+                  <div key={item.name} className="flex items-center gap-2 lg:gap-3">
                     <span className="text-xs text-muted-foreground w-40 truncate">{item.name}</span>
                     <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
                       <div
@@ -435,7 +435,7 @@ export function SystemDoctorClient() {
               </div>
               <div className="mt-3 pt-3 border-t border-border flex justify-between">
                 <span className="text-xs text-muted-foreground">Total managed storage</span>
-                <span className="text-sm font-bold">{report.summary.storage.total_human}</span>
+                <span className="text-xs lg:text-sm font-bold">{report.summary.storage.total_human}</span>
               </div>
             </div>
           </>
@@ -445,7 +445,7 @@ export function SystemDoctorClient() {
         {activeTab === 'cleanup' && (
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-card p-4">
-              <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <h3 className="text-xs lg:text-sm font-medium mb-3 flex items-center gap-2">
                 <Trash2 size={14} className="text-orange-500" />
                 Storage Cleanup
               </h3>
@@ -453,7 +453,7 @@ export function SystemDoctorClient() {
                 Clean up temporary files, old logs, and cache data older than 7 days.
               </p>
               <div className="flex items-center gap-4 mb-4">
-                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                <label className="flex items-center gap-2 text-xs lg:text-sm cursor-pointer">
                   <input
                     type="checkbox"
                     checked={dryRun}
@@ -466,7 +466,7 @@ export function SystemDoctorClient() {
                   onClick={runCleanup}
                   disabled={cleanupLoading}
                   className={cn(
-                    'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm text-white disabled:opacity-50',
+                    'flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs lg:text-sm text-white disabled:opacity-50',
                     dryRun
                       ? 'bg-blue-500 hover:bg-blue-600'
                       : 'bg-orange-500 hover:bg-orange-600'
@@ -483,7 +483,7 @@ export function SystemDoctorClient() {
 
               {cleanupResult && (
                 <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-sm">
+                  <div className="flex items-center gap-2 text-xs lg:text-sm">
                     <FileText size={14} className="text-muted-foreground" />
                     <span>
                       {cleanupResult.dry_run ? 'Preview' : 'Cleanup'} complete —

@@ -147,7 +147,7 @@ function StatCard({ icon: Icon, label, value, sub, color, bg }: {
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className={cn("rounded-lg p-1.5", bg)}><Icon size={14} className={color} /></div>
       </div>
-      <p className="text-2xl font-bold">{value}</p>
+      <p className="text-xl lg:text-2xl font-bold">{value}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
     </div>
   );
@@ -244,7 +244,7 @@ function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
                 <div
                   key={v.version_number}
                   className={cn(
-                    "flex items-center gap-3 px-3 py-2.5 border-b border-border last:border-0",
+                    "flex items-center gap-2 lg:gap-3 px-3 py-2.5 border-b border-border last:border-0",
                     idx === 0 && "bg-primary/5"
                   )}
                 >
@@ -268,7 +268,7 @@ function VersionHistoryPanel({ fileId, apiBase, onRollback }: {
                         </span>
                       )}
                     </div>
-                    <div className="flex items-center gap-3 mt-0.5">
+                    <div className="flex items-center gap-2 lg:gap-3 mt-0.5">
                       <span className="text-[10px] text-muted-foreground">
                         {formatTime(v.created_at)}
                       </span>
@@ -664,7 +664,7 @@ export function VeinClient() {
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 lg:gap-3">
           <Folder size={20} className="text-red-500" />
           <h1 className="text-lg font-semibold">{t("vein.title") || "Vein · File Management"}</h1>
           <span className="rounded-full bg-red-500/10 px-2 py-0.5 text-xs font-medium text-red-500">
@@ -677,7 +677,7 @@ export function VeinClient() {
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploading}
-                className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-sm text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-3.5 py-1.5 text-xs lg:text-sm text-white hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 <Upload size={14} />
                 {uploading ? (t("vein.uploading") || "Uploading...") : (t("vein.upload") || "Upload File")}
@@ -687,7 +687,7 @@ export function VeinClient() {
           )}
           <button
             onClick={() => { fetchFiles(); fetchStats(); fetchChunkedUploads(); }}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors"
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors"
           >
             <RefreshCw size={14} /> {t("common.refresh") || "Refresh"}
           </button>
@@ -701,7 +701,7 @@ export function VeinClient() {
             key={t.id}
             onClick={() => setTab(t.id)}
             className={cn(
-              "flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-colors",
+              "flex items-center gap-1.5 px-2 lg:px-4 py-2.5 text-xs lg:text-sm font-medium border-b-2 transition-colors",
               tab === t.id
                 ? "border-primary text-primary"
                 : "border-transparent text-muted-foreground hover:text-foreground"
@@ -717,7 +717,7 @@ export function VeinClient() {
         {/* Upload progress */}
         {uploadProgress && (
           <div className={cn(
-            "rounded-lg px-4 py-2.5 text-sm",
+            "rounded-lg px-2 lg:px-4 py-2.5 text-xs lg:text-sm",
             uploadStatus === "success"
               ? "bg-emerald-500/10 text-emerald-500"
               : uploadStatus === "error"
@@ -730,7 +730,7 @@ export function VeinClient() {
 
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
             <StatCard
               icon={Folder}
               label={t("vein.totalFiles") || "Total Files"}
@@ -794,7 +794,7 @@ export function VeinClient() {
               )}
             >
               <Upload size={32} className="mx-auto text-muted-foreground/50" />
-              <p className="mt-2 text-sm font-medium">
+              <p className="mt-2 text-xs lg:text-sm font-medium">
                 {dragActive ? (t("vein.dropToUpload") || "Drop to upload") : (t("vein.dragOrClick") || "Drag files here or click to select")}
               </p>
               <p className="text-xs text-muted-foreground">
@@ -805,15 +805,15 @@ export function VeinClient() {
             {/* Chunked Upload Sessions */}
             {chunkedUploads.length > 0 && (
               <div className="rounded-xl border border-border bg-card p-4">
-                <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+                <h3 className="text-xs lg:text-sm font-medium mb-3 flex items-center gap-2">
                   <Layers size={14} className="text-blue-500" />
                   {t("vein.activeChunkedUploads", { count: chunkedUploads.length })}
                 </h3>
                 <div className="space-y-2">
                   {chunkedUploads.map((s: any) => (
-                    <div key={s.upload_id} className="flex items-center gap-3 rounded-lg border border-border p-3">
+                    <div key={s.upload_id} className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border p-3">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate">{s.filename}</p>
+                        <p className="text-xs lg:text-sm font-medium truncate">{s.filename}</p>
                         <div className="flex items-center gap-2 mt-1">
                           <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
                             <div
@@ -840,7 +840,7 @@ export function VeinClient() {
 
             {/* Search + File List */}
             <div className="space-y-3">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 lg:gap-3">
                 <div className="relative flex-1 max-w-sm">
                   <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                   <input
@@ -849,19 +849,19 @@ export function VeinClient() {
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                    className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/20"
+                    className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/20"
                   />
                 </div>
                 <button
                   onClick={handleSearch}
-                  className="rounded-lg bg-primary px-4 py-2 text-sm text-white hover:bg-primary/90 transition-colors"
+                  className="rounded-lg bg-primary px-2 lg:px-4 py-2 text-xs lg:text-sm text-white hover:bg-primary/90 transition-colors"
                 >
                   {t("common.search") || "Search"}
                 </button>
                 <button
                   onClick={handleBatchAutoProcess}
                   disabled={batchProcessing}
-                  className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-2 text-sm text-amber-600 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-2 text-xs lg:text-sm text-amber-600 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
                 >
                   {batchProcessing ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
                   {batchProcessing ? t("vein.batchProcessingBtn") : t("vein.batchRecognizeBtn")}
@@ -874,11 +874,11 @@ export function VeinClient() {
               {/* Batch Auto-Process Result */}
               {batchResult && (
                 <div className={cn(
-                  "rounded-xl border p-4 text-sm",
+                  "rounded-xl border p-4 text-xs lg:text-sm",
                   batchResult.status === "ok" ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"
                 )}>
                   {batchResult.status === "ok" ? (
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-2 lg:gap-4">
                       <Zap size={16} className="text-amber-500 shrink-0" />
                       <div className="flex-1">
                         <span className="font-medium">{t("vein.batchRecognizeDone")}</span>
@@ -903,29 +903,29 @@ export function VeinClient() {
               {filteredFiles.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <FolderOpen size={40} className="opacity-30 mb-3" />
-                  <p className="text-sm">{t("vein.noFiles") || "No files"}</p>
+                  <p className="text-xs lg:text-sm">{t("vein.noFiles") || "No files"}</p>
                   <p className="text-xs mt-1">
                     {search ? (t("vein.noMatch") || "No matching files") : (t("vein.startUpload") || "Upload File")}
                   </p>
                 </div>
               ) : (
                 <div className="rounded-xl border border-border overflow-hidden">
-                  <table className="w-full text-sm">
+                  <table className="w-full text-xs lg:text-sm">
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
-                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
+                        <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground">
                           {t("vein.fileName") || "Filename"}
                         </th>
-                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
+                        <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
                           {t("vein.size") || "Size"}
                         </th>
-                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
+                        <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground w-24">
                           {t("vein.type") || "Type"}
                         </th>
-                        <th className="px-4 py-2.5 text-left font-medium text-muted-foreground w-40">
+                        <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground w-40">
                           {t("vein.uploadTime") || "Upload Time"}
                         </th>
-                        <th className="px-4 py-2.5 text-right font-medium text-muted-foreground w-28">
+                        <th className="px-2 lg:px-4 py-2.5 text-right font-medium text-muted-foreground w-28">
                           {t("vein.actions") || "Actions"}
                         </th>
                       </tr>
@@ -942,7 +942,7 @@ export function VeinClient() {
                             )}
                             onClick={() => handleSelectFile(f)}
                           >
-                            <td className="px-4 py-2.5">
+                            <td className="px-2 lg:px-4 py-2.5">
                               <div className="flex items-center gap-2">
                                 <FileIcon size={14} className="shrink-0 text-muted-foreground" />
                                 <span className="truncate max-w-[280px]" title={f.name}>
@@ -950,16 +950,16 @@ export function VeinClient() {
                                 </span>
                               </div>
                             </td>
-                            <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                            <td className="px-2 lg:px-4 py-2.5 text-xs text-muted-foreground">
                               {formatBytes(f.size)}
                             </td>
-                            <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                            <td className="px-2 lg:px-4 py-2.5 text-xs text-muted-foreground">
                               {getFileTypeLabel(f.mime_type)}
                             </td>
-                            <td className="px-4 py-2.5 text-xs text-muted-foreground">
+                            <td className="px-2 lg:px-4 py-2.5 text-xs text-muted-foreground">
                               {formatTime(f.created_at)}
                             </td>
-                            <td className="px-4 py-2.5 text-right">
+                            <td className="px-2 lg:px-4 py-2.5 text-right">
                               <div className="flex gap-1 justify-end">
                                 <button
                                   onClick={(e) => { e.stopPropagation(); handleDownload(f.file_id, f.name); }}
@@ -995,10 +995,10 @@ export function VeinClient() {
               {/* File Detail Panel */}
               {selectedFile && (
                 <div className="rounded-xl border border-border bg-card overflow-hidden">
-                  <div className="flex items-center justify-between px-4 py-3 border-b border-border bg-muted/20">
+                  <div className="flex items-center justify-between px-2 lg:px-4 py-3 border-b border-border bg-muted/20">
                     <div className="flex items-center gap-2 min-w-0">
                       {(() => { const Icon = getFileIcon(selectedFile.mime_type); return <Icon size={16} className="shrink-0 text-primary" />; })()}
-                      <h3 className="text-sm font-medium truncate">{selectedFile.name}</h3>
+                      <h3 className="text-xs lg:text-sm font-medium truncate">{selectedFile.name}</h3>
                       <span className="shrink-0 rounded-full bg-primary/10 px-2 py-0.5 text-xs text-primary">
                         {getFileTypeLabel(selectedFile.mime_type)}
                       </span>
@@ -1016,7 +1016,7 @@ export function VeinClient() {
                     {loadingPreview ? (
                       <div className="flex items-center justify-center py-12 text-muted-foreground">
                         <RefreshCw size={16} className="animate-spin mr-2" />
-                        <span className="text-sm">{t("vein.loadingPreviewText")}</span>
+                        <span className="text-xs lg:text-sm">{t("vein.loadingPreviewText")}</span>
                       </div>
                     ) : previewType === "image" && previewContent ? (
                       <div className="rounded-lg border border-border bg-muted/20 p-3 flex items-center justify-center">
@@ -1035,30 +1035,30 @@ export function VeinClient() {
                     ) : null}
 
                     {/* Metadata Grid */}
-                    <div className="grid grid-cols-2 gap-3">
+                    <div className="grid grid-cols-2 gap-2 lg:gap-3">
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <HardDrive size={12} /> {t("vein.fileSizeLabel")}
                         </div>
-                        <p className="text-sm font-medium">{formatBytes(selectedFile.size)}</p>
+                        <p className="text-xs lg:text-sm font-medium">{formatBytes(selectedFile.size)}</p>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <FileType size={12} /> {t("vein.mimeTypeLabel")}
                         </div>
-                        <p className="text-sm font-medium">{selectedFile.mime_type}</p>
+                        <p className="text-xs lg:text-sm font-medium">{selectedFile.mime_type}</p>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Clock size={12} /> {t("vein.uploadTimeLabel")}
                         </div>
-                        <p className="text-sm font-medium">{formatTime(selectedFile.created_at)}</p>
+                        <p className="text-xs lg:text-sm font-medium">{formatTime(selectedFile.created_at)}</p>
                       </div>
                       <div className="space-y-1">
                         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
                           <Tag size={12} /> {t("vein.tagsLabel")}
                         </div>
-                        <p className="text-sm font-medium">
+                        <p className="text-xs lg:text-sm font-medium">
                           {selectedFile.tags.length > 0 ? selectedFile.tags.join(", ") : "—"}
                         </p>
                       </div>
@@ -1119,11 +1119,11 @@ export function VeinClient() {
                     <div className="flex gap-2 pt-2 border-t border-border">
                       <button
                         onClick={() => handleDownload(selectedFile.file_id, selectedFile.name)}
-                        className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-sm text-white hover:bg-primary/90 transition-colors"
+                        className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs lg:text-sm text-white hover:bg-primary/90 transition-colors"
                       >
                         <Download size={14} /> {t("vein.downloadFileAction")}
                       </button>
-                      <label className="flex items-center justify-center gap-1.5 rounded-lg border border-blue-500/30 px-3 py-2 text-sm text-blue-500 hover:bg-blue-500/10 transition-colors cursor-pointer">
+                      <label className="flex items-center justify-center gap-1.5 rounded-lg border border-blue-500/30 px-3 py-2 text-xs lg:text-sm text-blue-500 hover:bg-blue-500/10 transition-colors cursor-pointer">
                         <Upload size={14} /> {t("vein.updateVersionAction")}
                         <input
                           type="file"
@@ -1148,20 +1148,20 @@ export function VeinClient() {
                       </label>
                       <button
                         onClick={() => { if (confirm(t("vein.confirmDeleteFile", { name: selectedFile.name }))) handleDelete(selectedFile.file_id); }}
-                        className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-red-500/30 px-3 py-2 text-xs lg:text-sm text-red-500 hover:bg-red-500/10 transition-colors"
                       >
                         <Trash2 size={14} /> {t("vein.deleteAction")}
                       </button>
                       <button
                         onClick={() => { if (confirm(t("vein.confirmPromoteFile", { name: selectedFile.name }))) handlePromote(selectedFile.file_id); }}
-                        className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500/30 px-3 py-2 text-sm text-emerald-500 hover:bg-emerald-500/10 transition-colors"
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-emerald-500/30 px-3 py-2 text-xs lg:text-sm text-emerald-500 hover:bg-emerald-500/10 transition-colors"
                       >
                         <BookOpen size={14} /> {t("vein.promoteToKnowledgeAction")}
                       </button>
                       <button
                         onClick={() => handleAutoProcess(selectedFile.file_id)}
                         disabled={autoProcessing}
-                        className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-2 text-sm text-amber-500 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
+                        className="flex items-center justify-center gap-1.5 rounded-lg border border-amber-500/30 px-3 py-2 text-xs lg:text-sm text-amber-500 hover:bg-amber-500/10 transition-colors disabled:opacity-50"
                       >
                         {autoProcessing ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
                         {autoProcessing ? t("vein.processingBtn") : t("vein.smartRecognizeAction")}
@@ -1209,7 +1209,7 @@ export function VeinClient() {
         {tab === "cache" && stats && (
           <div className="space-y-6">
             {/* Cache Overview */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
               <StatCard
                 icon={CacheIcon}
                 label={t("vein.cacheEntriesLabel")}
@@ -1247,7 +1247,7 @@ export function VeinClient() {
             {/* Cache Usage Bar */}
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center justify-between mb-2">
-                <h3 className="text-sm font-medium">{t("vein.cacheSpaceUsage")}</h3>
+                <h3 className="text-xs lg:text-sm font-medium">{t("vein.cacheSpaceUsage")}</h3>
                 <span className="text-xs text-muted-foreground">
                   {formatBytes(stats.cache.current_size_bytes)} / {formatBytes(stats.cache.max_size_bytes)}
                 </span>
@@ -1272,18 +1272,18 @@ export function VeinClient() {
 
             {/* Cache Actions */}
             <div className="rounded-xl border border-border bg-card p-4">
-              <h3 className="text-sm font-medium mb-3">{t("vein.cacheOperationsTitle")}</h3>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <h3 className="text-xs lg:text-sm font-medium mb-3">{t("vein.cacheOperationsTitle")}</h3>
+              <div className="flex flex-col sm:flex-row gap-2 lg:gap-3">
                 <button
                   onClick={handleCacheCleanup}
-                  className="flex items-center gap-1.5 rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted transition-colors"
+                  className="flex items-center gap-1.5 rounded-lg border border-border px-2 lg:px-4 py-2 text-xs lg:text-sm hover:bg-muted transition-colors"
                 >
                   <RefreshCw size={14} />
                   {t("vein.cleanupExpiredBtn")}
                 </button>
                 <button
                   onClick={handleCacheClear}
-                  className="flex items-center gap-1.5 rounded-lg border border-red-500/30 px-4 py-2 text-sm text-red-500 hover:bg-red-500/10 transition-colors"
+                  className="flex items-center gap-1.5 rounded-lg border border-red-500/30 px-2 lg:px-4 py-2 text-xs lg:text-sm text-red-500 hover:bg-red-500/10 transition-colors"
                 >
                   <Trash2 size={14} />
                   {t("vein.clearAllCacheBtn")}
@@ -1296,21 +1296,21 @@ export function VeinClient() {
 
             {/* Dedup Info */}
             <div className="rounded-xl border border-border bg-card p-4">
-              <h3 className="text-sm font-medium mb-3 flex items-center gap-2">
+              <h3 className="text-xs lg:text-sm font-medium mb-3 flex items-center gap-2">
                 <Database size={14} className="text-amber-500" />
                 {t("vein.dedupStatsTitle")}
               </h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-3 gap-2 lg:gap-4">
                 <div>
-                  <p className="text-2xl font-bold">{stats.store.total_files}</p>
+                  <p className="text-xl lg:text-2xl font-bold">{stats.store.total_files}</p>
                   <p className="text-xs text-muted-foreground">{t("vein.logicalFilesLabel")}</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{stats.store.unique_blobs}</p>
+                  <p className="text-xl lg:text-2xl font-bold">{stats.store.unique_blobs}</p>
                   <p className="text-xs text-muted-foreground">{t("vein.uniqueBlobsLabel")}</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold text-amber-500">{formatBytes(stats.store.dedup_savings_bytes)}</p>
+                  <p className="text-xl lg:text-2xl font-bold text-amber-500">{formatBytes(stats.store.dedup_savings_bytes)}</p>
                   <p className="text-xs text-muted-foreground">{t("vein.dedupSavingsSpaceLabel")}</p>
                 </div>
               </div>

@@ -92,7 +92,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-4">
         <p className="text-muted-foreground">{t("learn.courseNotFound") || "Course not found"}</p>
-        <Link href="/learn" className="text-sm text-primary hover:underline">
+        <Link href="/learn" className="text-xs lg:text-sm text-primary hover:underline">
           ← {t("learn.backToCourses") || "Back to courses"}
         </Link>
       </div>
@@ -152,7 +152,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 md:px-6 py-3 md:py-4">
+      <div className="flex items-center justify-between border-b border-border px-4 md:px-3 lg:px-6 py-3 md:py-4">
         <div className="flex items-center gap-2 md:gap-3">
           {isMobile && (
             <button onClick={() => setShowSidebar(true)} className="p-1 rounded hover:bg-muted">
@@ -166,7 +166,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
             <ArrowLeft size={16} />
           </Link>
           <div>
-            <h1 className="text-sm font-semibold">{course.title}</h1>
+            <h1 className="text-xs lg:text-sm font-semibold">{course.title}</h1>
             <p className="text-xs text-muted-foreground">
               {t("learn.chaptersCompletedCount", { completed: completedCount, total: chapters.length }) || `${completedCount}/${chapters.length} chapters completed`}
             </p>
@@ -192,7 +192,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
           <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
             <SheetContent side="left" showCloseButton={false} className="w-72 p-0 flex flex-col">
               <div className="p-4 border-b border-border flex items-center justify-between">
-                <h3 className="text-sm font-medium">{t("learn.chapters") || "Chapters"}</h3>
+                <h3 className="text-xs lg:text-sm font-medium">{t("learn.chapters") || "Chapters"}</h3>
                 <button onClick={() => setShowSidebar(false)} className="p-1 rounded hover:bg-muted">
                   <ChevronLeft size={16} />
                 </button>
@@ -218,7 +218,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
                     <button
                       key={ch.id}
                       onClick={() => { handleChapterChange(i); if (isMobile) setShowSidebar(false); }}
-                      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs lg:text-sm transition-colors ${
                         i === currentIndex
                           ? "bg-accent text-foreground font-medium"
                           : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -258,7 +258,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
                 <button
                   key={ch.id}
                   onClick={() => handleChapterChange(i)}
-                  className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                  className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-xs lg:text-sm transition-colors ${
                     i === currentIndex
                       ? "bg-accent text-foreground font-medium"
                       : "text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -281,7 +281,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
           {!chapter ? (
             <div className="flex h-full flex-col items-center justify-center text-muted-foreground">
               <BookOpen size={48} className="mb-4 opacity-30" />
-              <p className="text-sm">{t("learn.noChapters") || "No chapters yet"}</p>
+              <p className="text-xs lg:text-sm">{t("learn.noChapters") || "No chapters yet"}</p>
             </div>
           ) : showQuiz && currentQuiz.length > 0 ? (
             <div className="mx-auto max-w-2xl p-8">
@@ -296,7 +296,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
                     key={qi}
                     className="rounded-lg border border-border bg-card p-4"
                   >
-                    <p className="mb-3 text-sm font-medium">
+                    <p className="mb-3 text-xs lg:text-sm font-medium">
                       {qi + 1}. {q.question}
                     </p>
                     <div className="space-y-2">
@@ -317,7 +317,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
                                 return next;
                               })
                             }
-                            className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-sm transition-colors ${
+                            className={`flex w-full items-center gap-2 rounded-md border px-3 py-2 text-left text-xs lg:text-sm transition-colors ${
                               isCorrect
                                 ? "border-green-500 bg-green-500/10 text-green-700"
                                 : isWrong
@@ -346,7 +346,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
 
               <div className="mt-6 flex items-center justify-between">
                 {quizSubmitted ? (
-                  <p className="text-sm font-medium">
+                  <p className="text-xs lg:text-sm font-medium">
                     {t("learn.score") || "Score"}: {quizScore}/{currentQuiz.length} (
                     {Math.round(((quizScore ?? 0) / currentQuiz.length) * 100)}%)
                   </p>

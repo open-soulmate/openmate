@@ -217,19 +217,19 @@ export function MarketplaceClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 border-b border-border px-6 py-4">
+      <div className="shrink-0 border-b border-border px-3 lg:px-6 py-2 lg:py-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Store className="h-6 w-6 text-primary" />
             <div>
               <h1 className="text-xl font-semibold">{t("marketplace.title") || "Marketplace"}</h1>
-              <p className="text-sm text-muted-foreground">{t("marketplace.subtitleDesc") || "Discover, install and manage skills & Agents"}</p>
+              <p className="text-xs lg:text-sm text-muted-foreground">{t("marketplace.subtitleDesc") || "Discover, install and manage skills & Agents"}</p>
             </div>
           </div>
           <button
             onClick={handleSyncAll}
             disabled={syncing.has(`all-${activeTab}`)}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {syncing.has(`all-${activeTab}`) ? (
               <Loader2 className="h-4 w-4 animate-spin" />
@@ -243,7 +243,7 @@ export function MarketplaceClient() {
 
       {/* Stats */}
       {stats && (
-        <div className="shrink-0 grid grid-cols-4 gap-4 border-b border-border px-6 py-4">
+        <div className="shrink-0 grid grid-cols-4 gap-4 border-b border-border px-3 lg:px-6 py-2 lg:py-4">
           <StatCard icon={Package} label={t("marketplace.skillSources") || "Skill Sources"} value={stats.skill_sources} color="text-blue-500" />
           <StatCard icon={Bot} label={t("marketplace.agentSources") || "Agent Sources"} value={stats.agent_sources} color="text-green-500" />
           <StatCard icon={Download} label={t("marketplace.installedSkills") || "Installed Skills"} value={stats.total_skills} color="text-purple-500" />
@@ -253,7 +253,7 @@ export function MarketplaceClient() {
 
       {/* Error */}
       {error && (
-        <div className="shrink-0 flex items-center gap-2 border-b border-border bg-destructive/10 px-6 py-2 text-sm text-destructive">
+        <div className="shrink-0 flex items-center gap-2 border-b border-border bg-destructive/10 px-3 lg:px-6 py-2 text-xs lg:text-sm text-destructive">
           <AlertCircle className="h-4 w-4" />
           {error}
           <button onClick={() => setError(null)} className="ml-auto text-xs underline">{t("marketplace.close") || "Close"}</button>
@@ -261,7 +261,7 @@ export function MarketplaceClient() {
       )}
 
       {/* Tabs + Search */}
-      <div className="shrink-0 flex items-center gap-4 border-b border-border px-6 py-2">
+      <div className="shrink-0 flex items-center gap-4 border-b border-border px-3 lg:px-6 py-2">
         <div className="flex gap-1">
           <TabButton active={activeTab === "skills"} onClick={() => setActiveTab("skills")} icon={Package} label={t("marketplace.skillSources") || "Skill Sources"} count={skillSources.length} />
           <TabButton active={activeTab === "agents"} onClick={() => setActiveTab("agents")} icon={Bot} label={t("marketplace.agentSources") || "Agent Sources"} count={agentSources.length} />
@@ -273,13 +273,13 @@ export function MarketplaceClient() {
             placeholder={t("marketplace.searchSources") || "Search sources..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background py-1.5 pl-9 pr-3 text-sm outline-none focus:border-primary"
+            className="w-full rounded-lg border border-border bg-background py-1.5 pl-9 pr-3 text-xs lg:text-sm outline-none focus:border-primary"
           />
         </div>
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-2 lg:py-4">
         {activeTab === "skills" ? (
           <SourceGrid
             sources={filteredSkills}
@@ -319,7 +319,7 @@ function TabButton({ active, onClick, icon: Icon, label, count }: { active: bool
     <button
       onClick={onClick}
       className={cn(
-        "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-sm font-medium transition-colors",
+        "flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs lg:text-sm font-medium transition-colors",
         active ? "bg-primary/10 text-primary" : "text-muted-foreground hover:text-foreground"
       )}
     >
@@ -354,7 +354,7 @@ function SourceGrid({ sources, syncing, onSync, type }: { sources: SourceItem[];
     return (
       <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
         <Store className="mb-4 h-12 w-12" />
-        <p className="text-sm">{t("marketplace.noSources", { type: typeName }) || `No ${typeName} sources`}</p>
+        <p className="text-xs lg:text-sm">{t("marketplace.noSources", { type: typeName }) || `No ${typeName} sources`}</p>
       </div>
     );
   }
@@ -385,7 +385,7 @@ function SourceCard({ source, syncing, onSync }: { source: SourceItem; syncing: 
             <Icon className="h-4 w-4 text-foreground" />
           </div>
           <div>
-            <h3 className="text-sm font-medium">{source.name}</h3>
+            <h3 className="text-xs lg:text-sm font-medium">{source.name}</h3>
             <span className="text-[10px] uppercase text-muted-foreground">{source.type}</span>
           </div>
         </div>

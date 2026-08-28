@@ -186,7 +186,7 @@ export function MetricsClient() {
 
   if (!metrics) {
     return (
-      <div className="p-6 text-center text-muted-foreground">
+      <div className="p-3 lg:p-6 text-center text-muted-foreground">
         {t("metrics.loadFailed", "Failed to load metrics")}
       </div>
     );
@@ -212,10 +212,10 @@ export function MetricsClient() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2">
             📊 {t("metrics.title", "Prometheus Metrics")}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs lg:text-sm text-muted-foreground mt-1">
             {t(
               "metrics.subtitle",
               "OpenTelemetry-compatible metrics for Grafana dashboards"
@@ -255,13 +255,13 @@ export function MetricsClient() {
           <div className="text-xs text-muted-foreground mb-1">
             {t("metrics.uptime", "Uptime")}
           </div>
-          <div className="text-2xl font-bold">{formatUptime(metrics.uptime)}</div>
+          <div className="text-xl lg:text-2xl font-bold">{formatUptime(metrics.uptime)}</div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground mb-1">
             {t("metrics.organs", "Organs")}
           </div>
-          <div className="text-2xl font-bold">
+          <div className="text-xl lg:text-2xl font-bold">
             <span className={healthyOrgans === totalOrgans ? "text-green-500" : "text-yellow-500"}>
               {healthyOrgans}
             </span>
@@ -272,7 +272,7 @@ export function MetricsClient() {
           <div className="text-xs text-muted-foreground mb-1">
             {t("metrics.memory", "Memory")}
           </div>
-          <div className="text-2xl font-bold">{formatBytes(metrics.memory)}</div>
+          <div className="text-xl lg:text-2xl font-bold">{formatBytes(metrics.memory)}</div>
           <div className="text-xs text-muted-foreground">
             RSS
           </div>
@@ -281,7 +281,7 @@ export function MetricsClient() {
           <div className="text-xs text-muted-foreground mb-1">
             {t("metrics.cpuTime", "CPU Time")}
           </div>
-          <div className="text-2xl font-bold">{metrics.cpuTime.toFixed(1)}s</div>
+          <div className="text-xl lg:text-2xl font-bold">{metrics.cpuTime.toFixed(1)}s</div>
         </div>
       </div>
 
@@ -289,10 +289,10 @@ export function MetricsClient() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {/* CPU */}
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-sm font-medium mb-3">
+          <div className="text-xs lg:text-sm font-medium mb-3">
             🖥️ {t("metrics.cpu", "CPU")}
           </div>
-          <div className="text-3xl font-bold mb-1">{metrics.system.cpuCount}</div>
+          <div className="text-2xl lg:text-3xl font-bold mb-1">{metrics.system.cpuCount}</div>
           <div className="text-xs text-muted-foreground">
             {t("metrics.cores", "cores")}
           </div>
@@ -300,7 +300,7 @@ export function MetricsClient() {
 
         {/* Memory */}
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-sm font-medium mb-3">
+          <div className="text-xs lg:text-sm font-medium mb-3">
             🧠 {t("metrics.systemMemory", "System Memory")}
           </div>
           <div className="w-full bg-muted rounded-full h-2.5 mb-2">
@@ -326,7 +326,7 @@ export function MetricsClient() {
 
         {/* Disk */}
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-sm font-medium mb-3">
+          <div className="text-xs lg:text-sm font-medium mb-3">
             💾 {t("metrics.disk", "Disk")}
           </div>
           <div className="w-full bg-muted rounded-full h-2.5 mb-2">
@@ -353,7 +353,7 @@ export function MetricsClient() {
 
       {/* Organ Health Grid */}
       <div className="rounded-xl border border-border bg-card p-4">
-        <div className="text-sm font-medium mb-3">
+        <div className="text-xs lg:text-sm font-medium mb-3">
           🫀 {t("metrics.organHealth", "Organ Health Status")}
         </div>
         <div className="grid grid-cols-4 md:grid-cols-8 gap-2">
@@ -376,7 +376,7 @@ export function MetricsClient() {
       {/* Top HTTP Endpoints */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-sm font-medium mb-3">
+          <div className="text-xs lg:text-sm font-medium mb-3">
             🔥 {t("metrics.topEndpoints", "Top HTTP Endpoints")}
           </div>
           <div className="space-y-1 max-h-80 overflow-y-auto">
@@ -407,7 +407,7 @@ export function MetricsClient() {
 
         {/* Errors */}
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-sm font-medium mb-3">
+          <div className="text-xs lg:text-sm font-medium mb-3">
             ⚠️ {t("metrics.errors", "HTTP Errors")}
           </div>
           {metrics.httpErrors.length === 0 ? (
@@ -456,7 +456,7 @@ export function MetricsClient() {
       {/* Instance Info */}
       {metrics.info && (
         <div className="rounded-xl border border-border bg-card p-4">
-          <div className="text-sm font-medium mb-3">
+          <div className="text-xs lg:text-sm font-medium mb-3">
             ℹ️ {t("metrics.instanceInfo", "Instance Info")}
           </div>
           <div className="flex gap-6 text-xs">

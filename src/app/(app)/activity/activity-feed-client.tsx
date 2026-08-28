@@ -183,7 +183,7 @@ export function ActivityFeedClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <Activity size={20} className="text-emerald-500" />
           <h1 className="text-lg font-semibold">{t('activity.title')}</h1>
@@ -237,7 +237,7 @@ export function ActivityFeedClient() {
 
       {/* Filter dropdown */}
       {showFilters && (
-        <div className="border-b border-border px-6 py-3 bg-muted/30">
+        <div className="border-b border-border px-3 lg:px-6 py-3 bg-muted/30">
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => { setSelectedOrgan(null); setShowFilters(false); }}
@@ -284,7 +284,7 @@ export function ActivityFeedClient() {
                   <div
                     key={event.id}
                     className={cn(
-                      "px-6 py-3 transition-colors hover:bg-muted/30 cursor-pointer",
+                      "px-3 lg:px-6 py-3 transition-colors hover:bg-muted/30 cursor-pointer",
                       isExpanded && "bg-muted/20"
                     )}
                     onClick={() => setExpandedEvent(isExpanded ? null : event.id)}

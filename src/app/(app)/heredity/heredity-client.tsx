@@ -188,8 +188,8 @@ export function HeredityClient() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
+        <div className="flex items-center gap-2 lg:gap-3">
           <GitBranch size={20} className="text-teal-500" />
           <h1 className="text-lg font-semibold">{t('heredity.title') || t('heredity.text4')}</h1>
           <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-500">
@@ -202,15 +202,15 @@ export function HeredityClient() {
           )}
         </div>
         <button onClick={() => { fetchPlatform(); tab === "migrations" && fetchMigrations(); tab === "changelog" && fetchChangelog(); }}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors">
           <RefreshCw size={14} /> {t('common.refresh') || t('heredity.refresh')}
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
         {/* Stats */}
         {platform && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
             <StatCard icon={Database} label={t('heredity.totalComponents') || t('heredity.text6')} value={String(platform.total_components)}
               sub={t('heredity.registered') || t('heredity.registered')} color="text-teal-500" bg="bg-teal-500/10" />
             <StatCard icon={ArrowUpCircle} label={t('heredity.totalMigrations') || t('heredity.t84905')} value={String(platform.total_migrations)}
@@ -226,7 +226,7 @@ export function HeredityClient() {
         <div className="flex gap-2">
           {tabs.map((tabItem) => (
             <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
-              className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
+              className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs lg:text-sm transition-colors",
                 tab === tabItem.id ? "bg-teal-500/10 text-teal-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
               <tabItem.icon size={14} /> {tabItem.label}
             </button>
@@ -236,17 +236,17 @@ export function HeredityClient() {
         {/* Components Tab */}
         {tab === "components" && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 lg:gap-3">
               <div className="relative flex-1 max-w-xs">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder={t("heredity.searchComponents") || "Search components..."}
-                  className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-teal-500/20" />
+                  className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-teal-500/20" />
               </div>
               <span className="text-xs text-muted-foreground">{filteredComponents.length} {t('heredity.componentsCount') || t('heredity.t55429')}</span>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-4">
               {/* Component List */}
               <div className="space-y-2">
                 {filteredComponents.map((c) => (
@@ -256,17 +256,17 @@ export function HeredityClient() {
                       selectedComponent === c.component_id ? "border-teal-500/50 bg-teal-500/5" : "border-border bg-card hover:border-teal-500/30")}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{c.component_name}</span>
+                        <span className="text-xs lg:text-sm font-medium">{c.component_name}</span>
                         <span className={cn("rounded-full px-2 py-0.5 text-[10px]", STATUS_COLORS[c.status] || "bg-muted")}>
                           {c.status}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-bold text-teal-500">v{c.current_version}</span>
+                        <span className="text-xs lg:text-sm font-bold text-teal-500">v{c.current_version}</span>
                         <ChevronRight size={14} className="text-muted-foreground" />
                       </div>
                     </div>
-                    <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
+                    <div className="mt-2 flex items-center gap-2 lg:gap-3 text-xs text-muted-foreground">
                       <span>ID: {c.component_id}</span>
                       <span>{c.total_versions} {t('heredity.versions') || t('heredity.versions')}</span>
                       <span>{Object.keys(c.dependencies).length} {t('heredity.deps') || t('heredity.dependencies')}</span>
@@ -279,13 +279,13 @@ export function HeredityClient() {
               {componentDetail && (
                 <div className="rounded-xl border border-border bg-card p-5 space-y-4">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-sm font-semibold">{componentDetail.component_name}</h3>
+                    <h3 className="text-xs lg:text-sm font-semibold">{componentDetail.component_name}</h3>
                     <span className="text-lg font-bold text-teal-500">v{componentDetail.current.version}</span>
                   </div>
 
                   {/* Compatibility */}
                   {compatCheck && (
-                    <div className={cn("rounded-lg border p-3 text-sm",
+                    <div className={cn("rounded-lg border p-3 text-xs lg:text-sm",
                       compatCheck.compatible ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5")}>
                       <div className="flex items-center gap-2">
                         {compatCheck.compatible ? <CheckCircle size={14} className="text-emerald-500" /> : <XCircle size={14} className="text-red-500" />}
@@ -316,11 +316,11 @@ export function HeredityClient() {
                     <h4 className="text-xs text-muted-foreground mb-2">{t('heredity.versionHistory') || t('heredity.versionHistory')}</h4>
                     <div className="space-y-1">
                       {componentDetail.versions?.map((v: any, i: number) => (
-                        <div key={i} className="flex items-center gap-3 text-sm py-1">
+                        <div key={i} className="flex items-center gap-2 lg:gap-3 text-xs lg:text-sm py-1">
                           <span className={cn("rounded-full px-2 py-0.5 text-[10px]", STATUS_COLORS[v.status] || "bg-muted")}>
                             {v.status}
                           </span>
-                          <span className="font-mono text-sm">v{v.version}</span>
+                          <span className="font-mono text-xs lg:text-sm">v{v.version}</span>
                           <span className="text-xs text-muted-foreground">{formatTime(v.created_at)}</span>
                         </div>
                       ))}
@@ -331,7 +331,7 @@ export function HeredityClient() {
                   {componentDetail.current.release_notes && (
                     <div>
                       <h4 className="text-xs text-muted-foreground mb-2">{t('heredity.releaseNotes') || t('heredity.releaseNotes')}</h4>
-                      <p className="text-sm text-muted-foreground">{componentDetail.current.release_notes}</p>
+                      <p className="text-xs lg:text-sm text-muted-foreground">{componentDetail.current.release_notes}</p>
                     </div>
                   )}
                 </div>
@@ -345,10 +345,10 @@ export function HeredityClient() {
           <div className="space-y-4">
             {/* Create Migration */}
             <div className="rounded-xl border border-border p-4 space-y-3">
-              <h3 className="text-sm font-medium">{t('heredity.createMigration') || t('heredity.t45504')}</h3>
-              <div className="grid grid-cols-4 gap-3">
+              <h3 className="text-xs lg:text-sm font-medium">{t('heredity.createMigration') || t('heredity.t45504')}</h3>
+              <div className="grid grid-cols-4 gap-2 lg:gap-3">
                 <select value={migComponentId} onChange={(e) => setMigComponentId(e.target.value)}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none">
                   <option value="">{t("heredity.selectComponent") || "Select component..."}</option>
                   {components.map((c) => (
                     <option key={c.component_id} value={c.component_id}>{c.component_name} (v{c.current_version})</option>
@@ -356,12 +356,12 @@ export function HeredityClient() {
                 </select>
                 <input value={migFrom} onChange={(e) => setMigFrom(e.target.value)}
                   placeholder={t("heredity.fromVersion") || "Source version (e.g. 0.1.0)"}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/20" />
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-teal-500/20" />
                 <input value={migTo} onChange={(e) => setMigTo(e.target.value)}
                   placeholder={t("heredity.toVersion") || "Target version (e.g. 0.2.0)"}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-teal-500/20" />
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-teal-500/20" />
                 <button onClick={handleCreateMigration} disabled={loading}
-                  className="flex items-center justify-center gap-1.5 rounded-lg bg-teal-500 px-4 py-2 text-sm text-white hover:bg-teal-600 disabled:opacity-50">
+                  className="flex items-center justify-center gap-1.5 rounded-lg bg-teal-500 px-4 py-2 text-xs lg:text-sm text-white hover:bg-teal-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                   {t('common.create') || t('heredity.text22')}
                 </button>
@@ -372,19 +372,19 @@ export function HeredityClient() {
             {migrations.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <ArrowUpCircle size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t('heredity.noMigrations') || t('heredity.empty')}</p>
+                <p className="text-xs lg:text-sm">{t('heredity.noMigrations') || t('heredity.empty')}</p>
               </div>
             ) : (
               <div className="space-y-2">
                 {migrations.map((m) => (
                   <div key={m.migration_id} className="rounded-xl border border-border bg-card p-4">
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 lg:gap-3">
                         <span className={cn("rounded-full px-2 py-0.5 text-[10px]", STATUS_COLORS[m.status] || "bg-muted")}>
                           {m.status}
                         </span>
-                        <span className="text-sm font-medium">{m.component_id}</span>
-                        <span className="font-mono text-sm text-muted-foreground">
+                        <span className="text-xs lg:text-sm font-medium">{m.component_id}</span>
+                        <span className="font-mono text-xs lg:text-sm text-muted-foreground">
                           {m.from_version} → {m.to_version}
                         </span>
                         {m.dry_run && <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] text-yellow-600">Dry Run</span>}
@@ -404,7 +404,7 @@ export function HeredityClient() {
                         )}
                       </div>
                     </div>
-                    <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">
+                    <div className="mt-2 flex items-center gap-2 lg:gap-4 text-xs text-muted-foreground">
                       <span>ID: {m.migration_id}</span>
                       {m.started_at && <span>{t('heredity.started') || t('heredity.start')}: {formatTime(m.started_at)}</span>}
                       {m.completed_at && <span>{t('heredity.completed') || t('heredity.done')}: {formatTime(m.completed_at)}</span>}
@@ -423,26 +423,26 @@ export function HeredityClient() {
             {changelog.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <History size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t('heredity.noChangelog') || t('heredity.text26')}</p>
+                <p className="text-xs lg:text-sm">{t('heredity.noChangelog') || t('heredity.text26')}</p>
               </div>
             ) : (
               <div className="space-y-1">
                 {changelog.map((entry) => {
                   const Icon = CHANGE_ICONS[entry.change_type] || FileText;
                   return (
-                    <div key={entry.entry_id} className="flex items-start gap-3 rounded-lg p-3 hover:bg-muted/50 transition-colors">
+                    <div key={entry.entry_id} className="flex items-start gap-2 lg:gap-3 rounded-lg p-3 hover:bg-muted/50 transition-colors">
                       <div className={cn("mt-0.5 rounded-lg p-1.5", STATUS_COLORS[entry.change_type] || "bg-muted")}>
                         <Icon size={12} />
                       </div>
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{entry.component_id}</span>
+                          <span className="text-xs lg:text-sm font-medium">{entry.component_id}</span>
                           <span className="font-mono text-xs text-muted-foreground">v{entry.version}</span>
                           <span className={cn("rounded-full px-1.5 py-0.5 text-[10px]", STATUS_COLORS[entry.change_type] || "bg-muted")}>
                             {entry.change_type}
                           </span>
                         </div>
-                        <p className="text-sm text-muted-foreground mt-0.5">{entry.description}</p>
+                        <p className="text-xs lg:text-sm text-muted-foreground mt-0.5">{entry.description}</p>
                       </div>
                       <span className="text-xs text-muted-foreground shrink-0">{formatTime(entry.timestamp)}</span>
                     </div>
@@ -456,38 +456,38 @@ export function HeredityClient() {
         {/* Platform Tab */}
         {tab === "platform" && platform && (
           <div className="space-y-4">
-            <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-6 space-y-4">
               <div className="flex items-center justify-between">
                 <div>
                   <h3 className="text-lg font-semibold">{t('heredity.platformVersion') || t('heredity.platformVersion')}</h3>
-                  <p className="text-3xl font-bold text-teal-500 mt-2">v{platform.platform_version}</p>
+                  <p className="text-2xl lg:text-3xl font-bold text-teal-500 mt-2">v{platform.platform_version}</p>
                 </div>
                 <div className="flex gap-2">
                   <button onClick={() => handleBumpPlatform("patch")} disabled={loading}
-                    className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">
+                    className="rounded-lg border border-border px-3 py-2 text-xs lg:text-sm hover:bg-muted disabled:opacity-50">
                     {t("heredity.patch") || "Patch"} +1
                   </button>
                   <button onClick={() => handleBumpPlatform("minor")} disabled={loading}
-                    className="rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted disabled:opacity-50">
+                    className="rounded-lg border border-border px-3 py-2 text-xs lg:text-sm hover:bg-muted disabled:opacity-50">
                     {t("heredity.minor") || "Minor"} +1
                   </button>
                   <button onClick={() => handleBumpPlatform("major")} disabled={loading}
-                    className="rounded-lg bg-teal-500 px-3 py-2 text-sm text-white hover:bg-teal-600 disabled:opacity-50">
+                    className="rounded-lg bg-teal-500 px-3 py-2 text-xs lg:text-sm text-white hover:bg-teal-600 disabled:opacity-50">
                     {t("heredity.major") || "Major"} +1
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-4 text-center">
+              <div className="grid grid-cols-3 gap-2 lg:gap-4 text-center">
                 <div className="rounded-lg bg-muted p-4">
-                  <p className="text-2xl font-bold">{platform.total_components}</p>
+                  <p className="text-xl lg:text-2xl font-bold">{platform.total_components}</p>
                   <p className="text-xs text-muted-foreground">{t('heredity.components') || t('heredity.components')}</p>
                 </div>
                 <div className="rounded-lg bg-muted p-4">
-                  <p className="text-2xl font-bold">{platform.total_migrations}</p>
+                  <p className="text-xl lg:text-2xl font-bold">{platform.total_migrations}</p>
                   <p className="text-xs text-muted-foreground">{t('heredity.migrations') || t('heredity.migrations')}</p>
                 </div>
                 <div className="rounded-lg bg-muted p-4">
-                  <p className="text-2xl font-bold">{platform.total_changelog_entries}</p>
+                  <p className="text-xl lg:text-2xl font-bold">{platform.total_changelog_entries}</p>
                   <p className="text-xs text-muted-foreground">{t('heredity.changes') || t('heredity.changes')}</p>
                 </div>
               </div>
@@ -495,10 +495,10 @@ export function HeredityClient() {
 
             {/* Dependency Graph */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <h3 className="text-sm font-semibold">{t('heredity.dependencyGraph') || t('heredity.t75585')}</h3>
+              <h3 className="text-xs lg:text-sm font-semibold">{t('heredity.dependencyGraph') || t('heredity.t75585')}</h3>
               <div className="space-y-2">
                 {components.map((c) => (
-                  <div key={c.component_id} className="flex items-center gap-3 text-sm">
+                  <div key={c.component_id} className="flex items-center gap-2 lg:gap-3 text-xs lg:text-sm">
                     <span className="font-mono w-32 truncate">{c.component_id}</span>
                     <ArrowUpCircle size={12} className="text-teal-500 shrink-0" />
                     <div className="flex flex-wrap gap-1">
@@ -532,7 +532,7 @@ function StatCard({ icon: Icon, label, value, sub, color, bg }: {
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className={cn("rounded-lg p-1.5", bg)}><Icon size={14} className={color} /></div>
       </div>
-      <p className="text-2xl font-bold">{value}</p>
+      <p className="text-xl lg:text-2xl font-bold">{value}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
     </div>
   );

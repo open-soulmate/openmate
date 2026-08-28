@@ -201,7 +201,7 @@ export function NotificationsClient() {
       </div>
 
       {error && (
-        <div className="p-3 rounded-lg bg-red-900/20 border border-red-800 text-red-300 text-sm">
+        <div className="p-3 rounded-lg bg-red-900/20 border border-red-800 text-red-300 text-xs lg:text-sm">
           {error}
         </div>
       )}
@@ -230,7 +230,7 @@ export function NotificationsClient() {
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                'px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border',
+                'px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border',
                 filter === f
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-card text-muted-foreground border-border hover:bg-accent'
@@ -246,7 +246,7 @@ export function NotificationsClient() {
             onClick={markAllRead}
             disabled={actionLoading === 'read-all' || unreadCount === 0}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-border',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border border-border',
               'bg-card hover:bg-accent text-muted-foreground disabled:opacity-40 disabled:pointer-events-none'
             )}
           >
@@ -262,7 +262,7 @@ export function NotificationsClient() {
             onClick={clearAll}
             disabled={actionLoading === 'clear-all' || notifications.length === 0}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-border',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border border-border',
               'bg-card hover:bg-red-900/20 text-muted-foreground hover:text-red-400 disabled:opacity-40 disabled:pointer-events-none'
             )}
           >
@@ -278,7 +278,7 @@ export function NotificationsClient() {
             onClick={sendTest}
             disabled={actionLoading === 'test'}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium transition-colors border border-border',
+              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border border-border',
               'bg-card hover:bg-accent text-muted-foreground disabled:opacity-40 disabled:pointer-events-none'
             )}
           >
@@ -299,7 +299,7 @@ export function NotificationsClient() {
           <p className="text-lg font-medium">
             {t('notifications.empty', 'No notifications')}
           </p>
-          <p className="text-sm mt-1">
+          <p className="text-xs lg:text-sm mt-1">
             {filter !== 'all'
               ? t('notifications.emptyFilter', 'No {{filter}} notifications', { filter })
               : t('notifications.emptyHint', "You're all caught up!")}
@@ -329,14 +329,14 @@ export function NotificationsClient() {
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className={cn('text-sm font-semibold text-foreground truncate')}>
+                    <h3 className={cn('text-xs lg:text-sm font-semibold text-foreground truncate')}>
                       {n.title}
                     </h3>
                     {!n.read && (
                       <span className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-400" />
                     )}
                   </div>
-                  <p className="text-sm text-muted-foreground mt-0.5 line-clamp-2">
+                  <p className="text-xs lg:text-sm text-muted-foreground mt-0.5 line-clamp-2">
                     {n.message}
                   </p>
                   <span className="text-xs text-muted-foreground/60 mt-1 inline-block">

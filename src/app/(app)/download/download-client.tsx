@@ -138,9 +138,9 @@ export function DownloadClient() {
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Download className="w-6 h-6" /> {t('download.title')}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t('download.subtitle')}</p>
+          <p className="text-xs lg:text-sm text-muted-foreground mt-1">{t('download.subtitle')}</p>
         </div>
-        <button onClick={() => setShowAdd(!showAdd)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground flex items-center gap-2 text-sm hover:bg-primary/90">
+        <button onClick={() => setShowAdd(!showAdd)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground flex items-center gap-2 text-xs lg:text-sm hover:bg-primary/90">
           <Plus className="w-4 h-4" /> {t('download.newDownload')}
         </button>
       </div>
@@ -151,12 +151,12 @@ export function DownloadClient() {
             <div className="flex-1 relative">
               <input value={newUrl} onChange={e => setNewUrl(e.target.value)}
                 placeholder={t('download.urlPlaceholder')}
-                className="w-full px-4 py-2.5 pr-24 rounded-lg bg-muted text-sm outline-none border border-border focus:border-primary"
+                className="w-full px-4 py-2.5 pr-24 rounded-lg bg-muted text-xs lg:text-sm outline-none border border-border focus:border-primary"
                 onKeyDown={e => e.key === 'Enter' && startDownload()} />
               {newUrl && <span className="absolute right-3 top-1/2 -translate-y-1/2"><TypeTag type={urlType} /></span>}
             </div>
             <button onClick={startDownload} disabled={loading || !newUrl.trim()}
-              className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2">
+              className="px-6 py-2.5 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm font-medium hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Zap className="w-4 h-4" /> {t('download.download')}</>}
             </button>
           </div>
@@ -172,7 +172,7 @@ export function DownloadClient() {
       <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
         {([['downloads', t('download.downloading'), downloading.length], ['done', t('download.done'), done.length], ['settings', t('download.settings'), 0]] as const).map(([key, label, count]) => (
           <button key={key} onClick={() => setTab(key)}
-            className={`px-4 py-1.5 rounded-md text-sm transition-colors ${tab === key ? 'bg-card text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
+            className={`px-4 py-1.5 rounded-md text-xs lg:text-sm transition-colors ${tab === key ? 'bg-card text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}>
             {label}{count > 0 ? ` (${count})` : ''}
           </button>
         ))}
@@ -184,7 +184,7 @@ export function DownloadClient() {
             <div className="text-center py-16 text-muted-foreground">
               <Download className="w-12 h-12 mx-auto mb-3 opacity-30" />
               <p className="text-lg font-medium">{t('download.noTasks')}</p>
-              <p className="text-sm mt-1">{t('download.noTasksHint')}</p>
+              <p className="text-xs lg:text-sm mt-1">{t('download.noTasksHint')}</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -196,7 +196,7 @@ export function DownloadClient() {
                         {task.status === 'downloading' && <Loader2 className="w-4 h-4 text-primary animate-spin shrink-0" />}
                         {task.status === 'paused' && <Pause className="w-4 h-4 text-yellow-500 shrink-0" />}
                         {task.status === 'error' && <XCircle className="w-4 h-4 text-red-500 shrink-0" />}
-                        <h3 className="text-sm font-medium truncate">{task.filename}</h3>
+                        <h3 className="text-xs lg:text-sm font-medium truncate">{task.filename}</h3>
                         <TypeTag type={task.type} />
                       </div>
                       <p className="text-xs text-muted-foreground truncate mt-1">{task.url}</p>
@@ -253,7 +253,7 @@ export function DownloadClient() {
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
-                      <h3 className="text-sm font-medium truncate">{task.filename}</h3>
+                      <h3 className="text-xs lg:text-sm font-medium truncate">{task.filename}</h3>
                       <TypeTag type={task.type} />
                       <span className="text-xs text-muted-foreground">{formatBytes(task.downloadedBytes)}</span>
                     </div>
@@ -276,43 +276,43 @@ export function DownloadClient() {
           </div>
           <div className="rounded-xl border bg-card p-4 space-y-4">
             <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('download.threads')} (1-32)</label>
+              <label className="text-xs lg:text-sm font-medium mb-1.5 block">{t('download.threads')} (1-32)</label>
               <div className="flex items-center gap-3">
                 <input type="range" min={1} max={32} value={config.threads}
                   onChange={e => setConfig(c => ({ ...c, threads: parseInt(e.target.value) }))}
                   onMouseUp={() => saveConfig('threads', config.threads.toString())}
                   className="flex-1" />
-                <span className="text-sm font-mono w-8 text-right">{config.threads}</span>
+                <span className="text-xs lg:text-sm font-mono w-8 text-right">{config.threads}</span>
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('download.speedLimit')} (0={t('download.unlimited')})</label>
+              <label className="text-xs lg:text-sm font-medium mb-1.5 block">{t('download.speedLimit')} (0={t('download.unlimited')})</label>
               <div className="flex items-center gap-2">
                 <input type="number" value={config.speed_limit}
                   onChange={e => setConfig(c => ({ ...c, speed_limit: parseInt(e.target.value) || 0 }))}
                   onBlur={() => saveConfig('speed-limit', config.speed_limit.toString())}
-                  className="w-32 px-3 py-2 rounded-lg bg-muted text-sm border border-border focus:border-primary outline-none" />
+                  className="w-32 px-3 py-2 rounded-lg bg-muted text-xs lg:text-sm border border-border focus:border-primary outline-none" />
                 <span className="text-xs text-muted-foreground">bytes/s</span>
               </div>
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('download.downloadDir')}</label>
+              <label className="text-xs lg:text-sm font-medium mb-1.5 block">{t('download.downloadDir')}</label>
               <input type="text" value={config.download_dir}
                 onChange={e => setConfig(c => ({ ...c, download_dir: e.target.value }))}
                 onBlur={() => saveConfig('download-dir', config.download_dir)}
-                className="w-full px-3 py-2 rounded-lg bg-muted text-sm border border-border focus:border-primary outline-none font-mono" />
+                className="w-full px-3 py-2 rounded-lg bg-muted text-xs lg:text-sm border border-border focus:border-primary outline-none font-mono" />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1.5 block">{t('download.proxy')}</label>
+              <label className="text-xs lg:text-sm font-medium mb-1.5 block">{t('download.proxy')}</label>
               <input type="text" value={config.proxy || ''}
                 onChange={e => setConfig(c => ({ ...c, proxy: e.target.value || null }))}
                 onBlur={() => saveConfig('proxy', config.proxy || '')}
-                className="w-full px-3 py-2 rounded-lg bg-muted text-sm border border-border focus:border-primary outline-none font-mono"
+                className="w-full px-3 py-2 rounded-lg bg-muted text-xs lg:text-sm border border-border focus:border-primary outline-none font-mono"
                 placeholder="http://127.0.0.1:7890" />
             </div>
           </div>
           <div className="rounded-xl border bg-card p-4">
-            <h3 className="text-sm font-medium mb-3">{t('download.supportedProtocols')}</h3>
+            <h3 className="text-xs lg:text-sm font-medium mb-3">{t('download.supportedProtocols')}</h3>
             <div className="grid grid-cols-2 gap-2 text-xs">
               {[
                 ['HTTP/HTTPS', `✅ ${t('download.resumeSupport')}`],

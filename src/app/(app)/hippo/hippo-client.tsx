@@ -227,8 +227,8 @@ export function HippoClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
+        <div className="flex items-center gap-2 lg:gap-3">
           <Brain size={20} className="text-indigo-500" />
           <h1 className="text-lg font-semibold">{t("hippo.title") || "Hippocampus · Memory Lifecycle"}</h1>
           <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-xs font-medium text-indigo-500">
@@ -236,15 +236,15 @@ export function HippoClient() {
           </span>
         </div>
         <button onClick={() => { fetchStats(); tab === "memories" && fetchMemories(); tab === "sessions" && fetchSessions(); }}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors">
           <RefreshCw size={14} /> {t("common.refresh") || "Refresh"}
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
             <StatCard icon={Brain} label={t("hippo.activeMemories") || "Active Memories"} value={String(stats.memory.active)}
               sub={`${stats.memory.total_memories} ${t("hippo.total") || "Total Memories"}`} color="text-indigo-500" bg="bg-indigo-500/10" />
             <StatCard icon={Archive} label={t("hippo.archived") || "Archived"} value={String(stats.memory.archived)}
@@ -260,7 +260,7 @@ export function HippoClient() {
         <div className="flex gap-2">
           {tabs.map((tabItem) => (
             <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
-              className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
+              className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs lg:text-sm transition-colors",
                 tab === tabItem.id ? "bg-indigo-500/10 text-indigo-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
               <tabItem.icon size={14} /> {tabItem.label}
             </button>
@@ -272,14 +272,14 @@ export function HippoClient() {
           <div className="space-y-4">
             {/* Create Memory */}
             <div className="rounded-xl border border-border p-4 space-y-3">
-              <h3 className="text-sm font-medium">{t("hippo.createMemory") || "Create Memory"}</h3>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <h3 className="text-xs lg:text-sm font-medium">{t("hippo.createMemory") || "Create Memory"}</h3>
+              <div className="flex flex-col sm:flex-row gap-2 lg:gap-3">
                 <input value={newSessionId} onChange={(e) => setNewSessionId(e.target.value)}
                   placeholder={t("hippo.sessionId") || "Session ID"}
-                  className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                  className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-indigo-500/20" />
                 <input value={newContent} onChange={(e) => setNewContent(e.target.value)}
                   placeholder={t("hippo.contentPlaceholder") || "Memory content..."}
-                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
+                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
                   onKeyDown={(e) => e.key === "Enter" && handleCreateMemory()} />
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-muted-foreground">{t("hippo.importance") || "Importance"}</label>
@@ -289,20 +289,20 @@ export function HippoClient() {
                   <span className="text-xs w-6">{newImportance}</span>
                 </div>
                 <button onClick={handleCreateMemory} disabled={loading}
-                  className="rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50">
+                  className="rounded-lg bg-indigo-500 px-2 lg:px-4 py-2 text-xs lg:text-sm text-white hover:bg-indigo-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                 </button>
               </div>
             </div>
 
             {/* Filters */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 lg:gap-3">
               <div className="relative flex-1 max-w-sm">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input value={searchSession} onChange={(e) => setSearchSession(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && fetchMemories()}
                   placeholder={t("hippo.filterSession") || "Filter by Session"}
-                  className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                  className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-indigo-500/20" />
               </div>
               <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                 <input type="checkbox" checked={includeArchived} onChange={(e) => { setIncludeArchived(e.target.checked); fetchMemories(); }} />
@@ -315,7 +315,7 @@ export function HippoClient() {
             {memories.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Brain size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("hippo.noMemories") || "No memories yet"}</p>
+                <p className="text-xs lg:text-sm">{t("hippo.noMemories") || "No memories yet"}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -323,8 +323,8 @@ export function HippoClient() {
                   <div key={m.memory_id} className={cn("rounded-xl border border-border bg-card p-4 space-y-2", m.archived && "opacity-60")}>
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0">
-                        <p className="text-sm">{m.content}</p>
-                        <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+                        <p className="text-xs lg:text-sm">{m.content}</p>
+                        <div className="flex items-center gap-2 lg:gap-3 mt-2 text-xs text-muted-foreground">
                           <span className="font-mono">{m.session_id.slice(0, 8)}</span>
                           <span>{formatAge(m.created_at, t)}</span>
                           <span>{t("hippo.accessed") || "Last Accessed"}: {m.access_count}</span>
@@ -372,13 +372,13 @@ export function HippoClient() {
         {/* Sessions Tab */}
         {tab === "sessions" && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 lg:gap-3">
               <button onClick={handleLifecycleCheck}
-                className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-2 text-sm text-white hover:bg-indigo-600">
+                className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-3 py-2 text-xs lg:text-sm text-white hover:bg-indigo-600">
                 <Zap size={14} /> {t("hippo.lifecycleCheck") || "Lifecycle Check"}
               </button>
               <button onClick={fetchSessions}
-                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-sm hover:bg-muted">
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs lg:text-sm hover:bg-muted">
                 <RefreshCw size={14} />
               </button>
             </div>
@@ -386,30 +386,30 @@ export function HippoClient() {
             {sessionList.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Clock size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("hippo.noSessions") || "No sessions yet"}</p>
+                <p className="text-xs lg:text-sm">{t("hippo.noSessions") || "No sessions yet"}</p>
               </div>
             ) : (
               <div className="rounded-xl border border-border overflow-hidden">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs lg:text-sm">
                   <thead>
                     <tr className="border-b border-border bg-muted/30">
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">ID</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.title") || "Hippocampus · Memory Lifecycle"}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.status") || "Status"}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.memories") || "Memories"}</th>
-                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.lastActive") || "Last Active"}</th>
+                      <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground">ID</th>
+                      <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.title") || "Hippocampus · Memory Lifecycle"}</th>
+                      <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.status") || "Status"}</th>
+                      <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.memories") || "Memories"}</th>
+                      <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground">{t("hippo.lastActive") || "Last Active"}</th>
                     </tr>
                   </thead>
                   <tbody>
                     {sessionList.map((s) => (
                       <tr key={s.session_id} className="border-b border-border last:border-0 hover:bg-muted/30">
-                        <td className="px-4 py-2.5 font-mono text-xs">{s.session_id.slice(0, 8)}</td>
-                        <td className="px-4 py-2.5">{s.title}</td>
-                        <td className="px-4 py-2.5">
+                        <td className="px-2 lg:px-4 py-2.5 font-mono text-xs">{s.session_id.slice(0, 8)}</td>
+                        <td className="px-2 lg:px-4 py-2.5">{s.title}</td>
+                        <td className="px-2 lg:px-4 py-2.5">
                           <span className={cn("text-xs font-medium", statusColor(s.status))}>{s.status}</span>
                         </td>
-                        <td className="px-4 py-2.5 text-muted-foreground">{s.memory_count}</td>
-                        <td className="px-4 py-2.5 text-xs text-muted-foreground">{formatTime(s.last_active_at)}</td>
+                        <td className="px-2 lg:px-4 py-2.5 text-muted-foreground">{s.memory_count}</td>
+                        <td className="px-2 lg:px-4 py-2.5 text-xs text-muted-foreground">{formatTime(s.last_active_at)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -422,9 +422,9 @@ export function HippoClient() {
         {/* Decay Config Tab */}
         {tab === "decay" && (
           <div className="space-y-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 lg:gap-3">
               <button onClick={handleRunDecay} disabled={loading}
-                className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600 disabled:opacity-50">
+                className="flex items-center gap-1.5 rounded-lg bg-indigo-500 px-2 lg:px-4 py-2 text-xs lg:text-sm text-white hover:bg-indigo-600 disabled:opacity-50">
                 {loading ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
                 {t("hippo.runDecay") || "Run Decay"}
               </button>
@@ -432,23 +432,23 @@ export function HippoClient() {
 
             {decayConfig && (
               <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                <h3 className="text-sm font-semibold">{t("hippo.decayConfig") || "Decay Configuration"}</h3>
-                <div className="grid grid-cols-2 gap-4">
+                <h3 className="text-xs lg:text-sm font-semibold">{t("hippo.decayConfig") || "Decay Configuration"}</h3>
+                <div className="grid grid-cols-2 gap-2 lg:gap-4">
                   <div>
                     <label className="text-xs text-muted-foreground">{t("hippo.strategy") || "Strategy"}</label>
-                    <div className="mt-1 text-sm font-medium">{decayConfig.strategy}</div>
+                    <div className="mt-1 text-xs lg:text-sm font-medium">{decayConfig.strategy}</div>
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground">{t("hippo.halfLife") || "Half-life (hours)"}</label>
-                    <div className="mt-1 text-sm font-medium">{decayConfig.half_life_hours}h</div>
+                    <div className="mt-1 text-xs lg:text-sm font-medium">{decayConfig.half_life_hours}h</div>
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground">{t("hippo.archiveThreshold") || "Archive Threshold"}</label>
-                    <div className="mt-1 text-sm font-medium">{Math.round(decayConfig.archive_threshold * 100)}%</div>
+                    <div className="mt-1 text-xs lg:text-sm font-medium">{Math.round(decayConfig.archive_threshold * 100)}%</div>
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground">{t("hippo.forgetThreshold") || "Forget Threshold"}</label>
-                    <div className="mt-1 text-sm font-medium">{Math.round(decayConfig.forget_threshold * 100)}%</div>
+                    <div className="mt-1 text-xs lg:text-sm font-medium">{Math.round(decayConfig.forget_threshold * 100)}%</div>
                   </div>
                 </div>
 
@@ -478,34 +478,34 @@ export function HippoClient() {
         {tab === "simulate" && (
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <h3 className="text-sm font-semibold">{t("hippo.simulateDecay") || "Simulate Decay"}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <h3 className="text-xs lg:text-sm font-semibold">{t("hippo.simulateDecay") || "Simulate Decay"}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 lg:gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground">{t("hippo.ageHours") || "Age (hours)"}</label>
                   <input type="number" value={simAge} onChange={(e) => setSimAge(parseFloat(e.target.value) || 0)}
-                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">{t("hippo.importance") || "Importance"}</label>
                   <input type="number" min="0" max="1" step="0.1" value={simImportance}
                     onChange={(e) => setSimImportance(parseFloat(e.target.value) || 0)}
-                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">{t("hippo.accessCount") || "Access Count"}</label>
                   <input type="number" value={simAccess} onChange={(e) => setSimAccess(parseInt(e.target.value) || 0)}
-                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                    className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
                 </div>
               </div>
               <button onClick={handleSimulate}
-                className="rounded-lg bg-indigo-500 px-4 py-2 text-sm text-white hover:bg-indigo-600">
+                className="rounded-lg bg-indigo-500 px-2 lg:px-4 py-2 text-xs lg:text-sm text-white hover:bg-indigo-600">
                 <BarChart3 size={14} className="inline mr-1" />
                 {t("hippo.runSimulation") || "Run Simulation"}
               </button>
 
               {simResult && (
                 <div className="mt-4 rounded-lg border border-border p-4 space-y-2">
-                  <div className="flex items-center gap-4">
+                  <div className="flex items-center gap-2 lg:gap-4">
                     <div>
                       <span className="text-xs text-muted-foreground">{t("hippo.retention") || "Retention"}: </span>
                       <span className={cn("text-lg font-bold", retentionColor(simResult.retention))}>
@@ -517,7 +517,7 @@ export function HippoClient() {
                         style={{ width: `${simResult.retention * 100}%` }} />
                     </div>
                   </div>
-                  <div className="flex gap-4 text-xs">
+                  <div className="flex gap-2 lg:gap-4 text-xs">
                     <span className={simResult.should_archive ? "text-amber-500" : "text-muted-foreground"}>
                       {simResult.should_archive ? (t("hippo.shouldArchive") || "⚠️ Should Archive") : (t("hippo.noArchiveNeeded") || "✓ No Archive Needed")}
                     </span>

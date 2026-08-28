@@ -169,7 +169,7 @@ export function SmartCalcClient() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-3 px-6 py-4 border-b border-border">
+      <div className="flex items-center gap-3 px-3 lg:px-6 py-4 border-b border-border">
         <div className="flex items-center justify-center w-10 h-10 rounded-xl bg-primary/10">
           <Calculator size={20} className="text-primary" />
         </div>
@@ -180,7 +180,7 @@ export function SmartCalcClient() {
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 px-6 pt-3">
+      <div className="flex gap-1 px-3 lg:px-6 pt-3">
         {(["calc", "convert", "history"] as Tab[]).map((tabItem) => (
           <button
             key={tabItem}
@@ -197,7 +197,7 @@ export function SmartCalcClient() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-4">
         {/* Calculator Tab */}
         {tab === "calc" && (
           <div className="space-y-4 max-w-2xl">
@@ -210,12 +210,12 @@ export function SmartCalcClient() {
                   onChange={(e) => setExpression(e.target.value)}
                   onKeyDown={handleKeyDown}
                   placeholder={t("smartCalc.expressionPlaceholder")}
-                  className="flex-1 rounded-lg border border-border bg-muted px-3 py-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-primary/30"
+                  className="flex-1 rounded-lg border border-border bg-muted px-3 py-2.5 text-xs lg:text-sm font-mono outline-none focus:ring-2 focus:ring-primary/30"
                 />
                 <button
                   onClick={doCalculate}
                   disabled={calcLoading || !expression.trim()}
-                  className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                  className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
                 >
                   {calcLoading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
                   {t("smartCalc.solve")}
@@ -241,7 +241,7 @@ export function SmartCalcClient() {
 
             {/* Result */}
             {calcError && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs lg:text-sm text-red-500">
                 {calcError}
               </div>
             )}
@@ -253,7 +253,7 @@ export function SmartCalcClient() {
                     {copied ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
                   </button>
                 </div>
-                <div className="text-3xl font-bold font-mono text-foreground">
+                <div className="text-2xl lg:text-3xl font-bold font-mono text-foreground">
                   {calcResult.result_int !== null ? calcResult.result_int.toLocaleString() : calcResult.result}
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -315,7 +315,7 @@ export function SmartCalcClient() {
                 onChange={(e) => setConvValue(e.target.value)}
                 onKeyDown={handleKeyDown}
                 type="number"
-                className="w-full rounded-lg border border-border bg-muted px-3 py-2.5 text-sm font-mono outline-none focus:ring-2 focus:ring-primary/30"
+                className="w-full rounded-lg border border-border bg-muted px-3 py-2.5 text-xs lg:text-sm font-mono outline-none focus:ring-2 focus:ring-primary/30"
               />
             </div>
 
@@ -326,7 +326,7 @@ export function SmartCalcClient() {
                 <select
                   value={convFrom}
                   onChange={(e) => setConvFrom(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-muted px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full rounded-lg border border-border bg-muted px-3 py-2.5 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30"
                 >
                   {currentUnits.map((u) => <option key={u} value={u}>{u}</option>)}
                 </select>
@@ -342,7 +342,7 @@ export function SmartCalcClient() {
                 <select
                   value={convTo}
                   onChange={(e) => setConvTo(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-muted px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary/30"
+                  className="w-full rounded-lg border border-border bg-muted px-3 py-2.5 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30"
                 >
                   {currentUnits.map((u) => <option key={u} value={u}>{u}</option>)}
                 </select>
@@ -352,7 +352,7 @@ export function SmartCalcClient() {
             <button
               onClick={doConvert}
               disabled={convLoading || !convValue.trim()}
-              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-primary px-4 py-2.5 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {convLoading ? <Loader2 size={14} className="animate-spin" /> : <ArrowRightLeft size={14} />}
               {t("smartCalc.convert")}
@@ -360,20 +360,20 @@ export function SmartCalcClient() {
 
             {/* Conversion result */}
             {convError && (
-              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-500">
+              <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-xs lg:text-sm text-red-500">
                 {convError}
               </div>
             )}
             {convResult && !convError && (
               <div className="rounded-xl border border-border bg-card p-4 space-y-2 text-center">
-                <div className="text-sm text-muted-foreground">
+                <div className="text-xs lg:text-sm text-muted-foreground">
                   {convResult.value} {convResult.from_unit}
                 </div>
                 <div className="text-2xl font-bold font-mono">=</div>
-                <div className="text-3xl font-bold font-mono text-primary">
+                <div className="text-2xl lg:text-3xl font-bold font-mono text-primary">
                   {convResult.result % 1 === 0 ? convResult.result.toLocaleString() : convResult.result.toFixed(6)}
                 </div>
-                <div className="text-sm text-muted-foreground">{convResult.to_unit}</div>
+                <div className="text-xs lg:text-sm text-muted-foreground">{convResult.to_unit}</div>
               </div>
             )}
           </div>
@@ -393,7 +393,7 @@ export function SmartCalcClient() {
             {history.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <History size={40} className="mx-auto mb-3 opacity-30" />
-                <p className="text-sm">{t("smartCalc.noCalcHistory")}</p>
+                <p className="text-xs lg:text-sm">{t("smartCalc.noCalcHistory")}</p>
               </div>
             ) : (
               <div className="space-y-1">
@@ -407,8 +407,8 @@ export function SmartCalcClient() {
                     }`}>
                       {entry.type === "calculate" ? t("smartCalc.historyCalculate") : t("smartCalc.historyConvert")}
                     </span>
-                    <span className="flex-1 font-mono text-sm truncate">{entry.input}</span>
-                    <span className="font-mono text-sm font-medium text-primary">= {entry.output}</span>
+                    <span className="flex-1 font-mono text-xs lg:text-sm truncate">{entry.input}</span>
+                    <span className="font-mono text-xs lg:text-sm font-medium text-primary">= {entry.output}</span>
                     <span className="text-[10px] text-muted-foreground shrink-0">{formatTime(entry.timestamp)}</span>
                   </div>
                 ))}

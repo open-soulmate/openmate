@@ -256,7 +256,7 @@ export function ImmuneClient() {
   ]
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-3 lg:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-gradient-to-br from-red-500/20 to-pink-500/20">
@@ -264,7 +264,7 @@ export function ImmuneClient() {
         </div>
         <div>
           <h1 className="text-2xl font-bold">{t('immune.t05460')}</h1>
-          <p className="text-sm text-muted-foreground">{t('immune.contentrateLimit')}</p>
+          <p className="text-xs lg:text-sm text-muted-foreground">{t('immune.contentrateLimit')}</p>
         </div>
       </div>
 
@@ -276,7 +276,7 @@ export function ImmuneClient() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-t-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-2 lg:px-4 py-2 rounded-t-lg text-xs sm:text-xs lg:text-sm font-medium transition-all whitespace-nowrap ${
                 activeTab === tab.key
                   ? "bg-card border border-b-0 border-border text-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -325,7 +325,7 @@ export function ImmuneClient() {
                     type="number"
                     value={rpm}
                     onChange={(e) => setRpm(Number(e.target.value))}
-                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm mt-1"
+                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-xs lg:text-sm mt-1"
                   />
                 </div>
                 <div>
@@ -334,7 +334,7 @@ export function ImmuneClient() {
                     type="number"
                     value={rph}
                     onChange={(e) => setRph(Number(e.target.value))}
-                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm mt-1"
+                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-xs lg:text-sm mt-1"
                   />
                 </div>
                 <div>
@@ -343,13 +343,13 @@ export function ImmuneClient() {
                     type="number"
                     value={burst}
                     onChange={(e) => setBurst(Number(e.target.value))}
-                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm mt-1"
+                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-xs lg:text-sm mt-1"
                   />
                 </div>
               </div>
               <button
                 onClick={handleUpdateRateLimit}
-                className="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors"
+                className="px-2 lg:px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg text-xs lg:text-sm font-medium hover:bg-red-500/20 transition-colors"
               >
                 {t('immune.t45063')}
               </button>
@@ -363,8 +363,8 @@ export function ImmuneClient() {
               <div className="space-y-3">
                 {rlStats && Object.entries(rlStats).filter(([k]) => !["config"].includes(k)).map(([k, v]) => (
                   <div key={k} className="flex justify-between items-center">
-                    <span className="text-sm text-muted-foreground capitalize">{k.replace(/_/g, " ")}</span>
-                    <span className="text-sm font-semibold">{typeof v === "object" ? JSON.stringify(v) : String(v)}</span>
+                    <span className="text-xs lg:text-sm text-muted-foreground capitalize">{k.replace(/_/g, " ")}</span>
+                    <span className="text-xs lg:text-sm font-semibold">{typeof v === "object" ? JSON.stringify(v) : String(v)}</span>
                   </div>
                 ))}
               </div>
@@ -393,12 +393,12 @@ export function ImmuneClient() {
                 onChange={(e) => setModerateText(e.target.value)}
                 placeholder={t('immune.contentinput')}
                 rows={8}
-                className="w-full bg-card border border-border rounded-xl p-4 text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                className="w-full bg-card border border-border rounded-xl p-4 text-xs lg:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500/30"
               />
               <button
                 onClick={handleModerate}
                 disabled={!moderateText.trim() || moderateLoading}
-                className="w-full py-2.5 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-red-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-lg font-medium text-xs lg:text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-red-600 hover:to-pink-600 transition-all flex items-center justify-center gap-2"
               >
                 {moderateLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Eye className="w-4 h-4" />}
                 {moderateLoading ? t('immune.t46482') : t('immune.start4')}
@@ -430,7 +430,7 @@ export function ImmuneClient() {
                         {moderateResult.findings.map((f, i) => (
                           <div key={i} className="flex items-center gap-2 p-2 bg-muted/30 rounded-lg">
                             <AlertTriangle className="w-3.5 h-3.5 text-yellow-400" />
-                            <span className="text-sm">{f.label}</span>
+                            <span className="text-xs lg:text-sm">{f.label}</span>
                             <span className={`ml-auto text-xs px-2 py-0.5 rounded border ${getRiskColor(f.risk)}`}>
                               {f.risk}
                             </span>
@@ -442,7 +442,7 @@ export function ImmuneClient() {
                     {moderateResult.redacted_text && (
                       <div>
                         <h4 className="text-xs font-medium text-muted-foreground mb-2">{t('immune.t85574')}</h4>
-                        <div className="bg-muted/30 rounded-lg p-3 text-sm whitespace-pre-wrap">
+                        <div className="bg-muted/30 rounded-lg p-3 text-xs lg:text-sm whitespace-pre-wrap">
                           {moderateResult.redacted_text}
                         </div>
                       </div>
@@ -451,7 +451,7 @@ export function ImmuneClient() {
                 ) : (
                   <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                     <Eye className="w-12 h-12 mb-2" />
-                    <p className="text-sm">{t('immune.t86001')}</p>
+                    <p className="text-xs lg:text-sm">{t('immune.t86001')}</p>
                   </div>
                 )}
               </div>
@@ -473,7 +473,7 @@ export function ImmuneClient() {
                     type="number"
                     value={rpm}
                     onChange={(e) => setRpm(Number(e.target.value))}
-                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm mt-1"
+                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-xs lg:text-sm mt-1"
                   />
                 </div>
                 <div>
@@ -482,7 +482,7 @@ export function ImmuneClient() {
                     type="number"
                     value={rph}
                     onChange={(e) => setRph(Number(e.target.value))}
-                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm mt-1"
+                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-xs lg:text-sm mt-1"
                   />
                 </div>
                 <div>
@@ -491,14 +491,14 @@ export function ImmuneClient() {
                     type="number"
                     value={burst}
                     onChange={(e) => setBurst(Number(e.target.value))}
-                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm mt-1"
+                    className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-xs lg:text-sm mt-1"
                   />
                 </div>
               </div>
               <div className="flex gap-2">
                 <button
                   onClick={handleUpdateRateLimit}
-                  className="flex-1 py-2 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors"
+                  className="flex-1 py-2 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg text-xs lg:text-sm font-medium hover:bg-red-500/20 transition-colors"
                 >
                   {t('immune.t45063')}
                 </button>
@@ -507,7 +507,7 @@ export function ImmuneClient() {
                     await fetch(`${apiBase}/api/immune/rate-limit/reset`, { method: "POST" })
                     await fetchRateLimitStats()
                   }}
-                  className="px-4 py-2 bg-muted/30 border border-border rounded-lg text-sm hover:bg-muted/50 transition-colors"
+                  className="px-2 lg:px-4 py-2 bg-muted/30 border border-border rounded-lg text-xs lg:text-sm hover:bg-muted/50 transition-colors"
                 >
                   {t('immune.t94139')}
                 </button>
@@ -525,8 +525,8 @@ export function ImmuneClient() {
                 <div className="space-y-3">
                   {Object.entries(rateLimitStats).filter(([k]) => k !== "config").map(([k, v]) => (
                     <div key={k} className="flex justify-between items-center p-2 bg-muted/20 rounded-lg">
-                      <span className="text-sm text-muted-foreground capitalize">{k.replace(/_/g, " ")}</span>
-                      <span className="text-sm font-mono font-semibold">{typeof v === "object" ? JSON.stringify(v) : String(v)}</span>
+                      <span className="text-xs lg:text-sm text-muted-foreground capitalize">{k.replace(/_/g, " ")}</span>
+                      <span className="text-xs lg:text-sm font-mono font-semibold">{typeof v === "object" ? JSON.stringify(v) : String(v)}</span>
                     </div>
                   ))}
                   {(() => {
@@ -565,24 +565,24 @@ export function ImmuneClient() {
                 value={newIp}
                 onChange={(e) => setNewIp(e.target.value)}
                 placeholder={t('immune.t10240')}
-                className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm"
+                className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-xs lg:text-sm"
               />
               <input
                 type="text"
                 value={newIpReason}
                 onChange={(e) => setNewIpReason(e.target.value)}
                 placeholder={t('immune.t60561')}
-                className="w-48 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm"
+                className="w-48 bg-muted/30 border border-border rounded-lg px-3 py-2 text-xs lg:text-sm"
               />
               <button
                 onClick={() => handleAddIp("blacklist")}
-                className="px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg text-sm font-medium hover:bg-red-500/20 transition-colors flex items-center gap-1"
+                className="px-2 lg:px-4 py-2 bg-red-500/10 text-red-400 border border-red-500/30 rounded-lg text-xs lg:text-sm font-medium hover:bg-red-500/20 transition-colors flex items-center gap-1"
               >
                 <Ban className="w-3.5 h-3.5" /> {t('immune.t76125')}
               </button>
               <button
                 onClick={() => handleAddIp("whitelist")}
-                className="px-4 py-2 bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg text-sm font-medium hover:bg-green-500/20 transition-colors flex items-center gap-1"
+                className="px-2 lg:px-4 py-2 bg-green-500/10 text-green-400 border border-green-500/30 rounded-lg text-xs lg:text-sm font-medium hover:bg-green-500/20 transition-colors flex items-center gap-1"
               >
                 <Unlock className="w-3.5 h-3.5" /> {t('immune.t69667')}
               </button>
@@ -602,11 +602,11 @@ export function ImmuneClient() {
               </div>
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {ipLists.blacklist.length === 0 ? (
-                  <p className="text-sm text-muted-foreground/50 text-center py-4">{t('immune.t81144')}</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground/50 text-center py-2 lg:py-4">{t('immune.t81144')}</p>
                 ) : (
                   ipLists.blacklist.map((entry, i) => (
                     <div key={i} className="flex items-center gap-2 p-2 bg-red-500/5 border border-red-500/20 rounded-lg">
-                      <code className="text-sm font-mono">{entry.ip}</code>
+                      <code className="text-xs lg:text-sm font-mono">{entry.ip}</code>
                       {entry.reason && <span className="text-xs text-muted-foreground truncate flex-1">{entry.reason}</span>}
                       <button
                         onClick={() => handleRemoveIp(entry.ip, "blacklist")}
@@ -629,11 +629,11 @@ export function ImmuneClient() {
               </div>
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {ipLists.whitelist.length === 0 ? (
-                  <p className="text-sm text-muted-foreground/50 text-center py-4">{t('immune.t47217')}</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground/50 text-center py-2 lg:py-4">{t('immune.t47217')}</p>
                 ) : (
                   ipLists.whitelist.map((entry, i) => (
                     <div key={i} className="flex items-center gap-2 p-2 bg-green-500/5 border border-green-500/20 rounded-lg">
-                      <code className="text-sm font-mono">{entry.ip}</code>
+                      <code className="text-xs lg:text-sm font-mono">{entry.ip}</code>
                       {entry.reason && <span className="text-xs text-muted-foreground truncate flex-1">{entry.reason}</span>}
                       <button
                         onClick={() => handleRemoveIp(entry.ip, "whitelist")}
@@ -691,14 +691,14 @@ export function ImmuneClient() {
                     value={inspectIp}
                     onChange={(e) => setInspectIp(e.target.value)}
                     placeholder={t("immune.sourceIpPlaceholder")}
-                    className="w-40 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm"
+                    className="w-40 bg-muted/30 border border-border rounded-lg px-3 py-2 text-xs lg:text-sm"
                   />
                   <input
                     type="text"
                     value={inspectPath}
                     onChange={(e) => setInspectPath(e.target.value)}
                     placeholder={t("immune.attackPayloadPlaceholder")}
-                    className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm font-mono"
+                    className="flex-1 bg-muted/30 border border-border rounded-lg px-3 py-2 text-xs lg:text-sm font-mono"
                   />
                 </div>
                 <textarea
@@ -706,12 +706,12 @@ export function ImmuneClient() {
                   onChange={(e) => setInspectBody(e.target.value)}
                   placeholder={t("immune.requestBodyPlaceholder")}
                   rows={3}
-                  className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-sm font-mono resize-none"
+                  className="w-full bg-muted/30 border border-border rounded-lg px-3 py-2 text-xs lg:text-sm font-mono resize-none"
                 />
                 <button
                   onClick={handleInspect}
                   disabled={!inspectIp.trim()}
-                  className="w-full py-2.5 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-red-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-2.5 bg-gradient-to-r from-red-500 to-orange-500 text-white rounded-lg font-medium text-xs lg:text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-red-600 hover:to-orange-600 transition-all flex items-center justify-center gap-2"
                 >
                   <Crosshair className="w-4 h-4" />
                   Inspect Request
@@ -736,7 +736,7 @@ export function ImmuneClient() {
                     <div key={i} className="p-3 bg-red-500/5 border border-red-500/20 rounded-lg space-y-1">
                       <div className="flex items-center gap-2">
                         <AlertTriangle className="w-3.5 h-3.5 text-red-400" />
-                        <span className="text-sm font-medium">{String(threat.attack_type)}</span>
+                        <span className="text-xs lg:text-sm font-medium">{String(threat.attack_type)}</span>
                         <span className={`ml-auto text-xs px-2 py-0.5 rounded border ${getRiskColor(String(threat.threat_level))}`}>
                           {String(threat.threat_level)}
                         </span>
@@ -760,12 +760,12 @@ export function ImmuneClient() {
               </div>
               <div className="space-y-2 max-h-[400px] overflow-y-auto">
                 {blockedIps.length === 0 ? (
-                  <p className="text-sm text-muted-foreground/50 text-center py-4">{t('immune.noBlockedIps')}</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground/50 text-center py-2 lg:py-4">{t('immune.noBlockedIps')}</p>
                 ) : (
                   blockedIps.map((entry, i) => (
                     <div key={i} className="flex items-center gap-2 p-2 bg-red-500/5 border border-red-500/20 rounded-lg">
                       <Ban className="w-3.5 h-3.5 text-red-400" />
-                      <code className="text-sm font-mono">{String(entry.ip)}</code>
+                      <code className="text-xs lg:text-sm font-mono">{String(entry.ip)}</code>
                       <span className="text-xs text-muted-foreground">{String(entry.threat_count)} {t('immune.threatCount')}</span>
                       <span className="text-xs text-muted-foreground">
                         {Array.isArray(entry.threat_types) ? (entry.threat_types as string[]).join(", ") : ""}
@@ -791,10 +791,10 @@ export function ImmuneClient() {
               {threats.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
                   <Shield className="w-12 h-12 mb-2" />
-                  <p className="text-sm">{t('immune.noThreats')}</p>
+                  <p className="text-xs lg:text-sm">{t('immune.noThreats')}</p>
                 </div>
               ) : (
-                <table className="w-full text-sm">
+                <table className="w-full text-xs lg:text-sm">
                   <thead className="sticky top-0 bg-muted/50">
                     <tr className="text-xs text-muted-foreground">
                       <th className="text-left p-3 font-medium">{t('immune.time')}</th>
@@ -839,7 +839,7 @@ export function ImmuneClient() {
             <select
               value={auditFilter}
               onChange={(e) => { setAuditFilter(e.target.value); }}
-              className="bg-card border border-border rounded-lg px-3 py-2 text-sm"
+              className="bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm"
             >
               <option value="">{t('immune.all1')}</option>
               <option value="high">{t('immune.high6')}</option>
@@ -848,7 +848,7 @@ export function ImmuneClient() {
             </select>
             <button
               onClick={fetchAuditLog}
-              className="flex items-center gap-1 px-3 py-2 bg-muted/30 border border-border rounded-lg text-sm hover:bg-muted/50 transition-colors"
+              className="flex items-center gap-1 px-3 py-2 bg-muted/30 border border-border rounded-lg text-xs lg:text-sm hover:bg-muted/50 transition-colors"
             >
               <RefreshCw className="w-3.5 h-3.5" /> {t('common.refresh')}
             </button>
@@ -862,10 +862,10 @@ export function ImmuneClient() {
               {auditEntries.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground/50">
                   <FileText className="w-12 h-12 mb-2" />
-                  <p className="text-sm">{t('immune.noAudit')}</p>
+                  <p className="text-xs lg:text-sm">{t('immune.noAudit')}</p>
                 </div>
               ) : (
-                <table className="w-full text-sm">
+                <table className="w-full text-xs lg:text-sm">
                   <thead className="sticky top-0 bg-muted/50">
                     <tr className="text-xs text-muted-foreground">
                       <th className="text-left p-3 font-medium">{t('immune.time3')}</th>

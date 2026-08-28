@@ -121,7 +121,7 @@ export function CaptureClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-500/10">
             <Camera size={18} className="text-orange-500" />
@@ -138,7 +138,7 @@ export function CaptureClient() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 border-b border-border px-6 py-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3 border-b border-border px-3 lg:px-6 py-3">
           <div className="rounded-lg bg-muted/50 px-3 py-2">
             <div className="text-[10px] text-muted-foreground">{t("capture.total")}</div>
             <div className="text-lg font-bold">{stats.total_captures}</div>
@@ -155,7 +155,7 @@ export function CaptureClient() {
       )}
 
       {/* Filters */}
-      <div className="flex items-center gap-2 border-b border-border px-6 py-2.5">
+      <div className="flex items-center gap-2 border-b border-border px-3 lg:px-6 py-2.5">
         <div className="flex rounded-lg border border-border p-0.5">
           {(["all", "page", "selection"] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}
@@ -172,7 +172,7 @@ export function CaptureClient() {
       </div>
 
       {/* List */}
-      <div className="flex-1 overflow-y-auto px-6 py-3">
+      <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-3">
         {loading && captures.length === 0 ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground">
             <Loader2 size={16} className="animate-spin mr-2" /> {t("capture.loading")}

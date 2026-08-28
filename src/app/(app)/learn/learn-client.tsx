@@ -411,19 +411,19 @@ Generated: ${new Date().toLocaleString("zh-CN")}
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border px-3 lg:px-6 py-3 lg:py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 lg:gap-3 border-b border-border px-3 lg:px-6 py-3 lg:py-4">
         <div className="flex items-center gap-2">
           <GraduationCap size={20} className="text-primary" />
           <h1 className="text-lg font-semibold">{t("learn.title") || "Learning"}</h1>
         </div>
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-1.5 text-sm">
+        <div className="flex items-center gap-2 lg:gap-3">
+          <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-1.5 text-xs lg:text-sm">
             <Search size={14} className="text-muted-foreground" />
             <input
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder={t("learn.filterCourses") || "Filter courses..."}
-              className="w-48 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+              className="w-48 bg-transparent text-xs lg:text-sm outline-none placeholder:text-muted-foreground"
             />
           </div>
           {/* Policy Card Download */}
@@ -454,8 +454,8 @@ Generated: ${new Date().toLocaleString("zh-CN")}
       </div>
 
       {/* Stats */}
-      <div className="grid gap-3 lg:gap-4 border-b border-border px-3 lg:px-6 py-3 lg:py-4 sm:grid-cols-3">
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+      <div className="grid gap-2 lg:gap-4 border-b border-border px-3 lg:px-6 py-3 lg:py-4 sm:grid-cols-3">
+        <div className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border bg-card p-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-500/10 text-blue-500">
             <CheckCircle2 size={18} />
           </div>
@@ -464,7 +464,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
             <p className="text-xs text-muted-foreground">{t("learn.chaptersLearned") || "Chapters Learned"}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+        <div className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border bg-card p-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-amber-500/10 text-amber-500">
             <Clock size={18} />
           </div>
@@ -473,7 +473,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
             <p className="text-xs text-muted-foreground">{t("learn.chaptersPending") || "Chapters Pending"}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
+        <div className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border bg-card p-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-green-500/10 text-green-500">
             <RotateCcw size={18} />
           </div>
@@ -485,11 +485,11 @@ Generated: ${new Date().toLocaleString("zh-CN")}
       </div>
 
       {/* Course List */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {filtered.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <BookOpen size={48} className="mb-4 opacity-30" />
-            <p className="text-sm">{t("learn.noCourses") || "No courses yet"}</p>
+            <p className="text-xs lg:text-sm">{t("learn.noCourses") || "No courses yet"}</p>
             <button
               onClick={() => { resetForm(); setShowCreateModal(true); }}
               className="mt-2 text-xs text-primary hover:underline"
@@ -543,7 +543,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
                     <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
                       <BookOpen size={16} />
                     </div>
-                    <h3 className="mb-1 text-sm font-medium">{course.title}</h3>
+                    <h3 className="mb-1 text-xs lg:text-sm font-medium">{course.title}</h3>
                     <p className="mb-3 line-clamp-2 text-xs text-muted-foreground">
                       {course.description}
                     </p>
@@ -589,7 +589,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowCreateModal(false)}>
           <div
-            className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-xl"
+            className="w-full max-w-lg rounded-xl border border-border bg-background p-3 lg:p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -601,34 +601,34 @@ Generated: ${new Date().toLocaleString("zh-CN")}
 
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">{t("learn.courseTitle") || "Title"}</label>
+                <label className="mb-1 block text-xs lg:text-sm font-medium">{t("learn.courseTitle") || "Title"}</label>
                 <input
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
                   placeholder={t("learn.courseTitlePlaceholder") || "Enter course title..."}
-                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
+                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
                   autoFocus
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium">{t("learn.description") || "Description"} <span className="text-xs text-muted-foreground">({t("learn.optional") || "optional"})</span></label>
+                <label className="mb-1 block text-xs lg:text-sm font-medium">{t("learn.description") || "Description"} <span className="text-xs text-muted-foreground">({t("learn.optional") || "optional"})</span></label>
                 <textarea
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   placeholder={t("learn.descriptionPlaceholder") || "Brief description..."}
                   rows={2}
-                  className="w-full resize-none rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
+                  className="w-full resize-none rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
                 />
               </div>
 
               <div>
-                <label className="mb-1 block text-sm font-medium">{t("learn.tags") || "Tags"} <span className="text-xs text-muted-foreground">(comma separated)</span></label>
+                <label className="mb-1 block text-xs lg:text-sm font-medium">{t("learn.tags") || "Tags"} <span className="text-xs text-muted-foreground">(comma separated)</span></label>
                 <input
                   value={formTags}
                   onChange={(e) => setFormTags(e.target.value)}
                   placeholder="python, machine-learning, ..."
-                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
+                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
                 />
               </div>
 
@@ -636,7 +636,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
               <div className="flex gap-2">
                 <button
                   onClick={() => setGenMode("ai")}
-                  className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
+                  className={`flex-1 rounded-md border px-3 py-2 text-xs lg:text-sm transition-colors ${
                     genMode === "ai" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
                   }`}
                 >
@@ -645,7 +645,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
                 </button>
                 <button
                   onClick={() => setGenMode("manual")}
-                  className={`flex-1 rounded-md border px-3 py-2 text-sm transition-colors ${
+                  className={`flex-1 rounded-md border px-3 py-2 text-xs lg:text-sm transition-colors ${
                     genMode === "manual" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
                   }`}
                 >
@@ -655,13 +655,13 @@ Generated: ${new Date().toLocaleString("zh-CN")}
               </div>
 
               {genMode === "ai" && (
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2 lg:gap-3">
                   <div>
                     <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("learn.chapters") || "Chapters"}</label>
                     <select
                       value={numChapters}
                       onChange={(e) => setNumChapters(parseInt(e.target.value))}
-                      className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none"
+                      className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none"
                     >
                       {[3, 4, 5, 6, 7, 8, 10].map((n) => (
                         <option key={n} value={n}>{n}</option>
@@ -673,7 +673,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
                     <select
                       value={difficulty}
                       onChange={(e) => setDifficulty(e.target.value)}
-                      className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none"
+                      className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none"
                     >
                       <option value="beginner">{t("learn.beginner") || "Beginner"}</option>
                       <option value="intermediate">{t("learn.intermediate") || "Intermediate"}</option>
@@ -687,14 +687,14 @@ Generated: ${new Date().toLocaleString("zh-CN")}
             <div className="mt-6 flex justify-end gap-2">
               <button
                 onClick={() => { setShowCreateModal(false); resetForm(); }}
-                className="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent"
+                className="rounded-md border border-border px-4 py-2 text-xs lg:text-sm hover:bg-accent"
               >
                 {t("common.cancel") || "Cancel"}
               </button>
               <button
                 onClick={handleCreate}
                 disabled={!formTitle.trim() || generating}
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 {generating ? (
                   <><Loader2 size={14} className="animate-spin" /> {t("learn.creating") || "Creating..."}</>
@@ -711,7 +711,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
       {showEditModal && selectedCourse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowEditModal(false)}>
           <div
-            className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-xl"
+            className="w-full max-w-lg rounded-xl border border-border bg-background p-3 lg:p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -722,43 +722,43 @@ Generated: ${new Date().toLocaleString("zh-CN")}
             </div>
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-sm font-medium">{t("learn.courseTitle") || "Title"}</label>
+                <label className="mb-1 block text-xs lg:text-sm font-medium">{t("learn.courseTitle") || "Title"}</label>
                 <input
                   value={formTitle}
                   onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
+                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
                   autoFocus
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">{t("learn.description") || "Description"}</label>
+                <label className="mb-1 block text-xs lg:text-sm font-medium">{t("learn.description") || "Description"}</label>
                 <textarea
                   value={formDescription}
                   onChange={(e) => setFormDescription(e.target.value)}
                   rows={3}
-                  className="w-full resize-none rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
+                  className="w-full resize-none rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
                 />
               </div>
               <div>
-                <label className="mb-1 block text-sm font-medium">{t("learn.tags") || "Tags"} <span className="text-xs text-muted-foreground">(comma separated)</span></label>
+                <label className="mb-1 block text-xs lg:text-sm font-medium">{t("learn.tags") || "Tags"} <span className="text-xs text-muted-foreground">(comma separated)</span></label>
                 <input
                   value={formTags}
                   onChange={(e) => setFormTags(e.target.value)}
-                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
+                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
                 />
               </div>
             </div>
             <div className="mt-6 flex justify-end gap-2">
               <button
                 onClick={() => { setShowEditModal(false); resetForm(); }}
-                className="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent"
+                className="rounded-md border border-border px-4 py-2 text-xs lg:text-sm hover:bg-accent"
               >
                 {t("common.cancel") || "Cancel"}
               </button>
               <button
                 onClick={handleEdit}
                 disabled={!formTitle.trim() || generating}
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
               >
                 {generating ? (
                   <><Loader2 size={14} className="animate-spin" /> {t("common.saving") || "Saving..."}</>
@@ -775,7 +775,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
       {showLearningCard && selectedCourse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowLearningCard(false)}>
           <div
-            className="w-full max-w-md rounded-xl border border-border bg-background p-6 shadow-xl"
+            className="w-full max-w-md rounded-xl border border-border bg-background p-3 lg:p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -789,13 +789,13 @@ Generated: ${new Date().toLocaleString("zh-CN")}
             </div>
 
             {/* Card Preview */}
-            <div ref={cardRef} className="relative overflow-hidden rounded-lg border-2 border-amber-400 bg-gradient-to-br from-amber-50 via-white to-blue-50 p-6">
+            <div ref={cardRef} className="relative overflow-hidden rounded-lg border-2 border-amber-400 bg-gradient-to-br from-amber-50 via-white to-blue-50 p-3 lg:p-6">
               <div className="absolute right-4 top-4 text-6xl opacity-10">🎓</div>
               <div className="mb-1 text-xs font-medium uppercase tracking-wider text-amber-600">
                 Certificate of Completion
               </div>
               <div className="mb-4 text-xl font-bold text-gray-800">{selectedCourse.title}</div>
-              <div className="mb-3 text-sm text-gray-600">{selectedCourse.description}</div>
+              <div className="mb-3 text-xs lg:text-sm text-gray-600">{selectedCourse.description}</div>
               <div className="mb-4 flex items-center gap-4 text-xs text-gray-500">
                 <span>📚 {selectedCourse.totalChapters} chapters</span>
                 <span>✅ {selectedCourse.completedChapters} completed</span>
@@ -816,7 +816,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
             <div className="mt-4 flex justify-center">
               <button
                 onClick={downloadCardAsImage}
-                className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-6 py-2 text-sm font-medium text-white hover:bg-amber-600"
+                className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-6 py-2 text-xs lg:text-sm font-medium text-white hover:bg-amber-600"
               >
                 <ImageIcon size={16} />
                 {t("learn.downloadAsImage") || "Download as Image"}
@@ -830,7 +830,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
       {showPolicyCard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowPolicyCard(false)}>
           <div
-            className="w-full max-w-lg rounded-xl border border-border bg-background p-6 shadow-xl"
+            className="w-full max-w-lg rounded-xl border border-border bg-background p-3 lg:p-6 shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="mb-4 flex items-center justify-between">
@@ -843,7 +843,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
               </button>
             </div>
 
-            <div className="space-y-3 rounded-lg border border-border bg-muted/50 p-4 text-sm">
+            <div className="space-y-3 rounded-lg border border-border bg-muted/50 p-4 text-xs lg:text-sm">
               <div>
                 <h3 className="font-medium">📋 {t("learn.policyCourseMgmt") || "Course Management"}</h3>
                 <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
@@ -870,7 +870,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
             <div className="mt-4 flex justify-center">
               <button
                 onClick={downloadPolicyCard}
-                className="inline-flex items-center gap-2 rounded-md bg-blue-500 px-6 py-2 text-sm font-medium text-white hover:bg-blue-600"
+                className="inline-flex items-center gap-2 rounded-md bg-blue-500 px-6 py-2 text-xs lg:text-sm font-medium text-white hover:bg-blue-600"
               >
                 <Download size={16} />
                 {t("learn.downloadPolicy") || "Download Policy Card"}

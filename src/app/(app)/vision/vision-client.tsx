@@ -92,7 +92,7 @@ export function VisionClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <ImageIcon size={20} className="text-indigo-500" />
           <h1 className="text-lg font-semibold">{t("vision.title") || "Vision Engine"}</h1>
@@ -104,16 +104,16 @@ export function VisionClient() {
         <button
           onClick={() => { fetchStats(); fetchOutputs(); }}
           disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors disabled:opacity-50"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           {t("common.refresh") || "Refresh"}
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xs lg:text-sm text-red-500">
             {error}
           </div>
         )}
@@ -154,7 +154,7 @@ export function VisionClient() {
 
             {/* Backend Status */}
             <div className="rounded-xl border border-border bg-card p-5">
-              <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
+              <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2 mb-4">
                 <Paintbrush size={14} className="text-indigo-500" />
                 {t("vision.backendStatus") || "Backend Status"}
               </h3>
@@ -175,7 +175,7 @@ export function VisionClient() {
                       <XCircle size={16} className="text-red-500 shrink-0" />
                     )}
                     <div>
-                      <p className="text-sm font-medium">{name}</p>
+                      <p className="text-xs lg:text-sm font-medium">{name}</p>
                       <p className="text-[10px] text-muted-foreground">
                         {available ? (t("vision.available") || "Available") : (t("vision.unavailable") || "Unavailable")}
                       </p>
@@ -187,7 +187,7 @@ export function VisionClient() {
 
             {/* Output Directory */}
             <div className="rounded-xl border border-border bg-card p-5">
-              <h3 className="text-sm font-semibold flex items-center gap-2 mb-2">
+              <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2 mb-2">
                 <Folder size={14} className="text-indigo-500" />
                 {t("vision.outputDirectory") || "Output Directory"}
               </h3>
@@ -202,7 +202,7 @@ export function VisionClient() {
         {outputs.length > 0 && (
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="px-5 py-3 border-b border-border bg-muted/30">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
+              <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <FileImage size={14} className="text-indigo-500" />
                 {t("vision.recentOutputs") || "Recent Outputs"}
                 <span className="rounded-full bg-indigo-500/10 px-2 py-0.5 text-[10px] font-medium text-indigo-500">

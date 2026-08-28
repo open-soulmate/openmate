@@ -254,14 +254,14 @@ export function SnippetsClient() {
     <div className="flex h-full flex-col bg-background text-foreground">
       {/* Toast */}
       {toast && (
-        <div className="fixed right-4 top-4 z-50 flex items-center gap-2 rounded-lg border border-border bg-card px-4 py-2.5 shadow-lg">
+        <div className="fixed right-4 top-4 z-50 flex items-center gap-2 rounded-lg border border-border bg-card px-2 lg:px-4 py-2.5 shadow-lg">
           {toast.type === 'success' ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-          <span className="text-sm">{toast.msg}</span>
+          <span className="text-xs lg:text-sm">{toast.msg}</span>
         </div>
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
             <FileCode className="h-5 w-5 text-primary" />
@@ -286,7 +286,7 @@ export function SnippetsClient() {
 
       {/* Stats bar */}
       {stats && (
-        <div className="flex items-center gap-4 border-b border-border px-6 py-2 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 lg:gap-4 border-b border-border px-3 lg:px-6 py-2 text-xs text-muted-foreground">
           <span>{t('plugins.total')} <strong className="text-foreground">{stats.total}</strong></span>
           <span>{t('plugins.starred')} <strong className="text-foreground">{stats.starred}</strong></span>
           <span>{t('plugins.pinned')} <strong className="text-foreground">{stats.pinned}</strong></span>
@@ -296,27 +296,27 @@ export function SnippetsClient() {
       )}
 
       {/* Filters */}
-      <div className="flex items-center gap-3 border-b border-border px-6 py-3">
+      <div className="flex items-center gap-3 border-b border-border px-3 lg:px-6 py-3">
         <div className="relative flex-1 max-w-sm">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text" placeholder={t('plugins.searchPlaceholder')}
             value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-primary"
+            className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs lg:text-sm outline-none focus:border-primary"
           />
         </div>
         <select value={filterLang} onChange={e => setFilterLang(e.target.value)}
-          className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
+          className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none">
           <option value="">{t('plugins.allLanguages')}</option>
           {allLanguages.map(lang => <option key={lang} value={lang}>{lang}</option>)}
         </select>
         <select value={filterTag} onChange={e => setFilterTag(e.target.value)}
-          className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
+          className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none">
           <option value="">{t('plugins.allTags')}</option>
           {allTags.map(t => <option key={t.name} value={t.name}>{t.name} ({t.count})</option>)}
         </select>
         <button onClick={() => setFilterStarred(!filterStarred)}
-          className={`flex items-center gap-1 rounded-lg border px-3 py-2 text-sm ${filterStarred ? 'border-yellow-500 bg-yellow-500/10 text-yellow-500' : 'border-border hover:bg-accent'}`}>
+          className={`flex items-center gap-1 rounded-lg border px-3 py-2 text-xs lg:text-sm ${filterStarred ? 'border-yellow-500 bg-yellow-500/10 text-yellow-500' : 'border-border hover:bg-accent'}`}>
           <Star className={`h-3.5 w-3.5 ${filterStarred ? 'fill-yellow-500' : ''}`} /> {t('plugins.starred')}
         </button>
         <div className="flex rounded-lg border border-border">
@@ -330,25 +330,25 @@ export function SnippetsClient() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {loading ? (
           <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         ) : filteredSnippetList.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
             <FileCode className="mb-3 h-12 w-12 opacity-30" />
-            <p className="text-sm">{t('plugins.noSnippets')}</p>
+            <p className="text-xs lg:text-sm">{t('plugins.noSnippets')}</p>
             <button onClick={openCreate} className="mt-3 text-xs text-primary hover:underline">{t('plugins.createFirst')}</button>
           </div>
         ) : viewMode === 'grid' ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-2 lg:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filteredSnippetList.map(s => (
               <div key={s.id} className="group relative flex flex-col rounded-lg border border-border bg-card transition-shadow hover:shadow-md">
                 {/* Header */}
-                <div className="flex items-start justify-between border-b border-border px-4 py-2.5">
+                <div className="flex items-start justify-between border-b border-border px-2 lg:px-4 py-2.5">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
                       {s.pinned && <Pin className="h-3 w-3 text-primary fill-primary" />}
-                      <h3 className="truncate text-sm font-medium">{s.title || t('plugins.noTitle')}</h3>
+                      <h3 className="truncate text-xs lg:text-sm font-medium">{s.title || t('plugins.noTitle')}</h3>
                     </div>
                     <div className="mt-0.5 flex items-center gap-2">
                       <span className="inline-flex items-center gap-1 rounded px-1.5 py-0.5 text-[10px] font-medium" style={{ backgroundColor: (LANG_COLORS[s.language] || '#6e7681') + '20', color: LANG_COLORS[s.language] || '#6e7681' }}>
@@ -373,11 +373,11 @@ export function SnippetsClient() {
                   </div>
                 </div>
                 {/* Code preview */}
-                <div className="flex-1 overflow-hidden px-4 py-2.5">
+                <div className="flex-1 overflow-hidden px-2 lg:px-4 py-2.5">
                   <pre className="max-h-32 overflow-hidden whitespace-pre-wrap break-all font-mono text-xs text-muted-foreground leading-relaxed">{s.content.slice(0, 300)}</pre>
                 </div>
                 {/* Footer */}
-                <div className="flex items-center justify-between border-t border-border px-4 py-2">
+                <div className="flex items-center justify-between border-t border-border px-2 lg:px-4 py-2">
                   <div className="flex flex-wrap gap-1">
                     {s.tags.slice(0, 3).map(tag => (
                       <span key={tag} className="rounded bg-accent px-1.5 py-0.5 text-[10px] text-muted-foreground">{tag}</span>
@@ -393,7 +393,7 @@ export function SnippetsClient() {
           /* List view */
           <div className="space-y-1">
             {filteredSnippetList.map(s => (
-              <div key={s.id} className="group flex items-center gap-3 rounded-lg border border-border bg-card px-4 py-2.5 hover:shadow-sm">
+              <div key={s.id} className="group flex items-center gap-3 rounded-lg border border-border bg-card px-2 lg:px-4 py-2.5 hover:shadow-sm">
                 <button onClick={() => handleStar(s.id)} className="shrink-0">
                   <Star className={`h-4 w-4 ${s.starred ? 'fill-yellow-500 text-yellow-500' : 'text-muted-foreground'}`} />
                 </button>
@@ -402,7 +402,7 @@ export function SnippetsClient() {
                   {s.language}
                 </span>
                 <div className="min-w-0 flex-1">
-                  <span className="text-sm font-medium truncate">{s.title || t('plugins.noTitle')}</span>
+                  <span className="text-xs lg:text-sm font-medium truncate">{s.title || t('plugins.noTitle')}</span>
                   {s.description && <span className="ml-2 text-xs text-muted-foreground truncate">{s.description}</span>}
                 </div>
                 <div className="flex shrink-0 flex-wrap gap-1">
@@ -429,38 +429,38 @@ export function SnippetsClient() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
           <div className="flex h-[85vh] w-full max-w-3xl flex-col rounded-xl border border-border bg-card shadow-2xl">
             {/* Modal header */}
-            <div className="flex items-center justify-between border-b border-border px-6 py-3">
+            <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-3">
               <h2 className="text-base font-semibold">{editingSnippet ? t('plugins.editSnippet') : t('plugins.newSnippet')}</h2>
               <button onClick={closeEditor} className="rounded-lg p-1.5 hover:bg-accent"><X className="h-4 w-4" /></button>
             </div>
             {/* Modal body */}
-            <div className="flex-1 overflow-y-auto p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-2 lg:gap-4">
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('plugins.title')}</label>
                   <input value={form.title} onChange={e => setForm({ ...form, title: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" placeholder={t('plugins.titlePlaceholder')} />
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary" placeholder={t('plugins.titlePlaceholder')} />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('plugins.language')}</label>
                   <select value={form.language} onChange={e => setForm({ ...form, language: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none">
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none">
                     {allLanguages.length > 0 ? allLanguages.map(l => <option key={l} value={l}>{l}</option>) : (
                       ['text','python','javascript','typescript','tsx','html','css','rust','go','java','bash','sql','json','yaml','markdown'].map(l => <option key={l} value={l}>{l}</option>)
                     )}
                   </select>
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-2 lg:gap-4">
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('plugins.filename')}</label>
                   <input value={form.filename} onChange={e => setForm({ ...form, filename: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" placeholder={t('plugins.filenamePlaceholder')} />
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary" placeholder={t('plugins.filenamePlaceholder')} />
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('plugins.description')}</label>
                   <input value={form.description} onChange={e => setForm({ ...form, description: e.target.value })}
-                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:border-primary" placeholder={t('plugins.descriptionPlaceholder')} />
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary" placeholder={t('plugins.descriptionPlaceholder')} />
                 </div>
               </div>
               <div>
@@ -474,29 +474,29 @@ export function SnippetsClient() {
                   ))}
                   <input value={tagInput} onChange={e => setTagInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addTag(); } }}
-                    className="min-w-[120px] flex-1 bg-transparent text-sm outline-none" placeholder={t('plugins.tagPlaceholder')} />
+                    className="min-w-[120px] flex-1 bg-transparent text-xs lg:text-sm outline-none" placeholder={t('plugins.tagPlaceholder')} />
                 </div>
               </div>
               <div className="flex-1">
                 <label className="mb-1.5 block text-xs font-medium text-muted-foreground">{t('plugins.content')}</label>
                 <textarea value={form.content} onChange={e => setForm({ ...form, content: e.target.value })}
-                  className="h-64 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-sm outline-none focus:border-primary resize-none" placeholder={t('plugins.contentPlaceholder')} />
+                  className="h-64 w-full rounded-lg border border-border bg-background px-3 py-2 font-mono text-xs lg:text-sm outline-none focus:border-primary resize-none" placeholder={t('plugins.contentPlaceholder')} />
               </div>
-              <div className="flex items-center gap-4">
-                <label className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 lg:gap-4">
+                <label className="flex items-center gap-2 text-xs lg:text-sm">
                   <input type="checkbox" checked={form.starred} onChange={e => setForm({ ...form, starred: e.target.checked })} className="rounded" />
                   <Star className="h-3.5 w-3.5" /> {t('plugins.starred')}
                 </label>
-                <label className="flex items-center gap-2 text-sm">
+                <label className="flex items-center gap-2 text-xs lg:text-sm">
                   <input type="checkbox" checked={form.pinned} onChange={e => setForm({ ...form, pinned: e.target.checked })} className="rounded" />
                   <Pin className="h-3.5 w-3.5" /> {t('plugins.pinned')}
                 </label>
               </div>
             </div>
             {/* Modal footer */}
-            <div className="flex items-center justify-end gap-3 border-t border-border px-6 py-3">
-              <button onClick={closeEditor} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-accent">{t('plugins.cancel')}</button>
-              <button onClick={handleSave} className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90">
+            <div className="flex items-center justify-end gap-3 border-t border-border px-3 lg:px-6 py-3">
+              <button onClick={closeEditor} className="rounded-lg border border-border px-2 lg:px-4 py-2 text-xs lg:text-sm hover:bg-accent">{t('plugins.cancel')}</button>
+              <button onClick={handleSave} className="flex items-center gap-2 rounded-lg bg-primary px-2 lg:px-4 py-2 text-xs lg:text-sm text-primary-foreground hover:bg-primary/90">
                 <Save className="h-4 w-4" /> {editingSnippet ? t('plugins.saveBtn') : t('plugins.createBtn')}
               </button>
             </div>

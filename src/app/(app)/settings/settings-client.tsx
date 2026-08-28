@@ -46,7 +46,7 @@ function SettingCard({ title, description, children }: { title: string; descript
   return (
     <div className="rounded-xl border border-border bg-card p-5 space-y-3">
       <div>
-        <h3 className="text-sm font-medium">{title}</h3>
+        <h3 className="text-xs lg:text-sm font-medium">{title}</h3>
         {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
       </div>
       {children}
@@ -57,7 +57,7 @@ function SettingCard({ title, description, children }: { title: string; descript
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (
     <div className="flex items-center justify-between">
-      {label && <span className="text-sm">{label}</span>}
+      {label && <span className="text-xs lg:text-sm">{label}</span>}
       <button onClick={() => onChange(!checked)} className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors", checked ? "bg-primary" : "bg-muted-foreground/30")}>
         <span className={cn("inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm", checked ? "translate-x-[18px]" : "translate-x-[3px]")} />
       </button>
@@ -67,7 +67,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 
 function SelectInput({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
   return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30">
+    <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30">
       {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
     </select>
   );
@@ -89,7 +89,7 @@ function Slider({ value, onChange, min, max, step, unit }: { value: number; onCh
   return (
     <div className="flex items-center gap-3">
       <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="flex-1 accent-primary" />
-      <span className="text-sm font-mono text-muted-foreground min-w-16 text-right">{value}{unit}</span>
+      <span className="text-xs lg:text-sm font-mono text-muted-foreground min-w-16 text-right">{value}{unit}</span>
     </div>
   );
 }
@@ -99,7 +99,7 @@ function TextInput({ value, onChange, placeholder, type = "text" }: { value: str
   return (
     <div className="relative">
       <input type={type === "password" && !showPassword ? "password" : "text"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-primary/30 pr-8" />
+        className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30 pr-8" />
       {type === "password" && (
         <button onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
           {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
@@ -450,7 +450,7 @@ export function SettingsClient() {
             <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-3 mb-1.5">{group}</div>
             {items.map((s) => (
               <button key={s.id} onClick={() => { setActive(s.id); if (isMobile) setShowSidebar(false); }}
-                className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors", active === s.id ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground")}>
+                className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs lg:text-sm transition-colors", active === s.id ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground")}>
                 <s.icon size={15} />{s.label}
               </button>
             ))}
@@ -474,7 +474,7 @@ export function SettingsClient() {
           <button onClick={() => setShowSidebar(true)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground">
             <Menu size={18} />
           </button>
-          <div className="flex items-center gap-1.5 text-sm">
+          <div className="flex items-center gap-1.5 text-xs lg:text-sm">
             <span className="text-muted-foreground">{sections.find(s => s.id === active)?.group}</span>
             <ChevronRight size={12} className="text-muted-foreground" />
             <span className="font-medium">{sections.find(s => s.id === active)?.label}</span>
@@ -498,7 +498,7 @@ export function SettingsClient() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="max-w-2xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
+        <div className="max-w-2xl mx-auto px-4 md:px-8 py-3 lg:py-6 md:py-8 space-y-6">
           {/* Breadcrumb - hidden on mobile (shown in top bar) */}
           <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>{t("settings.title")}</span><ChevronRight size={10} />
@@ -671,22 +671,22 @@ export function SettingsClient() {
 
               <SettingCard title={t("settings.userInfo")}>
                 <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-xs lg:text-sm font-medium text-primary-foreground">
                     {(getUserName() || getUserId() || "U")[0].toUpperCase()}
                   </div>
                   <div>
-                    <div className="text-sm font-medium">{getUserName() || getUserId() || "User"}</div>
+                    <div className="text-xs lg:text-sm font-medium">{getUserName() || getUserId() || "User"}</div>
                     <div className="text-xs text-muted-foreground">{t("settings.signedIn")}</div>
                   </div>
                 </div>
               </SettingCard>
 
               <SettingCard title={t("settings.apiAddress")} description={t("settings.apiAddressDesc")}>
-                <div className="text-sm font-mono text-muted-foreground p-2 rounded bg-muted/50">{getApiBaseUrl()}</div>
+                <div className="text-xs lg:text-sm font-mono text-muted-foreground p-2 rounded bg-muted/50">{getApiBaseUrl()}</div>
               </SettingCard>
 
               <SettingCard title={t("settings.logout")} description={t("settings.logoutDesc")}>
-                <button onClick={handleLogout} className="px-4 py-2 rounded-lg border border-red-500/30 text-sm text-red-500 hover:bg-red-500/5 flex items-center gap-2">
+                <button onClick={handleLogout} className="px-4 py-2 rounded-lg border border-red-500/30 text-xs lg:text-sm text-red-500 hover:bg-red-500/5 flex items-center gap-2">
                   <LogOut size={14} />{t("settings.logout")}
                 </button>
               </SettingCard>
@@ -702,7 +702,7 @@ export function SettingsClient() {
               </div>
 
               <SettingCard title="OpenMate">
-                <div className="space-y-2 text-sm">
+                <div className="space-y-2 text-xs lg:text-sm">
                   <div className="flex justify-between"><span className="text-muted-foreground">{t("settings.frontendVersion")}</span><span className="font-mono">v0.1.0</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">{t("settings.backendVersion")}</span><span className="font-mono">{backendVersion || t("settings.detecting")}</span></div>
                   <div className="flex justify-between"><span className="text-muted-foreground">{t("settings.framework")}</span><span>Next.js + Tauri</span></div>
@@ -724,10 +724,10 @@ export function SettingsClient() {
 
               <SettingCard title={t("settings.links")}>
                 <div className="space-y-2">
-                  <a href="https://github.com/open-soulmate" target="_blank" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                  <a href="https://github.com/open-soulmate" target="_blank" className="flex items-center gap-2 text-xs lg:text-sm text-muted-foreground hover:text-foreground">
                     <ExternalLink size={14} />GitHub
                   </a>
-                  <a href="#" className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+                  <a href="#" className="flex items-center gap-2 text-xs lg:text-sm text-muted-foreground hover:text-foreground">
                     <ExternalLink size={14} />Documentation
                   </a>
                 </div>
@@ -737,7 +737,7 @@ export function SettingsClient() {
 
           {/* Save button */}
           <div className="sticky bottom-0 pt-4 pb-6 bg-background/80 backdrop-blur-sm">
-            <button onClick={handleSave} className={cn("w-full px-4 py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-all",
+            <button onClick={handleSave} className={cn("w-full px-4 py-2.5 rounded-xl text-xs lg:text-sm font-medium flex items-center justify-center gap-2 transition-all",
               saved ? "bg-green-500 text-white" : "bg-primary text-primary-foreground hover:bg-primary/90")}>
               {saved ? <><Check size={16} />{t("settings.saved")}</> : <><Save size={16} />{t("settings.saveSettings")}</>}
             </button>
@@ -815,7 +815,7 @@ function OrgansSection({ apiBase }: { apiBase: string }) {
                 <div className="flex items-center gap-2.5">
                   <span className="text-lg">{info.emoji}</span>
                   <div>
-                    <div className="text-sm font-medium">{info.label}</div>
+                    <div className="text-xs lg:text-sm font-medium">{info.label}</div>
                     <div className="text-[10px] text-muted-foreground font-mono">{organ.key}</div>
                   </div>
                 </div>
