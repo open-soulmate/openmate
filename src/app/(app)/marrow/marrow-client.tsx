@@ -316,7 +316,7 @@ export function MarrowClient() {
         </div>
 
         {/* Tab Navigation */}
-        <div className="flex gap-2 border-b border-border pb-2 mt-4">
+        <div className="flex gap-1 sm:gap-2 border-b border-border pb-2 mt-4 overflow-x-auto scrollbar-none">
           {tabs.map(tab => {
             const Icon = tab.icon
             return (
@@ -324,7 +324,7 @@ export function MarrowClient() {
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-t-lg transition-colors",
+                  "flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-t-lg transition-colors whitespace-nowrap",
                   activeTab === tab.key
                     ? "bg-card border border-b-0 border-border text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
