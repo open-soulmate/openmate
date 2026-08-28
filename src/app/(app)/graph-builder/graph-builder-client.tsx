@@ -161,7 +161,7 @@ export function GraphBuilderClient() {
               <h3 className="text-xs lg:text-sm font-medium">{t('graphBuilder.newRelation')}</h3>
               <button onClick={() => setShowAddRelation(false)} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
             </div>
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 mb-3">
               <select value={relSource} onChange={e => setRelSource(e.target.value)}
                 className="px-3 py-2 rounded border bg-background text-xs lg:text-sm outline-none">
                 <option value="">{t('graphBuilder.sourceEntity')}</option>

@@ -291,7 +291,7 @@ export function NestClient() {
                   </div>
                   {/* Usage bars */}
                   {tenant.usage_percent && (
-                    <div className="mt-3 grid grid-cols-4 gap-2">
+                    <div className="mt-3 grid grid-cols-2 md:grid-cols-4 gap-2">
                       {Object.entries(tenant.usage_percent).map(([key, pct]) => (
                         <div key={key}>
                           <div className="flex justify-between text-[10px] text-muted-foreground mb-0.5">

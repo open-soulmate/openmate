@@ -799,7 +799,7 @@ export function SenseClient() {
                     <h4 className="text-xs font-medium text-muted-foreground mb-3">
                       {t("sense.text61")} ({videoFrames.length} {t("sense.text62")})
                     </h4>
-                    <div className="grid grid-cols-3 gap-2">
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
                       {videoFrames.map((frame) => (
                         <div key={frame.index} className="rounded-lg overflow-hidden border border-border">
                           <img
