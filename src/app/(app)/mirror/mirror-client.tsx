@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useMediaQuery } from "@/hooks/use-mobile";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   RefreshCw, Plus, Play, Pause, Trash2,
   Camera, Terminal, Settings, Box, Loader2, Layers,
@@ -49,6 +51,7 @@ export function MirrorClient() {
   const [varKey, setVarKey] = useState("");
   const [varValue, setVarValue] = useState("");
   const [templateVarOverrides, setTemplateVarOverrides] = useState<Record<string, string>>({});
+  const isMobile = useMediaQuery("(max-width: 1023px)");
   const apiBase = getApiBaseUrl();
 
   const fetchHealth = useCallback(async () => {
@@ -300,8 +303,14 @@ export function MirrorClient() {
         {/* Sandboxes Tab */}
         {tab === "sandboxes" && (
           <div className="flex gap-6">
-            {/* Sandbox List */}
-            <div className="w-80 space-y-3">
+            {/* Sandbox List — full width on mobile, w-80 on desktop */}
+            <div className={`${isMobile ? (selected ? "hidden" : "w-full") : "w-80"} space-y-3`}>
+              {isMobile && (
+                <div className="flex items-center justify-between pb-2 border-b border-border">
+                  <h3 className="text-sm font-medium">{t("mirror.sandboxes") || "Sandboxes"}</h3>
+                  <span className="text-xs text-muted-foreground">{sandboxes.length}</span>
+                </div>
+              )}
               {sandboxes.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <Box size={40} className="mb-3 opacity-30" />
@@ -328,97 +337,197 @@ export function MirrorClient() {
               ))}
             </div>
 
-            {/* Detail Panel */}
-            {selected && (
-              <div className="flex-1 space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold">{selected.name}</h3>
-                    <span className={cn("text-xs px-2 py-0.5 rounded-full",
-                      selected.status === "active" ? "bg-emerald-500/10 text-emerald-500" :
-                      selected.status === "paused" ? "bg-amber-500/10 text-amber-500" :
-                      "bg-muted text-muted-foreground"
-                    )}>{selected.status}</span>
-                  </div>
-                  <div className="flex gap-2">
-                    {selected.status === "active" ? (
-                      <button onClick={() => handlePause(selected.sandbox_id)}
-                        className="flex items-center gap-1 rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs text-amber-600 hover:bg-amber-500/10">
-                        <Pause size={12} /> {t("mirror.pause") || "Pause"}
-                      </button>
-                    ) : selected.status === "paused" ? (
-                      <button onClick={() => handleResume(selected.sandbox_id)}
-                        className="flex items-center gap-1 rounded-lg border border-emerald-500/30 px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-500/10">
-                        <Play size={12} /> {t("mirror.resume") || "Resume"}
-                      </button>
-                    ) : null}
-                    <button onClick={() => handleSnapshot(selected.sandbox_id)}
-                      className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-                      <Camera size={12} /> {t("mirror.snapshot") || "Snapshot"}
-                    </button>
-                    <button onClick={() => handleDestroy(selected.sandbox_id)}
-                      className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
-                      <Trash2 size={12} /> {t("mirror.destroy") || "Destroy"}
-                    </button>
-                  </div>
-                </div>
+            {/* Detail Panel — Sheet on mobile, inline on desktop */}
+            {isMobile ? (
+              <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
+                <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col">
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {selected && (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold">{selected.name}</h3>
+                            <span className={cn("text-xs px-2 py-0.5 rounded-full",
+                              selected.status === "active" ? "bg-emerald-500/10 text-emerald-500" :
+                              selected.status === "paused" ? "bg-amber-500/10 text-amber-500" :
+                              "bg-muted text-muted-foreground"
+                            )}>{selected.status}</span>
+                          </div>
+                          <div className="flex gap-2">
+                            {selected.status === "active" ? (
+                              <button onClick={() => handlePause(selected.sandbox_id)}
+                                className="flex items-center gap-1 rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs text-amber-600 hover:bg-amber-500/10">
+                                <Pause size={12} /> {t("mirror.pause") || "Pause"}
+                              </button>
+                            ) : selected.status === "paused" ? (
+                              <button onClick={() => handleResume(selected.sandbox_id)}
+                                className="flex items-center gap-1 rounded-lg border border-emerald-500/30 px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-500/10">
+                                <Play size={12} /> {t("mirror.resume") || "Resume"}
+                              </button>
+                            ) : null}
+                            <button onClick={() => handleSnapshot(selected.sandbox_id)}
+                              className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
+                              <Camera size={12} /> {t("mirror.snapshot") || "Snapshot"}
+                            </button>
+                            <button onClick={() => handleDestroy(selected.sandbox_id)}
+                              className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
+                              <Trash2 size={12} /> {t("mirror.destroy") || "Destroy"}
+                            </button>
+                          </div>
+                        </div>
 
-                {/* Variables */}
-                <div className="rounded-xl border border-border p-4">
-                  <h4 className="text-sm font-medium mb-2">{t("mirror.variables") || "Variables"}</h4>
-                  {Object.keys(variables).length === 0 ? (
-                    <p className="text-xs text-muted-foreground">{t("mirror.t74225") || "No variables"}</p>
-                  ) : (
-                    <div className="space-y-1 mb-3">
-                      {Object.entries(variables).map(([k, v]) => (
-                        <div key={k} className="flex gap-2 text-xs">
-                          <span className="font-mono text-indigo-500">{k}</span>
-                          <span className="text-muted-foreground">=</span>
-                          <span className="font-mono">{String(v)}</span>
+                        {/* Variables */}
+                        <div className="rounded-xl border border-border p-4">
+                          <h4 className="text-sm font-medium mb-2">{t("mirror.variables") || "Variables"}</h4>
+                          {Object.keys(variables).length === 0 ? (
+                            <p className="text-xs text-muted-foreground">{t("mirror.t74225") || "No variables"}</p>
+                          ) : (
+                            <div className="space-y-1 mb-3">
+                              {Object.entries(variables).map(([k, v]) => (
+                                <div key={k} className="flex gap-2 text-xs">
+                                  <span className="font-mono text-indigo-500">{k}</span>
+                                  <span className="text-muted-foreground">=</span>
+                                  <span className="font-mono">{String(v)}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex gap-2 mt-2">
+                            <input value={varKey} onChange={(e) => setVarKey(e.target.value)}
+                              placeholder={t("mirror.t13221") || "Key"} className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
+                            <input value={varValue} onChange={(e) => setVarValue(e.target.value)}
+                              placeholder={t("mirror.t13221") || "Value"} className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
+                            <button onClick={() => handleSetVariable(selected.sandbox_id)}
+                              className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
+                              {t("mirror.t85783") || "Set"}
+                            </button>
+                          </div>
+                        </div>
+
+                        {/* Logs */}
+                        <div className="rounded-xl border border-border p-4">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="text-sm font-medium">{t("mirror.log") || "Logs"} ({logs.length})</h4>
+                            <div className="flex gap-2">
+                              <input value={logMessage} onChange={(e) => setLogMessage(e.target.value)}
+                                onKeyDown={(e) => e.key === "Enter" && handleAddLog(selected.sandbox_id)}
+                                placeholder={t("mirror.t74580") || "Enter log message"} className="rounded border border-border bg-background px-2 py-1 text-xs w-48" />
+                              <button onClick={() => handleAddLog(selected.sandbox_id)}
+                                className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
+                                {t("mirror.logAction") || "Record"}
+                              </button>
+                            </div>
+                          </div>
+                          <div className="max-h-60 overflow-y-auto space-y-1">
+                            {logs.length === 0 ? (
+                              <p className="text-xs text-muted-foreground">{t("mirror.t59742") || "No logs"}</p>
+                            ) : logs.map((l, i) => (
+                              <div key={i} className="flex gap-2 text-xs">
+                                <span className="text-muted-foreground shrink-0">{new Date(l.ts * 1000).toLocaleTimeString(undefined)}</span>
+                                <span className={cn("font-mono", l.level === "error" ? "text-red-500" : l.level === "warn" ? "text-amber-500" : "text-foreground")}>
+                                  {l.message}
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
+            ) : (
+              selected && (
+                <div className="flex-1 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-semibold">{selected.name}</h3>
+                      <span className={cn("text-xs px-2 py-0.5 rounded-full",
+                        selected.status === "active" ? "bg-emerald-500/10 text-emerald-500" :
+                        selected.status === "paused" ? "bg-amber-500/10 text-amber-500" :
+                        "bg-muted text-muted-foreground"
+                      )}>{selected.status}</span>
+                    </div>
+                    <div className="flex gap-2">
+                      {selected.status === "active" ? (
+                        <button onClick={() => handlePause(selected.sandbox_id)}
+                          className="flex items-center gap-1 rounded-lg border border-amber-500/30 px-3 py-1.5 text-xs text-amber-600 hover:bg-amber-500/10">
+                          <Pause size={12} /> {t("mirror.pause") || "Pause"}
+                        </button>
+                      ) : selected.status === "paused" ? (
+                        <button onClick={() => handleResume(selected.sandbox_id)}
+                          className="flex items-center gap-1 rounded-lg border border-emerald-500/30 px-3 py-1.5 text-xs text-emerald-600 hover:bg-emerald-500/10">
+                          <Play size={12} /> {t("mirror.resume") || "Resume"}
+                        </button>
+                      ) : null}
+                      <button onClick={() => handleSnapshot(selected.sandbox_id)}
+                        className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
+                        <Camera size={12} /> {t("mirror.snapshot") || "Snapshot"}
+                      </button>
+                      <button onClick={() => handleDestroy(selected.sandbox_id)}
+                        className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
+                        <Trash2 size={12} /> {t("mirror.destroy") || "Destroy"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Variables */}
+                  <div className="rounded-xl border border-border p-4">
+                    <h4 className="text-sm font-medium mb-2">{t("mirror.variables") || "Variables"}</h4>
+                    {Object.keys(variables).length === 0 ? (
+                      <p className="text-xs text-muted-foreground">{t("mirror.t74225") || "No variables"}</p>
+                    ) : (
+                      <div className="space-y-1 mb-3">
+                        {Object.entries(variables).map(([k, v]) => (
+                          <div key={k} className="flex gap-2 text-xs">
+                            <span className="font-mono text-indigo-500">{k}</span>
+                            <span className="text-muted-foreground">=</span>
+                            <span className="font-mono">{String(v)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    <div className="flex gap-2 mt-2">
+                      <input value={varKey} onChange={(e) => setVarKey(e.target.value)}
+                        placeholder={t("mirror.t13221") || "Key"} className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
+                      <input value={varValue} onChange={(e) => setVarValue(e.target.value)}
+                        placeholder={t("mirror.t13221") || "Value"} className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
+                      <button onClick={() => handleSetVariable(selected.sandbox_id)}
+                        className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
+                        {t("mirror.t85783") || "Set"}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Logs */}
+                  <div className="rounded-xl border border-border p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <h4 className="text-sm font-medium">{t("mirror.log") || "Logs"} ({logs.length})</h4>
+                      <div className="flex gap-2">
+                        <input value={logMessage} onChange={(e) => setLogMessage(e.target.value)}
+                          onKeyDown={(e) => e.key === "Enter" && handleAddLog(selected.sandbox_id)}
+                          placeholder={t("mirror.t74580") || "Enter log message"} className="rounded border border-border bg-background px-2 py-1 text-xs w-48" />
+                        <button onClick={() => handleAddLog(selected.sandbox_id)}
+                          className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
+                          {t("mirror.logAction") || "Record"}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="max-h-60 overflow-y-auto space-y-1">
+                      {logs.length === 0 ? (
+                        <p className="text-xs text-muted-foreground">{t("mirror.t59742") || "No logs"}</p>
+                      ) : logs.map((l, i) => (
+                        <div key={i} className="flex gap-2 text-xs">
+                          <span className="text-muted-foreground shrink-0">{new Date(l.ts * 1000).toLocaleTimeString(undefined)}</span>
+                          <span className={cn("font-mono", l.level === "error" ? "text-red-500" : l.level === "warn" ? "text-amber-500" : "text-foreground")}>
+                            {l.message}
+                          </span>
                         </div>
                       ))}
                     </div>
-                  )}
-                  <div className="flex gap-2 mt-2">
-                    <input value={varKey} onChange={(e) => setVarKey(e.target.value)}
-                      placeholder={t("mirror.t13221") || "Key"} className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
-                    <input value={varValue} onChange={(e) => setVarValue(e.target.value)}
-                      placeholder={t("mirror.t13221") || "Value"} className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs" />
-                    <button onClick={() => handleSetVariable(selected.sandbox_id)}
-                      className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
-                      {t("mirror.t85783") || "Set"}
-                    </button>
                   </div>
                 </div>
-
-                {/* Logs */}
-                <div className="rounded-xl border border-border p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <h4 className="text-sm font-medium">{t("mirror.log") || "Logs"} ({logs.length})</h4>
-                    <div className="flex gap-2">
-                      <input value={logMessage} onChange={(e) => setLogMessage(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleAddLog(selected.sandbox_id)}
-                        placeholder={t("mirror.t74580") || "Enter log message"} className="rounded border border-border bg-background px-2 py-1 text-xs w-48" />
-                      <button onClick={() => handleAddLog(selected.sandbox_id)}
-                        className="rounded bg-indigo-500 px-2 py-1 text-xs text-white hover:bg-indigo-600">
-                        {t("mirror.logAction") || "Record"}
-                      </button>
-                    </div>
-                  </div>
-                  <div className="max-h-60 overflow-y-auto space-y-1">
-                    {logs.length === 0 ? (
-                      <p className="text-xs text-muted-foreground">{t("mirror.t59742") || "No logs"}</p>
-                    ) : logs.map((l, i) => (
-                      <div key={i} className="flex gap-2 text-xs">
-                        <span className="text-muted-foreground shrink-0">{new Date(l.ts * 1000).toLocaleTimeString(undefined)}</span>
-                        <span className={cn("font-mono", l.level === "error" ? "text-red-500" : l.level === "warn" ? "text-amber-500" : "text-foreground")}>
-                          {l.message}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              )
             )}
           </div>
         )}
