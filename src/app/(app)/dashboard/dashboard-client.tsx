@@ -519,7 +519,7 @@ export function DashboardClient() {
               <Link
                 key={link.href}
                 href={link.href}
-                className="group flex items-center gap-3 rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/30"
+                className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 lg:p-4 transition-colors hover:border-primary/30"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
                   <link.icon size={18} className="text-muted-foreground" />

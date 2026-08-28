@@ -467,7 +467,7 @@ export function BodyMapClient() {
 
           {/* Selected organ detail */}
           {selectedOrganData && selectedStatus && (
-            <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <span className="text-2xl">{selectedOrganData.emoji}</span>
                 <div>
@@ -533,7 +533,7 @@ export function BodyMapClient() {
           </Sheet>
         ) : (
           showDetails && (
-            <div className="w-72 shrink-0 border-l border-border overflow-y-auto p-4 space-y-4">
+            <div className="w-72 shrink-0 border-l border-border overflow-y-auto p-3 lg:p-4 space-y-4">
               {/* System legend */}
               <div>
                 <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t("bodyMap.systemsTitle", "Systems")}</h3>
@@ -549,7 +549,7 @@ export function BodyMapClient() {
 
               {/* Selected organ detail */}
               {selectedOrganData && selectedStatus && (
-                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
                   <div className="flex items-center gap-2">
                     <span className="text-2xl">{selectedOrganData.emoji}</span>
                     <div>

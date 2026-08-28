@@ -203,7 +203,7 @@ export default function SoulClient() {
             {healthAll && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
                 {Object.entries(healthAll).map(([key, check]) => (
-                  <div key={key} className="rounded-xl border border-border bg-card p-4">
+                  <div key={key} className="rounded-xl border border-border bg-card p-3 lg:p-4">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-xs text-muted-foreground capitalize">{key}</span>
                       {getStatusIcon(check.status)}
@@ -302,7 +302,7 @@ export default function SoulClient() {
 
             {/* Knowledge Health */}
             {knowledgeHealth && (
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center gap-2 mb-1">
                   {getStatusIcon(knowledgeHealth.status)}
                   <span className="text-xs lg:text-sm font-medium">{t("soul.knowledgeHealth")}</span>
@@ -318,7 +318,7 @@ export default function SoulClient() {
 
             {/* Knowledge Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("soul.totalEntries")}</span>
                 <p className="text-xl lg:text-2xl font-bold">{knowledgeItems.length}</p>
               </div>
@@ -383,7 +383,7 @@ export default function SoulClient() {
 
             {/* Graph Health */}
             {graphHealth && (
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center gap-2 mb-1">
                   {getStatusIcon(graphHealth.status)}
                   <span className="text-xs lg:text-sm font-medium">{t("soul.graphHealth")}</span>
@@ -397,15 +397,15 @@ export default function SoulClient() {
             {/* Graph Stats */}
             {graphStats && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("soul.graphNodes")}</span>
                   <p className="text-xl lg:text-2xl font-bold">{graphStats.entities ?? graphStats.nodes ?? 0}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("soul.graphEdges")}</span>
                   <p className="text-xl lg:text-2xl font-bold">{graphStats.relations ?? graphStats.edges ?? 0}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("soul.graphTypes")}</span>
                   <p className="text-xl lg:text-2xl font-bold">{graphStats.types ?? graphStats.entity_types ?? 0}</p>
                 </div>
@@ -434,7 +434,7 @@ export default function SoulClient() {
 
             {/* Agent Health */}
             {agentHealth && (
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center gap-2 mb-1">
                   {getStatusIcon(agentHealth.status)}
                   <span className="text-xs lg:text-sm font-medium">{t("soul.agentHealth")}</span>
@@ -456,7 +456,7 @@ export default function SoulClient() {
             ) : (
               <div className="space-y-3">
                 {agentList.map((agent: any, idx: number) => (
-                  <div key={agent.id || agent.agent_id || idx} className="rounded-xl border border-border bg-card p-4">
+                  <div key={agent.id || agent.agent_id || idx} className="rounded-xl border border-border bg-card p-3 lg:p-4">
                     <div className="flex items-center justify-between mb-2">
                       <div className="flex items-center gap-2 lg:gap-3">
                         <div className="rounded-lg bg-violet-500/10 p-2">
@@ -504,7 +504,7 @@ export default function SoulClient() {
 
             {/* LLM Health */}
             {llmHealth && (
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center gap-2 mb-1">
                   {getStatusIcon(llmHealth.status)}
                   <span className="text-xs lg:text-sm font-medium">{t("soul.llmHealth")}</span>
@@ -571,19 +571,19 @@ export default function SoulClient() {
             {/* System Metrics */}
             {settings && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("soul.systemUptime")}</span>
                   <p className="text-lg font-bold">{settings.uptime || settings.uptime_seconds || "-"}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("soul.systemVersion")}</span>
                   <p className="text-lg font-bold">{settings.version || "-"}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("soul.totalRequests")}</span>
                   <p className="text-lg font-bold">{settings.total_requests ?? settings.requests ?? "-"}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("soul.memoryUsage")}</span>
                   <p className="text-lg font-bold">{settings.memory_usage ?? settings.memory ?? "-"}</p>
                 </div>

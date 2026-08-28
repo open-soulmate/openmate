@@ -289,7 +289,7 @@ export function WillClient() {
                 { label: t("will.totalExec"), value: eng?.total_executions ?? 0, icon: Play, color: "text-purple-400", bg: "from-purple-500/20 to-purple-600/10" },
                 { label: t("will.successRate"), value: `${(eng?.success_rate ?? 0).toFixed(0)}%`, icon: Activity, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
               ].map(s => (
-                <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-4", s.bg)}>
+                <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-3 lg:p-4", s.bg)}>
                   <s.icon className={cn("w-4 h-4 mb-2", s.color)} />
                   <div className={cn("text-xl lg:text-2xl font-bold", s.color)}>{s.value}</div>
                   <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
@@ -434,7 +434,7 @@ export function WillClient() {
                   </div>
 
                   {expandedWf === wf.id && (
-                    <div className="border-t border-border p-4 bg-muted/30">
+                    <div className="border-t border-border p-3 lg:p-4 bg-muted/30">
                       <div className="grid grid-cols-2 gap-2 lg:gap-4">
                         <div>
                           <h4 className="text-xs font-semibold text-muted-foreground mb-2">{t("will.nodes")}</h4>

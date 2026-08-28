@@ -215,7 +215,7 @@ export function PulseClient() {
         {tab === "signals" && (
           <div className="space-y-4">
             {/* Create */}
-            <div className="rounded-xl border border-border p-4 space-y-3">
+            <div className="rounded-xl border border-border p-3 lg:p-4 space-y-3">
               <h3 className="text-xs lg:text-sm font-medium">{t("pulse.createSignal") || t('pulse.create')}</h3>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <input value={newName} onChange={(e) => setNewName(e.target.value)}
@@ -251,7 +251,7 @@ export function PulseClient() {
               <div className="space-y-2">
                 {signals.map((s) => (
                   <div key={s.signal_id}
-                    className={cn("rounded-xl border p-4 transition-colors",
+                    className={cn("rounded-xl border p-3 lg:p-4 transition-colors",
                       selectedSignal === s.signal_id ? "border-red-500/50 bg-red-500/5" : "border-border bg-card hover:border-red-500/30")}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -413,7 +413,7 @@ function StatCard({ icon: Icon, label, value, sub, color, bg }: {
   icon: React.ElementType; label: string; value: string; sub: string; color: string; bg: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className={cn("rounded-lg p-1.5", bg)}><Icon size={14} className={color} /></div>

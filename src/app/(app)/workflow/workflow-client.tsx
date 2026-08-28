@@ -310,7 +310,7 @@ export function WorkflowClient() {
               const busy = actionLoading[wf.id];
 
               return (
-                <div key={wf.id} className="group rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40">
+                <div key={wf.id} className="group rounded-lg border border-border bg-card p-3 lg:p-4 transition-colors hover:border-primary/40">
                   <div className="flex items-start justify-between">
                     <div className="flex-1">
                       <div className="mb-1 flex items-center gap-2">
@@ -375,7 +375,7 @@ export function WorkflowClient() {
 
       {/* Delete confirmation */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-3 lg:p-4">
           <div className="w-full max-w-md rounded-xl border border-border bg-card p-3 lg:p-6 shadow-xl">
             <h3 className="text-xs lg:text-sm font-medium mb-2">{t("workflow.deleteWorkflow") || "Delete Workflow"}</h3>
             <p className="text-xs text-muted-foreground mb-4">

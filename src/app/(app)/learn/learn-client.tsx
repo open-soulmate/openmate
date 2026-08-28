@@ -510,7 +510,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
               return (
                 <div
                   key={course.id}
-                  className="group relative rounded-lg border border-border bg-card p-4 transition-colors hover:border-primary/40"
+                  className="group relative rounded-lg border border-border bg-card p-3 lg:p-4 transition-colors hover:border-primary/40"
                 >
                   {/* Actions */}
                   <div className="absolute right-2 top-2 flex items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
@@ -843,7 +843,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
               </button>
             </div>
 
-            <div className="space-y-3 rounded-lg border border-border bg-muted/50 p-4 text-xs lg:text-sm">
+            <div className="space-y-3 rounded-lg border border-border bg-muted/50 p-3 lg:p-4 text-xs lg:text-sm">
               <div>
                 <h3 className="font-medium">📋 {t("learn.policyCourseMgmt") || "Course Management"}</h3>
                 <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">

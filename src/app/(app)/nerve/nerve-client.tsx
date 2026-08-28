@@ -254,7 +254,7 @@ export function NerveClient() {
         ].map(s => {
           const Icon = s.icon
           return (
-            <div key={s.label} className={`bg-card border border-${s.color}-500/20 rounded-xl p-4`}>
+            <div key={s.label} className={`bg-card border border-${s.color}-500/20 rounded-xl p-3 lg:p-4`}>
               <div className="flex items-center gap-2 mb-1">
                 <Icon className={`w-4 h-4 text-${s.color}-400`} />
                 <span className="text-xs text-muted-foreground">{s.label}</span>
@@ -668,7 +668,7 @@ export function NerveClient() {
 
           <div className="space-y-4">
             <h3 className="font-semibold">{t('nerve.text36')}</h3>
-            <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
+            <div className="min-h-[300px] bg-card border border-border rounded-xl p-3 lg:p-4">
               {pubResult ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-green-400">

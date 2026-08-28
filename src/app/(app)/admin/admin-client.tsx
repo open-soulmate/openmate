@@ -123,7 +123,7 @@ export function AdminClient() {
       <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {/* System Status */}
         <div className="mb-6 grid gap-2 lg:gap-4 sm:grid-cols-4">
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-3 lg:p-4">
             <div className="flex items-center gap-2 mb-2">
               {allHealthy ? (
                 <CheckCircle size={16} className="text-green-500" />
@@ -136,7 +136,7 @@ export function AdminClient() {
             <p className="text-xs text-muted-foreground">organs online</p>
           </div>
 
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-3 lg:p-4">
             <div className="flex items-center gap-2 mb-2">
               <HardDrive size={16} className="text-blue-500" />
               <span className="text-xs lg:text-sm font-medium">File Store</span>
@@ -145,7 +145,7 @@ export function AdminClient() {
             <p className="text-xs text-muted-foreground">files stored</p>
           </div>
 
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-3 lg:p-4">
             <div className="flex items-center gap-2 mb-2">
               <Zap size={16} className="text-amber-500" />
               <span className="text-xs lg:text-sm font-medium">LLM Usage</span>
@@ -154,7 +154,7 @@ export function AdminClient() {
             <p className="text-xs text-muted-foreground">tokens used</p>
           </div>
 
-          <div className="rounded-lg border border-border bg-card p-4">
+          <div className="rounded-lg border border-border bg-card p-3 lg:p-4">
             <div className="flex items-center gap-2 mb-2">
               <Activity size={16} className="text-violet-500" />
               <span className="text-xs lg:text-sm font-medium">Trajectories</span>
@@ -697,7 +697,7 @@ function ActionCard({
   onRun: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-lg border border-border bg-card p-3 lg:p-4">
       <div className="flex items-start gap-3">
         <div className={`flex h-9 w-9 items-center justify-center rounded-md ${bg} ${color}`}>
           {icon}
@@ -752,7 +752,7 @@ function StatsCard({
   items: { label: string; value: string | number }[];
 }) {
   return (
-    <div className="rounded-lg border border-border bg-card p-4">
+    <div className="rounded-lg border border-border bg-card p-3 lg:p-4">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-lg">{emoji}</span>
         <h3 className="text-xs lg:text-sm font-medium">{title}</h3>

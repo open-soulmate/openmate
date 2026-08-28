@@ -457,7 +457,7 @@ export function BenchmarkClient() {
                 {expandedOrgan && comparison.find(c => c.organ === expandedOrgan) && (() => {
                   const item = comparison.find(c => c.organ === expandedOrgan)!;
                   return (
-                    <div className="ml-11 rounded-lg border border-border bg-muted/30 p-4">
+                    <div className="ml-11 rounded-lg border border-border bg-muted/30 p-3 lg:p-4">
                       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4 text-xs">
                         <div>
                           <span className="text-muted-foreground">{t("benchmark.minLatency")}</span>

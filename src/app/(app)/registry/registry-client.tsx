@@ -244,7 +244,7 @@ export function RegistryClient() {
                 <div
                   key={comp.id}
                   className={cn(
-                    "group rounded-xl border border-border bg-card p-4 transition-all hover:border-primary/30 hover:shadow-md cursor-pointer",
+                    "group rounded-xl border border-border bg-card p-3 lg:p-4 transition-all hover:border-primary/30 hover:shadow-md cursor-pointer",
                     isExpanded && "ring-1 ring-primary/30"
                   )}
                   onClick={() => setExpandedId(isExpanded ? null : comp.id)}

@@ -186,7 +186,7 @@ export function CaptureClient() {
         ) : (
           <div className="space-y-2">
             {filteredCaptures.map(capture => (
-              <div key={capture.id} className="group rounded-xl border border-border bg-card p-4 transition-colors hover:border-orange-500/30">
+              <div key={capture.id} className="group rounded-xl border border-border bg-card p-3 lg:p-4 transition-colors hover:border-orange-500/30">
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 mb-1">

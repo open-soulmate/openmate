@@ -131,7 +131,7 @@ export function VoiceClient() {
 
       <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xs lg:text-sm text-red-500">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 lg:p-4 text-xs lg:text-sm text-red-500">
             {error}
           </div>
         )}
@@ -177,21 +177,21 @@ export function VoiceClient() {
 
             {/* Synthesis Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("voice.totalSynthesized") || "Synthesized"}</span>
                   <div className="rounded-lg p-1.5 bg-rose-500/10"><Mic size={14} className="text-rose-500" /></div>
                 </div>
                 <p className="text-xl lg:text-2xl font-bold">{stats.engine.total_synthesized}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("voice.totalCharacters") || "Characters"}</span>
                   <div className="rounded-lg p-1.5 bg-blue-500/10"><Hash size={14} className="text-blue-500" /></div>
                 </div>
                 <p className="text-xl lg:text-2xl font-bold">{stats.engine.total_characters.toLocaleString()}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("voice.cacheHits") || "Cache Hits"}</span>
                   <div className="rounded-lg p-1.5 bg-emerald-500/10"><Database size={14} className="text-emerald-500" /></div>
@@ -201,7 +201,7 @@ export function VoiceClient() {
                   {stats.engine.cache.entries} entries · {formatBytes(stats.engine.cache.size_bytes)}
                 </p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("voice.errors") || "Errors"}</span>
                   <div className="rounded-lg p-1.5 bg-red-500/10"><XCircle size={14} className="text-red-500" /></div>
@@ -212,7 +212,7 @@ export function VoiceClient() {
 
             {/* Profile Stats */}
             <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4">
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("voice.totalProfiles") || "Total Profiles"}</span>
                   <div className="rounded-lg p-1.5 bg-violet-500/10"><Settings size={14} className="text-violet-500" /></div>
@@ -222,7 +222,7 @@ export function VoiceClient() {
                   {stats.profiles.builtin_count} {t("voice.builtin") || "builtin"} · {stats.profiles.user_count} {t("voice.user") || "user"}
                 </p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4 col-span-2">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4 col-span-2">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("voice.languageBreakdown") || "Language Breakdown"}</span>
                   <div className="rounded-lg p-1.5 bg-amber-500/10"><Globe size={14} className="text-amber-500" /></div>

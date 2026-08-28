@@ -251,7 +251,7 @@ export function PipelineClient() {
 
             {/* Advanced settings (inline) */}
             {showSettings && (
-              <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
+              <div className="rounded-lg border border-dashed border-border p-3 lg:p-4 space-y-3">
                 <div className="grid grid-cols-2 gap-2 lg:gap-3">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">{t('pipeline.userId')}</label>
@@ -298,7 +298,7 @@ export function PipelineClient() {
 
           {/* Error */}
           {error && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 flex items-start gap-2 lg:gap-3">
+            <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 lg:p-4 flex items-start gap-2 lg:gap-3">
               <XCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs lg:text-sm font-medium text-red-500">{t('pipeline.pipelineFailed')}</p>

@@ -189,7 +189,7 @@ export function SkillsClient() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
           {filtered.map(skill => (
-            <div key={skill.name} className={`rounded-xl border bg-card p-4 transition-all hover:border-primary/30 ${skill.installed ? 'border-green-500/20' : ''}`}>
+            <div key={skill.name} className={`rounded-xl border bg-card p-3 lg:p-4 transition-all hover:border-primary/30 ${skill.installed ? 'border-green-500/20' : ''}`}>
               <div className="flex items-start justify-between mb-2">
                 <div className="flex items-center gap-2.5">
                   <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">

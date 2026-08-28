@@ -365,7 +365,7 @@ export function QuickNotesClient() {
           </div>
 
           {/* Editor body */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+          <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-4">
             {/* Title */}
             <input
               value={formTitle}
@@ -408,7 +408,7 @@ export function QuickNotesClient() {
 
             {/* Content */}
             {preview ? (
-              <div className="min-h-[300px] p-4 rounded-xl border border-border bg-card">
+              <div className="min-h-[300px] p-3 lg:p-4 rounded-xl border border-border bg-card">
                 {formContent ? (
                   <MarkdownPreview content={formContent} />
                 ) : (

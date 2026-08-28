@@ -185,23 +185,23 @@ export function LinkClient() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-3 lg:p-6 space-y-4 md:space-y-3 lg:space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-4 md:p-3 lg:p-6 space-y-4 md:space-y-3 lg:space-y-6">
         {/* Stats */}
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("link.t81176")}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.total_connectors || 0}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("link.active")}</span>
               <p className="text-xl lg:text-2xl font-bold text-emerald-500">{health.active || 0}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("link.t93835")}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.total_events || 0}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("link.type")}</span>
               <p className="text-xs font-mono mt-1">{Object.entries(health.by_type || {}).map(([k, v]) => `${k}:${v}`).join(" · ")}</p>
             </div>
@@ -210,7 +210,7 @@ export function LinkClient() {
 
         {/* Event Log Panel */}
         {showEvents && (
-          <div className="rounded-xl border border-border bg-card p-4">
+          <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-xs lg:text-sm font-medium flex items-center gap-2">
                 <Activity size={14} className="text-teal-500" />
@@ -288,7 +288,7 @@ export function LinkClient() {
                 <div key={c.connector_id}
                   onClick={() => setSelected(c)}
                   className={cn(
-                    "rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-md",
+                    "rounded-xl border border-border bg-card p-3 lg:p-4 cursor-pointer transition-all hover:shadow-md",
                     selected?.connector_id === c.connector_id && "ring-2 ring-teal-500"
                   )}>
                   <div className="flex items-center gap-2 mb-1">
@@ -309,7 +309,7 @@ export function LinkClient() {
           {isMobile ? (
             <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
               <SheetContent side="right" size="full" className="p-0 flex flex-col">
-                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-4">
                   {selected && (
                     <>
                       <div className="flex items-center justify-between">

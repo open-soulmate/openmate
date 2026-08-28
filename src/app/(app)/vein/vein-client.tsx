@@ -142,7 +142,7 @@ function StatCard({ icon: Icon, label, value, sub, color, bg }: {
   icon: React.ElementType; label: string; value: string | number; sub: string; color: string; bg: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
       <div className="flex items-center justify-between mb-2">
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className={cn("rounded-lg p-1.5", bg)}><Icon size={14} className={color} /></div>
@@ -804,7 +804,7 @@ export function VeinClient() {
 
             {/* Chunked Upload Sessions */}
             {chunkedUploads.length > 0 && (
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <h3 className="text-xs lg:text-sm font-medium mb-3 flex items-center gap-2">
                   <Layers size={14} className="text-blue-500" />
                   {t("vein.activeChunkedUploads", { count: chunkedUploads.length })}
@@ -874,7 +874,7 @@ export function VeinClient() {
               {/* Batch Auto-Process Result */}
               {batchResult && (
                 <div className={cn(
-                  "rounded-xl border p-4 text-xs lg:text-sm",
+                  "rounded-xl border p-3 lg:p-4 text-xs lg:text-sm",
                   batchResult.status === "ok" ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5"
                 )}>
                   {batchResult.status === "ok" ? (
@@ -1245,7 +1245,7 @@ export function VeinClient() {
             </div>
 
             {/* Cache Usage Bar */}
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <div className="flex items-center justify-between mb-2">
                 <h3 className="text-xs lg:text-sm font-medium">{t("vein.cacheSpaceUsage")}</h3>
                 <span className="text-xs text-muted-foreground">
@@ -1271,7 +1271,7 @@ export function VeinClient() {
             </div>
 
             {/* Cache Actions */}
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <h3 className="text-xs lg:text-sm font-medium mb-3">{t("vein.cacheOperationsTitle")}</h3>
               <div className="flex flex-col sm:flex-row gap-2 lg:gap-3">
                 <button
@@ -1295,7 +1295,7 @@ export function VeinClient() {
             </div>
 
             {/* Dedup Info */}
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <h3 className="text-xs lg:text-sm font-medium mb-3 flex items-center gap-2">
                 <Database size={14} className="text-amber-500" />
                 {t("vein.dedupStatsTitle")}

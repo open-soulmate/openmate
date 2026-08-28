@@ -188,7 +188,7 @@ export function DiagnosticsClient() {
 
       <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xs lg:text-sm text-red-500">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 lg:p-4 text-xs lg:text-sm text-red-500">
             {error}
           </div>
         )}
@@ -197,7 +197,7 @@ export function DiagnosticsClient() {
           <>
             {/* Health Summary */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.totalOrgans") || "Total"}</span>
                   <div className="rounded-lg p-1.5 bg-blue-500/10"><Server size={14} className="text-blue-500" /></div>
@@ -208,7 +208,7 @@ export function DiagnosticsClient() {
                   <span className="text-red-500 ml-1">{data.summary.unhealthy}</span> error
                 </p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.avgResponse") || "Avg Response"}</span>
                   <div className="rounded-lg p-1.5 bg-amber-500/10"><Clock size={14} className="text-amber-500" /></div>
@@ -216,7 +216,7 @@ export function DiagnosticsClient() {
                 <p className="text-xl lg:text-2xl font-bold">{data.summary.avg_response_ms}<span className="text-xs lg:text-sm font-normal ml-0.5">ms</span></p>
                 <p className="text-xs text-muted-foreground mt-0.5">max {data.summary.max_response_ms.toFixed(1)}ms</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">CPU</span>
                   <div className="rounded-lg p-1.5 bg-violet-500/10"><Cpu size={14} className="text-violet-500" /></div>
@@ -224,7 +224,7 @@ export function DiagnosticsClient() {
                 <p className="text-xl lg:text-2xl font-bold">{data.system.cpu_percent}%</p>
                 <p className="text-xs text-muted-foreground mt-0.5">{data.system.cpu_count} cores</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("diagnostics.memory") || "Memory"}</span>
                   <div className="rounded-lg p-1.5 bg-emerald-500/10"><MemoryStick size={14} className="text-emerald-500" /></div>

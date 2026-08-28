@@ -251,13 +251,13 @@ export function MetricsClient() {
 
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs text-muted-foreground mb-1">
             {t("metrics.uptime", "Uptime")}
           </div>
           <div className="text-xl lg:text-2xl font-bold">{formatUptime(metrics.uptime)}</div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs text-muted-foreground mb-1">
             {t("metrics.organs", "Organs")}
           </div>
@@ -268,7 +268,7 @@ export function MetricsClient() {
             <span className="text-muted-foreground">/{totalOrgans}</span>
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs text-muted-foreground mb-1">
             {t("metrics.memory", "Memory")}
           </div>
@@ -277,7 +277,7 @@ export function MetricsClient() {
             RSS
           </div>
         </div>
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs text-muted-foreground mb-1">
             {t("metrics.cpuTime", "CPU Time")}
           </div>
@@ -288,7 +288,7 @@ export function MetricsClient() {
       {/* System Resources */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-2 lg:gap-4">
         {/* CPU */}
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs lg:text-sm font-medium mb-3">
             🖥️ {t("metrics.cpu", "CPU")}
           </div>
@@ -299,7 +299,7 @@ export function MetricsClient() {
         </div>
 
         {/* Memory */}
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs lg:text-sm font-medium mb-3">
             🧠 {t("metrics.systemMemory", "System Memory")}
           </div>
@@ -325,7 +325,7 @@ export function MetricsClient() {
         </div>
 
         {/* Disk */}
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs lg:text-sm font-medium mb-3">
             💾 {t("metrics.disk", "Disk")}
           </div>
@@ -352,7 +352,7 @@ export function MetricsClient() {
       </div>
 
       {/* Organ Health Grid */}
-      <div className="rounded-xl border border-border bg-card p-4">
+      <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
         <div className="text-xs lg:text-sm font-medium mb-3">
           🫀 {t("metrics.organHealth", "Organ Health Status")}
         </div>
@@ -375,7 +375,7 @@ export function MetricsClient() {
 
       {/* Top HTTP Endpoints */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:gap-4">
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs lg:text-sm font-medium mb-3">
             🔥 {t("metrics.topEndpoints", "Top HTTP Endpoints")}
           </div>
@@ -406,7 +406,7 @@ export function MetricsClient() {
         </div>
 
         {/* Errors */}
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs lg:text-sm font-medium mb-3">
             ⚠️ {t("metrics.errors", "HTTP Errors")}
           </div>
@@ -455,7 +455,7 @@ export function MetricsClient() {
 
       {/* Instance Info */}
       {metrics.info && (
-        <div className="rounded-xl border border-border bg-card p-4">
+        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
           <div className="text-xs lg:text-sm font-medium mb-3">
             ℹ️ {t("metrics.instanceInfo", "Instance Info")}
           </div>

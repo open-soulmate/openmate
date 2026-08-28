@@ -364,7 +364,7 @@ export function MarrowClient() {
                 { label: t("marrow.scheduledTasks") || "Scheduled Tasks", value: health?.scheduler.active_schedules ?? 0, icon: CalendarClock, color: "text-cyan-400", bg: "from-cyan-500/20 to-cyan-600/10" },
                 { label: t("marrow.status") || "Status", value: health?.status === "ok" ? (t("common.normal") || "Normal") : (t("common.abnormal") || "Abnormal"), icon: CheckCircle, color: health?.status === "ok" ? "text-green-400" : "text-red-400", bg: health?.status === "ok" ? "from-green-500/20 to-green-600/10" : "from-red-500/20 to-red-600/10" },
               ].map(s => (
-                <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-4", s.bg)}>
+                <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-3 lg:p-4", s.bg)}>
                   <s.icon className={cn("w-4 h-4 mb-2", s.color)} />
                   <div className={cn("text-xl lg:text-2xl font-bold", s.color)}>{s.value}</div>
                   <div className="text-xs text-muted-foreground mt-1">{s.label}</div>

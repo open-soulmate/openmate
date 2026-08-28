@@ -266,23 +266,23 @@ export function MirrorClient() {
         {/* Stats */}
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2 lg:gap-4">
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("mirror.t22079") || "Sandboxes"}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.total_sandboxes || 0}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("mirror.active") || "Active"}</span>
               <p className="text-xl lg:text-2xl font-bold text-emerald-500">{health.active || 0}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("mirror.paused") || "Paused"}</span>
               <p className="text-xl lg:text-2xl font-bold text-amber-500">{health.paused || 0}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("mirror.ttl") || "Storage"}</span>
               <p className="text-xs font-mono truncate mt-1">{health.sandbox_dir}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("mirror.totalTemplates") || "Templates"}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.templates?.total_templates || 0}</p>
             </div>
@@ -322,7 +322,7 @@ export function MirrorClient() {
                 <div key={sb.sandbox_id}
                   onClick={() => setSelected(sb)}
                   className={cn(
-                    "rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-md",
+                    "rounded-xl border border-border bg-card p-3 lg:p-4 cursor-pointer transition-all hover:shadow-md",
                     selected?.sandbox_id === sb.sandbox_id && "ring-2 ring-indigo-500"
                   )}>
                   <div className="flex items-center justify-between mb-1">
@@ -341,7 +341,7 @@ export function MirrorClient() {
             {isMobile ? (
               <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
                 <SheetContent side="right" size="full" className="p-0 flex flex-col">
-                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-4">
                     {selected && (
                       <>
                         <div className="flex items-center justify-between">
@@ -377,7 +377,7 @@ export function MirrorClient() {
                         </div>
 
                         {/* Variables */}
-                        <div className="rounded-xl border border-border p-4">
+                        <div className="rounded-xl border border-border p-3 lg:p-4">
                           <h4 className="text-xs lg:text-sm font-medium mb-2">{t("mirror.variables") || "Variables"}</h4>
                           {Object.keys(variables).length === 0 ? (
                             <p className="text-xs text-muted-foreground">{t("mirror.t74225") || "No variables"}</p>
@@ -405,7 +405,7 @@ export function MirrorClient() {
                         </div>
 
                         {/* Logs */}
-                        <div className="rounded-xl border border-border p-4">
+                        <div className="rounded-xl border border-border p-3 lg:p-4">
                           <div className="flex items-center justify-between mb-2">
                             <h4 className="text-xs lg:text-sm font-medium">{t("mirror.log") || "Logs"} ({logs.length})</h4>
                             <div className="flex gap-2">
@@ -472,7 +472,7 @@ export function MirrorClient() {
                   </div>
 
                   {/* Variables */}
-                  <div className="rounded-xl border border-border p-4">
+                  <div className="rounded-xl border border-border p-3 lg:p-4">
                     <h4 className="text-xs lg:text-sm font-medium mb-2">{t("mirror.variables") || "Variables"}</h4>
                     {Object.keys(variables).length === 0 ? (
                       <p className="text-xs text-muted-foreground">{t("mirror.t74225") || "No variables"}</p>
@@ -500,7 +500,7 @@ export function MirrorClient() {
                   </div>
 
                   {/* Logs */}
-                  <div className="rounded-xl border border-border p-4">
+                  <div className="rounded-xl border border-border p-3 lg:p-4">
                     <div className="flex items-center justify-between mb-2">
                       <h4 className="text-xs lg:text-sm font-medium">{t("mirror.log") || "Logs"} ({logs.length})</h4>
                       <div className="flex gap-2">
@@ -540,7 +540,7 @@ export function MirrorClient() {
               {templates.map((tpl) => (
                 <div key={tpl.template_id}
                   className={cn(
-                    "rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-md",
+                    "rounded-xl border border-border bg-card p-3 lg:p-4 cursor-pointer transition-all hover:shadow-md",
                     selectedTemplate?.template_id === tpl.template_id && "ring-2 ring-indigo-500"
                   )}
                   onClick={() => { setSelectedTemplate(tpl); setTemplateVarOverrides({}); }}>
@@ -570,7 +570,7 @@ export function MirrorClient() {
 
             {/* Template Action Panel */}
             {selectedTemplate && (
-              <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-4 space-y-4">
+              <div className="rounded-xl border border-indigo-500/30 bg-indigo-500/5 p-3 lg:p-4 space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <span className="text-lg">{selectedTemplate.icon}</span>

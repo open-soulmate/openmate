@@ -197,21 +197,21 @@ export default function SomaAdminClient() {
             {/* Status Cards */}
             {systemStatus && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("somaAdmin.systemStatus")}</span>
                   <p className={cn("text-xl lg:text-2xl font-bold", STATUS_COLORS[systemStatus.status] || "text-foreground")}>
                     {systemStatus.status}
                   </p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("somaAdmin.version")}</span>
                   <p className="text-xl lg:text-2xl font-bold">{systemStatus.version || "-"}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("somaAdmin.connectorsCount")}</span>
                   <p className="text-xl lg:text-2xl font-bold text-cyan-500">{systemStatus.connectors_count ?? 0}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("somaAdmin.collectorsCount")}</span>
                   <p className="text-xl lg:text-2xl font-bold text-cyan-500">{systemStatus.collectors_count ?? 0}</p>
                 </div>
@@ -288,7 +288,7 @@ export default function SomaAdminClient() {
                     <div key={conn.id}
                       onClick={() => setSelectedConnector(conn)}
                       className={cn(
-                        "rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-md",
+                        "rounded-xl border border-border bg-card p-3 lg:p-4 cursor-pointer transition-all hover:shadow-md",
                         selectedConnector?.id === conn.id && "ring-2 ring-cyan-500"
                       )}>
                       <div className="flex items-center justify-between mb-1">
@@ -317,7 +317,7 @@ export default function SomaAdminClient() {
                 {isMobile ? (
                   <Sheet open={!!selectedConnector} onOpenChange={(open) => { if (!open) setSelectedConnector(null); }}>
                     <SheetContent side="right" size="full" className="p-0 flex flex-col">
-                      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-4">
                         {selectedConnector && (
                           <>
                             <div>
@@ -359,7 +359,7 @@ export default function SomaAdminClient() {
 
                             {/* Config */}
                             {selectedConnector.config && (
-                              <div className="rounded-xl border border-border bg-card p-4">
+                              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                                 <h4 className="text-xs text-muted-foreground mb-2">{t("somaAdmin.connConfig")}</h4>
                                 <pre className="text-xs font-mono bg-background rounded p-3 overflow-auto max-h-48">
                                   {JSON.stringify(selectedConnector.config, null, 2)}
@@ -424,7 +424,7 @@ export default function SomaAdminClient() {
 
                       {/* Config */}
                       {selectedConnector.config && (
-                        <div className="rounded-xl border border-border bg-card p-4">
+                        <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                           <h4 className="text-xs text-muted-foreground mb-2">{t("somaAdmin.connConfig")}</h4>
                           <pre className="text-xs font-mono bg-background rounded p-3 overflow-auto max-h-48">
                             {JSON.stringify(selectedConnector.config, null, 2)}
@@ -466,19 +466,19 @@ export default function SomaAdminClient() {
 
             {/* Collector Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("somaAdmin.totalCollectors")}</span>
                 <p className="text-xl lg:text-2xl font-bold">{collectors.length}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("somaAdmin.runningCollectors")}</span>
                 <p className="text-xl lg:text-2xl font-bold text-emerald-500">{collectors.filter(c => c.status === "running" || c.status === "active").length}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("somaAdmin.stoppedCollectors")}</span>
                 <p className="text-xl lg:text-2xl font-bold text-gray-500">{collectors.filter(c => c.status === "stopped").length}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("somaAdmin.errorCollectors")}</span>
                 <p className="text-xl lg:text-2xl font-bold text-red-500">{collectors.filter(c => c.status === "error").length}</p>
               </div>
@@ -495,7 +495,7 @@ export default function SomaAdminClient() {
             ) : (
               <div className="space-y-3">
                 {collectors.map((col) => (
-                  <div key={col.id} className="rounded-xl border border-border bg-card p-4">
+                  <div key={col.id} className="rounded-xl border border-border bg-card p-3 lg:p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2 lg:gap-3">
                         <div className={cn("rounded-lg p-2",
@@ -568,7 +568,7 @@ export default function SomaAdminClient() {
                   <Server size={14} className="text-cyan-500" />
                   {t("somaAdmin.systemConfig")}
                 </h3>
-                <pre className="text-xs font-mono bg-background rounded p-4 overflow-auto max-h-96 border border-border">
+                <pre className="text-xs font-mono bg-background rounded p-3 lg:p-4 overflow-auto max-h-96 border border-border">
                   {JSON.stringify(config, null, 2)}
                 </pre>
               </div>

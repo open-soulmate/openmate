@@ -246,7 +246,7 @@ export function SmartCalcClient() {
               </div>
             )}
             {calcResult && !calcError && (
-              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs text-muted-foreground font-mono">{calcResult.expression}</span>
                   <button onClick={copyResult} className="text-muted-foreground hover:text-foreground">
@@ -365,7 +365,7 @@ export function SmartCalcClient() {
               </div>
             )}
             {convResult && !convError && (
-              <div className="rounded-xl border border-border bg-card p-4 space-y-2 text-center">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-2 text-center">
                 <div className="text-xs lg:text-sm text-muted-foreground">
                   {convResult.value} {convResult.from_unit}
                 </div>

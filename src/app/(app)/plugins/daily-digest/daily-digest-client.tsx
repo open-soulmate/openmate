@@ -435,7 +435,7 @@ export function DailyDigestClient() {
                 <button
                   key={item.id}
                   onClick={() => viewDigest(item.date)}
-                  className="w-full flex items-center gap-2 lg:gap-4 p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-all text-left group"
+                  className="w-full flex items-center gap-2 lg:gap-4 p-3 lg:p-4 rounded-xl border border-border bg-card hover:bg-muted/30 transition-all text-left group"
                 >
                   {/* Score badge */}
                   <div className={cn(

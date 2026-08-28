@@ -301,7 +301,7 @@ export function ImmuneClient() {
             ].map(item => {
               const Icon = item.icon
               return (
-                <div key={item.label} className="bg-card border border-border rounded-xl p-4">
+                <div key={item.label} className="bg-card border border-border rounded-xl p-3 lg:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Icon className="w-4 h-4 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">{item.label}</span>
@@ -393,7 +393,7 @@ export function ImmuneClient() {
                 onChange={(e) => setModerateText(e.target.value)}
                 placeholder={t('immune.contentinput')}
                 rows={8}
-                className="w-full bg-card border border-border rounded-xl p-4 text-xs lg:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500/30"
+                className="w-full bg-card border border-border rounded-xl p-3 lg:p-4 text-xs lg:text-sm resize-none focus:outline-none focus:ring-2 focus:ring-red-500/30"
               />
               <button
                 onClick={handleModerate}
@@ -407,7 +407,7 @@ export function ImmuneClient() {
 
             <div className="space-y-4">
               <h3 className="font-semibold">{t('immune.result4')}</h3>
-              <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
+              <div className="min-h-[300px] bg-card border border-border rounded-xl p-3 lg:p-4">
                 {moderateResult ? (
                   <div className="space-y-4">
                     <div className={`flex items-center gap-2 p-3 rounded-lg border ${
@@ -664,7 +664,7 @@ export function ImmuneClient() {
             ].map(item => {
               const Icon = item.icon
               return (
-                <div key={item.label} className="bg-card border border-border rounded-xl p-4">
+                <div key={item.label} className="bg-card border border-border rounded-xl p-3 lg:p-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Icon className="w-4 h-4 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">{item.label}</span>
@@ -779,7 +779,7 @@ export function ImmuneClient() {
 
           {/* Recent Threats */}
           <div className="bg-card border border-border rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between p-4 border-b border-border">
+            <div className="flex items-center justify-between p-3 lg:p-4 border-b border-border">
               <h3 className="font-semibold flex items-center gap-2">
                 <Zap className="w-4 h-4 text-yellow-400" /> {t('immune.threats')}
               </h3>

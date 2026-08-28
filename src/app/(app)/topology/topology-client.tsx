@@ -158,7 +158,7 @@ export function TopologyClient() {
 
       <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xs lg:text-sm text-red-500">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-3 lg:p-4 text-xs lg:text-sm text-red-500">
             {error}
           </div>
         )}
@@ -167,28 +167,28 @@ export function TopologyClient() {
           <>
             {/* Summary Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("topology.totalNodes") || "Nodes"}</span>
                   <div className="rounded-lg p-1.5 bg-violet-500/10"><Box size={14} className="text-violet-500" /></div>
                 </div>
                 <p className="text-xl lg:text-2xl font-bold">{stats.total_nodes}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("topology.totalEdges") || "Edges"}</span>
                   <div className="rounded-lg p-1.5 bg-blue-500/10"><GitBranch size={14} className="text-blue-500" /></div>
                 </div>
                 <p className="text-xl lg:text-2xl font-bold">{stats.total_edges}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("topology.categories") || "Categories"}</span>
                   <div className="rounded-lg p-1.5 bg-emerald-500/10"><Layers size={14} className="text-emerald-500" /></div>
                 </div>
                 <p className="text-xl lg:text-2xl font-bold">{Object.keys(categories).length}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("topology.status") || "Status"}</span>
                   <div className="rounded-lg p-1.5 bg-amber-500/10"><Activity size={14} className="text-amber-500" /></div>

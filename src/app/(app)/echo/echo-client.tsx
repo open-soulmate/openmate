@@ -246,23 +246,23 @@ export function EchoClient() {
         {/* Stats */}
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-5 gap-2 lg:gap-4">
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("echo.t38907") || "Total Messages"}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.total_messages || 0}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("echo.success") || "Success"}</span>
               <p className="text-xl lg:text-2xl font-bold text-emerald-500">{health.sent || 0}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("echo.fail") || "Failed"}</span>
               <p className="text-xl lg:text-2xl font-bold text-red-500">{health.failed || 0}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("echo.channel") || "Channel"}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.channels_enabled || 0}/{health.channels_configured || 0}</p>
             </div>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <span className="text-xs text-muted-foreground">{t("echo.templates") || "Templates"}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.templates?.total_templates || 0}</p>
               <p className="text-xs text-muted-foreground mt-0.5">{(t("echo.usageTimes") || "Used {{count}} times").replace("{count}", String(health.templates?.total_usage || 0))}</p>
@@ -376,7 +376,7 @@ export function EchoClient() {
               {isMobile ? (
                 <Sheet open={!!selectedTemplate} onOpenChange={(open) => { if (!open) setSelectedTemplate(null); }}>
                   <SheetContent side="right" size="full" className="p-0 flex flex-col">
-                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-4">
                       {selectedTemplate && (
                         <>
                           <div className="flex items-center justify-between">
@@ -407,7 +407,7 @@ export function EchoClient() {
 
                           {/* Variables Input */}
                           {selectedTemplate.variables.length > 0 && (
-                            <div className="rounded-xl border border-border p-4 space-y-3">
+                            <div className="rounded-xl border border-border p-3 lg:p-4 space-y-3">
                               <h4 className="text-xs lg:text-sm font-medium">{t("echo.fillVariables") || "Fill Variables"}</h4>
                               <div className="grid grid-cols-2 gap-2 lg:gap-3">
                                 {selectedTemplate.variables.map((v) => (
@@ -456,7 +456,7 @@ export function EchoClient() {
 
                           {/* Preview Result */}
                           {previewResult && (
-                            <div className="rounded-lg border border-pink-500/30 bg-pink-500/5 p-4 space-y-2">
+                            <div className="rounded-lg border border-pink-500/30 bg-pink-500/5 p-3 lg:p-4 space-y-2">
                               <div className="text-xs text-pink-500 font-medium">{t("echo.previewResult") || "Preview Result"}</div>
                               <div className="font-medium">{previewResult.title}</div>
                               <pre className="text-xs whitespace-pre-wrap text-muted-foreground">{previewResult.content}</pre>
@@ -509,7 +509,7 @@ export function EchoClient() {
 
                     {/* Variables Input */}
                     {selectedTemplate.variables.length > 0 && (
-                      <div className="rounded-xl border border-border p-4 space-y-3">
+                      <div className="rounded-xl border border-border p-3 lg:p-4 space-y-3">
                         <h4 className="text-xs lg:text-sm font-medium">{t("echo.fillVariables") || "Fill Variables"}</h4>
                         <div className="grid grid-cols-2 gap-2 lg:gap-3">
                           {selectedTemplate.variables.map((v) => (
@@ -558,7 +558,7 @@ export function EchoClient() {
 
                     {/* Preview Result */}
                     {previewResult && (
-                      <div className="rounded-lg border border-pink-500/30 bg-pink-500/5 p-4 space-y-2">
+                      <div className="rounded-lg border border-pink-500/30 bg-pink-500/5 p-3 lg:p-4 space-y-2">
                         <div className="text-xs text-pink-500 font-medium">{t("echo.previewResult") || "Preview Result"}</div>
                         <div className="font-medium">{previewResult.title}</div>
                         <pre className="text-xs whitespace-pre-wrap text-muted-foreground">{previewResult.content}</pre>
@@ -663,7 +663,7 @@ export function EchoClient() {
               {channels.map((ch) => {
                 const healthInfo = channelHealth?.channels?.find((h: any) => h.channel === ch.channel);
                 return (
-                <div key={ch.channel} className="rounded-xl border border-border bg-card p-4">
+                <div key={ch.channel} className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Radio size={16} className={ch.enabled ? "text-emerald-500" : "text-muted-foreground"} />

@@ -492,7 +492,7 @@ function StatsPanel({ stats, types }: { stats: TimelineStats | null; types: Type
       </div>
 
       {/* Hourly distribution */}
-      <div className="rounded-lg border border-border p-4">
+      <div className="rounded-lg border border-border p-3 lg:p-4">
         <h3 className="text-xs lg:text-sm font-medium mb-3">{t("timeline.eventsByHour")}</h3>
         <div className="flex items-end gap-1 h-24">
           {[...stats.hourly_distribution].reverse().map(h => (
@@ -511,7 +511,7 @@ function StatsPanel({ stats, types }: { stats: TimelineStats | null; types: Type
 
       {/* By type */}
       {types.length > 0 && (
-        <div className="rounded-lg border border-border p-4">
+        <div className="rounded-lg border border-border p-3 lg:p-4">
           <h3 className="text-xs lg:text-sm font-medium mb-3">{t("timeline.eventsByType")}</h3>
           <div className="space-y-2">
             {types.slice(0, 15).map(typ => {

@@ -146,7 +146,7 @@ export function DownloadClient() {
       </div>
 
       {showAdd && (
-        <div className="mb-6 p-4 rounded-xl border bg-card">
+        <div className="mb-6 p-3 lg:p-4 rounded-xl border bg-card">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
               <input value={newUrl} onChange={e => setNewUrl(e.target.value)}
@@ -189,7 +189,7 @@ export function DownloadClient() {
           ) : (
             <div className="space-y-3">
               {tasks.filter(t => t.status !== 'done').map(task => (
-                <div key={task.id} className="rounded-xl border bg-card p-4">
+                <div key={task.id} className="rounded-xl border bg-card p-3 lg:p-4">
                   <div className="flex items-start justify-between mb-2">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -249,7 +249,7 @@ export function DownloadClient() {
           ) : (
             <div className="space-y-3">
               {done.map(task => (
-                <div key={task.id} className="rounded-xl border bg-card p-4">
+                <div key={task.id} className="rounded-xl border bg-card p-3 lg:p-4">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2 min-w-0 flex-1">
                       <CheckCircle className="w-4 h-4 text-green-500 shrink-0" />
@@ -274,7 +274,7 @@ export function DownloadClient() {
             <Settings className="w-5 h-5 text-muted-foreground" />
             <span className="text-lg font-medium">{t('download.engineConfig')}</span>
           </div>
-          <div className="rounded-xl border bg-card p-4 space-y-4">
+          <div className="rounded-xl border bg-card p-3 lg:p-4 space-y-4">
             <div>
               <label className="text-xs lg:text-sm font-medium mb-1.5 block">{t('download.threads')} (1-32)</label>
               <div className="flex items-center gap-3">
@@ -311,7 +311,7 @@ export function DownloadClient() {
                 placeholder="http://127.0.0.1:7890" />
             </div>
           </div>
-          <div className="rounded-xl border bg-card p-4">
+          <div className="rounded-xl border bg-card p-3 lg:p-4">
             <h3 className="text-xs lg:text-sm font-medium mb-3">{t('download.supportedProtocols')}</h3>
             <div className="grid grid-cols-2 gap-2 text-xs">
               {[

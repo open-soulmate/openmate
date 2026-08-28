@@ -188,7 +188,7 @@ export function KnowledgeClient() {
           {filtered.map(item => (
             <div
               key={item.id}
-              className="bg-card border border-border rounded-xl p-4 hover:border-border/80 transition-all group"
+              className="bg-card border border-border rounded-xl p-3 lg:p-4 hover:border-border/80 transition-all group"
             >
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">

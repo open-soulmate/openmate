@@ -491,7 +491,7 @@ export function SettingsClient() {
         </Sheet>
       ) : (
         /* PC: fixed sidebar */
-        <div className="w-56 shrink-0 border-r border-border bg-card/50 p-4 flex flex-col">
+        <div className="w-56 shrink-0 border-r border-border bg-card/50 p-3 lg:p-4 flex flex-col">
           <SidebarNav />
         </div>
       )}

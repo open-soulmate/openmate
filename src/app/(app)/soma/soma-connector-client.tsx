@@ -306,19 +306,19 @@ export function SomaConnectorClient() {
             {/* Stats */}
             {health && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("soma.registeredComponents")}</span>
                   <p className="text-xl lg:text-2xl font-bold">{health.registry?.total || 0}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("soma.online")}</span>
                   <p className="text-xl lg:text-2xl font-bold text-emerald-500">{health.registry?.online || 0}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("soma.offline")}</span>
                   <p className="text-xl lg:text-2xl font-bold text-red-500">{health.registry?.offline || 0}</p>
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <span className="text-xs text-muted-foreground">{t("soma.typeDistribution")}</span>
                   <p className="text-xs font-mono mt-1">
                     {Object.entries(health.registry?.by_type || {}).map(([k, v]) => `${k}:${v}`).join(" · ") || t("soma.none")}
@@ -387,7 +387,7 @@ export function SomaConnectorClient() {
                   <div key={c.component_id}
                     onClick={() => setSelected(c)}
                     className={cn(
-                      "rounded-xl border border-border bg-card p-4 cursor-pointer transition-all hover:shadow-md",
+                      "rounded-xl border border-border bg-card p-3 lg:p-4 cursor-pointer transition-all hover:shadow-md",
                       selected?.component_id === c.component_id && "ring-2 ring-cyan-500"
                     )}>
                     <div className="flex items-center justify-between mb-1">
@@ -551,7 +551,7 @@ export function SomaConnectorClient() {
               <div className="space-y-3">
                 {collectors.map((col) => (
                   <div key={col.id}
-                    className="rounded-xl border border-border bg-card p-4">
+                    className="rounded-xl border border-border bg-card p-3 lg:p-4">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-2 lg:gap-3">
                         <div className={cn("rounded-lg p-2",
@@ -646,19 +646,19 @@ export function SomaConnectorClient() {
 
             {/* Sync Stats */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("soma.totalSyncs")}</span>
                 <p className="text-xl lg:text-2xl font-bold">{syncHistory.length}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("soma.syncSuccess")}</span>
                 <p className="text-xl lg:text-2xl font-bold text-emerald-500">{syncHistory.filter(s => s.status === "success").length}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("soma.syncFailed")}</span>
                 <p className="text-xl lg:text-2xl font-bold text-red-500">{syncHistory.filter(s => s.status === "failed").length}</p>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("soma.totalItems")}</span>
                 <p className="text-xl lg:text-2xl font-bold">{syncHistory.reduce((sum, s) => sum + s.items_count, 0)}</p>
               </div>
@@ -719,7 +719,7 @@ export function SomaConnectorClient() {
 
             {/* Failed items detail */}
             {syncHistory.some(s => s.status === "failed") && (
-              <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 space-y-2">
+              <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 lg:p-4 space-y-2">
                 <h3 className="text-xs font-semibold text-red-500 flex items-center gap-2">
                   <AlertTriangle size={12} /> {t("soma.syncErrors")}
                 </h3>

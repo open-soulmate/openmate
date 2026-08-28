@@ -228,7 +228,7 @@ export function SystemDoctorClient() {
           <>
             {/* Score Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">Health Score</span>
                 <p className="text-2xl lg:text-3xl font-bold mt-1">{report.health_score}<span className="text-base text-muted-foreground">/100</span></p>
                 <div className="mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
@@ -242,7 +242,7 @@ export function SystemDoctorClient() {
                   />
                 </div>
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">Organs OK</span>
                 <p className="text-2xl lg:text-3xl font-bold mt-1">
                   <span className="text-emerald-500">{report.summary.organs.ok}</span>
@@ -252,7 +252,7 @@ export function SystemDoctorClient() {
                   <p className="text-xs text-red-500 mt-1">{report.summary.organs.error} error(s)</p>
                 )}
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">Integrations</span>
                 <p className="text-2xl lg:text-3xl font-bold mt-1">
                   <span className="text-emerald-500">{report.summary.integrations.ok}</span>
@@ -262,7 +262,7 @@ export function SystemDoctorClient() {
                   <p className="text-xs text-red-500 mt-1">{report.summary.integrations.error} error(s)</p>
                 )}
               </div>
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">Storage Used</span>
                 <p className="text-xl lg:text-2xl font-bold mt-1">{report.summary.storage.total_human}</p>
                 <p className="text-xs text-muted-foreground mt-1">Managed data</p>
@@ -271,7 +271,7 @@ export function SystemDoctorClient() {
 
             {/* Recommendations */}
             {report.recommendations.length > 0 && (
-              <div className="rounded-xl border border-border bg-card p-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <h3 className="text-xs lg:text-sm font-medium flex items-center gap-2 mb-3">
                   <Info size={14} className="text-blue-500" />
                   Recommendations
@@ -294,7 +294,7 @@ export function SystemDoctorClient() {
             )}
 
             {/* Slowest Organs */}
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <h3 className="text-xs lg:text-sm font-medium mb-3">Slowest Organs</h3>
               <div className="space-y-1">
                 {report.organs
@@ -382,7 +382,7 @@ export function SystemDoctorClient() {
             {report.integrations.map((integration) => {
               const Icon = STATUS_ICON[integration.status] || CheckCircle;
               return (
-                <div key={integration.id} className="rounded-xl border border-border bg-card p-4">
+                <div key={integration.id} className="rounded-xl border border-border bg-card p-3 lg:p-4">
                   <div className="flex items-center gap-2 lg:gap-3">
                     <Icon size={16} className={STATUS_COLOR[integration.status]} />
                     <div className="flex-1">
@@ -409,7 +409,7 @@ export function SystemDoctorClient() {
         {/* Storage Tab */}
         {activeTab === 'storage' && report && (
           <>
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <h3 className="text-xs lg:text-sm font-medium mb-3 flex items-center gap-2">
                 <HardDrive size={14} className="text-blue-500" />
                 Storage Breakdown
@@ -444,7 +444,7 @@ export function SystemDoctorClient() {
         {/* Cleanup Tab */}
         {activeTab === 'cleanup' && (
           <div className="space-y-4">
-            <div className="rounded-xl border border-border bg-card p-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
               <h3 className="text-xs lg:text-sm font-medium mb-3 flex items-center gap-2">
                 <Trash2 size={14} className="text-orange-500" />
                 Storage Cleanup

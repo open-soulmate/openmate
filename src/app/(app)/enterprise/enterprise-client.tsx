@@ -355,7 +355,7 @@ export function EnterpriseClient() {
             {activeTab === "users" && (
               <div className="space-y-3 lg:space-y-6">
                 {/* Assign Role */}
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 lg:p-4">
                   <h3 className="text-xs lg:text-sm font-medium text-zinc-300 mb-3 flex items-center gap-2">
                     <UserPlus className="w-4 h-4" /> {t("enterprise.assignRole", "Assign Role to User")}
                   </h3>
@@ -375,7 +375,7 @@ export function EnterpriseClient() {
                 </div>
 
                 {/* Assign Permission */}
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 lg:p-4">
                   <h3 className="text-xs lg:text-sm font-medium text-zinc-300 mb-3 flex items-center gap-2">
                     <Key className="w-4 h-4" /> {t("enterprise.assignPermission", "Assign Permission")}
                   </h3>
@@ -449,7 +449,7 @@ export function EnterpriseClient() {
             {/* Roles Tab */}
             {activeTab === "roles" && (
               <div className="space-y-3 lg:space-y-6">
-                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
+                <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-3 lg:p-4">
                   <h3 className="text-xs lg:text-sm font-medium text-zinc-300 mb-3 flex items-center gap-2">
                     <Plus className="w-4 h-4" /> {t("enterprise.createRole", "Create Role")}
                   </h3>

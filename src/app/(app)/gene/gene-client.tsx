@@ -262,7 +262,7 @@ export function GeneClient() {
           { label: t("gene.user"), value: health?.user_count ?? 0 },
           { label: t("gene.text11"), value: categories.length },
         ].map(s => (
-          <div key={s.label} className="bg-card border border-border rounded-xl p-4">
+          <div key={s.label} className="bg-card border border-border rounded-xl p-3 lg:p-4">
             <div className="text-xl lg:text-2xl font-bold">{s.value}</div>
             <div className="text-xs text-muted-foreground">{s.label}</div>
           </div>
@@ -366,7 +366,7 @@ export function GeneClient() {
                   >
                     <button
                       onClick={() => setExpandedTemplate(expanded ? null : tmpl.template_id)}
-                      className="w-full text-left p-4"
+                      className="w-full text-left p-3 lg:p-4"
                     >
                       <div className="flex items-start gap-3">
                         <div className="flex-1">
@@ -390,7 +390,7 @@ export function GeneClient() {
                     </button>
 
                     {expanded && (
-                      <div className="border-t border-border p-4 space-y-3 bg-muted/10">
+                      <div className="border-t border-border p-3 lg:p-4 space-y-3 bg-muted/10">
                         <div className="flex items-center gap-2 lg:gap-4 text-xs text-muted-foreground">
                           <span>ID: <code className="font-mono">{tmpl.template_id}</code></span>
                           <span>{t("gene.text13")}: {tmpl.author}</span>
@@ -542,7 +542,7 @@ export function GeneClient() {
 
           <div className="space-y-4">
             <h3 className="font-semibold">{t("gene.text26")}</h3>
-            <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
+            <div className="min-h-[300px] bg-card border border-border rounded-xl p-3 lg:p-4">
               {createResult ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-green-400">
@@ -596,7 +596,7 @@ export function GeneClient() {
               const tmpl = templates.find(t => t.template_id === instTemplateId)
               if (!tmpl) return null
               return (
-                <div className="bg-muted/20 rounded-xl p-4 space-y-2">
+                <div className="bg-muted/20 rounded-xl p-3 lg:p-4 space-y-2">
                   <h4 className="font-medium text-xs lg:text-sm">{tmpl.name}</h4>
                   <p className="text-xs text-muted-foreground">{tmpl.description}</p>
                   {tmpl.variables.length > 0 && (
@@ -631,7 +631,7 @@ export function GeneClient() {
 
           <div className="space-y-4">
             <h3 className="font-semibold">{t("gene.text34")}</h3>
-            <div className="min-h-[300px] bg-card border border-border rounded-xl p-4">
+            <div className="min-h-[300px] bg-card border border-border rounded-xl p-3 lg:p-4">
               {instResult ? (
                 <div className="space-y-3">
                   <div className="flex items-center gap-2 text-green-400">
@@ -725,11 +725,11 @@ export function GeneClient() {
             </p>
             <div className="bg-card border border-border rounded-xl p-3 lg:p-6 space-y-4">
               <div className="grid grid-cols-2 gap-2 lg:gap-4">
-                <div className="bg-muted/20 rounded-lg p-4 text-center">
+                <div className="bg-muted/20 rounded-lg p-3 lg:p-4 text-center">
                   <div className="text-xl lg:text-2xl font-bold">{health?.total_templates ?? 0}</div>
                   <div className="text-xs text-muted-foreground">{t("gene.text43")}</div>
                 </div>
-                <div className="bg-muted/20 rounded-lg p-4 text-center">
+                <div className="bg-muted/20 rounded-lg p-3 lg:p-4 text-center">
                   <div className="text-xl lg:text-2xl font-bold">{health?.user_count ?? 0}</div>
                   <div className="text-xs text-muted-foreground">{t("gene.user")}</div>
                 </div>

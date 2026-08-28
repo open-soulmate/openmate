@@ -345,7 +345,7 @@ export function PomodoroClient() {
         {/* Settings Tab */}
         {tab === "settings" && (
           <div className="space-y-4 max-w-md">
-            <div className="rounded-xl border border-border bg-card p-4 space-y-4">
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-4">
               <h3 className="text-xs lg:text-sm font-medium">{tr("plugins.pomodoroConfig") || "Pomodoro Settings"}</h3>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
@@ -393,7 +393,7 @@ export function PomodoroClient() {
 
             {/* All-time stats */}
             {stats && (
-              <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
                 <h3 className="text-xs lg:text-sm font-medium">{tr("plugins.cumulativeStats") || "Cumulative Stats"}</h3>
                 <div className="grid grid-cols-2 gap-2 lg:gap-3">
                   <div className="text-center">

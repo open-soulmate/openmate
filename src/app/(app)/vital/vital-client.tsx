@@ -328,7 +328,7 @@ export function VitalClient() {
       <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {/* Error banner */}
         {healthError && activeTab === "health" && (
-          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xs lg:text-sm text-red-500 flex items-center gap-2">
+          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-3 lg:p-4 text-xs lg:text-sm text-red-500 flex items-center gap-2">
             <XCircle size={16} />
             {t("vital.fetchError") || "Failed to fetch health data"}: {healthError}
           </div>
@@ -340,12 +340,12 @@ export function VitalClient() {
             {/* Resource Gauges */}
             <Section title={t("vital.resourceUsage")} icon={Server}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:gap-4">
-                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
                   <GaugeBar value={metrics.cpu_percent || 0} label={t("vital.cpuUsage")} color="blue" />
                   <GaugeBar value={metrics.memory_percent || 0} label={t("vital.memoryUsage")} color="purple" detail={`${((metrics.memory_used_mb || 0) / 1024).toFixed(1)} / ${((metrics.memory_total_mb || 0) / 1024).toFixed(1)} GB`} />
                   <GaugeBar value={metrics.disk_percent || 0} label={t("vital.diskUsage")} color="amber" detail={`${(metrics.disk_used_gb || 0).toFixed(0)} / ${(metrics.disk_total_gb || 0).toFixed(0)} GB`} />
                 </div>
-                <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
                   <div className="grid grid-cols-2 gap-2 lg:gap-3">
                     <MiniStat label={t("vital.requestQps")} value={(metrics.request_qps || 0).toFixed(1)} icon={Zap} />
                     <MiniStat label={t("vital.p99Latency")} value={`${(metrics.latency_p99_ms || 0).toFixed(0)}ms`} icon={Clock} />
@@ -419,7 +419,7 @@ export function VitalClient() {
                   <div
                     key={comp.name}
                     className={cn(
-                      "flex items-center rounded-xl border p-4 transition-colors",
+                      "flex items-center rounded-xl border p-3 lg:p-4 transition-colors",
                       cfg.border, cfg.bg
                     )}
                   >
@@ -590,7 +590,7 @@ export function VitalClient() {
                   <div
                     key={idx}
                     className={cn(
-                      "flex items-start gap-2 lg:gap-3 rounded-xl border p-4 transition-colors",
+                      "flex items-start gap-2 lg:gap-3 rounded-xl border p-3 lg:p-4 transition-colors",
                       alert.resolved
                         ? "border-border bg-card opacity-60"
                         : alert.severity === "critical"
@@ -703,7 +703,7 @@ function StatCard({ label, value, icon: Icon, color }: {
   label: string; value: string; icon: React.ElementType; color: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
       <div className="flex items-center gap-2 mb-2">
         <Icon size={14} className="text-muted-foreground" />
         <span className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</span>
@@ -731,7 +731,7 @@ function OverviewCard({ label, value, icon: Icon, valueClass }: {
   label: string; value: string; icon: React.ElementType; valueClass: string;
 }) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4">
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
       <div className="flex items-center gap-2 mb-2">
         <Icon size={14} className="text-muted-foreground" />
         <span className="text-[11px] text-muted-foreground uppercase tracking-wider">{label}</span>

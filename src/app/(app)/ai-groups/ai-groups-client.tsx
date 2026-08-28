@@ -1322,7 +1322,7 @@ export default function AIGroupsPage() {
 
           {/* Scoring UI */}
           {scoringTaskId && activeTaskReview && (
-            <div className="mx-auto max-w-lg bg-muted/50 border border-border rounded-xl p-4 space-y-3">
+            <div className="mx-auto max-w-lg bg-muted/50 border border-border rounded-xl p-3 lg:p-4 space-y-3">
               <div className="flex items-center gap-2">
                 <Award className="w-4 h-4 text-amber-400" />
                 <span className="text-xs lg:text-sm font-medium">任务评审</span>
@@ -1399,7 +1399,7 @@ export default function AIGroupsPage() {
 
         {/* Input area */}
         {selectedGroup && (
-          <div className="border-t border-border p-4 shrink-0">
+          <div className="border-t border-border p-3 lg:p-4 shrink-0">
             {/* Target selector */}
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span className="text-[11px] text-muted-foreground">{t("aiGroups.sendTo")}:</span>
