@@ -2,6 +2,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { useMediaQuery } from '@/hooks/use-mobile';
 import {
   Users, Plus, Send, Bot, Shield, Zap, User, Trash2, ChevronDown,
   ChevronRight, Settings, X, Loader2, Search, UserPlus, Edit3, Check,
@@ -124,6 +126,7 @@ export default function AIGroupsPage() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [mobileView, setMobileView] = useState<'list' | 'chat' | 'settings'>('list');
+  const isMobile = useMediaQuery("(max-width: 1023px)");
 
   // Create group
   const [showCreate, setShowCreate] = useState(false);
@@ -892,16 +895,8 @@ export default function AIGroupsPage() {
 
   return (
     <div className="flex h-full relative">
-      <style>{`
-        @media (max-width: 768px) {
-          .ai-groups-sidebar { display: ${mobileView === 'list' ? 'flex' : 'none'} !important; width: 100% !important; }
-          .ai-groups-chat { display: ${mobileView === 'chat' ? 'flex' : 'none'} !important; }
-          .ai-groups-right { display: ${mobileView === 'settings' ? 'flex' : 'none'} !important; width: 100% !important; position: absolute; inset: 0; z-index: 10; }
-          .ai-groups-back { display: inline-flex !important; }
-        }
-      `}</style>
       {/* Left: Group List (264px) */}
-      <div className="ai-groups-sidebar w-64 shrink-0 flex flex-col border-r border-border bg-card">
+      <div className={`${isMobile ? (mobileView === 'list' ? 'flex w-full' : 'hidden') : 'flex w-64'} shrink-0 flex-col border-r border-border bg-card`}>
         {/* Header */}
         <div className="p-3 border-b border-border">
           <div className="flex items-center justify-between mb-2">
@@ -992,11 +987,11 @@ export default function AIGroupsPage() {
       </div>
 
       {/* Center: Chat Messages (flex-1) */}
-      <div className="ai-groups-chat flex-1 flex flex-col min-w-0">
+      <div className={`${isMobile ? (mobileView === 'chat' ? 'flex' : 'hidden') : 'flex'} flex-1 flex-col min-w-0`}>
         {/* Chat header */}
         <div className="h-12 border-b border-border flex items-center px-4 justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <button onClick={() => setMobileView('list')} className="ai-groups-back hidden mr-2 p-1 rounded hover:bg-muted">
+            <button onClick={() => setMobileView('list')} className={`${isMobile ? 'inline-flex' : 'hidden'} mr-2 p-1 rounded hover:bg-muted`}>
               ←
             </button>
             <Users className="w-4 h-4 text-primary" />
@@ -1014,9 +1009,8 @@ export default function AIGroupsPage() {
           </div>
           <div className="flex items-center gap-2">
             <button onClick={() => {
-              if (window.innerWidth <= 768) {
-                setMobileView('settings');
-                setShowRightPanel(true);
+              if (isMobile) {
+                setShowRightPanel(!showRightPanel);
               } else {
                 setShowRightPanel(!showRightPanel);
               }
@@ -1263,12 +1257,114 @@ export default function AIGroupsPage() {
         )}
       </div>
 
-      {/* Right: Agent Management Panel (288px) */}
-      {showRightPanel && selectedGroup && (
-        <div className="ai-groups-right w-72 shrink-0 border-l border-border bg-card flex flex-col">
+      {/* Right: Agent Management Panel — Sheet on mobile, inline on desktop */}
+      {isMobile ? (
+        <Sheet open={showRightPanel && !!selectedGroup} onOpenChange={(open) => { if (!open) setShowRightPanel(false); }}>
+          <SheetContent side="right" className="w-80 p-0">
+            <div className="p-3 border-b border-border flex items-center justify-between">
+              <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
+            </div>
+            <div className="flex-1 overflow-y-auto h-[calc(100vh-3rem)]">
+              {/* Group info */}
+              {selectedGroup && (
+                <>
+                  <div className="p-3 border-b border-border">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="text-xs text-muted-foreground">{t("aiGroups.groupInfo")}</span>
+                      <button onClick={() => {
+                        setEditGroupName(selectedGroup.name);
+                        setEditGroupDesc(selectedGroup.description || '');
+                        setShowGroupSettings(!showGroupSettings);
+                      }} className="p-0.5 rounded hover:bg-muted"><Edit3 className="w-3 h-3 text-muted-foreground" /></button>
+                    </div>
+                    {showGroupSettings ? (
+                      <div className="space-y-2">
+                        <input value={editGroupName} onChange={e => setEditGroupName(e.target.value)} placeholder={t("aiGroups.groupNamePlaceholder")}
+                          className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50" />
+                        <textarea value={editGroupDesc} onChange={e => setEditGroupDesc(e.target.value)} placeholder={t("aiGroups.description")}
+                          rows={2} className="w-full px-2.5 py-1.5 bg-muted border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50 resize-none" />
+                        <div className="flex gap-1.5">
+                          <button onClick={saveGroupSettings} className="flex-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90">{t("aiGroups.save")}</button>
+                          <button onClick={() => setShowGroupSettings(false)} className="px-2.5 py-1.5 bg-muted border border-border rounded text-xs hover:bg-accent">{t("aiGroups.cancel")}</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div>
+                        <p className="text-sm font-medium">{selectedGroup.name}</p>
+                        {selectedGroup.description && <p className="text-xs text-muted-foreground mt-0.5">{selectedGroup.description}</p>}
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-3">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs text-muted-foreground">{t("aiGroups.participatingAgents")} ({selectedGroup.agents?.length || 0})</span>
+                      <button onClick={() => setShowAddAgent(!showAddAgent)}
+                        className="flex items-center gap-1 text-[11px] text-primary hover:underline">
+                        <UserPlus className="w-3 h-3" /> {t("aiGroups.add")}
+                      </button>
+                    </div>
+                    {showAddAgent && (
+                      <div className="mb-3 p-2.5 rounded-lg bg-muted/50 space-y-2">
+                        <input value={newAgent.name} onChange={e => setNewAgent({ ...newAgent, name: e.target.value })} placeholder={t("aiGroups.agentNamePlaceholder")}
+                          className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary/50" />
+                        <select value={newAgent.role} onChange={e => setNewAgent({ ...newAgent, role: e.target.value })}
+                          className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none">
+                          <option value="advisor">{t("aiGroups.roleAdvisor")}</option>
+                          <option value="executor">{t("aiGroups.roleExecutor")}</option>
+                          <option value="verifier">{t("aiGroups.roleVerifier")}</option>
+                        </select>
+                        <select value={newAgent.model} onChange={e => setNewAgent({ ...newAgent, model: e.target.value })}
+                          className="w-full px-2.5 py-1.5 bg-background border border-border rounded text-xs focus:outline-none">
+                          <option value="claude-opus">Claude Opus</option>
+                          <option value="claude-sonnet">Claude Sonnet</option>
+                          <option value="gpt-4o">GPT-4o</option>
+                          <option value="gpt-4o-mini">GPT-4o Mini</option>
+                          <option value="deepseek-r1">DeepSeek R1</option>
+                        </select>
+                        <div className="flex gap-1.5">
+                          <button onClick={addAgent} className="flex-1 px-2.5 py-1.5 bg-primary text-primary-foreground rounded text-xs hover:bg-primary/90">{t("aiGroups.add")}</button>
+                          <button onClick={() => setShowAddAgent(false)} className="px-2.5 py-1.5 bg-background border border-border rounded text-xs hover:bg-accent">{t("aiGroups.cancel")}</button>
+                        </div>
+                      </div>
+                    )}
+                    <div className="space-y-1.5">
+                      {(selectedGroup.agents || []).map((agent, i) => {
+                        const Icon = ROLE_ICONS[agent.role] || Bot;
+                        return (
+                          <div key={agent.agent_id} className="flex items-center gap-2 p-2.5 rounded-lg border border-border hover:bg-muted/50 transition-colors">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center ${getAgentAvatarColor(i)}`}>
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-sm font-medium truncate">{agent.name}</span>
+                              <span className={`text-[10px] px-1.5 py-0.5 rounded ml-1 ${ROLE_BG_COLORS[agent.role]} ${ROLE_COLORS[agent.role]}`}>{agent.role}</span>
+                            </div>
+                            <button onClick={() => removeAgent(agent.agent_id)}
+                              className="p-1 rounded hover:bg-red-500/10 text-red-400 transition-colors">
+                              <Trash2 className="w-3 h-3" />
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {(selectedGroup.agents || []).length === 0 && (
+                      <div className="text-center py-6 text-muted-foreground">
+                        <Bot className="w-8 h-8 mx-auto mb-2 opacity-40" />
+                        <p className="text-xs">{t("aiGroups.noAgents")}</p>
+                      </div>
+                    )}
+                  </div>
+                </>
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        showRightPanel && selectedGroup && (
+        <div className="w-72 shrink-0 border-l border-border bg-card flex flex-col">
           <div className="p-3 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <button onClick={() => setMobileView('chat')} className="ai-groups-back hidden p-1 rounded hover:bg-muted">←</button>
+              <button onClick={() => setMobileView('chat')} className="hidden p-1 rounded hover:bg-muted">←</button>
               <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
             </div>
             <button onClick={() => { setShowRightPanel(false); setMobileView('chat'); }} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
@@ -1456,7 +1552,7 @@ export default function AIGroupsPage() {
             </div>
           </div>
         </div>
-      )}
+      ))}
       {/* Scoring Modal */}
       {scoringTaskId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">

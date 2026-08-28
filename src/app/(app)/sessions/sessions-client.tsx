@@ -397,7 +397,7 @@ export function SessionsClient() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Session List */}
-        <div className={`${mobileShowDetail && selectedSession ? "hidden md:flex" : "flex"} ${selectedSession ? "w-full md:w-1/3 md:border-r md:border-zinc-800" : "w-full"} flex-col overflow-hidden transition-all`}>
+        <div className={`${mobileShowDetail && selectedSession ? "hidden lg:flex" : "flex"} ${selectedSession ? "w-full lg:w-1/3 lg:border-r lg:border-zinc-800" : "w-full"} flex-col overflow-hidden transition-all`}>
           {/* Search */}
           <form onSubmit={handleSearch} className="px-3 md:px-4 h-12 flex items-center border-b border-zinc-800 gap-2">
             <div className="relative flex-1">
@@ -697,11 +697,11 @@ export function SessionsClient() {
 
         {/* Session Detail */}
         {selectedSession && (
-          <div className={`${mobileShowDetail ? "flex" : "hidden md:flex"} flex-1 flex-col overflow-hidden`}>
+          <div className={`${mobileShowDetail ? "flex" : "hidden lg:flex"} flex-1 flex-col overflow-hidden`}>
             <div className="flex items-center justify-between px-4 h-12 border-b border-zinc-800">
               <div className="flex items-center gap-2">
                 <button onClick={() => setMobileShowDetail(false)}
-                  className="md:hidden p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 mr-1"
+                  className="lg:hidden p-1 rounded hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 mr-1"
                   title={t("sessions.back", "Back")}>
                   <ArrowLeft className="w-4 h-4" />
                 </button>
