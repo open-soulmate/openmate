@@ -275,7 +275,7 @@ export function BenchmarkClient() {
               </div>
 
               {/* Params */}
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-3 lg:gap-6 flex-wrap">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-muted-foreground">{t("benchmark.iterations")}</span>
                   <input
