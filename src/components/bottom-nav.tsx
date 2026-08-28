@@ -174,7 +174,7 @@ export function BottomNav({ totalUnread = 0 }: BottomNavProps) {
   }
 
   return (
-    <nav className="nav-wave relative shrink-0 h-12 bg-background border-t border-border">
+    <nav className="nav-wave relative z-20 shrink-0 h-12 bg-background border-t border-border">
       {/* CSS wave bump */}
       <div className="nav-wave-bump" />
       <div className="nav-wave-border" />
