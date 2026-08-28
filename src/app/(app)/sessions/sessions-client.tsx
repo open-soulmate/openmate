@@ -407,7 +407,7 @@ export function SessionsClient() {
       <div className="flex flex-1 overflow-hidden">
         {/* Session List — Sheet on mobile, inline on desktop */}
         {isMobile ? (
-          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+          <Sheet open={sidebarOpen} onOpenChange={(open) => { setSidebarOpen(open); if (open) setSelectedSession(null); }}>
             <SheetContent side="left" size="md" className="p-0 flex flex-col bg-card">
               <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
                 <SheetTitle className="text-sm font-semibold text-foreground flex items-center gap-2">

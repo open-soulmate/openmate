@@ -677,7 +677,7 @@ export function ChatClient() {
         {/* Chat header */}
         <div className="h-12 border-b border-border flex items-center px-3 lg:px-4 justify-between shrink-0">
           <div className="flex items-center gap-1.5 lg:gap-2 min-w-0 flex-1">
-            <button onClick={() => { if (isMobile) { setMobileConvOpen(true); setRightPanelOpen(false); } else { toggleSidebar(); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Sidebar">
+            <button onClick={() => { if (isMobile) { setMobileConvOpen(true); setRightPanelOpen(false); setShowCheckpoints(false); } else { toggleSidebar(); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Sidebar">
               <PanelLeft className="w-4 h-4" />
             </button>
             {selectedAgent && <span className="text-sm shrink-0">{selectedAgent.icon}</span>}
@@ -706,7 +706,7 @@ export function ChatClient() {
           <div className="flex items-center gap-1 shrink-0">
             {wsConnected ? <Wifi className="w-4 h-4 text-green-500" /> : <WifiOff className="w-4 h-4 text-muted-foreground" />}
             <span className="hidden lg:inline text-xs text-muted-foreground">{wsConnected ? 'WS' : 'HTTP'}</span>
-            <button onClick={() => { toggleRightPanel(); if (isMobile) setMobileConvOpen(false); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
+            <button onClick={() => { toggleRightPanel(); if (isMobile) { setMobileConvOpen(false); setShowCheckpoints(false); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
               <PanelLeft className="w-4 h-4 scale-x-[-1]" />
             </button>
           </div>
@@ -869,7 +869,7 @@ export function ChatClient() {
                 <ChevronDown className="w-3 h-3 hidden lg:inline" />
               </button>
 
-              <button onClick={() => setShowCheckpoints(!showCheckpoints)} className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors relative">
+              <button onClick={() => { const next = !showCheckpoints; setShowCheckpoints(next); if (next && isMobile) { setRightPanelOpen(false); setMobileConvOpen(false); } }} className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors relative">
                 <RotateCcw className="w-4 h-4" />
                 <span className="hidden lg:inline">{t("chat.history", "历史")}</span>
                 {checkpoints.length > 0 && (
