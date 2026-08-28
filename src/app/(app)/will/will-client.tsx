@@ -241,7 +241,7 @@ export function WillClient() {
           </div>
         </div>
 
-        <div className="flex gap-2 border-b border-border pb-2 mt-4">
+        <div className="flex gap-1 sm:gap-2 border-b border-border pb-2 mt-4 overflow-x-auto scrollbar-none">
           {tabs.map(tabItem => {
             const Icon = tabItem.icon
             return (
@@ -249,7 +249,7 @@ export function WillClient() {
                 key={tabItem.key}
                 onClick={() => setActiveTab(tabItem.key)}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 text-sm rounded-t-lg transition-colors",
+                  "flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-t-lg transition-colors whitespace-nowrap",
                   activeTab === tabItem.key
                     ? "bg-card border border-b-0 border-border text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -297,7 +297,7 @@ export function WillClient() {
               ))}
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-3 gap-3 sm:gap-4">
               {[
                 { label: t("will.success"), value: eng?.successful ?? 0, color: "text-green-400" },
                 { label: t("will.failed"), value: eng?.failed ?? 0, color: "text-red-400" },
