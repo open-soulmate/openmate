@@ -131,6 +131,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // ── Conversation list state ──────────────────────────────────────
   const [sessions, setSessions] = useState<SessionItem[]>([]);
   const [sessionSearch, setSessionSearch] = useState('');
+  const [collapsedAgents, setCollapsedAgents] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const apiBase = getApiBaseUrl();
@@ -185,15 +186,42 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, 30000, []);
 
-  // Filtered sessions by search query
-  const filteredSessions = useMemo(() => {
+  // Group sessions by agent/platform
+  const groupedSessions = useMemo(() => {
     const q = sessionSearch.trim().toLowerCase();
-    if (!q) return sessions;
-    return sessions.filter((s) => {
-      const title = (s.title || s.name || '').toLowerCase();
-      const preview = (s.last_message || '').toLowerCase();
-      return title.includes(q) || preview.includes(q);
-    });
+    const filtered = q
+      ? sessions.filter((s) => {
+          const title = (s.title || s.name || '').toLowerCase();
+          const preview = (s.last_message || '').toLowerCase();
+          return title.includes(q) || preview.includes(q);
+        })
+      : sessions;
+
+    const groups = new Map<string, SessionItem[]>();
+    for (const s of filtered) {
+      const agent = s.platform || s.source || 'other';
+      if (!groups.has(agent)) groups.set(agent, []);
+      groups.get(agent)!.push(s);
+    }
+
+    // Sort groups: most recent activity first; sessions within each group by last_active desc
+    const sorted = Array.from(groups.entries())
+      .map(([agent, items]) => ({
+        agent,
+        emoji: getAgentEmoji(agent),
+        sessions: items.sort((a, b) => {
+          const ta = new Date(a.last_active || a.updated_at || 0).getTime();
+          const tb = new Date(b.last_active || b.updated_at || 0).getTime();
+          return tb - ta;
+        }),
+      }))
+      .sort((a, b) => {
+        const ta = new Date(a.sessions[0].last_active || a.sessions[0].updated_at || 0).getTime();
+        const tb = new Date(b.sessions[0].last_active || b.sessions[0].updated_at || 0).getTime();
+        return tb - ta;
+      });
+
+    return sorted;
   }, [sessions, sessionSearch]);
 
   const navGroups: NavGroup[] = [
@@ -416,9 +444,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </button>
           </div>
 
-          {/* ── Conversation list ─────────────────────────────────── */}
+          {/* ── Conversation list (grouped by agent) ──────────────── */}
           <div className="flex-1 overflow-y-auto">
-            {filteredSessions.length === 0 ? (
+            {groupedSessions.length === 0 ? (
               <div className="px-4 py-8 text-center group-data-[collapsible=icon]:hidden">
                 <MessageSquare size={24} className="mx-auto mb-2 text-muted-foreground/50" />
                 <p className="text-xs text-muted-foreground">
@@ -426,54 +454,82 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 </p>
               </div>
             ) : (
-              <div className="space-y-0.5 px-1 group-data-[collapsible=icon]:px-0">
-                {filteredSessions.map((session) => (
-                  <button
-                    key={session.id}
-                    onClick={() => handleConversationClick(session.id)}
-                    className={cn(
-                      "flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2",
-                      pathname.startsWith('/chat') && "hover:bg-sidebar-accent"
-                    )}
-                    title={session.title || session.name || session.id}
-                  >
-                    {/* Agent emoji avatar */}
-                    <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-muted text-base group-data-[collapsible=icon]:h-8 group-data-[collapsible=icon]:w-8">
-                      {getAgentEmoji(session.platform)}
-                      {/* Unread badge */}
-                      {session.unread > 0 && (
-                        <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
-                          {session.unread > 99 ? '99+' : session.unread}
-                        </span>
-                      )}
-                    </div>
-
-                    {/* Text content — hidden when collapsed */}
-                    <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                      <div className="flex items-center justify-between">
-                        <span className={cn(
-                          "text-sm truncate",
-                          session.unread > 0 ? "font-semibold text-foreground" : "font-medium text-foreground/90"
-                        )}>
-                          {session.title || session.name || session.id}
-                        </span>
-                        <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">
-                          {relativeTime(session.last_active || session.updated_at)}
-                        </span>
-                      </div>
-                      <div className="flex items-center justify-between mt-0.5">
-                        <span className="text-xs text-muted-foreground truncate pr-2">
-                          {session.last_message || ''}
-                        </span>
-                        {session.platform && (
-                          <span className="shrink-0 text-[10px] text-muted-foreground/60">
-                            {session.platform}
+              <div className="px-1 group-data-[collapsible=icon]:px-0">
+                {groupedSessions.map((group) => {
+                  const isCollapsed = collapsedAgents.has(group.agent);
+                  const totalUnread = group.sessions.reduce((sum, s) => sum + (s.unread || 0), 0);
+                  return (
+                    <div key={group.agent} className="mb-1">
+                      {/* Agent group header */}
+                      <button
+                        onClick={() => {
+                          setCollapsedAgents(prev => {
+                            const next = new Set(prev);
+                            if (next.has(group.agent)) next.delete(group.agent);
+                            else next.add(group.agent);
+                            return next;
+                          });
+                        }}
+                        className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-xs font-semibold text-muted-foreground hover:bg-sidebar-accent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+                      >
+                        <span className="text-sm">{group.emoji}</span>
+                        <span className="flex-1 text-left truncate group-data-[collapsible=icon]:hidden">{group.agent}</span>
+                        {totalUnread > 0 && (
+                          <span className="flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white group-data-[collapsible=icon]:hidden">
+                            {totalUnread > 99 ? '99+' : totalUnread}
                           </span>
                         )}
-                      </div>
+                        <ChevronDown
+                          size={12}
+                          className={cn(
+                            "transition-transform group-data-[collapsible=icon]:hidden",
+                            isCollapsed && "-rotate-90"
+                          )}
+                        />
+                      </button>
+
+                      {/* Sessions under this agent */}
+                      {!isCollapsed && group.sessions.map((session) => (
+                        <button
+                          key={session.id}
+                          onClick={() => handleConversationClick(session.id)}
+                          className={cn(
+                            "flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2"
+                          )}
+                          title={session.title || session.name || session.id}
+                        >
+                          {/* Avatar */}
+                          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:w-7">
+                            {group.emoji}
+                            {session.unread > 0 && (
+                              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
+                                {session.unread > 99 ? '99+' : session.unread}
+                              </span>
+                            )}
+                          </div>
+
+                          {/* Text content */}
+                          <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                            <div className="flex items-center justify-between">
+                              <span className={cn(
+                                "text-sm truncate",
+                                session.unread > 0 ? "font-semibold text-foreground" : "font-normal text-foreground/80"
+                              )}>
+                                {session.title || session.name || session.id}
+                              </span>
+                              <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">
+                                {relativeTime(session.last_active || session.updated_at)}
+                              </span>
+                            </div>
+                            <p className="text-xs text-muted-foreground truncate mt-0.5">
+                              {session.last_message || ''}
+                            </p>
+                          </div>
+                        </button>
+                      ))}
                     </div>
-                  </button>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>
