@@ -346,7 +346,7 @@ export function HeredityClient() {
             {/* Create Migration */}
             <div className="rounded-xl border border-border p-3 lg:p-4 space-y-3">
               <h3 className="text-xs lg:text-sm font-medium">{t('heredity.createMigration') || t('heredity.t45504')}</h3>
-              <div className="grid grid-cols-4 gap-2 lg:gap-3">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3">
                 <select value={migComponentId} onChange={(e) => setMigComponentId(e.target.value)}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none">
                   <option value="">{t("heredity.selectComponent") || "Select component..."}</option>
@@ -477,7 +477,7 @@ export function HeredityClient() {
                   </button>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2 lg:gap-4 text-center">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4 text-center">
                 <div className="rounded-lg bg-muted p-3 lg:p-4">
                   <p className="text-xl lg:text-2xl font-bold">{platform.total_components}</p>
                   <p className="text-xs text-muted-foreground">{t('heredity.components') || t('heredity.components')}</p>
