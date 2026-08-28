@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useMediaQuery } from "@/hooks/use-mobile";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   Volume2, RefreshCw, Send, Radio, Settings,
   CheckCircle, XCircle, Clock, MessageSquare,
@@ -53,6 +55,7 @@ export function EchoClient() {
   const [newTplCategory, setNewTplCategory] = useState("custom");
   const [newTplIcon, setNewTplIcon] = useState("📨");
   const [sendingTemplate, setSendingTemplate] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 1023px)");
   const apiBase = getApiBaseUrl();
 
   const fetchHealth = useCallback(async () => {
@@ -330,8 +333,14 @@ export function EchoClient() {
             </div>
 
             <div className="flex gap-6">
-              {/* Template List */}
-              <div className="w-80 space-y-2">
+              {/* Template List — full width on mobile, w-80 on desktop */}
+              <div className={`${isMobile ? (selectedTemplate ? "hidden" : "w-full") : "w-80"} space-y-2`}>
+                {isMobile && (
+                  <div className="flex items-center justify-between pb-2 border-b border-border">
+                    <h3 className="text-sm font-medium">{t("echo.templates") || "Templates"}</h3>
+                    <span className="text-xs text-muted-foreground">{templates.length}</span>
+                  </div>
+                )}
                 {templates.map((tpl) => (
                   <div key={tpl.template_id}
                     onClick={() => { setSelectedTemplate(tpl); setTemplateVars({}); setPreviewResult(null); }}
@@ -363,104 +372,211 @@ export function EchoClient() {
                 )}
               </div>
 
-              {/* Template Detail / Send Panel */}
-              {selectedTemplate && (
-                <div className="flex-1 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <span className="text-lg">{selectedTemplate.icon}</span>
-                      <h3 className="font-semibold">{selectedTemplate.name}</h3>
-                      <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", categoryColor(selectedTemplate.category))}>
-                        {selectedTemplate.category}
-                      </span>
-                    </div>
-                    <div className="flex gap-2">
-                      <button onClick={() => handleDeleteTemplate(selectedTemplate.template_id)}
-                        className="rounded-lg border border-red-500/30 px-2 py-1 text-xs text-red-500 hover:bg-red-500/10">
-                        <Trash2 size={12} />
-                      </button>
-                    </div>
-                  </div>
-
-                  <p className="text-xs text-muted-foreground">{selectedTemplate.description}</p>
-
-                  {/* Template Preview */}
-                  <div className="rounded-lg border border-border bg-muted/20 p-3">
-                    <div className="text-xs text-muted-foreground mb-1">{t("echo.titleTemplate") || "Title Template"}</div>
-                    <div className="text-sm font-mono">{selectedTemplate.title_template}</div>
-                    <div className="text-xs text-muted-foreground mt-2 mb-1">{t("echo.contentTemplate") || "Content Template"}</div>
-                    <pre className="text-xs font-mono whitespace-pre-wrap">{selectedTemplate.content_template}</pre>
-                  </div>
-
-                  {/* Variables Input */}
-                  {selectedTemplate.variables.length > 0 && (
-                    <div className="rounded-xl border border-border p-4 space-y-3">
-                      <h4 className="text-sm font-medium">{t("echo.fillVariables") || "Fill Variables"}</h4>
-                      <div className="grid grid-cols-2 gap-3">
-                        {selectedTemplate.variables.map((v) => (
-                          <div key={v}>
-                            <label className="text-xs text-muted-foreground font-mono">{`{{${v}}}`}</label>
-                            <input
-                              value={templateVars[v] || ""}
-                              onChange={(e) => setTemplateVars({ ...templateVars, [v]: e.target.value })}
-                              placeholder={v}
-                              className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs"
-                            />
+              {/* Template Detail / Send Panel — Sheet on mobile, inline on desktop */}
+              {isMobile ? (
+                <Sheet open={!!selectedTemplate} onOpenChange={(open) => { if (!open) setSelectedTemplate(null); }}>
+                  <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      {selectedTemplate && (
+                        <>
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="text-lg">{selectedTemplate.icon}</span>
+                              <h3 className="font-semibold">{selectedTemplate.name}</h3>
+                              <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", categoryColor(selectedTemplate.category))}>
+                                {selectedTemplate.category}
+                              </span>
+                            </div>
+                            <div className="flex gap-2">
+                              <button onClick={() => handleDeleteTemplate(selectedTemplate.template_id)}
+                                className="rounded-lg border border-red-500/30 px-2 py-1 text-xs text-red-500 hover:bg-red-500/10">
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
                           </div>
-                        ))}
+
+                          <p className="text-xs text-muted-foreground">{selectedTemplate.description}</p>
+
+                          {/* Template Preview */}
+                          <div className="rounded-lg border border-border bg-muted/20 p-3">
+                            <div className="text-xs text-muted-foreground mb-1">{t("echo.titleTemplate") || "Title Template"}</div>
+                            <div className="text-sm font-mono">{selectedTemplate.title_template}</div>
+                            <div className="text-xs text-muted-foreground mt-2 mb-1">{t("echo.contentTemplate") || "Content Template"}</div>
+                            <pre className="text-xs font-mono whitespace-pre-wrap">{selectedTemplate.content_template}</pre>
+                          </div>
+
+                          {/* Variables Input */}
+                          {selectedTemplate.variables.length > 0 && (
+                            <div className="rounded-xl border border-border p-4 space-y-3">
+                              <h4 className="text-sm font-medium">{t("echo.fillVariables") || "Fill Variables"}</h4>
+                              <div className="grid grid-cols-2 gap-3">
+                                {selectedTemplate.variables.map((v) => (
+                                  <div key={v}>
+                                    <label className="text-xs text-muted-foreground font-mono">{`{{${v}}}`}</label>
+                                    <input
+                                      value={templateVars[v] || ""}
+                                      onChange={(e) => setTemplateVars({ ...templateVars, [v]: e.target.value })}
+                                      placeholder={v}
+                                      className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Channel Override */}
+                          <div className="flex gap-3">
+                            <select value={sendChannel} onChange={(e) => setSendChannel(e.target.value)}
+                              className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                              <option value="console">Console</option>
+                              <option value="webhook">Webhook</option>
+                              <option value="dingtalk">{t("echo.t83975") || "DingTalk"}</option>
+                              <option value="wechat_work">{t("echo.t19991") || "WeCom"}</option>
+                              <option value="feishu">{t("echo.t80862") || "Feishu"}</option>
+                              <option value="telegram">Telegram</option>
+                              <option value="email">{t("echo.t32383") || "Email"}</option>
+                            </select>
+                            <input value={sendTarget} onChange={(e) => setSendTarget(e.target.value)}
+                              placeholder={t("echo.t63160") || "Target address (optional)"} className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                          </div>
+
+                          {/* Action Buttons */}
+                          <div className="flex gap-2">
+                            <button onClick={() => handleTemplateSend(selectedTemplate)} disabled={sendingTemplate}
+                              className="flex items-center gap-2 rounded-lg bg-pink-500 px-4 py-2 text-sm text-white hover:bg-pink-600 disabled:opacity-50">
+                              {sendingTemplate ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
+                              {t("echo.t72588") || "Send"}
+                            </button>
+                            <button onClick={() => handleTemplatePreview(selectedTemplate)}
+                              className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">
+                              <Eye size={14} /> {t("echo.preview") || "Preview"}
+                            </button>
+                          </div>
+
+                          {/* Preview Result */}
+                          {previewResult && (
+                            <div className="rounded-lg border border-pink-500/30 bg-pink-500/5 p-4 space-y-2">
+                              <div className="text-xs text-pink-500 font-medium">{t("echo.previewResult") || "Preview Result"}</div>
+                              <div className="font-medium">{previewResult.title}</div>
+                              <pre className="text-xs whitespace-pre-wrap text-muted-foreground">{previewResult.content}</pre>
+                            </div>
+                          )}
+
+                          {/* Send Result */}
+                          {sendResult && (
+                            <div className={cn("rounded-lg border p-3 text-sm",
+                              sendResult.success !== false ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5")}>
+                              {sendResult.rendered_title && (
+                                <div className="font-medium mb-1">{sendResult.rendered_title}</div>
+                              )}
+                              <pre className="text-xs">{JSON.stringify(sendResult, null, 2)}</pre>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              ) : (
+                selectedTemplate && (
+                  <div className="flex-1 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <span className="text-lg">{selectedTemplate.icon}</span>
+                        <h3 className="font-semibold">{selectedTemplate.name}</h3>
+                        <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full", categoryColor(selectedTemplate.category))}>
+                          {selectedTemplate.category}
+                        </span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleDeleteTemplate(selectedTemplate.template_id)}
+                          className="rounded-lg border border-red-500/30 px-2 py-1 text-xs text-red-500 hover:bg-red-500/10">
+                          <Trash2 size={12} />
+                        </button>
                       </div>
                     </div>
-                  )}
 
-                  {/* Channel Override */}
-                  <div className="flex gap-3">
-                    <select value={sendChannel} onChange={(e) => setSendChannel(e.target.value)}
-                      className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
-                      <option value="console">Console</option>
-                      <option value="webhook">Webhook</option>
-                      <option value="dingtalk">{t("echo.t83975") || "DingTalk"}</option>
-                      <option value="wechat_work">{t("echo.t19991") || "WeCom"}</option>
-                      <option value="feishu">{t("echo.t80862") || "Feishu"}</option>
-                      <option value="telegram">Telegram</option>
-                      <option value="email">{t("echo.t32383") || "Email"}</option>
-                    </select>
-                    <input value={sendTarget} onChange={(e) => setSendTarget(e.target.value)}
-                      placeholder={t("echo.t63160") || "Target address (optional)"} className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
-                  </div>
+                    <p className="text-xs text-muted-foreground">{selectedTemplate.description}</p>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-2">
-                    <button onClick={() => handleTemplateSend(selectedTemplate)} disabled={sendingTemplate}
-                      className="flex items-center gap-2 rounded-lg bg-pink-500 px-4 py-2 text-sm text-white hover:bg-pink-600 disabled:opacity-50">
-                      {sendingTemplate ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
-                      {t("echo.t72588") || "Send"}
-                    </button>
-                    <button onClick={() => handleTemplatePreview(selectedTemplate)}
-                      className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">
-                      <Eye size={14} /> {t("echo.preview") || "Preview"}
-                    </button>
-                  </div>
-
-                  {/* Preview Result */}
-                  {previewResult && (
-                    <div className="rounded-lg border border-pink-500/30 bg-pink-500/5 p-4 space-y-2">
-                      <div className="text-xs text-pink-500 font-medium">{t("echo.previewResult") || "Preview Result"}</div>
-                      <div className="font-medium">{previewResult.title}</div>
-                      <pre className="text-xs whitespace-pre-wrap text-muted-foreground">{previewResult.content}</pre>
+                    {/* Template Preview */}
+                    <div className="rounded-lg border border-border bg-muted/20 p-3">
+                      <div className="text-xs text-muted-foreground mb-1">{t("echo.titleTemplate") || "Title Template"}</div>
+                      <div className="text-sm font-mono">{selectedTemplate.title_template}</div>
+                      <div className="text-xs text-muted-foreground mt-2 mb-1">{t("echo.contentTemplate") || "Content Template"}</div>
+                      <pre className="text-xs font-mono whitespace-pre-wrap">{selectedTemplate.content_template}</pre>
                     </div>
-                  )}
 
-                  {/* Send Result */}
-                  {sendResult && (
-                    <div className={cn("rounded-lg border p-3 text-sm",
-                      sendResult.success !== false ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5")}>
-                      {sendResult.rendered_title && (
-                        <div className="font-medium mb-1">{sendResult.rendered_title}</div>
-                      )}
-                      <pre className="text-xs">{JSON.stringify(sendResult, null, 2)}</pre>
+                    {/* Variables Input */}
+                    {selectedTemplate.variables.length > 0 && (
+                      <div className="rounded-xl border border-border p-4 space-y-3">
+                        <h4 className="text-sm font-medium">{t("echo.fillVariables") || "Fill Variables"}</h4>
+                        <div className="grid grid-cols-2 gap-3">
+                          {selectedTemplate.variables.map((v) => (
+                            <div key={v}>
+                              <label className="text-xs text-muted-foreground font-mono">{`{{${v}}}`}</label>
+                              <input
+                                value={templateVars[v] || ""}
+                                onChange={(e) => setTemplateVars({ ...templateVars, [v]: e.target.value })}
+                                placeholder={v}
+                                className="mt-1 w-full rounded border border-border bg-background px-2 py-1.5 text-xs"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Channel Override */}
+                    <div className="flex gap-3">
+                      <select value={sendChannel} onChange={(e) => setSendChannel(e.target.value)}
+                        className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                        <option value="console">Console</option>
+                        <option value="webhook">Webhook</option>
+                        <option value="dingtalk">{t("echo.t83975") || "DingTalk"}</option>
+                        <option value="wechat_work">{t("echo.t19991") || "WeCom"}</option>
+                        <option value="feishu">{t("echo.t80862") || "Feishu"}</option>
+                        <option value="telegram">Telegram</option>
+                        <option value="email">{t("echo.t32383") || "Email"}</option>
+                      </select>
+                      <input value={sendTarget} onChange={(e) => setSendTarget(e.target.value)}
+                        placeholder={t("echo.t63160") || "Target address (optional)"} className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm" />
                     </div>
-                  )}
-                </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2">
+                      <button onClick={() => handleTemplateSend(selectedTemplate)} disabled={sendingTemplate}
+                        className="flex items-center gap-2 rounded-lg bg-pink-500 px-4 py-2 text-sm text-white hover:bg-pink-600 disabled:opacity-50">
+                        {sendingTemplate ? <RefreshCw size={14} className="animate-spin" /> : <Zap size={14} />}
+                        {t("echo.t72588") || "Send"}
+                      </button>
+                      <button onClick={() => handleTemplatePreview(selectedTemplate)}
+                        className="flex items-center gap-2 rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">
+                        <Eye size={14} /> {t("echo.preview") || "Preview"}
+                      </button>
+                    </div>
+
+                    {/* Preview Result */}
+                    {previewResult && (
+                      <div className="rounded-lg border border-pink-500/30 bg-pink-500/5 p-4 space-y-2">
+                        <div className="text-xs text-pink-500 font-medium">{t("echo.previewResult") || "Preview Result"}</div>
+                        <div className="font-medium">{previewResult.title}</div>
+                        <pre className="text-xs whitespace-pre-wrap text-muted-foreground">{previewResult.content}</pre>
+                      </div>
+                    )}
+
+                    {/* Send Result */}
+                    {sendResult && (
+                      <div className={cn("rounded-lg border p-3 text-sm",
+                        sendResult.success !== false ? "border-emerald-500/30 bg-emerald-500/5" : "border-red-500/30 bg-red-500/5")}>
+                        {sendResult.rendered_title && (
+                          <div className="font-medium mb-1">{sendResult.rendered_title}</div>
+                        )}
+                        <pre className="text-xs">{JSON.stringify(sendResult, null, 2)}</pre>
+                      </div>
+                    )}
+                  </div>
+                )
               )}
             </div>
 
