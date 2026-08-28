@@ -806,9 +806,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
               <Button variant="ghost" size="icon-xs" onClick={() => addTab('new-tab')} className="shrink-0 mb-0.5 ml-1" title="New tab">
                 <Plus className="w-3.5 h-3.5" />
               </Button>
-              <Button variant="ghost" size="icon-xs" onClick={onToggle} className="shrink-0 mb-0.5 ml-auto mr-1" title="Close panel">
-                <PanelRightClose className="w-3.5 h-3.5" />
-              </Button>
+
             </div>
             {/* Underline: two segments, gap under skirt — Doubao method */}
             <div className="relative shrink-0" style={{ height: 1, marginTop: -1 }}>
