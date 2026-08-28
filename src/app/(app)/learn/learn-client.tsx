@@ -411,7 +411,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border px-3 lg:px-6 py-3 lg:py-4">
         <div className="flex items-center gap-2">
           <GraduationCap size={20} className="text-primary" />
           <h1 className="text-lg font-semibold">{t("learn.title") || "Learning"}</h1>
@@ -454,7 +454,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
       </div>
 
       {/* Stats */}
-      <div className="grid gap-4 border-b border-border px-6 py-4 sm:grid-cols-3">
+      <div className="grid gap-3 lg:gap-4 border-b border-border px-3 lg:px-6 py-3 lg:py-4 sm:grid-cols-3">
         <div className="flex items-center gap-3 rounded-lg border border-border bg-card p-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-500/10 text-blue-500">
             <CheckCircle2 size={18} />
