@@ -658,7 +658,7 @@ export function ChatClient() {
   const fileCount = allAttachments.filter(p => p.type === 'file').length;
 
   return (
-    <div className="flex h-full">
+    <div className="flex flex-1 min-h-0">
       {/* Column 2: Agent + Session List - hidden on mobile when chat is active */}
       <div className={`${selectedSession ? 'hidden md:flex' : 'flex'} w-full md:w-64 shrink-0 flex-col border-r border-border bg-card`}>
         <div className="h-12 px-3 flex items-center border-b border-border">

@@ -428,7 +428,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </button>
           <h1 className="ml-3 text-sm font-semibold tracking-tight">OpenMate</h1>
         </div>
-        <div className="flex flex-1 flex-col overflow-hidden">
+        <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           {children}
         </div>
       </SidebarInset>
