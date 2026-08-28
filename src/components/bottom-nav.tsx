@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect, useState, useCallback } from "react";
 import {
   MessageSquare, Users, BookOpen, Workflow, Settings, Brain, Activity,
   LayoutDashboard, Bell, Server, GraduationCap, Network, Share2, Search,
@@ -12,7 +12,7 @@ import {
   Camera, Download, Tag, User, Bot, Droplets, Dna, Eye, Shield, Bone,
   Volume2, Layers, Link2, Home, MousePointer, Mic, ImageIcon, Smile,
   Stethoscope, Cpu, Bolt, Heart, Gauge, BarChart3, Package, ScrollText,
-  History, Store, Pill, X,
+  History, Store, Pill,
 } from "lucide-react";
 
 interface BottomNavItem {
@@ -97,7 +97,8 @@ export function BottomNav() {
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLAnchorElement>(null);
-  const [centerOpen, setCenterOpen] = useState(false);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isLongPress = useRef(false);
 
   // Mouse wheel → horizontal scroll
   useEffect(() => {
@@ -123,23 +124,48 @@ export function BottomNav() {
     }
   }, [pathname]);
 
+  // Long press → voice, click → search
+  const handlePointerDown = useCallback(() => {
+    isLongPress.current = false;
+    longPressTimer.current = setTimeout(() => {
+      isLongPress.current = true;
+      // Voice input
+      document.dispatchEvent(new CustomEvent("openmate-voice-input"));
+    }, 500);
+  }, []);
+
+  const handlePointerUp = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    if (!isLongPress.current) {
+      // Short click → search
+      document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
+    }
+  }, []);
+
+  const handlePointerLeave = useCallback(() => {
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+  }, []);
+
   return (
-    <nav className="relative flex h-13 shrink-0 items-center border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
-      {/* Single scrollable row — extra padding in center for the ball */}
+    <nav className="relative flex h-12 shrink-0 items-center border-t border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
+      {/* Single scrollable row */}
       <div
         ref={scrollRef}
-        className="flex h-full flex-1 items-center gap-0.5 overflow-x-auto"
+        className="flex h-full flex-1 items-center gap-0.5 overflow-x-auto px-2"
         style={{
           scrollbarWidth: "none",
           WebkitOverflowScrolling: "touch",
-          paddingLeft: "8px",
-          paddingRight: "8px",
+          paddingLeft: "42px",
+          paddingRight: "42px",
         }}
       >
-        {/* Left padding spacer so items clear the center ball */}
-        <div className="shrink-0 w-16" />
-
-        {navItems.map((item, i) => {
+        {navItems.map((item) => {
           const active = pathname.startsWith(item.href);
           const Icon = item.icon;
           return (
@@ -148,7 +174,7 @@ export function BottomNav() {
               href={item.href}
               ref={active ? activeRef : undefined}
               className={cn(
-                "flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1 text-[9px] font-medium transition-colors min-w-[48px]",
+                "flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[9px] font-medium transition-colors min-w-[48px]",
                 active
                   ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -159,71 +185,25 @@ export function BottomNav() {
             </Link>
           );
         })}
-
-        {/* Right padding spacer */}
-        <div className="shrink-0 w-16" />
       </div>
 
-      {/* Center floating ball — absolute, sits above the scroll */}
-      <div className="absolute left-1/2 -translate-x-1/2 -top-4 z-10">
+      {/* Center semicircle button — protrudes upward from nav top */}
+      <div className="absolute left-1/2 -translate-x-1/2 top-0 -translate-y-1/2 z-10">
         <button
-          onClick={() => setCenterOpen(!centerOpen)}
-          className="relative flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300 hover:scale-105"
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerLeave}
+          onContextMenu={(e) => e.preventDefault()}
+          className="flex h-14 w-14 items-center justify-center transition-transform hover:scale-105 active:scale-95"
           style={{
-            background: centerOpen
-              ? "radial-gradient(circle at 50% 40%, #a78bfa, #7c3aed 60%, #5b21b6)"
-              : "radial-gradient(circle at 50% 40%, #c4b5fd, #7c3aed 60%, #4c1d95)",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1)",
+            borderRadius: "999px 999px 0 0",
+            background: "linear-gradient(180deg, #c4b5fd 0%, #7c3aed 100%)",
+            boxShadow: "0 -2px 10px rgba(124,58,237,0.3), 0 2px 8px rgba(0,0,0,0.2)",
           }}
-          title="Search & Voice"
+          title="Click: Search · Hold: Voice"
         >
-          {/* Glossy highlight */}
-          <div
-            className="absolute h-3 w-4 rounded-full opacity-25"
-            style={{ top: "25%", left: "50%", transform: "translateX(-50%)", background: "radial-gradient(ellipse, rgba(255,255,255,0.7), transparent)" }}
-          />
-          {centerOpen ? (
-            <X size={18} className="relative z-10 text-white drop-shadow-sm" />
-          ) : (
-            <span className="relative z-10 text-[11px] font-bold text-white drop-shadow-sm tracking-tight">OM</span>
-          )}
+          <Search size={20} className="text-white drop-shadow-sm" />
         </button>
-
-        {/* Popup: search + voice */}
-        {centerOpen && (
-          <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 flex gap-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
-            <button
-              onClick={() => {
-                setCenterOpen(false);
-                document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
-              }}
-              className="flex h-11 w-11 items-center justify-center rounded-full transition-transform hover:scale-110"
-              style={{
-                background: "radial-gradient(circle at 50% 40%, #e5e7eb, #9ca3af 60%, #4b5563)",
-                boxShadow: "0 4px 10px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1)",
-              }}
-              title="Search (Ctrl+K)"
-            >
-              <div className="absolute h-2.5 w-3.5 rounded-full opacity-20" style={{ top: "22%", left: "50%", transform: "translateX(-50%)", background: "radial-gradient(ellipse, rgba(255,255,255,0.7), transparent)" }} />
-              <Search size={18} className="relative z-10 text-white drop-shadow-sm" />
-            </button>
-            <button
-              onClick={() => {
-                setCenterOpen(false);
-                document.dispatchEvent(new CustomEvent("openmate-voice-input"));
-              }}
-              className="flex h-11 w-11 items-center justify-center rounded-full transition-transform hover:scale-110"
-              style={{
-                background: "radial-gradient(circle at 50% 40%, #fca5a5, #ef4444 60%, #991b1b)",
-                boxShadow: "0 4px 10px rgba(0,0,0,0.3), inset 0 1px 2px rgba(255,255,255,0.1)",
-              }}
-              title="Voice Input"
-            >
-              <div className="absolute h-2.5 w-3.5 rounded-full opacity-20" style={{ top: "22%", left: "50%", transform: "translateX(-50%)", background: "radial-gradient(ellipse, rgba(255,255,255,0.7), transparent)" }} />
-              <Mic size={18} className="relative z-10 text-white drop-shadow-sm" />
-            </button>
-          </div>
-        )}
       </div>
     </nav>
   );
