@@ -106,7 +106,10 @@ export function MobileSidebar({ open, onOpenChange }: { open: boolean; onOpenCha
         { href: "/knowledge", label: t("nav.knowledge"), icon: BookOpen },
         { href: "/learn", label: t("nav.learn"), icon: GraduationCap },
         { href: "/graph", label: t("nav.graph"), icon: Network },
+        { href: "/graph-builder", label: t("nav.graphBuilder"), icon: Share2 },
         { href: "/search", label: t("nav.search"), icon: Search },
+        { href: "/kb-sharing", label: t("nav.kbSharing", "KB Sharing"), icon: Share2 },
+        { href: "/knowledge-requests", label: t("nav.knowledgeRequests", "KB Requests"), icon: FileText },
       ],
     },
     {
@@ -114,7 +117,9 @@ export function MobileSidebar({ open, onOpenChange }: { open: boolean; onOpenCha
       items: [
         { href: "/cron", label: t("nav.cron"), icon: Clock },
         { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
+        { href: "/workflow-builder", label: t("nav.workflowBuilder"), icon: GitBranch },
         { href: "/pipeline", label: t("nav.pipeline"), icon: Zap },
+        { href: "/will", label: t("nav.will"), icon: Sparkles },
       ],
     },
     {
@@ -123,6 +128,9 @@ export function MobileSidebar({ open, onOpenChange }: { open: boolean; onOpenCha
         { href: "/skills", label: t("nav.skills"), icon: Puzzle },
         { href: "/mcp", label: t("nav.mcp"), icon: Plug },
         { href: "/workspace", label: t("nav.workspace"), icon: FolderKanban },
+        { href: "/capture", label: t("nav.capture"), icon: Camera },
+        { href: "/download", label: t("nav.download"), icon: Download },
+        { href: "/tags", label: t("nav.tags", "Tags"), icon: Tag },
       ],
     },
     {
@@ -131,6 +139,9 @@ export function MobileSidebar({ open, onOpenChange }: { open: boolean; onOpenCha
         { href: "/sessions", label: t("nav.sessions", "Sessions"), icon: History },
         { href: "/settings", label: t("nav.settings"), icon: Settings },
         { href: "/diagnostics", label: t("nav.diagnostics"), icon: Stethoscope },
+        { href: "/system", label: t("nav.system") || "System", icon: Server },
+        { href: "/admin", label: t("nav.admin"), icon: Shield },
+        { href: "/metrics", label: t("nav.metrics") || "Metrics", icon: BarChart3 },
       ],
     },
   ];
