@@ -672,7 +672,7 @@ export function ChatClient() {
                 </span>
               )}
             </div>
-            {selectedAgent && <span className="hidden lg:inline-flex text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted shrink-0">{selectedAgent.name}</span>}
+            {selectedAgent && <span className="text-[10px] lg:text-xs text-muted-foreground px-1 lg:px-1.5 py-0.5 rounded bg-muted shrink-0 truncate max-w-[80px] lg:max-w-none">{selectedAgent.name}</span>}
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {wsConnected ? <Wifi className="w-4 h-4 text-green-500" /> : <WifiOff className="w-4 h-4 text-muted-foreground" />}
@@ -688,7 +688,7 @@ export function ChatClient() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto">
               <h2 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-8">{t("chat.welcomeMessage")}</h2>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3 w-full">
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3 w-full">
                 {[
                   { icon: '📝', label: t('chat.quickReqDoc'), desc: t('chat.quickReqDocDesc') },
                   { icon: '🎨', label: t('chat.quickPrototype'), desc: t('chat.quickPrototypeDesc') },
