@@ -137,7 +137,7 @@ export function DownloadClient() {
     <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Download className="w-6 h-6" /> {t('download.title')}</h1>
+          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2"><Download className="w-6 h-6" /> {t('download.title')}</h1>
           <p className="text-xs lg:text-sm text-muted-foreground mt-1">{t('download.subtitle')}</p>
         </div>
         <button onClick={() => setShowAdd(!showAdd)} className="px-4 py-2 rounded-lg bg-primary text-primary-foreground flex items-center gap-2 text-xs lg:text-sm hover:bg-primary/90">

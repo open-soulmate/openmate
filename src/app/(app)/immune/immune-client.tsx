@@ -263,7 +263,7 @@ export function ImmuneClient() {
           <Shield className="w-6 h-6 text-red-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">{t('immune.t05460')}</h1>
+          <h1 className="text-xl lg:text-2xl font-bold">{t('immune.t05460')}</h1>
           <p className="text-xs lg:text-sm text-muted-foreground">{t('immune.contentrateLimit')}</p>
         </div>
       </div>
