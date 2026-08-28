@@ -225,7 +225,7 @@ export function GraphBuilderClient() {
       {selected && isMobile ? (
         <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
           <SheetContent side="right" className="w-80 p-0 flex flex-col">
-            <div className="p-6 overflow-y-auto flex-1">
+            <div className="px-3 lg:px-6 py-4 overflow-y-auto flex-1">
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-bold">{selected.name}</h2>
                 <button onClick={() => setDeleteTarget(selected)}
