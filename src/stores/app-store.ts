@@ -197,6 +197,11 @@ interface AppState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 
+  // Right workspace panel (shared between top-bar and chat-client)
+  rightPanelOpen: boolean;
+  toggleRightPanel: () => void;
+  setRightPanelOpen: (open: boolean) => void;
+
   // Mobile conversation sheet (shared between app-shell and chat-client)
   mobileConvOpen: boolean;
   setMobileConvOpen: (open: boolean) => void;
@@ -318,6 +323,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   sidebarCollapsed: false,
   toggleSidebar: () =>
     set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+
+  rightPanelOpen: false,
+  toggleRightPanel: () =>
+    set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
+  setRightPanelOpen: (open: boolean) =>
+    set({ rightPanelOpen: open }),
 
   mobileConvOpen: false,
   setMobileConvOpen: (open) => set({ mobileConvOpen: open }),

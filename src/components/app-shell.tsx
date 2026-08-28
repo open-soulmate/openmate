@@ -12,7 +12,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
 import {
-  Search, Plus, PanelRightOpen, Menu, PanelLeftIcon,
+  Search, Plus, PanelRightOpen, Menu,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getUserName, getApiBaseUrl, getToken } from "@/lib/api-client";
@@ -97,7 +97,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const storeTheme = useAppStore((s) => s.theme);
   const setStoreTheme = useAppStore((s) => s.setTheme);
   const [menuOpen, setMenuOpen] = useState(false);
-  const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const rightPanelOpen = useAppStore((s) => s.rightPanelOpen);
+  const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
+  const setRightPanelOpen = useAppStore((s) => s.setRightPanelOpen);
   const isMobile = useIsMobile();
   // Auto-collapse sidebar on mid-sized screens (lg but not xl)
   // User can override by clicking the toggle button
@@ -362,27 +364,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <Menu className="w-5 h-5 text-muted-foreground" />
         </button>
-        <button
-          onClick={() => {
-            if (isMidScreen) {
-              setMidScreenExpanded(prev => !prev);
-            } else {
-              toggle();
-            }
-          }}
-          className="hidden lg:flex shrink-0 p-2 hover:bg-muted/50 transition-colors text-muted-foreground"
-          aria-label="Toggle Sidebar"
-        >
-          <PanelLeftIcon className="w-4 h-4" />
-        </button>
         <div className="flex-1 min-w-0">
           <TopBar
-            rightPanelOpen={rightPanelOpen}
-            onToggleRightPanel={() => {
-              const next = !rightPanelOpen;
-              setRightPanelOpen(next);
-              if (next && isMobile) setMobileConvOpen(false);
-            }}
             eventCount={eventCount}
             pageTitle={<MobilePageTitle />}
           />
@@ -450,7 +433,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
         <SidebarContent>
           {/* Search + New Chat */}
-          <div className="px-2 pb-2 flex items-center gap-1 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
+          <div className="px-2 pb-2 flex items-center gap-1 h-12 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
             <div className="relative flex-1 group-data-[collapsible=icon]:hidden">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
               <input
@@ -511,13 +494,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className="flex flex-col h-full overflow-hidden border-l border-border shrink-0 transition-all duration-250 ease-in-out"
           style={{ width: rightPanelOpen ? 320 : 0, borderWidth: rightPanelOpen ? 1 : 0 }}
         >
-          <RightPanel open={rightPanelOpen} onToggle={() => setRightPanelOpen(false)} />
+          <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
         </div>
       )}
       {isMobile && (
         <Sheet open={rightPanelOpen} onOpenChange={setRightPanelOpen}>
           <SheetContent side="right" size="lg" className="p-0 flex flex-col">
-            <RightPanel open={true} onToggle={() => setRightPanelOpen(false)} />
+            <RightPanel open={true} onToggle={() => toggleRightPanel()} />
           </SheetContent>
         </Sheet>
       )}

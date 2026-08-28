@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useRef, useEffect } from "react";
 import {
-  Bell, PanelRightOpen, PanelRightClose, Search,
+  Bell, Search,
   Activity, BarChart3, Stethoscope, Gauge, Shield, Plug,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -12,13 +12,11 @@ import Link from "next/link";
 import { HealthWidget } from "@/components/health-widget";
 
 interface TopBarProps {
-  rightPanelOpen: boolean;
-  onToggleRightPanel: () => void;
   eventCount?: number;
   pageTitle?: React.ReactNode;
 }
 
-export function TopBar({ rightPanelOpen, onToggleRightPanel, eventCount = 0, pageTitle }: TopBarProps) {
+export function TopBar({ eventCount = 0, pageTitle }: TopBarProps) {
   const { t } = useTranslation();
   const pathname = usePathname();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -48,7 +46,7 @@ export function TopBar({ rightPanelOpen, onToggleRightPanel, eventCount = 0, pag
   ];
 
   return (
-    <div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-background px-3">
+    <div className="flex h-12 shrink-0 items-center justify-end border-b border-border bg-background px-3">
       {/* Left: page title on mobile only (desktop has sidebar) */}
       <div className="shrink-0 min-w-0 lg:hidden">
         {pageTitle || <span className="text-sm font-medium">OpenMate</span>}
@@ -106,20 +104,6 @@ export function TopBar({ rightPanelOpen, onToggleRightPanel, eventCount = 0, pag
           );
         })}
 
-        {/* Workspace toggle */}
-        <button
-          onClick={onToggleRightPanel}
-          className={cn(
-            "flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-medium transition-colors",
-            rightPanelOpen
-              ? "text-primary bg-primary/10"
-              : "text-muted-foreground hover:text-foreground hover:bg-accent"
-          )}
-          title={rightPanelOpen ? "关闭工作区" : "打开工作区"}
-        >
-          {rightPanelOpen ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
-          <span className="hidden lg:inline truncate">{t("nav.workspace", "工作区")}</span>
-        </button>
       </div>
     </div>
   );

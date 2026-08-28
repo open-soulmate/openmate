@@ -6,12 +6,13 @@ import { useTranslation } from "react-i18next"
 import { getApiBaseUrl } from "@/lib/api-client"
 import {
   History, Loader2, Search, RefreshCw, Trash2,
-  MessageSquare, Clock, ChevronDown, ChevronRight,
+  MessageSquare, Clock, ChevronDown, ChevronRight, ChevronLeft,
   XCircle, Bot, Terminal, Smartphone, Timer,
   Link, Monitor, Wrench, Users, Star, Filter, X,
   Download, FileJson, FileText, Tag, Plus,
+  PanelLeft,
 } from "lucide-react"
-import { Sheet, SheetContent } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 interface Session {
@@ -108,6 +109,7 @@ export function SessionsClient() {
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
   // Mobile: track if we're showing detail view
   const isMobile = useIsMobile()
+  const [sidebarOpen, setSidebarOpen] = useState(false)
   const [allTags, setAllTags] = useState<{name: string; count: number}[]>([])
 
   // Tag input state (for adding tags to sessions)
@@ -185,6 +187,7 @@ export function SessionsClient() {
         return next
       })
     }
+    setSidebarOpen(false) // close mobile sidebar Sheet
     setDetailLoading(true)
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("openmate-token") : null
@@ -378,6 +381,9 @@ export function SessionsClient() {
       {/* Header */}
       <div className="flex items-center justify-between px-2 lg:px-6 h-12 border-b border-zinc-800">
         <div className="flex items-center gap-3">
+          <button onClick={() => setSidebarOpen(true)} className="md:hidden shrink-0 p-1.5 -ml-1 rounded-lg hover:bg-zinc-800 touch-manipulation">
+            <PanelLeft className="w-4 h-4 text-zinc-400" />
+          </button>
           <History className="w-6 h-6 text-cyan-400" />
           <div>
             <h1 className="text-xl font-semibold text-zinc-100">{t("sessions.title", "Sessions")}</h1>
@@ -398,8 +404,179 @@ export function SessionsClient() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Session List */}
-        <div className={`${isMobile ? "flex w-full" : "flex w-80 shrink-0 border-r border-zinc-800"} flex-col overflow-hidden`}>
+        {/* Session List — Sheet on mobile, inline on desktop */}
+        {isMobile ? (
+          <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+            <SheetContent side="left" size="md" className="p-0 flex flex-col bg-zinc-900">
+              <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-zinc-800">
+                <SheetTitle className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+                  <History className="w-4 h-4 text-cyan-400" />
+                  {t("sessions.title", "Sessions")}
+                </SheetTitle>
+              </SheetHeader>
+              {/* Search */}
+              <form onSubmit={handleSearch} className="px-3 h-12 flex items-center border-b border-zinc-800 gap-2">
+                <div className="relative flex-1">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
+                    placeholder={t("sessions.searchPlaceholder", "Search sessions...")}
+                    className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500" />
+                </div>
+              </form>
+              {/* Filter Bar */}
+              <div className="px-3 py-2 border-b border-zinc-800 space-y-2">
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => setShowFavoritesOnly(v => !v)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
+                      showFavoritesOnly
+                        ? "bg-yellow-900/30 text-yellow-400 border border-yellow-700/50"
+                        : "bg-zinc-800 text-zinc-500 border border-zinc-700 hover:text-zinc-300 hover:border-zinc-600"
+                    }`}
+                  >
+                    <Star className={`w-3.5 h-3.5 ${showFavoritesOnly ? "fill-yellow-400" : ""}`} />
+                    {t("sessions.favorites", "Favorites")}
+                    {favCount > 0 && <span className="text-[10px] opacity-70">({favCount})</span>}
+                  </button>
+                  {activeFilterCount > 0 && (
+                    <button
+                      onClick={() => { setShowFavoritesOnly(false); setActiveSourceFilter(null); setActiveTagFilter(null) }}
+                      className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
+                    >
+                      <X className="w-3 h-3" />
+                      {t("sessions.clearFilters", "Clear")}
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-nowrap gap-1.5 overflow-x-auto">
+                  {ALL_SOURCES.map(src => {
+                    const count = sourceCounts[src] || 0
+                    if (count === 0) return null
+                    const meta = SOURCE_META[src]
+                    const Icon = meta.icon
+                    const active = activeSourceFilter === src
+                    return (
+                      <button
+                        key={src}
+                        onClick={() => setActiveSourceFilter(prev => prev === src ? null : src)}
+                        className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] transition-colors ${
+                          active
+                            ? `${meta.bg} ${meta.color} border border-current/30 font-medium`
+                            : "bg-zinc-800/60 text-zinc-500 border border-zinc-800 hover:text-zinc-300"
+                        }`}
+                      >
+                        <Icon className="w-3 h-3" />
+                        {t(SOURCE_LABELS[src] || src)}
+                        <span className="opacity-60">{count}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+              {/* Session list */}
+              <div className="flex-1 overflow-y-auto">
+                {loading ? (
+                  <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+                ) : error ? (
+                  <div className="p-4 text-center text-red-400 text-xs">{error}</div>
+                ) : filteredSessions.length === 0 ? (
+                  <div className="text-center py-12 space-y-2">
+                    <p className="text-zinc-500 text-xs">
+                      {showFavoritesOnly
+                        ? t("sessions.noFavorites", "No favorite sessions yet")
+                        : t("sessions.noSessions", "No sessions found")}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="py-2">
+                    <button
+                      className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-zinc-800/40 transition-colors"
+                      onClick={() => setAgentExpanded(v => !v)}
+                    >
+                      {agentExpanded ? <ChevronDown className="w-4 h-4 text-zinc-500" /> : <ChevronRight className="w-4 h-4 text-zinc-500" />}
+                      <Bot className="w-5 h-5 text-cyan-400" />
+                      <span className="text-xs font-semibold text-zinc-100">Hermes Agent</span>
+                      <span className="ml-auto text-xs text-zinc-500">{t("sessions.sessionSummary", { count: filteredSessions.length, messages: totalMessages })}</span>
+                    </button>
+                    {agentExpanded && (
+                      <div className="ml-2 border-l border-zinc-800">
+                        {ALL_SOURCES.map(src => {
+                          const items = groups[src]
+                          if (!items || items.length === 0) return null
+                          const meta = SOURCE_META[src] || { icon: MessageSquare, label: src, color: "text-zinc-400", bg: "bg-zinc-900/20" }
+                          const Icon = meta.icon
+                          const expanded = sourceExpanded[src] ?? false
+                          return (
+                            <div key={src}>
+                              <button
+                                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/30 transition-colors"
+                                onClick={() => setSourceExpanded(prev => {
+                                  const willExpand = !prev[src]
+                                  const next: Record<string, boolean> = {}
+                                  if (willExpand) {
+                                    for (const key of ALL_SOURCES) next[key] = false
+                                    next[src] = true
+                                  }
+                                  return next
+                                })}
+                              >
+                                {expanded ? <ChevronDown className="w-3.5 h-3.5 text-zinc-600" /> : <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />}
+                                <Icon className={`w-4 h-4 ${meta.color}`} />
+                                <span className="text-xs font-medium text-zinc-300">{t(SOURCE_LABELS[src] || src)}</span>
+                                <span className="ml-auto text-[11px] text-zinc-600">{items.length}</span>
+                              </button>
+                              {expanded && items.map(session => {
+                                const isFav = favorites.has(session.session_id)
+                                return (
+                                  <div
+                                    key={session.session_id}
+                                    className={`group flex items-center gap-2 pl-8 pr-3 py-2.5 cursor-pointer transition-colors ${
+                                      selectedSession?.session_id === session.session_id
+                                        ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] border-l-2 border-[#7c3aed]"
+                                        : "hover:bg-zinc-800/20 border-l-2 border-transparent"
+                                    }`}
+                                    onClick={() => fetchSessionDetail(session.session_id)}
+                                  >
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); toggleFavorite(session.session_id) }}
+                                      className={`p-1 rounded transition-colors flex-shrink-0 touch-manipulation ${
+                                        isFav ? "text-yellow-400 hover:text-yellow-300" : "text-zinc-700 hover:text-yellow-400"
+                                      }`}
+                                    >
+                                      <Star className={`w-3.5 h-3.5 ${isFav ? "fill-yellow-400" : ""}`} />
+                                    </button>
+                                    <div className="flex-1 min-w-0">
+                                      <div className={`text-xs truncate ${selectedSession?.session_id === session.session_id ? "text-[#7c3aed]" : "text-zinc-300"}`}>
+                                        {session.title || session.session_id.replace(/^20\d{6}_\d{6}_/, "")}
+                                      </div>
+                                      <div className={`flex items-center gap-2 mt-0.5 text-[10px] ${selectedSession?.session_id === session.session_id ? "text-purple-400/60" : "text-zinc-600"}`}>
+                                        {session.message_count !== undefined && (
+                                          <span className="flex items-center gap-0.5"><MessageSquare className="w-2.5 h-2.5" /> {session.message_count}</span>
+                                        )}
+                                        {session.created_at && (
+                                          <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" /> {new Date(session.created_at).toLocaleDateString()}</span>
+                                        )}
+                                      </div>
+                                    </div>
+                                    <button onClick={(e) => { e.stopPropagation(); deleteSession(session.session_id) }}
+                                      className="p-1 rounded hover:bg-zinc-700 text-zinc-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                                      <Trash2 className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                )
+                              })}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+        ) : (
+        <div className="flex w-80 shrink-0 border-r border-zinc-800 flex-col overflow-hidden">
           {/* Search */}
           <form onSubmit={handleSearch} className="px-3 md:px-2 lg:px-4 h-12 flex items-center border-b border-zinc-800 gap-2">
             <div className="relative flex-1">
@@ -696,22 +873,23 @@ export function SessionsClient() {
             )}
           </div>
         </div>
+        )}
 
         {/* Session Detail — Sheet on mobile, inline on desktop */}
         {isMobile ? (
           selectedSession && (
             <Sheet open={!!selectedSession} onOpenChange={(open) => { if (!open) setSelectedSession(null) }}>
               <SheetContent side="right" size="full" showCloseButton={false} className="p-0 flex flex-col">
-                <div className="flex items-center justify-between px-2 h-12 border-b border-zinc-800">
+                <SheetHeader className="h-12 shrink-0 flex flex-row items-center justify-between px-2 border-b border-zinc-800">
                   <div className="flex items-center gap-2 min-w-0">
-                    <button onClick={() => setSelectedSession(null)} className="p-1.5 -ml-1 rounded-lg hover:bg-zinc-800 touch-manipulation">
-                      <XCircle className="w-4 h-4 text-zinc-400" />
+                    <button onClick={() => { setSelectedSession(null); setSidebarOpen(true); }} className="p-1.5 -ml-1 rounded-lg hover:bg-zinc-800 touch-manipulation">
+                      <ChevronLeft className="w-4 h-4 text-zinc-400" />
                     </button>
-                    <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                    <span className="text-xs font-medium text-zinc-200 truncate">
+                    <SheetTitle className="text-xs font-medium text-zinc-200 truncate flex items-center gap-2">
+                      <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
                       {selectedSession.title || selectedSession.session_id}
-                    </span>
-                    <span className="text-xs text-zinc-500 flex-shrink-0">({selectedSession.messages.length})</span>
+                      <span className="text-xs text-zinc-500 flex-shrink-0">({selectedSession.messages.length})</span>
+                    </SheetTitle>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
                     <button onClick={() => router.push(`/chat?session=${selectedSession.session_id}`)}
@@ -730,7 +908,7 @@ export function SessionsClient() {
                       <FileText className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                </div>
+                </SheetHeader>
                 <div className="flex-1 overflow-y-auto px-2 py-3 space-y-3">
                   {detailLoading ? (
                     <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
