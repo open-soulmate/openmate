@@ -218,25 +218,25 @@ export function MarketplaceClient() {
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="shrink-0 border-b border-border px-3 lg:px-6 py-2 lg:py-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Store className="h-6 w-6 text-primary" />
-            <div>
-              <h1 className="text-xl font-semibold">{t("marketplace.title") || "Marketplace"}</h1>
-              <p className="text-xs lg:text-sm text-muted-foreground">{t("marketplace.subtitleDesc") || "Discover, install and manage skills & Agents"}</p>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
+            <Store className="h-5 w-5 lg:h-6 lg:w-6 text-primary shrink-0" />
+            <div className="min-w-0">
+              <h1 className="text-base lg:text-xl font-semibold truncate">{t("marketplace.title") || "Marketplace"}</h1>
+              <p className="text-[10px] lg:text-sm text-muted-foreground">{t("marketplace.subtitleDesc") || "Discover, install and manage skills & Agents"}</p>
             </div>
           </div>
           <button
             onClick={handleSyncAll}
             disabled={syncing.has(`all-${activeTab}`)}
-            className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="flex items-center gap-1.5 lg:gap-2 rounded-lg bg-primary px-2.5 lg:px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 shrink-0 touch-manipulation"
           >
             {syncing.has(`all-${activeTab}`) ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
               <RefreshCw className="h-4 w-4" />
             )}
-            {t("marketplace.syncAll", { type: activeTab === "skills" ? (t("marketplace.skills") || "Skills") : (t("marketplace.agents") || "Agent") }) || `同步全部${activeTab === "skills" ? "技能" : "Agent"}`}
+            <span className="hidden sm:inline">{t("marketplace.syncAll", { type: activeTab === "skills" ? (t("marketplace.skills") || "Skills") : (t("marketplace.agents") || "Agent") }) || `同步全部${activeTab === "skills" ? "技能" : "Agent"}`}</span>
           </button>
         </div>
       </div>
@@ -261,16 +261,16 @@ export function MarketplaceClient() {
       )}
 
       {/* Tabs + Search */}
-      <div className="shrink-0 flex items-center gap-2 lg:gap-4 border-b border-border px-3 lg:px-6 py-2">
-        <div className="flex gap-1">
+      <div className="shrink-0 flex items-center gap-2 lg:gap-4 border-b border-border px-3 lg:px-6 py-2 overflow-x-auto">
+        <div className="flex gap-1 shrink-0">
           <TabButton active={activeTab === "skills"} onClick={() => setActiveTab("skills")} icon={Package} label={t("marketplace.skillSources") || "Skill Sources"} count={skillSources.length} />
           <TabButton active={activeTab === "agents"} onClick={() => setActiveTab("agents")} icon={Bot} label={t("marketplace.agentSources") || "Agent Sources"} count={agentSources.length} />
         </div>
-        <div className="relative ml-auto w-64">
+        <div className="relative ml-auto w-40 lg:w-64 shrink-0">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
             type="text"
-            placeholder={t("marketplace.searchSources") || "Search sources..."}
+            placeholder={t("marketplace.searchSources") || "Search..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full rounded-lg border border-border bg-background py-1.5 pl-9 pr-3 text-xs lg:text-sm outline-none focus:border-primary"
