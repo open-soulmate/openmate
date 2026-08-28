@@ -239,7 +239,7 @@ export function BookmarksClient() {
   const allCollections = [{ id: "__all__", name: "All", icon: "📋", bookmark_count: bookmarks.length, description: "" }, ...collections];
 
   return (
-    <div className="flex h-[calc(100vh-4rem)] overflow-hidden">
+    <div className="flex h-full overflow-hidden">
       {/* Sidebar — Sheet on mobile, inline on desktop */}
       {isMobile ? (
         <Sheet open={showSidebar} onOpenChange={setShowSidebar}>

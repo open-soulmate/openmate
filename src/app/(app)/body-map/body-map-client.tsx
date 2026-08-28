@@ -376,7 +376,7 @@ export function BodyMapClient() {
           <svg
             viewBox="0 0 100 100"
             className="w-full max-w-2xl h-auto"
-            style={{ maxHeight: "calc(100vh - 200px)" }}
+            style={{ maxHeight: "100%" }}
           >
             {/* Background grid */}
             <defs>
