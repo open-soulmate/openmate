@@ -284,7 +284,7 @@ export function PomodoroClient() {
 
             {/* Today stats */}
             {stats && (
-              <div className="grid grid-cols-3 gap-2 lg:gap-3 w-full">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-3 w-full">
                 <div className="rounded-lg border border-border bg-card p-3 text-center">
                   <div className="text-xl lg:text-2xl font-bold text-red-500">{stats.today.sessions}</div>
                   <div className="text-[10px] text-muted-foreground">{tr("plugins.todayPomodoros") || "Today's Pomodoros"}</div>

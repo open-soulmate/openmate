@@ -208,7 +208,7 @@ export function NotificationsClient() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-3 gap-2 lg:gap-4">
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
           {[
             { label: t('notifications.total', 'Total'), value: stats.total, color: 'text-blue-400' },
             { label: t('notifications.unread', 'Unread'), value: stats.unread, color: 'text-amber-400' },

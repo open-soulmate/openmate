@@ -380,7 +380,7 @@ export function VitalClient() {
         {activeTab === "health" && health && (
           <div className="space-y-4">
             {/* Summary */}
-            <div className="grid grid-cols-4 gap-2 lg:gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3">
               <OverviewCard
                 label={t("vital.overallStatus") || "Overall Status"}
                 value={health.status.toUpperCase()}

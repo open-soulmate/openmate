@@ -1415,7 +1415,7 @@ export function VeinClient() {
                 <Database size={14} className="text-amber-500" />
                 {t("vein.dedupStatsTitle")}
               </h3>
-              <div className="grid grid-cols-3 gap-2 lg:gap-4">
+              <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
                 <div>
                   <p className="text-xl lg:text-2xl font-bold">{stats.store.total_files}</p>
                   <p className="text-xs text-muted-foreground">{t("vein.logicalFilesLabel")}</p>

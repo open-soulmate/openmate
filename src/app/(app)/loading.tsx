@@ -42,7 +42,7 @@ export default function AppLoading() {
             <div className="h-5 w-16 rounded-full bg-muted" />
           </div>
 
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {Array.from({ length: 4 }).map((_, i) => (
               <div key={i} className="rounded-xl border border-border bg-card p-5 space-y-3">
                 <div className="h-4 w-24 rounded bg-muted" />
