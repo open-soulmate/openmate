@@ -243,7 +243,7 @@ export function BookmarksClient() {
       {/* Sidebar — Sheet on mobile, inline on desktop */}
       {isMobile ? (
         <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
-          <SheetContent side="left" showCloseButton={false} className="w-64 p-0 flex flex-col bg-zinc-950/95">
+          <SheetContent side="left" size="sm" showCloseButton={false} className="p-0 flex flex-col bg-zinc-950/95">
             <BookmarkSidebar
               allCollections={allCollections} collections={collections} tags={tags}
               activeCollection={activeCollection} setActiveCollection={setActiveCollection}

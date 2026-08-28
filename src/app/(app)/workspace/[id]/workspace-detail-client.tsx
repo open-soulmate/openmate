@@ -478,7 +478,7 @@ export function WorkspaceDetailClient() {
       {/* Left: File tree — Sheet on mobile, inline on desktop */}
       {isMobile ? (
         <Sheet open={showFileTree} onOpenChange={setShowFileTree}>
-          <SheetContent side="left" className="w-64 p-0 flex flex-col">
+          <SheetContent side="left" size="sm" className="p-0 flex flex-col">
             <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
               <FolderOpen size={14} className="text-muted-foreground" />
               <span className="text-xs font-medium text-foreground truncate">
@@ -607,7 +607,7 @@ export function WorkspaceDetailClient() {
       {/* Right: SCM Panel — Sheet on mobile, inline on desktop */}
       {isMobile ? (
         <Sheet open={scmOpen} onOpenChange={setScmOpen}>
-          <SheetContent side="right" className="w-80 p-0 flex flex-col">
+          <SheetContent side="right" size="md" className="p-0 flex flex-col">
             <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
               <GitBranch size={14} className="text-primary" />
               <span className="text-xs font-medium text-foreground">SCM</span>

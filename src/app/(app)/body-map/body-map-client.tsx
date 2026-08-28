@@ -450,7 +450,7 @@ export function BodyMapClient() {
         {/* Side panel: Sheet on mobile, inline on desktop */}
         {isMobile ? (
           <Sheet open={showDetails} onOpenChange={setShowDetails}>
-            <SheetContent side="right" className="w-80 p-0 flex flex-col overflow-y-auto">
+            <SheetContent side="right" size="md" className="p-0 flex flex-col overflow-y-auto">
               <div className="p-4 space-y-4">
                 {/* System legend */}
                 <div>

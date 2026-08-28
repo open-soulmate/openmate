@@ -288,7 +288,7 @@ export function QuickNotesClient() {
       {/* Note List Panel — Sheet on mobile, inline on desktop */}
       {isMobile ? (
         <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
-          <SheetContent side="left" showCloseButton={false} className="w-80 p-0 flex flex-col">
+          <SheetContent side="left" size="md" showCloseButton={false} className="p-0 flex flex-col">
             <NoteListContent
               notes={notes} pinnedNotes={pinnedNotes} regularNotes={regularNotes}
               searchQuery={searchQuery} setSearchQuery={setSearchQuery}

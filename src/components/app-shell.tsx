@@ -485,7 +485,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
       {isMobile && (
         <Sheet open={rightPanelOpen} onOpenChange={setRightPanelOpen}>
-          <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col">
+          <SheetContent side="right" size="lg" className="p-0 flex flex-col">
             <RightPanel open={true} onToggle={() => setRightPanelOpen(false)} />
           </SheetContent>
         </Sheet>

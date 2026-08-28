@@ -314,7 +314,7 @@ export function NestClient() {
             {/* Detail Panel — Sheet on mobile, inline on desktop */}
             {isMobile ? (
               <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-                <SheetContent side="right" className="w-80 p-0 flex flex-col">
+                <SheetContent side="right" size="md" className="p-0 flex flex-col">
                   <div className="flex-1 overflow-y-auto p-4 space-y-4">
                     {selected && (
                       <>
