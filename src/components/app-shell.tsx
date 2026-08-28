@@ -347,7 +347,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex items-center">
         <button
           onClick={() => setMobileNavOpen(true)}
-          className="md:hidden shrink-0 p-2 hover:bg-muted/50 transition-colors"
+          className="lg:hidden shrink-0 p-2 hover:bg-muted/50 transition-colors"
           aria-label="Menu"
         >
           <Menu className="w-5 h-5 text-muted-foreground" />
@@ -403,7 +403,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <SidebarProvider open={!collapsed} onOpenChange={(open) => { if (open === collapsed) toggle(); }} className="flex-1 min-h-0 overflow-hidden h-full">
           {/* Desktop sidebar - conversation list */}
-          <Sidebar collapsible="icon" className="hidden md:flex">
+          <Sidebar collapsible="icon" className="hidden lg:flex">
         <SidebarHeader>
           <div className="flex h-12 shrink-0 items-center px-2">
             <span className="text-sm font-bold text-primary">OM</span>
