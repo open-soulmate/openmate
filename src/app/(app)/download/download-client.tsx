@@ -135,7 +135,7 @@ export function DownloadClient() {
 
   return (
     <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-3 lg:mb-6">
         <div>
           <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2"><Download className="w-6 h-6" /> {t('download.title')}</h1>
           <p className="text-xs lg:text-sm text-muted-foreground mt-1">{t('download.subtitle')}</p>
@@ -146,7 +146,7 @@ export function DownloadClient() {
       </div>
 
       {showAdd && (
-        <div className="mb-6 p-3 lg:p-4 rounded-xl border bg-card">
+        <div className="mb-3 lg:mb-6 p-3 lg:p-4 rounded-xl border bg-card">
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 relative">
               <input value={newUrl} onChange={e => setNewUrl(e.target.value)}
@@ -169,7 +169,7 @@ export function DownloadClient() {
         </div>
       )}
 
-      <div className="flex gap-1 mb-6 bg-muted rounded-lg p-1 w-fit">
+      <div className="flex gap-1 mb-3 lg:mb-6 bg-muted rounded-lg p-1 w-fit">
         {([['downloads', t('download.downloading'), downloading.length], ['done', t('download.done'), done.length], ['settings', t('download.settings'), 0]] as const).map(([key, label, count]) => (
           <button key={key} onClick={() => setTab(key)}
             className={`px-4 py-1.5 rounded-md text-xs lg:text-sm transition-colors ${tab === key ? 'bg-card text-foreground font-medium' : 'text-muted-foreground hover:text-foreground'}`}>

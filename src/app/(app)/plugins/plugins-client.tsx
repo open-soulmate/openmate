@@ -367,7 +367,7 @@ export function PluginsClient() {
         </div>
 
         {/* Filters */}
-        <div className="flex items-center gap-3 mb-6">
+        <div className="flex items-center gap-3 mb-3 lg:mb-6">
           <div className="relative flex-1 max-w-sm">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
             <input

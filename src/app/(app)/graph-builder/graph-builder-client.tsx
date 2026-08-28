@@ -115,7 +115,7 @@ export function GraphBuilderClient() {
     <div className="flex h-full">
       <div className="flex-1 px-4 md:px-6 py-4 md:py-3 lg:py-6 overflow-y-auto">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-3 lg:mb-6">
           <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2"><Network className="w-6 h-6" /> {t('graphBuilder.knowledgeGraphBuilder')}</h1>
           <div className="flex gap-1 md:gap-2">
             <button onClick={() => { setShowAddRelation(!showAddRelation); setShowAdd(false); }}

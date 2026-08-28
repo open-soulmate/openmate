@@ -194,7 +194,7 @@ export function AgentsClient() {
   return (
     <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 lg:mb-6">
         <div>
           <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2"><Bot className="w-6 h-6" /> {t('agents.title')}</h1>
           <p className="text-xs lg:text-sm text-muted-foreground mt-1">{t('agents.autoDetect')} · {agents.length} {t('agents.category')}</p>
@@ -203,7 +203,7 @@ export function AgentsClient() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-3 lg:mb-6">
         <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-primary">{agents.length}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('agents.title')}</p></div>
         <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-green-500">{availableCount}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('agents.available')}</p></div>
         <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-muted-foreground">{agents.length - availableCount}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('agents.unavailable')}</p></div>

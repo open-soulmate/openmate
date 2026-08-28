@@ -131,7 +131,7 @@ export function SkillsClient() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-3 lg:mb-6">
         <div>
           <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2"><Puzzle className="w-6 h-6" /> {t('skills.title')}</h1>
           <p className="text-xs lg:text-sm text-muted-foreground mt-1">{t('skills.description')}</p>
@@ -147,7 +147,7 @@ export function SkillsClient() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-2 lg:gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-2 lg:gap-4 mb-3 lg:mb-6">
         <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold text-primary">{skills.length}</p><p className="text-[10px] lg:text-sm text-muted-foreground truncate">{t('skills.available')}</p></div>
         <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold text-green-500">{installedCount}</p><p className="text-[10px] lg:text-sm text-muted-foreground truncate">{t('skills.installed')}</p></div>
         <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold text-muted-foreground">{skills.length - installedCount}</p><p className="text-[10px] lg:text-sm text-muted-foreground truncate">{t('skills.available')}</p></div>
