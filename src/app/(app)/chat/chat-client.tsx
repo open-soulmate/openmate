@@ -709,42 +709,44 @@ export function ChatClient() {
       {/* Chat Window */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Chat header */}
-        <div className="h-12 border-b border-border flex items-center px-4 justify-between shrink-0">
-          <div className="flex items-center gap-2">
+        <div className="h-12 border-b border-border flex items-center px-3 lg:px-4 justify-between shrink-0">
+          <div className="flex items-center gap-1.5 lg:gap-2 min-w-0 flex-1">
             {isMobile && (
-              <button onClick={() => setMobileConvOpen(true)} className="p-1 rounded hover:bg-muted">
-                <PanelLeft className="w-4 h-4" />
+              <button onClick={() => setMobileConvOpen(true)} className="p-2 -ml-1 rounded-lg hover:bg-muted active:bg-muted/80 touch-manipulation" aria-label={t("chat.openConversations", "Open conversations")}>
+                <PanelLeft className="w-5 h-5" />
               </button>
             )}
-            {selectedAgent && <span className="text-sm">{selectedAgent.icon}</span>}
-            {editingTitle ? (
-              <input
-                ref={titleInputRef}
-                value={editTitleValue}
-                onChange={e => setEditTitleValue(e.target.value)}
-                onBlur={saveTitle}
-                onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') setEditingTitle(false); }}
-                className="font-medium text-sm bg-transparent border-b border-primary outline-none px-0.5 min-w-0 max-w-[200px]"
-              />
-            ) : (
-              <span
-                className={`font-medium text-sm truncate max-w-[200px] ${selectedSession?.id ? 'cursor-pointer hover:text-primary' : ''}`}
-                onClick={startEditTitle}
-                title={selectedSession?.id ? 'Click to rename' : undefined}
-              >
-                {selectedSession?.name || selectedSession?.title || (selectedAgent ? `${selectedAgent.name} ${t('chat.newSession')}` : t('chat.newChat'))}
-              </span>
-            )}
-            {selectedAgent && <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">{selectedAgent.name}</span>}
+            {selectedAgent && <span className="text-sm shrink-0">{selectedAgent.icon}</span>}
+            <div className="min-w-0 flex-1">
+              {editingTitle ? (
+                <input
+                  ref={titleInputRef}
+                  value={editTitleValue}
+                  onChange={e => setEditTitleValue(e.target.value)}
+                  onBlur={saveTitle}
+                  onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') setEditingTitle(false); }}
+                  className="font-medium text-sm bg-transparent border-b border-primary outline-none px-0.5 min-w-0 max-w-[200px]"
+                />
+              ) : (
+                <span
+                  className={`font-medium text-sm truncate block ${selectedSession?.id ? 'cursor-pointer hover:text-primary' : ''}`}
+                  onClick={startEditTitle}
+                  title={selectedSession?.id ? 'Click to rename' : undefined}
+                >
+                  {selectedSession?.name || selectedSession?.title || (selectedAgent ? `${selectedAgent.name} ${t('chat.newSession')}` : t('chat.newChat'))}
+                </span>
+              )}
+            </div>
+            {selectedAgent && <span className="hidden sm:inline-flex text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted shrink-0">{selectedAgent.name}</span>}
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 shrink-0">
             {wsConnected ? <Wifi className="w-4 h-4 text-green-500" /> : <WifiOff className="w-4 h-4 text-muted-foreground" />}
-            <span className="text-xs text-muted-foreground">{wsConnected ? 'WS' : 'HTTP'}</span>
+            <span className="hidden sm:inline text-xs text-muted-foreground">{wsConnected ? 'WS' : 'HTTP'}</span>
             <button onClick={() => {
               const next = !showDetails;
               setShowDetails(next);
               if (next && isMobile) setMobileConvOpen(false); // mutual exclusion: close left Sheet
-            }} className="p-1 rounded hover:bg-muted">
+            }} className="p-2 rounded-lg hover:bg-muted active:bg-muted/80 touch-manipulation" aria-label={showDetails ? t("chat.hideDetails", "Hide details") : t("chat.showDetails", "Show details")}>
               {showDetails ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
             </button>
           </div>
@@ -754,8 +756,8 @@ export function ChatClient() {
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 lg:px-6 py-3 lg:py-4 space-y-3 lg:space-y-4 chat-scrollbar">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto">
-              <h2 className="text-2xl font-semibold mb-8">{t("chat.welcomeMessage")}</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 w-full">
+              <h2 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-8">{t("chat.welcomeMessage")}</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3 w-full">
                 {[
                   { icon: '📝', label: t('chat.quickReqDoc'), desc: t('chat.quickReqDocDesc') },
                   { icon: '🎨', label: t('chat.quickPrototype'), desc: t('chat.quickPrototypeDesc') },
@@ -767,9 +769,9 @@ export function ChatClient() {
                   { icon: '🔍', label: t('chat.quickKnowledgeSearch'), desc: t('chat.quickKnowledgeSearchDesc') },
                 ].map(item => (
                   <button key={item.label} onClick={() => setInput(item.desc)}
-                    className="flex flex-col items-center gap-2 p-4 rounded-xl border bg-card hover:bg-muted/80 hover:border-primary/30 transition-all group">
-                    <span className="text-2xl">{item.icon}</span>
-                    <span className="text-sm font-medium">{item.label}</span>
+                    className="flex flex-col items-center gap-1.5 lg:gap-2 p-3 lg:p-4 rounded-xl border bg-card hover:bg-muted/80 hover:border-primary/30 active:bg-muted transition-all group">
+                    <span className="text-xl lg:text-2xl">{item.icon}</span>
+                    <span className="text-xs lg:text-sm font-medium">{item.label}</span>
                   </button>
                 ))}
               </div>
