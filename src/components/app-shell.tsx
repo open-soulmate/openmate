@@ -342,9 +342,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <SidebarProvider open={!collapsed} onOpenChange={(open) => { if (open === collapsed) toggle(); }} className="h-svh overflow-hidden">
-      {/* Desktop sidebar - conversation list */}
-      <Sidebar collapsible="icon" className="hidden md:flex">
+    <div className="flex flex-col h-svh overflow-hidden">
+      {/* Top utility bar — full screen width */}
+      <TopBar
+        rightPanelOpen={rightPanelOpen}
+        onToggleRightPanel={() => setRightPanelOpen(v => !v)}
+        eventCount={eventCount}
+        pageTitle={<MobilePageTitle />}
+      />
+
+      {/* Middle: sidebar + content + right panel */}
+      <div className="flex flex-1 min-h-0 overflow-hidden">
+        <SidebarProvider open={!collapsed} onOpenChange={(open) => { if (open === collapsed) toggle(); }} className="flex-1 min-h-0 overflow-hidden">
+          {/* Desktop sidebar - conversation list */}
+          <Sidebar collapsible="icon" className="hidden md:flex">
         <SidebarHeader>
           <div className="flex h-12 shrink-0 items-center px-2">
             <span className="text-sm font-bold text-primary">OM</span>
@@ -586,18 +597,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Main content area */}
       <SidebarInset className="min-h-0 overflow-hidden">
-        {/* Top utility bar — scrollable, all screens */}
-        <TopBar
-          rightPanelOpen={rightPanelOpen}
-          onToggleRightPanel={() => setRightPanelOpen(v => !v)}
-          eventCount={eventCount}
-          pageTitle={<MobilePageTitle />}
-        />
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           {children}
         </div>
-        {/* Bottom navigation bar — all screens */}
-        <BottomNav totalUnread={totalUnread} />
       </SidebarInset>
 
       {/* Right Panel — workspace tabs (mobile: Sheet overlay, desktop: inline) */}
@@ -624,7 +626,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Terminal Panel */}
       <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
-    </SidebarProvider>
+        </SidebarProvider>
+      </div>
+
+      {/* Bottom navigation bar — full screen width */}
+      <BottomNav totalUnread={totalUnread} />
+    </div>
   );
 }
 
