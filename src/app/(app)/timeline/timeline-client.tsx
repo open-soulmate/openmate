@@ -431,7 +431,7 @@ function EventsList({
                       <span className="text-[10px] text-muted-foreground">{ev.time_ago}</span>
                       <button
                         onClick={e => { e.stopPropagation(); onDelete(ev.event_id); }}
-                        className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
+                        className="opacity-100 sm:opacity-0 sm:group-hover:opacity-100 p-0.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-all"
                       >
                         <Trash2 className="w-3 h-3" />
                       </button>

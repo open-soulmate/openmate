@@ -312,7 +312,7 @@ export function NotificationCenter() {
                     </div>
 
                     {/* Actions (visible on hover) */}
-                    <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                    <div className="flex flex-col gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
                       {!notif.read && (
                         <button
                           onClick={(e) => {

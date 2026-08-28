@@ -93,7 +93,7 @@ export function WorkflowListPanel({ onLoad }: WorkflowListPanelProps) {
                 <span className="truncate text-xs font-medium text-foreground">
                   {wf.name}
                 </span>
-                <div className="flex items-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex items-center gap-0.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={(e) => {
                       e.stopPropagation();

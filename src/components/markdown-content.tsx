@@ -45,7 +45,7 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
           {!isEditing && (
             <button
               onClick={() => setIsEditing(true)}
-              className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground px-1.5 py-0.5 rounded hover:bg-white/5"
+              className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:text-foreground px-1.5 py-0.5 rounded hover:bg-white/5"
             >
               <Pencil className="w-3 h-3" />
               <span>{t('markdown.edit')}</span>
@@ -53,7 +53,7 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
           )}
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground px-1.5 py-0.5 rounded hover:bg-white/5"
+            className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:text-foreground px-1.5 py-0.5 rounded hover:bg-white/5"
           >
             {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
             {copied ? t('markdown.copied') : t('markdown.copy')}

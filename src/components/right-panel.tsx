@@ -728,7 +728,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
                     <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#1e1e1e" strokeWidth="2" /><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z" fill="#1e1e1e" /></svg>
                   </span>
                   <span className="truncate" style={{ color: isActive ? '#e8eaed' : 'rgba(232,234,237,0.6)', fontSize: '13px', fontWeight: 400, lineHeight: 1 }}>{tab.title}</span>
-                  <button onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className="shrink-0 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-100 hover:bg-[rgba(255,255,255,0.1)] transition-all" style={{ width: 16, height: 16, marginLeft: 'auto' }}>
+                  <button onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className="shrink-0 flex items-center justify-center rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-[rgba(255,255,255,0.1)] transition-all" style={{ width: 16, height: 16, marginLeft: 'auto' }}>
                     <X className="w-3 h-3" style={{ color: '#9aa0a6' }} />
                   </button>
                 </div>
