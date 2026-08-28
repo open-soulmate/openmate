@@ -277,7 +277,7 @@ export function CronClient() {
                       <div className="flex items-center gap-2 lg:gap-3 ml-4 text-[10px] lg:text-[11px] text-muted-foreground flex-wrap">
                         <span>ID: <span className="font-mono">{jobId.slice(0, 8)}</span></span>
                         {job.last_run && <span>{t('cron.lastRun', 'Last run')}: {formatTime(job.last_run)}</span>}
-                        {job.next_run && <span className="hidden lg:inline">{t('cron.nextRun', 'Next run')}: {formatTime(job.next_run)}</span>}
+                        {job.next_run && <span>{t('cron.nextRun', 'Next run')}: {formatTime(job.next_run)}</span>}
                       </div>
                     </div>
 
