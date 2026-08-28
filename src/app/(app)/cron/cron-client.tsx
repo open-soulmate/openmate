@@ -147,49 +147,49 @@ export function CronClient() {
   }
 
   return (
-    <div className="p-6 h-full overflow-y-auto">
+    <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Clock className="w-6 h-6 text-primary" />
+          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2">
+            <Clock className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
             {t('cron.title', 'Cron Jobs')}
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs lg:text-sm text-muted-foreground mt-1">
             {t('cron.subtitle', 'Manage scheduled tasks and automation')}
           </p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 self-start sm:self-auto">
           <button onClick={() => setShowCreate(!showCreate)}
-            className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-2 text-sm">
+            className="px-3 lg:px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1.5 lg:gap-2 text-xs lg:text-sm">
             <Plus className="w-4 h-4" /> {t('cron.newJob', 'New Job')}
           </button>
           <button onClick={loadJobs}
-            className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm">
+            className="px-3 lg:px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-1.5 lg:gap-2 text-xs lg:text-sm">
             <RefreshCw className="w-4 h-4" /> {t('cron.refreshBtn', 'Refresh')}
           </button>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-2 lg:gap-4 mb-6">
         <div className="p-4 rounded-xl border bg-card">
-          <p className="text-2xl font-bold text-primary">{jobs.length}</p>
-          <p className="text-sm text-muted-foreground">{t('cron.totalTasks', 'Total Jobs')}</p>
+          <p className="text-xl lg:text-2xl font-bold text-primary">{jobs.length}</p>
+          <p className="text-xs lg:text-sm text-muted-foreground">{t('cron.totalTasks', 'Total Jobs')}</p>
         </div>
         <div className="p-4 rounded-xl border bg-card">
-          <p className="text-2xl font-bold text-green-500">{activeCount}</p>
-          <p className="text-sm text-muted-foreground">{t('cron.running', 'Active')}</p>
+          <p className="text-xl lg:text-2xl font-bold text-green-500">{activeCount}</p>
+          <p className="text-xs lg:text-sm text-muted-foreground">{t('cron.running', 'Active')}</p>
         </div>
         <div className="p-4 rounded-xl border bg-card">
-          <p className="text-2xl font-bold text-amber-500">{pausedCount}</p>
-          <p className="text-sm text-muted-foreground">{t('cron.paused', 'Paused')}</p>
+          <p className="text-xl lg:text-2xl font-bold text-amber-500">{pausedCount}</p>
+          <p className="text-xs lg:text-sm text-muted-foreground">{t('cron.paused', 'Paused')}</p>
         </div>
       </div>
 
       {/* Create Dialog */}
       {showCreate && (
-        <div className="mb-6 p-4 rounded-xl border bg-card">
+        <div className="mb-6 p-3 lg:p-4 rounded-xl border bg-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium flex items-center gap-2">
               <Zap className="w-4 h-4 text-primary" /> {t('cron.createNew', 'Create New Job')}
@@ -199,7 +199,7 @@ export function CronClient() {
               <X className="w-4 h-4" />
             </button>
           </div>
-          <div className="grid grid-cols-2 gap-4 mb-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 lg:gap-4 mb-4">
             <div>
               <label className="text-xs text-muted-foreground mb-1 block">{t('cron.taskNameLabel', 'Job Name')}</label>
               <input value={createName} onChange={e => setCreateName(e.target.value)}
@@ -257,10 +257,10 @@ export function CronClient() {
             return (
               <div key={jobId} className="rounded-xl border bg-card overflow-hidden">
                 {/* Job header card */}
-                <div className="p-4">
-                  <div className="flex items-center justify-between">
+                <div className="p-3 lg:p-4">
+                  <div className="flex items-start lg:items-center justify-between gap-2">
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 mb-1.5">
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                         <span className={cn('w-2 h-2 rounded-full shrink-0',
                           job.status === 'active' ? 'bg-green-500' : 'bg-amber-500'
                         )} />
@@ -274,15 +274,15 @@ export function CronClient() {
                           {job.status}
                         </span>
                       </div>
-                      <div className="flex items-center gap-3 ml-4 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-2 lg:gap-3 ml-4 text-[10px] lg:text-[11px] text-muted-foreground flex-wrap">
                         <span>ID: <span className="font-mono">{jobId.slice(0, 8)}</span></span>
                         {job.last_run && <span>{t('cron.lastRun', 'Last run')}: {formatTime(job.last_run)}</span>}
-                        {job.next_run && <span>{t('cron.nextRun', 'Next run')}: {formatTime(job.next_run)}</span>}
+                        {job.next_run && <span className="hidden sm:inline">{t('cron.nextRun', 'Next run')}: {formatTime(job.next_run)}</span>}
                       </div>
                     </div>
 
                     {/* Action buttons */}
-                    <div className="flex items-center gap-0.5 ml-3 shrink-0">
+                    <div className="flex items-center gap-0.5 ml-2 lg:ml-3 shrink-0">
                       {job.status === 'active' ? (
                         <button onClick={() => handleAction(jobId, 'pause')}
                           disabled={actionLoading === jobId + 'pause'}
@@ -351,7 +351,7 @@ export function CronClient() {
                         <div className="space-y-1.5">
                           {runs.slice(0, 10).map((run) => (
                             <div key={run.run_id}
-                              className="flex items-center justify-between px-3 py-2 rounded-lg bg-background/50 text-xs">
+                              className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 px-3 py-2 rounded-lg bg-background/50 text-xs">
                               <div className="flex items-center gap-2">
                                 {run.status === 'success' ? (
                                   <CheckCircle className="w-3.5 h-3.5 text-green-500" />
