@@ -794,7 +794,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
               <div className="mb-1 text-xs font-medium uppercase tracking-wider text-amber-600">
                 Certificate of Completion
               </div>
-              <div className="mb-4 text-xl font-bold text-gray-800">{selectedCourse.title}</div>
+              <div className="mb-4 text-lg lg:text-xl font-bold text-foreground">{selectedCourse.title}</div>
               <div className="mb-3 text-xs lg:text-sm text-gray-600">{selectedCourse.description}</div>
               <div className="mb-4 flex items-center gap-2 lg:gap-4 text-xs text-gray-500">
                 <span>📚 {selectedCourse.totalChapters} chapters</span>
