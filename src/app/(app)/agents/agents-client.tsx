@@ -192,7 +192,7 @@ export function AgentsClient() {
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="px-4 md:px-6 py-4 md:py-6 h-full overflow-y-auto">
+    <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
