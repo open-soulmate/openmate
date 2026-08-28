@@ -176,7 +176,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
         <div className="flex-1">
           <div className="flex items-center gap-2">
             <span className="text-xl">{icon}</span>
-            <h1 className="text-2xl font-bold">{job.name || job.id}</h1>
+            <h1 className="text-xl lg:text-2xl font-bold">{job.name || job.id}</h1>
             <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${
               job.status === 'active'
                 ? 'bg-green-500/10 text-green-500'

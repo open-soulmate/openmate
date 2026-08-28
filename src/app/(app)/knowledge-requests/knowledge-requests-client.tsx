@@ -84,7 +84,7 @@ export function KnowledgeRequestsClient() {
     <div className="px-3 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2">
             <FileText className="w-6 h-6" /> {t('nav.knowledgeRequests', 'Knowledge Requests')}
           </h1>
           <p className="text-muted-foreground mt-1">{t('knowledgeRequests.description', 'Request new knowledge bases or review pending requests')}</p>
