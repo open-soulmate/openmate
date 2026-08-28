@@ -33,6 +33,7 @@ import {
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ConversationTree, type AgentInfo } from "@/components/conversation-tree";
 import { MobileSidebar } from "@/components/mobile-sidebar";
+import { SwipeablePanels, getPanelIndex } from "@/components/swipeable-panels";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -99,6 +100,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const mobileConvOpen = useAppStore((s) => s.mobileConvOpen);
   const setMobileConvOpen = useAppStore((s) => s.setMobileConvOpen);
+  const currentPanel = useAppStore((s) => s.currentPanel);
+  const setCurrentPanel = useAppStore((s) => s.setCurrentPanel);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { t } = useTranslation();
   const [eventCount, setEventCount] = useState(0);
@@ -315,6 +318,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   useEffect(() => { setMenuOpen(false); }, [pathname]);
 
+  // Sync swipeable panel index with current route
+  useEffect(() => {
+    const idx = getPanelIndex(pathname);
+    if (idx >= 0 && idx !== currentPanel) {
+      setCurrentPanel(idx);
+    }
+  }, [pathname, currentPanel, setCurrentPanel]);
+
   function toggleTheme() {
     const next: ThemeId = storeTheme === "dark" ? "light" : storeTheme === "light" ? "purple" : "dark";
     persistTheme(next);
@@ -448,7 +459,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Main content area */}
       <SidebarInset className="min-h-0 overflow-hidden">
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
-          {children}
+          <SwipeablePanels isHomePage={getPanelIndex(pathname) >= 0}>
+            {children}
+          </SwipeablePanels>
         </div>
       </SidebarInset>
 
