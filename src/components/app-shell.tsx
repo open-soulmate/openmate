@@ -320,7 +320,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
-  useEffect(() => { setMenuOpen(false); }, [pathname]);
+  useEffect(() => { setMenuOpen(false); setRightPanelOpen(false); }, [pathname]);
 
   // Sync swipeable panel index with current route
   useEffect(() => {
@@ -358,7 +358,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex-1 min-w-0">
           <TopBar
             rightPanelOpen={rightPanelOpen}
-            onToggleRightPanel={() => setRightPanelOpen(v => !v)}
+            onToggleRightPanel={() => {
+              const next = !rightPanelOpen;
+              setRightPanelOpen(next);
+              if (next && isMobile) setMobileConvOpen(false);
+            }}
             eventCount={eventCount}
             pageTitle={<MobilePageTitle />}
           />
@@ -489,7 +493,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Bottom navigation bar — full screen width */}
-      <BottomNav totalUnread={totalUnread} onOpenConversations={() => setMobileConvOpen(true)} />
+      <BottomNav totalUnread={totalUnread} onOpenConversations={() => { setMobileConvOpen(true); setRightPanelOpen(false); }} />
     </div>
   );
 }

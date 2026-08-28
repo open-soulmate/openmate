@@ -2,7 +2,6 @@
 import { useState, useEffect } from 'react';
 import '@/styles/sidebar.css';
 import { AppShell } from '@/components/app-shell';
-import { Topbar } from '@/components/topbar';
 import { CommandMenu } from '@/components/command-menu';
 import { GlobalShortcuts } from '@/components/global-shortcuts';
 import { LoginPage } from '@/components/login-page';
@@ -27,7 +26,6 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <AppShell>
-        <Topbar />
         <main className="flex-1 overflow-hidden">{children}</main>
         <CommandMenu />
         <GlobalShortcuts />
