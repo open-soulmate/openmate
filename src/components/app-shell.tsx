@@ -1,6 +1,7 @@
 "use client";
 import { TerminalPanel } from "@/components/terminal-panel";
 import { MobileSidebar } from "@/components/mobile-sidebar";
+import { BottomNav } from "@/components/bottom-nav";
 import { NotificationCenter } from "@/components/notification-center";
 import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 
@@ -407,42 +408,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <SidebarRail />
       </Sidebar>
 
-      {/* Mobile sidebar (Sheet) - visible below md */}
-      <div className="md:hidden">
+      {/* Mobile sidebar (Sheet) - hidden, kept for deep nav access */}
+      <div className="hidden">
         <MobileSidebar open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen} />
       </div>
 
       {/* Main content area */}
       <SidebarInset className="min-h-0 overflow-hidden">
-        {/* Mobile header with hamburger, page title, notifications, search */}
-        <div className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-3 md:hidden">
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              onClick={() => setMobileSidebarOpen(true)}
-              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors"
-              aria-label="Open menu"
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="4" x2="20" y1="6" y2="6" />
-                <line x1="4" x2="20" y1="12" y2="12" />
-                <line x1="4" x2="20" y1="18" y2="18" />
-              </svg>
-            </button>
-            <MobilePageTitle />
-          </div>
+        {/* Mobile: minimal top bar with title + actions */}
+        <div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-background px-3 md:hidden">
+          <MobilePageTitle />
           <div className="flex items-center gap-1">
             <NotificationCenter />
             <button
               onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }))}
-              className="flex h-8 w-8 items-center justify-center rounded-md hover:bg-accent transition-colors text-muted-foreground"
+              className="flex h-7 w-7 items-center justify-center rounded-md hover:bg-accent transition-colors text-muted-foreground"
               aria-label="Search"
             >
-              <Search size={16} />
+              <Search size={14} />
             </button>
           </div>
         </div>
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           {children}
+        </div>
+        {/* Mobile: bottom navigation bar */}
+        <div className="md:hidden">
+          <BottomNav />
         </div>
       </SidebarInset>
 

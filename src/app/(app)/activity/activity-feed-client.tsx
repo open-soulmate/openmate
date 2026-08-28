@@ -1,5 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useMediaQuery } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import { useTranslation } from "react-i18next";
@@ -8,6 +10,7 @@ import {
   Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
   Zap, Brain, Bolt, Heart, Home, MousePointer, Mic, ImageIcon,
   Smile, Clock, Sparkles, ChevronDown,
+  BarChart3,
 } from "lucide-react";
 
 interface StreamEvent {
@@ -76,6 +79,8 @@ export function ActivityFeedClient() {
   const [showFilters, setShowFilters] = useState(false);
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
   const [sseConnected, setSseConnected] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const [showSummary, setShowSummary] = useState(false);
   const sseRef = useRef<EventSource | null>(null);
   const eventsRef = useRef<StreamEvent[]>([]);
 
@@ -218,6 +223,15 @@ export function ActivityFeedClient() {
             {loading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
             {t('activity.refresh')}
           </button>
+          {isMobile && (
+            <button
+              onClick={() => setShowSummary(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted transition-colors"
+            >
+              <BarChart3 size={12} />
+              {t('activity.summary')}
+            </button>
+          )}
         </div>
       </div>
 
@@ -320,7 +334,71 @@ export function ActivityFeedClient() {
           )}
         </div>
 
-        {/* Summary sidebar */}
+        {/* Summary sidebar — Sheet on mobile, inline on desktop */}
+        {isMobile ? (
+          <Sheet open={showSummary} onOpenChange={setShowSummary}>
+            <SheetContent side="right" className="w-72 p-0 flex flex-col overflow-y-auto">
+              <div className="p-4 space-y-4">
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t('activity.summary')}</h3>
+                  {summary ? (
+                    <div className="space-y-3">
+                      <div className="rounded-lg border border-border bg-card p-3">
+                        <div className="text-2xl font-bold">{summary.total_events}</div>
+                        <div className="text-xs text-muted-foreground">{t('activity.totalEvents')}</div>
+                      </div>
+                      {summary.most_active_organ && (
+                        <div className="rounded-lg border border-border bg-card p-3">
+                          <div className="text-xs text-muted-foreground mb-1">{t('activity.mostActive')}</div>
+                          <div className="text-sm font-medium capitalize">{summary.most_active_organ}</div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-20">
+                      <Loader2 size={16} className="animate-spin text-muted-foreground" />
+                    </div>
+                  )}
+                </div>
+                {summary?.by_organ && Object.keys(summary.by_organ).length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t('activity.byOrgan')}</h3>
+                    <div className="space-y-1.5">
+                      {Object.entries(summary.by_organ)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([organ, count]) => (
+                          <div key={organ} className="flex items-center justify-between text-xs">
+                            <span className="capitalize flex items-center gap-1.5">
+                              {events.find((e) => e.organ === organ)?.emoji}
+                              {organ}
+                            </span>
+                            <span className="text-muted-foreground">{count}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+                {summary?.by_type && Object.keys(summary.by_type).length > 0 && (
+                  <div>
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t('activity.byType')}</h3>
+                    <div className="space-y-1.5">
+                      {Object.entries(summary.by_type)
+                        .sort(([, a], [, b]) => b - a)
+                        .map(([type, count]) => (
+                          <div key={type} className="flex items-center justify-between text-xs">
+                            <span className={cn("rounded px-1.5 py-0.5 text-[10px] font-medium", TYPE_COLORS[type] || "text-muted-foreground bg-muted")}>
+                              {type}
+                            </span>
+                            <span className="text-muted-foreground">{count}</span>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </SheetContent>
+          </Sheet>
+        ) : (
         <div className="w-64 border-l border-border overflow-y-auto p-4 space-y-4">
           <div>
             <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t('activity.summary')}</h3>
@@ -384,6 +462,7 @@ export function ActivityFeedClient() {
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );
