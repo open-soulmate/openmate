@@ -9,11 +9,10 @@ import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
 import {
-  Search, Plus, PanelRightOpen, PanelRightClose, Menu,
+  Search, Plus, PanelRightOpen, Menu,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getUserName, getApiBaseUrl, getToken } from "@/lib/api-client";
@@ -469,27 +468,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
         </SidebarProvider>
 
-      {/* Right Panel — workspace tabs (mobile: Sheet overlay, desktop: inline) */}
-      {rightPanelOpen ? (
-        <>
-          {/* Mobile overlay */}
-          <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setRightPanelOpen(false)} />
-          <div className={cn(
-            "fixed top-0 right-0 bottom-0 z-50 bg-background shadow-xl md:static md:z-auto md:shadow-none",
-            "flex flex-col h-full overflow-hidden border-l border-border",
-          )} style={{ width: '100%', maxWidth: '100vw' }}>
-            <div className="md:hidden absolute top-2 right-2 z-10">
-              <button
-                onClick={() => setRightPanelOpen(false)}
-                className="p-1.5 rounded-md hover:bg-muted/50"
-              >
-                <PanelRightClose className="w-4 h-4" />
-              </button>
-            </div>
+      {/* Right Panel — workspace tabs (mobile: Sheet, desktop: inline) */}
+      <div className="hidden md:block">
+        {rightPanelOpen && (
+          <div className="flex flex-col h-full overflow-hidden border-l border-border w-80 shrink-0">
             <RightPanel open={true} onToggle={() => setRightPanelOpen(false)} />
           </div>
-        </>
-      ) : null}
+        )}
+      </div>
+      <Sheet open={rightPanelOpen} onOpenChange={setRightPanelOpen}>
+        <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col md:hidden">
+          <RightPanel open={true} onToggle={() => setRightPanelOpen(false)} />
+        </SheetContent>
+      </Sheet>
       </div>
 
       {/* Bottom navigation bar — full screen width */}
