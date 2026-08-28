@@ -7,7 +7,7 @@ import { NotificationCenter } from "@/components/notification-center";
 import { RightPanel } from "@/components/right-panel";
 import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 
-import Link from "next/link";
+
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
