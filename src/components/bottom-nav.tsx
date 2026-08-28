@@ -95,9 +95,10 @@ const navItems: BottomNavItem[] = [
 
 interface BottomNavProps {
   totalUnread?: number;
+  onOpenConversations?: () => void;
 }
 
-export function BottomNav({ totalUnread = 0 }: BottomNavProps) {
+export function BottomNav({ totalUnread = 0, onOpenConversations }: BottomNavProps) {
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useTranslation();
@@ -255,7 +256,27 @@ export function BottomNav({ totalUnread = 0 }: BottomNavProps) {
             const active = pathname.startsWith(item.href);
             const Icon = item.icon;
             const isChat = item.href === '/chat';
-            return (
+            const isChatActive = isChat && active;
+            return isChatActive ? (
+              <button
+                key={item.href}
+                onClick={() => onOpenConversations?.()}
+                className={cn(
+                  "relative flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[9px] font-medium transition-colors min-w-[48px]",
+                  "text-primary bg-primary/10"
+                )}
+              >
+                <div className="relative">
+                  <Icon size={16} strokeWidth={2.2} />
+                  {totalUnread > 0 && (
+                    <span className="absolute -top-1.5 -right-2 flex items-center justify-center min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[7px] font-bold leading-none">
+                      {totalUnread > 99 ? '99+' : totalUnread}
+                    </span>
+                  )}
+                </div>
+                <span className="truncate max-w-[42px] leading-tight">{t(item.label)}</span>
+              </button>
+            ) : (
               <Link
                 key={item.href}
                 href={item.href}

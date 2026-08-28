@@ -13,8 +13,7 @@ import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
 import {
-  MessageSquare, Search, ChevronDown, ChevronRight,
-  Plus, Trash2, PanelRightOpen, PanelRightClose,
+  Search, Plus, PanelRightOpen, PanelRightClose, Menu,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getUserName, getApiBaseUrl, getToken } from "@/lib/api-client";
@@ -31,6 +30,9 @@ import {
   SidebarRail,
   SidebarInset,
 } from "@/components/ui/sidebar";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ConversationTree, type AgentInfo } from "@/components/conversation-tree";
+import { MobileSidebar } from "@/components/mobile-sidebar";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -58,18 +60,7 @@ interface SourceGroup {
   expanded: boolean;
 }
 
-interface AgentInfo {
-  id: string;
-  name: string;
-  icon: string;
-  logo?: string;
-  description: string;
-  installed: boolean;
-  available?: boolean;
-  sessions: Session[];
-  expanded: boolean;
-  sourceGroups?: SourceGroup[];
-}
+// AgentInfo imported from conversation-tree.tsx
 
 // Source metadata (i18n keys)
 const SOURCE_META: Record<string, { labelKey: string; icon: string }> = {
@@ -106,6 +97,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setStoreTheme = useAppStore((s) => s.setTheme);
   const [menuOpen, setMenuOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const [mobileConvOpen, setMobileConvOpen] = useState(false);
+  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { t } = useTranslation();
   const [eventCount, setEventCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -335,25 +328,63 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const displayAgents = filteredAgents();
 
-  // Helper: render unread badge (WeChat style)
-  function UnreadBadge({ count }: { count: number }) {
-    if (count <= 0) return null;
-    return (
-      <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none shrink-0">
-        {count > 99 ? '99+' : count}
-      </span>
-    );
-  }
-
   return (
     <div className="flex flex-col h-svh overflow-hidden">
       {/* Top utility bar — full screen width */}
-      <TopBar
-        rightPanelOpen={rightPanelOpen}
-        onToggleRightPanel={() => setRightPanelOpen(v => !v)}
-        eventCount={eventCount}
-        pageTitle={<MobilePageTitle />}
-      />
+      <div className="flex items-center">
+        <button
+          onClick={() => setMobileNavOpen(true)}
+          className="md:hidden shrink-0 p-2 hover:bg-muted/50 transition-colors"
+          aria-label="Menu"
+        >
+          <Menu className="w-5 h-5 text-muted-foreground" />
+        </button>
+        <div className="flex-1 min-w-0">
+          <TopBar
+            rightPanelOpen={rightPanelOpen}
+            onToggleRightPanel={() => setRightPanelOpen(v => !v)}
+            eventCount={eventCount}
+            pageTitle={<MobilePageTitle />}
+          />
+        </div>
+      </div>
+
+      {/* Mobile: conversation list Sheet (left drawer) */}
+      <Sheet open={mobileConvOpen} onOpenChange={setMobileConvOpen}>
+        <SheetContent side="left" className="w-[300px] p-0 flex flex-col">
+          <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
+            <SheetTitle className="text-sm font-semibold">{t("nav.chat", "Chat")}</SheetTitle>
+          </SheetHeader>
+          <div className="px-2 pb-2">
+            <div className="relative">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+              <input
+                type="text"
+                value={sessionSearch}
+                onChange={(e) => setSessionSearch(e.target.value)}
+                placeholder={t("chat.searchPlaceholder", "搜索会话...")}
+                className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/50 rounded-md border border-border/50 focus:outline-none focus:border-primary/50 transition-colors"
+              />
+            </div>
+          </div>
+          <ConversationTree
+            agents={displayAgents}
+            activeSessionId={activeSessionIdFromStore}
+            getUnread={getUnread}
+            onToggleAgent={toggleAgent}
+            onToggleSourceGroup={toggleSourceGroup}
+            onSelectSession={(session, agent) => {
+              clearSessionUnread(session.id);
+              setActiveSession(session.id, agent.id);
+              setMobileConvOpen(false);
+              router.push('/chat');
+            }}
+          />
+        </SheetContent>
+      </Sheet>
+
+      {/* Mobile: navigation Sheet (left drawer) */}
+      <MobileSidebar open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
 
       {/* Middle: sidebar + content + right panel */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
@@ -392,140 +423,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
 
           {/* Agent → Source → Session tree */}
-          <div className="flex-1 overflow-y-auto">
-            {displayAgents.length === 0 ? (
-              <div className="px-4 py-8 text-center group-data-[collapsible=icon]:hidden">
-                <MessageSquare size={24} className="mx-auto mb-2 text-muted-foreground/50" />
-                <p className="text-xs text-muted-foreground">
-                  {sessionSearch ? t("sidebar.noResults", "无匹配会话") : t("sidebar.noConversations", "暂无会话")}
-                </p>
-              </div>
-            ) : (
-              displayAgents.map(agent => (
-                <div key={agent.id}>
-                  {/* Agent header */}
-                  <div className="flex items-center justify-between px-2 py-1.5 hover:bg-muted/50 group">
-                    <button onClick={() => toggleAgent(agent.id)} className="flex items-center gap-1.5 flex-1 min-w-0">
-                      {agent.expanded
-                        ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                        : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                      {agent.logo
-                        ? <img src={agent.logo} alt={agent.name} className="w-5 h-5 rounded object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; }} />
-                        : null}
-                      <span className={cn("text-sm", agent.logo ? "hidden" : "")}>{agent.icon}</span>
-                      <span className="text-sm font-medium truncate group-data-[collapsible=icon]:hidden">{agent.name}</span>
-                    </button>
-                    {/* Unread count badge for agent */}
-                    {(() => {
-                      const agentUnread = agent.sessions.reduce((s, session) => s + getUnread(session), 0);
-                      return agentUnread > 0 ? (
-                        <UnreadBadge count={agentUnread} />
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground ml-auto shrink-0 group-data-[collapsible=icon]:hidden">{agent.sessions.length}</span>
-                      );
-                    })()}
-                  </div>
-
-                  {/* Source groups or flat sessions */}
-                  {agent.expanded && agent.sourceGroups && agent.sourceGroups.length > 0 ? (
-                    agent.sourceGroups.map(group => (
-                      <div key={group.source}>
-                        <button onClick={() => toggleSourceGroup(agent.id, group.source)}
-                          className="w-full flex items-center gap-1.5 pl-6 pr-3 py-1.5 hover:bg-muted/40 transition-colors group-data-[collapsible=icon]:hidden">
-                          {group.expanded
-                            ? <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
-                            : <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />}
-                          <span className="text-xs">{group.icon}</span>
-                          <span className="text-xs font-medium text-muted-foreground">{group.label}</span>
-                          {(() => {
-                            const groupUnread = group.sessions.reduce((s, session) => s + getUnread(session), 0);
-                            return groupUnread > 0 ? (
-                              <span className="ml-auto"><UnreadBadge count={groupUnread} /></span>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground ml-auto">{group.sessions.length}</span>
-                            );
-                          })()}
-                        </button>
-                        {group.expanded && group.sessions
-                          .slice()
-                          .sort((a, b) => {
-                            const ua = getUnread(a), ub = getUnread(b);
-                            if (ua > 0 && ub === 0) return -1;
-                            if (ua === 0 && ub > 0) return 1;
-                            const ta = a.last_active || a.updated_at || '';
-                            const tb = b.last_active || b.updated_at || '';
-                            return tb.localeCompare(ta);
-                          })
-                          .map(session => {
-                            const unread = getUnread(session);
-                            const isActive = activeSessionIdFromStore === session.id;
-                            return (
-                          <button key={session.id}
-                            onClick={() => { clearSessionUnread(session.id); setActiveSession(session.id, agent.id); router.push('/chat'); }}
-                            className={cn(
-                              "group w-full text-left pl-12 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer group-data-[collapsible=icon]:hidden",
-                              isActive && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
-                            )}>
-                            <div className="flex items-center gap-1.5">
-                              <MessageSquare className={cn("w-3 h-3 shrink-0", isActive ? "text-[#7c3aed]" : "text-muted-foreground")} />
-                              <span className={cn("text-xs truncate flex-1", unread > 0 ? "font-bold" : "", isActive && "text-[#7c3aed]")}>{session.name || session.title || "Untitled"}</span>
-                              <UnreadBadge count={unread} />
-                            </div>
-                            {(session.last_active || session.updated_at) && (
-                              <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">
-                                {session.last_active || session.updated_at}
-                              </div>
-                            )}
-                          </button>
-                            );
-                          })}
-                      </div>
-                    ))
-                  ) : (
-                    agent.expanded && agent.sessions
-                      .slice()
-                      .sort((a, b) => {
-                        const ua = getUnread(a), ub = getUnread(b);
-                        if (ua > 0 && ub === 0) return -1;
-                        if (ua === 0 && ub > 0) return 1;
-                        const ta = a.last_active || a.updated_at || '';
-                        const tb = b.last_active || b.updated_at || '';
-                        return tb.localeCompare(ta);
-                      })
-                      .map(session => {
-                        const unread = getUnread(session);
-                        const isActive = activeSessionIdFromStore === session.id;
-                        return (
-                      <button key={session.id}
-                        onClick={() => { clearSessionUnread(session.id); setActiveSession(session.id, agent.id); router.push('/chat'); }}
-                        className={cn(
-                          "group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer group-data-[collapsible=icon]:hidden",
-                          isActive && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
-                        )}>
-                        <div className="flex items-center gap-1.5">
-                          <MessageSquare className={cn("w-3 h-3 shrink-0", isActive ? "text-[#7c3aed]" : "text-muted-foreground")} />
-                          <span className={cn("text-xs truncate flex-1", unread > 0 ? "font-bold" : "", isActive && "text-[#7c3aed]")}>{session.name || session.title || "Untitled"}</span>
-                          <UnreadBadge count={unread} />
-                        </div>
-                        {(session.last_active || session.updated_at) && (
-                          <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">
-                            {session.last_active || session.updated_at}
-                          </div>
-                        )}
-                      </button>
-                        );
-                      })
-                  )}
-
-                  {agent.expanded && agent.sessions.length === 0 && (
-                    <div className="pl-8 pr-3 py-2 text-xs text-muted-foreground italic group-data-[collapsible=icon]:hidden">
-                      {t("chat.noSessions")}
-                    </div>
-                  )}
-                </div>
-              ))
-            )}
-          </div>
+          <ConversationTree
+            agents={displayAgents}
+            activeSessionId={activeSessionIdFromStore}
+            getUnread={getUnread}
+            onToggleAgent={toggleAgent}
+            onToggleSourceGroup={toggleSourceGroup}
+            onSelectSession={(session, agent) => {
+              clearSessionUnread(session.id);
+              setActiveSession(session.id, agent.id);
+              router.push('/chat');
+            }}
+            className="group-data-[collapsible=icon]:hidden"
+          />
         </SidebarContent>
 
         <SidebarFooter>
@@ -569,7 +479,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Bottom navigation bar — full screen width */}
-      <BottomNav totalUnread={totalUnread} />
+      <BottomNav totalUnread={totalUnread} onOpenConversations={() => setMobileConvOpen(true)} />
     </div>
   );
 }

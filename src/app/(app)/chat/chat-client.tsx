@@ -999,8 +999,8 @@ export function ChatClient() {
           )}
         </div>
 
-        {/* Input area */}
-        <div className="border-t border-border p-3 lg:p-4 shrink-0">
+        {/* Input area — Doubao style */}
+        <div className="border-t border-border px-3 lg:px-4 py-3 shrink-0">
           {attachments.length > 0 && (
             <div className="flex gap-2 mb-2 flex-wrap">
               {attachments.map((a, i) => (
@@ -1012,47 +1012,51 @@ export function ChatClient() {
               ))}
             </div>
           )}
-          <div className="flex gap-2 items-end">
-            <button onClick={() => fileRef.current?.click()} className="px-3 py-2 rounded-lg hover:bg-muted"><Paperclip className="w-4 h-4 text-muted-foreground" /></button>
-            <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
-            
-            {/* Plan/Act Mode Toggle */}
-            <button
-              onClick={() => setAgentMode(prev => prev === 'plan' ? 'act' : 'plan')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
-                agentMode === 'plan'
-                  ? 'bg-blue-500/10 text-blue-500 border border-blue-500/30'
-                  : 'bg-green-500/10 text-green-500 border border-green-500/30'
-              }`}
-            >
-              {agentMode === 'plan' ? (
-                <>
-                  <Brain className="w-4 h-4" />
-                  <span className="hidden sm:inline">Plan</span>
-                </>
-              ) : (
-                <>
-                  <Zap className="w-4 h-4" />
-                  <span className="hidden sm:inline">Act</span>
-                </>
-              )}
-            </button>
-
+          <div className="rounded-2xl border border-primary/40 bg-background overflow-hidden">
+            {/* Input row */}
             <textarea value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              onPaste={handlePaste} placeholder={agentMode === 'plan' ? t("chat.planModePlaceholder") : t("chat.actModePlaceholder")} rows={1}
-              className="flex-1 resize-none rounded-lg border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
-            
-            <button onClick={() => setShowCheckpoints(!showCheckpoints)} className="px-3 py-2 rounded-lg hover:bg-muted relative" title={t("chat.checkpoints")}>
-              <RotateCcw className="w-4 h-4 text-muted-foreground" />
-              {checkpoints.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[10px] rounded-full w-4 h-4 flex items-center justify-center">
-                  {checkpoints.length}
-                </span>
-              )}
-            </button>
-            
-            <button onClick={handleSend} disabled={loading || (!input.trim() && attachments.length === 0)}
-              className="px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50"><Send className="w-4 h-4" /></button>
+              onPaste={handlePaste} placeholder={t("chat.inputPlaceholder", "发消息或按住空格说话...")} rows={1}
+              className="w-full resize-none bg-transparent px-4 py-3 text-sm focus:outline-none min-h-[44px] max-h-[120px]" />
+
+            {/* Action buttons row */}
+            <div className="flex items-center gap-1 px-2 pb-2">
+              <button onClick={() => fileRef.current?.click()} className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted transition-colors">
+                <Plus className="w-4 h-4" />
+              </button>
+              <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
+
+              <div className="w-px h-4 bg-border mx-1" />
+
+              <button
+                onClick={() => setAgentMode(prev => prev === 'plan' ? 'act' : 'plan')}
+                className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-colors ${
+                  agentMode === 'plan'
+                    ? 'text-blue-400 hover:bg-blue-500/10'
+                    : 'text-green-400 hover:bg-green-500/10'
+                }`}
+              >
+                {agentMode === 'plan' ? <Brain className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                <span>{agentMode === 'plan' ? 'Plan' : 'Act'}</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+
+              <button onClick={() => setShowCheckpoints(!showCheckpoints)} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted transition-colors relative">
+                <RotateCcw className="w-4 h-4" />
+                <span className="hidden sm:inline">{t("chat.history", "历史")}</span>
+                {checkpoints.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">
+                    {checkpoints.length}
+                  </span>
+                )}
+              </button>
+
+              <div className="flex-1" />
+
+              <button onClick={handleSend} disabled={loading || (!input.trim() && attachments.length === 0)}
+                className="flex items-center justify-center w-8 h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 transition-colors">
+                <Send className="w-4 h-4" />
+              </button>
+            </div>
           </div>
         </div>
       </div>
