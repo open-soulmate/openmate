@@ -432,10 +432,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           {children}
         </div>
-        {/* Mobile: bottom navigation bar */}
-        <div className="md:hidden">
-          <BottomNav />
-        </div>
+        {/* Bottom navigation bar — all screens */}
+        <BottomNav />
       </SidebarInset>
 
 
