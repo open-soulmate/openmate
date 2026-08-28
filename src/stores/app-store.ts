@@ -210,6 +210,26 @@ interface AppState {
   activeAgentId: string | null;
   setActiveSession: (sessionId: string | null, agentId: string | null) => void;
 
+  // Session details (shared between chat and right panel workspace)
+  sessionDetails: {
+    agentIcon: string;
+    agentName: string;
+    agentDescription: string;
+    sessionName: string;
+    lastActive: string;
+    imageCount: number;
+    fileCount: number;
+  } | null;
+  setSessionDetails: (details: {
+    agentIcon: string;
+    agentName: string;
+    agentDescription: string;
+    sessionName: string;
+    lastActive: string;
+    imageCount: number;
+    fileCount: number;
+  } | null) => void;
+
   // Conversations
   conversations: Conversation[];
   activeConversationId: string | null;
@@ -310,6 +330,10 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeAgentId: null,
   setActiveSession: (sessionId, agentId) =>
     set({ activeSessionId: sessionId, activeAgentId: agentId }),
+
+  // Session details
+  sessionDetails: null,
+  setSessionDetails: (details) => set({ sessionDetails: details }),
 
   // LLM Config
   llmConfig: {
