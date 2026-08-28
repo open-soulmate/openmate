@@ -737,11 +737,11 @@ export function ChatClient() {
                 </span>
               )}
             </div>
-            {selectedAgent && <span className="hidden sm:inline-flex text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted shrink-0">{selectedAgent.name}</span>}
+            {selectedAgent && <span className="hidden lg:inline-flex text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted shrink-0">{selectedAgent.name}</span>}
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {wsConnected ? <Wifi className="w-4 h-4 text-green-500" /> : <WifiOff className="w-4 h-4 text-muted-foreground" />}
-            <span className="hidden sm:inline text-xs text-muted-foreground">{wsConnected ? 'WS' : 'HTTP'}</span>
+            <span className="hidden lg:inline text-xs text-muted-foreground">{wsConnected ? 'WS' : 'HTTP'}</span>
             <button onClick={() => {
               const next = !showDetails;
               setShowDetails(next);
@@ -891,13 +891,13 @@ export function ChatClient() {
                 }`}
               >
                 {agentMode === 'plan' ? <Brain className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-                <span className="hidden sm:inline">{agentMode === 'plan' ? 'Plan' : 'Act'}</span>
-                <ChevronDown className="w-3 h-3 hidden sm:inline" />
+                <span className="hidden lg:inline">{agentMode === 'plan' ? 'Plan' : 'Act'}</span>
+                <ChevronDown className="w-3 h-3 hidden lg:inline" />
               </button>
 
               <button onClick={() => setShowCheckpoints(!showCheckpoints)} className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors relative">
                 <RotateCcw className="w-4 h-4" />
-                <span className="hidden sm:inline">{t("chat.history", "历史")}</span>
+                <span className="hidden lg:inline">{t("chat.history", "历史")}</span>
                 {checkpoints.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">
                     {checkpoints.length}
@@ -934,7 +934,7 @@ export function ChatClient() {
         <div className="h-12 px-3 flex items-center border-b border-border justify-between w-72 shrink-0">
           <span className="text-sm font-medium flex items-center gap-1.5"><Info className="w-4 h-4" />{t("chat.sessionDetails")}</span>
           <button onClick={() => setShowDetails(false)} className="inline-flex items-center justify-center size-7 rounded-md hover:bg-muted text-muted-foreground transition-colors">
-            <PanelLeft className="w-4 h-4" />
+            <PanelRightClose className="w-4 h-4" />
           </button>
         </div>
         <div className="flex-1 overflow-y-auto w-72 shrink-0">
