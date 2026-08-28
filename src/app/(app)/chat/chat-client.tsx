@@ -904,7 +904,7 @@ export function ChatClient() {
         </div>
 
         {/* Messages */}
-        <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-4 space-y-4 chat-scrollbar">
+        <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 lg:px-6 py-3 lg:py-4 space-y-3 lg:space-y-4 chat-scrollbar">
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto">
               <h2 className="text-2xl font-semibold mb-8">{t("chat.welcomeMessage")}</h2>
@@ -929,13 +929,13 @@ export function ChatClient() {
             </div>
           )}
           {messages.map(msg => (
-            <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+            <div key={msg.id} className={`flex gap-2 lg:gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
               {msg.role === 'agent' && (
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                   <Bot className="w-4 h-4 text-primary" />
                 </div>
               )}
-              <div className={`max-w-[70%] rounded-xl px-4 py-2.5 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+              <div className={`max-w-[85%] lg:max-w-[70%] rounded-xl px-3 lg:px-4 py-2 lg:py-2.5 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
                 {msg.parts.map((p, i) => (
                   <div key={i}>
                     {p.type === 'text' && <MarkdownContent content={p.text || ''} onCodeApply={(code, lang) => {
@@ -998,7 +998,7 @@ export function ChatClient() {
             </div>
           ))}
           {loading && (
-            <div className="flex gap-3">
+            <div className="flex gap-2 lg:gap-3">
               <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"><Bot className="w-4 h-4 text-primary" /></div>
               <div className="bg-muted rounded-xl px-4 py-2.5"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
             </div>
@@ -1006,7 +1006,7 @@ export function ChatClient() {
         </div>
 
         {/* Input area */}
-        <div className="border-t border-border p-4 shrink-0">
+        <div className="border-t border-border p-3 lg:p-4 shrink-0">
           {attachments.length > 0 && (
             <div className="flex gap-2 mb-2 flex-wrap">
               {attachments.map((a, i) => (
@@ -1034,12 +1034,12 @@ export function ChatClient() {
               {agentMode === 'plan' ? (
                 <>
                   <Brain className="w-4 h-4" />
-                  <span>Plan</span>
+                  <span className="hidden sm:inline">Plan</span>
                 </>
               ) : (
                 <>
                   <Zap className="w-4 h-4" />
-                  <span>Act</span>
+                  <span className="hidden sm:inline">Act</span>
                 </>
               )}
             </button>
