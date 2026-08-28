@@ -74,7 +74,7 @@ const SOURCE_META: Record<string, { labelKey: string; icon: string }> = {
   subagent: { labelKey: 'sessions.sourceSubagent', icon: '🤖' },
 };
 
-const HERMES_SOURCES = new Set(['cli', 'weixin', 'cron', 'acp', 'tui', 'tool', 'subagent']);
+const HERMES_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui', 'tool', 'subagent']);
 
 const AGENT_ICONS: Record<string, string> = {
   hermes: '🏛️', claude: '🟣', codex: '🟢', gemini: '🔵', mimo: '📱',
@@ -168,7 +168,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     // 2. Fetch sessions
     let sessions: Session[] = [];
     try {
-      const r = await fetch(`${apiBase}/api/sessions?limit=100`, { headers });
+      const r = await fetch(`${apiBase}/api/sessions?limit=500`, { headers });
       if (r.ok) { const d = await r.json(); sessions = d.sessions || []; }
     } catch {}
 

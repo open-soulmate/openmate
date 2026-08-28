@@ -172,6 +172,7 @@ export function ChatClient() {
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
   const setRightPanelOpen = useAppStore((s) => s.setRightPanelOpen);
   const wsRef = useRef<WebSocket | null>(null);
+  const streamingSessionIdRef = useRef<string | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -224,7 +225,7 @@ export function ChatClient() {
     // Load all sessions
     let sessions: Session[] = [];
     try {
-      const r = await fetch(`${getApiUrl()}/api/sessions?limit=100`, { headers: { Authorization: `Bearer ${getToken()}` } });
+      const r = await fetch(`${getApiUrl()}/api/sessions?limit=500`, { headers: { Authorization: `Bearer ${getToken()}` } });
       if (r.ok) { const d = await r.json(); sessions = d.sessions || []; }
     } catch {}
 
@@ -232,9 +233,11 @@ export function ChatClient() {
     const agentSessionMap: Record<string, Session[]> = {};
     for (const s of sessions) {
       if (!s.platform && s.source) s.platform = s.source;
-      // hermes sub-sources (cli/weixin/cron/acp/tui/tool/subagent) all belong to hermes agent
-      const HERMES_SOURCES = new Set(['cli', 'weixin', 'cron', 'acp', 'tui', 'tool', 'subagent']);
+      // Filter out cron sessions — they're automated background tasks, not user conversations
       const src = s.platform || s.source || '';
+      if (src === 'cron') continue;
+      // hermes sub-sources (cli/weixin/acp/tui/tool/subagent) all belong to hermes agent
+      const HERMES_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui', 'tool', 'subagent']);
       const agentKey = HERMES_SOURCES.has(src) ? 'hermes' : (s.platform || 'hermes');
       if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
       agentSessionMap[agentKey].push(s);
@@ -396,13 +399,18 @@ export function ChatClient() {
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
+          // Only process response messages if they belong to the current streaming session
+          const currentSessionId = selectedSessionRef.current?.id;
           if (data.type === 'done') {
             setLoading(false);
+            streamingSessionIdRef.current = null;
             // Update selectedSession with new session_id and refresh list
             if (selectedSessionRef.current && !selectedSessionRef.current.id && data.session_id) {
               setSelectedSession(prev => prev ? { ...prev, id: data.session_id } : prev);
               initAgents();
             }
+            // Only update messages if we're still in the same session
+            if (data.session_id && currentSessionId && data.session_id !== currentSessionId) return;
             setMessages(prev => {
               const last = prev[prev.length - 1];
               if (last?.role === 'agent' && last?.source === 'streaming') {
@@ -415,6 +423,8 @@ export function ChatClient() {
             });
           }
           else if (data.type === 'chunk') {
+            // Ignore chunks if user switched to a different session
+            if (streamingSessionIdRef.current && currentSessionId && streamingSessionIdRef.current !== currentSessionId) return;
             setMessages(prev => {
               const last = prev[prev.length - 1];
               if (last?.role === 'agent' && last?.source === 'streaming') {
@@ -423,7 +433,7 @@ export function ChatClient() {
               return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: data.text }], timestamp: new Date(), source: 'streaming' }];
             });
           }
-          else if (data.type === 'error') { setLoading(false); setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${data.message}` }], timestamp: new Date() }]); }
+          else if (data.type === 'error') { setLoading(false); streamingSessionIdRef.current = null; setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${data.message}` }], timestamp: new Date() }]); }
         } catch {}
       };
     };
@@ -485,6 +495,7 @@ export function ChatClient() {
       ...(selectedAgent ? { agent_id: selectedAgent.id } : {}),
       attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
     };
+    streamingSessionIdRef.current = selectedSession?.id || null;
 
     if (wsRef.current?.readyState === WebSocket.OPEN) {
       wsRef.current.send(JSON.stringify(wsPayload));

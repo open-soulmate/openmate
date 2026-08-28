@@ -4,6 +4,7 @@ import { useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { MessageSquare, ChevronDown, ChevronRight } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -82,6 +83,7 @@ export function ConversationTree({
   className,
 }: ConversationTreeProps) {
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
 
   // Sort sessions: unread first, then by last_active desc
   const sortSessions = (sessions: Session[]) =>
@@ -128,8 +130,8 @@ export function ConversationTree({
               })()}
             </div>
 
-            {/* Source groups or flat sessions */}
-            {agent.expanded && agent.sourceGroups && agent.sourceGroups.length > 0 ? (
+            {/* Source groups or flat sessions — mobile: always flat (2-level), desktop: 3-level tree */}
+            {agent.expanded && !isMobile && agent.sourceGroups && agent.sourceGroups.length > 0 ? (
               agent.sourceGroups.map(group => (
                 <div key={group.source}>
                   <button onClick={() => onToggleSourceGroup(agent.id, group.source)}
@@ -181,7 +183,7 @@ export function ConversationTree({
                   <button key={session.id}
                     onClick={() => onSelectSession(session, agent)}
                     className={cn(
-                      "group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer",
+                      "group w-full text-left pl-8 pr-3 py-2.5 lg:py-2 hover:bg-muted/80 active:bg-muted transition-colors cursor-pointer touch-manipulation",
                       isActive && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
                     )}>
                     <div className="flex items-center gap-1.5">
