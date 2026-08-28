@@ -110,6 +110,7 @@ export function SessionsClient() {
   // Mobile: track if we're showing detail view
   const isMobile = useIsMobile()
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true)
   const [allTags, setAllTags] = useState<{name: string; count: number}[]>([])
 
   // Tag input state (for adding tags to sessions)
@@ -381,7 +382,7 @@ export function SessionsClient() {
       {/* Header */}
       <div className="flex items-center justify-between px-2 lg:px-6 h-12 border-b border-zinc-800">
         <div className="flex items-center gap-3">
-          <button onClick={() => setSidebarOpen(true)} className="lg:hidden shrink-0 p-1.5 -ml-1 rounded-lg hover:bg-zinc-800 touch-manipulation">
+          <button onClick={() => isMobile ? setSidebarOpen(true) : setDesktopSidebarOpen(v => !v)} className="shrink-0 p-1.5 -ml-1 rounded-lg hover:bg-zinc-800 touch-manipulation" aria-label="Toggle Sidebar">
             <PanelLeft className="w-4 h-4 text-zinc-400" />
           </button>
           <History className="w-6 h-6 text-cyan-400" />
@@ -576,7 +577,10 @@ export function SessionsClient() {
             </SheetContent>
           </Sheet>
         ) : (
-        <div className="flex w-80 shrink-0 border-r border-zinc-800 flex-col overflow-hidden">
+        <div
+          className="shrink-0 border-r border-zinc-800 flex flex-col overflow-hidden transition-all duration-250 ease-in-out"
+          style={{ width: desktopSidebarOpen ? 320 : 0, borderWidth: desktopSidebarOpen ? 1 : 0 }}
+        >
           {/* Search */}
           <form onSubmit={handleSearch} className="px-3 md:px-2 lg:px-4 h-12 flex items-center border-b border-zinc-800 gap-2">
             <div className="relative flex-1">

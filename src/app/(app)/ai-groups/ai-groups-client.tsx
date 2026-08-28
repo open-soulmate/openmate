@@ -126,6 +126,7 @@ export default function AIGroupsPage() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
+  const [desktopSidebarOpen, setDesktopSidebarOpen] = useState(true);
   const isMobile = useIsMobile();
 
   // Create group
@@ -1185,7 +1186,10 @@ export default function AIGroupsPage() {
           </SheetContent>
         </Sheet>
       ) : (
-        <div className="w-64 shrink-0 flex flex-col border-r border-border bg-card">
+        <div
+          className="shrink-0 flex flex-col border-r border-border bg-card overflow-hidden transition-all duration-250 ease-in-out"
+          style={{ width: desktopSidebarOpen ? 256 : 0, borderWidth: desktopSidebarOpen ? 1 : 0 }}
+        >
           {renderGroupList()}
         </div>
       )}
@@ -1195,7 +1199,7 @@ export default function AIGroupsPage() {
         {/* Chat header */}
         <div className="h-12 border-b border-border flex items-center px-2 lg:px-4 justify-between shrink-0">
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowSidebar(true)} className="lg:hidden mr-2 p-1 rounded hover:bg-muted">
+            <button onClick={() => isMobile ? setShowSidebar(true) : setDesktopSidebarOpen(v => !v)} className="p-1.5 -ml-1 rounded-lg hover:bg-muted/50 transition-colors text-muted-foreground" aria-label="Toggle Sidebar">
               <PanelLeft className="w-4 h-4" />
             </button>
             <Users className="w-4 h-4 text-primary" />
