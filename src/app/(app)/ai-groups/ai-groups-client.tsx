@@ -1216,7 +1216,7 @@ export default function AIGroupsPage() {
             )}
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => setShowRightPanel(!showRightPanel)} className="p-1 rounded hover:bg-muted">
+            <button onClick={() => setShowRightPanel(!showRightPanel)} className="p-1 rounded hover:bg-muted touch-manipulation">
               {showRightPanel ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
             </button>
           </div>
@@ -1261,7 +1261,7 @@ export default function AIGroupsPage() {
                     {(() => { const Icon = ROLE_ICONS[msg.agent_role || 'executor'] || Bot; return <Icon className="w-4 h-4" />; })()}
                   </div>
                 )}
-                <div className={`max-w-[70%] ${msg.role === 'user' ? 'order-first' : ''}`}>
+                <div className={`max-w-[85%] lg:max-w-[70%] ${msg.role === 'user' ? 'order-first' : ''}`}>
                   {msg.role === 'agent' && (
                     <div className="flex items-center gap-1.5 mb-1">
                       <span className="text-xs font-medium">{msg.agent_name || 'Agent'}</span>
@@ -1451,7 +1451,7 @@ export default function AIGroupsPage() {
               </div>
 
               <button onClick={handleSend} disabled={sendingMessage || !input.trim()}
-                className="px-2 lg:px-4 py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                className="px-3 lg:px-4 py-2.5 lg:py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 touch-manipulation">
                 <Send className="w-4 h-4" />
               </button>
             </div>
