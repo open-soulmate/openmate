@@ -118,13 +118,13 @@ export function IntelligenceClient() {
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center justify-between p-3 lg:p-4 border-b border-border">
-        <div className="flex items-center gap-3">
-          <Brain className="w-6 h-6 text-primary" />
-          <h1 className="text-lg font-semibold">{t("intelligence.title") || "System Intelligence"}</h1>
+      <div className="flex items-center justify-between p-3 lg:p-4 border-b border-border gap-2">
+        <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
+          <Brain className="w-5 h-5 lg:w-6 lg:h-6 text-primary shrink-0" />
+          <h1 className="text-sm lg:text-lg font-semibold truncate">{t("intelligence.title") || "System Intelligence"}</h1>
           {summary && (
             <span className={cn(
-              "px-2 py-0.5 rounded-full text-xs font-medium",
+              "px-1.5 lg:px-2 py-0.5 rounded-full text-[10px] lg:text-xs font-medium shrink-0",
               summary.health_score >= 90 ? "bg-green-500/10 text-green-500" :
               summary.health_score >= 70 ? "bg-yellow-500/10 text-yellow-500" :
               "bg-red-500/10 text-red-500"
@@ -133,34 +133,34 @@ export function IntelligenceClient() {
             </span>
           )}
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 lg:gap-2 shrink-0">
           <button
             onClick={collectMetrics}
             disabled={collecting}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs lg:text-sm bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-3 py-1.5 text-xs lg:text-sm bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
           >
             {collecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
-            {t("intelligence.collect") || "Collect Metrics"}
+            <span className="hidden sm:inline">{t("intelligence.collect") || "Collect"}</span>
           </button>
           <button
             onClick={fetchAll}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs lg:text-sm bg-muted rounded-md hover:bg-muted/80 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-3 py-1.5 text-xs lg:text-sm bg-muted rounded-md hover:bg-muted/80 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
-            {t("common.refresh") || "Refresh"}
+            <span className="hidden sm:inline">{t("common.refresh") || "Refresh"}</span>
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex border-b border-border">
+      <div className="flex border-b border-border overflow-x-auto">
         {(["overview", "components", "insights", "recommendations"] as const).map((t_) => (
           <button
             key={t_}
             onClick={() => setTab(t_)}
             className={cn(
-              "px-4 py-2 text-xs lg:text-sm font-medium border-b-2 transition-colors",
+              "px-3 lg:px-4 py-2 text-xs lg:text-sm font-medium border-b-2 transition-colors whitespace-nowrap",
               tab === t_ ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
