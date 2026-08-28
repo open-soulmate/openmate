@@ -125,7 +125,6 @@ export default function AIGroupsPage() {
   const [loading, setLoading] = useState(false);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(true);
-  const [mobileView, setMobileView] = useState<'list' | 'chat' | 'settings'>('list');
   const [showSidebar, setShowSidebar] = useState(false);
   const isMobile = useMediaQuery("(max-width: 1023px)");
 
@@ -899,7 +898,7 @@ export default function AIGroupsPage() {
     <div className="flex h-full relative">
       {/* Left: Group List — Sheet on mobile, inline on desktop */}
       {isMobile ? (
-        <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
+        <Sheet open={showSidebar} onOpenChange={(open) => { setShowSidebar(open); if (open) setShowRightPanel(false); }}>
           <SheetContent side="left" showCloseButton={false} className="w-72 p-0 flex flex-col">
             <div className="shrink-0 flex flex-col h-full border-r-0 bg-card">
         {/* Header */}
@@ -1347,7 +1346,7 @@ export default function AIGroupsPage() {
 
       {/* Right: Agent Management Panel — Sheet on mobile, inline on desktop */}
       {isMobile ? (
-        <Sheet open={showRightPanel && !!selectedGroup} onOpenChange={(open) => { if (!open) setShowRightPanel(false); }}>
+        <Sheet open={showRightPanel && !!selectedGroup} onOpenChange={(open) => { if (!open) setShowRightPanel(false); else setShowSidebar(false); }}>
           <SheetContent side="right" className="w-80 p-0">
             <div className="p-3 border-b border-border flex items-center justify-between">
               <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
@@ -1452,7 +1451,7 @@ export default function AIGroupsPage() {
         <div className="w-72 shrink-0 border-l border-border bg-card flex flex-col">
           <div className="p-3 border-b border-border flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <button onClick={() => setMobileView('chat')} className="hidden p-1 rounded hover:bg-muted"><ChevronLeft className="w-4 h-4" /></button>
+              <button className="hidden p-1 rounded hover:bg-muted"><ChevronLeft className="w-4 h-4" /></button>
               <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
             </div>
             <button onClick={() => { setShowRightPanel(false); }} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>

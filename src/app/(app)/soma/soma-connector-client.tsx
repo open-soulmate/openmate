@@ -520,7 +520,7 @@ export function SomaConnectorClient() {
                     </div>
                   )}
                 </div>
-              )}
+              ) : null}
             </div>
           </>
         )}
