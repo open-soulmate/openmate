@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState, useCallback, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useAppStore } from "@/stores/app-store";
 import { cn } from "@/lib/utils";
@@ -28,55 +28,55 @@ interface PanelDef {
 const PANELS: PanelDef[] = [
   {
     id: "chat",
-    label: "Chat",
+    label: "对话",
     href: "/chat",
     icon: MessageSquare,
-    description: "Conversations with your AI agents",
-    gradient: "from-blue-500/20 to-blue-600/5",
+    description: "与 AI 助手对话",
+    gradient: "from-blue-500/10 to-purple-500/10",
     iconColor: "text-blue-500",
   },
   {
     id: "knowledge",
-    label: "Knowledge",
+    label: "知识库",
     href: "/knowledge",
     icon: BookOpen,
-    description: "Your documents, notes, and links",
-    gradient: "from-emerald-500/20 to-emerald-600/5",
-    iconColor: "text-emerald-500",
+    description: "管理和搜索知识",
+    gradient: "from-green-500/10 to-emerald-500/10",
+    iconColor: "text-green-500",
   },
   {
     id: "agents",
-    label: "Agents",
+    label: "Agent",
     href: "/agents",
     icon: Server,
-    description: "Manage and monitor your AI agents",
-    gradient: "from-violet-500/20 to-violet-600/5",
-    iconColor: "text-violet-500",
+    description: "查看和管理 Agent",
+    gradient: "from-orange-500/10 to-amber-500/10",
+    iconColor: "text-orange-500",
   },
   {
     id: "workflow",
-    label: "Workflow",
+    label: "工作流",
     href: "/workflow",
     icon: Workflow,
-    description: "Automate tasks with workflows",
-    gradient: "from-amber-500/20 to-amber-600/5",
-    iconColor: "text-amber-500",
+    description: "自动化工作流",
+    gradient: "from-pink-500/10 to-rose-500/10",
+    iconColor: "text-pink-500",
   },
   {
     id: "skills",
-    label: "Skills",
+    label: "技能",
     href: "/skills",
     icon: Puzzle,
-    description: "Extend capabilities with skills",
-    gradient: "from-rose-500/20 to-rose-600/5",
-    iconColor: "text-rose-500",
+    description: "AI 技能管理",
+    gradient: "from-violet-500/10 to-indigo-500/10",
+    iconColor: "text-violet-500",
   },
 ];
 
 const SWIPE_THRESHOLD = 50;
 const TRANSITION_DURATION = 300;
 
-// ── Component ──────────────────────────────────────────────────────
+// ── Swipeable Panels Component ────────────────────────────────────
 
 interface SwipeablePanelsProps {
   children: React.ReactNode;
@@ -96,11 +96,6 @@ export function SwipeablePanels({ children, isHomePage }: SwipeablePanelsProps) 
   const [isDragging, setIsDragging] = useState(false);
   const [isTransitioning, setIsTransitioning] = useState(false);
   const lockedAxisRef = useRef<"horizontal" | "vertical" | null>(null);
-
-  // On desktop or not a home page, render children normally
-  if (!isMobile || !isHomePage) {
-    return <>{children}</>;
-  }
 
   const panelCount = PANELS.length;
 
@@ -197,6 +192,11 @@ export function SwipeablePanels({ children, isHomePage }: SwipeablePanelsProps) 
     },
     [currentPanel, goToPanel, isTransitioning],
   );
+
+  // On desktop or not a home page, render children normally
+  if (!isMobile || !isHomePage) {
+    return <>{children}</>;
+  }
 
   const translateX =
     -currentPanel * 100 + (dragOffset / (typeof window !== "undefined" ? window.innerWidth : 375)) * 100;
