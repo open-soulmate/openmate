@@ -4,11 +4,12 @@ import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useRef, useEffect } from "react";
 import {
-  Bell, PanelRightOpen, PanelRightClose,
+  Bell, PanelRightOpen, PanelRightClose, Search,
   Activity, BarChart3, Stethoscope, Gauge, Shield, Plug,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
+import { HealthWidget } from "@/components/health-widget";
 
 interface TopBarProps {
   rightPanelOpen: boolean;
@@ -62,6 +63,20 @@ export function TopBar({ rightPanelOpen, onToggleRightPanel, eventCount = 0, pag
           WebkitOverflowScrolling: "touch",
         }}
       >
+        {/* Health Widget */}
+        <HealthWidget />
+
+        {/* Global Search (⌘K) */}
+        <button
+          onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true }))}
+          className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-accent"
+          title={t("nav.search", "搜索")}
+        >
+          <Search size={14} />
+          <span className="hidden sm:inline truncate">{t("nav.search", "搜索")}</span>
+          <kbd className="hidden sm:inline pointer-events-none select-none rounded border border-border bg-muted px-1 text-[9px] font-mono text-muted-foreground">⌘K</kbd>
+        </button>
+
         {utilityItems.map((item) => {
           const Icon = item.icon;
           const active = item.href && pathname.startsWith(item.href);
