@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from "react"
 import { getApiBaseUrl } from "@/lib/api-client"
 import { useTranslation } from "react-i18next"
 import { cn } from "@/lib/utils"
+import { useIsMobile } from "@/hooks/use-mobile"
 import {
   Zap, Plus, Trash2, RefreshCw, TestTube2, Key, Activity,
   Settings, CheckCircle, XCircle, Loader2, Eye, EyeOff,
@@ -54,6 +55,7 @@ type ActiveTab = "overview" | "providers" | "keys" | "usage"
 export function GlandClient() {
   const { t } = useTranslation()
   const apiBase = getApiBaseUrl()
+  const isMobile = useIsMobile()
   const [activeTab, setActiveTab] = useState<ActiveTab>("overview")
   const [health, setHealth] = useState<GlandHealth | null>(null)
   const [providers, setProviders] = useState<Provider[]>([])
@@ -513,6 +515,24 @@ export function GlandClient() {
             <div>
               <h3 className="text-xs lg:text-sm font-semibold text-foreground mb-3">{t("gland.form.recentCalls") || "Recent Calls"}</h3>
               {recentRecords.length > 0 ? (
+                isMobile ? (
+                  <div className="space-y-2">
+                    {recentRecords.map((r, i) => (
+                      <div key={i} className="rounded-lg border border-border p-3 hover:bg-muted/30 transition-colors">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-foreground">{r.provider}</span>
+                          <span className="text-[10px] text-muted-foreground">{new Date(r.timestamp * 1000).toLocaleTimeString(undefined)}</span>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground mb-1.5 truncate">{r.model}</p>
+                        <div className="flex items-center gap-3 text-[10px]">
+                          <span className="text-muted-foreground">IN: {formatNumber(r.prompt_tokens)}</span>
+                          <span className="text-muted-foreground">OUT: {formatNumber(r.completion_tokens)}</span>
+                          <span className="font-medium text-foreground ml-auto">Σ {formatNumber(r.total_tokens)}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
                 <div className="rounded-xl border border-border overflow-x-auto">
                   <table className="w-full text-xs lg:text-sm min-w-[500px]">
                     <thead>
@@ -541,6 +561,7 @@ export function GlandClient() {
                     </tbody>
                   </table>
                 </div>
+                )
               ) : (
                 <div className="text-center py-3 lg:py-6 text-muted-foreground text-xs lg:text-sm">{t("gland.form.noRecentRecords") || "No Recent Records"}</div>
               )}
