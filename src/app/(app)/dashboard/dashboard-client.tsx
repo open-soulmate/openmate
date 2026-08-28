@@ -316,7 +316,7 @@ export function DashboardClient() {
 
         {/* Cost Statistics Card */}
         <div className="mb-8 rounded-xl border border-border bg-card p-3 lg:p-6">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between mb-3 lg:mb-6">
             <div>
               <h3 className="text-lg font-semibold flex items-center gap-2">
                 <DollarSign className="w-5 h-5 text-yellow-500" />
@@ -332,7 +332,7 @@ export function DashboardClient() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 lg:gap-4 mb-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 lg:gap-4 mb-3 lg:mb-6">
             <div className="p-4 rounded-lg bg-muted/50">
               <div className="flex items-center gap-2 mb-2">
                 <Cpu className="w-4 h-4 text-blue-500" />

@@ -285,7 +285,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
             </div>
           ) : showQuiz && currentQuiz.length > 0 ? (
             <div className="mx-auto max-w-2xl p-8">
-              <div className="mb-6 flex items-center gap-2">
+              <div className="mb-3 lg:mb-6 flex items-center gap-2">
                 <GraduationCap size={20} className="text-primary" />
                 <h2 className="text-lg font-semibold">{t("learn.chapterQuiz") || "Chapter Quiz"}</h2>
               </div>
@@ -364,7 +364,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
             </div>
           ) : (
             <div className="mx-auto max-w-3xl p-8">
-              <div className="mb-6">
+              <div className="mb-3 lg:mb-6">
                 <h2 className="mb-2 text-xl font-semibold">{chapter.title}</h2>
                 <div className="flex flex-wrap gap-1.5">
                   {course.tags.map((tag) => (

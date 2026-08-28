@@ -122,7 +122,7 @@ export function AdminClient() {
 
       <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {/* System Status */}
-        <div className="mb-6 grid gap-2 lg:gap-4 sm:grid-cols-4">
+        <div className="mb-3 lg:mb-6 grid gap-2 lg:gap-4 sm:grid-cols-4">
           <div className="rounded-lg border border-border bg-card p-3 lg:p-4">
             <div className="flex items-center gap-2 mb-2">
               {allHealthy ? (

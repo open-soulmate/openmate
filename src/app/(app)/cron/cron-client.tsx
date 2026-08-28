@@ -149,7 +149,7 @@ export function CronClient() {
   return (
     <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 lg:mb-6">
         <div>
           <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2">
             <Clock className="w-5 h-5 lg:w-6 lg:h-6 text-primary" />
@@ -172,7 +172,7 @@ export function CronClient() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4 mb-3 lg:mb-6">
         <div className="p-4 rounded-xl border bg-card">
           <p className="text-xl lg:text-2xl font-bold text-primary">{jobs.length}</p>
           <p className="text-xs lg:text-sm text-muted-foreground">{t('cron.totalTasks', 'Total Jobs')}</p>
@@ -189,7 +189,7 @@ export function CronClient() {
 
       {/* Create Dialog */}
       {showCreate && (
-        <div className="mb-6 p-3 lg:p-4 rounded-xl border bg-card">
+        <div className="mb-3 lg:mb-6 p-3 lg:p-4 rounded-xl border bg-card">
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-medium flex items-center gap-2">
               <Zap className="w-4 h-4 text-primary" /> {t('cron.createNew', 'Create New Job')}
