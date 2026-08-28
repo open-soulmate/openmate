@@ -12,7 +12,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
 import {
-  Search, Plus, PanelRightOpen, Menu,
+  Search, Plus, PanelRightOpen, Menu, PanelLeftIcon,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getUserName, getApiBaseUrl, getToken } from "@/lib/api-client";
@@ -355,6 +355,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         >
           <Menu className="w-5 h-5 text-muted-foreground" />
         </button>
+        <button
+          onClick={toggle}
+          className="hidden lg:flex shrink-0 p-2 hover:bg-muted/50 transition-colors text-muted-foreground"
+          aria-label="Toggle Sidebar"
+        >
+          <PanelLeftIcon className="w-4 h-4" />
+        </button>
         <div className="flex-1 min-w-0">
           <TopBar
             rightPanelOpen={rightPanelOpen}
@@ -410,7 +417,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <SidebarProvider open={!effectiveCollapsed} onOpenChange={(open) => { if (open === effectiveCollapsed) toggle(); }} className="flex-1 min-h-0 overflow-hidden h-full">
           {/* Desktop sidebar - conversation list */}
-          <Sidebar collapsible="icon" className="hidden lg:flex">
+          <Sidebar collapsible="offcanvas" className="hidden lg:flex">
         <SidebarHeader>
           <div className="flex h-12 shrink-0 items-center px-2">
             <span className="text-sm font-bold text-primary">OM</span>

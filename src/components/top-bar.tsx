@@ -49,8 +49,8 @@ export function TopBar({ rightPanelOpen, onToggleRightPanel, eventCount = 0, pag
 
   return (
     <div className="flex h-10 shrink-0 items-center justify-between border-b border-border bg-background px-3">
-      {/* Left: page title (always visible) */}
-      <div className="shrink-0 min-w-0">
+      {/* Left: page title on mobile only (desktop has sidebar) */}
+      <div className="shrink-0 min-w-0 lg:hidden">
         {pageTitle || <span className="text-sm font-medium">OpenMate</span>}
       </div>
 
