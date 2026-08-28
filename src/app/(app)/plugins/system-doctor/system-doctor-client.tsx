@@ -264,7 +264,7 @@ export function SystemDoctorClient() {
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">Storage Used</span>
-                <p className="text-2xl font-bold mt-1">{report.summary.storage.total_human}</p>
+                <p className="text-xl lg:text-2xl font-bold mt-1">{report.summary.storage.total_human}</p>
                 <p className="text-xs text-muted-foreground mt-1">Managed data</p>
               </div>
             </div>

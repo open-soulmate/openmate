@@ -128,7 +128,7 @@ export function TagsClient() {
             <Tag className="w-6 h-6 text-amber-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">{t("tags.title") || "Tags"}</h1>
+            <h1 className="text-xl lg:text-2xl font-bold">{t("tags.title") || "Tags"}</h1>
             <p className="text-xs lg:text-sm text-muted-foreground">
               {t("tags.subtitle") || "Organize your content with tags"}
             </p>

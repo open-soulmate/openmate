@@ -247,7 +247,7 @@ export function SenseClient() {
           <Eye className="w-6 h-6 text-amber-500" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">👁️ Sense — {t("sense.text6")}</h1>
+          <h1 className="text-xl lg:text-2xl font-bold">👁️ Sense — {t("sense.text6")}</h1>
           <p className="text-xs lg:text-sm text-muted-foreground">{t("sense.t22285")}</p>
         </div>
       </div>

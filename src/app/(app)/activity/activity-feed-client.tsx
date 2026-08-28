@@ -344,7 +344,7 @@ export function ActivityFeedClient() {
                   {summary ? (
                     <div className="space-y-3">
                       <div className="rounded-lg border border-border bg-card p-3">
-                        <div className="text-2xl font-bold">{summary.total_events}</div>
+                        <div className="text-xl lg:text-2xl font-bold">{summary.total_events}</div>
                         <div className="text-xs text-muted-foreground">{t('activity.totalEvents')}</div>
                       </div>
                       {summary.most_active_organ && (
@@ -405,7 +405,7 @@ export function ActivityFeedClient() {
             {summary ? (
               <div className="space-y-3">
                 <div className="rounded-lg border border-border bg-card p-3">
-                  <div className="text-2xl font-bold">{summary.total_events}</div>
+                  <div className="text-xl lg:text-2xl font-bold">{summary.total_events}</div>
                   <div className="text-xs text-muted-foreground">{t('activity.totalEvents')}</div>
                 </div>
 

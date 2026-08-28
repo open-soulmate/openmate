@@ -239,7 +239,7 @@ export function NerveClient() {
           <Zap className="w-6 h-6 text-blue-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">⚡ Nerve — {t('nerve.title')}</h1>
+          <h1 className="text-xl lg:text-2xl font-bold">⚡ Nerve — {t('nerve.title')}</h1>
           <p className="text-xs lg:text-sm text-muted-foreground">{t('nerve.message')}</p>
         </div>
       </div>
@@ -259,7 +259,7 @@ export function NerveClient() {
                 <Icon className={`w-4 h-4 text-${s.color}-400`} />
                 <span className="text-xs text-muted-foreground">{s.label}</span>
               </div>
-              <div className="text-2xl font-bold">{s.value}</div>
+              <div className="text-xl lg:text-2xl font-bold">{s.value}</div>
             </div>
           )
         })}

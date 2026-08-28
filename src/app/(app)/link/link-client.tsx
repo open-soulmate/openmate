@@ -191,15 +191,15 @@ export function LinkClient() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
               <span className="text-xs text-muted-foreground">{t("link.t81176")}</span>
-              <p className="text-2xl font-bold">{health.total_connectors || 0}</p>
+              <p className="text-xl lg:text-2xl font-bold">{health.total_connectors || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <span className="text-xs text-muted-foreground">{t("link.active")}</span>
-              <p className="text-2xl font-bold text-emerald-500">{health.active || 0}</p>
+              <p className="text-xl lg:text-2xl font-bold text-emerald-500">{health.active || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <span className="text-xs text-muted-foreground">{t("link.t93835")}</span>
-              <p className="text-2xl font-bold">{health.total_events || 0}</p>
+              <p className="text-xl lg:text-2xl font-bold">{health.total_events || 0}</p>
             </div>
             <div className="rounded-xl border border-border bg-card p-4">
               <span className="text-xs text-muted-foreground">{t("link.type")}</span>

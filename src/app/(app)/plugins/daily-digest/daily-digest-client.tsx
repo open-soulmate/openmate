@@ -176,7 +176,7 @@ export function DailyDigestClient() {
             <Newspaper className="w-6 h-6 text-violet-400" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold">Daily Digest</h1>
+            <h1 className="text-xl lg:text-2xl font-bold">Daily Digest</h1>
             <p className="text-xs lg:text-sm text-muted-foreground">{t("plugins.digestSubtitle") || "Cross-organ data aggregation · System health trends · Daily insights"}</p>
           </div>
         </div>

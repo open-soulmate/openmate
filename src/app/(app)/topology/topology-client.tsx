@@ -172,21 +172,21 @@ export function TopologyClient() {
                   <span className="text-xs font-medium text-muted-foreground">{t("topology.totalNodes") || "Nodes"}</span>
                   <div className="rounded-lg p-1.5 bg-violet-500/10"><Box size={14} className="text-violet-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{stats.total_nodes}</p>
+                <p className="text-xl lg:text-2xl font-bold">{stats.total_nodes}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("topology.totalEdges") || "Edges"}</span>
                   <div className="rounded-lg p-1.5 bg-blue-500/10"><GitBranch size={14} className="text-blue-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{stats.total_edges}</p>
+                <p className="text-xl lg:text-2xl font-bold">{stats.total_edges}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("topology.categories") || "Categories"}</span>
                   <div className="rounded-lg p-1.5 bg-emerald-500/10"><Layers size={14} className="text-emerald-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{Object.keys(categories).length}</p>
+                <p className="text-xl lg:text-2xl font-bold">{Object.keys(categories).length}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">

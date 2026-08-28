@@ -333,7 +333,7 @@ export function PluginsClient() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight flex items-center gap-3">
+            <h1 className="text-xl lg:text-2xl font-bold tracking-tight flex items-center gap-3">
               <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
                 <Puzzle size={22} />
               </div>
