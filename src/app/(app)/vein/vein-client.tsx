@@ -909,8 +909,8 @@ export function VeinClient() {
                   </p>
                 </div>
               ) : (
-                <div className="rounded-xl border border-border overflow-hidden">
-                  <table className="w-full text-xs lg:text-sm">
+                <div className="rounded-xl border border-border overflow-x-auto">
+                  <table className="w-full text-xs lg:text-sm min-w-[500px]">
                     <thead>
                       <tr className="border-b border-border bg-muted/30">
                         <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground">

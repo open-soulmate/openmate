@@ -236,8 +236,8 @@ export function PermissionClient() {
               <p>{t('permission.emptyPolicies', '暂无访问策略')}</p>
             </div>
           ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full">
+            <div className="border rounded-lg overflow-x-auto">
+              <table className="w-full min-w-[450px]">
                 <thead>
                   <tr className="bg-muted/50">
                     <th className="px-2 lg:px-4 py-2 lg:py-3 text-left text-xs lg:text-sm font-medium">{t('permission.role', '角色')}</th>
