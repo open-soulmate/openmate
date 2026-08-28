@@ -162,10 +162,10 @@ export function PermissionClient() {
     <div className="px-3 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
+          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2">
             <Shield className="w-6 h-6" /> {t('nav.permission', '权限管理')}
           </h1>
-          <p className="text-muted-foreground mt-1">{t('permission.description', '管理角色和访问控制策略')}</p>
+          <p className="text-xs lg:text-sm text-muted-foreground mt-1">{t('permission.description', '管理角色和访问控制策略')}</p>
         </div>
       </div>
 
@@ -197,7 +197,7 @@ export function PermissionClient() {
           {showCreate && (
             <div className="p-4 border rounded-lg bg-card space-y-4">
               <h3 className="font-medium">{t('permission.createPolicy', '创建访问策略')}</h3>
-              <div className="grid grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 <div>
                   <label className="text-xs lg:text-sm font-medium mb-1 block">{t('permission.role', '角色')}</label>
                   <input value={newRole} onChange={(e) => setNewRole(e.target.value)} className="w-full px-3 py-2 border rounded-md bg-background" placeholder="admin" />
@@ -311,7 +311,7 @@ export function PermissionClient() {
           {/* Assign role */}
           <div className="p-4 border rounded-lg bg-card space-y-4">
             <h3 className="font-medium">{t('permission.assignRole', '分配角色')}</h3>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <input value={assignUser} onChange={(e) => setAssignUser(e.target.value)} className="px-3 py-2 border rounded-md bg-background" placeholder={t('permission.username', '用户名')} />
               <input value={assignRole} onChange={(e) => setAssignRole(e.target.value)} className="px-3 py-2 border rounded-md bg-background" placeholder={t('permission.roleName', '角色名')} />
               <button onClick={handleAssignRole} disabled={assigning || !assignUser.trim() || !assignRole.trim()} className="px-2 lg:px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 disabled:opacity-50 flex items-center gap-2">

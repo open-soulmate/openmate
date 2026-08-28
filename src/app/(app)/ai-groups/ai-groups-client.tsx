@@ -1455,7 +1455,7 @@ export default function AIGroupsPage() {
         )}
       </div>
 
-      {/* Right: Agent Management Panel — Sheet on mobile, inline on desktop (shared content) */}
+      {/* Right: Agent Management Panel — Sheet on mobile, smooth transition on desktop */}
       {isMobile ? (
         <Sheet open={showRightPanel && !!selectedGroup} onOpenChange={(open) => { if (!open) setShowRightPanel(false); else setShowSidebar(false); }}>
           <SheetContent side="right" size="md" className="p-0 flex flex-col">
@@ -1468,8 +1468,10 @@ export default function AIGroupsPage() {
           </SheetContent>
         </Sheet>
       ) : (
-        showRightPanel && selectedGroup && (
-        <div className="w-72 shrink-0 border-l border-border bg-card flex flex-col">
+        <div
+          className="shrink-0 border-l border-border bg-card flex flex-col overflow-hidden transition-all duration-250 ease-in-out"
+          style={{ width: showRightPanel && selectedGroup ? 288 : 0, borderWidth: showRightPanel && selectedGroup ? 1 : 0 }}
+        >
           <div className="h-12 shrink-0 px-3 flex items-center border-b border-border justify-between">
             <span className="text-xs lg:text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
             <button onClick={() => { setShowRightPanel(false); }} className="p-1 rounded hover:bg-muted"><X className="w-4 h-4" /></button>
@@ -1478,7 +1480,7 @@ export default function AIGroupsPage() {
             {renderAgentManagement()}
           </div>
         </div>
-      ))}
+      )}
       {/* Scoring Modal */}
       {scoringTaskId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">

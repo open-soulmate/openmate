@@ -381,7 +381,7 @@ export function SessionsClient() {
       {/* Header */}
       <div className="flex items-center justify-between px-2 lg:px-6 h-12 border-b border-zinc-800">
         <div className="flex items-center gap-3">
-          <button onClick={() => setSidebarOpen(true)} className="md:hidden shrink-0 p-1.5 -ml-1 rounded-lg hover:bg-zinc-800 touch-manipulation">
+          <button onClick={() => setSidebarOpen(true)} className="lg:hidden shrink-0 p-1.5 -ml-1 rounded-lg hover:bg-zinc-800 touch-manipulation">
             <PanelLeft className="w-4 h-4 text-zinc-400" />
           </button>
           <History className="w-6 h-6 text-cyan-400" />

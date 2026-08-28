@@ -217,7 +217,7 @@ export function PulseClient() {
             {/* Create */}
             <div className="rounded-xl border border-border p-4 space-y-3">
               <h3 className="text-xs lg:text-sm font-medium">{t("pulse.createSignal") || t('pulse.create')}</h3>
-              <div className="grid grid-cols-5 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
                 <input value={newName} onChange={(e) => setNewName(e.target.value)}
                   placeholder={t("pulse.signalName") || "Signal Name"}
                   className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-red-500/20" />
