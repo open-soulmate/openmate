@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/stores/app-store';
 
@@ -530,6 +531,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
   }, []);
   const resizeRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
+  const isMobile = useIsMobile();
 
   // Sync active tab id when tabs change
   useEffect(() => {
@@ -735,14 +737,16 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
   return (
     <div
       className="flex flex-col h-full bg-background shrink-0 relative"
-      style={{ width: panelWidth }}
+      style={isMobile ? undefined : { width: panelWidth }}
     >
-      {/* Resize handle */}
-      <div
-        ref={resizeRef}
-        onMouseDown={handleResizeStart}
-        className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors z-10"
-      />
+      {/* Resize handle — desktop only (mobile uses Sheet) */}
+      {!isMobile && (
+        <div
+          ref={resizeRef}
+          onMouseDown={handleResizeStart}
+          className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors z-10"
+        />
+      )}
 
       {/* Tab bar — doubao-style SVG skirt tabs */}
       {(() => {
@@ -774,7 +778,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
                       if (isActive) (activeTabRef as React.MutableRefObject<HTMLButtonElement | null>).current = el;
                     }}
                     onClick={() => setActiveTabId(tab.id)}
-                    className="group relative shrink-0 cursor-pointer"
+                    className="group relative shrink-0 cursor-pointer touch-manipulation"
                     style={{ height: 36, minWidth: 140, maxWidth: 240, display: 'flex', alignItems: 'center', border: 'none', outline: 'none', padding: 0, background: 'transparent', overflow: 'visible' }}
                   >
                     {tabWidths[tab.id] && (
@@ -796,14 +800,14 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
                     <div className="relative flex items-center w-full h-full z-10" style={{ padding: '0 12px', gap: 8 }}>
                       <Globe className="w-4 h-4 shrink-0" style={{ color: '#9aa0a6' }} />
                       <span className="truncate flex-1" style={{ color: isActive ? '#e8eaed' : '#8a8a8a', fontSize: '13px', transition: 'color 0.15s' }}>{tab.title}</span>
-                      <span role="button" onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className="shrink-0 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-70 hover:!opacity-100 hover:bg-[rgba(255,255,255,0.1)] transition-all cursor-pointer" style={{ width: 16, height: 16 }}>
+                      <span role="button" onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className="shrink-0 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-70 group-active:opacity-70 hover:!opacity-100 hover:bg-[rgba(255,255,255,0.1)] transition-all cursor-pointer touch-manipulation" style={{ width: 20, height: 20 }}>
                         <X className="w-3 h-3" style={{ color: '#9aa0a6' }} />
                       </span>
                     </div>
                   </button>
                 );
               })}
-              <Button variant="ghost" size="icon-xs" onClick={() => addTab('new-tab')} className="shrink-0 mb-0.5 ml-1" title="New tab">
+              <Button variant="ghost" size="icon-xs" onClick={() => addTab('new-tab')} className="shrink-0 mb-0.5 ml-1 touch-manipulation" title="New tab">
                 <Plus className="w-3.5 h-3.5" />
               </Button>
 
