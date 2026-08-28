@@ -348,7 +348,7 @@ export function SomaConnectorClient() {
                 </div>
                 <div className="border-t border-border pt-3">
                   <h4 className="text-xs text-muted-foreground mb-2">{t("soma.apiEndpoints")}</h4>
-                  <div className="grid grid-cols-2 gap-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                     {Object.entries(capabilities.endpoints).map(([name, path]) => (
                       <div key={name} className="flex items-center gap-2 text-xs">
                         <span className="text-cyan-500 font-medium">{name}</span>
