@@ -192,26 +192,26 @@ export function AgentsClient() {
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="p-6 h-full overflow-y-auto">
+    <div className="px-4 md:px-6 py-4 md:py-6 h-full overflow-y-auto">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2"><Bot className="w-6 h-6" /> {t('agents.title')}</h1>
           <p className="text-sm text-muted-foreground mt-1">{t('agents.autoDetect')} · {agents.length} {t('agents.category')}</p>
         </div>
-        <button onClick={detect} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> {t('agents.autoDetect')}</button>
+        <button onClick={detect} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm self-start sm:self-auto"><RefreshCw className="w-4 h-4" /> {t('agents.autoDetect')}</button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-3 gap-2 md:gap-4 mb-6">
         <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-primary">{agents.length}</p><p className="text-sm text-muted-foreground">{t('agents.title')}</p></div>
         <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-green-500">{availableCount}</p><p className="text-sm text-muted-foreground">{t('agents.available')}</p></div>
         <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-muted-foreground">{agents.length - availableCount}</p><p className="text-sm text-muted-foreground">{t('agents.unavailable')}</p></div>
       </div>
 
       {/* Filter + Batch */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex gap-2">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
+        <div className="flex gap-2 flex-wrap">
           {(['all', 'available', 'unavailable'] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'border hover:bg-muted'}`}>
               {f === 'all' ? t('agents.allAgents') : f === 'available' ? t('agents.onlyAvailable') : t('agents.onlyUnavailable')}
