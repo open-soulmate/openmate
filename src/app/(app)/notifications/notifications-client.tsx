@@ -174,29 +174,29 @@ export function NotificationsClient() {
   return (
     <div className="max-w-4xl mx-auto px-3 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="relative">
-            <Bell className="w-7 h-7 text-foreground" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+          <div className="relative shrink-0">
+            <Bell className="w-5 h-5 lg:w-7 lg:h-7 text-foreground" />
             {unreadCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center">
+              <span className="absolute -top-1.5 -right-1.5 bg-red-500 text-white text-[10px] font-bold rounded-full w-4 h-4 lg:w-5 lg:h-5 flex items-center justify-center">
                 {unreadCount > 99 ? '99+' : unreadCount}
               </span>
             )}
           </div>
-          <h1 className="text-2xl font-bold text-foreground">
+          <h1 className="text-lg lg:text-2xl font-bold text-foreground truncate">
             {t('notifications.title', 'Notifications')}
           </h1>
         </div>
         <button
           onClick={fetchAll}
           className={cn(
-            'p-2 rounded-lg bg-card border border-border hover:bg-accent transition-colors',
+            'p-2 rounded-lg bg-card border border-border hover:bg-accent transition-colors shrink-0 touch-manipulation',
             loading && 'opacity-50 pointer-events-none'
           )}
           title={t('notifications.refresh', 'Refresh')}
         >
-          <RefreshCw className={cn('w-4 h-4 text-muted-foreground', loading && 'animate-spin')} />
+          <RefreshCw className={cn('w-3.5 h-3.5 lg:w-4 lg:h-4 text-muted-foreground', loading && 'animate-spin')} />
         </button>
       </div>
 
@@ -208,29 +208,29 @@ export function NotificationsClient() {
 
       {/* Stats */}
       {stats && (
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-3 gap-2 lg:gap-4">
           {[
             { label: t('notifications.total', 'Total'), value: stats.total, color: 'text-blue-400' },
             { label: t('notifications.unread', 'Unread'), value: stats.unread, color: 'text-amber-400' },
             { label: t('notifications.read', 'Read'), value: stats.read, color: 'text-green-400' },
           ].map(s => (
-            <div key={s.label} className="bg-card border border-border rounded-lg p-4 text-center">
-              <div className={cn('text-2xl font-bold', s.color)}>{s.value}</div>
-              <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
+            <div key={s.label} className="bg-card border border-border rounded-lg p-2.5 lg:p-4 text-center">
+              <div className={cn('text-lg lg:text-2xl font-bold', s.color)}>{s.value}</div>
+              <div className="text-[10px] lg:text-xs text-muted-foreground mt-1">{s.label}</div>
             </div>
           ))}
         </div>
       )}
 
       {/* Filters & Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex gap-2">
+      <div className="flex flex-wrap items-center justify-between gap-2 lg:gap-3">
+        <div className="flex gap-1.5 lg:gap-2">
           {(['all', 'unread', 'read'] as const).map(f => (
             <button
               key={f}
               onClick={() => setFilter(f)}
               className={cn(
-                'px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border',
+                'px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border touch-manipulation',
                 filter === f
                   ? 'bg-primary text-primary-foreground border-primary'
                   : 'bg-card text-muted-foreground border-border hover:bg-accent'
@@ -241,12 +241,12 @@ export function NotificationsClient() {
           ))}
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-1.5 lg:gap-2">
           <button
             onClick={markAllRead}
             disabled={actionLoading === 'read-all' || unreadCount === 0}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border border-border',
+              'flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border border-border touch-manipulation',
               'bg-card hover:bg-accent text-muted-foreground disabled:opacity-40 disabled:pointer-events-none'
             )}
           >
@@ -262,7 +262,7 @@ export function NotificationsClient() {
             onClick={clearAll}
             disabled={actionLoading === 'clear-all' || notifications.length === 0}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border border-border',
+              'flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border border-border touch-manipulation',
               'bg-card hover:bg-red-900/20 text-muted-foreground hover:text-red-400 disabled:opacity-40 disabled:pointer-events-none'
             )}
           >
@@ -278,7 +278,7 @@ export function NotificationsClient() {
             onClick={sendTest}
             disabled={actionLoading === 'test'}
             className={cn(
-              'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border border-border',
+              'flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border border-border touch-manipulation',
               'bg-card hover:bg-accent text-muted-foreground disabled:opacity-40 disabled:pointer-events-none'
             )}
           >
@@ -294,9 +294,9 @@ export function NotificationsClient() {
 
       {/* Notification List */}
       {filtered.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-          <BellOff className="w-16 h-16 mb-4 opacity-30" />
-          <p className="text-lg font-medium">
+        <div className="flex flex-col items-center justify-center py-16 lg:py-20 text-muted-foreground">
+          <BellOff className="w-12 h-12 lg:w-16 lg:h-16 mb-3 lg:mb-4 opacity-30" />
+          <p className="text-sm lg:text-lg font-medium">
             {t('notifications.empty', 'No notifications')}
           </p>
           <p className="text-xs lg:text-sm mt-1">
@@ -316,14 +316,14 @@ export function NotificationsClient() {
               <div
                 key={n.id}
                 className={cn(
-                  'flex items-start gap-4 p-4 rounded-lg border transition-colors',
+                  'flex items-start gap-3 lg:gap-4 p-3 lg:p-4 rounded-lg border transition-colors',
                   'bg-card border-border hover:bg-accent/50',
                   n.read && 'opacity-60'
                 )}
               >
                 {/* Severity icon */}
-                <div className={cn('flex-shrink-0 p-2 rounded-lg', meta.bg)}>
-                  <Icon className={cn('w-5 h-5', meta.color)} />
+                <div className={cn('flex-shrink-0 p-1.5 lg:p-2 rounded-lg', meta.bg)}>
+                  <Icon className={cn('w-4 h-4 lg:w-5 lg:h-5', meta.color)} />
                 </div>
 
                 {/* Content */}
@@ -353,7 +353,7 @@ export function NotificationsClient() {
                       <button
                         onClick={() => n.read ? undefined : markAsRead(n.id)}
                         className={cn(
-                          'p-1.5 rounded-md transition-colors',
+                          'p-1.5 rounded-md transition-colors touch-manipulation',
                           n.read
                             ? 'text-green-400/40 cursor-default'
                             : 'text-muted-foreground hover:bg-accent hover:text-foreground'
@@ -366,7 +366,7 @@ export function NotificationsClient() {
                       </button>
                       <button
                         onClick={() => deleteNotification(n.id)}
-                        className="p-1.5 rounded-md text-muted-foreground hover:bg-red-900/20 hover:text-red-400 transition-colors"
+                        className="p-1.5 rounded-md text-muted-foreground hover:bg-red-900/20 hover:text-red-400 transition-colors touch-manipulation"
                         title={t('notifications.delete', 'Delete')}
                       >
                         <Trash2 className="w-4 h-4" />
