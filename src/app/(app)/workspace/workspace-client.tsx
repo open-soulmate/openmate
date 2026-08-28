@@ -155,8 +155,8 @@ export function WorkspaceClient() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="shrink-0 border-b border-border px-6 py-4">
-        <div className="flex items-center justify-between">
+      <div className="shrink-0 border-b border-border px-4 md:px-6 py-4">
+        <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-lg font-semibold text-foreground">
               {t("workspace.listTitle", "Workspaces")}
@@ -208,7 +208,7 @@ export function WorkspaceClient() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto p-6">
+      <div className="flex-1 overflow-auto px-4 md:px-6 py-4 md:py-6">
         {/* Back button */}
         {currentPath !== "~" && (
           <button
