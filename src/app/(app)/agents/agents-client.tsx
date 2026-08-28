@@ -213,7 +213,7 @@ export function AgentsClient() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <div className="flex gap-2 flex-wrap">
           {(['all', 'available', 'unavailable'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-xs lg:text-sm transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'border hover:bg-muted'}`}>
+            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-xs lg:text-sm transition-colors touch-manipulation ${filter === f ? 'bg-primary text-primary-foreground' : 'border hover:bg-muted'}`}>
               {f === 'all' ? t('agents.allAgents') : f === 'available' ? t('agents.onlyAvailable') : t('agents.onlyUnavailable')}
             </button>
           ))}
@@ -222,21 +222,21 @@ export function AgentsClient() {
           <div className="flex items-center gap-2">
             <span className="text-xs text-muted-foreground">{t('agents.selectAll')} {selected.size}</span>
             <button onClick={batchInstall} disabled={!!batchAction}
-              className="px-3 py-1.5 rounded-lg text-xs bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1 disabled:opacity-50">
+              className="px-3 py-1.5 rounded-lg text-xs bg-primary text-primary-foreground hover:bg-primary/90 flex items-center gap-1 disabled:opacity-50 touch-manipulation">
               {batchAction === 'install' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Download className="w-3 h-3" />} {t('agents.batchInstall')}
             </button>
             <button onClick={batchUninstall} disabled={!!batchAction}
-              className="px-3 py-1.5 rounded-lg text-xs border border-red-500/30 text-red-500 hover:bg-red-500/5 flex items-center gap-1 disabled:opacity-50">
+              className="px-3 py-1.5 rounded-lg text-xs border border-red-500/30 text-red-500 hover:bg-red-500/5 flex items-center gap-1 disabled:opacity-50 touch-manipulation">
               {batchAction === 'uninstall' ? <Loader2 className="w-3 h-3 animate-spin" /> : <Trash2 className="w-3 h-3" />} {t('agents.deleteAgent')}
             </button>
-            <button onClick={() => setSelected(new Set())} className="px-2 py-1.5 rounded-lg text-xs border hover:bg-muted">{t('agents.deselectAll')}</button>
+            <button onClick={() => setSelected(new Set())} className="px-2 py-1.5 rounded-lg text-xs border hover:bg-muted touch-manipulation">{t('agents.deselectAll')}</button>
           </div>
         )}
       </div>
 
       {/* Select all */}
       <div className="flex items-center gap-2 mb-3">
-        <button onClick={toggleSelectAll} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground">
+        <button onClick={toggleSelectAll} className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground touch-manipulation">
           {filtered.length > 0 && filtered.every(a => selected.has(a.id)) ? <CheckSquare size={14} /> : <Square size={14} />}
           {t('agents.selectAll')}
         </button>
@@ -255,7 +255,7 @@ export function AgentsClient() {
               <div className="p-4">
                 <div className="flex items-start gap-3 mb-3">
                   {/* Checkbox */}
-                  <button onClick={() => toggleSelect(agent.id)} className="mt-1 shrink-0">
+                  <button onClick={() => toggleSelect(agent.id)} className="mt-1 shrink-0 touch-manipulation">
                     {isSelected ? <CheckSquare size={16} className="text-primary" /> : <Square size={16} className="text-muted-foreground" />}
                   </button>
                   {(agent as any).logo ? <img src={(agent as any).logo} alt={agent.name} className="w-10 h-10 rounded-lg object-contain bg-muted" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} /> : null}
@@ -279,21 +279,21 @@ export function AgentsClient() {
                     {agent.available ? (
                       <>
                         <button onClick={() => setConfiguringAgent(configuringAgent === agent.id ? null : agent.id)}
-                          className="px-2 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1" title={t('agents.modelConfig')}>
+                          className="px-2 py-1.5 lg:py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 touch-manipulation" title={t('agents.modelConfig')}>
                           ⚙️
                         </button>
                         <button onClick={() => handleUpdate(agent)} disabled={!!isInstalling}
-                          className="px-2 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50" title={t('agents.restart')}>
+                          className="px-2 py-1.5 lg:py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50 touch-manipulation" title={t('agents.restart')}>
                           <ArrowUpCircle className="w-3 h-3" />
                         </button>
                         <button onClick={() => handleUninstall(agent)}
-                          className="px-2 py-1 rounded-lg text-xs border border-red-500/30 text-red-500 hover:bg-red-500/5 flex items-center gap-1" title={t('agents.deleteAgent')}>
+                          className="px-2 py-1.5 lg:py-1 rounded-lg text-xs border border-red-500/30 text-red-500 hover:bg-red-500/5 flex items-center gap-1 touch-manipulation" title={t('agents.deleteAgent')}>
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </>
                     ) : (
                       <button onClick={() => startInstall(agent)} disabled={!!isInstalling}
-                        className="px-2.5 py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50 transition-colors">
+                        className="px-2.5 py-1.5 lg:py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50 transition-colors touch-manipulation">
                         {isInstalling ? <><Loader2 className="w-3 h-3 animate-spin" /> {t('agents.installing')}</> : <><Download className="w-3 h-3" /> {t('agents.install')}</>}
                       </button>
                     )}
