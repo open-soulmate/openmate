@@ -382,7 +382,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Mobile: conversation list Sheet (left drawer) */}
-      <Sheet open={mobileConvOpen} onOpenChange={setMobileConvOpen}>
+      <Sheet open={mobileConvOpen} onOpenChange={(open) => { setMobileConvOpen(open); if (open) setRightPanelOpen(false); }}>
         <SheetContent side="left" size="md" className="p-0 flex flex-col">
           <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border justify-between">
             <SheetTitle className="text-sm font-semibold">{t("nav.chat", "Chat")}</SheetTitle>
@@ -514,7 +514,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
       {isMobile && (
-        <Sheet open={rightPanelOpen} onOpenChange={setRightPanelOpen}>
+        <Sheet open={rightPanelOpen} onOpenChange={(open) => { setRightPanelOpen(open); if (open) setMobileConvOpen(false); }}>
           <SheetContent side="right" size="md" className="p-0 flex flex-col">
             <RightPanel open={true} onToggle={() => toggleRightPanel()} />
           </SheetContent>
