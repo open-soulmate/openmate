@@ -33,7 +33,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ConversationTree, type AgentInfo } from "@/components/conversation-tree";
 import { MobileSidebar } from "@/components/mobile-sidebar";
 import { SwipeablePanels, getPanelIndex } from "@/components/swipeable-panels";
-import { useIsMobile } from "@/hooks/use-mobile";
+import { useIsMobile, useMediaQuery } from "@/hooks/use-mobile";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -99,6 +99,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [menuOpen, setMenuOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const isMobile = useIsMobile();
+  // Auto-collapse sidebar on mid-sized screens (lg but not xl)
+  const isMidScreen = useMediaQuery("(min-width: 1024px) and (max-width: 1279px)");
+  const effectiveCollapsed = collapsed || isMidScreen;
   const mobileConvOpen = useAppStore((s) => s.mobileConvOpen);
   const setMobileConvOpen = useAppStore((s) => s.setMobileConvOpen);
   const currentPanel = useAppStore((s) => s.currentPanel);
@@ -401,7 +404,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Middle: sidebar + content + right panel */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <SidebarProvider open={!collapsed} onOpenChange={(open) => { if (open === collapsed) toggle(); }} className="flex-1 min-h-0 overflow-hidden h-full">
+        <SidebarProvider open={!effectiveCollapsed} onOpenChange={(open) => { if (open === effectiveCollapsed) toggle(); }} className="flex-1 min-h-0 overflow-hidden h-full">
           {/* Desktop sidebar - conversation list */}
           <Sidebar collapsible="icon" className="hidden lg:flex">
         <SidebarHeader>

@@ -177,10 +177,10 @@ export function ChatClient() {
     if (mobileConvOpen && isMobile) setShowDetails(false);
   }, [mobileConvOpen, isMobile]);
 
-  // Default details open on desktop
-  useEffect(() => {
-    if (!isMobile) setShowDetails(true);
-  }, [isMobile]);
+  // Default details closed on both mobile and desktop — user toggles open
+  // useEffect(() => {
+  //   if (!isMobile) setShowDetails(true);
+  // }, [isMobile]);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const selectedSessionRef = useRef<Session | null>(null);
