@@ -451,6 +451,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </SidebarInset>
 
+      {/* Terminal Panel */}
+      <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
+        </SidebarProvider>
+
       {/* Right Panel — workspace tabs (mobile: Sheet overlay, desktop: inline) */}
       {rightPanelOpen ? (
         <>
@@ -458,7 +462,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setRightPanelOpen(false)} />
           <div className={cn(
             "fixed top-0 right-0 bottom-0 z-50 bg-background shadow-xl md:static md:z-auto md:shadow-none",
-            "flex flex-col",
+            "flex flex-col h-full overflow-hidden border-l border-border",
           )} style={{ width: '100%', maxWidth: '100vw' }}>
             <div className="md:hidden absolute top-2 right-2 z-10">
               <button
@@ -472,10 +476,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </>
       ) : null}
-
-      {/* Terminal Panel */}
-      <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
-        </SidebarProvider>
       </div>
 
       {/* Bottom navigation bar — full screen width */}

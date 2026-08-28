@@ -185,7 +185,6 @@ export function ChatClient() {
   const titleInputRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
   const isMobile = useMediaQuery("(max-width: 1023px)");
-  const [showSidebar, setShowSidebar] = useState(false);
   const wsRef = useRef<WebSocket | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -636,7 +635,6 @@ export function ChatClient() {
     setSelectedAgent(agent);
     setDeleteConfirm(null);
     setEditingTitle(false);
-    setShowSidebar(false); // close sidebar sheet on mobile
     loadHistory(session.id);
   };
 
@@ -849,13 +847,6 @@ export function ChatClient() {
 
   return (
     <div className="flex flex-1 min-h-0">
-      {/* Mobile: Session List Sheet */}
-      <Sheet open={isMobile && showSidebar} onOpenChange={(open) => { setShowSidebar(open); if (open) setShowDetails(false); }}>
-        <SheetContent side="left" className="w-72 p-0 flex flex-col">
-          {renderSidebarContent()}
-        </SheetContent>
-      </Sheet>
-
       {/* Chat Window */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Chat header */}
@@ -883,15 +874,9 @@ export function ChatClient() {
             {selectedAgent && <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">{selectedAgent.name}</span>}
           </div>
           <div className="flex items-center gap-2">
-            {/* Mobile: session list toggle */}
-            {isMobile && (
-              <button onClick={() => { setShowSidebar(true); setShowDetails(false); }} className="p-1 rounded hover:bg-muted">
-                <PanelLeft className="w-4 h-4" />
-              </button>
-            )}
             {wsConnected ? <Wifi className="w-4 h-4 text-green-500" /> : <WifiOff className="w-4 h-4 text-muted-foreground" />}
             <span className="text-xs text-muted-foreground">{wsConnected ? 'WS' : 'HTTP'}</span>
-            <button onClick={() => { if (isMobile) setShowSidebar(false); setShowDetails(!showDetails); }} className="p-1 rounded hover:bg-muted">
+            <button onClick={() => setShowDetails(!showDetails)} className="p-1 rounded hover:bg-muted">
               {showDetails ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
             </button>
           </div>
