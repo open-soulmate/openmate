@@ -234,7 +234,7 @@ export function WorkflowClient() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-1 border-b border-border px-3 lg:px-6 py-2">
+      <div className="flex items-center gap-1 border-b border-border px-3 lg:px-6 py-2 overflow-x-auto">
         <Filter size={13} className="mr-1 text-muted-foreground" />
         {filters.map((f) => (
           <button

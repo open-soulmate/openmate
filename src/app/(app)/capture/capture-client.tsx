@@ -155,7 +155,7 @@ export function CaptureClient() {
       )}
 
       {/* Filters */}
-      <div className="flex items-center gap-2 border-b border-border px-3 lg:px-6 py-2.5">
+      <div className="flex items-center gap-2 border-b border-border px-3 lg:px-6 py-2.5 overflow-x-auto">
         <div className="flex rounded-lg border border-border p-0.5">
           {(["all", "page", "selection"] as const).map(f => (
             <button key={f} onClick={() => setFilter(f)}

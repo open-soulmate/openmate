@@ -699,7 +699,7 @@ export function EchoClient() {
 
         {/* History Tab */}
         {tab === "history" && (
-          <div className="rounded-xl border border-border overflow-hidden">
+          <div className="rounded-xl border border-border overflow-x-auto">
             <table className="w-full text-xs lg:text-sm">
               <thead>
                 <tr className="border-b border-border bg-muted/30">
