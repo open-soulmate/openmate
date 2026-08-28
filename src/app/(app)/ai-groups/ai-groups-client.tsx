@@ -3,7 +3,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { useMediaQuery } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Users, Plus, Send, Bot, Shield, Zap, User, Trash2, ChevronDown,
   ChevronRight, ChevronLeft, Settings, X, Loader2, Search, UserPlus, Edit3, Check,
@@ -126,7 +126,7 @@ export default function AIGroupsPage() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [showSidebar, setShowSidebar] = useState(false);
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
 
   // Create group
   const [showCreate, setShowCreate] = useState(false);

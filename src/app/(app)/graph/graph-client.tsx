@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { useMediaQuery } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Network, Loader2, Plus, Trash2, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Search } from 'lucide-react';
 import { api, getUserId, getApiBaseUrl } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
@@ -22,7 +22,7 @@ function getRelType(r: Relation): string { return r.relation_type || r.type || '
 
 export function GraphClient() {
   const { t } = useTranslation();
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const apiBase = getApiBaseUrl();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);

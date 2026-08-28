@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   Volume2, RefreshCw, Send, Radio, Settings,
@@ -55,7 +55,7 @@ export function EchoClient() {
   const [newTplCategory, setNewTplCategory] = useState("custom");
   const [newTplIcon, setNewTplIcon] = useState("📨");
   const [sendingTemplate, setSendingTemplate] = useState(false);
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const apiBase = getApiBaseUrl();
 
   const fetchHealth = useCallback(async () => {

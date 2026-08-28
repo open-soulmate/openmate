@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { useTranslation } from "react-i18next";
 import { getApiBaseUrl } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -51,7 +51,7 @@ function formatTime(modified: string | number, t: (key: string, opts?: Record<st
 
 export function WorkspaceClient() {
   const { t } = useTranslation();
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const [currentPath, setCurrentPath] = useState("~");
   const [entries, setEntries] = useState<DirEntry[]>([]);
   const [loading, setLoading] = useState(true);

@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { useMediaQuery } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { Network, Plus, Trash2, Loader2, Link2, X } from 'lucide-react';
 import { api, getUserId } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
@@ -11,7 +11,7 @@ interface Relation { id: string; source_id: string; target_id: string; type: str
 
 export function GraphBuilderClient() {
   const { t } = useTranslation();
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const [entities, setEntities] = useState<Entity[]>([]);
   const [relations, setRelations] = useState<Relation[]>([]);
   const [loading, setLoading] = useState(true);

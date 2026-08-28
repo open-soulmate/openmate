@@ -7,7 +7,7 @@ import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose,
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { Dialog } from '@/components/ui/dialog';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { useMediaQuery } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
 
 const getApiUrl = () => getApiBaseUrl();
@@ -167,7 +167,7 @@ export function ChatClient() {
   const [editTitleValue, setEditTitleValue] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const mobileConvOpen = useAppStore((s) => s.mobileConvOpen);
   const setMobileConvOpen = useAppStore((s) => s.setMobileConvOpen);
   const wsRef = useRef<WebSocket | null>(null);

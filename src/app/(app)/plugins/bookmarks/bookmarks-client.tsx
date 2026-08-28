@@ -10,7 +10,7 @@ import {
   PanelLeft,
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface BookmarkItem {
   id: string;
@@ -55,7 +55,7 @@ export function BookmarksClient() {
   const { t } = useTranslation();
   const apiBase = getApiBaseUrl();
   const pluginBase = `${apiBase}/api/plugins/bookmarks`;
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const [showSidebar, setShowSidebar] = useState(true);
 
   const [tab, setTab] = useState<Tab>("bookmarks");

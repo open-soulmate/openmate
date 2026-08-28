@@ -9,7 +9,7 @@ import {
   XCircle, Clock, MousePointer, Zap,
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface RPATask {
   task_id: string;
@@ -88,7 +88,7 @@ export function LimbClient() {
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showTemplate, setShowTemplate] = useState<Template | null>(null);
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
 
   // Quick create from template
   const [tplVars, setTplVars] = useState<Record<string, string>>({});

@@ -16,7 +16,7 @@ import {
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { getApiBaseUrl } from "@/lib/api-client";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 interface QuizQuestion {
@@ -56,7 +56,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState<(number | null)[]>([]);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const [showSidebar, setShowSidebar] = useState(true);
 
   const fetchCourse = useCallback(async () => {

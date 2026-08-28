@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   RefreshCw, Plus, Play, Pause, Trash2,
@@ -51,7 +51,7 @@ export function MirrorClient() {
   const [varKey, setVarKey] = useState("");
   const [varValue, setVarValue] = useState("");
   const [templateVarOverrides, setTemplateVarOverrides] = useState<Record<string, string>>({});
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const apiBase = getApiBaseUrl();
 
   const fetchHealth = useCallback(async () => {

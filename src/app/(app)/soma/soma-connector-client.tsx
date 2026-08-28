@@ -11,7 +11,7 @@ import {
   Monitor, Layers, History,
 } from "lucide-react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SomaComponent {
   component_id: string;
@@ -97,7 +97,7 @@ export function SomaConnectorClient() {
   const [showRegister, setShowRegister] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCapabilities, setShowCapabilities] = useState(false);
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const apiBase = getApiBaseUrl();
 
   // Collectors state
