@@ -117,7 +117,7 @@ export function SearchClient() {
   }
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="px-3 lg:px-6 py-4 lg:py-6 max-w-6xl mx-auto space-y-4 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-gradient-to-br from-cyan-500/20 to-blue-500/20">

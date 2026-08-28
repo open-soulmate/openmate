@@ -208,7 +208,7 @@ export function WorkflowClient() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 border-b border-border px-3 lg:px-6 py-3 lg:py-4">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
             <Workflow size={18} />
@@ -234,7 +234,7 @@ export function WorkflowClient() {
       </div>
 
       {/* Filters */}
-      <div className="flex items-center gap-1 border-b border-border px-6 py-2">
+      <div className="flex items-center gap-1 border-b border-border px-3 lg:px-6 py-2">
         <Filter size={13} className="mr-1 text-muted-foreground" />
         {filters.map((f) => (
           <button
@@ -251,7 +251,7 @@ export function WorkflowClient() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-4 lg:py-6 space-y-4">
         {/* Create form */}
         {showCreate && (
           <div className="rounded-xl border border-primary/30 bg-primary/5 p-5 space-y-4">
