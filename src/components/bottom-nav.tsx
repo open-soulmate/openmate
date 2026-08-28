@@ -92,7 +92,11 @@ const navItems: BottomNavItem[] = [
   { href: "/settings", label: "nav.settings", icon: Settings },
 ];
 
-export function BottomNav() {
+interface BottomNavProps {
+  totalUnread?: number;
+}
+
+export function BottomNav({ totalUnread = 0 }: BottomNavProps) {
   const pathname = usePathname();
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -181,19 +185,27 @@ export function BottomNav() {
         {navItems.map((item) => {
           const active = pathname.startsWith(item.href);
           const Icon = item.icon;
+          const isChat = item.href === '/chat';
           return (
             <Link
               key={item.href}
               href={item.href}
               ref={active ? activeRef : undefined}
               className={cn(
-                "flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[9px] font-medium transition-colors min-w-[48px]",
+                "relative flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[9px] font-medium transition-colors min-w-[48px]",
                 active
                   ? "text-primary bg-primary/10"
                   : "text-muted-foreground hover:text-foreground hover:bg-accent"
               )}
             >
-              <Icon size={16} strokeWidth={active ? 2.2 : 1.5} />
+              <div className="relative">
+                <Icon size={16} strokeWidth={active ? 2.2 : 1.5} />
+                {isChat && totalUnread > 0 && (
+                  <span className="absolute -top-1.5 -right-2 flex items-center justify-center min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[7px] font-bold leading-none">
+                    {totalUnread > 99 ? '99+' : totalUnread}
+                  </span>
+                )}
+              </div>
               <span className="truncate max-w-[42px] leading-tight">{t(item.label)}</span>
             </Link>
           );

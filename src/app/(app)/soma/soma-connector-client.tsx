@@ -10,6 +10,8 @@ import {
   Play, Square, RotateCcw, Database, HardDrive,
   Monitor, Layers, History,
 } from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useMediaQuery } from "@/hooks/use-mobile";
 
 interface SomaComponent {
   component_id: string;
@@ -95,6 +97,7 @@ export function SomaConnectorClient() {
   const [showRegister, setShowRegister] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showCapabilities, setShowCapabilities] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 1023px)");
   const apiBase = getApiBaseUrl();
 
   // Collectors state
@@ -372,8 +375,8 @@ export function SomaConnectorClient() {
             </div>
 
             {/* Component List */}
-            <div className="flex gap-6">
-              <div className="w-80 space-y-3">
+            <div className={`flex gap-6 ${isMobile ? 'flex-col' : ''}`}>
+              <div className={`${isMobile ? 'w-full' : 'w-80'} space-y-3`}>
                 {components.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                     <Plug size={40} className="mb-3 opacity-30" />
@@ -408,8 +411,63 @@ export function SomaConnectorClient() {
                 ))}
               </div>
 
-              {/* Detail Panel */}
-              {selected && (
+              {/* Detail Panel — Sheet on mobile, inline on desktop */}
+              {selected && isMobile ? (
+                <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
+                  <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col overflow-y-auto">
+                    <div className="p-4 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-semibold">{selected.name}</h3>
+                          <span className="text-xs text-muted-foreground font-mono">{selected.component_id}</span>
+                        </div>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleHeartbeat(selected.component_id)}
+                            className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
+                            <Zap size={12} /> {t("soma.sendHeartbeat")}
+                          </button>
+                          <button onClick={() => handleUnregister(selected.component_id)}
+                            className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
+                            <Trash2 size={12} /> {t("soma.unregister")}
+                          </button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div><span className="text-muted-foreground">{t("soma.type")}:</span> {selected.component_type}</div>
+                        <div><span className="text-muted-foreground">{t("soma.version")}:</span> v{selected.version}</div>
+                        <div><span className="text-muted-foreground">{t("soma.registeredAt")}:</span> {formatTime(selected.registered_at, t)}</div>
+                        <div><span className="text-muted-foreground">{t("soma.lastHeartbeat")}:</span> {formatTime(selected.last_heartbeat, t)}</div>
+                        <div><span className="text-muted-foreground">{t("soma.dataPush")}:</span> {selected.data_push_count} {t("soma.times")}</div>
+                        <div><span className="text-muted-foreground">{t("soma.errorCount")}:</span> {selected.error_count}</div>
+                      </div>
+
+                      {selected.capabilities.length > 0 && (
+                        <div>
+                          <h4 className="text-xs text-muted-foreground mb-2">{t("soma.capabilityTags")}</h4>
+                          <div className="flex flex-wrap gap-2">
+                            {selected.capabilities.map((cap) => (
+                              <span key={cap} className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs text-cyan-600">
+                                {cap}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {selected.last_error && (
+                        <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3">
+                          <div className="flex items-center gap-2 text-xs text-red-500">
+                            <AlertTriangle size={12} />
+                            <span className="font-medium">{t("soma.recentError")}</span>
+                          </div>
+                          <p className="text-xs text-red-400 mt-1">{selected.last_error}</p>
+                        </div>
+                      )}
+                    </div>
+                  </SheetContent>
+                </Sheet>
+              ) : selected ? (
                 <div className="flex-1 space-y-4">
                   <div className="flex items-center justify-between">
                     <div>
