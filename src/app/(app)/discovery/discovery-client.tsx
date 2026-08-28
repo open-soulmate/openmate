@@ -228,7 +228,7 @@ export function DiscoveryClient() {
             <p className="text-xs text-muted-foreground">Local software scanning & adapter management</p>
           </div>
         </div>
-        <button onClick={runFullScan} disabled={scanning} className={cn("flex items-center gap-2 px-2 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition-all", scanning ? "bg-muted text-muted-foreground" : "bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 shadow-lg shadow-cyan-500/20")}>
+        <button onClick={runFullScan} disabled={scanning} className={cn("flex items-center gap-2 px-2 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition-all touch-manipulation", scanning ? "bg-muted text-muted-foreground" : "bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 shadow-lg shadow-cyan-500/20")}>
           <RefreshCw className={cn("w-4 h-4", scanning && "animate-spin")} />
           {scanning ? "Scanning..." : "Full Scan"}
         </button>
@@ -249,7 +249,7 @@ export function DiscoveryClient() {
       {/* Tabs */}
       <div className="flex gap-1 px-3 lg:px-6 pt-3 border-b border-border">
         {(["scan", "adapters"] as Tab[]).map(t => (
-          <button key={t} onClick={() => setTab(t)} className={cn("px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium rounded-t-lg transition-colors border-b-2", tab === t ? "border-cyan-500 text-cyan-400 bg-card/50" : "border-transparent text-muted-foreground hover:text-foreground")}>
+          <button key={t} onClick={() => setTab(t)} className={cn("px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium rounded-t-lg transition-colors border-b-2 touch-manipulation", tab === t ? "border-cyan-500 text-cyan-400 bg-card/50" : "border-transparent text-muted-foreground hover:text-foreground")}>
             {t === "scan" ? <><Monitor className="w-4 h-4 inline mr-1.5" />System Scan</> : <><Plug className="w-4 h-4 inline mr-1.5" />Adapters</>}
           </button>
         ))}
@@ -370,7 +370,7 @@ export function DiscoveryClient() {
             <div className="rounded-xl border border-border bg-card/30">
               <div className="flex items-center justify-between px-2 lg:px-4 py-2 lg:py-3 border-b border-border">
                 <h3 className="font-semibold flex items-center gap-2"><Plug className="w-4 h-4 text-amber-400" /> Configured Adapters ({adapters.length})</h3>
-                <button onClick={() => setShowAddAdapter(!showAddAdapter)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs lg:text-sm hover:bg-amber-500 transition-colors">
+                <button onClick={() => setShowAddAdapter(!showAddAdapter)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs lg:text-sm hover:bg-amber-500 transition-colors touch-manipulation">
                   <Plus className="w-3.5 h-3.5" /> Add Adapter
                 </button>
               </div>
@@ -406,7 +406,7 @@ export function DiscoveryClient() {
                 <h3 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4 text-amber-400" /> Configure New Adapter</h3>
                 <div className="flex gap-2">
                   {(["rest", "database", "filesystem"] as const).map(t => (
-                    <button key={t} onClick={() => setAdapterType(t)} className={cn("px-2 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition-colors", adapterType === t ? "bg-amber-600 text-white" : "bg-muted text-muted-foreground hover:text-foreground")}>
+                    <button key={t} onClick={() => setAdapterType(t)} className={cn("px-2 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition-colors touch-manipulation", adapterType === t ? "bg-amber-600 text-white" : "bg-muted text-muted-foreground hover:text-foreground")}>
                       {t === "rest" ? <><Globe className="w-3.5 h-3.5 inline mr-1" />REST</> : t === "database" ? <><Database className="w-3.5 h-3.5 inline mr-1" />Database</> : <><FolderOpen className="w-3.5 h-3.5 inline mr-1" />Filesystem</>}
                     </button>
                   ))}
@@ -475,7 +475,7 @@ export function DiscoveryClient() {
                 )}
 
                 <div className="flex gap-2">
-                  <button onClick={configureAdapter} disabled={testingAdapter} className="flex items-center gap-2 px-2 lg:px-4 py-2 rounded-lg bg-amber-600 text-white text-xs lg:text-sm hover:bg-amber-500 transition-colors disabled:opacity-50">
+                  <button onClick={configureAdapter} disabled={testingAdapter} className="flex items-center gap-2 px-2 lg:px-4 py-2 rounded-lg bg-amber-600 text-white text-xs lg:text-sm hover:bg-amber-500 transition-colors disabled:opacity-50 touch-manipulation">
                     {testingAdapter ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                     Configure & Test
                   </button>
@@ -492,7 +492,7 @@ export function DiscoveryClient() {
               <div className="rounded-xl border border-border bg-card/30 p-3 lg:p-4 space-y-3">
                 <h4 className="font-medium flex items-center gap-2 text-xs lg:text-sm"><Globe className="w-4 h-4 text-blue-400" /> REST Probe</h4>
                 <input value={restProbeUrl} onChange={e => setRestProbeUrl(e.target.value)} placeholder="https://httpbin.org/get" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" />
-                <button onClick={probeRest} disabled={testingAdapter || !restProbeUrl} className="w-full px-3 py-2 rounded-lg bg-blue-600 text-white text-xs lg:text-sm hover:bg-blue-500 disabled:opacity-50 transition-colors">
+                <button onClick={probeRest} disabled={testingAdapter || !restProbeUrl} className="w-full px-3 py-2 rounded-lg bg-blue-600 text-white text-xs lg:text-sm hover:bg-blue-500 disabled:opacity-50 transition-colors touch-manipulation">
                   {testingAdapter ? <RefreshCw className="w-3.5 h-3.5 animate-spin inline" /> : <Play className="w-3.5 h-3.5 inline" />} Probe
                 </button>
                 {restProbeResult && <pre className="p-2 rounded bg-background border border-border text-xs font-mono overflow-x-auto max-h-32">{restProbeResult}</pre>}
@@ -503,10 +503,10 @@ export function DiscoveryClient() {
                 <h4 className="font-medium flex items-center gap-2 text-xs lg:text-sm"><Database className="w-4 h-4 text-purple-400" /> Database Query</h4>
                 <input value={dbQueryInput} onChange={e => setDbQueryInput(e.target.value)} placeholder="SELECT * FROM table LIMIT 10" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm font-mono" onKeyDown={e => e.key === "Enter" && queryDb()} />
                 <div className="flex gap-2">
-                  <button onClick={() => queryDb()} disabled={testingAdapter || !dbQueryInput} className="flex-1 px-3 py-2 rounded-lg bg-purple-600 text-white text-xs lg:text-sm hover:bg-purple-500 disabled:opacity-50 transition-colors">
+                  <button onClick={() => queryDb()} disabled={testingAdapter || !dbQueryInput} className="flex-1 px-3 py-2 rounded-lg bg-purple-600 text-white text-xs lg:text-sm hover:bg-purple-500 disabled:opacity-50 transition-colors touch-manipulation">
                     <Play className="w-3.5 h-3.5 inline" /> Query
                   </button>
-                  <button onClick={listTables} disabled={testingAdapter} className="px-3 py-2 rounded-lg bg-muted text-foreground text-xs lg:text-sm hover:bg-muted/80 disabled:opacity-50 transition-colors">
+                  <button onClick={listTables} disabled={testingAdapter} className="px-3 py-2 rounded-lg bg-muted text-foreground text-xs lg:text-sm hover:bg-muted/80 disabled:opacity-50 transition-colors touch-manipulation">
                     <Layers className="w-3.5 h-3.5 inline" /> Tables
                   </button>
                 </div>
@@ -518,18 +518,18 @@ export function DiscoveryClient() {
                 <h4 className="font-medium flex items-center gap-2 text-xs lg:text-sm"><FolderOpen className="w-4 h-4 text-emerald-400" /> Filesystem Browse</h4>
                 <div className="flex gap-2">
                   <input value={fsPath} onChange={e => setFsPath(e.target.value)} placeholder="/" className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" onKeyDown={e => e.key === "Enter" && listFs()} />
-                  <button onClick={() => listFs()} disabled={testingAdapter} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs lg:text-sm hover:bg-emerald-500 disabled:opacity-50 transition-colors">
+                  <button onClick={() => listFs()} disabled={testingAdapter} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs lg:text-sm hover:bg-emerald-500 disabled:opacity-50 transition-colors touch-manipulation">
                     <Eye className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <div className="max-h-40 overflow-y-auto space-y-0.5">
                   {fsPath !== "/" && (
-                    <button onClick={() => { const parent = fsPath.split("/").slice(0, -1).join("/") || "/"; listFs(parent); }} className="w-full text-left px-2 py-1 rounded text-xs lg:text-sm text-muted-foreground hover:bg-muted/50 flex items-center gap-1.5">
+                    <button onClick={() => { const parent = fsPath.split("/").slice(0, -1).join("/") || "/"; listFs(parent); }} className="w-full text-left px-2 py-1 rounded text-xs lg:text-sm text-muted-foreground hover:bg-muted/50 flex items-center gap-1.5 touch-manipulation">
                       <ArrowRight className="w-3 h-3 rotate-180" /> ..
                     </button>
                   )}
                   {fsListing.map((f, i) => (
-                    <button key={i} onClick={() => { if (f.is_dir) listFs(fsPath === "/" ? `/${f.name}` : `${fsPath}/${f.name}`); }} className={cn("w-full text-left px-2 py-1 rounded text-xs lg:text-sm hover:bg-muted/50 flex items-center gap-1.5", f.is_dir ? "text-emerald-400" : "text-foreground")}>
+                    <button key={i} onClick={() => { if (f.is_dir) listFs(fsPath === "/" ? `/${f.name}` : `${fsPath}/${f.name}`); }} className={cn("w-full text-left px-2 py-1 rounded text-xs lg:text-sm hover:bg-muted/50 flex items-center gap-1.5 touch-manipulation", f.is_dir ? "text-emerald-400" : "text-foreground")}>
                       {f.is_dir ? <FolderOpen className="w-3 h-3 shrink-0" /> : <FileText className="w-3 h-3 shrink-0" />}
                       <span className="truncate">{f.name}</span>
                       {!f.is_dir && <span className="ml-auto text-xs text-muted-foreground">{(f.size / 1024).toFixed(1)}K</span>}
