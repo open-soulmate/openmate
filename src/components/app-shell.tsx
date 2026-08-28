@@ -73,6 +73,16 @@ const AGENT_EMOJI: Record<string, string> = {
   'amazon-q': '☁️', openclaw: '🐾', 'pi-agent': 'π',
 };
 
+const SOURCE_META: Record<string, { label: string; icon: string }> = {
+  cli:      { label: 'CLI',    icon: '⌨️' },
+  weixin:   { label: '微信',   icon: '💬' },
+  cron:     { label: 'Cron',   icon: '⏰' },
+  acp:      { label: 'ACP',    icon: '🔗' },
+  tui:      { label: 'TUI',    icon: '🖥️' },
+  tool:     { label: 'Tool',   icon: '🔧' },
+  subagent: { label: 'Sub',    icon: '🤖' },
+};
+
 function getAgentEmoji(platform: string): string {
   if (!platform) return '💬';
   const key = platform.toLowerCase();
@@ -158,7 +168,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       .catch(() => {});
   }, 30000, []);
 
-  // Group sessions by agent/platform
+  // Group sessions by agent → source (two-level, like chat page)
   const groupedSessions = useMemo(() => {
     const q = sessionSearch.trim().toLowerCase();
     const filtered = q
@@ -169,31 +179,56 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         })
       : sessions;
 
-    const groups = new Map<string, SessionItem[]>();
+    // First: group by agent
+    const agentMap = new Map<string, SessionItem[]>();
     for (const s of filtered) {
       const agent = s.platform || s.source || 'other';
-      if (!groups.has(agent)) groups.set(agent, []);
-      groups.get(agent)!.push(s);
+      if (!agentMap.has(agent)) agentMap.set(agent, []);
+      agentMap.get(agent)!.push(s);
     }
 
-    // Sort groups: most recent activity first; sessions within each group by last_active desc
-    const sorted = Array.from(groups.entries())
-      .map(([agent, items]) => ({
-        agent,
-        emoji: getAgentEmoji(agent),
-        sessions: items.sort((a, b) => {
-          const ta = new Date(a.last_active || a.updated_at || 0).getTime();
-          const tb = new Date(b.last_active || b.updated_at || 0).getTime();
-          return tb - ta;
-        }),
-      }))
+    // Second: within each agent, group by source
+    const result = Array.from(agentMap.entries())
+      .map(([agent, agentSessions]) => {
+        const sourceMap = new Map<string, SessionItem[]>();
+        for (const s of agentSessions) {
+          const src = s.source || s.platform || agent;
+          if (!sourceMap.has(src)) sourceMap.set(src, []);
+          sourceMap.get(src)!.push(s);
+        }
+
+        const sources = Array.from(sourceMap.entries())
+          .map(([src, items]) => ({
+            source: src,
+            label: SOURCE_META[src]?.label || src,
+            icon: SOURCE_META[src]?.icon || '💬',
+            sessions: items.sort((a, b) => {
+              const ta = new Date(a.last_active || a.updated_at || 0).getTime();
+              const tb = new Date(b.last_active || b.updated_at || 0).getTime();
+              return tb - ta;
+            }),
+            expanded: false,
+          }))
+          .sort((a, b) => {
+            const ta = new Date(a.sessions[0]?.last_active || a.sessions[0]?.updated_at || 0).getTime();
+            const tb = new Date(b.sessions[0]?.last_active || b.sessions[0]?.updated_at || 0).getTime();
+            return tb - ta;
+          });
+
+        return {
+          agent,
+          emoji: getAgentEmoji(agent),
+          sessions: agentSessions,
+          sources,
+        };
+      })
       .sort((a, b) => {
-        const ta = new Date(a.sessions[0].last_active || a.sessions[0].updated_at || 0).getTime();
-        const tb = new Date(b.sessions[0].last_active || b.sessions[0].updated_at || 0).getTime();
+        const ta = new Date(a.sessions[0]?.last_active || a.sessions[0]?.updated_at || 0).getTime();
+        const tb = new Date(b.sessions[0]?.last_active || b.sessions[0]?.updated_at || 0).getTime();
         return tb - ta;
       });
 
-    return sorted;
+    return result;
   }, [sessions, sessionSearch]);
 
   const userId = getUserName() || getUserId() || "User";
@@ -322,44 +357,73 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         />
                       </button>
 
-                      {/* Sessions under this agent */}
-                      {!isCollapsed && group.sessions.map((session) => (
-                        <button
-                          key={session.id}
-                          onClick={() => handleConversationClick(session.id)}
-                          className={cn(
-                            "flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:py-2"
+                      {/* Source sub-groups under this agent */}
+                      {!isCollapsed && group.sources.map((src) => (
+                        <div key={src.source} className="ml-2">
+                          {/* Source header (only show if agent has multiple sources) */}
+                          {group.sources.length > 1 && (
+                            <button
+                              onClick={() => {
+                                setCollapsedAgents(prev => {
+                                  const key = `${group.agent}:${src.source}`;
+                                  const next = new Set(prev);
+                                  if (next.has(key)) next.delete(key);
+                                  else next.add(key);
+                                  return next;
+                                });
+                              }}
+                              className="flex w-full items-center gap-1.5 rounded-md px-2 py-1 text-[11px] text-muted-foreground/70 hover:bg-sidebar-accent group-data-[collapsible=icon]:hidden"
+                            >
+                              <span className="text-xs">{src.icon}</span>
+                              <span className="flex-1 text-left truncate">{src.label}</span>
+                              <ChevronDown
+                                size={10}
+                                className={cn(
+                                  "transition-transform",
+                                  collapsedAgents.has(`${group.agent}:${src.source}`) && "-rotate-90"
+                                )}
+                              />
+                            </button>
                           )}
-                          title={session.title || session.name || session.id}
-                        >
-                          {/* Avatar */}
-                          <div className="relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-muted text-sm group-data-[collapsible=icon]:h-7 group-data-[collapsible=icon]:w-7">
-                            {group.emoji}
-                            {session.unread > 0 && (
-                              <span className="absolute -top-0.5 -right-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-bold text-white">
-                                {session.unread > 99 ? '99+' : session.unread}
-                              </span>
-                            )}
-                          </div>
 
-                          {/* Text content */}
-                          <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                            <div className="flex items-center justify-between">
-                              <span className={cn(
-                                "text-sm truncate",
-                                session.unread > 0 ? "font-semibold text-foreground" : "font-normal text-foreground/80"
-                              )}>
-                                {session.title || session.name || session.id}
-                              </span>
-                              <span className="ml-2 shrink-0 text-[10px] text-muted-foreground">
-                                {relativeTime(session.last_active || session.updated_at)}
-                              </span>
-                            </div>
-                            <p className="text-xs text-muted-foreground truncate mt-0.5">
-                              {session.last_message || ''}
-                            </p>
-                          </div>
-                        </button>
+                          {/* Sessions under this source */}
+                          {!collapsedAgents.has(`${group.agent}:${src.source}`) && src.sessions.map((session) => (
+                            <button
+                              key={session.id}
+                              onClick={() => handleConversationClick(session.id)}
+                              className="flex w-full items-center gap-2.5 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-sidebar-accent group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0"
+                              title={session.title || session.name || session.id}
+                            >
+                              {/* Avatar — source icon if multi-source, agent emoji if single */}
+                              <div className="relative flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-muted text-xs group-data-[collapsible=icon]:h-6 group-data-[collapsible=icon]:w-6">
+                                {group.sources.length > 1 ? src.icon : group.emoji}
+                                {session.unread > 0 && (
+                                  <span className="absolute -top-0.5 -right-0.5 flex h-3.5 min-w-[14px] items-center justify-center rounded-full bg-red-500 px-0.5 text-[8px] font-bold text-white">
+                                    {session.unread > 99 ? '99+' : session.unread}
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Text content */}
+                              <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                                <div className="flex items-center justify-between">
+                                  <span className={cn(
+                                    "text-[13px] truncate",
+                                    session.unread > 0 ? "font-semibold text-foreground" : "font-normal text-foreground/80"
+                                  )}>
+                                    {session.title || session.name || session.id}
+                                  </span>
+                                  <span className="ml-1 shrink-0 text-[9px] text-muted-foreground">
+                                    {relativeTime(session.last_active || session.updated_at)}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-muted-foreground truncate mt-px">
+                                  {session.last_message || ''}
+                                </p>
+                              </div>
+                            </button>
+                          ))}
+                        </div>
                       ))}
                     </div>
                   );
