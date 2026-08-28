@@ -471,18 +471,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarProvider>
 
       {/* Right Panel — workspace tabs (mobile: Sheet, desktop: inline) */}
-      <div className="hidden md:block">
-        {rightPanelOpen && (
-          <div className="flex flex-col h-full overflow-hidden border-l border-border w-80 shrink-0">
-            <RightPanel open={true} onToggle={() => setRightPanelOpen(false)} />
-          </div>
-        )}
-      </div>
-      <Sheet open={rightPanelOpen} onOpenChange={setRightPanelOpen}>
-        <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col md:hidden">
+      {!isMobile && rightPanelOpen && (
+        <div className="flex flex-col h-full overflow-hidden border-l border-border w-80 shrink-0">
           <RightPanel open={true} onToggle={() => setRightPanelOpen(false)} />
-        </SheetContent>
-      </Sheet>
+        </div>
+      )}
+      {isMobile && (
+        <Sheet open={rightPanelOpen} onOpenChange={setRightPanelOpen}>
+          <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col">
+            <RightPanel open={true} onToggle={() => setRightPanelOpen(false)} />
+          </SheetContent>
+        </Sheet>
+      )}
       </div>
 
       {/* Bottom navigation bar — full screen width */}
