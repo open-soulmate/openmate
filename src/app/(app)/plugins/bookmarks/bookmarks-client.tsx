@@ -390,7 +390,7 @@ export function BookmarksClient() {
                         <s.icon className={`w-4 h-4 text-${s.color}-400`} />
                         <span className="text-xs text-zinc-500">{s.label}</span>
                       </div>
-                      <p className="text-2xl font-bold text-zinc-100">{s.value}</p>
+                      <p className="text-xl lg:text-2xl font-bold text-zinc-100">{s.value}</p>
                     </div>
                   ))}
                 </div>

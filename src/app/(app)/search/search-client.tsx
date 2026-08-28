@@ -124,7 +124,7 @@ export function SearchClient() {
           <Search className="w-6 h-6 text-cyan-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">{t("search.title") || "Search"}</h1>
+          <h1 className="text-xl lg:text-2xl font-bold">{t("search.title") || "Search"}</h1>
           <p className="text-xs lg:text-sm text-muted-foreground">
             {t("search.subtitle") || "Search across all your data sources"}
           </p>

@@ -369,7 +369,7 @@ export function SmartCalcClient() {
                 <div className="text-xs lg:text-sm text-muted-foreground">
                   {convResult.value} {convResult.from_unit}
                 </div>
-                <div className="text-2xl font-bold font-mono">=</div>
+                <div className="text-xl lg:text-2xl font-bold font-mono">=</div>
                 <div className="text-2xl lg:text-3xl font-bold font-mono text-primary">
                   {convResult.result % 1 === 0 ? convResult.result.toLocaleString() : convResult.result.toFixed(6)}
                 </div>

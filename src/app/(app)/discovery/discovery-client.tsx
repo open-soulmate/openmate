@@ -272,7 +272,7 @@ export function DiscoveryClient() {
                     <s.icon className={cn("w-4 h-4", `text-${s.color}-400`)} />
                     <span className="text-xs text-muted-foreground">{s.label}</span>
                   </div>
-                  <p className="text-2xl font-bold">{s.value}</p>
+                  <p className="text-xl lg:text-2xl font-bold">{s.value}</p>
                 </div>
               ))}
             </div>

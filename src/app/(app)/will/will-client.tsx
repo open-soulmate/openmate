@@ -291,7 +291,7 @@ export function WillClient() {
               ].map(s => (
                 <div key={s.label} className={cn("rounded-xl border border-border bg-gradient-to-br p-4", s.bg)}>
                   <s.icon className={cn("w-4 h-4 mb-2", s.color)} />
-                  <div className={cn("text-2xl font-bold", s.color)}>{s.value}</div>
+                  <div className={cn("text-xl lg:text-2xl font-bold", s.color)}>{s.value}</div>
                   <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
                 </div>
               ))}

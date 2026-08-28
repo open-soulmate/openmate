@@ -306,7 +306,7 @@ export function ImmuneClient() {
                     <Icon className="w-4 h-4 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">{item.label}</span>
                   </div>
-                  <div className="text-2xl font-bold">{item.value}</div>
+                  <div className="text-xl lg:text-2xl font-bold">{item.value}</div>
                 </div>
               )
             })}
@@ -669,7 +669,7 @@ export function ImmuneClient() {
                     <Icon className="w-4 h-4 text-muted-foreground" />
                     <span className="text-xs text-muted-foreground">{item.label}</span>
                   </div>
-                  <div className="text-2xl font-bold">{item.value}</div>
+                  <div className="text-xl lg:text-2xl font-bold">{item.value}</div>
                 </div>
               )
             })}

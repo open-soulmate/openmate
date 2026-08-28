@@ -127,14 +127,14 @@ export function VisionClient() {
                   <span className="text-xs font-medium text-muted-foreground">{t("vision.totalGenerated") || "Generated"}</span>
                   <div className="rounded-lg p-1.5 bg-indigo-500/10"><BarChart3 size={14} className="text-indigo-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{stats.total_generated}</p>
+                <p className="text-xl lg:text-2xl font-bold">{stats.total_generated}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("vision.savedOutputs") || "Saved"}</span>
                   <div className="rounded-lg p-1.5 bg-emerald-500/10"><FileImage size={14} className="text-emerald-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{stats.saved_outputs}</p>
+                <p className="text-xl lg:text-2xl font-bold">{stats.saved_outputs}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
@@ -148,7 +148,7 @@ export function VisionClient() {
                   <span className="text-xs font-medium text-muted-foreground">{t("vision.errors") || "Errors"}</span>
                   <div className="rounded-lg p-1.5 bg-red-500/10"><AlertTriangle size={14} className="text-red-500" /></div>
                 </div>
-                <p className="text-2xl font-bold">{stats.errors}</p>
+                <p className="text-xl lg:text-2xl font-bold">{stats.errors}</p>
               </div>
             </div>
 

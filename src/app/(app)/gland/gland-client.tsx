@@ -233,7 +233,7 @@ export function GlandClient() {
                   <div className="flex items-center justify-between mb-2">
                     <s.icon className={cn("w-4 h-4", s.color)} />
                   </div>
-                  <div className={cn("text-2xl font-bold", s.color)}>{formatNumber(s.value as number)}</div>
+                  <div className={cn("text-xl lg:text-2xl font-bold", s.color)}>{formatNumber(s.value as number)}</div>
                   <div className="text-xs text-muted-foreground mt-1">{s.label}</div>
                 </div>
               ))}

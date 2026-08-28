@@ -544,7 +544,7 @@ function StatCard({ icon: Icon, label, value, sub, color, bg }: {
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className={cn("rounded-lg p-1.5", bg)}><Icon size={14} className={color} /></div>
       </div>
-      <p className="text-2xl font-bold">{value}</p>
+      <p className="text-xl lg:text-2xl font-bold">{value}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
     </div>
   );

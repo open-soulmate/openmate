@@ -486,7 +486,7 @@ function StatsPanel({ stats, types }: { stats: TimelineStats | null; types: Type
               <card.icon className="w-3.5 h-3.5" />
               <span className="text-xs">{card.label}</span>
             </div>
-            <p className="text-2xl font-bold">{card.value}</p>
+            <p className="text-xl lg:text-2xl font-bold">{card.value}</p>
           </div>
         ))}
       </div>
