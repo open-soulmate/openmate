@@ -330,9 +330,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMidScreenExpanded(false);
   }, [isMidScreen]);
 
-  // Track right panel width (responsive to window resize)
+  // Track right panel width — default 384px, capped at 50% viewport
   useEffect(() => {
-    const update = () => setRightPanelWidth(Math.round(window.innerWidth / 2));
+    const update = () => setRightPanelWidth(Math.min(384, Math.round(window.innerWidth / 2)));
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);

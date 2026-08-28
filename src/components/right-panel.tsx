@@ -486,7 +486,7 @@ function TabIcon({ type }: { type: TabType }) {
 export function RightPanel({ open, onToggle }: RightPanelProps) {
   const [tabs, setTabs] = useState<Tab[]>([createTab('new-tab')]);
   const [activeTabId, setActiveTabId] = useState<string>(tabs[0].id);
-  const [panelWidth, setPanelWidth] = useState(typeof window !== 'undefined' ? Math.round(window.innerWidth / 2) : 420);
+  const [panelWidth, setPanelWidth] = useState(typeof window !== 'undefined' ? Math.min(384, Math.round(window.innerWidth / 2)) : 384);
   const [tabWidths, setTabWidths] = useState<Record<string, number>>({});
   const [activeTabLeft, setActiveTabLeft] = useState(0);
   const [activeTabWidth, setActiveTabWidth] = useState(0);
@@ -636,7 +636,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
     const onMouseMove = (ev: MouseEvent) => {
       if (!isResizingRef.current) return;
       const delta = startX - ev.clientX;
-      const newWidth = Math.min(Math.max(startWidth + delta, 280), 900);
+      const newWidth = Math.min(Math.max(startWidth + delta, 280), 500);
       setPanelWidth(newWidth);
     };
 
