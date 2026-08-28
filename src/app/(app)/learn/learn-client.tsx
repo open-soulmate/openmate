@@ -429,7 +429,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
           {/* Policy Card Download */}
           <button
             onClick={() => setShowPolicyCard(true)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent touch-manipulation"
           >
             <FileText size={14} />
             {t("learn.policyCard") || "Policy"}
@@ -437,7 +437,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
           {/* Import */}
           <button
             onClick={handleImport}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent touch-manipulation"
           >
             <Upload size={14} />
             {t("learn.import") || "Import"}
@@ -445,7 +445,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
           {/* Create */}
           <button
             onClick={() => { resetForm(); setShowCreateModal(true); }}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90"
+            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 touch-manipulation"
           >
             <Plus size={14} />
             {t("learn.createCourse") || "Create"}
@@ -516,14 +516,14 @@ Generated: ${new Date().toLocaleString("zh-CN")}
                   <div className="absolute right-2 top-2 flex items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
                     <button
                       onClick={(e) => openEdit(e, course)}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground"
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground touch-manipulation"
                       title="Edit"
                     >
                       <Edit3 size={13} />
                     </button>
                     <button
                       onClick={(e) => handleDelete(e, course.id)}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-red-500"
+                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-red-500 touch-manipulation"
                       title="Delete"
                     >
                       <Trash2 size={13} />
@@ -531,7 +531,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
                     {course.status === "completed" && (
                       <button
                         onClick={(e) => openLearningCard(e, course)}
-                        className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-amber-500"
+                        className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-amber-500 touch-manipulation"
                         title="Learning Card"
                       >
                         <Award size={13} />
@@ -594,7 +594,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold">{t("learn.createCourse") || "Create Course"}</h2>
-              <button onClick={() => setShowCreateModal(false)} className="rounded-md p-1 hover:bg-accent">
+              <button onClick={() => setShowCreateModal(false)} className="rounded-md p-1 hover:bg-accent touch-manipulation">
                 <X size={16} />
               </button>
             </div>
@@ -636,7 +636,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
               <div className="flex gap-2">
                 <button
                   onClick={() => setGenMode("ai")}
-                  className={`flex-1 rounded-md border px-3 py-2 text-xs lg:text-sm transition-colors ${
+                  className={`flex-1 rounded-md border px-3 py-2 text-xs lg:text-sm transition-colors touch-manipulation ${
                     genMode === "ai" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
                   }`}
                 >
@@ -645,7 +645,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
                 </button>
                 <button
                   onClick={() => setGenMode("manual")}
-                  className={`flex-1 rounded-md border px-3 py-2 text-xs lg:text-sm transition-colors ${
+                  className={`flex-1 rounded-md border px-3 py-2 text-xs lg:text-sm transition-colors touch-manipulation ${
                     genMode === "manual" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
                   }`}
                 >
@@ -687,14 +687,14 @@ Generated: ${new Date().toLocaleString("zh-CN")}
             <div className="mt-6 flex justify-end gap-2">
               <button
                 onClick={() => { setShowCreateModal(false); resetForm(); }}
-                className="rounded-md border border-border px-4 py-2 text-xs lg:text-sm hover:bg-accent"
+                className="rounded-md border border-border px-4 py-2 text-xs lg:text-sm hover:bg-accent touch-manipulation"
               >
                 {t("common.cancel") || "Cancel"}
               </button>
               <button
                 onClick={handleCreate}
                 disabled={!formTitle.trim() || generating}
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 touch-manipulation"
               >
                 {generating ? (
                   <><Loader2 size={14} className="animate-spin" /> {t("learn.creating") || "Creating..."}</>
@@ -716,7 +716,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
           >
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold">{t("learn.editCourse") || "Edit Course"}</h2>
-              <button onClick={() => setShowEditModal(false)} className="rounded-md p-1 hover:bg-accent">
+              <button onClick={() => setShowEditModal(false)} className="rounded-md p-1 hover:bg-accent touch-manipulation">
                 <X size={16} />
               </button>
             </div>
@@ -751,14 +751,14 @@ Generated: ${new Date().toLocaleString("zh-CN")}
             <div className="mt-6 flex justify-end gap-2">
               <button
                 onClick={() => { setShowEditModal(false); resetForm(); }}
-                className="rounded-md border border-border px-4 py-2 text-xs lg:text-sm hover:bg-accent"
+                className="rounded-md border border-border px-4 py-2 text-xs lg:text-sm hover:bg-accent touch-manipulation"
               >
                 {t("common.cancel") || "Cancel"}
               </button>
               <button
                 onClick={handleEdit}
                 disabled={!formTitle.trim() || generating}
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 touch-manipulation"
               >
                 {generating ? (
                   <><Loader2 size={14} className="animate-spin" /> {t("common.saving") || "Saving..."}</>
@@ -783,7 +783,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
                 <Award size={18} className="text-amber-500" />
                 {t("learn.learningCard") || "Learning Card"}
               </h2>
-              <button onClick={() => setShowLearningCard(false)} className="rounded-md p-1 hover:bg-accent">
+              <button onClick={() => setShowLearningCard(false)} className="rounded-md p-1 hover:bg-accent touch-manipulation">
                 <X size={16} />
               </button>
             </div>
@@ -816,7 +816,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
             <div className="mt-4 flex justify-center">
               <button
                 onClick={downloadCardAsImage}
-                className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-6 py-2 text-xs lg:text-sm font-medium text-white hover:bg-amber-600"
+                className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-6 py-2 text-xs lg:text-sm font-medium text-white hover:bg-amber-600 touch-manipulation"
               >
                 <ImageIcon size={16} />
                 {t("learn.downloadAsImage") || "Download as Image"}
@@ -838,7 +838,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
                 <FileText size={18} className="text-blue-500" />
                 {t("learn.policyCard") || "Learning Policy"}
               </h2>
-              <button onClick={() => setShowPolicyCard(false)} className="rounded-md p-1 hover:bg-accent">
+              <button onClick={() => setShowPolicyCard(false)} className="rounded-md p-1 hover:bg-accent touch-manipulation">
                 <X size={16} />
               </button>
             </div>
@@ -870,7 +870,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
             <div className="mt-4 flex justify-center">
               <button
                 onClick={downloadPolicyCard}
-                className="inline-flex items-center gap-2 rounded-md bg-blue-500 px-6 py-2 text-xs lg:text-sm font-medium text-white hover:bg-blue-600"
+                className="inline-flex items-center gap-2 rounded-md bg-blue-500 px-6 py-2 text-xs lg:text-sm font-medium text-white hover:bg-blue-600 touch-manipulation"
               >
                 <Download size={16} />
                 {t("learn.downloadPolicy") || "Download Policy Card"}
