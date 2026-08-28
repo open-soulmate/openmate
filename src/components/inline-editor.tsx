@@ -52,7 +52,7 @@ export function InlineEditor({ code, language, fileName, readOnly = false, onApp
           {!readOnly && !isEditing && (
             <button
               onClick={() => setIsEditing(true)}
-              className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground px-1.5 py-0.5 rounded hover:bg-muted/50"
+              className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:text-foreground px-1.5 py-0.5 rounded hover:bg-muted/50"
             >
               <Pencil className="w-3 h-3" />
               <span>{t('markdown.edit')}</span>
@@ -60,7 +60,7 @@ export function InlineEditor({ code, language, fileName, readOnly = false, onApp
           )}
           <button
             onClick={handleCopy}
-            className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity hover:text-foreground px-1.5 py-0.5 rounded hover:bg-muted/50"
+            className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity hover:text-foreground px-1.5 py-0.5 rounded hover:bg-muted/50"
           >
             {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3" />}
             {copied ? t('markdown.copied') : t('markdown.copy')}

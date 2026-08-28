@@ -344,7 +344,7 @@ export function WorkflowClient() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                       {(wf.status === "draft" || wf.status === "paused" || wf.status === "active") && (
                         <button onClick={() => handleExecute(wf)} disabled={!!busy}
                           className="flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"

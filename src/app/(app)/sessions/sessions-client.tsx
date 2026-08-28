@@ -559,7 +559,7 @@ export function SessionsClient() {
                                       </div>
                                     </div>
                                     <button onClick={(e) => { e.stopPropagation(); deleteSession(session.session_id) }}
-                                      className="p-1 rounded hover:bg-zinc-700 text-zinc-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                                      className="p-1 rounded hover:bg-zinc-700 text-zinc-600 hover:text-red-400 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                                       <Trash2 className="w-3 h-3" />
                                     </button>
                                   </div>
@@ -834,7 +834,7 @@ export function SessionsClient() {
                                   {/* Add tag button */}
                                   <button
                                     onClick={(e) => { e.stopPropagation(); setTaggingSession(prev => prev === session.session_id ? null : session.session_id); setTagInput("") }}
-                                    className={`p-1 rounded transition-colors opacity-0 group-hover:opacity-100 ${
+                                    className={`p-1 rounded transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 ${
                                       taggingSession === session.session_id
                                         ? "bg-indigo-800/30 text-indigo-400"
                                         : "hover:bg-zinc-700 text-zinc-600 hover:text-indigo-400"
@@ -856,7 +856,7 @@ export function SessionsClient() {
                                     </div>
                                   ) : (
                                     <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(session.session_id) }}
-                                      className="p-1 rounded hover:bg-zinc-700 text-zinc-600 hover:text-red-400 transition-colors opacity-0 group-hover:opacity-100">
+                                      className="p-1 rounded hover:bg-zinc-700 text-zinc-600 hover:text-red-400 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                                       <Trash2 className="w-3 h-3" />
                                     </button>
                                   )}

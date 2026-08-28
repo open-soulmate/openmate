@@ -303,7 +303,7 @@ export function DashboardClient() {
                 <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", stat.bg)}>
                   <stat.icon size={20} className={stat.color} />
                 </div>
-                <ArrowRight size={14} className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                <ArrowRight size={14} className="text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
               </div>
               <div className="mt-4">
                 <p className="text-xl lg:text-2xl font-bold">{stat.value}</p>
@@ -530,7 +530,7 @@ export function DashboardClient() {
                     {link.count} {t("dashboard.items")}
                   </p>
                 </div>
-                <ArrowRight size={14} className="text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                <ArrowRight size={14} className="text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
               </Link>
             ))}
           </div>

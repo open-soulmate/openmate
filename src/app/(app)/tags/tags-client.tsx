@@ -292,7 +292,7 @@ export function TagsClient() {
                 )}
 
                 {/* Action buttons */}
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">
                   <button
                     onClick={() => startEdit(tag)}
                     className="flex-1 flex items-center justify-center gap-1 p-1.5 rounded-lg bg-muted/30 text-muted-foreground hover:bg-amber-500/10 hover:text-amber-400 transition-colors"
