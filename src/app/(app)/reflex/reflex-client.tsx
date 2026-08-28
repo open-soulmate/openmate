@@ -353,7 +353,7 @@ export function ReflexClient() {
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
               <h3 className="text-sm font-semibold">{t("reflex.cacheConfig") || "Cache Configuration"}</h3>
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
                 <div>
                   <label className="text-xs text-muted-foreground">{t("reflex.maxEntries") || "Max Entries"}</label>
                   <div className="mt-1 text-2xl font-bold">{stats.cache.total_entries}<span className="text-sm font-normal text-muted-foreground"> / 5000</span></div>
