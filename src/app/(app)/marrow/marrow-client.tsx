@@ -392,7 +392,7 @@ export function MarrowClient() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
               <button
                 onClick={() => { setActiveTab("backups"); setShowCreateBackup(true) }}
                 className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all text-left"

@@ -479,7 +479,7 @@ export function HippoClient() {
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
               <h3 className="text-sm font-semibold">{t("hippo.simulateDecay") || "Simulate Decay"}</h3>
-              <div className="grid grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
                   <label className="text-xs text-muted-foreground">{t("hippo.ageHours") || "Age (hours)"}</label>
                   <input type="number" value={simAge} onChange={(e) => setSimAge(parseFloat(e.target.value) || 0)}
