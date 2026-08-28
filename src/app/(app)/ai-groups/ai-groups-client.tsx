@@ -953,9 +953,9 @@ export default function AIGroupsPage() {
                   ) : (
                     <div className="flex items-center gap-1">
                       <span className="text-xs lg:text-sm font-medium truncate">{group.name}</span>
-                      <button className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-muted/50 transition-opacity"
+                      <button className="lg:opacity-0 lg:group-hover:opacity-100 p-1 lg:p-0.5 rounded hover:bg-muted/50 touch-manipulation transition-opacity"
                         onClick={e => { e.stopPropagation(); setEditingGroupId(group.id); setEditingName(group.name); }}>
-                        <Edit3 className="w-2.5 h-2.5 text-muted-foreground" />
+                        <Edit3 className="w-3 h-3 lg:w-2.5 lg:h-2.5 text-muted-foreground" />
                       </button>
                     </div>
                   )}
@@ -971,7 +971,7 @@ export default function AIGroupsPage() {
                     return <div key={i} className={`w-5 h-5 rounded-full flex items-center justify-center border border-card ${getAgentAvatarColor(i)}`}><Icon className="w-2.5 h-2.5" /></div>;
                   })}
                 </div>
-                <button className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity"
+                <button className="lg:opacity-0 lg:group-hover:opacity-100 p-1 lg:p-0.5 rounded hover:bg-red-500/10 text-red-500 touch-manipulation transition-opacity"
                   onClick={(e) => deleteGroup(group.id, e)} title={t("aiGroups.delete")}>
                   <Trash2 className="w-3 h-3" />
                 </button>

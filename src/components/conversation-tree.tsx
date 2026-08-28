@@ -107,7 +107,7 @@ export function ConversationTree({
         agents.map(agent => (
           <div key={agent.id}>
             {/* Agent header */}
-            <div className="flex items-center justify-between px-2 py-1.5 hover:bg-muted/50 group">
+            <div className="flex items-center justify-between px-2 py-2 lg:py-1.5 hover:bg-muted/50 active:bg-muted/70 group touch-manipulation">
               <button onClick={() => onToggleAgent(agent.id)} className="flex items-center gap-1.5 flex-1 min-w-0">
                 {agent.expanded
                   ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
@@ -133,7 +133,7 @@ export function ConversationTree({
               agent.sourceGroups.map(group => (
                 <div key={group.source}>
                   <button onClick={() => onToggleSourceGroup(agent.id, group.source)}
-                    className="w-full flex items-center gap-1.5 pl-6 pr-3 py-1.5 hover:bg-muted/40 transition-colors">
+                    className="w-full flex items-center gap-1.5 pl-6 pr-3 py-2 lg:py-1.5 hover:bg-muted/40 active:bg-muted/60 touch-manipulation transition-colors">
                     {group.expanded
                       ? <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" />
                       : <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />}
@@ -155,7 +155,7 @@ export function ConversationTree({
                       <button key={session.id}
                         onClick={() => onSelectSession(session, agent)}
                         className={cn(
-                          "group w-full text-left pl-12 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer",
+                          "group w-full text-left pl-8 lg:pl-12 pr-3 py-2.5 lg:py-2 hover:bg-muted/80 active:bg-muted transition-colors cursor-pointer touch-manipulation",
                           isActive && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
                         )}>
                         <div className="flex items-center gap-1.5">
