@@ -232,7 +232,7 @@ export function NerveClient() {
   ]
 
   return (
-    <div className="p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20">
@@ -245,7 +245,7 @@ export function NerveClient() {
       </div>
 
       {/* Stats Bar */}
-      <div className="grid grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
         {[
           { label: t('nerve.t93835'), value: bus?.total_events ?? 0, icon: MessageSquare, color: "blue" },
           { label: t('nerve.t23323'), value: bus?.total_nodes ?? 0, icon: Server, color: "purple" },
@@ -266,14 +266,14 @@ export function NerveClient() {
       </div>
 
       {/* Tab Navigation */}
-      <div className="flex gap-2 border-b border-border pb-2">
+      <div className="flex gap-1 sm:gap-2 border-b border-border pb-2 overflow-x-auto scrollbar-none">
         {tabs.map(tab => {
           const Icon = tab.icon
           return (
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-t-lg text-sm font-medium transition-all ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-t-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
                 activeTab === tab.key
                   ? "bg-card border border-b-0 border-border text-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"

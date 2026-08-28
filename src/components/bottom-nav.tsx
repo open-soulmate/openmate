@@ -178,44 +178,67 @@ export function BottomNav() {
 
         {/* Center logo button */}
         <div className="relative flex shrink-0 items-center justify-center px-2">
+          {/* Center logo button — 3D sphere */}
           <button
             onClick={() => setCenterOpen(!centerOpen)}
             className={cn(
-              "flex h-11 w-11 items-center justify-center rounded-full border-2 transition-all shadow-lg",
-              centerOpen
-                ? "border-primary bg-primary text-primary-foreground scale-110 shadow-primary/30"
-                : "border-primary/50 bg-card text-primary hover:border-primary hover:shadow-primary/20 hover:scale-105"
+              "relative flex h-12 w-12 items-center justify-center rounded-full transition-all duration-300",
+              centerOpen ? "scale-110" : "hover:scale-105"
             )}
+            style={{
+              background: centerOpen
+                ? "radial-gradient(circle at 35% 30%, #a78bfa, #7c3aed 50%, #5b21b6)"
+                : "radial-gradient(circle at 35% 30%, #c4b5fd, #7c3aed 50%, #4c1d95)",
+              boxShadow: centerOpen
+                ? "0 0 20px rgba(124,58,237,0.6), 0 4px 12px rgba(0,0,0,0.4), inset 0 -2px 4px rgba(0,0,0,0.3), inset 0 2px 4px rgba(255,255,255,0.2)"
+                : "0 0 12px rgba(124,58,237,0.3), 0 6px 16px rgba(0,0,0,0.5), inset 0 -3px 6px rgba(0,0,0,0.3), inset 0 3px 6px rgba(255,255,255,0.15)",
+            }}
             title="Search & Voice"
           >
-            {centerOpen ? <X size={20} /> : (
-              <span className="text-sm font-bold tracking-tighter">OM</span>
+            {/* Glossy highlight */}
+            <div
+              className="absolute top-1 left-2 h-3 w-5 rounded-full opacity-40"
+              style={{ background: "radial-gradient(ellipse, rgba(255,255,255,0.8), transparent)" }}
+            />
+            {centerOpen ? (
+              <X size={18} className="relative z-10 text-white drop-shadow-sm" />
+            ) : (
+              <span className="relative z-10 text-[11px] font-bold text-white drop-shadow-sm tracking-tight">OM</span>
             )}
           </button>
 
           {/* Popup menu: search + voice */}
           {centerOpen && (
-            <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 flex gap-3 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            <div className="absolute bottom-full mb-3 left-1/2 -translate-x-1/2 flex gap-4 animate-in fade-in slide-in-from-bottom-2 duration-200">
               <button
                 onClick={() => {
                   setCenterOpen(false);
                   document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
                 }}
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-card border border-border shadow-lg hover:bg-accent transition-colors"
+                className="flex h-11 w-11 items-center justify-center rounded-full transition-transform hover:scale-110"
+                style={{
+                  background: "radial-gradient(circle at 35% 30%, #e5e7eb, #9ca3af 50%, #4b5563)",
+                  boxShadow: "0 0 10px rgba(156,163,175,0.3), 0 5px 14px rgba(0,0,0,0.4), inset 0 -2px 4px rgba(0,0,0,0.25), inset 0 2px 4px rgba(255,255,255,0.2)",
+                }}
                 title="Search (Ctrl+K)"
               >
-                <Search size={20} className="text-foreground" />
+                <div className="absolute top-0.5 left-1.5 h-2 w-4 rounded-full opacity-30" style={{ background: "radial-gradient(ellipse, rgba(255,255,255,0.9), transparent)" }} />
+                <Search size={18} className="relative z-10 text-white drop-shadow-sm" />
               </button>
               <button
                 onClick={() => {
                   setCenterOpen(false);
-                  // Trigger voice input — dispatch custom event for chat to handle
                   document.dispatchEvent(new CustomEvent("openmate-voice-input"));
                 }}
-                className="flex h-12 w-12 items-center justify-center rounded-full bg-primary border border-primary shadow-lg shadow-primary/30 hover:bg-primary/90 transition-colors"
+                className="flex h-11 w-11 items-center justify-center rounded-full transition-transform hover:scale-110"
+                style={{
+                  background: "radial-gradient(circle at 35% 30%, #fca5a5, #ef4444 50%, #991b1b)",
+                  boxShadow: "0 0 14px rgba(239,68,68,0.4), 0 5px 14px rgba(0,0,0,0.4), inset 0 -2px 4px rgba(0,0,0,0.25), inset 0 2px 4px rgba(255,255,255,0.2)",
+                }}
                 title="Voice Input"
               >
-                <Mic size={20} className="text-primary-foreground" />
+                <div className="absolute top-0.5 left-1.5 h-2 w-4 rounded-full opacity-30" style={{ background: "radial-gradient(ellipse, rgba(255,255,255,0.9), transparent)" }} />
+                <Mic size={18} className="relative z-10 text-white drop-shadow-sm" />
               </button>
             </div>
           )}
