@@ -133,24 +133,24 @@ export function SkillsClient() {
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Puzzle className="w-6 h-6" /> {t('skills.title')}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t('skills.description')}</p>
+          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2"><Puzzle className="w-6 h-6" /> {t('skills.title')}</h1>
+          <p className="text-xs lg:text-sm text-muted-foreground mt-1">{t('skills.description')}</p>
         </div>
         <div className="flex gap-2">
           <button onClick={handleMigrate} disabled={migrating}
-            className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm disabled:opacity-50">
+            className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-xs lg:text-sm disabled:opacity-50">
             {migrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             {migrating ? t('skills.migrating') : t('skills.migrate')}
           </button>
-          <button onClick={fetchSkills} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm"><RefreshCw className="w-4 h-4" /> {t('skills.refresh')}</button>
+          <button onClick={fetchSkills} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-xs lg:text-sm"><RefreshCw className="w-4 h-4" /> {t('skills.refresh')}</button>
         </div>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-primary">{skills.length}</p><p className="text-sm text-muted-foreground">{t('skills.available')}</p></div>
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-green-500">{installedCount}</p><p className="text-sm text-muted-foreground">{t('skills.installed')}</p></div>
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-muted-foreground">{skills.length - installedCount}</p><p className="text-sm text-muted-foreground">{t('skills.available')}</p></div>
+        <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-primary">{skills.length}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('skills.available')}</p></div>
+        <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-green-500">{installedCount}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('skills.installed')}</p></div>
+        <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-muted-foreground">{skills.length - installedCount}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('skills.available')}</p></div>
       </div>
 
       {/* Search & Filter */}
@@ -158,11 +158,11 @@ export function SkillsClient() {
         <div className="relative flex-1">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <input value={query} onChange={e => setQuery(e.target.value)} placeholder={t('skills.searchPlaceholder')}
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-muted text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+            className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-muted text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30" />
         </div>
         <div className="flex gap-1.5">
           {(['all', 'installed', 'available'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'border hover:bg-muted'}`}>
+            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-xs lg:text-sm transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'border hover:bg-muted'}`}>
               {f === 'all' ? t('skills.all') : f === 'installed' ? t('skills.filterInstalled') : t('skills.filterAvailable')}
             </button>
           ))}
@@ -184,7 +184,7 @@ export function SkillsClient() {
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <Package size={48} className="mb-4 opacity-30" />
-          <p className="text-sm">{t('skills.noSkills')}</p>
+          <p className="text-xs lg:text-sm">{t('skills.noSkills')}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -196,7 +196,7 @@ export function SkillsClient() {
                     <Puzzle size={18} className="text-primary" />
                   </div>
                   <div>
-                    <h3 className="text-sm font-medium">{skill.name}</h3>
+                    <h3 className="text-xs lg:text-sm font-medium">{skill.name}</h3>
                     {skill.category && <span className="text-[10px] text-muted-foreground">{skill.category}</span>}
                   </div>
                 </div>

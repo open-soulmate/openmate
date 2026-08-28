@@ -218,8 +218,8 @@ export function DiscoveryClient() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-border bg-card/50 backdrop-blur">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between px-3 lg:px-6 py-4 border-b border-border bg-card/50 backdrop-blur">
+        <div className="flex items-center gap-2 lg:gap-3">
           <div className="p-2 rounded-xl bg-gradient-to-br from-cyan-500/20 to-blue-500/20">
             <Search className="w-5 h-5 text-cyan-400" />
           </div>
@@ -228,7 +228,7 @@ export function DiscoveryClient() {
             <p className="text-xs text-muted-foreground">Local software scanning & adapter management</p>
           </div>
         </div>
-        <button onClick={runFullScan} disabled={scanning} className={cn("flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all", scanning ? "bg-muted text-muted-foreground" : "bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 shadow-lg shadow-cyan-500/20")}>
+        <button onClick={runFullScan} disabled={scanning} className={cn("flex items-center gap-2 px-2 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition-all", scanning ? "bg-muted text-muted-foreground" : "bg-gradient-to-r from-cyan-600 to-blue-600 text-white hover:from-cyan-500 hover:to-blue-500 shadow-lg shadow-cyan-500/20")}>
           <RefreshCw className={cn("w-4 h-4", scanning && "animate-spin")} />
           {scanning ? "Scanning..." : "Full Scan"}
         </button>
@@ -236,7 +236,7 @@ export function DiscoveryClient() {
 
       {/* Scan Summary */}
       {scanResult && (
-        <div className="px-6 py-3 border-b border-border bg-card/30 flex items-center gap-6 text-sm">
+        <div className="px-3 lg:px-6 py-2 lg:py-3 border-b border-border bg-card/30 flex items-center gap-6 text-xs lg:text-sm">
           <span className="flex items-center gap-1.5 text-emerald-400"><CheckCircle className="w-4 h-4" /> Scan complete in {scanResult.scan_duration_ms}ms</span>
           <span className="text-muted-foreground">•</span>
           <span>{processes.length} processes</span>
@@ -247,16 +247,16 @@ export function DiscoveryClient() {
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 px-6 pt-3 border-b border-border">
+      <div className="flex gap-1 px-3 lg:px-6 pt-3 border-b border-border">
         {(["scan", "adapters"] as Tab[]).map(t => (
-          <button key={t} onClick={() => setTab(t)} className={cn("px-4 py-2 text-sm font-medium rounded-t-lg transition-colors border-b-2", tab === t ? "border-cyan-500 text-cyan-400 bg-card/50" : "border-transparent text-muted-foreground hover:text-foreground")}>
+          <button key={t} onClick={() => setTab(t)} className={cn("px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium rounded-t-lg transition-colors border-b-2", tab === t ? "border-cyan-500 text-cyan-400 bg-card/50" : "border-transparent text-muted-foreground hover:text-foreground")}>
             {t === "scan" ? <><Monitor className="w-4 h-4 inline mr-1.5" />System Scan</> : <><Plug className="w-4 h-4 inline mr-1.5" />Adapters</>}
           </button>
         ))}
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-y-auto px-6 py-4">
+      <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-4">
         {tab === "scan" && (
           <div className="space-y-6">
             {/* Stats Cards */}
@@ -279,31 +279,31 @@ export function DiscoveryClient() {
 
             {/* Running Processes */}
             <div className="rounded-xl border border-border bg-card/30">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <div className="flex items-center justify-between px-2 lg:px-4 py-2 lg:py-3 border-b border-border">
                 <h3 className="font-semibold flex items-center gap-2"><Cpu className="w-4 h-4 text-cyan-400" /> Running Processes ({filteredProcesses.length})</h3>
-                <input value={processFilter} onChange={e => setProcessFilter(e.target.value)} placeholder="Filter processes..." className="w-full sm:w-64 px-3 py-1.5 rounded-lg border border-border bg-background text-sm" />
+                <input value={processFilter} onChange={e => setProcessFilter(e.target.value)} placeholder="Filter processes..." className="w-full sm:w-64 px-3 py-1.5 rounded-lg border border-border bg-background text-xs lg:text-sm" />
               </div>
               <div className="max-h-80 overflow-y-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs lg:text-sm">
                   <thead className="sticky top-0 bg-card/90 backdrop-blur">
                     <tr className="text-left text-muted-foreground">
-                      <th className="px-4 py-2">PID</th>
-                      <th className="px-4 py-2">Name</th>
-                      <th className="px-4 py-2">User</th>
-                      <th className="px-4 py-2 text-right">CPU%</th>
-                      <th className="px-4 py-2 text-right">MEM%</th>
-                      <th className="px-4 py-2">Command</th>
+                      <th className="px-2 lg:px-4 py-2">PID</th>
+                      <th className="px-2 lg:px-4 py-2">Name</th>
+                      <th className="px-2 lg:px-4 py-2">User</th>
+                      <th className="px-2 lg:px-4 py-2 text-right">CPU%</th>
+                      <th className="px-2 lg:px-4 py-2 text-right">MEM%</th>
+                      <th className="px-2 lg:px-4 py-2">Command</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredProcesses.slice(0, 100).map(p => (
                       <tr key={p.pid} className={cn("border-t border-border/50 hover:bg-muted/30 cursor-pointer", expandedProcess === p.pid && "bg-muted/50")} onClick={() => setExpandedProcess(expandedProcess === p.pid ? null : p.pid)}>
-                        <td className="px-4 py-2 font-mono text-xs">{p.pid}</td>
-                        <td className="px-4 py-2 font-medium">{p.executable || p.command.split("/").pop()?.split(" ")[0] || "-"}</td>
-                        <td className="px-4 py-2 text-muted-foreground">{p.user}</td>
-                        <td className={cn("px-4 py-2 text-right font-mono", p.cpu > 50 ? "text-red-400" : p.cpu > 10 ? "text-yellow-400" : "text-emerald-400")}>{p.cpu.toFixed(1)}</td>
-                        <td className={cn("px-4 py-2 text-right font-mono", p.mem > 50 ? "text-red-400" : p.mem > 10 ? "text-yellow-400" : "text-emerald-400")}>{p.mem.toFixed(1)}</td>
-                        <td className="px-4 py-2 text-xs text-muted-foreground truncate max-w-xs">{p.command}</td>
+                        <td className="px-2 lg:px-4 py-2 font-mono text-xs">{p.pid}</td>
+                        <td className="px-2 lg:px-4 py-2 font-medium">{p.executable || p.command.split("/").pop()?.split(" ")[0] || "-"}</td>
+                        <td className="px-2 lg:px-4 py-2 text-muted-foreground">{p.user}</td>
+                        <td className={cn("px-2 lg:px-4 py-2 text-right font-mono", p.cpu > 50 ? "text-red-400" : p.cpu > 10 ? "text-yellow-400" : "text-emerald-400")}>{p.cpu.toFixed(1)}</td>
+                        <td className={cn("px-2 lg:px-4 py-2 text-right font-mono", p.mem > 50 ? "text-red-400" : p.mem > 10 ? "text-yellow-400" : "text-emerald-400")}>{p.mem.toFixed(1)}</td>
+                        <td className="px-2 lg:px-4 py-2 text-xs text-muted-foreground truncate max-w-xs">{p.command}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -314,13 +314,13 @@ export function DiscoveryClient() {
 
             {/* CLI Tools */}
             <div className="rounded-xl border border-border bg-card/30">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <div className="flex items-center justify-between px-2 lg:px-4 py-2 lg:py-3 border-b border-border">
                 <h3 className="font-semibold flex items-center gap-2"><Terminal className="w-4 h-4 text-emerald-400" /> CLI Tools ({filteredTools.length})</h3>
-                <input value={toolFilter} onChange={e => setToolFilter(e.target.value)} placeholder="Filter tools..." className="w-full sm:w-64 px-3 py-1.5 rounded-lg border border-border bg-background text-sm" />
+                <input value={toolFilter} onChange={e => setToolFilter(e.target.value)} placeholder="Filter tools..." className="w-full sm:w-64 px-3 py-1.5 rounded-lg border border-border bg-background text-xs lg:text-sm" />
               </div>
               <div className="max-h-60 overflow-y-auto p-4 grid grid-cols-3 gap-2">
                 {filteredTools.map(tool => (
-                  <div key={tool.name} className="flex items-center gap-2 px-3 py-2 rounded-lg border text-sm border-emerald-500/30 bg-emerald-500/5">
+                  <div key={tool.name} className="flex items-center gap-2 px-3 py-2 rounded-lg border text-xs lg:text-sm border-emerald-500/30 bg-emerald-500/5">
                     <CheckCircle className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <span className="font-medium truncate">{tool.name}</span>
                     {tool.version && <span className="text-xs text-muted-foreground ml-auto">{tool.version}</span>}
@@ -331,30 +331,30 @@ export function DiscoveryClient() {
 
             {/* Network Services */}
             <div className="rounded-xl border border-border bg-card/30">
-              <div className="px-4 py-3 border-b border-border">
+              <div className="px-2 lg:px-4 py-2 lg:py-3 border-b border-border">
                 <h3 className="font-semibold flex items-center gap-2"><Network className="w-4 h-4 text-violet-400" /> Listening Services ({services.length})</h3>
               </div>
               <div className="max-h-60 overflow-y-auto">
-                <table className="w-full text-sm">
+                <table className="w-full text-xs lg:text-sm">
                   <thead className="sticky top-0 bg-card/90 backdrop-blur">
                     <tr className="text-left text-muted-foreground">
-                      <th className="px-4 py-2">Protocol</th>
-                      <th className="px-4 py-2">Address</th>
-                      <th className="px-4 py-2">Port</th>
-                      <th className="px-4 py-2">State</th>
-                      <th className="px-4 py-2">Process</th>
-                      <th className="px-4 py-2">PID</th>
+                      <th className="px-2 lg:px-4 py-2">Protocol</th>
+                      <th className="px-2 lg:px-4 py-2">Address</th>
+                      <th className="px-2 lg:px-4 py-2">Port</th>
+                      <th className="px-2 lg:px-4 py-2">State</th>
+                      <th className="px-2 lg:px-4 py-2">Process</th>
+                      <th className="px-2 lg:px-4 py-2">PID</th>
                     </tr>
                   </thead>
                   <tbody>
                     {services.map((s, i) => (
                       <tr key={i} className="border-t border-border/50 hover:bg-muted/30">
-                        <td className="px-4 py-2 font-mono text-xs uppercase">{s.protocol}</td>
-                        <td className="px-4 py-2 font-mono text-xs">{s.local_address}</td>
-                        <td className="px-4 py-2 font-mono text-xs font-bold">{s.local_port}</td>
-                        <td className={cn("px-4 py-2 text-xs", statusColor(s.state))}>{s.state}</td>
-                        <td className="px-4 py-2">{s.process_name}</td>
-                        <td className="px-4 py-2 font-mono text-xs">{s.pid}</td>
+                        <td className="px-2 lg:px-4 py-2 font-mono text-xs uppercase">{s.protocol}</td>
+                        <td className="px-2 lg:px-4 py-2 font-mono text-xs">{s.local_address}</td>
+                        <td className="px-2 lg:px-4 py-2 font-mono text-xs font-bold">{s.local_port}</td>
+                        <td className={cn("px-2 lg:px-4 py-2 text-xs", statusColor(s.state))}>{s.state}</td>
+                        <td className="px-2 lg:px-4 py-2">{s.process_name}</td>
+                        <td className="px-2 lg:px-4 py-2 font-mono text-xs">{s.pid}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -368,9 +368,9 @@ export function DiscoveryClient() {
           <div className="space-y-6">
             {/* Adapter List */}
             <div className="rounded-xl border border-border bg-card/30">
-              <div className="flex items-center justify-between px-4 py-3 border-b border-border">
+              <div className="flex items-center justify-between px-2 lg:px-4 py-2 lg:py-3 border-b border-border">
                 <h3 className="font-semibold flex items-center gap-2"><Plug className="w-4 h-4 text-amber-400" /> Configured Adapters ({adapters.length})</h3>
-                <button onClick={() => setShowAddAdapter(!showAddAdapter)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-sm hover:bg-amber-500 transition-colors">
+                <button onClick={() => setShowAddAdapter(!showAddAdapter)} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-600 text-white text-xs lg:text-sm hover:bg-amber-500 transition-colors">
                   <Plus className="w-3.5 h-3.5" /> Add Adapter
                 </button>
               </div>
@@ -381,17 +381,17 @@ export function DiscoveryClient() {
                   <p className="text-xs mt-1">Add a REST, Database, or Filesystem adapter to get started.</p>
                 </div>
               ) : (
-                <div className="p-4 grid grid-cols-2 gap-3">
+                <div className="p-4 grid grid-cols-2 gap-2 lg:gap-3">
                   {adapters.map(a => (
                     <div key={a.name} onClick={() => setActiveAdapterId(activeAdapterId === a.name ? null : a.name)} className={cn("p-4 rounded-xl border cursor-pointer transition-all", activeAdapterId === a.name ? "border-amber-500 bg-amber-500/10" : "border-border hover:border-amber-500/50 bg-card/50")}>
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-2 lg:gap-3 mb-2">
                         <Server className="w-5 h-5 text-amber-400" />
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{a.name}</p>
                           <p className="text-xs text-muted-foreground truncate">{a.description}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 lg:gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> {new Date(a.registered_at * 1000).toLocaleDateString()}</span>
                       </div>
                     </div>
@@ -406,21 +406,21 @@ export function DiscoveryClient() {
                 <h3 className="font-semibold flex items-center gap-2"><Plus className="w-4 h-4 text-amber-400" /> Configure New Adapter</h3>
                 <div className="flex gap-2">
                   {(["rest", "database", "filesystem"] as const).map(t => (
-                    <button key={t} onClick={() => setAdapterType(t)} className={cn("px-4 py-2 rounded-lg text-sm font-medium transition-colors", adapterType === t ? "bg-amber-600 text-white" : "bg-muted text-muted-foreground hover:text-foreground")}>
+                    <button key={t} onClick={() => setAdapterType(t)} className={cn("px-2 lg:px-4 py-2 rounded-lg text-xs lg:text-sm font-medium transition-colors", adapterType === t ? "bg-amber-600 text-white" : "bg-muted text-muted-foreground hover:text-foreground")}>
                       {t === "rest" ? <><Globe className="w-3.5 h-3.5 inline mr-1" />REST</> : t === "database" ? <><Database className="w-3.5 h-3.5 inline mr-1" />Database</> : <><FolderOpen className="w-3.5 h-3.5 inline mr-1" />Filesystem</>}
                     </button>
                   ))}
                 </div>
 
                 {adapterType === "rest" && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 lg:gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Base URL</label>
-                      <input value={adapterConfig.url || ""} onChange={e => setAdapterConfig({...adapterConfig, url: e.target.value})} placeholder="https://api.example.com" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />
+                      <input value={adapterConfig.url || ""} onChange={e => setAdapterConfig({...adapterConfig, url: e.target.value})} placeholder="https://api.example.com" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" />
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Auth Type</label>
-                      <select value={adapterConfig.auth_type || "none"} onChange={e => setAdapterConfig({...adapterConfig, auth_type: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">
+                      <select value={adapterConfig.auth_type || "none"} onChange={e => setAdapterConfig({...adapterConfig, auth_type: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm">
                         <option value="none">None</option>
                         <option value="bearer">Bearer Token</option>
                         <option value="basic">Basic Auth</option>
@@ -428,20 +428,20 @@ export function DiscoveryClient() {
                     </div>
                     <div className="col-span-2">
                       <label className="text-xs text-muted-foreground mb-1 block">Auth Token (if needed)</label>
-                      <input value={adapterConfig.auth_token || ""} onChange={e => setAdapterConfig({...adapterConfig, auth_token: e.target.value})} placeholder="Bearer token or base64 credentials" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" type="password" />
+                      <input value={adapterConfig.auth_token || ""} onChange={e => setAdapterConfig({...adapterConfig, auth_token: e.target.value})} placeholder="Bearer token or base64 credentials" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" type="password" />
                     </div>
                     <div className="col-span-2">
                       <label className="text-xs text-muted-foreground mb-1 block">Extra Headers (JSON)</label>
-                      <input value={adapterConfig.headers || ""} onChange={e => setAdapterConfig({...adapterConfig, headers: e.target.value})} placeholder='{"X-Custom": "value"}' className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono" />
+                      <input value={adapterConfig.headers || ""} onChange={e => setAdapterConfig({...adapterConfig, headers: e.target.value})} placeholder='{"X-Custom": "value"}' className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm font-mono" />
                     </div>
                   </div>
                 )}
 
                 {adapterType === "database" && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 lg:gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Database Type</label>
-                      <select value={adapterConfig.db_type || "sqlite"} onChange={e => setAdapterConfig({...adapterConfig, db_type: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">
+                      <select value={adapterConfig.db_type || "sqlite"} onChange={e => setAdapterConfig({...adapterConfig, db_type: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm">
                         <option value="sqlite">SQLite</option>
                         <option value="postgresql">PostgreSQL</option>
                         <option value="mysql">MySQL</option>
@@ -449,24 +449,24 @@ export function DiscoveryClient() {
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Connection String</label>
-                      <input value={adapterConfig.connection_string || ""} onChange={e => setAdapterConfig({...adapterConfig, connection_string: e.target.value})} placeholder="sqlite:///path/to/db.sqlite" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />
+                      <input value={adapterConfig.connection_string || ""} onChange={e => setAdapterConfig({...adapterConfig, connection_string: e.target.value})} placeholder="sqlite:///path/to/db.sqlite" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" />
                     </div>
                   </div>
                 )}
 
                 {adapterType === "filesystem" && (
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 lg:gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Root Path</label>
-                      <input value={adapterConfig.root_path || ""} onChange={e => setAdapterConfig({...adapterConfig, root_path: e.target.value})} placeholder="/home/user/documents" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />
+                      <input value={adapterConfig.root_path || ""} onChange={e => setAdapterConfig({...adapterConfig, root_path: e.target.value})} placeholder="/home/user/documents" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" />
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">File Patterns (comma-separated)</label>
-                      <input value={adapterConfig.patterns || ""} onChange={e => setAdapterConfig({...adapterConfig, patterns: e.target.value})} placeholder="*.md, *.txt, *.json" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />
+                      <input value={adapterConfig.patterns || ""} onChange={e => setAdapterConfig({...adapterConfig, patterns: e.target.value})} placeholder="*.md, *.txt, *.json" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" />
                     </div>
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Watch for Changes</label>
-                      <select value={adapterConfig.watch || "false"} onChange={e => setAdapterConfig({...adapterConfig, watch: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm">
+                      <select value={adapterConfig.watch || "false"} onChange={e => setAdapterConfig({...adapterConfig, watch: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm">
                         <option value="false">No</option>
                         <option value="true">Yes</option>
                       </select>
@@ -475,7 +475,7 @@ export function DiscoveryClient() {
                 )}
 
                 <div className="flex gap-2">
-                  <button onClick={configureAdapter} disabled={testingAdapter} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-600 text-white text-sm hover:bg-amber-500 transition-colors disabled:opacity-50">
+                  <button onClick={configureAdapter} disabled={testingAdapter} className="flex items-center gap-2 px-2 lg:px-4 py-2 rounded-lg bg-amber-600 text-white text-xs lg:text-sm hover:bg-amber-500 transition-colors disabled:opacity-50">
                     {testingAdapter ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                     Configure & Test
                   </button>
@@ -490,9 +490,9 @@ export function DiscoveryClient() {
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               {/* REST Probe */}
               <div className="rounded-xl border border-border bg-card/30 p-4 space-y-3">
-                <h4 className="font-medium flex items-center gap-2 text-sm"><Globe className="w-4 h-4 text-blue-400" /> REST Probe</h4>
-                <input value={restProbeUrl} onChange={e => setRestProbeUrl(e.target.value)} placeholder="https://httpbin.org/get" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm" />
-                <button onClick={probeRest} disabled={testingAdapter || !restProbeUrl} className="w-full px-3 py-2 rounded-lg bg-blue-600 text-white text-sm hover:bg-blue-500 disabled:opacity-50 transition-colors">
+                <h4 className="font-medium flex items-center gap-2 text-xs lg:text-sm"><Globe className="w-4 h-4 text-blue-400" /> REST Probe</h4>
+                <input value={restProbeUrl} onChange={e => setRestProbeUrl(e.target.value)} placeholder="https://httpbin.org/get" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" />
+                <button onClick={probeRest} disabled={testingAdapter || !restProbeUrl} className="w-full px-3 py-2 rounded-lg bg-blue-600 text-white text-xs lg:text-sm hover:bg-blue-500 disabled:opacity-50 transition-colors">
                   {testingAdapter ? <RefreshCw className="w-3.5 h-3.5 animate-spin inline" /> : <Play className="w-3.5 h-3.5 inline" />} Probe
                 </button>
                 {restProbeResult && <pre className="p-2 rounded bg-background border border-border text-xs font-mono overflow-x-auto max-h-32">{restProbeResult}</pre>}
@@ -500,13 +500,13 @@ export function DiscoveryClient() {
 
               {/* DB Query */}
               <div className="rounded-xl border border-border bg-card/30 p-4 space-y-3">
-                <h4 className="font-medium flex items-center gap-2 text-sm"><Database className="w-4 h-4 text-purple-400" /> Database Query</h4>
-                <input value={dbQueryInput} onChange={e => setDbQueryInput(e.target.value)} placeholder="SELECT * FROM table LIMIT 10" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-sm font-mono" onKeyDown={e => e.key === "Enter" && queryDb()} />
+                <h4 className="font-medium flex items-center gap-2 text-xs lg:text-sm"><Database className="w-4 h-4 text-purple-400" /> Database Query</h4>
+                <input value={dbQueryInput} onChange={e => setDbQueryInput(e.target.value)} placeholder="SELECT * FROM table LIMIT 10" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm font-mono" onKeyDown={e => e.key === "Enter" && queryDb()} />
                 <div className="flex gap-2">
-                  <button onClick={() => queryDb()} disabled={testingAdapter || !dbQueryInput} className="flex-1 px-3 py-2 rounded-lg bg-purple-600 text-white text-sm hover:bg-purple-500 disabled:opacity-50 transition-colors">
+                  <button onClick={() => queryDb()} disabled={testingAdapter || !dbQueryInput} className="flex-1 px-3 py-2 rounded-lg bg-purple-600 text-white text-xs lg:text-sm hover:bg-purple-500 disabled:opacity-50 transition-colors">
                     <Play className="w-3.5 h-3.5 inline" /> Query
                   </button>
-                  <button onClick={listTables} disabled={testingAdapter} className="px-3 py-2 rounded-lg bg-muted text-foreground text-sm hover:bg-muted/80 disabled:opacity-50 transition-colors">
+                  <button onClick={listTables} disabled={testingAdapter} className="px-3 py-2 rounded-lg bg-muted text-foreground text-xs lg:text-sm hover:bg-muted/80 disabled:opacity-50 transition-colors">
                     <Layers className="w-3.5 h-3.5 inline" /> Tables
                   </button>
                 </div>
@@ -515,21 +515,21 @@ export function DiscoveryClient() {
 
               {/* Filesystem Browse */}
               <div className="rounded-xl border border-border bg-card/30 p-4 space-y-3">
-                <h4 className="font-medium flex items-center gap-2 text-sm"><FolderOpen className="w-4 h-4 text-emerald-400" /> Filesystem Browse</h4>
+                <h4 className="font-medium flex items-center gap-2 text-xs lg:text-sm"><FolderOpen className="w-4 h-4 text-emerald-400" /> Filesystem Browse</h4>
                 <div className="flex gap-2">
-                  <input value={fsPath} onChange={e => setFsPath(e.target.value)} placeholder="/" className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-sm" onKeyDown={e => e.key === "Enter" && listFs()} />
-                  <button onClick={() => listFs()} disabled={testingAdapter} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-sm hover:bg-emerald-500 disabled:opacity-50 transition-colors">
+                  <input value={fsPath} onChange={e => setFsPath(e.target.value)} placeholder="/" className="flex-1 px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" onKeyDown={e => e.key === "Enter" && listFs()} />
+                  <button onClick={() => listFs()} disabled={testingAdapter} className="px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs lg:text-sm hover:bg-emerald-500 disabled:opacity-50 transition-colors">
                     <Eye className="w-3.5 h-3.5" />
                   </button>
                 </div>
                 <div className="max-h-40 overflow-y-auto space-y-0.5">
                   {fsPath !== "/" && (
-                    <button onClick={() => { const parent = fsPath.split("/").slice(0, -1).join("/") || "/"; listFs(parent); }} className="w-full text-left px-2 py-1 rounded text-sm text-muted-foreground hover:bg-muted/50 flex items-center gap-1.5">
+                    <button onClick={() => { const parent = fsPath.split("/").slice(0, -1).join("/") || "/"; listFs(parent); }} className="w-full text-left px-2 py-1 rounded text-xs lg:text-sm text-muted-foreground hover:bg-muted/50 flex items-center gap-1.5">
                       <ArrowRight className="w-3 h-3 rotate-180" /> ..
                     </button>
                   )}
                   {fsListing.map((f, i) => (
-                    <button key={i} onClick={() => { if (f.is_dir) listFs(fsPath === "/" ? `/${f.name}` : `${fsPath}/${f.name}`); }} className={cn("w-full text-left px-2 py-1 rounded text-sm hover:bg-muted/50 flex items-center gap-1.5", f.is_dir ? "text-emerald-400" : "text-foreground")}>
+                    <button key={i} onClick={() => { if (f.is_dir) listFs(fsPath === "/" ? `/${f.name}` : `${fsPath}/${f.name}`); }} className={cn("w-full text-left px-2 py-1 rounded text-xs lg:text-sm hover:bg-muted/50 flex items-center gap-1.5", f.is_dir ? "text-emerald-400" : "text-foreground")}>
                       {f.is_dir ? <FolderOpen className="w-3 h-3 shrink-0" /> : <FileText className="w-3 h-3 shrink-0" />}
                       <span className="truncate">{f.name}</span>
                       {!f.is_dir && <span className="ml-auto text-xs text-muted-foreground">{(f.size / 1024).toFixed(1)}K</span>}

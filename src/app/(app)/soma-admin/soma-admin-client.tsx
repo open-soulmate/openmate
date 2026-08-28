@@ -154,8 +154,8 @@ export default function SomaAdminClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
+        <div className="flex items-center gap-2 lg:gap-3">
           <Bot size={20} className="text-cyan-500" />
           <h1 className="text-lg font-semibold">{t("somaAdmin.title")}</h1>
           <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-xs font-medium text-cyan-500">
@@ -164,20 +164,20 @@ export default function SomaAdminClient() {
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => { fetchDashboard(); if (activeTab === "connectors") fetchConnectors(); if (activeTab === "collectors") fetchCollectors(); }}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
+            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted">
             <RefreshCw size={14} />
           </button>
         </div>
       </div>
 
       {/* Tab Bar */}
-      <div className="flex items-center gap-1 border-b border-border px-6 py-2">
+      <div className="flex items-center gap-1 border-b border-border px-3 lg:px-6 py-2">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id)}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
+              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs lg:text-sm transition-colors",
               activeTab === tab.id
                 ? "bg-cyan-500/10 text-cyan-600 font-medium"
                 : "text-muted-foreground hover:bg-muted"
@@ -189,31 +189,31 @@ export default function SomaAdminClient() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
 
         {/* ── Dashboard Tab ───────────────────────────────────────── */}
         {activeTab === "dashboard" && (
           <>
             {/* Status Cards */}
             {systemStatus && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
                 <div className="rounded-xl border border-border bg-card p-4">
                   <span className="text-xs text-muted-foreground">{t("somaAdmin.systemStatus")}</span>
-                  <p className={cn("text-2xl font-bold", STATUS_COLORS[systemStatus.status] || "text-foreground")}>
+                  <p className={cn("text-xl lg:text-2xl font-bold", STATUS_COLORS[systemStatus.status] || "text-foreground")}>
                     {systemStatus.status}
                   </p>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4">
                   <span className="text-xs text-muted-foreground">{t("somaAdmin.version")}</span>
-                  <p className="text-2xl font-bold">{systemStatus.version || "-"}</p>
+                  <p className="text-xl lg:text-2xl font-bold">{systemStatus.version || "-"}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4">
                   <span className="text-xs text-muted-foreground">{t("somaAdmin.connectorsCount")}</span>
-                  <p className="text-2xl font-bold text-cyan-500">{systemStatus.connectors_count ?? 0}</p>
+                  <p className="text-xl lg:text-2xl font-bold text-cyan-500">{systemStatus.connectors_count ?? 0}</p>
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4">
                   <span className="text-xs text-muted-foreground">{t("somaAdmin.collectorsCount")}</span>
-                  <p className="text-2xl font-bold text-cyan-500">{systemStatus.collectors_count ?? 0}</p>
+                  <p className="text-xl lg:text-2xl font-bold text-cyan-500">{systemStatus.collectors_count ?? 0}</p>
                 </div>
               </div>
             )}
@@ -221,11 +221,11 @@ export default function SomaAdminClient() {
             {/* System Detail */}
             {systemStatus && (
               <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
+                <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                   <Server size={14} className="text-cyan-500" />
                   {t("somaAdmin.systemDetail")}
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-3 text-xs">
                   {Object.entries(systemStatus).map(([key, value]) => (
                     <div key={key}>
                       <span className="text-muted-foreground">{key}:</span>{" "}
@@ -239,13 +239,13 @@ export default function SomaAdminClient() {
             {/* Uptime */}
             {systemStatus?.uptime && (
               <div className="rounded-xl border border-dashed border-cyan-500/30 bg-cyan-500/5 p-5">
-                <h3 className="text-sm font-semibold text-cyan-600 mb-2">⏱ {t("somaAdmin.uptime")}</h3>
-                <p className="text-2xl font-bold">{systemStatus.uptime}</p>
+                <h3 className="text-xs lg:text-sm font-semibold text-cyan-600 mb-2">⏱ {t("somaAdmin.uptime")}</h3>
+                <p className="text-xl lg:text-2xl font-bold">{systemStatus.uptime}</p>
               </div>
             )}
 
             {dashboardLoading && (
-              <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">
+              <div className="flex items-center justify-center py-16 text-muted-foreground text-xs lg:text-sm">
                 {t("somaAdmin.loading")}
               </div>
             )}
@@ -256,7 +256,7 @@ export default function SomaAdminClient() {
         {activeTab === "connectors" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
+              <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Plug size={16} className="text-cyan-500" />
                 {t("somaAdmin.connectorsTitle")}
               </h2>
@@ -267,11 +267,11 @@ export default function SomaAdminClient() {
             </div>
 
             {connectorsLoading ? (
-              <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">{t("somaAdmin.loading")}</div>
+              <div className="flex items-center justify-center py-16 text-muted-foreground text-xs lg:text-sm">{t("somaAdmin.loading")}</div>
             ) : connectors.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Plug size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("somaAdmin.noConnectors")}</p>
+                <p className="text-xs lg:text-sm">{t("somaAdmin.noConnectors")}</p>
                 <p className="text-xs mt-1">{t("somaAdmin.noConnectorsHint")}</p>
               </div>
             ) : (
@@ -280,7 +280,7 @@ export default function SomaAdminClient() {
                 <div className={`${isMobile ? (selectedConnector ? "hidden" : "w-full") : "w-80"} space-y-3`}>
                   {isMobile && (
                     <div className="flex items-center justify-between pb-2 border-b border-border">
-                      <h3 className="text-sm font-medium">{t("somaAdmin.connectors") || "Connectors"}</h3>
+                      <h3 className="text-xs lg:text-sm font-medium">{t("somaAdmin.connectors") || "Connectors"}</h3>
                       <span className="text-xs text-muted-foreground">{connectors.length}</span>
                     </div>
                   )}
@@ -296,14 +296,14 @@ export default function SomaAdminClient() {
                           <div className="rounded-lg bg-cyan-500/10 p-1.5">
                             <Plug size={14} className="text-cyan-500" />
                           </div>
-                          <span className="font-medium text-sm">{conn.name}</span>
+                          <span className="font-medium text-xs lg:text-sm">{conn.name}</span>
                         </div>
                         <span className={cn("text-xs font-medium", STATUS_COLORS[conn.status] || "text-muted-foreground")}>
                           {conn.status}
                         </span>
                       </div>
                       <div className="text-xs text-muted-foreground font-mono">{conn.id}</div>
-                      <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                      <div className="flex gap-2 lg:gap-3 mt-2 text-xs text-muted-foreground">
                         <span>{conn.type}</span>
                         {conn.enabled !== undefined && (
                           <span>{conn.enabled ? t("somaAdmin.enabled") : t("somaAdmin.disabled")}</span>
@@ -325,7 +325,7 @@ export default function SomaAdminClient() {
                               <span className="text-xs text-muted-foreground font-mono">{selectedConnector.id}</span>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="grid grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
                               <div><span className="text-muted-foreground">{t("somaAdmin.connType")}:</span> {selectedConnector.type}</div>
                               <div><span className="text-muted-foreground">{t("somaAdmin.connStatus")}:</span>{" "}
                                 <span className={cn("font-medium", STATUS_COLORS[selectedConnector.status])}>{selectedConnector.status}</span>
@@ -346,7 +346,7 @@ export default function SomaAdminClient() {
                               <button
                                 onClick={() => toggleConnector(selectedConnector.name || selectedConnector.id)}
                                 className={cn(
-                                  "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                                  "flex items-center gap-2 rounded-lg px-4 py-2 text-xs lg:text-sm font-medium transition-colors",
                                   selectedConnector.enabled
                                     ? "bg-red-500/10 text-red-500 hover:bg-red-500/20"
                                     : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
@@ -390,7 +390,7 @@ export default function SomaAdminClient() {
                         <span className="text-xs text-muted-foreground font-mono">{selectedConnector.id}</span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4 text-sm">
+                      <div className="grid grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
                         <div><span className="text-muted-foreground">{t("somaAdmin.connType")}:</span> {selectedConnector.type}</div>
                         <div><span className="text-muted-foreground">{t("somaAdmin.connStatus")}:</span>{" "}
                           <span className={cn("font-medium", STATUS_COLORS[selectedConnector.status])}>{selectedConnector.status}</span>
@@ -411,7 +411,7 @@ export default function SomaAdminClient() {
                         <button
                           onClick={() => toggleConnector(selectedConnector.name || selectedConnector.id)}
                           className={cn(
-                            "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                            "flex items-center gap-2 rounded-lg px-4 py-2 text-xs lg:text-sm font-medium transition-colors",
                             selectedConnector.enabled
                               ? "bg-red-500/10 text-red-500 hover:bg-red-500/20"
                               : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
@@ -454,7 +454,7 @@ export default function SomaAdminClient() {
         {activeTab === "collectors" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
+              <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Database size={16} className="text-cyan-500" />
                 {t("somaAdmin.collectorsTitle")}
               </h2>
@@ -465,39 +465,39 @@ export default function SomaAdminClient() {
             </div>
 
             {/* Collector Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">{t("somaAdmin.totalCollectors")}</span>
-                <p className="text-2xl font-bold">{collectors.length}</p>
+                <p className="text-xl lg:text-2xl font-bold">{collectors.length}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">{t("somaAdmin.runningCollectors")}</span>
-                <p className="text-2xl font-bold text-emerald-500">{collectors.filter(c => c.status === "running" || c.status === "active").length}</p>
+                <p className="text-xl lg:text-2xl font-bold text-emerald-500">{collectors.filter(c => c.status === "running" || c.status === "active").length}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">{t("somaAdmin.stoppedCollectors")}</span>
-                <p className="text-2xl font-bold text-gray-500">{collectors.filter(c => c.status === "stopped").length}</p>
+                <p className="text-xl lg:text-2xl font-bold text-gray-500">{collectors.filter(c => c.status === "stopped").length}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">{t("somaAdmin.errorCollectors")}</span>
-                <p className="text-2xl font-bold text-red-500">{collectors.filter(c => c.status === "error").length}</p>
+                <p className="text-xl lg:text-2xl font-bold text-red-500">{collectors.filter(c => c.status === "error").length}</p>
               </div>
             </div>
 
             {/* Collector List */}
             {collectorsLoading ? (
-              <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">{t("somaAdmin.loading")}</div>
+              <div className="flex items-center justify-center py-16 text-muted-foreground text-xs lg:text-sm">{t("somaAdmin.loading")}</div>
             ) : collectors.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Database size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("somaAdmin.noCollectors")}</p>
+                <p className="text-xs lg:text-sm">{t("somaAdmin.noCollectors")}</p>
               </div>
             ) : (
               <div className="space-y-3">
                 {collectors.map((col) => (
                   <div key={col.id} className="rounded-xl border border-border bg-card p-4">
                     <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 lg:gap-3">
                         <div className={cn("rounded-lg p-2",
                           col.status === "running" || col.status === "active" ? "bg-emerald-500/10" :
                           col.status === "error" ? "bg-red-500/10" : "bg-gray-500/10")}>
@@ -506,7 +506,7 @@ export default function SomaAdminClient() {
                            <HardDrive size={16} className="text-gray-500" />}
                         </div>
                         <div>
-                          <p className="font-medium text-sm">{col.name}</p>
+                          <p className="font-medium text-xs lg:text-sm">{col.name}</p>
                           <p className="text-xs text-muted-foreground font-mono">{col.id}</p>
                         </div>
                       </div>
@@ -517,7 +517,7 @@ export default function SomaAdminClient() {
                         {col.status}
                       </span>
                     </div>
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3 text-xs">
                       <div>
                         <span className="text-muted-foreground">{t("somaAdmin.collectorType")}:</span>{" "}
                         <span className="font-mono">{col.type}</span>
@@ -551,7 +551,7 @@ export default function SomaAdminClient() {
         {activeTab === "config" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h2 className="text-sm font-semibold flex items-center gap-2">
+              <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Settings size={16} className="text-cyan-500" />
                 {t("somaAdmin.configTitle")}
               </h2>
@@ -564,7 +564,7 @@ export default function SomaAdminClient() {
             {/* Config Display */}
             {config && (
               <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
+                <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                   <Server size={14} className="text-cyan-500" />
                   {t("somaAdmin.systemConfig")}
                 </h3>
@@ -576,11 +576,11 @@ export default function SomaAdminClient() {
 
             {/* Connection Info */}
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <h3 className="text-sm font-semibold flex items-center gap-2">
+              <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                 <Zap size={14} className="text-cyan-500" />
                 {t("somaAdmin.connectionInfo")}
               </h3>
-              <div className="grid grid-cols-2 gap-3 text-xs">
+              <div className="grid grid-cols-2 gap-2 lg:gap-3 text-xs">
                 <div>
                   <span className="text-muted-foreground">{t("somaAdmin.somaApiUrl")}:</span>{" "}
                   <span className="font-mono">{somaBase}</span>
@@ -593,7 +593,7 @@ export default function SomaAdminClient() {
             </div>
 
             {configLoading && (
-              <div className="flex items-center justify-center py-16 text-muted-foreground text-sm">{t("somaAdmin.loading")}</div>
+              <div className="flex items-center justify-center py-16 text-muted-foreground text-xs lg:text-sm">{t("somaAdmin.loading")}</div>
             )}
           </div>
         )}

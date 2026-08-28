@@ -137,7 +137,7 @@ export function IntelligenceClient() {
           <button
             onClick={collectMetrics}
             disabled={collecting}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs lg:text-sm bg-primary/10 text-primary rounded-md hover:bg-primary/20 transition-colors disabled:opacity-50"
           >
             {collecting ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Zap className="w-3.5 h-3.5" />}
             {t("intelligence.collect") || "Collect Metrics"}
@@ -145,7 +145,7 @@ export function IntelligenceClient() {
           <button
             onClick={fetchAll}
             disabled={loading}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-sm bg-muted rounded-md hover:bg-muted/80 transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs lg:text-sm bg-muted rounded-md hover:bg-muted/80 transition-colors disabled:opacity-50"
           >
             <RefreshCw className={cn("w-3.5 h-3.5", loading && "animate-spin")} />
             {t("common.refresh") || "Refresh"}
@@ -160,7 +160,7 @@ export function IntelligenceClient() {
             key={t_}
             onClick={() => setTab(t_)}
             className={cn(
-              "px-4 py-2 text-sm font-medium border-b-2 transition-colors",
+              "px-4 py-2 text-xs lg:text-sm font-medium border-b-2 transition-colors",
               tab === t_ ? "border-primary text-primary" : "border-transparent text-muted-foreground hover:text-foreground"
             )}
           >
@@ -175,7 +175,7 @@ export function IntelligenceClient() {
         {tab === "overview" && summary && (
           <div className="space-y-4">
             {/* Health Score */}
-            <div className="flex items-center justify-center py-6">
+            <div className="flex items-center justify-center py-3 lg:py-6">
               <div className="relative w-40 h-40">
                 <svg className="w-full h-full -rotate-90" viewBox="0 0 120 120">
                   <circle cx="60" cy="60" r="50" fill="none" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
@@ -191,7 +191,7 @@ export function IntelligenceClient() {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-bold">{summary.health_score}</span>
+                  <span className="text-2xl lg:text-3xl font-bold">{summary.health_score}</span>
                   <span className="text-xs text-muted-foreground">{t("intelligence.healthScore") || "Health Score"}</span>
                 </div>
               </div>
@@ -201,25 +201,25 @@ export function IntelligenceClient() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
               <div className="bg-card border border-border rounded-lg p-3">
                 <div className="text-xs text-muted-foreground mb-1">{t("intelligence.totalComponents") || "Components"}</div>
-                <div className="text-2xl font-bold">{summary.components.healthy}<span className="text-sm text-muted-foreground">/{summary.components.total}</span></div>
+                <div className="text-xl lg:text-2xl font-bold">{summary.components.healthy}<span className="text-xs lg:text-sm text-muted-foreground">/{summary.components.total}</span></div>
                 {summary.components.unhealthy > 0 && (
                   <div className="text-xs text-red-500 mt-1">{summary.components.unhealthy} {t("intelligence.unhealthy") || "unhealthy"}</div>
                 )}
               </div>
               <div className="bg-card border border-border rounded-lg p-3">
                 <div className="text-xs text-muted-foreground mb-1">{t("intelligence.avgResponse") || "Avg Response"}</div>
-                <div className="text-2xl font-bold">{formatMs(summary.performance.avg_response_ms)}</div>
+                <div className="text-xl lg:text-2xl font-bold">{formatMs(summary.performance.avg_response_ms)}</div>
               </div>
               <div className="bg-card border border-border rounded-lg p-3">
                 <div className="text-xs text-muted-foreground mb-1">{t("intelligence.recentInsights") || "Insights (1h)"}</div>
-                <div className="text-2xl font-bold">{summary.insights.recent_hour}</div>
+                <div className="text-xl lg:text-2xl font-bold">{summary.insights.recent_hour}</div>
                 {Object.entries(summary.insights.by_severity).map(([k, v]) => (
                   <span key={k} className={cn("text-xs mr-1", severityColor(k))}>{k}: {v}</span>
                 ))}
               </div>
               <div className="bg-card border border-border rounded-lg p-3">
                 <div className="text-xs text-muted-foreground mb-1">{t("intelligence.trackedMetrics") || "Tracked Metrics"}</div>
-                <div className="text-2xl font-bold">{summary.performance.tracked_metrics}</div>
+                <div className="text-xl lg:text-2xl font-bold">{summary.performance.tracked_metrics}</div>
               </div>
             </div>
           </div>
@@ -244,7 +244,7 @@ export function IntelligenceClient() {
                     >
                       <div className="flex items-center gap-2">
                         {healthIcon(c.health)}
-                        <span className="font-medium text-sm">{c.name}</span>
+                        <span className="font-medium text-xs lg:text-sm">{c.name}</span>
                         <span className={cn(
                           "text-xs px-1.5 py-0.5 rounded",
                           c.health === "ok" ? "bg-green-500/10 text-green-500" : "bg-red-500/10 text-red-500"
@@ -290,7 +290,7 @@ export function IntelligenceClient() {
                   <div className="flex items-center justify-between mb-1">
                     <div className="flex items-center gap-2">
                       {i.severity === "critical" ? <AlertTriangle className="w-4 h-4" /> : <TrendingUp className="w-4 h-4" />}
-                      <span className="font-medium text-sm">{i.title}</span>
+                      <span className="font-medium text-xs lg:text-sm">{i.title}</span>
                     </div>
                     <span className="text-xs opacity-70">{i.component}</span>
                   </div>
@@ -314,7 +314,7 @@ export function IntelligenceClient() {
               recommendations.map((r, idx) => (
                 <div key={idx} className="bg-card border border-border rounded-lg p-3">
                   <div className="flex items-center justify-between mb-1">
-                    <span className="font-medium text-sm">{r.title}</span>
+                    <span className="font-medium text-xs lg:text-sm">{r.title}</span>
                     <span className={cn("text-xs px-1.5 py-0.5 rounded", 
                       r.priority === "high" ? "bg-red-500/10 text-red-500" :
                       r.priority === "medium" ? "bg-yellow-500/10 text-yellow-500" :

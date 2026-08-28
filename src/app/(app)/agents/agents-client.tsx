@@ -196,24 +196,24 @@ export function AgentsClient() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
         <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2"><Bot className="w-6 h-6" /> {t('agents.title')}</h1>
-          <p className="text-sm text-muted-foreground mt-1">{t('agents.autoDetect')} · {agents.length} {t('agents.category')}</p>
+          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2"><Bot className="w-6 h-6" /> {t('agents.title')}</h1>
+          <p className="text-xs lg:text-sm text-muted-foreground mt-1">{t('agents.autoDetect')} · {agents.length} {t('agents.category')}</p>
         </div>
-        <button onClick={detect} className="px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-sm self-start sm:self-auto"><RefreshCw className="w-4 h-4" /> {t('agents.autoDetect')}</button>
+        <button onClick={detect} className="px-2 lg:px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-xs lg:text-sm self-start sm:self-auto"><RefreshCw className="w-4 h-4" /> {t('agents.autoDetect')}</button>
       </div>
 
       {/* Stats */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-6">
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-primary">{agents.length}</p><p className="text-sm text-muted-foreground">{t('agents.title')}</p></div>
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-green-500">{availableCount}</p><p className="text-sm text-muted-foreground">{t('agents.available')}</p></div>
-        <div className="p-4 rounded-xl border bg-card"><p className="text-2xl font-bold text-muted-foreground">{agents.length - availableCount}</p><p className="text-sm text-muted-foreground">{t('agents.unavailable')}</p></div>
+        <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-primary">{agents.length}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('agents.title')}</p></div>
+        <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-green-500">{availableCount}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('agents.available')}</p></div>
+        <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-muted-foreground">{agents.length - availableCount}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('agents.unavailable')}</p></div>
       </div>
 
       {/* Filter + Batch */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
         <div className="flex gap-2 flex-wrap">
           {(['all', 'available', 'unavailable'] as const).map(f => (
-            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-sm transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'border hover:bg-muted'}`}>
+            <button key={f} onClick={() => setFilter(f)} className={`px-3 py-1.5 rounded-lg text-xs lg:text-sm transition-colors ${filter === f ? 'bg-primary text-primary-foreground' : 'border hover:bg-muted'}`}>
               {f === 'all' ? t('agents.allAgents') : f === 'available' ? t('agents.onlyAvailable') : t('agents.onlyUnavailable')}
             </button>
           ))}
@@ -259,7 +259,7 @@ export function AgentsClient() {
                     {isSelected ? <CheckSquare size={16} className="text-primary" /> : <Square size={16} className="text-muted-foreground" />}
                   </button>
                   {(agent as any).logo ? <img src={(agent as any).logo} alt={agent.name} className="w-10 h-10 rounded-lg object-contain bg-muted" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} /> : null}
-                  <span className={`text-2xl ${(agent as any).logo ? "hidden" : ""}`}>{agent.icon}</span>
+                  <span className={`text-xl lg:text-2xl ${(agent as any).logo ? "hidden" : ""}`}>{agent.icon}</span>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-medium truncate">{agent.name}</h3>
                     <p className="text-xs text-muted-foreground truncate">{agent.description}</p>
@@ -308,7 +308,7 @@ export function AgentsClient() {
                     <div className={`h-full transition-all duration-500 ${install.status === 'done' ? 'bg-green-500' : install.status === 'error' ? 'bg-red-500' : 'bg-primary'}`}
                       style={{ width: `${install.progress}%` }} />
                   </div>
-                  <div className="px-4 py-2 flex items-center justify-between">
+                  <div className="px-2 lg:px-4 py-2 flex items-center justify-between">
                     <div className="flex items-center gap-2 text-xs">
                       {install.status === 'done' && <span className="text-green-500 flex items-center gap-1"><CheckCircle className="w-3 h-3" /> {t('agents.installDone')}</span>}
                       {install.status === 'error' && <span className="text-red-500">{install.error}</span>}
@@ -322,7 +322,7 @@ export function AgentsClient() {
                     )}
                   </div>
                   {isExpanded && install.lines.length > 0 && (
-                    <div className="px-4 pb-3 max-h-40 overflow-y-auto">
+                    <div className="px-2 lg:px-4 pb-3 max-h-40 overflow-y-auto">
                       <pre className="text-[10px] text-muted-foreground font-mono whitespace-pre-wrap">{install.lines.slice(-20).join('\n')}</pre>
                     </div>
                   )}
@@ -331,14 +331,14 @@ export function AgentsClient() {
 
               {/* Install command hint */}
               {agent.installCommand && !agent.available && !install && (
-                <div className="px-4 pb-3">
+                <div className="px-2 lg:px-4 pb-3">
                   <div className="p-2 rounded-lg bg-muted text-xs font-mono flex items-center gap-1.5 text-muted-foreground"><Terminal className="w-3 h-3 shrink-0" />{agent.installCommand}</div>
                 </div>
               )}
 
               {/* Model config panel */}
               {agent.available && configuringAgent === agent.id && (
-                <div className="border-t border-border px-4 py-3 space-y-2">
+                <div className="border-t border-border px-2 lg:px-4 py-3 space-y-2">
                   <div className="text-xs font-medium text-muted-foreground mb-2">{t('agents.modelConfig')}</div>
                   <label className="flex items-center gap-2 text-xs cursor-pointer">
                     <input type="checkbox" checked={!agentConfigs[agent.id]?.custom}

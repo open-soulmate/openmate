@@ -158,8 +158,8 @@ export function ReflexClient() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
+        <div className="flex items-center gap-2 lg:gap-3">
           <Zap size={20} className="text-yellow-500" />
           <h1 className="text-lg font-semibold">{t("reflex.title") || "Reflex · High-Speed Response"}</h1>
           <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-xs font-medium text-yellow-500">
@@ -167,15 +167,15 @@ export function ReflexClient() {
           </span>
         </div>
         <button onClick={() => { fetchStats(); tab === "cache" && fetchEntries(); }}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors">
           <RefreshCw size={14} /> {t("common.refresh") || "Refresh"}
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
             <StatCard icon={Zap} label={t("reflex.activeEntries") || "Active Entries"} value={String(stats.cache.active_entries)}
               sub={`${stats.cache.total_entries} ${t("reflex.total") || "Total Entries"}`} color="text-yellow-500" bg="bg-yellow-500/10" />
             <StatCard icon={Target} label={t("reflex.hitRate") || "Hit Rate"} value={`${stats.cache.hit_rate_percent}%`}
@@ -191,7 +191,7 @@ export function ReflexClient() {
         <div className="flex gap-2">
           {tabs.map((tabItem) => (
             <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
-              className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
+              className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs lg:text-sm transition-colors",
                 tab === tabItem.id ? "bg-yellow-500/10 text-yellow-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
               <tabItem.icon size={14} /> {tabItem.label}
             </button>
@@ -203,19 +203,19 @@ export function ReflexClient() {
           <div className="space-y-4">
             {/* Create */}
             <div className="rounded-xl border border-border p-4 space-y-3">
-              <h3 className="text-sm font-medium">{t("reflex.addEntry") || "Add Entry"}</h3>
-              <div className="grid grid-cols-2 gap-3">
+              <h3 className="text-xs lg:text-sm font-medium">{t("reflex.addEntry") || "Add Entry"}</h3>
+              <div className="grid grid-cols-2 gap-2 lg:gap-3">
                 <input value={newQuery} onChange={(e) => setNewQuery(e.target.value)}
                   placeholder={t("reflex.queryPlaceholder") || "Query pattern..."}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-yellow-500/20" />
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-yellow-500/20" />
                 <input value={newResponse} onChange={(e) => setNewResponse(e.target.value)}
                   placeholder={t("reflex.responsePlaceholder") || "Enter response content..."}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-yellow-500/20" />
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-yellow-500/20" />
               </div>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 lg:gap-3">
                 <input value={newCategory} onChange={(e) => setNewCategory(e.target.value)}
                   placeholder={t("reflex.category") || "Category"}
-                  className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-yellow-500/20" />
+                  className="w-32 rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-yellow-500/20" />
                 <div className="flex items-center gap-2">
                   <label className="text-xs text-muted-foreground">{t("reflex.importance") || "Importance"}</label>
                   <input type="range" min="0" max="1" step="0.1" value={newImportance}
@@ -223,7 +223,7 @@ export function ReflexClient() {
                   <span className="text-xs w-6">{newImportance}</span>
                 </div>
                 <button onClick={handleCreate} disabled={loading}
-                  className="flex items-center gap-1.5 rounded-lg bg-yellow-500 px-4 py-2 text-sm text-white hover:bg-yellow-600 disabled:opacity-50">
+                  className="flex items-center gap-1.5 rounded-lg bg-yellow-500 px-4 py-2 text-xs lg:text-sm text-white hover:bg-yellow-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Plus size={14} />}
                   {t("common.add") || "Add"}
                 </button>
@@ -231,16 +231,16 @@ export function ReflexClient() {
             </div>
 
             {/* Filters */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 lg:gap-3">
               <div className="relative flex-1 max-w-xs">
                 <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <input value={searchCategory} onChange={(e) => setSearchCategory(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && fetchEntries()}
                   placeholder={t("reflex.filterCategory") || "Filter Category"}
-                  className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm outline-none focus:ring-2 focus:ring-yellow-500/20" />
+                  className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-yellow-500/20" />
               </div>
               <button onClick={handleCleanup}
-                className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-muted">
+                className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-xs lg:text-sm text-muted-foreground hover:bg-muted">
                 <Trash2 size={14} /> {t("reflex.cleanup") || "Cleanup"}
               </button>
               <span className="text-xs text-muted-foreground">{entries.length} {t("reflex.entries") || "Entries"}</span>
@@ -250,7 +250,7 @@ export function ReflexClient() {
             {entries.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Zap size={40} className="mb-3 opacity-30" />
-                <p className="text-sm">{t("reflex.noEntries") || "No cache entries yet"}</p>
+                <p className="text-xs lg:text-sm">{t("reflex.noEntries") || "No cache entries yet"}</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -259,7 +259,7 @@ export function ReflexClient() {
                     <div className="flex items-start justify-between">
                       <div className="flex-1 min-w-0 space-y-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{e.query}</span>
+                          <span className="text-xs lg:text-sm font-medium">{e.query}</span>
                           {e.category && (
                             <span className="rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] text-yellow-600">
                               {e.category}
@@ -272,16 +272,16 @@ export function ReflexClient() {
                         {editId === e.entry_id ? (
                           <div className="flex gap-2">
                             <input value={editResponse} onChange={(ev) => setEditResponse(ev.target.value)}
-                              className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-sm" />
+                              className="flex-1 rounded-lg border border-border bg-background px-3 py-1.5 text-xs lg:text-sm" />
                             <button onClick={() => handleSaveEdit(e.entry_id)}
                               className="rounded-md p-1.5 text-emerald-500 hover:bg-emerald-500/10"><Save size={14} /></button>
                             <button onClick={() => setEditId(null)}
                               className="rounded-md p-1.5 text-muted-foreground hover:bg-muted"><XCircle size={14} /></button>
                           </div>
                         ) : (
-                          <p className="text-sm text-muted-foreground">{e.response}</p>
+                          <p className="text-xs lg:text-sm text-muted-foreground">{e.response}</p>
                         )}
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 lg:gap-4 text-xs text-muted-foreground">
                           <span>{t("reflex.hits") || "Hits"}: <strong>{e.hit_count}</strong></span>
                           <span>{t("reflex.importance") || "Importance"}: {e.importance}</span>
                           <span>{t("reflex.created") || "Created"}: {formatTime(e.created_at)}</span>
@@ -310,15 +310,15 @@ export function ReflexClient() {
         {tab === "lookup" && (
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <h3 className="text-sm font-semibold">{t("reflex.testLookup") || "Test Lookup"}</h3>
+              <h3 className="text-xs lg:text-sm font-semibold">{t("reflex.testLookup") || "Test Lookup"}</h3>
               <p className="text-xs text-muted-foreground">{t("reflex.lookupDesc") || "Test the reflex cache with a query"}</p>
-              <div className="flex flex-col sm:flex-row gap-3">
+              <div className="flex flex-col sm:flex-row gap-2 lg:gap-3">
                 <input value={lookupQuery} onChange={(e) => setLookupQuery(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleLookup()}
                   placeholder={t("reflex.lookupPlaceholder") || "Enter query to look up..."}
-                  className="flex-1 rounded-lg border border-border bg-background px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-yellow-500/20" />
+                  className="flex-1 rounded-lg border border-border bg-background px-4 py-3 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-yellow-500/20" />
                 <button onClick={handleLookup} disabled={loading}
-                  className="flex items-center gap-1.5 rounded-lg bg-yellow-500 px-5 py-3 text-sm text-white hover:bg-yellow-600 disabled:opacity-50">
+                  className="flex items-center gap-1.5 rounded-lg bg-yellow-500 px-5 py-3 text-xs lg:text-sm text-white hover:bg-yellow-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
                   {t("reflex.lookup") || "Lookup"}
                 </button>
@@ -332,13 +332,13 @@ export function ReflexClient() {
                   </div>
                   {lookupResult.hit && (
                     <>
-                      <div className="flex gap-4 text-xs text-muted-foreground">
+                      <div className="flex gap-2 lg:gap-4 text-xs text-muted-foreground">
                         <span>{t("reflex.matchedQuery") || "Matched Query"}: {lookupResult.query}</span>
                         <span>{t("reflex.hitCount") || "Hit Count"}: {lookupResult.hit_count}</span>
                         {lookupResult.category && <span>{t("reflex.category") || "Category"}: {lookupResult.category}</span>}
                       </div>
                       <div className="rounded-lg bg-muted p-4">
-                        <p className="text-sm">{lookupResult.response}</p>
+                        <p className="text-xs lg:text-sm">{lookupResult.response}</p>
                       </div>
                     </>
                   )}
@@ -352,19 +352,19 @@ export function ReflexClient() {
         {tab === "config" && stats && (
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-              <h3 className="text-sm font-semibold">{t("reflex.cacheConfig") || "Cache Configuration"}</h3>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+              <h3 className="text-xs lg:text-sm font-semibold">{t("reflex.cacheConfig") || "Cache Configuration"}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 lg:gap-4 sm:gap-6">
                 <div>
                   <label className="text-xs text-muted-foreground">{t("reflex.maxEntries") || "Max Entries"}</label>
-                  <div className="mt-1 text-2xl font-bold">{stats.cache.total_entries}<span className="text-sm font-normal text-muted-foreground"> / 5000</span></div>
+                  <div className="mt-1 text-xl lg:text-2xl font-bold">{stats.cache.total_entries}<span className="text-xs lg:text-sm font-normal text-muted-foreground"> / 5000</span></div>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">{t("reflex.similarityThreshold") || "Similarity Threshold"}</label>
-                  <div className="mt-1 text-2xl font-bold">{Math.round(stats.cache.similarity_threshold * 100)}%</div>
+                  <div className="mt-1 text-xl lg:text-2xl font-bold">{Math.round(stats.cache.similarity_threshold * 100)}%</div>
                 </div>
                 <div>
                   <label className="text-xs text-muted-foreground">{t("reflex.defaultTTL") || "Default TTL (seconds)"}</label>
-                  <div className="mt-1 text-2xl font-bold">24h</div>
+                  <div className="mt-1 text-xl lg:text-2xl font-bold">24h</div>
                 </div>
               </div>
 
@@ -412,7 +412,7 @@ function StatCard({ icon: Icon, label, value, sub, color, bg }: {
         <span className="text-xs font-medium text-muted-foreground">{label}</span>
         <div className={cn("rounded-lg p-1.5", bg)}><Icon size={14} className={color} /></div>
       </div>
-      <p className="text-2xl font-bold">{value}</p>
+      <p className="text-xl lg:text-2xl font-bold">{value}</p>
       <p className="text-xs text-muted-foreground mt-0.5">{sub}</p>
     </div>
   );

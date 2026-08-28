@@ -148,8 +148,8 @@ export function PipelineClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
+        <div className="flex items-center gap-2 lg:gap-3">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-indigo-500/10">
             <Zap size={18} className="text-indigo-500" />
           </div>
@@ -183,11 +183,11 @@ export function PipelineClient() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-6 space-y-6">
+        <div className="max-w-4xl mx-auto p-3 lg:p-6 space-y-6">
 
           {/* Pipeline Flow Visualization */}
           <div className="rounded-xl border border-border bg-card p-5">
-            <h2 className="text-sm font-medium mb-4">{t('pipeline.processingFlow')}</h2>
+            <h2 className="text-xs lg:text-sm font-medium mb-4">{t('pipeline.processingFlow')}</h2>
             <div className="flex items-center justify-between gap-2">
               {stages.map((stage, i) => (
                 <div key={stage.key} className="flex items-center gap-2">
@@ -207,7 +207,7 @@ export function PipelineClient() {
 
           {/* Upload Area */}
           <div className="rounded-xl border border-border bg-card p-5 space-y-4">
-            <h2 className="text-sm font-medium">{t('pipeline.uploadFile')}</h2>
+            <h2 className="text-xs lg:text-sm font-medium">{t('pipeline.uploadFile')}</h2>
 
             {/* Pipeline type selector */}
             <div className="flex flex-wrap gap-2">
@@ -229,16 +229,16 @@ export function PipelineClient() {
             </div>
 
             {/* File input */}
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 lg:gap-3">
               <input
                 ref={fileRef}
                 type="file"
-                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1 file:text-xs file:font-medium hover:file:bg-muted/80"
+                className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm file:mr-3 file:rounded-md file:border-0 file:bg-muted file:px-3 file:py-1 file:text-xs file:font-medium hover:file:bg-muted/80"
               />
               <button
                 onClick={handleUpload}
                 disabled={uploading}
-                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors disabled:opacity-50"
               >
                 {uploading ? (
                   <Loader2 size={14} className="animate-spin" />
@@ -252,7 +252,7 @@ export function PipelineClient() {
             {/* Advanced settings (inline) */}
             {showSettings && (
               <div className="rounded-lg border border-dashed border-border p-4 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2 lg:gap-3">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">{t('pipeline.userId')}</label>
                     <input
@@ -298,10 +298,10 @@ export function PipelineClient() {
 
           {/* Error */}
           {error && (
-            <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 flex items-start gap-3">
+            <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-4 flex items-start gap-2 lg:gap-3">
               <XCircle size={16} className="text-red-500 shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-red-500">{t('pipeline.pipelineFailed')}</p>
+                <p className="text-xs lg:text-sm font-medium text-red-500">{t('pipeline.pipelineFailed')}</p>
                 <p className="text-xs text-red-500/80 mt-1">{error}</p>
               </div>
             </div>
@@ -320,7 +320,7 @@ export function PipelineClient() {
           {/* History List */}
           {showHistory && history.length > 0 && (
             <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-              <h2 className="text-sm font-medium">{t('pipeline.executionHistory')}</h2>
+              <h2 className="text-xs lg:text-sm font-medium">{t('pipeline.executionHistory')}</h2>
               <div className="space-y-2">
                 {history.map((h) => {
                   const cfg = STATUS_CONFIG[h.status] || STATUS_CONFIG.error;
@@ -330,7 +330,7 @@ export function PipelineClient() {
                       key={h.pipeline_id}
                       onClick={() => setSelectedHistory(h)}
                       className={cn(
-                        "flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50",
+                        "flex w-full items-center gap-2 lg:gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-muted/50",
                         selectedHistory?.pipeline_id === h.pipeline_id ? "border-primary/30 bg-primary/5" : "border-border"
                       )}
                     >
@@ -357,7 +357,7 @@ export function PipelineClient() {
           {showHistory && history.length === 0 && (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <History size={32} className="mb-3 opacity-50" />
-              <p className="text-sm">{t('pipeline.noHistory')}</p>
+              <p className="text-xs lg:text-sm">{t('pipeline.noHistory')}</p>
               <p className="text-xs mt-1">{t('pipeline.noHistoryHint')}</p>
             </div>
           )}
@@ -376,16 +376,16 @@ function PipelineResultCard({ result, stages }: { result: PipelineResult; stages
     <div className="rounded-xl border border-border bg-card overflow-hidden">
       {/* Result header */}
       <div className={cn("flex items-center justify-between px-5 py-3 border-b", cfg.bg)}>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 lg:gap-3">
           <Icon size={16} className={cfg.color} />
           <div>
-            <span className="text-sm font-medium">
+            <span className="text-xs lg:text-sm font-medium">
               {result.status === "completed" ? t('pipeline.completed') : result.status === "blocked" ? t('pipeline.blocked') : t('pipeline.partialComplete')}
             </span>
             <span className="text-xs text-muted-foreground ml-2">{result.pipeline_id}</span>
           </div>
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+        <div className="flex items-center gap-2 lg:gap-3 text-xs text-muted-foreground">
           <span>{result.pipeline_type}</span>
           <span>{result.elapsed_ms}ms</span>
         </div>
@@ -400,7 +400,7 @@ function PipelineResultCard({ result, stages }: { result: PipelineResult; stages
           const stageInfo = stages.find(s => step.step.includes(s.key));
 
           return (
-            <div key={i} className="flex items-start gap-3">
+            <div key={i} className="flex items-start gap-2 lg:gap-3">
               {/* Connector line */}
               <div className="flex flex-col items-center">
                 <div className={cn("flex items-center justify-center w-8 h-8 rounded-lg", stepCfg.bg)}>

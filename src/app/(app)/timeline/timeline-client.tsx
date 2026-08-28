@@ -209,7 +209,7 @@ export function TimelineClient() {
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-3 lg:px-6 py-4 border-b border-border">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 lg:gap-3">
           <Clock className="w-5 h-5 text-primary" />
           <h1 className="text-lg font-semibold">{t("timeline.title")}</h1>
           {stats && (
@@ -296,7 +296,7 @@ export function TimelineClient() {
             </button>
           </div>
           {showFilters && (
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 lg:gap-3">
               <select
                 value={filterOrgan}
                 onChange={e => { setFilterOrgan(e.target.value); }}
@@ -339,7 +339,7 @@ export function TimelineClient() {
         ) : error ? (
           <div className="flex flex-col items-center justify-center py-20 text-destructive">
             <AlertCircle className="w-8 h-8 mb-2" />
-            <p className="text-sm">{error}</p>
+            <p className="text-xs lg:text-sm">{error}</p>
             <button onClick={loadAll} className="mt-3 text-xs text-primary hover:underline">{t("timeline.retryAction")}</button>
           </div>
         ) : activeTab === "events" ? (
@@ -374,7 +374,7 @@ function EventsList({
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
         <Clock className="w-10 h-10 mb-3 opacity-30" />
-        <p className="text-sm">{t("timeline.noEvents")}</p>
+        <p className="text-xs lg:text-sm">{t("timeline.noEvents")}</p>
         <p className="text-xs mt-1">{t("timeline.syncHint")}</p>
       </div>
     )
@@ -418,7 +418,7 @@ function EventsList({
                     )}
                   >
                     <div
-                      className="flex items-center gap-3 px-3 py-2"
+                      className="flex items-center gap-2 lg:gap-3 px-3 py-2"
                       onClick={() => onToggleExpand(ev.event_id)}
                     >
                       <span className="text-base">{ev.emoji || "📌"}</span>
@@ -467,14 +467,14 @@ function EventsList({
 
 function StatsPanel({ stats, types }: { stats: TimelineStats | null; types: TypeInfo[] }) {
   const { t } = useTranslation();
-  if (!stats) return <p className="text-sm text-muted-foreground">{t("timeline.noStats")}</p>
+  if (!stats) return <p className="text-xs lg:text-sm text-muted-foreground">{t("timeline.noStats")}</p>
 
   const maxHourly = Math.max(...stats.hourly_distribution.map(h => h.count), 1)
 
   return (
     <div className="space-y-6">
       {/* Summary cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3">
         {[
           { label: t("timeline.totalEventsLabel"), value: stats.total_events, icon: Database },
           { label: t("timeline.recent24hLabel"), value: stats.recent_24h, icon: Clock },
@@ -493,7 +493,7 @@ function StatsPanel({ stats, types }: { stats: TimelineStats | null; types: Type
 
       {/* Hourly distribution */}
       <div className="rounded-lg border border-border p-4">
-        <h3 className="text-sm font-medium mb-3">{t("timeline.eventsByHour")}</h3>
+        <h3 className="text-xs lg:text-sm font-medium mb-3">{t("timeline.eventsByHour")}</h3>
         <div className="flex items-end gap-1 h-24">
           {[...stats.hourly_distribution].reverse().map(h => (
             <div key={h.hours_ago} className="flex-1 flex flex-col items-center gap-1">
@@ -512,7 +512,7 @@ function StatsPanel({ stats, types }: { stats: TimelineStats | null; types: Type
       {/* By type */}
       {types.length > 0 && (
         <div className="rounded-lg border border-border p-4">
-          <h3 className="text-sm font-medium mb-3">{t("timeline.eventsByType")}</h3>
+          <h3 className="text-xs lg:text-sm font-medium mb-3">{t("timeline.eventsByType")}</h3>
           <div className="space-y-2">
             {types.slice(0, 15).map(typ => {
               const maxCount = types[0]?.count || 1
@@ -548,22 +548,22 @@ function OrgansPanel({ organs, onSelectOrgan }: { organs: OrganInfo[]; onSelectO
     return (
       <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
         <Layers className="w-10 h-10 mb-3 opacity-30" />
-        <p className="text-sm">{t("timeline.noOrganEvents")}</p>
+        <p className="text-xs lg:text-sm">{t("timeline.noOrganEvents")}</p>
       </div>
     )
   }
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-3">
       {organs.map(o => (
         <button
           key={o.organ}
           onClick={() => onSelectOrgan(o.organ)}
-          className="flex items-center gap-3 rounded-lg border border-border p-3 hover:border-primary/30 hover:bg-primary/5 transition-colors text-left"
+          className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border p-3 hover:border-primary/30 hover:bg-primary/5 transition-colors text-left"
         >
           <span className="text-2xl">{o.emoji || "🔧"}</span>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{o.organ}</p>
+            <p className="text-xs lg:text-sm font-medium truncate">{o.organ}</p>
             <p className="text-xs text-muted-foreground">{t("timeline.organEventSummary", { count: o.count, ago: o.last_event_ago })}</p>
           </div>
           <ChevronRight className="w-4 h-4 text-muted-foreground" />

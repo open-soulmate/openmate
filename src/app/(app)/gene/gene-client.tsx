@@ -242,20 +242,20 @@ export function GeneClient() {
   ]
 
   return (
-    <div className="p-4 sm:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-3 lg:p-6 max-w-6xl mx-auto space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-gradient-to-br from-emerald-500/20 to-teal-500/20">
           <Dna className="w-6 h-6 text-emerald-400" />
         </div>
         <div>
-          <h1 className="text-2xl font-bold">🧬 Gene — {t("gene.text7")}</h1>
-          <p className="text-sm text-muted-foreground">{t("gene.text8")}</p>
+          <h1 className="text-xl lg:text-2xl font-bold">🧬 Gene — {t("gene.text7")}</h1>
+          <p className="text-xs lg:text-sm text-muted-foreground">{t("gene.text8")}</p>
         </div>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-2 lg:gap-4">
         {[
           { label: t("gene.text9"), value: health?.total_templates ?? 0 },
           { label: t("gene.text10"), value: health?.builtin_count ?? 0 },
@@ -263,7 +263,7 @@ export function GeneClient() {
           { label: t("gene.text11"), value: categories.length },
         ].map(s => (
           <div key={s.label} className="bg-card border border-border rounded-xl p-4">
-            <div className="text-2xl font-bold">{s.value}</div>
+            <div className="text-xl lg:text-2xl font-bold">{s.value}</div>
             <div className="text-xs text-muted-foreground">{s.label}</div>
           </div>
         ))}
@@ -277,7 +277,7 @@ export function GeneClient() {
             <button
               key={tab.key}
               onClick={() => setActiveTab(tab.key)}
-              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-t-lg text-xs sm:text-sm font-medium transition-all whitespace-nowrap ${
+              className={`flex items-center gap-1.5 sm:gap-2 px-2.5 sm:px-4 py-2 rounded-t-lg text-xs sm:text-xs lg:text-sm font-medium transition-all whitespace-nowrap ${
                 activeTab === tab.key
                   ? "bg-card border border-b-0 border-border text-foreground"
                   : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -301,7 +301,7 @@ export function GeneClient() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t("gene.search")}
-              className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
+              className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2.5 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all"
             />
             {searchQuery && (
               <button
@@ -352,10 +352,10 @@ export function GeneClient() {
           {filtered.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground/50">
               <Package className="w-12 h-12 mx-auto mb-2" />
-              <p className="text-sm">{t("gene.empty")}</p>
+              <p className="text-xs lg:text-sm">{t("gene.empty")}</p>
             </div>
           ) : (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-4">
               {filtered.map(tmpl => {
                 const color = CATEGORY_COLORS[tmpl.category] || "#6b7280"
                 const expanded = expandedTemplate === tmpl.template_id
@@ -382,7 +382,7 @@ export function GeneClient() {
                             )}
                             <span className="text-xs text-muted-foreground ml-auto">v{tmpl.version}</span>
                           </div>
-                          <h4 className="font-semibold text-sm">{tmpl.name}</h4>
+                          <h4 className="font-semibold text-xs lg:text-sm">{tmpl.name}</h4>
                           <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{tmpl.description}</p>
                         </div>
                         {expanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
@@ -391,7 +391,7 @@ export function GeneClient() {
 
                     {expanded && (
                       <div className="border-t border-border p-4 space-y-3 bg-muted/10">
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 lg:gap-4 text-xs text-muted-foreground">
                           <span>ID: <code className="font-mono">{tmpl.template_id}</code></span>
                           <span>{t("gene.text13")}: {tmpl.author}</span>
                           <span>{t("gene.text14")}: {tmpl.usage_count}{t("gene.text15")}</span>
@@ -485,7 +485,7 @@ export function GeneClient() {
                 value={newName}
                 onChange={(e) => setNewName(e.target.value)}
                 placeholder={t("gene.text21")}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm"
               />
             </div>
             <div>
@@ -493,7 +493,7 @@ export function GeneClient() {
               <select
                 value={newCategory}
                 onChange={(e) => setNewCategory(e.target.value)}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm"
               >
                 <option value="agent">Agent</option>
                 <option value="knowledge_base">{t("gene.text1")}</option>
@@ -508,7 +508,7 @@ export function GeneClient() {
                 onChange={(e) => setNewDescription(e.target.value)}
                 placeholder={t("gene.text23")}
                 rows={3}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm resize-none"
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm resize-none"
               />
             </div>
             <div>
@@ -518,7 +518,7 @@ export function GeneClient() {
                 value={newTags}
                 onChange={(e) => setNewTags(e.target.value)}
                 placeholder="rag, qa, knowledge"
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm"
               />
             </div>
             <div>
@@ -527,13 +527,13 @@ export function GeneClient() {
                 value={newConfig}
                 onChange={(e) => setNewConfig(e.target.value)}
                 rows={6}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm font-mono resize-none"
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm font-mono resize-none"
               />
             </div>
             <button
               onClick={handleCreate}
               disabled={!newName || createLoading}
-              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-xs lg:text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
             >
               {createLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
               {createLoading ? t("gene.text25") : t("gene.create")}
@@ -549,7 +549,7 @@ export function GeneClient() {
                     <CheckCircle className="w-5 h-5" />
                     <span className="font-medium">{t("gene.success")}</span>
                   </div>
-                  <div className="bg-muted/30 rounded-lg p-3 text-sm">
+                  <div className="bg-muted/30 rounded-lg p-3 text-xs lg:text-sm">
                     <span className="text-muted-foreground">{t("gene.text27")}: </span>
                     <code className="font-mono text-emerald-400">{createResult.template_id}</code>
                   </div>
@@ -563,7 +563,7 @@ export function GeneClient() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                   <Settings className="w-12 h-12 mb-2" />
-                  <p className="text-sm">{t("gene.text29")}</p>
+                  <p className="text-xs lg:text-sm">{t("gene.text29")}</p>
                 </div>
               )}
             </div>
@@ -581,7 +581,7 @@ export function GeneClient() {
               <select
                 value={instTemplateId}
                 onChange={(e) => setInstTemplateId(e.target.value)}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm"
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm"
               >
                 <option value="">-- {t("gene.select")} --</option>
                 {templates.map(t => (
@@ -597,7 +597,7 @@ export function GeneClient() {
               if (!tmpl) return null
               return (
                 <div className="bg-muted/20 rounded-xl p-4 space-y-2">
-                  <h4 className="font-medium text-sm">{tmpl.name}</h4>
+                  <h4 className="font-medium text-xs lg:text-sm">{tmpl.name}</h4>
                   <p className="text-xs text-muted-foreground">{tmpl.description}</p>
                   {tmpl.variables.length > 0 && (
                     <div className="text-xs text-muted-foreground">
@@ -614,7 +614,7 @@ export function GeneClient() {
                 value={instVariables}
                 onChange={(e) => setInstVariables(e.target.value)}
                 rows={6}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm font-mono resize-none"
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm font-mono resize-none"
                 placeholder='{"key": "value"}'
               />
             </div>
@@ -622,7 +622,7 @@ export function GeneClient() {
             <button
               onClick={handleInstantiate}
               disabled={!instTemplateId || instLoading}
-              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-xs lg:text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
             >
               {instLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
               {instLoading ? t("gene.text33") : t("gene.start")}
@@ -651,7 +651,7 @@ export function GeneClient() {
               ) : (
                 <div className="flex flex-col items-center justify-center h-full text-muted-foreground/50">
                   <Play className="w-12 h-12 mb-2" />
-                  <p className="text-sm">{t("gene.text37")}</p>
+                  <p className="text-xs lg:text-sm">{t("gene.text37")}</p>
                 </div>
               )}
             </div>
@@ -676,11 +676,11 @@ export function GeneClient() {
                 value={importJson}
                 onChange={(e) => setImportJson(e.target.value)}
                 rows={10}
-                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-sm font-mono resize-none"
+                className="w-full bg-card border border-border rounded-lg px-3 py-2 text-xs lg:text-sm font-mono resize-none"
                 placeholder={'{\n  "name": "My Template",\n  "category": "agent",\n  "description": "...",\n  "tags": ["custom"],\n  "config": {}\n}'}
               />
             </div>
-            <label className="flex items-center gap-2 text-sm cursor-pointer">
+            <label className="flex items-center gap-2 text-xs lg:text-sm cursor-pointer">
               <input
                 type="checkbox"
                 checked={importOverwrite}
@@ -692,13 +692,13 @@ export function GeneClient() {
             <button
               onClick={handleImport}
               disabled={!importJson.trim() || importLoading}
-              className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg font-medium text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-blue-600 hover:to-indigo-600 transition-all flex items-center justify-center gap-2"
+              className="w-full py-2.5 bg-gradient-to-r from-blue-500 to-indigo-500 text-white rounded-lg font-medium text-xs lg:text-sm disabled:opacity-40 disabled:cursor-not-allowed hover:from-blue-600 hover:to-indigo-600 transition-all flex items-center justify-center gap-2"
             >
               {importLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
               {importLoading ? t("gene.text39") : t("gene.import")}
             </button>
             {importResult && (
-              <div className={`rounded-lg p-3 text-sm ${importResult.error ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>
+              <div className={`rounded-lg p-3 text-xs lg:text-sm ${importResult.error ? "bg-red-500/10 text-red-400" : "bg-emerald-500/10 text-emerald-400"}`}>
                 {importResult.error ? (
                   <span>{String(importResult.error)}</span>
                 ) : (
@@ -723,20 +723,20 @@ export function GeneClient() {
             <p className="text-xs text-muted-foreground">
               {t("gene.t21fff")}
             </p>
-            <div className="bg-card border border-border rounded-xl p-6 space-y-4">
-              <div className="grid grid-cols-2 gap-4">
+            <div className="bg-card border border-border rounded-xl p-3 lg:p-6 space-y-4">
+              <div className="grid grid-cols-2 gap-2 lg:gap-4">
                 <div className="bg-muted/20 rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold">{health?.total_templates ?? 0}</div>
+                  <div className="text-xl lg:text-2xl font-bold">{health?.total_templates ?? 0}</div>
                   <div className="text-xs text-muted-foreground">{t("gene.text43")}</div>
                 </div>
                 <div className="bg-muted/20 rounded-lg p-4 text-center">
-                  <div className="text-2xl font-bold">{health?.user_count ?? 0}</div>
+                  <div className="text-xl lg:text-2xl font-bold">{health?.user_count ?? 0}</div>
                   <div className="text-xs text-muted-foreground">{t("gene.user")}</div>
                 </div>
               </div>
               <button
                 onClick={handleExportAll}
-                className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-sm hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
+                className="w-full py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-lg font-medium text-xs lg:text-sm hover:from-emerald-600 hover:to-teal-600 transition-all flex items-center justify-center gap-2"
               >
                 <Download className="w-4 h-4" /> {t("gene.all")}
               </button>

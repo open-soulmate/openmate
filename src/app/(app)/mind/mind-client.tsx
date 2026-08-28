@@ -136,7 +136,7 @@ export function MindClient() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <Brain size={20} className="text-violet-500" />
           <h1 className="text-lg font-semibold">{t("mind.title")}</h1>
@@ -145,19 +145,19 @@ export function MindClient() {
           </span>
         </div>
         <button onClick={() => { fetchPersonalities(); }}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors">
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors">
           <RefreshCw size={14} />
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
         <div className="flex gap-2">
           {[
             { id: "emotion" as const, label: t("mind.emotionTab"), icon: Smile },
             { id: "personality" as const, label: t("mind.personalityTab"), icon: Sparkles },
           ].map((tabItem) => (
             <button key={tabItem.id} onClick={() => setTab(tabItem.id)}
-              className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm transition-colors",
+              className={cn("flex items-center gap-1.5 rounded-lg px-3 py-2 text-xs lg:text-sm transition-colors",
                 tab === tabItem.id ? "bg-violet-500/10 text-violet-600 font-medium" : "hover:bg-muted text-muted-foreground")}>
               <tabItem.icon size={14} /> {tabItem.label}
             </button>
@@ -169,15 +169,15 @@ export function MindClient() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <div className="space-y-4">
               <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-                <h3 className="font-semibold text-sm">{t("mind.inputText")}</h3>
+                <h3 className="font-semibold text-xs lg:text-sm">{t("mind.inputText")}</h3>
                 <textarea value={emotionText} onChange={(e) => setEmotionText(e.target.value)}
                   placeholder={t("mind.textPlaceholder")}
-                  rows={6} className="w-full rounded-lg border border-border bg-background px-4 py-3 text-sm resize-none" />
+                  rows={6} className="w-full rounded-lg border border-border bg-background px-4 py-3 text-xs lg:text-sm resize-none" />
                 <div className="flex justify-between">
                   <span className="text-xs text-muted-foreground">{emotionText.length} {t("mind.chars")}</span>
                 </div>
                 <button onClick={handleAnalyze} disabled={loading || !emotionText.trim()}
-                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-violet-500 px-4 py-2.5 text-sm text-white hover:bg-violet-600 disabled:opacity-50">
+                  className="flex items-center justify-center gap-2 w-full rounded-lg bg-violet-500 px-4 py-2.5 text-xs lg:text-sm text-white hover:bg-violet-600 disabled:opacity-50">
                   {loading ? <Loader2 size={14} className="animate-spin" /> : <Zap size={14} />}
                   {t("mind.analyzeEmotion")}
                 </button>
@@ -185,7 +185,7 @@ export function MindClient() {
 
               {/* Quick samples */}
               <div className="rounded-xl border border-border bg-card p-5 space-y-2">
-                <h3 className="font-semibold text-sm">{t("mind.quickTest")}</h3>
+                <h3 className="font-semibold text-xs lg:text-sm">{t("mind.quickTest")}</h3>
                 {[
                   t("mind.sample1") || "This feature is finally done, I am so happy!",
                   t("mind.sample2") || "This bug is driving me crazy, I have been working on it all day.",
@@ -207,7 +207,7 @@ export function MindClient() {
                 <>
                   <div className="rounded-xl border border-border bg-card p-5 space-y-4">
                     <div className="flex items-center justify-between">
-                      <h3 className="font-semibold text-sm">{t("mind.primaryEmotion")}</h3>
+                      <h3 className="font-semibold text-xs lg:text-sm">{t("mind.primaryEmotion")}</h3>
                       <div className="flex items-center gap-2">
                         {sentimentIcon(emotionResult.sentiment)}
                         <span className="text-xs text-muted-foreground">{emotionResult.sentiment}</span>
@@ -229,7 +229,7 @@ export function MindClient() {
                     <div className="space-y-2">
                       {Object.entries(emotionResult.emotions).slice(0, 6).map(([emotion, score]) => (
                         <div key={emotion} className="flex items-center gap-2">
-                          <span className="text-sm w-4">{EMOTION_ICONS[emotion] || "•"}</span>
+                          <span className="text-xs lg:text-sm w-4">{EMOTION_ICONS[emotion] || "•"}</span>
                           <span className="text-xs w-20 truncate">{emotion}</span>
                           <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
                             <div className="h-full rounded-full bg-violet-500 transition-all"
@@ -275,7 +275,7 @@ export function MindClient() {
                 <div className="rounded-xl border border-border bg-card p-5">
                   <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                     <Smile size={40} className="mb-3 opacity-30" />
-                    <p className="text-sm">{t("mind.inputHint")}</p>
+                    <p className="text-xs lg:text-sm">{t("mind.inputHint")}</p>
                   </div>
                 </div>
               )}
@@ -287,9 +287,9 @@ export function MindClient() {
         {tab === "personality" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">{t("mind.activePersonality")}: <strong>{activeId}</strong></span>
+              <span className="text-xs lg:text-sm text-muted-foreground">{t("mind.activePersonality")}: <strong>{activeId}</strong></span>
               <button onClick={() => setShowCreate(true)}
-                className="flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-sm text-white hover:bg-violet-600">
+                className="flex items-center gap-1.5 rounded-lg bg-violet-500 px-3 py-1.5 text-xs lg:text-sm text-white hover:bg-violet-600">
                 <Plus size={14} /> {t("mind.createPersonality")}
               </button>
             </div>
@@ -303,7 +303,7 @@ export function MindClient() {
                   )}>
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold text-sm">{p.name}</h3>
+                      <h3 className="font-semibold text-xs lg:text-sm">{p.name}</h3>
                       <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
                     </div>
                     {activeId === p.personality_id && (
@@ -346,23 +346,23 @@ export function MindClient() {
       {/* Create Personality Modal */}
       {showCreate && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="w-full max-w-md rounded-xl border border-border bg-card p-6 space-y-4">
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-3 lg:p-6 space-y-4">
             <h3 className="font-semibold">{t("mind.createPersonality")}</h3>
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-muted-foreground">{t("mind.personalityName")}</label>
                 <input value={newP.name} onChange={(e) => setNewP({ ...newP, name: e.target.value })}
-                  placeholder={t("mind.namePlaceholder")} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                  placeholder={t("mind.namePlaceholder")} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">{t("mind.personalityDesc")}</label>
                 <input value={newP.description} onChange={(e) => setNewP({ ...newP, description: e.target.value })}
-                  placeholder={t("mind.descPlaceholder")} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                  placeholder={t("mind.descPlaceholder")} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">{t("mind.tone")}</label>
                 <select value={newP.tone} onChange={(e) => setNewP({ ...newP, tone: e.target.value })}
-                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                  className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm">
                   {TONE_OPTIONS.map((tone) => (
                     <option key={tone} value={tone}>{t(`mind.tone${tone.charAt(0).toUpperCase() + tone.slice(1)}`)}</option>
                   ))}
@@ -371,19 +371,19 @@ export function MindClient() {
               <div>
                 <label className="text-xs text-muted-foreground">{t("mind.traits")}</label>
                 <input value={newP.traits} onChange={(e) => setNewP({ ...newP, traits: e.target.value })}
-                  placeholder={t("mind.traitsPlaceholder")} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                  placeholder={t("mind.traitsPlaceholder")} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
               </div>
               <div>
                 <label className="text-xs text-muted-foreground">{t("mind.extraPrompt")}</label>
                 <textarea value={newP.system_prompt_suffix} onChange={(e) => setNewP({ ...newP, system_prompt_suffix: e.target.value })}
                   placeholder={t("mind.extraPromptPlaceholder")}
-                  rows={3} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm resize-none" />
+                  rows={3} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm resize-none" />
               </div>
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowCreate(false)} className="rounded-lg border border-border px-4 py-2 text-sm hover:bg-muted">{t("mind.cancel")}</button>
+              <button onClick={() => setShowCreate(false)} className="rounded-lg border border-border px-4 py-2 text-xs lg:text-sm hover:bg-muted">{t("mind.cancel")}</button>
               <button onClick={handleCreate} disabled={!newP.name}
-                className="rounded-lg bg-violet-500 px-4 py-2 text-sm text-white hover:bg-violet-600 disabled:opacity-50">{t("mind.create")}</button>
+                className="rounded-lg bg-violet-500 px-4 py-2 text-xs lg:text-sm text-white hover:bg-violet-600 disabled:opacity-50">{t("mind.create")}</button>
             </div>
           </div>
         </div>

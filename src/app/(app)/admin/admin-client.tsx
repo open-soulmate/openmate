@@ -130,42 +130,42 @@ export function AdminClient() {
               ) : (
                 <XCircle size={16} className="text-red-500" />
               )}
-              <span className="text-sm font-medium">System Health</span>
+              <span className="text-xs lg:text-sm font-medium">System Health</span>
             </div>
-            <p className="text-2xl font-bold">{healthyOrgans}/{totalOrgans}</p>
+            <p className="text-xl lg:text-2xl font-bold">{healthyOrgans}/{totalOrgans}</p>
             <p className="text-xs text-muted-foreground">organs online</p>
           </div>
 
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="flex items-center gap-2 mb-2">
               <HardDrive size={16} className="text-blue-500" />
-              <span className="text-sm font-medium">File Store</span>
+              <span className="text-xs lg:text-sm font-medium">File Store</span>
             </div>
-            <p className="text-2xl font-bold">{veinStats?.store?.total_files ?? 0}</p>
+            <p className="text-xl lg:text-2xl font-bold">{veinStats?.store?.total_files ?? 0}</p>
             <p className="text-xs text-muted-foreground">files stored</p>
           </div>
 
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="flex items-center gap-2 mb-2">
               <Zap size={16} className="text-amber-500" />
-              <span className="text-sm font-medium">LLM Usage</span>
+              <span className="text-xs lg:text-sm font-medium">LLM Usage</span>
             </div>
-            <p className="text-2xl font-bold">{glandStats?.total_tokens?.toLocaleString() ?? 0}</p>
+            <p className="text-xl lg:text-2xl font-bold">{glandStats?.total_tokens?.toLocaleString() ?? 0}</p>
             <p className="text-xs text-muted-foreground">tokens used</p>
           </div>
 
           <div className="rounded-lg border border-border bg-card p-4">
             <div className="flex items-center gap-2 mb-2">
               <Activity size={16} className="text-violet-500" />
-              <span className="text-sm font-medium">Trajectories</span>
+              <span className="text-xs lg:text-sm font-medium">Trajectories</span>
             </div>
-            <p className="text-2xl font-bold">{trajectoryStats?.total_sessions ?? 0}</p>
+            <p className="text-xl lg:text-2xl font-bold">{trajectoryStats?.total_sessions ?? 0}</p>
             <p className="text-xs text-muted-foreground">sessions recorded</p>
           </div>
         </div>
 
         {/* Quick Actions */}
-        <h2 className="mb-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">Quick Actions</h2>
+        <h2 className="mb-4 text-xs lg:text-sm font-semibold text-muted-foreground uppercase tracking-wider">Quick Actions</h2>
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* Clear Caches */}
           <ActionCard
@@ -294,7 +294,7 @@ export function AdminClient() {
         {/* Organ Grid */}
         {overview?.health?.organs && (
           <>
-            <h2 className="mt-8 mb-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            <h2 className="mt-8 mb-4 text-xs lg:text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               Organ Status ({healthyOrgans}/{totalOrgans})
             </h2>
             <div className="grid gap-2 grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8">
@@ -318,7 +318,7 @@ export function AdminClient() {
         {/* Component Statistics */}
         {overview?.stats && Object.keys(overview.stats).length > 0 && (
           <>
-            <h2 className="mt-8 mb-4 text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+            <h2 className="mt-8 mb-4 text-xs lg:text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               Component Statistics ({Object.keys(overview.stats).length} monitored)
             </h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -703,7 +703,7 @@ function ActionCard({
           {icon}
         </div>
         <div className="flex-1 min-w-0">
-          <h3 className="text-sm font-medium">{title}</h3>
+          <h3 className="text-xs lg:text-sm font-medium">{title}</h3>
           <p className="text-xs text-muted-foreground mt-0.5">{description}</p>
         </div>
       </div>
@@ -755,13 +755,13 @@ function StatsCard({
     <div className="rounded-lg border border-border bg-card p-4">
       <div className="flex items-center gap-2 mb-3">
         <span className="text-lg">{emoji}</span>
-        <h3 className="text-sm font-medium">{title}</h3>
+        <h3 className="text-xs lg:text-sm font-medium">{title}</h3>
       </div>
       <div className="grid grid-cols-2 gap-2">
         {items.map((item, i) => (
           <div key={i}>
             <div className="text-[10px] text-muted-foreground uppercase tracking-wider">{item.label}</div>
-            <div className="text-sm font-semibold">{item.value}</div>
+            <div className="text-xs lg:text-sm font-semibold">{item.value}</div>
           </div>
         ))}
       </div>

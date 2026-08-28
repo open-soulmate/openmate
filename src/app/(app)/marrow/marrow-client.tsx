@@ -305,13 +305,13 @@ export function MarrowClient() {
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="shrink-0 px-3 lg:px-6 pt-6 pb-4">
-        <div className="flex items-center gap-3 mb-1">
+        <div className="flex items-center gap-2 lg:gap-3 mb-1">
           <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20">
             <Bone className="w-5 h-5 text-amber-400" />
           </div>
           <div>
             <h1 className="text-lg font-semibold text-foreground">{t("marrow.title") || "Marrow — Backup System"}</h1>
-            <p className="text-sm text-muted-foreground">{t("marrow.subtitle") || "Backup & restore, scheduled backups, data migration, disaster recovery"}</p>
+            <p className="text-xs lg:text-sm text-muted-foreground">{t("marrow.subtitle") || "Backup & restore, scheduled backups, data migration, disaster recovery"}</p>
           </div>
         </div>
 
@@ -324,7 +324,7 @@ export function MarrowClient() {
                 key={tab.key}
                 onClick={() => setActiveTab(tab.key)}
                 className={cn(
-                  "flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-sm rounded-t-lg transition-colors whitespace-nowrap",
+                  "flex items-center gap-1.5 px-2 sm:px-3 py-1.5 text-xs sm:text-xs lg:text-sm rounded-t-lg transition-colors whitespace-nowrap",
                   activeTab === tab.key
                     ? "bg-card border border-b-0 border-border text-foreground"
                     : "text-muted-foreground hover:text-foreground hover:bg-muted/50"
@@ -341,7 +341,7 @@ export function MarrowClient() {
       {/* Message Toast */}
       {message && (
         <div className={cn(
-          "mx-6 mb-2 flex items-center gap-2 p-3 rounded-lg border text-sm",
+          "mx-6 mb-2 flex items-center gap-2 p-3 rounded-lg border text-xs lg:text-sm",
           message.type === "ok"
             ? "border-green-500/30 bg-green-500/10 text-green-400"
             : "border-red-500/30 bg-red-500/10 text-red-400"
@@ -374,16 +374,16 @@ export function MarrowClient() {
 
             {/* Paths */}
             <div className="p-4 rounded-xl border border-border bg-card space-y-2">
-              <h3 className="text-sm font-semibold text-foreground mb-2">{t("marrow.storagePaths") || "Storage Paths"}</h3>
-              <div className="flex items-center gap-2 text-sm">
+              <h3 className="text-xs lg:text-sm font-semibold text-foreground mb-2">{t("marrow.storagePaths") || "Storage Paths"}</h3>
+              <div className="flex items-center gap-2 text-xs lg:text-sm">
                 <span className="text-muted-foreground">{t("marrow.backupDir") || "Backup Directory"}:</span>
                 <code className="px-2 py-0.5 rounded bg-muted text-xs font-mono">{health?.backup.backup_dir || "~/.opensoul/backups"}</code>
               </div>
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-xs lg:text-sm">
                 <span className="text-muted-foreground">{t("marrow.exportDir") || "Export directory"}:</span>
                 <code className="px-2 py-0.5 rounded bg-muted text-xs font-mono">{health?.export_dir || "~/.opensoul/exports"}</code>
               </div>
-              <div className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 text-xs lg:text-sm">
                 <span className="text-muted-foreground">{t("marrow.scheduler") || "Scheduler"}:</span>
                 <span className={cn("text-xs font-medium", health?.scheduler.running ? "text-green-400" : "text-red-400")}>
                   {health?.scheduler.running ? (t("common.running") || "Running") : (t("common.stopped") || "Stopped")}
@@ -398,7 +398,7 @@ export function MarrowClient() {
                 className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all text-left"
               >
                 <Plus className="w-5 h-5 text-primary mb-2" />
-                <div className="text-sm font-semibold text-foreground">{t("marrow.createBackup") || "Create Backup"}</div>
+                <div className="text-xs lg:text-sm font-semibold text-foreground">{t("marrow.createBackup") || "Create Backup"}</div>
                 <div className="text-xs text-muted-foreground">{t("marrow.snapshotCurrent") || "Snapshot current system data"}</div>
               </button>
               <button
@@ -406,7 +406,7 @@ export function MarrowClient() {
                 className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all text-left"
               >
                 <CalendarClock className="w-5 h-5 text-cyan-400 mb-2" />
-                <div className="text-sm font-semibold text-foreground">{t("marrow.scheduledBackup") || "Scheduled Backups"}</div>
+                <div className="text-xs lg:text-sm font-semibold text-foreground">{t("marrow.scheduledBackup") || "Scheduled Backups"}</div>
                 <div className="text-xs text-muted-foreground">{t("marrow.setAutoBackup") || "Set up automatic backup schedule"}</div>
               </button>
               <button
@@ -414,7 +414,7 @@ export function MarrowClient() {
                 className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all text-left"
               >
                 <ArrowUpDown className="w-5 h-5 text-purple-400 mb-2" />
-                <div className="text-sm font-semibold text-foreground">{t("marrow.dataMigration") || "Data Migration"}</div>
+                <div className="text-xs lg:text-sm font-semibold text-foreground">{t("marrow.dataMigration") || "Data Migration"}</div>
                 <div className="text-xs text-muted-foreground">{t("marrow.importExport") || "Import/Export data"}</div>
               </button>
             </div>
@@ -425,14 +425,14 @@ export function MarrowClient() {
         {activeTab === "backups" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">{t("marrow.backups") || "Backup List"}</h3>
+              <h3 className="text-xs lg:text-sm font-semibold text-foreground">{t("marrow.backups") || "Backup List"}</h3>
               <div className="flex gap-2">
                 <button onClick={refresh} className="p-1.5 rounded-md hover:bg-accent text-muted-foreground hover:text-foreground">
                   <RefreshCw className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setShowCreateBackup(!showCreateBackup)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm hover:opacity-90"
                 >
                   <Plus className="w-3.5 h-3.5" /> {t("marrow.createBackup") || "Create Backup"}
                 </button>
@@ -442,32 +442,32 @@ export function MarrowClient() {
             {/* Create Backup Form */}
             {showCreateBackup && (
               <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2 lg:gap-3">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.backupName") || "Backup Name"}</label>
                     <input value={backupForm.name} onChange={e => setBackupForm({ ...backupForm, name: e.target.value })}
-                      placeholder={t("marrow.backupNamePlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("marrow.backupNamePlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.tags") || "Tags"} ({t("common.commaSeparated") || "Comma separated"})</label>
                     <input value={backupForm.tags} onChange={e => setBackupForm({ ...backupForm, tags: e.target.value })}
-                      placeholder={t("marrow.tagsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("marrow.tagsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
                   </div>
                   <div className="col-span-2">
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.sourceDirs") || "Source Directories"} ({t("common.commaSeparated") || "Comma separated"})</label>
                     <input value={backupForm.sourceDirs} onChange={e => setBackupForm({ ...backupForm, sourceDirs: e.target.value })}
-                      placeholder={t("marrow.sourceDirsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
+                      placeholder={t("marrow.sourceDirsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm font-mono" />
                   </div>
                   <div className="col-span-2">
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.description") || "Description"}</label>
                     <input value={backupForm.description} onChange={e => setBackupForm({ ...backupForm, description: e.target.value })}
-                      placeholder={t("marrow.descriptionPlaceholder") || "Backup description (optional)"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("marrow.descriptionPlaceholder") || "Backup description (optional)"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => setShowCreateBackup(false)} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">{t("common.cancel") || "Cancel"}</button>
+                  <button onClick={() => setShowCreateBackup(false)} className="px-3 py-1.5 rounded-lg border border-border text-xs lg:text-sm text-muted-foreground hover:text-foreground">{t("common.cancel") || "Cancel"}</button>
                   <button onClick={handleCreateBackup} disabled={creating}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40">
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm font-medium hover:opacity-90 disabled:opacity-40">
                     {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Archive className="w-3.5 h-3.5" />}
                     {creating ? (t("common.creating") || "Creating...") : (t("common.create") || "Create")}
                   </button>
@@ -478,15 +478,15 @@ export function MarrowClient() {
             {/* Backup List */}
             <div className="space-y-2">
               {backups.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-sm">{t("marrow.noBackups") || "No backups yet"}</div>
+                <div className="text-center py-8 text-muted-foreground text-xs lg:text-sm">{t("marrow.noBackups") || "No backups yet"}</div>
               )}
               {backups.map(b => (
                 <div key={b.backup_id} className="p-4 rounded-xl border border-border bg-card">
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 lg:gap-3">
                       <Archive className="w-5 h-5 text-amber-400" />
                       <div>
-                        <div className="text-sm font-semibold text-foreground">{b.name || b.backup_id}</div>
+                        <div className="text-xs lg:text-sm font-semibold text-foreground">{b.name || b.backup_id}</div>
                         <div className="text-xs text-muted-foreground">
                           {new Date(b.created_at).toLocaleString()} · {b.file_count} {t("marrow.files") || "files"} · {formatSize(b.size_bytes)}
                         </div>
@@ -525,15 +525,15 @@ export function MarrowClient() {
         {activeTab === "schedules" && (
           <div className="space-y-4">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground">{t("marrow.scheduledBackups") || "Scheduled Backups"}</h3>
+              <h3 className="text-xs lg:text-sm font-semibold text-foreground">{t("marrow.scheduledBackups") || "Scheduled Backups"}</h3>
               <div className="flex gap-2">
                 <button onClick={handleRunDue}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 text-sm hover:bg-amber-500/20">
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-500/10 text-amber-400 text-xs lg:text-sm hover:bg-amber-500/20">
                   <Play className="w-3.5 h-3.5" /> {t("marrow.runDue") || "Run Due Tasks"}
                 </button>
                 <button
                   onClick={() => setShowCreateSchedule(!showCreateSchedule)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm hover:opacity-90"
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm hover:opacity-90"
                 >
                   <Plus className="w-3.5 h-3.5" /> {t("marrow.createSchedule") || "Create Scheduled Backup"}
                 </button>
@@ -543,16 +543,16 @@ export function MarrowClient() {
             {/* Create Schedule Form */}
             {showCreateSchedule && (
               <div className="p-4 rounded-xl border border-border bg-card space-y-3">
-                <div className="grid grid-cols-2 gap-3">
+                <div className="grid grid-cols-2 gap-2 lg:gap-3">
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.scheduleName") || "Task Name"}</label>
                     <input value={scheduleForm.name} onChange={e => setScheduleForm({ ...scheduleForm, name: e.target.value })}
-                      placeholder={t("marrow.dailyBackup") || "Daily data backup"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("marrow.dailyBackup") || "Daily data backup"} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
                   </div>
                   <div>
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.interval") || "Interval"}</label>
                     <select value={scheduleForm.interval} onChange={e => setScheduleForm({ ...scheduleForm, interval: e.target.value })}
-                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                      className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm">
                       <option value="hourly">{t("marrow.hourly") || "Hourly"}</option>
                       <option value="daily">{t("marrow.daily") || "Daily"}</option>
                       <option value="weekly">{t("marrow.weekly") || "Weekly"}</option>
@@ -561,18 +561,18 @@ export function MarrowClient() {
                   <div className="col-span-2">
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.sourceDirs") || "Source Directories"}</label>
                     <input value={scheduleForm.sourceDirs} onChange={e => setScheduleForm({ ...scheduleForm, sourceDirs: e.target.value })}
-                      placeholder={t("marrow.sourceDirsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono" />
+                      placeholder={t("marrow.sourceDirsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm font-mono" />
                   </div>
                   <div className="col-span-2">
                     <label className="text-xs text-muted-foreground mb-1 block">{t("marrow.tags") || "Tags"}</label>
                     <input value={scheduleForm.tags} onChange={e => setScheduleForm({ ...scheduleForm, tags: e.target.value })}
-                      placeholder={t("marrow.scheduleTagsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm" />
+                      placeholder={t("marrow.scheduleTagsPlaceholder")} className="w-full rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm" />
                   </div>
                 </div>
                 <div className="flex gap-2 justify-end">
-                  <button onClick={() => setShowCreateSchedule(false)} className="px-3 py-1.5 rounded-lg border border-border text-sm text-muted-foreground hover:text-foreground">{t("common.cancel") || "Cancel"}</button>
+                  <button onClick={() => setShowCreateSchedule(false)} className="px-3 py-1.5 rounded-lg border border-border text-xs lg:text-sm text-muted-foreground hover:text-foreground">{t("common.cancel") || "Cancel"}</button>
                   <button onClick={handleCreateSchedule} disabled={creating || !scheduleForm.name}
-                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-sm font-medium hover:opacity-90 disabled:opacity-40">
+                    className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm font-medium hover:opacity-90 disabled:opacity-40">
                     {creating ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CalendarClock className="w-3.5 h-3.5" />}
                     {creating ? (t("common.creating") || "Creating...") : (t("common.create") || "Create")}
                   </button>
@@ -583,15 +583,15 @@ export function MarrowClient() {
             {/* Schedule List */}
             <div className="space-y-2">
               {schedules.length === 0 && (
-                <div className="text-center py-8 text-muted-foreground text-sm">{t("marrow.noSchedules") || "No scheduled backups"}</div>
+                <div className="text-center py-8 text-muted-foreground text-xs lg:text-sm">{t("marrow.noSchedules") || "No scheduled backups"}</div>
               )}
               {schedules.map(s => (
                 <div key={s.schedule_id} className={cn("p-4 rounded-xl border bg-card", s.enabled ? "border-border" : "border-border/50 opacity-60")}>
                   <div className="flex items-start justify-between">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2 lg:gap-3">
                       <CalendarClock className={cn("w-5 h-5", s.enabled ? "text-cyan-400" : "text-muted-foreground")} />
                       <div>
-                        <div className="text-sm font-semibold text-foreground">{s.name}</div>
+                        <div className="text-xs lg:text-sm font-semibold text-foreground">{s.name}</div>
                         <div className="text-xs text-muted-foreground">
                           {formatInterval(s.cron_expr, s.interval_seconds)} · {t("marrow.runCount") || "Run count"}: {s.run_count} · {t("marrow.nextRun") || "Next run"}: {formatNextRun(s.next_run_at)}
                         </div>
@@ -623,7 +623,7 @@ export function MarrowClient() {
           <div className="space-y-6">
             {/* Export */}
             <div className="p-4 rounded-xl border border-border bg-card">
-              <h3 className="text-sm font-semibold text-foreground mb-3">{t("marrow.exportData") || "Export Data"}</h3>
+              <h3 className="text-xs lg:text-sm font-semibold text-foreground mb-3">{t("marrow.exportData") || "Export Data"}</h3>
               <p className="text-xs text-muted-foreground mb-3">{t("marrow.exportDesc") || "Export knowledge base data in standard format"}</p>
               <button
                 onClick={async () => {
@@ -640,7 +640,7 @@ export function MarrowClient() {
                     }
                   } catch { showMsg("err", t("marrow.exportFailed") || "Export failed") }
                 }}
-                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/10 text-purple-400 text-sm hover:bg-purple-500/20"
+                className="flex items-center gap-2 px-4 py-2 rounded-lg bg-purple-500/10 text-purple-400 text-xs lg:text-sm hover:bg-purple-500/20"
               >
                 <Download className="w-4 h-4" /> {t("marrow.startExport") || "Start Export"}
               </button>
@@ -648,16 +648,16 @@ export function MarrowClient() {
 
             {/* Import */}
             <div className="p-4 rounded-xl border border-border bg-card">
-              <h3 className="text-sm font-semibold text-foreground mb-3">{t("marrow.importData") || "Import Data"}</h3>
+              <h3 className="text-xs lg:text-sm font-semibold text-foreground mb-3">{t("marrow.importData") || "Import Data"}</h3>
               <p className="text-xs text-muted-foreground mb-3">{t("marrow.importDesc") || "Import data from backup files or standard formats"}</p>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 lg:gap-3">
                 <select value={importFormat} onChange={e => setImportFormat(e.target.value)}
-                  className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
+                  className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm">
                   <option value="json">JSON</option>
                   <option value="csv">CSV</option>
                   <option value="markdown">Markdown</option>
                 </select>
-                <label className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 text-green-400 text-sm hover:bg-green-500/20 cursor-pointer">
+                <label className="flex items-center gap-2 px-4 py-2 rounded-lg bg-green-500/10 text-green-400 text-xs lg:text-sm hover:bg-green-500/20 cursor-pointer">
                   <Upload className="w-4 h-4" />
                   {importing ? (t("common.importing") || "Importing...") : (t("marrow.selectFile") || "Select file")}
                   <input type="file" className="hidden" onChange={handleImport} accept=".json,.csv,.md,.txt" disabled={importing} />
@@ -667,17 +667,17 @@ export function MarrowClient() {
 
             {/* Export History */}
             <div>
-              <h3 className="text-sm font-semibold text-foreground mb-3">{t("marrow.exportHistory") || "Export History"}</h3>
+              <h3 className="text-xs lg:text-sm font-semibold text-foreground mb-3">{t("marrow.exportHistory") || "Export History"}</h3>
               {exports.length === 0 ? (
-                <div className="text-center py-3 lg:py-6 text-muted-foreground text-sm">{t("marrow.noExports") || "No exports yet"}</div>
+                <div className="text-center py-3 lg:py-6 text-muted-foreground text-xs lg:text-sm">{t("marrow.noExports") || "No exports yet"}</div>
               ) : (
                 <div className="space-y-2">
                   {exports.map(exp => (
                     <div key={exp.job_id} className="p-3 rounded-lg border border-border bg-card flex items-center justify-between">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 lg:gap-3">
                         <FileText className="w-4 h-4 text-purple-400" />
                         <div>
-                          <div className="text-sm text-foreground">{exp.format.toUpperCase()} · {exp.record_count} {t("marrow.records") || "records"} · {formatSize(exp.size_bytes)}</div>
+                          <div className="text-xs lg:text-sm text-foreground">{exp.format.toUpperCase()} · {exp.record_count} {t("marrow.records") || "records"} · {formatSize(exp.size_bytes)}</div>
                           <div className="text-xs text-muted-foreground">{new Date(exp.created_at).toLocaleString()}</div>
                         </div>
                       </div>

@@ -125,7 +125,7 @@ export function SearchClient() {
         </div>
         <div>
           <h1 className="text-2xl font-bold">{t("search.title") || "Search"}</h1>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs lg:text-sm text-muted-foreground">
             {t("search.subtitle") || "Search across all your data sources"}
           </p>
         </div>
@@ -155,7 +155,7 @@ export function SearchClient() {
             <button
               onClick={handleSearch}
               disabled={loading || !query.trim()}
-              className="px-4 py-2 rounded-lg bg-cyan-500 text-white text-sm font-medium hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              className="px-4 py-2 rounded-lg bg-cyan-500 text-white text-xs lg:text-sm font-medium hover:bg-cyan-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
               {loading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -170,7 +170,7 @@ export function SearchClient() {
         {/* Options row */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-muted-foreground cursor-pointer select-none">
+            <label className="flex items-center gap-2 text-xs lg:text-sm text-muted-foreground cursor-pointer select-none">
               <input
                 type="checkbox"
                 checked={useUnified}
@@ -184,7 +184,7 @@ export function SearchClient() {
               <button
                 onClick={() => setShowFilters(!showFilters)}
                 className={cn(
-                  "flex items-center gap-1.5 text-sm px-2.5 py-1 rounded-lg border transition-colors",
+                  "flex items-center gap-1.5 text-xs lg:text-sm px-2.5 py-1 rounded-lg border transition-colors",
                   showFilters
                     ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/20"
                     : "bg-muted/30 text-muted-foreground border-border hover:bg-muted/50"
@@ -254,7 +254,7 @@ export function SearchClient() {
           <p className="text-lg font-medium mb-1">
             {t("search.emptyTitle") || "Search your data"}
           </p>
-          <p className="text-sm">
+          <p className="text-xs lg:text-sm">
             {t("search.emptyHint") || "Enter a query to search across knowledge, documents, and more"}
           </p>
         </div>
@@ -265,7 +265,7 @@ export function SearchClient() {
       ) : filtered.length === 0 ? (
         <div className="text-center py-16 text-muted-foreground/50">
           <Search className="w-12 h-12 mx-auto mb-2" />
-          <p className="text-sm">
+          <p className="text-xs lg:text-sm">
             {t("search.noResults") || `No results found for "${query}"`}
           </p>
         </div>
@@ -289,7 +289,7 @@ export function SearchClient() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h4 className="font-semibold text-sm">{result.title || result.id}</h4>
+                      <h4 className="font-semibold text-xs lg:text-sm">{result.title || result.id}</h4>
                       <span className={cn(
                         "px-1.5 py-0.5 rounded text-[10px] font-medium border",
                         getSourceStyle(source)

@@ -150,7 +150,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
       <div className="flex flex-col items-center justify-center h-full gap-4">
         <AlertCircle className="w-12 h-12 text-destructive" />
         <p className="text-muted-foreground">{error}</p>
-        <button onClick={() => router.push('/cron')} className="px-4 py-2 rounded-lg border text-sm hover:bg-muted">
+        <button onClick={() => router.push('/cron')} className="px-4 py-2 rounded-lg border text-xs lg:text-sm hover:bg-muted">
           {t('cronDetail.backToList')}
         </button>
       </div>
@@ -199,7 +199,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
             <button
               onClick={() => handleAction('pause')}
               disabled={!!actionLoading}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-muted transition-colors text-amber-500"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs lg:text-sm hover:bg-muted transition-colors text-amber-500"
             >
               {actionLoading === 'pause' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Pause className="w-4 h-4" />}
               {t('cronDetail.pause')}
@@ -208,7 +208,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
             <button
               onClick={() => handleAction('resume')}
               disabled={!!actionLoading}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-muted transition-colors text-green-500"
+              className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs lg:text-sm hover:bg-muted transition-colors text-green-500"
             >
               {actionLoading === 'resume' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
               {t('cronDetail.resume')}
@@ -217,7 +217,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
           <button
             onClick={() => handleAction('run')}
             disabled={!!actionLoading}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm hover:bg-primary/90 transition-colors"
           >
             {actionLoading === 'run' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
             {t('cronDetail.runNow')}
@@ -225,7 +225,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
           <button
             onClick={() => handleAction('delete')}
             disabled={!!actionLoading}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-sm hover:bg-destructive/10 text-destructive transition-colors"
+            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs lg:text-sm hover:bg-destructive/10 text-destructive transition-colors"
           >
             {actionLoading === 'delete' ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
             {t('cronDetail.delete')}
@@ -235,7 +235,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
 
       {/* Error banner */}
       {error && (
-        <div className="mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-sm text-destructive flex items-center gap-2">
+        <div className="mb-4 p-3 rounded-lg border border-destructive/30 bg-destructive/5 text-xs lg:text-sm text-destructive flex items-center gap-2">
           <AlertCircle className="w-4 h-4 shrink-0" />
           {error}
         </div>
@@ -248,7 +248,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
             <Calendar className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">{t('cronDetail.scheduleRule')}</span>
           </div>
-          <p className="text-sm font-mono">{job.schedule}</p>
+          <p className="text-xs lg:text-sm font-mono">{job.schedule}</p>
           <p className="text-xs text-muted-foreground mt-1">{formatSchedule(job.schedule, t)}</p>
         </div>
         <div className="p-4 rounded-xl border bg-card">
@@ -256,21 +256,21 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
             <Bot className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">{t('cronDetail.execAgent')}</span>
           </div>
-          <p className="text-sm font-medium capitalize">{icon} {agent}</p>
+          <p className="text-xs lg:text-sm font-medium capitalize">{icon} {agent}</p>
         </div>
         <div className="p-4 rounded-xl border bg-card">
           <div className="flex items-center gap-2 mb-1">
             <Clock className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">{t('cronDetail.nextRun')}</span>
           </div>
-          <p className="text-sm">{job.next_run ? new Date(job.next_run).toLocaleString('zh-CN') : '—'}</p>
+          <p className="text-xs lg:text-sm">{job.next_run ? new Date(job.next_run).toLocaleString('zh-CN') : '—'}</p>
         </div>
         <div className="p-4 rounded-xl border bg-card">
           <div className="flex items-center gap-2 mb-1">
             <RefreshCw className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">{t('cronDetail.lastRun')}</span>
           </div>
-          <p className="text-sm">{job.last_run ? new Date(job.last_run).toLocaleString('zh-CN') : '—'}</p>
+          <p className="text-xs lg:text-sm">{job.last_run ? new Date(job.last_run).toLocaleString('zh-CN') : '—'}</p>
         </div>
       </div>
 
@@ -281,7 +281,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
             <Send className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">{t('cronDetail.deliverTarget')}</span>
           </div>
-          <p className="text-sm font-mono bg-muted/50 rounded-lg px-3 py-2">{job.deliver}</p>
+          <p className="text-xs lg:text-sm font-mono bg-muted/50 rounded-lg px-3 py-2">{job.deliver}</p>
         </div>
       )}
 
@@ -292,7 +292,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
             <ChevronRight className="w-4 h-4 text-muted-foreground" />
             <span className="text-xs text-muted-foreground">{t('cronDetail.execPrompt')}</span>
           </div>
-          <pre className="text-sm whitespace-pre-wrap bg-muted/50 rounded-lg px-3 py-2 font-mono max-h-60 overflow-y-auto">
+          <pre className="text-xs lg:text-sm whitespace-pre-wrap bg-muted/50 rounded-lg px-3 py-2 font-mono max-h-60 overflow-y-auto">
             {job.prompt}
           </pre>
         </div>
@@ -305,7 +305,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
             <AlertCircle className="w-4 h-4 text-destructive" />
             <span className="text-xs text-destructive font-medium">{t('cronDetail.recentError')}</span>
           </div>
-          <pre className="text-sm whitespace-pre-wrap text-destructive/80 font-mono">
+          <pre className="text-xs lg:text-sm whitespace-pre-wrap text-destructive/80 font-mono">
             {job.last_error}
           </pre>
         </div>
@@ -314,7 +314,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
       {/* Run History */}
       <div className="rounded-xl border bg-card overflow-hidden">
         <div className="p-4 border-b flex items-center justify-between">
-          <h2 className="text-sm font-medium flex items-center gap-2">
+          <h2 className="text-xs lg:text-sm font-medium flex items-center gap-2">
             <Clock className="w-4 h-4 text-muted-foreground" />
             {t('cronDetail.execHistory')}
           </h2>
@@ -323,7 +323,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
           </button>
         </div>
         {history.length === 0 ? (
-          <div className="p-8 text-center text-muted-foreground text-sm">
+          <div className="p-8 text-center text-muted-foreground text-xs lg:text-sm">
             <Clock className="w-8 h-8 mx-auto mb-2 opacity-50" />
             <p>{t('cronDetail.noHistory')}</p>
             <p className="text-xs mt-1">{t('cronDetail.runNowHint')}</p>
@@ -339,7 +339,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
                       entry.status === 'failed' ? 'bg-destructive' :
                       'bg-amber-500 animate-pulse'
                     }`} />
-                    <span className="text-sm font-medium">
+                    <span className="text-xs lg:text-sm font-medium">
                       {entry.status === 'success' ? (t('cronDetail.success')) :
                        entry.status === 'failed' ? (t('cronDetail.failed')) : (t('cronDetail.running'))}
                     </span>

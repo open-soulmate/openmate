@@ -232,7 +232,7 @@ export function VitalClient() {
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 lg:gap-3">
           <div className="flex items-center justify-center w-8 h-8 rounded-lg bg-emerald-500/10">
             <Activity size={18} className="text-emerald-500" />
           </div>
@@ -241,7 +241,7 @@ export function VitalClient() {
             <p className="text-xs text-muted-foreground">{t("vital.subtitle") || "Real-time monitoring of system health, performance metrics, and alerts"}</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 lg:gap-3">
           {lastFetch && (
             <span className="text-[10px] text-muted-foreground">
               {lastFetch.toLocaleTimeString(undefined)}
@@ -265,7 +265,7 @@ export function VitalClient() {
       {/* Overview Cards */}
       {metrics && (
         <div className="border-b border-border px-3 lg:px-6 py-4">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3">
             <MetricCard
               icon={Cpu}
               label="CPU"
@@ -328,7 +328,7 @@ export function VitalClient() {
       <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {/* Error banner */}
         {healthError && activeTab === "health" && (
-          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500 flex items-center gap-2">
+          <div className="mb-4 rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xs lg:text-sm text-red-500 flex items-center gap-2">
             <XCircle size={16} />
             {t("vital.fetchError") || "Failed to fetch health data"}: {healthError}
           </div>
@@ -346,7 +346,7 @@ export function VitalClient() {
                   <GaugeBar value={metrics.disk_percent || 0} label={t("vital.diskUsage")} color="amber" detail={`${(metrics.disk_used_gb || 0).toFixed(0)} / ${(metrics.disk_total_gb || 0).toFixed(0)} GB`} />
                 </div>
                 <div className="rounded-xl border border-border bg-card p-4 space-y-3">
-                  <div className="grid grid-cols-2 gap-3">
+                  <div className="grid grid-cols-2 gap-2 lg:gap-3">
                     <MiniStat label={t("vital.requestQps")} value={(metrics.request_qps || 0).toFixed(1)} icon={Zap} />
                     <MiniStat label={t("vital.p99Latency")} value={`${(metrics.latency_p99_ms || 0).toFixed(0)}ms`} icon={Clock} />
                     <MiniStat label={t("vital.totalRequests")} value={String(metrics.requests_total || 0)} icon={TrendingUp} />
@@ -358,7 +358,7 @@ export function VitalClient() {
 
             {/* Business Metrics */}
             <Section title={t("vital.businessMetricsTitle")} icon={Database}>
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3">
                 <StatCard label={t("vital.knowledgeEntriesLabel")} value={String(metrics.knowledge_entries || 0)} icon={Database} color="blue" />
                 <StatCard label={t("vital.onlineAgents")} value={String(metrics.agents_online || 0)} icon={Server} color="emerald" />
                 <StatCard label={t("vital.searchCountLabel")} value={String(metrics.search_count || 0)} icon={Activity} color="purple" />
@@ -368,7 +368,7 @@ export function VitalClient() {
 
             {/* Network */}
             <Section title={t("vital.networkTraffic")} icon={Network}>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 lg:gap-3">
                 <StatCard label={t("vital.uploadTraffic")} value={formatBytes(metrics.net_sent_bytes || 0)} icon={TrendingUp} color="blue" />
                 <StatCard label={t("vital.downloadTrafficLabel")} value={formatBytes(metrics.net_recv_bytes || 0)} icon={TrendingDown} color="emerald" />
               </div>
@@ -380,7 +380,7 @@ export function VitalClient() {
         {activeTab === "health" && health && (
           <div className="space-y-4">
             {/* Summary */}
-            <div className="grid grid-cols-4 gap-3">
+            <div className="grid grid-cols-4 gap-2 lg:gap-3">
               <OverviewCard
                 label={t("vital.overallStatus") || "Overall Status"}
                 value={health.status.toUpperCase()}
@@ -409,7 +409,7 @@ export function VitalClient() {
 
             {/* Component list */}
             <div className="space-y-2">
-              <h2 className="text-sm font-medium text-muted-foreground mb-3">
+              <h2 className="text-xs lg:text-sm font-medium text-muted-foreground mb-3">
                 {t("vital.components") || "Components"} ({totalCount})
               </h2>
               {health.components.map((comp) => {
@@ -424,7 +424,7 @@ export function VitalClient() {
                     )}
                   >
                     <Icon size={16} className={cn("shrink-0", cfg.color)} />
-                    <span className="ml-3 text-sm font-medium min-w-[140px] capitalize">
+                    <span className="ml-3 text-xs lg:text-sm font-medium min-w-[140px] capitalize">
                       {comp.name}
                     </span>
                     <span className={cn(
@@ -452,8 +452,8 @@ export function VitalClient() {
         {activeTab === "history" && (
           <div className="space-y-6">
             {/* Time range selector */}
-            <div className="flex items-center gap-3">
-              <span className="text-sm text-muted-foreground">{t("vital.timeRange")}</span>
+            <div className="flex items-center gap-2 lg:gap-3">
+              <span className="text-xs lg:text-sm text-muted-foreground">{t("vital.timeRange")}</span>
               {[10, 30, 60, 120].map(m => (
                 <button
                   key={m}
@@ -481,14 +481,14 @@ export function VitalClient() {
             {history.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <BarChart3 size={32} className="mb-3 opacity-50" />
-                <p className="text-sm">{t("vital.noHistoryData")}</p>
+                <p className="text-xs lg:text-sm">{t("vital.noHistoryData")}</p>
                 <p className="text-xs mt-1">{t("vital.collectingData")}</p>
               </div>
             ) : (
               <>
                 {/* CPU + Memory Chart */}
                 <div className="rounded-xl border border-border bg-card p-5">
-                  <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                  <h3 className="text-xs lg:text-sm font-medium mb-4 flex items-center gap-2">
                     <Cpu size={14} className="text-blue-500" />
                     {t("vital.cpuMemoryTitle")}
                   </h3>
@@ -504,7 +504,7 @@ export function VitalClient() {
 
                 {/* Disk Chart */}
                 <div className="rounded-xl border border-border bg-card p-5">
-                  <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                  <h3 className="text-xs lg:text-sm font-medium mb-4 flex items-center gap-2">
                     <HardDrive size={14} className="text-amber-500" />
                     {t("vital.diskUsageTitle")}
                   </h3>
@@ -519,7 +519,7 @@ export function VitalClient() {
 
                 {/* QPS + Latency Chart */}
                 <div className="rounded-xl border border-border bg-card p-5">
-                  <h3 className="text-sm font-medium mb-4 flex items-center gap-2">
+                  <h3 className="text-xs lg:text-sm font-medium mb-4 flex items-center gap-2">
                     <Zap size={14} className="text-emerald-500" />
                     {t("vital.qpsLatencyTitle")}
                   </h3>
@@ -534,7 +534,7 @@ export function VitalClient() {
                 </div>
 
                 {/* Summary Stats */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3">
                   <StatCard
                     label={t("vital.cpuPeakLabel")}
                     value={`${Math.max(...history.map(h => h.cpu)).toFixed(1)}%`}
@@ -571,13 +571,13 @@ export function VitalClient() {
             {alerts.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
                 <Shield size={32} className="mb-3 opacity-50" />
-                <p className="text-sm">{t("vital.noAlerts")}</p>
+                <p className="text-xs lg:text-sm">{t("vital.noAlerts")}</p>
                 <p className="text-xs mt-1">{t("vital.allNormalDesc")}</p>
               </div>
             ) : (
               <>
-                <div className="flex items-center gap-3 mb-2">
-                  <span className="text-sm text-muted-foreground">
+                <div className="flex items-center gap-2 lg:gap-3 mb-2">
+                  <span className="text-xs lg:text-sm text-muted-foreground">
                     {t("vital.alertSummary", { total: alerts.length, active: activeAlerts })}
                   </span>
                   {criticalAlerts > 0 && (
@@ -590,7 +590,7 @@ export function VitalClient() {
                   <div
                     key={idx}
                     className={cn(
-                      "flex items-start gap-3 rounded-xl border p-4 transition-colors",
+                      "flex items-start gap-2 lg:gap-3 rounded-xl border p-4 transition-colors",
                       alert.resolved
                         ? "border-border bg-card opacity-60"
                         : alert.severity === "critical"
@@ -631,8 +631,8 @@ export function VitalClient() {
                           </span>
                         )}
                       </div>
-                      <p className="text-sm">{alert.message}</p>
-                      <div className="flex items-center gap-3 mt-1.5 text-xs text-muted-foreground">
+                      <p className="text-xs lg:text-sm">{alert.message}</p>
+                      <div className="flex items-center gap-2 lg:gap-3 mt-1.5 text-xs text-muted-foreground">
                         <span>{t("vital.currentValue", { value: alert.value })}</span>
                         <span>{t("vital.thresholdValue", { value: alert.threshold })}</span>
                         <span>{formatRelativeTime(alert.ts)}</span>
@@ -649,7 +649,7 @@ export function VitalClient() {
         {!health && !metrics && !healthError && (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 size={28} className="animate-spin text-primary mb-3" />
-            <p className="text-sm text-muted-foreground">{t("vital.checking") || "Checking system status..."}</p>
+            <p className="text-xs lg:text-sm text-muted-foreground">{t("vital.checking") || "Checking system status..."}</p>
           </div>
         )}
 
@@ -672,7 +672,7 @@ function Section({ title, icon: Icon, children }: { title: string; icon: React.E
     <div>
       <div className="flex items-center gap-2 mb-3">
         <Icon size={14} className="text-muted-foreground" />
-        <h3 className="text-sm font-medium">{title}</h3>
+        <h3 className="text-xs lg:text-sm font-medium">{title}</h3>
       </div>
       {children}
     </div>
@@ -722,7 +722,7 @@ function MiniStat({ label, value, icon: Icon, danger }: {
         <Icon size={12} className="text-muted-foreground" />
         <span className="text-[10px] text-muted-foreground">{label}</span>
       </div>
-      <div className={cn("text-sm font-semibold tabular-nums", danger && "text-red-500")}>{value}</div>
+      <div className={cn("text-xs lg:text-sm font-semibold tabular-nums", danger && "text-red-500")}>{value}</div>
     </div>
   );
 }

@@ -138,7 +138,7 @@ export function TopologyClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
           <Network size={20} className="text-violet-500" />
           <h1 className="text-lg font-semibold">{t("topology.title") || "System Topology"}</h1>
@@ -149,16 +149,16 @@ export function TopologyClient() {
         <button
           onClick={fetchStats}
           disabled={loading}
-          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs lg:text-sm hover:bg-muted transition-colors disabled:opacity-50"
         >
           <RefreshCw size={14} className={loading ? "animate-spin" : ""} />
           {t("common.refresh") || "Refresh"}
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
         {error && (
-          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-500">
+          <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xs lg:text-sm text-red-500">
             {error}
           </div>
         )}
@@ -199,7 +199,7 @@ export function TopologyClient() {
 
             {/* Category Breakdown */}
             <div className="rounded-xl border border-border bg-card p-5">
-              <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
+              <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2 mb-4">
                 <Layers size={14} className="text-violet-500" />
                 {t("topology.categoryBreakdown") || "Category Breakdown"}
               </h3>
@@ -211,7 +211,7 @@ export function TopologyClient() {
                       key={cat}
                       onClick={() => setFilter(filter === cat ? "all" : cat)}
                       className={cn(
-                        "inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm transition-all",
+                        "inline-flex items-center gap-2 rounded-lg border px-4 py-2.5 text-xs lg:text-sm transition-all",
                         filter === cat
                           ? `${colors.bg} ${colors.text} ${colors.border} ring-1 ring-current`
                           : "border-border bg-card hover:bg-muted"
@@ -243,7 +243,7 @@ export function TopologyClient() {
           <div className="rounded-xl border border-border bg-card overflow-hidden">
             <div className="px-5 py-3 border-b border-border bg-muted/30">
               <div className="flex items-center justify-between">
-                <h3 className="text-sm font-semibold flex items-center gap-2">
+                <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
                   <Network size={14} className="text-violet-500" />
                   {t("topology.nodeList") || "Nodes"}
                   <span className="rounded-full bg-violet-500/10 px-2 py-0.5 text-[10px] font-medium text-violet-500">
@@ -274,7 +274,7 @@ export function TopologyClient() {
                     <span className="text-lg">{node.emoji || "⚙️"}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium">{node.name}</span>
+                        <span className="text-xs lg:text-sm font-medium">{node.name}</span>
                         <span className={cn("rounded-full px-1.5 py-0.5 text-[9px] capitalize", colors.bg, colors.text)}>
                           {node.category}
                         </span>

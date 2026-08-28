@@ -155,7 +155,7 @@ export function WorkspaceClient() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="shrink-0 border-b border-border px-4 md:px-6 py-4">
+      <div className="shrink-0 border-b border-border px-2 lg:px-4 md:px-3 lg:px-6 py-4">
         <div className="flex items-center justify-between gap-2">
           <div>
             <h1 className="text-lg font-semibold text-foreground">
@@ -208,7 +208,7 @@ export function WorkspaceClient() {
       </div>
 
       {/* Content */}
-      <div className="flex-1 overflow-auto px-4 md:px-6 py-4 md:py-6">
+      <div className="flex-1 overflow-auto px-2 lg:px-4 md:px-3 lg:px-6 py-4 md:py-3 lg:py-6">
         {/* Back button */}
         {currentPath !== "~" && (
           <button
@@ -222,7 +222,7 @@ export function WorkspaceClient() {
 
         {/* Error */}
         {error && (
-          <div className="mb-4 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-4 py-3 text-xs text-destructive">
+          <div className="mb-4 flex items-center gap-2 rounded-lg border border-destructive/30 bg-destructive/5 px-2 lg:px-4 py-3 text-xs text-destructive">
             <AlertCircle size={14} />
             {error}
           </div>
@@ -248,7 +248,7 @@ export function WorkspaceClient() {
         ) : (
           <div className="rounded-lg border border-border overflow-hidden">
             {/* Table header */}
-            <div className={`grid bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border ${isMobile ? "grid-cols-1" : "grid-cols-[1fr_100px_140px]"}`}>
+            <div className={`grid bg-muted/50 px-2 lg:px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border ${isMobile ? "grid-cols-1" : "grid-cols-[1fr_100px_140px]"}`}>
               <span>{t("workspace.name", "Name")}</span>
               {!isMobile && <span className="text-right">{t("workspace.size", "Size")}</span>}
               {!isMobile && <span className="text-right">{t("workspace.modified", "Modified")}</span>}
@@ -260,7 +260,7 @@ export function WorkspaceClient() {
                 onClick={() => handleNavigate(entry)}
                 disabled={!entry.is_dir}
                 className={cn(
-                  `grid w-full items-center px-4 py-2.5 text-sm border-b border-border last:border-b-0 transition-colors ${isMobile ? "grid-cols-1" : "grid-cols-[1fr_100px_140px]"}`,
+                  `grid w-full items-center px-2 lg:px-4 py-2.5 text-sm border-b border-border last:border-b-0 transition-colors ${isMobile ? "grid-cols-1" : "grid-cols-[1fr_100px_140px]"}`,
                   entry.is_dir
                     ? "hover:bg-accent cursor-pointer"
                     : "cursor-default"

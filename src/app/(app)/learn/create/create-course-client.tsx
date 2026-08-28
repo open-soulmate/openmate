@@ -191,7 +191,7 @@ export function CreateCourseClient() {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center gap-3 border-b border-border px-6 py-4">
+      <div className="flex items-center gap-3 border-b border-border px-3 lg:px-6 py-4">
         <Link
           href="/learn"
           className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -199,31 +199,31 @@ export function CreateCourseClient() {
           <ArrowLeft size={16} />
         </Link>
         <div>
-          <h1 className="text-sm font-semibold">{t("createCourse.generateNew")}</h1>
+          <h1 className="text-xs lg:text-sm font-semibold">{t("createCourse.generateNew")}</h1>
           <p className="text-xs text-muted-foreground">
             {t("createCourse.selectHint")}
           </p>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         <div className="mx-auto max-w-2xl space-y-8">
           {/* Course title */}
           <section>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-xs lg:text-sm font-medium">
               {t("createCourse.courseTitle")}
             </label>
             <input
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder={t("createCourse.courseTitlePlaceholder")}
-              className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
+              className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none placeholder:text-muted-foreground focus:border-primary"
             />
           </section>
 
           {/* Description */}
           <section>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-xs lg:text-sm font-medium">
               {t("createCourse.description")} <span className="font-normal text-muted-foreground">{t("createCourse.optional")}</span>
             </label>
             <textarea
@@ -231,13 +231,13 @@ export function CreateCourseClient() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t("createCourse.descriptionPlaceholder")}
               rows={3}
-              className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none placeholder:text-muted-foreground focus:border-primary resize-none"
+              className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none placeholder:text-muted-foreground focus:border-primary resize-none"
             />
           </section>
 
           {/* Topics */}
           <section>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-xs lg:text-sm font-medium">
               {t("createCourse.topics")}{" "}
               <span className="text-muted-foreground font-normal">
                 {t("createCourse.selectOneOrMore")}
@@ -266,7 +266,7 @@ export function CreateCourseClient() {
 
           {/* Domain */}
           <section>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-xs lg:text-sm font-medium">
               {t("createCourse.domain")}{" "}
               <span className="text-muted-foreground font-normal">
                 {t("createCourse.optional")}
@@ -297,7 +297,7 @@ export function CreateCourseClient() {
 
           {/* Knowledge items */}
           <section>
-            <label className="mb-2 block text-sm font-medium">
+            <label className="mb-2 block text-xs lg:text-sm font-medium">
               {t("createCourse.knowledgeEntries")}{" "}
               <span className="text-muted-foreground font-normal">
                 {t("createCourse.selectFromKb")}
@@ -310,7 +310,7 @@ export function CreateCourseClient() {
                 value={knowledgeQuery}
                 onChange={(e) => setKnowledgeQuery(e.target.value)}
                 placeholder={t("createCourse.searchKb")}
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
+                className="flex-1 bg-transparent text-xs lg:text-sm outline-none placeholder:text-muted-foreground"
               />
             </div>
 
@@ -346,7 +346,7 @@ export function CreateCourseClient() {
                         {selected && <Check size={12} />}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium">
+                        <p className="truncate text-xs lg:text-sm font-medium">
                           {item.title}
                         </p>
                         <p className="truncate text-xs text-muted-foreground">
@@ -379,11 +379,11 @@ export function CreateCourseClient() {
 
           {/* Generation Mode */}
           <section>
-            <label className="mb-2 block text-sm font-medium">{t("createCourse.genMode") || "Generation Method"}</label>
+            <label className="mb-2 block text-xs lg:text-sm font-medium">{t("createCourse.genMode") || "Generation Method"}</label>
             <div className="flex gap-3">
               <button
                 onClick={() => setGenMode("ai")}
-                className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm transition-colors ${
+                className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-xs lg:text-sm transition-colors ${
                   genMode === "ai"
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border text-muted-foreground hover:border-primary/40"
@@ -397,7 +397,7 @@ export function CreateCourseClient() {
               </button>
               <button
                 onClick={() => setGenMode("manual")}
-                className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-sm transition-colors ${
+                className={`flex items-center gap-2 rounded-lg border px-4 py-3 text-xs lg:text-sm transition-colors ${
                   genMode === "manual"
                     ? "border-primary bg-primary/10 text-primary"
                     : "border-border text-muted-foreground hover:border-primary/40"
@@ -416,11 +416,11 @@ export function CreateCourseClient() {
           {genMode === "ai" && (
             <section className="grid grid-cols-2 gap-4">
               <div>
-                <label className="mb-2 block text-sm font-medium">{t("learn.t10672") || "Course"}</label>
+                <label className="mb-2 block text-xs lg:text-sm font-medium">{t("learn.t10672") || "Course"}</label>
                 <select
                   value={numChapters}
                   onChange={(e) => setNumChapters(parseInt(e.target.value))}
-                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
+                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
                 >
                   {[3, 4, 5, 6, 7, 8, 10].map((n) => (
                     <option key={n} value={n}>{t("learn.chapterCount", { n }) || `${n} chapters`}</option>
@@ -428,11 +428,11 @@ export function CreateCourseClient() {
                 </select>
               </div>
               <div>
-                <label className="mb-2 block text-sm font-medium">{t("learn.t76433") || "Completed"}</label>
+                <label className="mb-2 block text-xs lg:text-sm font-medium">{t("learn.t76433") || "Completed"}</label>
                 <select
                   value={difficulty}
                   onChange={(e) => setDifficulty(e.target.value)}
-                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary"
+                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
                 >
                   <option value="beginner">{t("learn.t03149") || "Learn"}</option>
                   <option value="intermediate">{t("learn.t56231") || "Start Learning"}</option>
@@ -447,7 +447,7 @@ export function CreateCourseClient() {
             <button
               onClick={handleGenerate}
               disabled={!canGenerate || generating}
-              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-6 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              className="inline-flex h-10 items-center gap-2 rounded-md bg-primary px-3 lg:px-6 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
             >
               {generating ? (
                 <>

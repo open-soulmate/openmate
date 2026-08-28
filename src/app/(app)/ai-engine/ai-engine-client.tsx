@@ -81,7 +81,7 @@ function LayerCard({
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
           <Icon size={16} className="text-primary" />
-          <span className="text-sm font-medium">{name}</span>
+          <span className="text-xs lg:text-sm font-medium">{name}</span>
         </div>
         <StatusBadge online={isActive} />
       </div>
@@ -208,13 +208,13 @@ export function AiEngineClient() {
   const successPct = engineStatus ? Math.round(engineStatus.success_rate * 100) : 0;
 
   return (
-    <div className="h-full overflow-y-auto p-6 space-y-6">
+    <div className="h-full overflow-y-auto p-3 lg:p-6 space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Brain size={24} className="text-primary" />
           <div>
-            <h1 className="text-xl font-semibold">{t("aiEngine.title", "AI Engine")}</h1>
+            <h1 className="text-lg lg:text-xl font-semibold">{t("aiEngine.title", "AI Engine")}</h1>
             <p className="text-xs text-muted-foreground">{t("aiEngine.subtitle", "Prompt · Context · Harness · Loop · Graph")}</p>
           </div>
         </div>
@@ -241,21 +241,21 @@ export function AiEngineClient() {
       <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground mb-1">{t("aiEngine.totalTasks", "Total Tasks")}</div>
-          <div className="text-2xl font-bold">{engineStatus?.total_tasks ?? 0}</div>
+          <div className="text-xl lg:text-2xl font-bold">{engineStatus?.total_tasks ?? 0}</div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground mb-1">{t("aiEngine.successRate", "Success Rate")}</div>
-          <div className={cn("text-2xl font-bold", successPct >= 90 ? "text-emerald-500" : successPct >= 70 ? "text-yellow-500" : "text-red-500")}>
+          <div className={cn("text-xl lg:text-2xl font-bold", successPct >= 90 ? "text-emerald-500" : successPct >= 70 ? "text-yellow-500" : "text-red-500")}>
             {successPct}%
           </div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground mb-1">{t("aiEngine.avgResponse", "Avg Response")}</div>
-          <div className="text-2xl font-bold">{engineStatus?.avg_response_time ?? "—"}</div>
+          <div className="text-xl lg:text-2xl font-bold">{engineStatus?.avg_response_time ?? "—"}</div>
         </div>
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground mb-1">{t("aiEngine.agents", "Agents")}</div>
-          <div className="text-2xl font-bold">{graphStatus?.total_agents ?? 0}</div>
+          <div className="text-xl lg:text-2xl font-bold">{graphStatus?.total_agents ?? 0}</div>
           <div className="text-[10px] text-muted-foreground">{graphStatus?.running_tasks ?? 0} running</div>
         </div>
       </div>
@@ -263,7 +263,7 @@ export function AiEngineClient() {
       {/* Layers */}
       {engineStatus?.layers && (
         <div>
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Layers size={14} />{t("aiEngine.layers", "Engine Layers")}</h2>
+          <h2 className="text-xs lg:text-sm font-semibold mb-3 flex items-center gap-2"><Layers size={14} />{t("aiEngine.layers", "Engine Layers")}</h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5">
             <LayerCard name="Prompt" icon={Brain} layer={engineStatus.layers.prompt} />
             <LayerCard name="Context" icon={BarChart3} layer={engineStatus.layers.context} />
@@ -278,7 +278,7 @@ export function AiEngineClient() {
       {contextState && (
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold flex items-center gap-2">
+            <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
               <Gauge size={14} />{t("aiEngine.contextUsage", "Context Token Usage")}
               {contextState.compression_needed && (
                 <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-yellow-500/10 px-2 py-0.5 text-[10px] font-medium text-yellow-500">
@@ -323,7 +323,7 @@ export function AiEngineClient() {
       {/* Graph Status */}
       {graphStatus && (
         <div className="rounded-xl border border-border bg-card p-4">
-          <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><GitBranch size={14} />{t("aiEngine.graphStatus", "Graph Status")}</h2>
+          <h2 className="text-xs lg:text-sm font-semibold mb-3 flex items-center gap-2"><GitBranch size={14} />{t("aiEngine.graphStatus", "Graph Status")}</h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-5 mb-4">
             <div className="text-center">
               <div className="text-lg font-bold">{graphStatus.active_groups}</div>
@@ -368,7 +368,7 @@ export function AiEngineClient() {
           onClick={() => setShowRoutes(!showRoutes)}
           className="flex items-center justify-between w-full"
         >
-          <h2 className="text-sm font-semibold flex items-center gap-2"><Settings size={14} />{t("aiEngine.harnessRoutes", "Harness Tool Routes")} ({harnessRoutes.length})</h2>
+          <h2 className="text-xs lg:text-sm font-semibold flex items-center gap-2"><Settings size={14} />{t("aiEngine.harnessRoutes", "Harness Tool Routes")} ({harnessRoutes.length})</h2>
           {showRoutes ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
         {showRoutes && (
@@ -411,19 +411,19 @@ export function AiEngineClient() {
 
       {/* Analyze Task */}
       <div className="rounded-xl border border-border bg-card p-4">
-        <h2 className="text-sm font-semibold mb-3 flex items-center gap-2"><Search size={14} />{t("aiEngine.analyzeTask", "Analyze Task")}</h2>
+        <h2 className="text-xs lg:text-sm font-semibold mb-3 flex items-center gap-2"><Search size={14} />{t("aiEngine.analyzeTask", "Analyze Task")}</h2>
         <div className="flex gap-2">
           <input
             value={analyzeInput}
             onChange={(e) => setAnalyzeInput(e.target.value)}
             onKeyDown={(e) => e.key === "Enter" && handleAnalyze()}
             placeholder={t("aiEngine.analyzePlaceholder", "Describe a task to analyze...")}
-            className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            className="flex-1 rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm"
           />
           <button
             onClick={handleAnalyze}
             disabled={analyzing || !analyzeInput.trim()}
-            className="rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+            className="rounded-lg bg-primary px-4 py-2 text-xs lg:text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
           >
             {analyzing ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
           </button>

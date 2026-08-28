@@ -131,14 +131,14 @@ export function RegistryClient() {
   return (
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 border-b border-border px-6 py-4">
+      <div className="shrink-0 border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-foreground flex items-center gap-2">
               <Package className="h-5 w-5 text-primary" />
               {t("registry.title", "Component Registry")}
             </h1>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 text-xs lg:text-sm text-muted-foreground">
               {t("registry.subtitle", "System organ registry — {{total}} components across {{phases}} phases", {
                 total: stats?.total_components || components.length,
                 phases: phases.length,
@@ -204,13 +204,13 @@ export function RegistryClient() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder={t("registry.searchPlaceholder", "Search components...")}
-              className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+              className="w-full rounded-lg border border-border bg-background py-2 pl-9 pr-3 text-xs lg:text-sm focus:outline-none focus:ring-1 focus:ring-primary"
             />
           </div>
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm"
           >
             <option value="">{t("registry.allCategories", "All Categories")}</option>
             {categories.map((c) => (
@@ -220,21 +220,21 @@ export function RegistryClient() {
           <select
             value={phaseFilter}
             onChange={(e) => setPhaseFilter(e.target.value)}
-            className="rounded-lg border border-border bg-background px-3 py-2 text-sm"
+            className="rounded-lg border border-border bg-background px-3 py-2 text-xs lg:text-sm"
           >
             <option value="">{t("registry.allPhases", "All Phases")}</option>
             {phases.map((p) => (
               <option key={p} value={p}>{p}</option>
             ))}
           </select>
-          <span className="text-sm text-muted-foreground">
+          <span className="text-xs lg:text-sm text-muted-foreground">
             {filtered.length} {t("registry.results", "results")}
           </span>
         </div>
       </div>
 
       {/* Component List */}
-      <div className="flex-1 overflow-y-auto p-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {viewMode === "grid" ? (
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((comp) => {
@@ -253,7 +253,7 @@ export function RegistryClient() {
                     <div className="flex items-center gap-2">
                       <span className="text-2xl">{comp.emoji}</span>
                       <div>
-                        <div className="font-medium text-sm">{comp.name}</div>
+                        <div className="font-medium text-xs lg:text-sm">{comp.name}</div>
                         <div className="text-[11px] text-muted-foreground">{comp.layer}</div>
                       </div>
                     </div>
@@ -340,7 +340,7 @@ export function RegistryClient() {
                     <span className="text-xl">{comp.emoji}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm">{comp.name}</span>
+                        <span className="font-medium text-xs lg:text-sm">{comp.name}</span>
                         <span className={cn(
                           "flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium",
                           hs === "ok" ? "bg-emerald-500/10 text-emerald-400" :

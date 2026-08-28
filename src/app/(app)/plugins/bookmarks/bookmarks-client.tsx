@@ -270,7 +270,7 @@ export function BookmarksClient() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="flex items-center gap-3 px-4 md:px-6 py-3 border-b border-zinc-800 bg-zinc-950/30">
+        <header className="flex items-center gap-2 lg:gap-3 px-2 lg:px-4 md:px-3 lg:px-6 py-3 border-b border-zinc-800 bg-zinc-950/30">
           {isMobile && (
             <button onClick={() => setShowSidebar(true)} className="p-1.5 rounded hover:bg-zinc-800 shrink-0">
               <PanelLeft className="w-4 h-4 text-zinc-400" />
@@ -282,7 +282,7 @@ export function BookmarksClient() {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="Search bookmarks..."
-              className="w-full pl-9 pr-4 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700 text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 transition"
+              className="w-full pl-9 pr-4 py-2 rounded-lg bg-zinc-800/50 border border-zinc-700 text-xs lg:text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-violet-500 transition"
             />
           </div>
           <div className="flex items-center gap-1 bg-zinc-800/50 rounded-lg p-0.5">
@@ -304,24 +304,24 @@ export function BookmarksClient() {
         </header>
 
         {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        <div className="flex-1 overflow-y-auto p-3 lg:p-6">
           {tab === "bookmarks" ? (
             loading ? (
               <div className="flex items-center justify-center h-40"><Loader2 className="w-6 h-6 animate-spin text-violet-400" /></div>
             ) : bookmarks.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-60 text-zinc-500">
                 <Bookmark className="w-12 h-12 mb-3 text-zinc-700" />
-                <p className="text-sm">No bookmarks yet</p>
-                <button onClick={openAdd} className="mt-3 text-violet-400 text-sm hover:underline">Add your first bookmark</button>
+                <p className="text-xs lg:text-sm">No bookmarks yet</p>
+                <button onClick={openAdd} className="mt-3 text-violet-400 text-xs lg:text-sm hover:underline">Add your first bookmark</button>
               </div>
             ) : viewMode === "grid" ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
                 {bookmarks.map(bm => (
                   <div key={bm.id} className="group bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition">
-                    <div className="flex items-start gap-3 mb-3">
+                    <div className="flex items-start gap-2 lg:gap-3 mb-3">
                       <img src={getFaviconUrl(bm.url)} alt="" className="w-5 h-5 rounded mt-0.5" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
                       <div className="flex-1 min-w-0">
-                        <a href={bm.url} target="_blank" rel="noopener" className="text-sm font-medium text-zinc-100 hover:text-violet-300 line-clamp-2 leading-snug">
+                        <a href={bm.url} target="_blank" rel="noopener" className="text-xs lg:text-sm font-medium text-zinc-100 hover:text-violet-300 line-clamp-2 leading-snug">
                           {bm.title}
                         </a>
                         <p className="text-xs text-zinc-500 mt-0.5 truncate">{getDomain(bm.url)}</p>
@@ -354,12 +354,12 @@ export function BookmarksClient() {
             ) : (
               <div className="space-y-1">
                 {bookmarks.map(bm => (
-                  <div key={bm.id} className="group flex items-center gap-3 px-4 py-2.5 rounded-lg hover:bg-zinc-800/50 transition">
+                  <div key={bm.id} className="group flex items-center gap-2 lg:gap-3 px-2 lg:px-4 py-2.5 rounded-lg hover:bg-zinc-800/50 transition">
                     <img src={getFaviconUrl(bm.url)} alt="" className="w-4 h-4 rounded shrink-0" onError={e => { (e.target as HTMLImageElement).style.display = "none"; }} />
                     <button onClick={() => toggleFavorite(bm.id)} className="shrink-0">
                       {bm.is_favorite ? <Star className="w-3.5 h-3.5 text-yellow-400 fill-yellow-400" /> : <Star className="w-3.5 h-3.5 text-zinc-700 group-hover:text-zinc-500" />}
                     </button>
-                    <a href={bm.url} target="_blank" rel="noopener" className="text-sm text-zinc-200 hover:text-violet-300 truncate flex-1 min-w-0">{bm.title}</a>
+                    <a href={bm.url} target="_blank" rel="noopener" className="text-xs lg:text-sm text-zinc-200 hover:text-violet-300 truncate flex-1 min-w-0">{bm.title}</a>
                     <span className="text-xs text-zinc-600 truncate max-w-[120px]">{getDomain(bm.url)}</span>
                     <div className="flex items-center gap-1">
                       {bm.tags.slice(0, 2).map(tag => (
@@ -397,10 +397,10 @@ export function BookmarksClient() {
 
                 {stats.top_domains.length > 0 && (
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-                    <h3 className="text-sm font-medium text-zinc-300 mb-3">Top Domains</h3>
+                    <h3 className="text-xs lg:text-sm font-medium text-zinc-300 mb-3">Top Domains</h3>
                     <div className="space-y-2">
                       {stats.top_domains.map(d => (
-                        <div key={d.domain} className="flex items-center gap-3">
+                        <div key={d.domain} className="flex items-center gap-2 lg:gap-3">
                           <span className="text-xs text-zinc-400 w-40 truncate">{d.domain}</span>
                           <div className="flex-1 bg-zinc-800 rounded-full h-2">
                             <div className="bg-violet-500 rounded-full h-2 transition-all" style={{ width: `${Math.min(100, (d.count / (stats.top_domains[0]?.count || 1)) * 100)}%` }} />
@@ -414,12 +414,12 @@ export function BookmarksClient() {
 
                 {stats.most_clicked.length > 0 && (
                   <div className="bg-zinc-900/50 border border-zinc-800 rounded-xl p-4">
-                    <h3 className="text-sm font-medium text-zinc-300 mb-3">Most Clicked</h3>
+                    <h3 className="text-xs lg:text-sm font-medium text-zinc-300 mb-3">Most Clicked</h3>
                     <div className="space-y-2">
                       {stats.most_clicked.map((bm, i) => (
-                        <div key={bm.id} className="flex items-center gap-3">
+                        <div key={bm.id} className="flex items-center gap-2 lg:gap-3">
                           <span className="text-xs text-zinc-600 w-4">#{i + 1}</span>
-                          <a href={bm.url} target="_blank" rel="noopener" className="text-sm text-zinc-300 hover:text-violet-300 truncate flex-1">{bm.title}</a>
+                          <a href={bm.url} target="_blank" rel="noopener" className="text-xs lg:text-sm text-zinc-300 hover:text-violet-300 truncate flex-1">{bm.title}</a>
                           <span className="flex items-center gap-1 text-xs text-zinc-500"><MousePointerClick className="w-3 h-3" />{bm.clicks}</span>
                         </div>
                       ))}
@@ -437,7 +437,7 @@ export function BookmarksClient() {
       {/* Add/Edit Modal */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowModal(false)}>
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-lg p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-lg p-3 lg:p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-lg font-semibold text-zinc-100">{editingId ? "Edit Bookmark" : "Add Bookmark"}</h3>
               <button onClick={() => setShowModal(false)} className="text-zinc-500 hover:text-zinc-300"><X className="w-5 h-5" /></button>
@@ -445,32 +445,32 @@ export function BookmarksClient() {
             <div className="space-y-3">
               <div>
                 <label className="text-xs text-zinc-500 mb-1 block">URL *</label>
-                <input value={formUrl} onChange={e => setFormUrl(e.target.value)} placeholder="https://example.com" className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 focus:outline-none focus:border-violet-500" />
+                <input value={formUrl} onChange={e => setFormUrl(e.target.value)} placeholder="https://example.com" className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs lg:text-sm text-zinc-100 focus:outline-none focus:border-violet-500" />
               </div>
               <div>
                 <label className="text-xs text-zinc-500 mb-1 block">Title</label>
-                <input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Auto-generated from URL" className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 focus:outline-none focus:border-violet-500" />
+                <input value={formTitle} onChange={e => setFormTitle(e.target.value)} placeholder="Auto-generated from URL" className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs lg:text-sm text-zinc-100 focus:outline-none focus:border-violet-500" />
               </div>
               <div>
                 <label className="text-xs text-zinc-500 mb-1 block">Description</label>
-                <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={2} placeholder="Brief description..." className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 focus:outline-none focus:border-violet-500 resize-none" />
+                <textarea value={formDesc} onChange={e => setFormDesc(e.target.value)} rows={2} placeholder="Brief description..." className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs lg:text-sm text-zinc-100 focus:outline-none focus:border-violet-500 resize-none" />
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2 lg:gap-3">
                 <div>
                   <label className="text-xs text-zinc-500 mb-1 block">Collection</label>
-                  <select value={formCollection} onChange={e => setFormCollection(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 focus:outline-none focus:border-violet-500">
+                  <select value={formCollection} onChange={e => setFormCollection(e.target.value)} className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs lg:text-sm text-zinc-100 focus:outline-none focus:border-violet-500">
                     {collections.map(c => <option key={c.id} value={c.name}>{c.icon} {c.name}</option>)}
                   </select>
                 </div>
                 <div>
                   <label className="text-xs text-zinc-500 mb-1 block">Tags (comma-separated)</label>
-                  <input value={formTags} onChange={e => setFormTags(e.target.value)} placeholder="tag1, tag2" className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 focus:outline-none focus:border-violet-500" />
+                  <input value={formTags} onChange={e => setFormTags(e.target.value)} placeholder="tag1, tag2" className="w-full px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs lg:text-sm text-zinc-100 focus:outline-none focus:border-violet-500" />
                 </div>
               </div>
             </div>
             <div className="flex justify-end gap-2 mt-5">
-              <button onClick={() => setShowModal(false)} className="px-4 py-2 rounded-lg text-sm text-zinc-400 hover:text-zinc-200 transition">Cancel</button>
-              <button onClick={saveBookmark} disabled={formSaving || !formUrl.trim()} className="flex items-center gap-2 px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium transition disabled:opacity-50">
+              <button onClick={() => setShowModal(false)} className="px-2 lg:px-4 py-2 rounded-lg text-xs lg:text-sm text-zinc-400 hover:text-zinc-200 transition">Cancel</button>
+              <button onClick={saveBookmark} disabled={formSaving || !formUrl.trim()} className="flex items-center gap-2 px-2 lg:px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs lg:text-sm font-medium transition disabled:opacity-50">
                 {formSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
                 {editingId ? "Save Changes" : "Add Bookmark"}
               </button>
@@ -482,17 +482,17 @@ export function BookmarksClient() {
       {/* New Collection Modal */}
       {showColModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowColModal(false)}>
-          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-sm p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
+          <div className="bg-zinc-900 border border-zinc-700 rounded-2xl w-full max-w-sm p-3 lg:p-6 shadow-2xl" onClick={e => e.stopPropagation()}>
             <h3 className="text-lg font-semibold text-zinc-100 mb-4">New Collection</h3>
             <div className="flex gap-2 mb-3">
-              <select value={newColIcon} onChange={e => setNewColIcon(e.target.value)} className="px-2 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm">
+              <select value={newColIcon} onChange={e => setNewColIcon(e.target.value)} className="px-2 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs lg:text-sm">
                 {["📁", "📖", "🔧", "💡", "🎯", "📊", "🎨", "🔗", "⚡", "🧪", "🌟", "📝"].map(i => <option key={i} value={i}>{i}</option>)}
               </select>
-              <input value={newColName} onChange={e => setNewColName(e.target.value)} placeholder="Collection name" className="flex-1 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-sm text-zinc-100 focus:outline-none focus:border-violet-500" />
+              <input value={newColName} onChange={e => setNewColName(e.target.value)} placeholder="Collection name" className="flex-1 px-3 py-2 rounded-lg bg-zinc-800 border border-zinc-700 text-xs lg:text-sm text-zinc-100 focus:outline-none focus:border-violet-500" />
             </div>
             <div className="flex justify-end gap-2">
-              <button onClick={() => setShowColModal(false)} className="px-4 py-2 rounded-lg text-sm text-zinc-400 hover:text-zinc-200">Cancel</button>
-              <button onClick={createCollection} disabled={!newColName.trim()} className="px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-sm font-medium disabled:opacity-50">Create</button>
+              <button onClick={() => setShowColModal(false)} className="px-2 lg:px-4 py-2 rounded-lg text-xs lg:text-sm text-zinc-400 hover:text-zinc-200">Cancel</button>
+              <button onClick={createCollection} disabled={!newColName.trim()} className="px-2 lg:px-4 py-2 rounded-lg bg-violet-600 hover:bg-violet-500 text-white text-xs lg:text-sm font-medium disabled:opacity-50">Create</button>
             </div>
           </div>
         </div>
@@ -500,7 +500,7 @@ export function BookmarksClient() {
 
       {/* Toast */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 shadow-xl text-sm text-zinc-100 animate-in fade-in slide-in-from-bottom-2">
+        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-2 px-2 lg:px-4 py-2.5 rounded-xl bg-zinc-800 border border-zinc-700 shadow-xl text-xs lg:text-sm text-zinc-100 animate-in fade-in slide-in-from-bottom-2">
           <Check className="w-4 h-4 text-emerald-400" />{toast}
         </div>
       )}
@@ -535,9 +535,9 @@ function BookmarkSidebar({
       <div className="p-4 border-b border-zinc-800">
         <div className="flex items-center gap-2 mb-3">
           <Bookmark className="w-5 h-5 text-violet-400" />
-          <h2 className="text-sm font-semibold text-zinc-100">Bookmarks</h2>
+          <h2 className="text-xs lg:text-sm font-semibold text-zinc-100">Bookmarks</h2>
         </div>
-        <button onClick={openAdd} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-sm transition">
+        <button onClick={openAdd} className="w-full flex items-center gap-2 px-3 py-2 rounded-lg bg-violet-600/20 hover:bg-violet-600/30 text-violet-300 text-xs lg:text-sm transition">
           <Plus className="w-4 h-4" /> Add Bookmark
         </button>
       </div>
@@ -554,7 +554,7 @@ function BookmarkSidebar({
           <button
             key={col.id}
             onClick={() => { setActiveCollection(col.id === "__all__" ? null : col.name); setActiveTag(null); }}
-            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition mb-0.5 ${
+            className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs lg:text-sm transition mb-0.5 ${
               (col.id === "__all__" && !activeCollection) || activeCollection === col.name
                 ? "bg-violet-600/20 text-violet-300"
                 : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
@@ -597,7 +597,7 @@ function BookmarkSidebar({
       <div className="p-3 border-t border-zinc-800">
         <button
           onClick={() => { setShowFavoritesOnly(!showFavoritesOnly); setActiveCollection(null); setActiveTag(null); }}
-          className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-sm transition ${
+          className={`w-full flex items-center gap-2 px-3 py-1.5 rounded-md text-xs lg:text-sm transition ${
             showFavoritesOnly ? "bg-yellow-600/20 text-yellow-300" : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/50"
           }`}
         >

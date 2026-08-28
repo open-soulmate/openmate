@@ -94,18 +94,18 @@ export function KnowledgeRequestsClient() {
         </button>
       </div>
 
-      {error && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-600 text-sm">{error}</div>}
+      {error && <div className="p-3 bg-red-500/10 border border-red-500/20 rounded-md text-red-600 text-xs lg:text-sm">{error}</div>}
 
       {showCreate && (
         <div className="p-4 border rounded-lg bg-card space-y-4">
           <h3 className="font-medium">{t('knowledgeRequests.createTitle', 'Request New Knowledge Base')}</h3>
           <div className="space-y-3">
             <div>
-              <label className="text-sm font-medium mb-1 block">{t('knowledgeRequests.name', 'Knowledge Base Name')}</label>
+              <label className="text-xs lg:text-sm font-medium mb-1 block">{t('knowledgeRequests.name', 'Knowledge Base Name')}</label>
               <input value={newName} onChange={(e) => setNewName(e.target.value)} className="w-full px-3 py-2 border rounded-md bg-background" placeholder={t('knowledgeRequests.namePlaceholder', 'e.g. Project Documentation')} />
             </div>
             <div>
-              <label className="text-sm font-medium mb-1 block">{t('knowledgeRequests.description', 'Description')}</label>
+              <label className="text-xs lg:text-sm font-medium mb-1 block">{t('knowledgeRequests.description', 'Description')}</label>
               <textarea value={newDesc} onChange={(e) => setNewDesc(e.target.value)} className="w-full px-3 py-2 border rounded-md bg-background h-24 resize-none" placeholder={t('knowledgeRequests.descPlaceholder', 'Describe the purpose and contents of this knowledge base')} />
             </div>
           </div>
@@ -121,16 +121,16 @@ export function KnowledgeRequestsClient() {
       <div className="flex items-center gap-4">
         <div className="flex gap-2">
           {['', 'pending', 'approved', 'rejected'].map((s) => (
-            <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-md text-sm ${filter === s ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'}`}>
+            <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-md text-xs lg:text-sm ${filter === s ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'}`}>
               {s || t('common.all', 'All')}
             </button>
           ))}
         </div>
-        <label className="flex items-center gap-2 text-sm cursor-pointer">
+        <label className="flex items-center gap-2 text-xs lg:text-sm cursor-pointer">
           <input type="checkbox" checked={showMyOnly} onChange={(e) => setShowMyOnly(e.target.checked)} className="rounded" />
           {t('knowledgeRequests.myOnly', 'My Requests Only')}
         </label>
-        <button onClick={loadRequests} className="ml-auto text-sm text-muted-foreground hover:text-foreground">{t('common.refresh', 'Refresh')}</button>
+        <button onClick={loadRequests} className="ml-auto text-xs lg:text-sm text-muted-foreground hover:text-foreground">{t('common.refresh', 'Refresh')}</button>
       </div>
 
       {loading ? (
@@ -148,16 +148,16 @@ export function KnowledgeRequestsClient() {
                     <span className="font-medium">{req.kb_name}</span>
                     <span className={`px-2 py-0.5 rounded-full text-xs border ${statusColor(req.status)}`}>{req.status}</span>
                   </div>
-                  <p className="text-sm text-muted-foreground">{req.kb_description}</p>
+                  <p className="text-xs lg:text-sm text-muted-foreground">{req.kb_description}</p>
                   {req.requester_name && <p className="text-xs text-muted-foreground">{t('knowledgeRequests.requester', 'Requester')}: {req.requester_name}</p>}
                   <p className="text-xs text-muted-foreground">{req.created_at ? new Date(req.created_at).toLocaleString() : ''}</p>
-                  {req.review_note && <p className="text-sm mt-2 p-2 bg-muted rounded">{req.review_note}</p>}
+                  {req.review_note && <p className="text-xs lg:text-sm mt-2 p-2 bg-muted rounded">{req.review_note}</p>}
                 </div>
                 {req.status === 'pending' && (
                   <div className="flex gap-2 ml-4">
                     {reviewId === req.id ? (
                       <div className="space-y-2">
-                        <input value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} className="px-2 py-1 border rounded text-sm bg-background w-48" placeholder={t('knowledgeRequests.reviewNote', 'Review note (optional)')} />
+                        <input value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} className="px-2 py-1 border rounded text-xs lg:text-sm bg-background w-48" placeholder={t('knowledgeRequests.reviewNote', 'Review note (optional)')} />
                         <div className="flex gap-1">
                           <button onClick={() => handleReview(req.id, 'approved')} className="px-2 py-1 bg-green-500 text-white rounded text-xs hover:bg-green-600">{t('common.approve', 'Approve')}</button>
                           <button onClick={() => handleReview(req.id, 'rejected')} className="px-2 py-1 bg-red-500 text-white rounded text-xs hover:bg-red-600">{t('common.reject', 'Reject')}</button>
@@ -165,7 +165,7 @@ export function KnowledgeRequestsClient() {
                         </div>
                       </div>
                     ) : (
-                      <button onClick={() => setReviewId(req.id)} className="px-3 py-1.5 border rounded-md text-sm hover:bg-accent flex items-center gap-1">
+                      <button onClick={() => setReviewId(req.id)} className="px-3 py-1.5 border rounded-md text-xs lg:text-sm hover:bg-accent flex items-center gap-1">
                         <Eye className="w-3 h-3" /> {t('common.review', 'Review')}
                       </button>
                     )}

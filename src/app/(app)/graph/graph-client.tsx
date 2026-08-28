@@ -384,13 +384,13 @@ export function GraphClient() {
 
         {/* Toolbar */}
         <div className="absolute top-4 left-4 flex gap-2">
-          <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90 shadow-lg">
+          <button onClick={() => setShowCreate(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm hover:bg-primary/90 shadow-lg">
             <Plus size={14} /> {t("graph.addEntity") || "Add Entity"}
           </button>
-          <button onClick={() => setShowRelCreate(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border text-sm hover:bg-muted shadow-lg">
+          <button onClick={() => setShowRelCreate(true)} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border text-xs lg:text-sm hover:bg-muted shadow-lg">
             <Plus size={14} /> {t("graph.addRelation") || "Add Relation"}
           </button>
-          <button onClick={loadGraph} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border text-sm hover:bg-muted shadow-lg">
+          <button onClick={loadGraph} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-card border text-xs lg:text-sm hover:bg-muted shadow-lg">
             <RefreshCw size={14} />
           </button>
         </div>
@@ -410,18 +410,18 @@ export function GraphClient() {
         {/* Create entity dialog */}
         {showCreate && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
-            <div className="bg-card border rounded-xl p-6 w-96 shadow-2xl">
+            <div className="bg-card border rounded-xl p-3 lg:p-6 w-96 shadow-2xl">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold">{t("graph.addEntity") || "Add Entity"}</h3>
                 <button onClick={() => setShowCreate(false)}><X size={16} /></button>
               </div>
               <div className="space-y-3">
-                <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t("graph.entityName") || "Entity Name"} className="w-full px-3 py-2 rounded-lg border bg-background text-sm" />
-                <select value={newType} onChange={e => setNewType(e.target.value)} className="w-full px-3 py-2 rounded-lg border bg-background text-sm">
+                <input value={newName} onChange={e => setNewName(e.target.value)} placeholder={t("graph.entityName") || "Entity Name"} className="w-full px-3 py-2 rounded-lg border bg-background text-xs lg:text-sm" />
+                <select value={newType} onChange={e => setNewType(e.target.value)} className="w-full px-3 py-2 rounded-lg border bg-background text-xs lg:text-sm">
                   {Object.keys(COLORS).filter(k => k !== 'default').map(k => <option key={k} value={k}>{k}</option>)}
                 </select>
-                <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder={t("graph.descriptionOptional") || "Description (optional)"} className="w-full px-3 py-2 rounded-lg border bg-background text-sm" />
-                <button onClick={handleCreateEntity} className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90">{t("graph.create") || "Create"}</button>
+                <input value={newDesc} onChange={e => setNewDesc(e.target.value)} placeholder={t("graph.descriptionOptional") || "Description (optional)"} className="w-full px-3 py-2 rounded-lg border bg-background text-xs lg:text-sm" />
+                <button onClick={handleCreateEntity} className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm hover:bg-primary/90">{t("graph.create") || "Create"}</button>
               </div>
             </div>
           </div>
@@ -430,22 +430,22 @@ export function GraphClient() {
         {/* Create relation dialog */}
         {showRelCreate && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40 z-10">
-            <div className="bg-card border rounded-xl p-6 w-96 shadow-2xl">
+            <div className="bg-card border rounded-xl p-3 lg:p-6 w-96 shadow-2xl">
               <div className="flex justify-between items-center mb-4">
                 <h3 className="font-semibold">{t("graph.addRelation") || "Add Relation"}</h3>
                 <button onClick={() => setShowRelCreate(false)}><X size={16} /></button>
               </div>
               <div className="space-y-3">
-                <select value={relSource} onChange={e => setRelSource(e.target.value)} className="w-full px-3 py-2 rounded-lg border bg-background text-sm">
+                <select value={relSource} onChange={e => setRelSource(e.target.value)} className="w-full px-3 py-2 rounded-lg border bg-background text-xs lg:text-sm">
                   <option value="">{t("graph.selectSource") || "Select source entity"}</option>
                   {entities.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </select>
-                <select value={relTarget} onChange={e => setRelTarget(e.target.value)} className="w-full px-3 py-2 rounded-lg border bg-background text-sm">
+                <select value={relTarget} onChange={e => setRelTarget(e.target.value)} className="w-full px-3 py-2 rounded-lg border bg-background text-xs lg:text-sm">
                   <option value="">{t("graph.selectTarget") || "Select target entity"}</option>
                   {entities.map(e => <option key={e.id} value={e.id}>{e.name}</option>)}
                 </select>
-                <input value={relType} onChange={e => setRelType(e.target.value)} placeholder={t("graph.relationType") || "Relation Type"} className="w-full px-3 py-2 rounded-lg border bg-background text-sm" />
-                <button onClick={handleCreateRelation} className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-sm hover:bg-primary/90">{t("graph.createRelation") || "Create Relation"}</button>
+                <input value={relType} onChange={e => setRelType(e.target.value)} placeholder={t("graph.relationType") || "Relation Type"} className="w-full px-3 py-2 rounded-lg border bg-background text-xs lg:text-sm" />
+                <button onClick={handleCreateRelation} className="w-full py-2 rounded-lg bg-primary text-primary-foreground text-xs lg:text-sm hover:bg-primary/90">{t("graph.createRelation") || "Create Relation"}</button>
               </div>
             </div>
           </div>
@@ -463,9 +463,9 @@ export function GraphClient() {
                   <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: (COLORS[entityType(selected)] || COLORS.default) + '20', color: COLORS[entityType(selected)] || COLORS.default }}>{entityType(selected)}</span>
                 </div>
               )}
-              {selected.description && <p className="text-sm text-muted-foreground">{selected.description}</p>}
+              {selected.description && <p className="text-xs lg:text-sm text-muted-foreground">{selected.description}</p>}
               {selected.properties && Object.entries(selected.properties).map(([k, v]) => (
-                <div key={k} className="flex justify-between text-sm">
+                <div key={k} className="flex justify-between text-xs lg:text-sm">
                   <span className="text-muted-foreground">{k}</span>
                   <span>{String(v)}</span>
                 </div>
@@ -484,7 +484,7 @@ export function GraphClient() {
                 })}
                 {relations.filter(r => getRelSource(r) === selected.id || getRelTarget(r) === selected.id).length === 0 && <p className="text-xs text-muted-foreground">{t("graph.noRelations") || "No relations"}</p>}
               </div>
-              <button onClick={() => handleDeleteEntity(selected.id)} className="w-full mt-4 py-2 rounded-lg border border-destructive/50 text-destructive text-sm hover:bg-destructive/10 flex items-center justify-center gap-1.5">
+              <button onClick={() => handleDeleteEntity(selected.id)} className="w-full mt-4 py-2 rounded-lg border border-destructive/50 text-destructive text-xs lg:text-sm hover:bg-destructive/10 flex items-center justify-center gap-1.5">
                 <Trash2 size={14} /> {t("graph.deleteEntity") || "Delete Entity"}
               </button>
             </div>
@@ -493,7 +493,7 @@ export function GraphClient() {
       ) : selected ? (
         <div className="w-80 border-l bg-card overflow-y-auto">
           <div className="p-4 border-b flex items-center justify-between">
-            <h2 className="font-bold text-sm">{selected.name}</h2>
+            <h2 className="font-bold text-xs lg:text-sm">{selected.name}</h2>
             <button onClick={() => setSelected(null)} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
           </div>
           <div className="p-4 space-y-3">
@@ -503,9 +503,9 @@ export function GraphClient() {
                 <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: (COLORS[entityType(selected)] || COLORS.default) + '20', color: COLORS[entityType(selected)] || COLORS.default }}>{entityType(selected)}</span>
               </div>
             )}
-            {selected.description && <p className="text-sm text-muted-foreground">{selected.description}</p>}
+            {selected.description && <p className="text-xs lg:text-sm text-muted-foreground">{selected.description}</p>}
             {selected.properties && Object.entries(selected.properties).map(([k, v]) => (
-              <div key={k} className="flex justify-between text-sm">
+              <div key={k} className="flex justify-between text-xs lg:text-sm">
                 <span className="text-muted-foreground">{k}</span>
                 <span>{String(v)}</span>
               </div>
@@ -526,7 +526,7 @@ export function GraphClient() {
               {relations.filter(r => getRelSource(r) === selected.id || getRelTarget(r) === selected.id).length === 0 && <p className="text-xs text-muted-foreground">{t("graph.noRelations") || "No relations"}</p>}
             </div>
 
-            <button onClick={() => handleDeleteEntity(selected.id)} className="w-full mt-4 py-2 rounded-lg border border-destructive/50 text-destructive text-sm hover:bg-destructive/10 flex items-center justify-center gap-1.5">
+            <button onClick={() => handleDeleteEntity(selected.id)} className="w-full mt-4 py-2 rounded-lg border border-destructive/50 text-destructive text-xs lg:text-sm hover:bg-destructive/10 flex items-center justify-center gap-1.5">
               <Trash2 size={14} /> {t("graph.deleteEntity") || "Delete Entity"}
             </button>
           </div>
