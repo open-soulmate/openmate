@@ -111,28 +111,28 @@ export function KnowledgeClient() {
   return (
     <div className="px-3 lg:px-6 py-4 lg:py-6 max-w-6xl mx-auto space-y-4 lg:space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/20">
-            <BookOpen className="w-6 h-6 text-violet-400" />
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 lg:gap-3 min-w-0">
+          <div className="p-1.5 lg:p-2 rounded-lg bg-gradient-to-br from-violet-500/20 to-purple-500/20 shrink-0">
+            <BookOpen className="w-5 h-5 lg:w-6 lg:h-6 text-violet-400" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold">{t("knowledge.title") || "Knowledge Base"}</h1>
-            <p className="text-sm text-muted-foreground">{t("knowledge.subtitle") || "Manage your knowledge items"}</p>
+          <div className="min-w-0">
+            <h1 className="text-lg lg:text-2xl font-bold truncate">{t("knowledge.title") || "Knowledge Base"}</h1>
+            <p className="text-xs lg:text-sm text-muted-foreground hidden sm:block">{t("knowledge.subtitle") || "Manage your knowledge items"}</p>
           </div>
         </div>
         <button
           onClick={handleRefresh}
           disabled={refreshing}
-          className="flex items-center gap-2 px-3 py-2 rounded-lg bg-card border border-border text-sm hover:bg-muted/50 transition-colors disabled:opacity-50"
+          className="flex items-center gap-1.5 lg:gap-2 px-2.5 lg:px-3 py-1.5 lg:py-2 rounded-lg bg-card border border-border text-xs lg:text-sm hover:bg-muted/50 transition-colors disabled:opacity-50 shrink-0 touch-manipulation"
         >
-          <RefreshCw className={cn("w-4 h-4", refreshing && "animate-spin")} />
-          {t("common.refresh") || "Refresh"}
+          <RefreshCw className={cn("w-3.5 h-3.5 lg:w-4 lg:h-4", refreshing && "animate-spin")} />
+          <span className="hidden sm:inline">{t("common.refresh") || "Refresh"}</span>
         </button>
       </div>
 
       {/* Stats Bar */}
-      <div className="grid grid-cols-3 gap-4">
+      <div className="grid grid-cols-3 gap-2 lg:gap-4">
         {[
           { label: t("knowledge.totalItems") || "Total Items", value: stats?.total ?? items.length, icon: Package },
           { label: t("knowledge.pinned") || "Pinned", value: stats?.pinned ?? pinnedCount, icon: Pin },
@@ -140,13 +140,13 @@ export function KnowledgeClient() {
         ].map(s => {
           const Icon = s.icon
           return (
-            <div key={s.label} className="bg-card border border-border rounded-xl p-4 flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-muted/30">
-                <Icon className="w-4 h-4 text-muted-foreground" />
+            <div key={s.label} className="bg-card border border-border rounded-xl p-2.5 lg:p-4 flex items-center gap-2 lg:gap-3">
+              <div className="p-1.5 lg:p-2 rounded-lg bg-muted/30 shrink-0">
+                <Icon className="w-3.5 h-3.5 lg:w-4 lg:h-4 text-muted-foreground" />
               </div>
-              <div>
-                <div className="text-2xl font-bold">{s.value}</div>
-                <div className="text-xs text-muted-foreground">{s.label}</div>
+              <div className="min-w-0">
+                <div className="text-lg lg:text-2xl font-bold">{s.value}</div>
+                <div className="text-[10px] lg:text-xs text-muted-foreground truncate">{s.label}</div>
               </div>
             </div>
           )
@@ -161,7 +161,7 @@ export function KnowledgeClient() {
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           placeholder={t("knowledge.searchPlaceholder") || "Search knowledge items..."}
-          className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
+          className="w-full bg-card border border-border rounded-lg pl-10 pr-4 py-2 lg:py-2.5 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-violet-500/30 focus:border-violet-500/50 transition-all"
         />
         {searchQuery && (
           <button
@@ -193,7 +193,7 @@ export function KnowledgeClient() {
               <div className="flex items-start gap-3">
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 mb-1">
-                    <h4 className="font-semibold text-sm truncate">{item.title}</h4>
+                    <h4 className="font-semibold text-xs lg:text-sm truncate">{item.title}</h4>
                     {item.pinned && (
                       <Pin className="w-3.5 h-3.5 text-amber-400 shrink-0" />
                     )}
@@ -228,12 +228,12 @@ export function KnowledgeClient() {
                   )}
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
+                {/* Action Buttons — always visible on mobile, hover on desktop */}
+                <div className="flex gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity shrink-0">
                   <button
                     onClick={() => handlePin(item.id)}
                     className={cn(
-                      "p-1.5 rounded-lg text-xs transition-colors",
+                      "p-1.5 lg:p-1.5 rounded-lg text-xs transition-colors touch-manipulation",
                       item.pinned
                         ? "bg-amber-500/10 text-amber-400 border border-amber-500/20 hover:bg-amber-500/20"
                         : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
@@ -245,7 +245,7 @@ export function KnowledgeClient() {
                   <button
                     onClick={() => handleStar(item.id)}
                     className={cn(
-                      "p-1.5 rounded-lg text-xs transition-colors",
+                      "p-1.5 lg:p-1.5 rounded-lg text-xs transition-colors touch-manipulation",
                       item.starred
                         ? "bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 hover:bg-yellow-500/20"
                         : "bg-muted/30 text-muted-foreground hover:bg-muted/50"
@@ -258,7 +258,7 @@ export function KnowledgeClient() {
                   </button>
                   <button
                     onClick={() => handleDelete(item.id)}
-                    className="p-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors"
+                    className="p-1.5 lg:p-1.5 rounded-lg bg-red-500/10 text-red-400 border border-red-500/20 hover:bg-red-500/20 transition-colors touch-manipulation"
                     title={t("common.delete") || "Delete"}
                   >
                     <Trash2 className="w-3.5 h-3.5" />
