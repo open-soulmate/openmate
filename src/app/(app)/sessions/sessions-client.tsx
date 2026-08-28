@@ -399,7 +399,7 @@ export function SessionsClient() {
 
       <div className="flex flex-1 overflow-hidden">
         {/* Session List */}
-        <div className={`${isMobile ? "flex w-full" : selectedSession ? "flex w-1/3 border-r border-zinc-800" : "flex w-full"} flex-col overflow-hidden transition-all`}>
+        <div className={`${isMobile ? "flex w-full" : "flex w-80 shrink-0 border-r border-zinc-800"} flex-col overflow-hidden`}>
           {/* Search */}
           <form onSubmit={handleSearch} className="px-3 md:px-2 lg:px-4 h-12 flex items-center border-b border-zinc-800 gap-2">
             <div className="relative flex-1">
@@ -698,8 +698,8 @@ export function SessionsClient() {
         </div>
 
         {/* Session Detail — Sheet on mobile, inline on desktop */}
-        {selectedSession && (
-          isMobile ? (
+        {isMobile ? (
+          selectedSession && (
             <Sheet open={!!selectedSession} onOpenChange={(open) => { if (!open) setSelectedSession(null) }}>
               <SheetContent side="right" size="full" className="p-0 flex flex-col">
                 <div className="flex items-center justify-between px-2 lg:px-4 h-12 border-b border-zinc-800">
@@ -766,12 +766,14 @@ export function SessionsClient() {
                 </div>
               </SheetContent>
             </Sheet>
-          ) : (
-            <div className="flex flex-1 flex-col overflow-hidden">
-              <div className="flex items-center justify-between px-2 lg:px-4 h-12 border-b border-zinc-800">
+          )
+        ) : (
+          selectedSession ? (
+            <div className="flex flex-1 min-w-0 flex-col overflow-hidden">
+              <div className="flex items-center justify-between px-4 h-12 border-b border-zinc-800">
                 <div className="flex items-center gap-2 min-w-0">
                   <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                  <span className="text-xs lg:text-sm font-medium text-zinc-200 truncate">
+                  <span className="text-sm font-medium text-zinc-200 truncate">
                     {selectedSession.title || selectedSession.session_id}
                   </span>
                   <span className="text-xs text-zinc-500 flex-shrink-0">({selectedSession.messages.length} {t("sessions.messages", "messages")})</span>
@@ -799,11 +801,11 @@ export function SessionsClient() {
                   </button>
                 </div>
               </div>
-              <div className="flex-1 overflow-y-auto px-2 lg:px-4 py-3 space-y-3">
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
                 {detailLoading ? (
                   <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
                 ) : selectedSession.messages.length === 0 ? (
-                  <div className="text-center py-12 text-zinc-500 text-xs lg:text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
+                  <div className="text-center py-12 text-zinc-500 text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
                 ) : (
                   selectedSession.messages.map((msg, i) => (
                     <div key={msg.id || i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
@@ -814,7 +816,7 @@ export function SessionsClient() {
                           </span>
                         </div>
                       )}
-                      <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 text-xs lg:text-sm ${
+                      <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 text-sm ${
                         msg.role === "user"
                           ? "bg-blue-600/20 text-blue-100"
                           : msg.role === "system"
@@ -834,6 +836,13 @@ export function SessionsClient() {
                     </div>
                   ))
                 )}
+              </div>
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-zinc-500">
+              <div className="text-center">
+                <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p className="text-sm">{t("sessions.selectSession", "Select a session to view")}</p>
               </div>
             </div>
           )
