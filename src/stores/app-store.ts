@@ -197,6 +197,11 @@ interface AppState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 
+  // Active session (shared between sidebar and chat page)
+  activeSessionId: string | null;
+  activeAgentId: string | null;
+  setActiveSession: (sessionId: string | null, agentId: string | null) => void;
+
   // Conversations
   conversations: Conversation[];
   activeConversationId: string | null;
@@ -285,6 +290,12 @@ export const useAppStore = create<AppState>((set, get) => ({
   sidebarCollapsed: false,
   toggleSidebar: () =>
     set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+
+  // Active session
+  activeSessionId: null,
+  activeAgentId: null,
+  setActiveSession: (sessionId, agentId) =>
+    set({ activeSessionId: sessionId, activeAgentId: agentId }),
 
   // LLM Config
   llmConfig: {

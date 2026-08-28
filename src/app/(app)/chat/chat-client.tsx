@@ -2,7 +2,7 @@
 import { MarkdownContent } from "@/components/markdown-content";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { useSearchParams } from 'next/navigation';
+import { useAppStore } from '@/stores/app-store';
 import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu, Trash2, Search as SearchIcon, Bookmark, RotateCcw, Zap, Brain, PanelLeft } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { Dialog } from '@/components/ui/dialog';
@@ -164,7 +164,6 @@ function parseFileChanges(content: string): FileChange[] {
 }
 
 export function ChatClient() {
-  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
@@ -468,25 +467,23 @@ export function ChatClient() {
   useEffect(() => { initAgents(); }, [initAgents]);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
 
-  // Listen for session selection from sidebar (custom event)
-  useEffect(() => {
-    const handler = (e: Event) => {
-      const detail = (e as CustomEvent).detail;
-      if (!detail?.sessionId) return;
-      if (selectedSession?.id === detail.sessionId) return;
-      for (const agent of agents) {
-        const session = agent.sessions.find(s => s.id === detail.sessionId);
-        if (session) {
-          selectSession(session, agent);
-          return;
-        }
-      }
-    };
-    window.addEventListener('openmate-select-session', handler);
-    return () => window.removeEventListener('openmate-select-session', handler);
-  }, [agents, selectedSession]);
+  // Listen for session selection from global sidebar (via store)
+  const activeSessionIdFromStore = useAppStore((s) => s.activeSessionId);
+  const activeAgentIdFromStore = useAppStore((s) => s.activeAgentId);
 
-  // Auto-select session from URL param ?session=SESSION_ID
+  useEffect(() => {
+    if (!activeSessionIdFromStore) return;
+    if (selectedSession?.id === activeSessionIdFromStore) return;
+    for (const agent of agents) {
+      const session = agent.sessions.find(s => s.id === activeSessionIdFromStore);
+      if (session) {
+        selectSession(session, agent);
+        return;
+      }
+    }
+  }, [activeSessionIdFromStore, agents]);
+
+  // Auto-select session from URL param ?session=SESSION_ID (fallback)
   useEffect(() => {
     const sid = new URLSearchParams(window.location.search).get('session');
     if (!sid) return;
@@ -498,7 +495,7 @@ export function ChatClient() {
         return;
       }
     }
-  }, [agents, searchParams.get('session')]);
+  }, [agents]);
 
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || loading) return;
@@ -852,34 +849,11 @@ export function ChatClient() {
 
   return (
     <div className="flex flex-1 min-h-0">
-      {/* Sidebar: Sheet on mobile, inline on desktop */}
-      {isMobile ? (
-        <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
-          <SheetContent side="left" showCloseButton={false} className="w-72 p-0 flex flex-col">
-            {renderSidebarContent()}
-          </SheetContent>
-        </Sheet>
-      ) : (
-      <div className={`${selectedSession ? 'hidden lg:flex' : 'flex'} w-64 shrink-0 flex-col border-r border-border bg-card`}>
-        {renderSidebarContent()}
-      </div>
-      )}
-
-      {/* Column 3: Chat Window - on mobile, only show when session selected */}
-      <div className={`${selectedSession ? 'flex' : 'hidden lg:flex'} flex-1 flex-col min-w-0`}>
+      {/* Chat Window */}
+      <div className="flex flex-1 flex-col min-w-0">
         {/* Chat header */}
         <div className="h-12 border-b border-border flex items-center px-4 justify-between shrink-0">
           <div className="flex items-center gap-2">
-            {/* Sidebar toggle - mobile only */}
-            <button onClick={() => setShowSidebar(true)} className="lg:hidden p-1 rounded hover:bg-muted">
-              <PanelLeft className="w-4 h-4" />
-            </button>
-            {/* Back button - mobile only, shown when no session */}
-            {selectedSession && (
-              <button onClick={() => { setSelectedSession(null); selectedSessionRef.current = null; }} className="lg:hidden p-1 rounded hover:bg-muted">
-                <ChevronRight className="w-4 h-4 rotate-180" />
-              </button>
-            )}
             {selectedAgent && <span className="text-sm">{selectedAgent.icon}</span>}
             {editingTitle ? (
               <input
