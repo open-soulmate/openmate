@@ -3,10 +3,9 @@ import { MarkdownContent } from "@/components/markdown-content";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/app-store';
-import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft } from "lucide-react";
+import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { Dialog } from '@/components/ui/dialog';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
 
@@ -167,11 +166,11 @@ export function ChatClient() {
   const titleInputRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const mobileConvOpen = useAppStore((s) => s.mobileConvOpen);
   const setMobileConvOpen = useAppStore((s) => s.setMobileConvOpen);
   const setSessionDetails = useAppStore((s) => s.setSessionDetails);
   const toggleSidebar = useAppStore((s) => s.toggleSidebar);
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
+  const setRightPanelOpen = useAppStore((s) => s.setRightPanelOpen);
   const wsRef = useRef<WebSocket | null>(null);
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -649,7 +648,7 @@ export function ChatClient() {
         {/* Chat header */}
         <div className="h-12 border-b border-border flex items-center px-3 lg:px-4 justify-between shrink-0">
           <div className="flex items-center gap-1.5 lg:gap-2 min-w-0 flex-1">
-            <button onClick={toggleSidebar} className="shrink-0 p-2 hover:bg-muted/50 transition-colors text-muted-foreground" aria-label="Toggle Sidebar">
+            <button onClick={() => { if (isMobile) { setMobileConvOpen(true); setRightPanelOpen(false); } else { toggleSidebar(); } }} className="shrink-0 p-2 hover:bg-muted/50 transition-colors text-muted-foreground" aria-label="Toggle Sidebar">
               <PanelLeft className="w-4 h-4" />
             </button>
             {selectedAgent && <span className="text-sm shrink-0">{selectedAgent.icon}</span>}
@@ -678,7 +677,7 @@ export function ChatClient() {
           <div className="flex items-center gap-1 shrink-0">
             {wsConnected ? <Wifi className="w-4 h-4 text-green-500" /> : <WifiOff className="w-4 h-4 text-muted-foreground" />}
             <span className="hidden lg:inline text-xs text-muted-foreground">{wsConnected ? 'WS' : 'HTTP'}</span>
-            <button onClick={toggleRightPanel} className="shrink-0 p-2 hover:bg-muted/50 transition-colors text-muted-foreground" aria-label="Toggle Workspace">
+            <button onClick={() => { toggleRightPanel(); if (isMobile) setMobileConvOpen(false); }} className="shrink-0 p-2 hover:bg-muted/50 transition-colors text-muted-foreground" aria-label="Toggle Workspace">
               <PanelLeft className="w-4 h-4 scale-x-[-1]" />
             </button>
           </div>
