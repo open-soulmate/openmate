@@ -485,7 +485,49 @@ function TabIcon({ type }: { type: TabType }) {
 export function RightPanel({ open, onToggle }: RightPanelProps) {
   const [tabs, setTabs] = useState<Tab[]>([createTab('new-tab')]);
   const [activeTabId, setActiveTabId] = useState<string>(tabs[0].id);
-  const [panelWidth, setPanelWidth] = useState(420);
+  const [panelWidth, setPanelWidth] = useState(typeof window !== 'undefined' ? Math.round(window.innerWidth / 2) : 420);
+  const [tabWidths, setTabWidths] = useState<Record<string, number>>({});
+  const [activeTabLeft, setActiveTabLeft] = useState(0);
+  const [activeTabWidth, setActiveTabWidth] = useState(0);
+  const [barLeft, setBarLeft] = useState(0);
+  const [barRight, setBarRight] = useState(0);
+  const tabBarRef = useRef<HTMLDivElement>(null);
+  const activeTabRef = useRef<HTMLButtonElement>(null);
+  const measureTab = useCallback((id: string, el: HTMLButtonElement) => {
+    const w = el.offsetWidth;
+    setTabWidths((prev) => (prev[id] === w ? prev : { ...prev, [id]: w }));
+  }, []);
+
+  // Calculate active tab position for underline segments — use getBoundingClientRect like Doubao
+  useEffect(() => {
+    const calc = () => {
+      if (!tabBarRef.current || !activeTabRef.current) return;
+      const barRect = tabBarRef.current.getBoundingClientRect();
+      const tabRect = activeTabRef.current.getBoundingClientRect();
+      setBarLeft(barRect.left);
+      setBarRight(barRect.right);
+      setActiveTabLeft(tabRect.left);
+      setActiveTabWidth(tabRect.width);
+    };
+    calc();
+    // Fallback: recalc next frame in case refs weren't ready
+    requestAnimationFrame(calc);
+  }, [tabs, activeTabId, tabWidths]);
+
+  // Recalculate on resize — like Doubao
+  useEffect(() => {
+    const recalc = () => {
+      if (!tabBarRef.current || !activeTabRef.current) return;
+      const barRect = tabBarRef.current.getBoundingClientRect();
+      const tabRect = activeTabRef.current.getBoundingClientRect();
+      setBarLeft(barRect.left);
+      setBarRight(barRect.right);
+      setActiveTabLeft(tabRect.left);
+      setActiveTabWidth(tabRect.width);
+    };
+    window.addEventListener('resize', recalc);
+    return () => window.removeEventListener('resize', recalc);
+  }, []);
   const resizeRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
 
@@ -692,7 +734,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
 
   return (
     <div
-      className="flex flex-col h-full border-l border-border bg-background shrink-0 relative"
+      className="flex flex-col h-full bg-background shrink-0 relative"
       style={{ width: panelWidth }}
     >
       {/* Resize handle */}
@@ -702,63 +744,80 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
         className="absolute left-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-primary/30 transition-colors z-10"
       />
 
-      {/* Tab bar — Chrome-style skirt tabs */}
-      <div className="flex items-end h-12 shrink-0 px-1" style={{ background: '#1e1e1e' }}>
-        <style>{`
-          .skirt-tab { position:relative; height:36px; min-width:120px; max-width:240px; width:fit-content; cursor:pointer; border:none; outline:none; padding:0; background:transparent; flex-shrink:0; overflow:visible; }
-          .skirt-tab-bg { position:absolute; left:0; right:0; top:0; bottom:0; border-radius:8px 8px 0 0; transition:background 0.15s; pointer-events:none; overflow:visible; }
-          .skirt-tab-bg::after { content:''; position:absolute; bottom:-8px; left:-10px; right:-10px; height:10px; background:inherit; border-radius:10px 10px 0 0; }
-          .skirt-tab.active .skirt-tab-bg { background:#2d2d2d; }
-          .skirt-tab:not(.active) .skirt-tab-bg { background:transparent; }
-          .skirt-tab:not(.active):hover .skirt-tab-bg { background:#2a2a2a; }
-          .skirt-tab-content { position:relative; display:flex; align-items:center; height:100%; padding:0 12px 0 14px; gap:6px; min-width:0; z-index:1; }
-        `}</style>
-        <div className="flex items-end flex-1 overflow-x-auto no-scrollbar h-full" style={{ gap: '2px', paddingBottom: '8px' }}>
-          {tabs.map((tab) => {
-            const isActive = tab.id === activeTabId;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTabId(tab.id)}
-                className={cn('skirt-tab group', isActive && 'active')}
-              >
-                <div className="skirt-tab-bg" />
-                <div className="skirt-tab-content">
-                  <span className="shrink-0 flex items-center justify-center rounded-full" style={{ width: 16, height: 16, background: isActive ? '#9aa0a6' : 'rgba(154,160,166,0.6)' }}>
-                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#1e1e1e" strokeWidth="2" /><path d="M16.24 7.76l-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12z" fill="#1e1e1e" /></svg>
-                  </span>
-                  <span className="truncate" style={{ color: isActive ? '#e8eaed' : 'rgba(232,234,237,0.6)', fontSize: '13px', fontWeight: 400, lineHeight: 1 }}>{tab.title}</span>
-                  <button onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className="shrink-0 flex items-center justify-center rounded-full opacity-100 sm:opacity-0 sm:group-hover:opacity-100 hover:bg-[rgba(255,255,255,0.1)] transition-all" style={{ width: 16, height: 16, marginLeft: 'auto' }}>
-                    <X className="w-3 h-3" style={{ color: '#9aa0a6' }} />
+      {/* Tab bar — doubao-style SVG skirt tabs */}
+      {(() => {
+        const TOP_R = 12, SKIRT = 10, BULGE = 8, MARGIN = SKIRT + BULGE;
+        function genTabPath(w: number, h = 36) {
+          const r = TOP_R, s = SKIRT, m = MARGIN;
+          return [
+            `M ${r} 0`,
+            `Q 0 0 0 ${r}`,
+            `L 0 ${h - s}`,
+            `C 0 ${h} ${-m} ${h} ${-s} ${h}`,
+            `M ${w + s} ${h}`,
+            `C ${w + m} ${h} ${w} ${h} ${w} ${h - s}`,
+            `L ${w} ${r}`,
+            `Q ${w} 0 ${w - r} 0`,
+            `L ${r} 0`,
+          ].join(' ');
+        }
+        return (
+          <>
+            <div ref={tabBarRef} className="flex items-end shrink-0 px-2" style={{ height: 36, marginTop: 12, gap: 0, overflowX: 'auto', overflowY: 'visible', scrollbarWidth: 'none' }}>
+              {tabs.map((tab) => {
+                const isActive = tab.id === activeTabId;
+                return (
+                  <button
+                    key={tab.id}
+                    ref={(el) => {
+                      if (el) measureTab(tab.id, el);
+                      if (isActive) (activeTabRef as React.MutableRefObject<HTMLButtonElement | null>).current = el;
+                    }}
+                    onClick={() => setActiveTabId(tab.id)}
+                    className="group relative shrink-0 cursor-pointer"
+                    style={{ height: 36, minWidth: 140, maxWidth: 240, display: 'flex', alignItems: 'center', border: 'none', outline: 'none', padding: 0, background: 'transparent', overflow: 'visible' }}
+                  >
+                    {tabWidths[tab.id] && (
+                      <svg
+                        className="absolute pointer-events-none"
+                        style={{ left: -MARGIN, width: tabWidths[tab.id] + MARGIN * 2, height: 36, overflow: 'visible' }}
+                        viewBox={`${-MARGIN} 0 ${tabWidths[tab.id] + MARGIN * 2} 36`}
+                      >
+                        <path
+                          d={genTabPath(tabWidths[tab.id])}
+                          fill="none"
+                          stroke={isActive ? '#27272a' : 'transparent'}
+                          strokeWidth={1}
+                          strokeLinejoin="round"
+                          style={{ transition: 'stroke 0.15s' }}
+                        />
+                      </svg>
+                    )}
+                    <div className="relative flex items-center w-full h-full z-10" style={{ padding: '0 12px', gap: 8 }}>
+                      <Globe className="w-4 h-4 shrink-0" style={{ color: '#9aa0a6' }} />
+                      <span className="truncate flex-1" style={{ color: isActive ? '#e8eaed' : '#8a8a8a', fontSize: '13px', transition: 'color 0.15s' }}>{tab.title}</span>
+                      <span role="button" onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className="shrink-0 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-70 hover:!opacity-100 hover:bg-[rgba(255,255,255,0.1)] transition-all cursor-pointer" style={{ width: 16, height: 16 }}>
+                        <X className="w-3 h-3" style={{ color: '#9aa0a6' }} />
+                      </span>
+                    </div>
                   </button>
-                </div>
-              </button>
                 );
               })}
+              <Button variant="ghost" size="icon-xs" onClick={() => addTab('new-tab')} className="shrink-0 mb-0.5 ml-1" title="New tab">
+                <Plus className="w-3.5 h-3.5" />
+              </Button>
+              <Button variant="ghost" size="icon-xs" onClick={onToggle} className="shrink-0 mb-0.5 ml-auto mr-1" title="Close panel">
+                <PanelRightClose className="w-3.5 h-3.5" />
+              </Button>
             </div>
-
-        {/* Add tab button */}
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          onClick={() => addTab('new-tab')}
-          className="mx-0.5 shrink-0"
-          title="New tab"
-        >
-          <Plus className="w-3.5 h-3.5" />
-        </Button>
-
-        {/* Close panel button */}
-        <Button
-          variant="ghost"
-          size="icon-xs"
-          onClick={onToggle}
-          className="mr-1 shrink-0"
-          title="Close panel"
-        >
-          <PanelRightClose className="w-3.5 h-3.5" />
-        </Button>
-      </div>
+            {/* Underline: two segments, gap under skirt — Doubao method */}
+            <div className="relative shrink-0" style={{ height: 1, marginTop: -1 }}>
+              <div className="absolute top-0 left-0" style={{ height: 1, background: '#27272a', width: Math.max(0, activeTabLeft - barLeft - SKIRT - 1) }} />
+              <div className="absolute top-0 right-0" style={{ height: 1, background: '#27272a', width: Math.max(0, barRight - activeTabLeft - activeTabWidth - SKIRT - 1) }} />
+            </div>
+          </>
+        );
+      })()}
 
       {/* Content area */}
       <div className="flex-1 overflow-hidden min-h-0">

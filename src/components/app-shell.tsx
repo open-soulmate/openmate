@@ -329,7 +329,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMidScreenExpanded(false);
   }, [isMidScreen]);
 
-  useEffect(() => { setMenuOpen(false); setRightPanelOpen(false); }, [pathname]);
+  useEffect(() => { setMenuOpen(false); setRightPanelOpen(false); setMobileConvOpen(false); }, [pathname]);
 
   // Sync swipeable panel index with current route
   useEffect(() => {
@@ -499,14 +499,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {!isMobile && (
         <div
           className="flex flex-col h-full overflow-hidden border-l border-border shrink-0 transition-all duration-250 ease-in-out"
-          style={{ width: rightPanelOpen ? 320 : 0, borderWidth: rightPanelOpen ? 1 : 0 }}
+          style={{ width: rightPanelOpen ? Math.round(window.innerWidth / 2) : 0 }}
         >
           <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
         </div>
       )}
       {isMobile && (
         <Sheet open={rightPanelOpen} onOpenChange={setRightPanelOpen}>
-          <SheetContent side="right" size="lg" className="p-0 flex flex-col">
+          <SheetContent side="right" size="md" className="p-0 flex flex-col">
             <RightPanel open={true} onToggle={() => toggleRightPanel()} />
           </SheetContent>
         </Sheet>
