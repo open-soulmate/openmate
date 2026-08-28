@@ -468,11 +468,28 @@ export function ChatClient() {
   useEffect(() => { initAgents(); }, [initAgents]);
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
 
+  // Listen for session selection from sidebar (custom event)
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (!detail?.sessionId) return;
+      if (selectedSession?.id === detail.sessionId) return;
+      for (const agent of agents) {
+        const session = agent.sessions.find(s => s.id === detail.sessionId);
+        if (session) {
+          selectSession(session, agent);
+          return;
+        }
+      }
+    };
+    window.addEventListener('openmate-select-session', handler);
+    return () => window.removeEventListener('openmate-select-session', handler);
+  }, [agents, selectedSession]);
+
   // Auto-select session from URL param ?session=SESSION_ID
   useEffect(() => {
     const sid = new URLSearchParams(window.location.search).get('session');
     if (!sid) return;
-    // Already selected this session, skip
     if (selectedSession?.id === sid) return;
     for (const agent of agents) {
       const session = agent.sessions.find(s => s.id === sid);
@@ -481,7 +498,7 @@ export function ChatClient() {
         return;
       }
     }
-  }, [agents, searchParams]);
+  }, [agents, searchParams.get('session')]);
 
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || loading) return;
