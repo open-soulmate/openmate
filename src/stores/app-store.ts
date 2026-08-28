@@ -201,6 +201,10 @@ interface AppState {
   mobileConvOpen: boolean;
   setMobileConvOpen: (open: boolean) => void;
 
+  // Mobile swipeable panels (synced with bottom nav)
+  currentPanel: number;
+  setCurrentPanel: (n: number) => void;
+
   // Active session (shared between sidebar and chat page)
   activeSessionId: string | null;
   activeAgentId: string | null;
@@ -297,6 +301,9 @@ export const useAppStore = create<AppState>((set, get) => ({
 
   mobileConvOpen: false,
   setMobileConvOpen: (open) => set({ mobileConvOpen: open }),
+
+  currentPanel: 0,
+  setCurrentPanel: (n) => set({ currentPanel: n }),
 
   // Active session
   activeSessionId: null,
