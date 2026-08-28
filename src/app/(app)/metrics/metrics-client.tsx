@@ -459,7 +459,7 @@ export function MetricsClient() {
           <div className="text-xs lg:text-sm font-medium mb-3">
             ℹ️ {t("metrics.instanceInfo", "Instance Info")}
           </div>
-          <div className="flex gap-6 text-xs">
+          <div className="flex gap-2 lg:gap-6 text-xs">
             <div>
               <span className="text-muted-foreground">Version:</span>{" "}
               <span className="font-mono">{metrics.info.version}</span>

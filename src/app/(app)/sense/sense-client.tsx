@@ -307,7 +307,7 @@ export function SenseClient() {
       {/* OCR Tab */}
       {activeTab === "ocr" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             {/* Upload Area */}
             <div className="space-y-4">
               <h3 className="font-semibold">{t("sense.upload")}</h3>
@@ -438,7 +438,7 @@ export function SenseClient() {
       {/* ASR Tab */}
       {activeTab === "asr" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             {/* Upload Area */}
             <div className="space-y-4">
               <h3 className="font-semibold">{t("sense.text27")}</h3>
@@ -553,7 +553,7 @@ export function SenseClient() {
       {/* Analyze Tab */}
       {activeTab === "analyze" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             {/* Upload Area */}
             <div className="space-y-4">
               <h3 className="font-semibold">{t("sense.upload")}</h3>
@@ -673,7 +673,7 @@ export function SenseClient() {
       {/* Video Tab */}
       {activeTab === "video" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             {/* Upload Area */}
             <div className="space-y-4">
               <h3 className="font-semibold">{t("sense.text47")}</h3>

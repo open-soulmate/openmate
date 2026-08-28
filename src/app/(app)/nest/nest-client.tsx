@@ -258,7 +258,7 @@ export function NestClient() {
 
         {/* Tenants Tab */}
         {tab === "tenants" && (
-          <div className="flex gap-6">
+          <div className="flex gap-2 lg:gap-6">
             <div className={`flex-1 space-y-3 ${isMobile ? 'w-full' : ''}`}>
               {tenants.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">

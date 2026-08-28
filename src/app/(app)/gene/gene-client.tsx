@@ -475,7 +475,7 @@ export function GeneClient() {
 
       {/* Create Tab */}
       {activeTab === "create" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
           <div className="space-y-4">
             <h3 className="font-semibold">{t("gene.text20")}</h3>
             <div>
@@ -573,7 +573,7 @@ export function GeneClient() {
 
       {/* Instantiate Tab */}
       {activeTab === "instantiate" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
           <div className="space-y-4">
             <h3 className="font-semibold">{t("gene.text30")}</h3>
             <div>
@@ -661,7 +661,7 @@ export function GeneClient() {
 
       {/* Import/Export Tab */}
       {activeTab === "import" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
           {/* Import Section */}
           <div className="space-y-4">
             <h3 className="font-semibold flex items-center gap-2">
