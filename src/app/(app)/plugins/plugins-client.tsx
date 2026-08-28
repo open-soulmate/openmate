@@ -229,7 +229,7 @@ function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstal
         className="w-full max-w-lg rounded-2xl border border-border bg-card shadow-2xl overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-2 lg:py-4 border-b border-border">
+        <div className="flex items-center justify-between px-3 lg:px-6 py-2 lg:py-4 border-b border-border">
           <div className="flex items-center gap-2.5">
             <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <Plus size={16} />
@@ -262,7 +262,7 @@ function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstal
           )}
         </div>
 
-        <div className="flex items-center justify-end gap-2 px-6 py-2 lg:py-4 border-t border-border bg-muted/30">
+        <div className="flex items-center justify-end gap-2 px-3 lg:px-6 py-2 lg:py-4 border-t border-border bg-muted/30">
           <button onClick={onClose} className="rounded-lg px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors">
             {t("plugins.cancel") || "Cancel"}
           </button>
@@ -329,7 +329,7 @@ export function PluginsClient() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-6 py-8">
+      <div className="mx-auto max-w-6xl px-3 lg:px-6 py-4 lg:py-8">
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
