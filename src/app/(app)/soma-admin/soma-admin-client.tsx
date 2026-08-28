@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useMediaQuery } from "@/hooks/use-mobile";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   Bot, RefreshCw, Activity, Settings, Server, Plug,
   CheckCircle, XCircle, AlertTriangle, Wifi, WifiOff,
@@ -84,6 +86,7 @@ export default function SomaAdminClient() {
   // Config state
   const [config, setConfig] = useState<any>(null);
   const [configLoading, setConfigLoading] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 1023px)");
 
   const fetchDashboard = useCallback(async () => {
     setDashboardLoading(true);
@@ -273,8 +276,14 @@ export default function SomaAdminClient() {
               </div>
             ) : (
               <div className="flex gap-6">
-                {/* Connector List */}
-                <div className="w-80 space-y-3">
+                {/* Connector List — full width on mobile, w-80 on desktop */}
+                <div className={`${isMobile ? (selectedConnector ? "hidden" : "w-full") : "w-80"} space-y-3`}>
+                  {isMobile && (
+                    <div className="flex items-center justify-between pb-2 border-b border-border">
+                      <h3 className="text-sm font-medium">{t("somaAdmin.connectors") || "Connectors"}</h3>
+                      <span className="text-xs text-muted-foreground">{connectors.length}</span>
+                    </div>
+                  )}
                   {connectors.map((conn) => (
                     <div key={conn.id}
                       onClick={() => setSelectedConnector(conn)}
@@ -304,67 +313,137 @@ export default function SomaAdminClient() {
                   ))}
                 </div>
 
-                {/* Connector Detail */}
-                {selectedConnector && (
-                  <div className="flex-1 space-y-4">
-                    <div>
-                      <h3 className="font-semibold">{selectedConnector.name}</h3>
-                      <span className="text-xs text-muted-foreground font-mono">{selectedConnector.id}</span>
-                    </div>
+                {/* Connector Detail — Sheet on mobile, inline on desktop */}
+                {isMobile ? (
+                  <Sheet open={!!selectedConnector} onOpenChange={(open) => { if (!open) setSelectedConnector(null); }}>
+                    <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col">
+                      <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                        {selectedConnector && (
+                          <>
+                            <div>
+                              <h3 className="font-semibold">{selectedConnector.name}</h3>
+                              <span className="text-xs text-muted-foreground font-mono">{selectedConnector.id}</span>
+                            </div>
 
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                      <div><span className="text-muted-foreground">{t("somaAdmin.connType")}:</span> {selectedConnector.type}</div>
-                      <div><span className="text-muted-foreground">{t("somaAdmin.connStatus")}:</span>{" "}
-                        <span className={cn("font-medium", STATUS_COLORS[selectedConnector.status])}>{selectedConnector.status}</span>
-                      </div>
-                      {selectedConnector.enabled !== undefined && (
-                        <div><span className="text-muted-foreground">{t("somaAdmin.connEnabled")}:</span> {selectedConnector.enabled ? t("somaAdmin.yes") : t("somaAdmin.no")}</div>
-                      )}
-                      {selectedConnector.last_active && (
-                        <div><span className="text-muted-foreground">{t("somaAdmin.connLastActive")}:</span> {formatTime(selectedConnector.last_active, t)}</div>
-                      )}
-                      {selectedConnector.error_count !== undefined && (
-                        <div><span className="text-muted-foreground">{t("somaAdmin.connErrors")}:</span> {selectedConnector.error_count}</div>
-                      )}
-                    </div>
+                            <div className="grid grid-cols-2 gap-4 text-sm">
+                              <div><span className="text-muted-foreground">{t("somaAdmin.connType")}:</span> {selectedConnector.type}</div>
+                              <div><span className="text-muted-foreground">{t("somaAdmin.connStatus")}:</span>{" "}
+                                <span className={cn("font-medium", STATUS_COLORS[selectedConnector.status])}>{selectedConnector.status}</span>
+                              </div>
+                              {selectedConnector.enabled !== undefined && (
+                                <div><span className="text-muted-foreground">{t("somaAdmin.connEnabled")}:</span> {selectedConnector.enabled ? t("somaAdmin.yes") : t("somaAdmin.no")}</div>
+                              )}
+                              {selectedConnector.last_active && (
+                                <div><span className="text-muted-foreground">{t("somaAdmin.connLastActive")}:</span> {formatTime(selectedConnector.last_active, t)}</div>
+                              )}
+                              {selectedConnector.error_count !== undefined && (
+                                <div><span className="text-muted-foreground">{t("somaAdmin.connErrors")}:</span> {selectedConnector.error_count}</div>
+                              )}
+                            </div>
 
-                    {/* Toggle Button */}
-                    {selectedConnector.enabled !== undefined && (
-                      <button
-                        onClick={() => toggleConnector(selectedConnector.name || selectedConnector.id)}
-                        className={cn(
-                          "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
-                          selectedConnector.enabled
-                            ? "bg-red-500/10 text-red-500 hover:bg-red-500/20"
-                            : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                            {/* Toggle Button */}
+                            {selectedConnector.enabled !== undefined && (
+                              <button
+                                onClick={() => toggleConnector(selectedConnector.name || selectedConnector.id)}
+                                className={cn(
+                                  "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                                  selectedConnector.enabled
+                                    ? "bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                                    : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                                )}
+                              >
+                                {selectedConnector.enabled ? <WifiOff size={14} /> : <Wifi size={14} />}
+                                {selectedConnector.enabled ? t("somaAdmin.disableConnector") : t("somaAdmin.enableConnector")}
+                              </button>
+                            )}
+
+                            {/* Config */}
+                            {selectedConnector.config && (
+                              <div className="rounded-xl border border-border bg-card p-4">
+                                <h4 className="text-xs text-muted-foreground mb-2">{t("somaAdmin.connConfig")}</h4>
+                                <pre className="text-xs font-mono bg-background rounded p-3 overflow-auto max-h-48">
+                                  {JSON.stringify(selectedConnector.config, null, 2)}
+                                </pre>
+                              </div>
+                            )}
+
+                            {/* Error */}
+                            {selectedConnector.last_error && (
+                              <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3">
+                                <div className="flex items-center gap-2 text-xs text-red-500">
+                                  <AlertTriangle size={12} />
+                                  <span className="font-medium">{t("somaAdmin.recentError")}</span>
+                                </div>
+                                <p className="text-xs text-red-400 mt-1">{selectedConnector.last_error}</p>
+                              </div>
+                            )}
+                          </>
                         )}
-                      >
-                        {selectedConnector.enabled ? <WifiOff size={14} /> : <Wifi size={14} />}
-                        {selectedConnector.enabled ? t("somaAdmin.disableConnector") : t("somaAdmin.enableConnector")}
-                      </button>
-                    )}
-
-                    {/* Config */}
-                    {selectedConnector.config && (
-                      <div className="rounded-xl border border-border bg-card p-4">
-                        <h4 className="text-xs text-muted-foreground mb-2">{t("somaAdmin.connConfig")}</h4>
-                        <pre className="text-xs font-mono bg-background rounded p-3 overflow-auto max-h-48">
-                          {JSON.stringify(selectedConnector.config, null, 2)}
-                        </pre>
                       </div>
-                    )}
+                    </SheetContent>
+                  </Sheet>
+                ) : (
+                  selectedConnector && (
+                    <div className="flex-1 space-y-4">
+                      <div>
+                        <h3 className="font-semibold">{selectedConnector.name}</h3>
+                        <span className="text-xs text-muted-foreground font-mono">{selectedConnector.id}</span>
+                      </div>
 
-                    {/* Error */}
-                    {selectedConnector.last_error && (
-                      <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3">
-                        <div className="flex items-center gap-2 text-xs text-red-500">
-                          <AlertTriangle size={12} />
-                          <span className="font-medium">{t("somaAdmin.recentError")}</span>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div><span className="text-muted-foreground">{t("somaAdmin.connType")}:</span> {selectedConnector.type}</div>
+                        <div><span className="text-muted-foreground">{t("somaAdmin.connStatus")}:</span>{" "}
+                          <span className={cn("font-medium", STATUS_COLORS[selectedConnector.status])}>{selectedConnector.status}</span>
                         </div>
-                        <p className="text-xs text-red-400 mt-1">{selectedConnector.last_error}</p>
+                        {selectedConnector.enabled !== undefined && (
+                          <div><span className="text-muted-foreground">{t("somaAdmin.connEnabled")}:</span> {selectedConnector.enabled ? t("somaAdmin.yes") : t("somaAdmin.no")}</div>
+                        )}
+                        {selectedConnector.last_active && (
+                          <div><span className="text-muted-foreground">{t("somaAdmin.connLastActive")}:</span> {formatTime(selectedConnector.last_active, t)}</div>
+                        )}
+                        {selectedConnector.error_count !== undefined && (
+                          <div><span className="text-muted-foreground">{t("somaAdmin.connErrors")}:</span> {selectedConnector.error_count}</div>
+                        )}
                       </div>
-                    )}
-                  </div>
+
+                      {/* Toggle Button */}
+                      {selectedConnector.enabled !== undefined && (
+                        <button
+                          onClick={() => toggleConnector(selectedConnector.name || selectedConnector.id)}
+                          className={cn(
+                            "flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-medium transition-colors",
+                            selectedConnector.enabled
+                              ? "bg-red-500/10 text-red-500 hover:bg-red-500/20"
+                              : "bg-emerald-500/10 text-emerald-500 hover:bg-emerald-500/20"
+                          )}
+                        >
+                          {selectedConnector.enabled ? <WifiOff size={14} /> : <Wifi size={14} />}
+                          {selectedConnector.enabled ? t("somaAdmin.disableConnector") : t("somaAdmin.enableConnector")}
+                        </button>
+                      )}
+
+                      {/* Config */}
+                      {selectedConnector.config && (
+                        <div className="rounded-xl border border-border bg-card p-4">
+                          <h4 className="text-xs text-muted-foreground mb-2">{t("somaAdmin.connConfig")}</h4>
+                          <pre className="text-xs font-mono bg-background rounded p-3 overflow-auto max-h-48">
+                            {JSON.stringify(selectedConnector.config, null, 2)}
+                          </pre>
+                        </div>
+                      )}
+
+                      {/* Error */}
+                      {selectedConnector.last_error && (
+                        <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3">
+                          <div className="flex items-center gap-2 text-xs text-red-500">
+                            <AlertTriangle size={12} />
+                            <span className="font-medium">{t("somaAdmin.recentError")}</span>
+                          </div>
+                          <p className="text-xs text-red-400 mt-1">{selectedConnector.last_error}</p>
+                        </div>
+                      )}
+                    </div>
+                  )
                 )}
               </div>
             )}
