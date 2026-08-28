@@ -12,7 +12,7 @@ import {
   Download, FileJson, FileText, Tag, Plus,
 } from "lucide-react"
 import { Sheet, SheetContent } from "@/components/ui/sheet"
-import { useMediaQuery } from "@/hooks/use-mobile"
+import { useIsMobile } from "@/hooks/use-mobile"
 
 interface Session {
   session_id: string
@@ -107,7 +107,7 @@ export function SessionsClient() {
   // Tag filter state
   const [activeTagFilter, setActiveTagFilter] = useState<string | null>(null)
   // Mobile: track if we're showing detail view
-  const isMobile = useMediaQuery("(max-width: 1023px)")
+  const isMobile = useIsMobile()
   const [allTags, setAllTags] = useState<{name: string; count: number}[]>([])
 
   // Tag input state (for adding tags to sessions)

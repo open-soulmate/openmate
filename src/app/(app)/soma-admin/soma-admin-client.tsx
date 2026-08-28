@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   Bot, RefreshCw, Activity, Settings, Server, Plug,
@@ -86,7 +86,7 @@ export default function SomaAdminClient() {
   // Config state
   const [config, setConfig] = useState<any>(null);
   const [configLoading, setConfigLoading] = useState(false);
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
 
   const fetchDashboard = useCallback(async () => {
     setDashboardLoading(true);

@@ -7,7 +7,7 @@ import { useAppStore, type FileNode, type TerminalLine } from "@/stores/app-stor
 import { listDir, readFile, executeCommand } from "@/lib/tauri-bridge";
 import { SCMPanel } from "@/components/scm-panel";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import {
   FolderOpen,
   File,
@@ -331,7 +331,7 @@ export function WorkspaceDetailClient() {
       timestamp: Date.now(),
     },
   ]);
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const [showFileTree, setShowFileTree] = useState(false);
   const [scmOpen, setScmOpen] = useState(true);
   const [termHeight, setTermHeight] = useState(200);

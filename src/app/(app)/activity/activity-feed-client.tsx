@@ -1,7 +1,7 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import { useTranslation } from "react-i18next";
@@ -79,7 +79,7 @@ export function ActivityFeedClient() {
   const [showFilters, setShowFilters] = useState(false);
   const [expandedEvent, setExpandedEvent] = useState<string | null>(null);
   const [sseConnected, setSseConnected] = useState(false);
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const [showSummary, setShowSummary] = useState(false);
   const sseRef = useRef<EventSource | null>(null);
   const eventsRef = useRef<StreamEvent[]>([]);

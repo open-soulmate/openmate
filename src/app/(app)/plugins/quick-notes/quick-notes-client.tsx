@@ -9,7 +9,7 @@ import {
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
-import { useMediaQuery } from '@/hooks/use-mobile';
+import { useIsMobile } from '@/hooks/use-mobile';
 
 interface Note {
   id: string;
@@ -61,7 +61,7 @@ function MarkdownPreview({ content }: { content: string }) {
 
 export function QuickNotesClient() {
   const { t } = useTranslation();
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const [showSidebar, setShowSidebar] = useState(true);
   const [notes, setNotes] = useState<Note[]>([]);
   const [loading, setLoading] = useState(true);

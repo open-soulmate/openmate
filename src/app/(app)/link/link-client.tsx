@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
-import { useMediaQuery } from "@/hooks/use-mobile";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   Link2, RefreshCw, Plus, Trash2, Play, Pause,
@@ -48,7 +48,7 @@ export function LinkClient() {
   const [events, setEvents] = useState<LinkEvent[]>([]);
   const [showEvents, setShowEvents] = useState(false);
   const [eventFilter, setEventFilter] = useState("");
-  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const isMobile = useIsMobile();
   const apiBase = getApiBaseUrl();
 
   const fetchHealth = useCallback(async () => {
