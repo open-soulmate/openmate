@@ -375,8 +375,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Mobile: conversation list Sheet (left drawer) */}
       <Sheet open={mobileConvOpen} onOpenChange={setMobileConvOpen}>
         <SheetContent side="left" size="md" className="p-0 flex flex-col">
-          <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
+          <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border justify-between">
             <SheetTitle className="text-sm font-semibold">{t("nav.chat", "Chat")}</SheetTitle>
+            <button
+              onClick={() => { setActiveSession(null, null); setMobileConvOpen(false); router.push('/chat'); }}
+              className="p-1.5 rounded-md hover:bg-muted/50 transition-colors"
+              title={t("chat.newChat", "新对话")}
+            >
+              <Plus className="w-4 h-4 text-muted-foreground" />
+            </button>
           </SheetHeader>
           <div className="px-2 pb-2">
             <div className="relative">
