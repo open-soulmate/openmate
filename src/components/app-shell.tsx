@@ -3,6 +3,7 @@
 import { TerminalPanel } from "@/components/terminal-panel";
 import { BottomNav } from "@/components/bottom-nav";
 import { NotificationCenter } from "@/components/notification-center";
+import { RightPanel } from "@/components/right-panel";
 import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 
 import Link from "next/link";
@@ -12,7 +13,7 @@ import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
 import {
   MessageSquare, Search, ChevronDown, ChevronRight,
-  Plus, Trash2,
+  Plus, Trash2, PanelRightOpen, PanelRightClose,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getUserName, getApiBaseUrl, getToken } from "@/lib/api-client";
@@ -99,6 +100,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const storeTheme = useAppStore((s) => s.theme);
   const setStoreTheme = useAppStore((s) => s.setTheme);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const { t } = useTranslation();
   const [eventCount, setEventCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
@@ -106,6 +108,36 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // ── Conversation list state ──────────────────────────────────────
   const [agents, setAgents] = useState<AgentInfo[]>([]);
   const [sessionSearch, setSessionSearch] = useState('');
+  const [clearedUnreads, setClearedUnreads] = useState<Set<string>>(new Set());
+
+  // Clear unread for a session (called on click)
+  const clearSessionUnread = useCallback((sessionId: string) => {
+    setClearedUnreads((prev) => {
+      const next = new Set(prev);
+      next.add(sessionId);
+      return next;
+    });
+    // Also call API to clear server-side
+    const apiBase = getApiBaseUrl();
+    const token = getToken();
+    if (apiBase && token) {
+      fetch(`${apiBase}/api/sessions/${sessionId}/read`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      }).catch(() => {});
+    }
+  }, []);
+
+  // Get effective unread count (respects local clearing)
+  const getUnread = useCallback((session: Session): number => {
+    if (clearedUnreads.has(session.id)) return 0;
+    return session.unread ?? 0;
+  }, [clearedUnreads]);
+
+  // Total unread across all sessions
+  const totalUnread = agents.reduce((sum, a) =>
+    sum + a.sessions.reduce((s, session) => s + getUnread(session), 0), 0
+  );
 
   // Fetch sessions + build agent tree (like chat page)
   const fetchSessions = useCallback(async () => {
@@ -298,6 +330,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const displayAgents = filteredAgents();
 
+  // Helper: render unread badge (WeChat style)
+  function UnreadBadge({ count }: { count: number }) {
+    if (count <= 0) return null;
+    return (
+      <span className="inline-flex items-center justify-center min-w-[16px] h-4 px-1 rounded-full bg-red-500 text-white text-[9px] font-bold leading-none shrink-0">
+        {count > 99 ? '99+' : count}
+      </span>
+    );
+  }
+
   return (
     <SidebarProvider open={!collapsed} onOpenChange={(open) => { if (open === collapsed) toggle(); }} className="h-svh overflow-hidden">
       {/* Desktop sidebar - conversation list */}
@@ -356,8 +398,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                         : null}
                       <span className={cn("text-sm", agent.logo ? "hidden" : "")}>{agent.icon}</span>
                       <span className="text-sm font-medium truncate group-data-[collapsible=icon]:hidden">{agent.name}</span>
-                      <span className="text-[10px] text-muted-foreground ml-auto shrink-0 group-data-[collapsible=icon]:hidden">{agent.sessions.length}</span>
                     </button>
+                    {/* Unread count badge for agent */}
+                    {(() => {
+                      const agentUnread = agent.sessions.reduce((s, session) => s + getUnread(session), 0);
+                      return agentUnread > 0 ? (
+                        <UnreadBadge count={agentUnread} />
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground ml-auto shrink-0 group-data-[collapsible=icon]:hidden">{agent.sessions.length}</span>
+                      );
+                    })()}
                   </div>
 
                   {/* Source groups or flat sessions */}
@@ -371,15 +421,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             : <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />}
                           <span className="text-xs">{group.icon}</span>
                           <span className="text-xs font-medium text-muted-foreground">{group.label}</span>
-                          <span className="text-[10px] text-muted-foreground ml-auto">{group.sessions.length}</span>
+                          {(() => {
+                            const groupUnread = group.sessions.reduce((s, session) => s + getUnread(session), 0);
+                            return groupUnread > 0 ? (
+                              <span className="ml-auto"><UnreadBadge count={groupUnread} /></span>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground ml-auto">{group.sessions.length}</span>
+                            );
+                          })()}
                         </button>
-                        {group.expanded && group.sessions.map(session => (
+                        {group.expanded && group.sessions
+                          .slice()
+                          .sort((a, b) => {
+                            const ua = getUnread(a), ub = getUnread(b);
+                            if (ua > 0 && ub === 0) return -1;
+                            if (ua === 0 && ub > 0) return 1;
+                            const ta = a.last_active || a.updated_at || '';
+                            const tb = b.last_active || b.updated_at || '';
+                            return tb.localeCompare(ta);
+                          })
+                          .map(session => {
+                            const unread = getUnread(session);
+                            return (
                           <button key={session.id}
-                            onClick={() => { router.push(`/chat?agent=${agent.id}&session=${session.id}`); setMenuOpen(false); }}
+                            onClick={() => { clearSessionUnread(session.id); router.push(`/chat?agent=${agent.id}&session=${session.id}`); setMenuOpen(false); }}
                             className="group w-full text-left pl-12 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer group-data-[collapsible=icon]:hidden">
                             <div className="flex items-center gap-1.5">
                               <MessageSquare className="w-3 h-3 shrink-0 text-muted-foreground" />
-                              <span className="text-xs truncate flex-1">{session.name || session.title || "Untitled"}</span>
+                              <span className={cn("text-xs truncate flex-1", unread > 0 && "font-bold")}>{session.name || session.title || "Untitled"}</span>
+                              <UnreadBadge count={unread} />
                             </div>
                             {(session.last_active || session.updated_at) && (
                               <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">
@@ -387,17 +457,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               </div>
                             )}
                           </button>
-                        ))}
+                            );
+                          })}
                       </div>
                     ))
                   ) : (
-                    agent.expanded && agent.sessions.map(session => (
+                    agent.expanded && agent.sessions
+                      .slice()
+                      .sort((a, b) => {
+                        const ua = getUnread(a), ub = getUnread(b);
+                        if (ua > 0 && ub === 0) return -1;
+                        if (ua === 0 && ub > 0) return 1;
+                        const ta = a.last_active || a.updated_at || '';
+                        const tb = b.last_active || b.updated_at || '';
+                        return tb.localeCompare(ta);
+                      })
+                      .map(session => {
+                        const unread = getUnread(session);
+                        return (
                       <button key={session.id}
-                        onClick={() => { router.push(`/chat?agent=${agent.id}&session=${session.id}`); setMenuOpen(false); }}
+                        onClick={() => { clearSessionUnread(session.id); router.push(`/chat?agent=${agent.id}&session=${session.id}`); setMenuOpen(false); }}
                         className="group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer group-data-[collapsible=icon]:hidden">
                         <div className="flex items-center gap-1.5">
                           <MessageSquare className="w-3 h-3 shrink-0 text-muted-foreground" />
-                          <span className="text-xs truncate flex-1">{session.name || session.title || "Untitled"}</span>
+                          <span className={cn("text-xs truncate flex-1", unread > 0 && "font-bold")}>{session.name || session.title || "Untitled"}</span>
+                          <UnreadBadge count={unread} />
                         </div>
                         {(session.last_active || session.updated_at) && (
                           <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">
@@ -405,7 +489,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           </div>
                         )}
                       </button>
-                    ))
+                        );
+                      })
                   )}
 
                   {agent.expanded && agent.sessions.length === 0 && (
@@ -505,14 +590,53 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <MobilePageTitle />
           <div className="flex items-center gap-1">
             <NotificationCenter />
+            <button
+              onClick={() => setRightPanelOpen((v) => !v)}
+              className="p-1.5 rounded-md hover:bg-muted/50 transition-colors"
+              title={rightPanelOpen ? "Close workspace" : "Open workspace"}
+            >
+              {rightPanelOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+            </button>
           </div>
+        </div>
+        {/* Desktop: right-panel toggle in top-right corner */}
+        <div className="hidden md:flex h-9 shrink-0 items-center justify-end border-b border-border bg-background px-3">
+          <button
+            onClick={() => setRightPanelOpen((v) => !v)}
+            className="p-1.5 rounded-md hover:bg-muted/50 transition-colors text-muted-foreground"
+            title={rightPanelOpen ? "Close workspace" : "Open workspace"}
+          >
+            {rightPanelOpen ? <PanelRightClose className="w-4 h-4" /> : <PanelRightOpen className="w-4 h-4" />}
+          </button>
         </div>
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           {children}
         </div>
         {/* Bottom navigation bar — all screens */}
-        <BottomNav />
+        <BottomNav totalUnread={totalUnread} />
       </SidebarInset>
+
+      {/* Right Panel — workspace tabs (mobile: Sheet overlay, desktop: inline) */}
+      {rightPanelOpen ? (
+        <>
+          {/* Mobile overlay */}
+          <div className="fixed inset-0 z-40 bg-black/50 md:hidden" onClick={() => setRightPanelOpen(false)} />
+          <div className={cn(
+            "fixed top-0 right-0 bottom-0 z-50 bg-background shadow-xl md:static md:z-auto md:shadow-none",
+            "flex flex-col",
+          )} style={{ width: '100%', maxWidth: '100vw' }}>
+            <div className="md:hidden absolute top-2 right-2 z-10">
+              <button
+                onClick={() => setRightPanelOpen(false)}
+                className="p-1.5 rounded-md hover:bg-muted/50"
+              >
+                <PanelRightClose className="w-4 h-4" />
+              </button>
+            </div>
+            <RightPanel open={true} onToggle={() => setRightPanelOpen(false)} />
+          </div>
+        </>
+      ) : null}
 
       {/* Terminal Panel */}
       <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
