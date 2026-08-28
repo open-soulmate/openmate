@@ -168,6 +168,7 @@ export function ChatClient() {
   const titleInputRef = useRef<HTMLInputElement>(null);
   const { t } = useTranslation();
   const isMobile = useMediaQuery("(max-width: 1023px)");
+  const setMobileConvOpen = useAppStore((s) => s.setMobileConvOpen);
   const wsRef = useRef<WebSocket | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -704,6 +705,11 @@ export function ChatClient() {
         {/* Chat header */}
         <div className="h-12 border-b border-border flex items-center px-4 justify-between shrink-0">
           <div className="flex items-center gap-2">
+            {isMobile && (
+              <button onClick={() => setMobileConvOpen(true)} className="p-1 rounded hover:bg-muted">
+                <PanelLeft className="w-4 h-4" />
+              </button>
+            )}
             {selectedAgent && <span className="text-sm">{selectedAgent.icon}</span>}
             {editingTitle ? (
               <input

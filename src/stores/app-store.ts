@@ -197,6 +197,10 @@ interface AppState {
   sidebarCollapsed: boolean;
   toggleSidebar: () => void;
 
+  // Mobile conversation sheet (shared between app-shell and chat-client)
+  mobileConvOpen: boolean;
+  setMobileConvOpen: (open: boolean) => void;
+
   // Active session (shared between sidebar and chat page)
   activeSessionId: string | null;
   activeAgentId: string | null;
@@ -290,6 +294,9 @@ export const useAppStore = create<AppState>((set, get) => ({
   sidebarCollapsed: false,
   toggleSidebar: () =>
     set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
+
+  mobileConvOpen: false,
+  setMobileConvOpen: (open) => set({ mobileConvOpen: open }),
 
   // Active session
   activeSessionId: null,
