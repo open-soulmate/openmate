@@ -364,7 +364,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile: conversation list Sheet (left drawer) */}
       <Sheet open={mobileConvOpen} onOpenChange={setMobileConvOpen}>
-        <SheetContent side="left" className="w-[300px] p-0 flex flex-col">
+        <SheetContent side="left" size="md" className="p-0 flex flex-col">
           <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
             <SheetTitle className="text-sm font-semibold">{t("nav.chat", "Chat")}</SheetTitle>
           </SheetHeader>

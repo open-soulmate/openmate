@@ -1178,7 +1178,7 @@ export default function AIGroupsPage() {
       {/* Left: Group List — Sheet on mobile, inline on desktop */}
       {isMobile ? (
         <Sheet open={showSidebar} onOpenChange={(open) => { setShowSidebar(open); if (open) setShowRightPanel(false); }}>
-          <SheetContent side="left" showCloseButton={false} className="w-72 p-0 flex flex-col">
+          <SheetContent side="left" size="sm" showCloseButton={false} className="p-0 flex flex-col">
             <div className="shrink-0 flex flex-col h-full border-r-0 bg-card">
               {renderGroupList()}
             </div>
@@ -1458,7 +1458,7 @@ export default function AIGroupsPage() {
       {/* Right: Agent Management Panel — Sheet on mobile, inline on desktop (shared content) */}
       {isMobile ? (
         <Sheet open={showRightPanel && !!selectedGroup} onOpenChange={(open) => { if (!open) setShowRightPanel(false); else setShowSidebar(false); }}>
-          <SheetContent side="right" className="w-[85vw] sm:w-80 p-0 flex flex-col">
+          <SheetContent side="right" size="md" className="p-0 flex flex-col">
             <div className="h-12 shrink-0 px-3 flex items-center border-b border-border">
               <span className="text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
             </div>
