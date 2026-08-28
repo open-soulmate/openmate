@@ -186,12 +186,7 @@ export function SwipeablePanels({ children, isHomePage }: SwipeablePanelsProps) 
         {children}
       </div>
 
-      {/* Current page indicator */}
-      <div className="flex items-center justify-center py-1.5 shrink-0">
-        <span className="text-[10px] text-muted-foreground">
-          {currentIndex + 1} / {PANEL_ROUTES.length}
-        </span>
-      </div>
+      {/* Page indicator removed — bottom nav already shows current position */}
 
       <style jsx global>{`
         @keyframes swipe-left {
