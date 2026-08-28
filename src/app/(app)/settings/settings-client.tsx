@@ -6,7 +6,7 @@ import {
   HardDrive, Info, Wrench, Sliders, Eye, EyeOff, Check, X,
   RefreshCw, Download, Upload, Trash2, ExternalLink, Terminal,
   Wifi, FolderOpen, Gauge, RotateCcw, Zap, ChevronRight,
-  CheckCircle2, AlertCircle, LogOut, User, Settings,
+  CheckCircle2, AlertCircle, LogOut, User, Settings, Menu,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type ThemeId, getThemes, getStoredTheme, persistTheme } from "@/lib/theme";
@@ -15,6 +15,8 @@ import { getApiBaseUrl, getToken, getUserId, getUserName } from "@/lib/api-clien
 import { useToast } from "@/components/toast-provider";
 import i18n from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
+import { useIsMobile } from "@/hooks/use-mobile";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "organs" | "account" | "about";
 
@@ -112,6 +114,8 @@ function TextInput({ value, onChange, placeholder, type = "text" }: { value: str
 export function SettingsClient() {
   const router = useRouter();
   const { t } = useTranslation();
+  const isMobile = useIsMobile();
+  const [showSidebar, setShowSidebar] = useState(false);
 
   const sections: { id: SectionId; label: string; icon: React.ElementType; group: string }[] = [
     { id: "appearance", label: t("settings.appearance"), icon: Monitor, group: t("settings.uiSettings") },
@@ -431,43 +435,72 @@ export function SettingsClient() {
     return acc;
   }, {});
 
-  return (
-    <div className="flex h-full">
-      {/* Left Sidebar - Settings Navigation */}
-      <div className="w-56 shrink-0 border-r border-border bg-card/50 p-4 flex flex-col">
-        <div className="mb-4">
-          <div className="flex items-center gap-2 mb-1">
-            <Settings size={14} className="text-muted-foreground" />
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("settings.title")}</span>
-          </div>
-        </div>
-        <nav className="flex-1 space-y-4">
-          {Object.entries(groups).map(([group, items]) => (
-            <div key={group}>
-              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-3 mb-1.5">{group}</div>
-              {items.map((s) => (
-                <button key={s.id} onClick={() => setActive(s.id)}
-                  className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors", active === s.id ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground")}>
-                  <s.icon size={15} />{s.label}
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
-        {/* Version info */}
-        <div className="mt-auto pt-4 border-t border-border">
-          <div className="text-[10px] text-muted-foreground px-3 space-y-0.5">
-            <div>OpenMate v0.1.0</div>
-            {backendVersion && <div>OpenSoul v{backendVersion}</div>}
-          </div>
+  // Sidebar content extracted for reuse in both PC and mobile Sheet
+  const SidebarNav = () => (
+    <>
+      <div className="mb-4">
+        <div className="flex items-center gap-2 mb-1">
+          <Settings size={14} className="text-muted-foreground" />
+          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("settings.title")}</span>
         </div>
       </div>
+      <nav className="flex-1 space-y-4">
+        {Object.entries(groups).map(([group, items]) => (
+          <div key={group}>
+            <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-3 mb-1.5">{group}</div>
+            {items.map((s) => (
+              <button key={s.id} onClick={() => { setActive(s.id); if (isMobile) setShowSidebar(false); }}
+                className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-colors", active === s.id ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground")}>
+                <s.icon size={15} />{s.label}
+              </button>
+            ))}
+          </div>
+        ))}
+      </nav>
+      <div className="mt-auto pt-4 border-t border-border">
+        <div className="text-[10px] text-muted-foreground px-3 space-y-0.5">
+          <div>OpenMate v0.1.0</div>
+          {backendVersion && <div>OpenSoul v{backendVersion}</div>}
+        </div>
+      </div>
+    </>
+  );
+
+  return (
+    <div className="flex h-full flex-col md:flex-row">
+      {/* Mobile: top bar with hamburger + current section */}
+      {isMobile && (
+        <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card/50 shrink-0">
+          <button onClick={() => setShowSidebar(true)} className="p-1.5 rounded-md hover:bg-muted text-muted-foreground">
+            <Menu size={18} />
+          </button>
+          <div className="flex items-center gap-1.5 text-sm">
+            <span className="text-muted-foreground">{sections.find(s => s.id === active)?.group}</span>
+            <ChevronRight size={12} className="text-muted-foreground" />
+            <span className="font-medium">{sections.find(s => s.id === active)?.label}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Mobile: Sheet drawer for sidebar */}
+      {isMobile ? (
+        <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
+          <SheetContent side="left" className="w-64 p-4 flex flex-col">
+            <SidebarNav />
+          </SheetContent>
+        </Sheet>
+      ) : (
+        /* PC: fixed sidebar */
+        <div className="w-56 shrink-0 border-r border-border bg-card/50 p-4 flex flex-col">
+          <SidebarNav />
+        </div>
+      )}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-8 py-8 space-y-6">
-          {/* Breadcrumb */}
-          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+      <div className="flex-1 overflow-y-auto min-h-0">
+        <div className="max-w-2xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
+          {/* Breadcrumb - hidden on mobile (shown in top bar) */}
+          <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>{t("settings.title")}</span><ChevronRight size={10} />
             <span>{sections.find(s => s.id === active)?.group}</span><ChevronRight size={10} />
             <span className="text-foreground">{sections.find(s => s.id === active)?.label}</span>
