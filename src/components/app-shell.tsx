@@ -100,8 +100,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
   const isMobile = useIsMobile();
   // Auto-collapse sidebar on mid-sized screens (lg but not xl)
+  // User can override by clicking the toggle button
   const isMidScreen = useMediaQuery("(min-width: 1024px) and (max-width: 1279px)");
-  const effectiveCollapsed = collapsed || isMidScreen;
+  const [midScreenExpanded, setMidScreenExpanded] = useState(false);
+  const effectiveCollapsed = collapsed || (isMidScreen && !midScreenExpanded);
   const mobileConvOpen = useAppStore((s) => s.mobileConvOpen);
   const setMobileConvOpen = useAppStore((s) => s.setMobileConvOpen);
   const currentPanel = useAppStore((s) => s.currentPanel);
@@ -320,6 +322,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => document.removeEventListener("mousedown", handler);
   }, [menuOpen]);
 
+  // Reset mid-screen override when screen size changes
+  useEffect(() => {
+    setMidScreenExpanded(false);
+  }, [isMidScreen]);
+
   useEffect(() => { setMenuOpen(false); setRightPanelOpen(false); }, [pathname]);
 
   // Sync swipeable panel index with current route
@@ -356,7 +363,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <Menu className="w-5 h-5 text-muted-foreground" />
         </button>
         <button
-          onClick={toggle}
+          onClick={() => {
+            if (isMidScreen) {
+              setMidScreenExpanded(prev => !prev);
+            } else {
+              toggle();
+            }
+          }}
           className="hidden lg:flex shrink-0 p-2 hover:bg-muted/50 transition-colors text-muted-foreground"
           aria-label="Toggle Sidebar"
         >
@@ -415,7 +428,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Middle: sidebar + content + right panel */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <SidebarProvider open={!effectiveCollapsed} onOpenChange={(open) => { if (open === effectiveCollapsed) toggle(); }} className="flex-1 min-h-0 overflow-hidden h-full">
+        <SidebarProvider open={!effectiveCollapsed} onOpenChange={(open) => {
+          if (open === effectiveCollapsed) {
+            if (isMidScreen) {
+              setMidScreenExpanded(prev => !prev);
+            } else {
+              toggle();
+            }
+          }
+        }} className="flex-1 min-h-0 overflow-hidden h-full">
           {/* Desktop sidebar - conversation list */}
           <Sidebar collapsible="offcanvas" className="hidden lg:flex">
         <SidebarHeader>

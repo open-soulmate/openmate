@@ -12,14 +12,18 @@ import {
   RotateCw,
   PanelRightOpen,
   PanelRightClose,
+  Info,
+  ImageIcon,
+  Paperclip,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { useAppStore } from '@/stores/app-store';
 
 // ── Types ──────────────────────────────────────────────────────────
 
-type TabType = 'new-tab' | 'web-browser' | 'file-preview' | 'terminal';
+type TabType = 'new-tab' | 'web-browser' | 'file-preview' | 'terminal' | 'details';
 
 interface Tab {
   id: string;
@@ -46,6 +50,7 @@ function createTab(type: TabType, extra?: { url?: string; filePath?: string }): 
     'web-browser': 'Web Browser',
     'file-preview': 'File Preview',
     terminal: 'Terminal',
+    details: 'Details',
   };
   return {
     id: `tab-${Date.now()}-${tabCounter}`,
@@ -73,10 +78,11 @@ function isPdfUrl(url: string): boolean {
 
 // ── Sub-components ─────────────────────────────────────────────────
 
-function NewTabView({ onOpenBrowser, onOpenFile, onOpenTerminal }: {
+function NewTabView({ onOpenBrowser, onOpenFile, onOpenTerminal, onOpenDetails }: {
   onOpenBrowser: (url: string) => void;
   onOpenFile: (path: string) => void;
   onOpenTerminal: () => void;
+  onOpenDetails: () => void;
 }) {
   const [urlInput, setUrlInput] = useState('');
   const [fileInput, setFileInput] = useState('');
@@ -136,6 +142,17 @@ function NewTabView({ onOpenBrowser, onOpenFile, onOpenTerminal }: {
         >
           <TerminalIcon className="w-4 h-4 mr-2" />
           Open Terminal
+        </Button>
+
+        {/* Session Details */}
+        <Button
+          onClick={onOpenDetails}
+          variant="outline"
+          className="w-full"
+          size="sm"
+        >
+          <Info className="w-4 h-4 mr-2" />
+          Session Details
         </Button>
       </div>
     </div>
@@ -388,6 +405,68 @@ function TerminalPlaceholder() {
   );
 }
 
+// ── Session Details View ─────────────────────────────────────────
+
+function SessionDetailsView() {
+  const details = useAppStore((s) => s.sessionDetails);
+
+  if (!details) {
+    return (
+      <div className="flex flex-col items-center justify-center h-full gap-3 p-6 text-center">
+        <Info className="w-8 h-8 text-muted-foreground/30" />
+        <p className="text-sm text-muted-foreground">No active session</p>
+        <p className="text-xs text-muted-foreground/60">Select a conversation to view details</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-3 space-y-4">
+      {/* Agent Info */}
+      <div className="space-y-2">
+        <div className="text-xs text-muted-foreground">Agent</div>
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50">
+          <span className="text-lg shrink-0">{details.agentIcon}</span>
+          <div className="min-w-0 flex-1">
+            <div className="text-sm font-medium truncate">{details.agentName}</div>
+            {details.agentDescription && (
+              <div className="text-xs text-muted-foreground truncate" title={details.agentDescription}>
+                {details.agentDescription}
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Session Info */}
+      {details.sessionName && (
+        <div className="space-y-2">
+          <div className="text-xs text-muted-foreground">Session</div>
+          <div className="text-sm font-medium">{details.sessionName}</div>
+          {details.lastActive && (
+            <div className="text-xs text-muted-foreground">Last active: {details.lastActive}</div>
+          )}
+        </div>
+      )}
+
+      {/* Statistics */}
+      <div>
+        <div className="text-xs text-muted-foreground mb-2">Statistics</div>
+        <div className="grid grid-cols-2 gap-2">
+          <div className="p-2 rounded bg-muted/50 text-center">
+            <div className="text-lg font-bold">{details.imageCount}</div>
+            <div className="text-[10px] text-muted-foreground">Images</div>
+          </div>
+          <div className="p-2 rounded bg-muted/50 text-center">
+            <div className="text-lg font-bold">{details.fileCount}</div>
+            <div className="text-[10px] text-muted-foreground">Files</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ── Tab icon helper ────────────────────────────────────────────────
 
 function TabIcon({ type }: { type: TabType }) {
@@ -396,6 +475,7 @@ function TabIcon({ type }: { type: TabType }) {
     case 'web-browser': return <Globe className={cls} />;
     case 'file-preview': return <FileText className={cls} />;
     case 'terminal': return <TerminalIcon className={cls} />;
+    case 'details': return <Info className={cls} />;
     default: return <Globe className={cls} />;
   }
 }
@@ -579,6 +659,9 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
 
       case 'terminal':
         return <TerminalPlaceholder />;
+
+      case 'details':
+        return <SessionDetailsView />;
 
       default:
         return null;
