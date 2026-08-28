@@ -304,7 +304,7 @@ export function SessionsClient() {
       case "user": return "text-blue-400"
       case "assistant": return "text-green-400"
       case "system": return "text-yellow-400"
-      default: return "text-zinc-400"
+      default: return "text-muted-foreground"
     }
   }
 
@@ -380,15 +380,15 @@ export function SessionsClient() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-2 lg:px-6 h-12 border-b border-zinc-800">
+      <div className="flex items-center justify-between px-2 lg:px-6 h-12 border-b border-border">
         <div className="flex items-center gap-3">
-          <button onClick={() => isMobile ? setSidebarOpen(true) : setDesktopSidebarOpen(v => !v)} className="shrink-0 p-1.5 -ml-1 rounded-lg hover:bg-zinc-800 touch-manipulation" aria-label="Toggle Sidebar">
-            <PanelLeft className="w-4 h-4 text-zinc-400" />
+          <button onClick={() => isMobile ? setSidebarOpen(true) : setDesktopSidebarOpen(v => !v)} className="shrink-0 p-1.5 -ml-1 rounded-lg hover:bg-muted touch-manipulation" aria-label="Toggle Sidebar">
+            <PanelLeft className="w-4 h-4 text-muted-foreground" />
           </button>
           <History className="w-6 h-6 text-cyan-400" />
           <div>
-            <h1 className="text-xl font-semibold text-zinc-100">{t("sessions.title", "Sessions")}</h1>
-            <p className="text-xs lg:text-sm text-zinc-500">{t("sessions.subtitle", "Browse and manage conversation sessions")}</p>
+            <h1 className="text-xl font-semibold text-foreground">{t("sessions.title", "Sessions")}</h1>
+            <p className="text-xs lg:text-sm text-muted-foreground">{t("sessions.subtitle", "Browse and manage conversation sessions")}</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
@@ -397,8 +397,8 @@ export function SessionsClient() {
               {activeFilterCount} {t("sessions.filtersActive", "filters")}
             </span>
           )}
-          <span className="text-xs lg:text-sm text-zinc-500">{filteredSessions.length} {t("sessions.count", "sessions")}</span>
-          <button onClick={fetchSessions} className="p-2 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200 transition-colors">
+          <span className="text-xs lg:text-sm text-muted-foreground">{filteredSessions.length} {t("sessions.count", "sessions")}</span>
+          <button onClick={fetchSessions} className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors">
             <RefreshCw className="w-4 h-4" />
           </button>
         </div>
@@ -408,31 +408,31 @@ export function SessionsClient() {
         {/* Session List — Sheet on mobile, inline on desktop */}
         {isMobile ? (
           <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-            <SheetContent side="left" size="md" className="p-0 flex flex-col bg-zinc-900">
-              <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-zinc-800">
-                <SheetTitle className="text-sm font-semibold text-zinc-100 flex items-center gap-2">
+            <SheetContent side="left" size="md" className="p-0 flex flex-col bg-card">
+              <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
+                <SheetTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <History className="w-4 h-4 text-cyan-400" />
                   {t("sessions.title", "Sessions")}
                 </SheetTitle>
               </SheetHeader>
               {/* Search */}
-              <form onSubmit={handleSearch} className="px-3 h-12 flex items-center border-b border-zinc-800 gap-2">
+              <form onSubmit={handleSearch} className="px-3 h-12 flex items-center border-b border-border gap-2">
                 <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                   <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                     placeholder={t("sessions.searchPlaceholder", "Search sessions...")}
-                    className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500" />
+                    className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-500" />
                 </div>
               </form>
               {/* Filter Bar */}
-              <div className="px-3 py-2 border-b border-zinc-800 space-y-2">
+              <div className="px-3 py-2 border-b border-border space-y-2">
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => setShowFavoritesOnly(v => !v)}
                     className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                       showFavoritesOnly
                         ? "bg-yellow-900/30 text-yellow-400 border border-yellow-700/50"
-                        : "bg-zinc-800 text-zinc-500 border border-zinc-700 hover:text-zinc-300 hover:border-zinc-600"
+                        : "bg-muted text-muted-foreground border border-border hover:text-foreground hover:border-border"
                     }`}
                   >
                     <Star className={`w-3.5 h-3.5 ${showFavoritesOnly ? "fill-yellow-400" : ""}`} />
@@ -442,7 +442,7 @@ export function SessionsClient() {
                   {activeFilterCount > 0 && (
                     <button
                       onClick={() => { setShowFavoritesOnly(false); setActiveSourceFilter(null); setActiveTagFilter(null) }}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
+                      className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                     >
                       <X className="w-3 h-3" />
                       {t("sessions.clearFilters", "Clear")}
@@ -463,7 +463,7 @@ export function SessionsClient() {
                         className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] transition-colors ${
                           active
                             ? `${meta.bg} ${meta.color} border border-current/30 font-medium`
-                            : "bg-zinc-800/60 text-zinc-500 border border-zinc-800 hover:text-zinc-300"
+                            : "bg-muted/60 text-muted-foreground border border-border hover:text-foreground"
                         }`}
                       >
                         <Icon className="w-3 h-3" />
@@ -477,8 +477,8 @@ export function SessionsClient() {
                 {allTags.length > 0 && (
                   <div className="flex flex-nowrap gap-1.5 overflow-x-auto">
                     <div className="flex items-center gap-1 mr-1">
-                      <Tag className="w-3 h-3 text-zinc-600" />
-                      <span className="text-[10px] text-zinc-600">{t("sessions.tags", "Tags")}:</span>
+                      <Tag className="w-3 h-3 text-muted-foreground/70" />
+                      <span className="text-[10px] text-muted-foreground/70">{t("sessions.tags", "Tags")}:</span>
                     </div>
                     {allTags.map(tag => {
                       const active = activeTagFilter === tag.name
@@ -489,7 +489,7 @@ export function SessionsClient() {
                           className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] transition-colors ${
                             active
                               ? "bg-indigo-900/30 text-indigo-400 border border-indigo-700/30 font-medium"
-                              : "bg-zinc-800/60 text-zinc-500 border border-zinc-800 hover:text-zinc-300"
+                              : "bg-muted/60 text-muted-foreground border border-border hover:text-foreground"
                           }`}
                         >
                           <Tag className="w-3 h-3" />
@@ -504,12 +504,12 @@ export function SessionsClient() {
               {/* Session list */}
               <div className="flex-1 overflow-y-auto">
                 {loading ? (
-                  <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+                  <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
                 ) : error ? (
                   <div className="p-4 text-center text-red-400 text-xs">{error}</div>
                 ) : filteredSessions.length === 0 ? (
                   <div className="text-center py-12 space-y-2">
-                    <p className="text-zinc-500 text-xs">
+                    <p className="text-muted-foreground text-xs">
                       {showFavoritesOnly
                         ? t("sessions.noFavorites", "No favorite sessions yet")
                         : t("sessions.noSessions", "No sessions found")}
@@ -518,26 +518,26 @@ export function SessionsClient() {
                 ) : (
                   <div className="py-2">
                     <button
-                      className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-zinc-800/40 transition-colors"
+                      className="w-full flex items-center gap-2 px-3 py-2.5 hover:bg-muted/40 transition-colors"
                       onClick={() => setAgentExpanded(v => !v)}
                     >
-                      {agentExpanded ? <ChevronDown className="w-4 h-4 text-zinc-500" /> : <ChevronRight className="w-4 h-4 text-zinc-500" />}
+                      {agentExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                       <Bot className="w-5 h-5 text-cyan-400" />
-                      <span className="text-xs font-semibold text-zinc-100">Hermes Agent</span>
-                      <span className="ml-auto text-xs text-zinc-500">{t("sessions.sessionSummary", { count: filteredSessions.length, messages: totalMessages })}</span>
+                      <span className="text-xs font-semibold text-foreground">Hermes Agent</span>
+                      <span className="ml-auto text-xs text-muted-foreground">{t("sessions.sessionSummary", { count: filteredSessions.length, messages: totalMessages })}</span>
                     </button>
                     {agentExpanded && (
-                      <div className="ml-2 border-l border-zinc-800">
+                      <div className="ml-2 border-l border-border">
                         {ALL_SOURCES.map(src => {
                           const items = groups[src]
                           if (!items || items.length === 0) return null
-                          const meta = SOURCE_META[src] || { icon: MessageSquare, label: src, color: "text-zinc-400", bg: "bg-zinc-900/20" }
+                          const meta = SOURCE_META[src] || { icon: MessageSquare, label: src, color: "text-muted-foreground", bg: "bg-muted/20" }
                           const Icon = meta.icon
                           const expanded = sourceExpanded[src] ?? false
                           return (
                             <div key={src}>
                               <button
-                                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-zinc-800/30 transition-colors"
+                                className="w-full flex items-center gap-2 px-3 py-2 hover:bg-muted/30 transition-colors"
                                 onClick={() => setSourceExpanded(prev => {
                                   const willExpand = !prev[src]
                                   const next: Record<string, boolean> = {}
@@ -548,10 +548,10 @@ export function SessionsClient() {
                                   return next
                                 })}
                               >
-                                {expanded ? <ChevronDown className="w-3.5 h-3.5 text-zinc-600" /> : <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />}
+                                {expanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/70" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/70" />}
                                 <Icon className={`w-4 h-4 ${meta.color}`} />
-                                <span className="text-xs font-medium text-zinc-300">{t(SOURCE_LABELS[src] || src)}</span>
-                                <span className="ml-auto text-[11px] text-zinc-600">{items.length}</span>
+                                <span className="text-xs font-medium text-foreground">{t(SOURCE_LABELS[src] || src)}</span>
+                                <span className="ml-auto text-[11px] text-muted-foreground/70">{items.length}</span>
                               </button>
                               {expanded && items.map(session => {
                                 const isFav = favorites.has(session.session_id)
@@ -561,24 +561,24 @@ export function SessionsClient() {
                                     className={`group flex items-center gap-2 pl-8 pr-3 py-2.5 cursor-pointer transition-colors ${
                                       selectedSession?.session_id === session.session_id
                                         ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] border-l-2 border-[#7c3aed]"
-                                        : "hover:bg-zinc-800/20 border-l-2 border-transparent"
+                                        : "hover:bg-muted/20 border-l-2 border-transparent"
                                     }`}
                                     onClick={() => fetchSessionDetail(session.session_id)}
                                   >
                                     <button
                                       onClick={(e) => { e.stopPropagation(); toggleFavorite(session.session_id) }}
                                       className={`p-1 lg:p-0.5 rounded transition-colors flex-shrink-0 touch-manipulation ${
-                                        isFav ? "text-yellow-400 hover:text-yellow-300" : "text-zinc-700 hover:text-yellow-400"
+                                        isFav ? "text-yellow-400 hover:text-yellow-300" : "text-muted-foreground/40 hover:text-yellow-400"
                                       }`}
                                     >
                                       <Star className={`w-3.5 h-3.5 ${isFav ? "fill-yellow-400" : ""}`} />
                                     </button>
                                     <div className="flex-1 min-w-0">
-                                      <div className={`text-xs truncate ${selectedSession?.session_id === session.session_id ? "text-[#7c3aed]" : "text-zinc-300"}`}>
+                                      <div className={`text-xs truncate ${selectedSession?.session_id === session.session_id ? "text-[#7c3aed]" : "text-foreground"}`}>
                                         {session.title || session.session_id.replace(/^20\d{6}_\d{6}_/, "")}
                                       </div>
                                       <div className={`flex items-center gap-2 mt-0.5 text-[10px] ${
-                                        selectedSession?.session_id === session.session_id ? "text-purple-400/60" : "text-zinc-600"
+                                        selectedSession?.session_id === session.session_id ? "text-purple-400/60" : "text-muted-foreground/70"
                                       }`}>
                                         {session.message_count !== undefined && (
                                           <span className="flex items-center gap-0.5"><MessageSquare className="w-2.5 h-2.5" /> {session.message_count}</span>
@@ -622,7 +622,7 @@ export function SessionsClient() {
                                               onChange={e => setTagInput(e.target.value)}
                                               onKeyDown={e => { if (e.key === "Escape") { setTaggingSession(null); setTagInput("") } }}
                                               placeholder={t("sessions.tagPlaceholder", "tag name...")}
-                                              className="w-20 px-1.5 py-0.5 text-[10px] bg-zinc-800 border border-zinc-700 rounded text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500"
+                                              className="w-20 px-1.5 py-0.5 text-[10px] bg-muted border border-border rounded text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:border-indigo-500"
                                             />
                                             <button type="submit" className="p-0.5 text-indigo-400 hover:text-indigo-300">
                                               <Plus className="w-3 h-3" />
@@ -638,7 +638,7 @@ export function SessionsClient() {
                                         className={`p-1 rounded transition-colors ${
                                           taggingSession === session.session_id
                                             ? "bg-indigo-800/30 text-indigo-400"
-                                            : "hover:bg-zinc-700 text-zinc-600 hover:text-indigo-400"
+                                            : "hover:bg-muted text-muted-foreground/70 hover:text-indigo-400"
                                         }`}
                                         title={t("sessions.addTag", "Add tag")}
                                       >
@@ -651,13 +651,13 @@ export function SessionsClient() {
                                             {t("sessions.confirmDelete", "OK")}
                                           </button>
                                           <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null) }}
-                                            className="px-1.5 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-[10px] text-zinc-300">
+                                            className="px-1.5 py-0.5 bg-muted hover:bg-muted rounded text-[10px] text-foreground">
                                             {t("sessions.cancel", "Cancel")}
                                           </button>
                                         </div>
                                       ) : (
                                         <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(session.session_id) }}
-                                          className="p-1 rounded hover:bg-zinc-700 text-zinc-600 hover:text-red-400 transition-colors">
+                                          className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-red-400 transition-colors">
                                           <Trash2 className="w-3 h-3" />
                                         </button>
                                       )}
@@ -677,21 +677,21 @@ export function SessionsClient() {
           </Sheet>
         ) : (
         <div
-          className="shrink-0 border-r border-zinc-800 flex flex-col overflow-hidden transition-all duration-250 ease-in-out"
+          className="shrink-0 border-r border-border flex flex-col overflow-hidden transition-all duration-250 ease-in-out"
           style={{ width: desktopSidebarOpen ? 320 : 0, borderWidth: desktopSidebarOpen ? 1 : 0 }}
         >
           {/* Search */}
-          <form onSubmit={handleSearch} className="px-3 md:px-2 lg:px-4 h-12 flex items-center border-b border-zinc-800 gap-2">
+          <form onSubmit={handleSearch} className="px-3 md:px-2 lg:px-4 h-12 flex items-center border-b border-border gap-2">
             <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <input value={searchQuery} onChange={e => setSearchQuery(e.target.value)}
                 placeholder={t("sessions.searchPlaceholder", "Search sessions...")}
-                className="w-full pl-10 pr-4 py-2 bg-zinc-800 border border-zinc-700 rounded-lg text-xs lg:text-sm text-zinc-100 placeholder:text-zinc-500 focus:outline-none focus:border-blue-500" />
+                className="w-full pl-10 pr-4 py-2 bg-muted border border-border rounded-lg text-xs lg:text-sm text-foreground placeholder:text-muted-foreground focus:outline-none focus:border-blue-500" />
             </div>
           </form>
 
           {/* Filter Bar */}
-          <div className="px-3 md:px-2 lg:px-4 py-2 border-b border-zinc-800 space-y-2">
+          <div className="px-3 md:px-2 lg:px-4 py-2 border-b border-border space-y-2">
             {/* Favorites + clear row */}
             <div className="flex items-center gap-2">
               <button
@@ -699,7 +699,7 @@ export function SessionsClient() {
                 className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${
                   showFavoritesOnly
                     ? "bg-yellow-900/30 text-yellow-400 border border-yellow-700/50"
-                    : "bg-zinc-800 text-zinc-500 border border-zinc-700 hover:text-zinc-300 hover:border-zinc-600"
+                    : "bg-muted text-muted-foreground border border-border hover:text-foreground hover:border-border"
                 }`}
               >
                 <Star className={`w-3.5 h-3.5 ${showFavoritesOnly ? "fill-yellow-400" : ""}`} />
@@ -708,14 +708,14 @@ export function SessionsClient() {
               </button>
 
               <div className="flex items-center gap-1 ml-1">
-                <Filter className="w-3 h-3 text-zinc-600" />
-                <span className="text-[10px] text-zinc-600">{t("sessions.source", "Source")}:</span>
+                <Filter className="w-3 h-3 text-muted-foreground/70" />
+                <span className="text-[10px] text-muted-foreground/70">{t("sessions.source", "Source")}:</span>
               </div>
 
               {activeFilterCount > 0 && (
                 <button
                   onClick={() => { setShowFavoritesOnly(false); setActiveSourceFilter(null); setActiveTagFilter(null) }}
-                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800 transition-colors"
+                  className="flex items-center gap-1 px-2 py-1 rounded-md text-[10px] text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
                 >
                   <X className="w-3 h-3" />
                   {t("sessions.clearFilters", "Clear")}
@@ -738,7 +738,7 @@ export function SessionsClient() {
                     className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] transition-colors ${
                       active
                         ? `${meta.bg} ${meta.color} border border-current/30 font-medium`
-                        : "bg-zinc-800/60 text-zinc-500 border border-zinc-800 hover:text-zinc-300"
+                        : "bg-muted/60 text-muted-foreground border border-border hover:text-foreground"
                     }`}
                   >
                     <Icon className="w-3 h-3" />
@@ -753,8 +753,8 @@ export function SessionsClient() {
             {allTags.length > 0 && (
               <div className="flex flex-nowrap md:flex-wrap gap-1.5 overflow-x-auto">
                 <div className="flex items-center gap-1 mr-1">
-                  <Tag className="w-3 h-3 text-zinc-600" />
-                  <span className="text-[10px] text-zinc-600">{t("sessions.tags", "Tags")}:</span>
+                  <Tag className="w-3 h-3 text-muted-foreground/70" />
+                  <span className="text-[10px] text-muted-foreground/70">{t("sessions.tags", "Tags")}:</span>
                 </div>
                 {allTags.map(tag => {
                   const active = activeTagFilter === tag.name
@@ -765,7 +765,7 @@ export function SessionsClient() {
                       className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] transition-colors ${
                         active
                           ? "bg-indigo-900/30 text-indigo-400 border border-indigo-700/30 font-medium"
-                          : "bg-zinc-800/60 text-zinc-500 border border-zinc-800 hover:text-zinc-300"
+                          : "bg-muted/60 text-muted-foreground border border-border hover:text-foreground"
                       }`}
                     >
                       <Tag className="w-3 h-3" />
@@ -781,12 +781,12 @@ export function SessionsClient() {
           {/* Tree List */}
           <div className="flex-1 overflow-y-auto">
             {loading ? (
-              <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+              <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
             ) : error ? (
               <div className="p-4 text-center text-red-400 text-xs lg:text-sm">{error}</div>
             ) : filteredSessions.length === 0 ? (
               <div className="text-center py-12 space-y-2">
-                <p className="text-zinc-500 text-xs lg:text-sm">
+                <p className="text-muted-foreground text-xs lg:text-sm">
                   {showFavoritesOnly
                     ? t("sessions.noFavorites", "No favorite sessions yet")
                     : t("sessions.noSessions", "No sessions found")}
@@ -804,21 +804,21 @@ export function SessionsClient() {
               <div className="py-2">
                 {/* ── Hermes Agent ── */}
                 <button
-                  className="w-full flex items-center gap-2 px-2 lg:px-4 py-2.5 hover:bg-zinc-800/40 transition-colors"
+                  className="w-full flex items-center gap-2 px-2 lg:px-4 py-2.5 hover:bg-muted/40 transition-colors"
                   onClick={() => setAgentExpanded(v => !v)}
                 >
-                  {agentExpanded ? <ChevronDown className="w-4 h-4 text-zinc-500" /> : <ChevronRight className="w-4 h-4 text-zinc-500" />}
+                  {agentExpanded ? <ChevronDown className="w-4 h-4 text-muted-foreground" /> : <ChevronRight className="w-4 h-4 text-muted-foreground" />}
                   <Bot className="w-5 h-5 text-cyan-400" />
-                  <span className="text-xs lg:text-sm font-semibold text-zinc-100">Hermes Agent</span>
-                  <span className="ml-auto text-xs text-zinc-500">{t("sessions.sessionSummary", { count: filteredSessions.length, messages: totalMessages })}</span>
+                  <span className="text-xs lg:text-sm font-semibold text-foreground">Hermes Agent</span>
+                  <span className="ml-auto text-xs text-muted-foreground">{t("sessions.sessionSummary", { count: filteredSessions.length, messages: totalMessages })}</span>
                 </button>
 
                 {agentExpanded && (
-                  <div className="ml-2 border-l border-zinc-800">
+                  <div className="ml-2 border-l border-border">
                     {ALL_SOURCES.map(src => {
                       const items = groups[src]
                       if (!items || items.length === 0) return null
-                      const meta = SOURCE_META[src] || { icon: MessageSquare, label: src, color: "text-zinc-400", bg: "bg-zinc-900/20" }
+                      const meta = SOURCE_META[src] || { icon: MessageSquare, label: src, color: "text-muted-foreground", bg: "bg-muted/20" }
                       const Icon = meta.icon
                       const expanded = sourceExpanded[src] ?? false
 
@@ -826,7 +826,7 @@ export function SessionsClient() {
                         <div key={src}>
                           {/* Source group header */}
                           <button
-                            className="w-full flex items-center gap-2 px-2 lg:px-4 py-2 hover:bg-zinc-800/30 transition-colors"
+                            className="w-full flex items-center gap-2 px-2 lg:px-4 py-2 hover:bg-muted/30 transition-colors"
                             onClick={() => setSourceExpanded(prev => {
                               const willExpand = !prev[src]
                               const next: Record<string, boolean> = {}
@@ -837,10 +837,10 @@ export function SessionsClient() {
                               return next
                             })}
                           >
-                            {expanded ? <ChevronDown className="w-3.5 h-3.5 text-zinc-600" /> : <ChevronRight className="w-3.5 h-3.5 text-zinc-600" />}
+                            {expanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground/70" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground/70" />}
                             <Icon className={`w-4 h-4 ${meta.color}`} />
-                            <span className="text-xs font-medium text-zinc-300">{t(SOURCE_LABELS[src] || src)}</span>
-                            <span className="ml-auto text-[11px] text-zinc-600">{items.length}</span>
+                            <span className="text-xs font-medium text-foreground">{t(SOURCE_LABELS[src] || src)}</span>
+                            <span className="ml-auto text-[11px] text-muted-foreground/70">{items.length}</span>
                           </button>
 
                           {/* Sessions under this source */}
@@ -852,7 +852,7 @@ export function SessionsClient() {
                                 className={`group flex items-center gap-2 pl-8 lg:pl-14 pr-3 lg:pr-4 py-2.5 cursor-pointer transition-colors ${
                                   selectedSession?.session_id === session.session_id
                                     ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] border-l-2 border-[#7c3aed] hover:bg-[rgba(124,58,237,0.18)]"
-                                    : "hover:bg-zinc-800/20 border-l-2 border-transparent"
+                                    : "hover:bg-muted/20 border-l-2 border-transparent"
                                 }`}
                                 onClick={() => fetchSessionDetail(session.session_id)}
                               >
@@ -862,7 +862,7 @@ export function SessionsClient() {
                                   className={`p-1 lg:p-0.5 rounded transition-colors flex-shrink-0 touch-manipulation ${
                                     isFav
                                       ? "text-yellow-400 hover:text-yellow-300"
-                                      : "text-zinc-700 lg:opacity-0 lg:group-hover:opacity-100 hover:text-yellow-400"
+                                      : "text-muted-foreground/40 lg:opacity-0 lg:group-hover:opacity-100 hover:text-yellow-400"
                                   }`}
                                   title={isFav ? t("sessions.removeFavorite", "Remove from favorites") : t("sessions.addFavorite", "Add to favorites")}
                                 >
@@ -871,12 +871,12 @@ export function SessionsClient() {
 
                                 <div className="flex-1 min-w-0">
                                   <div className={`text-xs truncate ${
-                                    selectedSession?.session_id === session.session_id ? "text-[#7c3aed]" : "text-zinc-300"
+                                    selectedSession?.session_id === session.session_id ? "text-[#7c3aed]" : "text-foreground"
                                   }`}>
                                     {session.title || session.session_id.replace(/^20\d{6}_\d{6}_/, "")}
                                   </div>
                                   <div className={`flex items-center gap-2 mt-0.5 text-[10px] ${
-                                    selectedSession?.session_id === session.session_id ? "text-purple-400/60" : "text-zinc-600"
+                                    selectedSession?.session_id === session.session_id ? "text-purple-400/60" : "text-muted-foreground/70"
                                   }`}>
                                     {session.message_count !== undefined && (
                                       <span className="flex items-center gap-0.5">
@@ -924,7 +924,7 @@ export function SessionsClient() {
                                           onChange={e => setTagInput(e.target.value)}
                                           onKeyDown={e => { if (e.key === "Escape") { setTaggingSession(null); setTagInput("") } }}
                                           placeholder={t("sessions.tagPlaceholder", "tag name...")}
-                                          className="w-20 px-1.5 py-0.5 text-[10px] bg-zinc-800 border border-zinc-700 rounded text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500"
+                                          className="w-20 px-1.5 py-0.5 text-[10px] bg-muted border border-border rounded text-foreground placeholder:text-muted-foreground/70 focus:outline-none focus:border-indigo-500"
                                         />
                                         <button type="submit" className="p-0.5 text-indigo-400 hover:text-indigo-300">
                                           <Plus className="w-3 h-3" />
@@ -940,7 +940,7 @@ export function SessionsClient() {
                                     className={`p-1 rounded transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100 ${
                                       taggingSession === session.session_id
                                         ? "bg-indigo-800/30 text-indigo-400"
-                                        : "hover:bg-zinc-700 text-zinc-600 hover:text-indigo-400"
+                                        : "hover:bg-muted text-muted-foreground/70 hover:text-indigo-400"
                                     }`}
                                     title={t("sessions.addTag", "Add tag")}
                                   >
@@ -953,13 +953,13 @@ export function SessionsClient() {
                                         {t("sessions.confirmDelete", "OK")}
                                       </button>
                                       <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null) }}
-                                        className="px-1.5 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-[10px] text-zinc-300">
+                                        className="px-1.5 py-0.5 bg-muted hover:bg-muted rounded text-[10px] text-foreground">
                                         {t("sessions.cancel", "Cancel")}
                                       </button>
                                     </div>
                                   ) : (
                                     <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(session.session_id) }}
-                                      className="p-1 rounded hover:bg-zinc-700 text-zinc-600 hover:text-red-400 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
+                                      className="p-1 rounded hover:bg-muted text-muted-foreground/70 hover:text-red-400 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
                                       <Trash2 className="w-3 h-3" />
                                     </button>
                                   )}
@@ -983,15 +983,15 @@ export function SessionsClient() {
           selectedSession && (
             <Sheet open={!!selectedSession} onOpenChange={(open) => { if (!open) setSelectedSession(null) }}>
               <SheetContent side="right" size="full" showCloseButton={false} className="p-0 flex flex-col">
-                <SheetHeader className="h-12 shrink-0 flex flex-row items-center justify-between px-2 border-b border-zinc-800">
+                <SheetHeader className="h-12 shrink-0 flex flex-row items-center justify-between px-2 border-b border-border">
                   <div className="flex items-center gap-2 min-w-0">
-                    <button onClick={() => { setSelectedSession(null); setSidebarOpen(true); }} className="p-1.5 -ml-1 rounded-lg hover:bg-zinc-800 touch-manipulation">
-                      <ChevronLeft className="w-4 h-4 text-zinc-400" />
+                    <button onClick={() => { setSelectedSession(null); setSidebarOpen(true); }} className="p-1.5 -ml-1 rounded-lg hover:bg-muted touch-manipulation">
+                      <ChevronLeft className="w-4 h-4 text-muted-foreground" />
                     </button>
-                    <SheetTitle className="text-xs font-medium text-zinc-200 truncate flex items-center gap-2">
+                    <SheetTitle className="text-xs font-medium text-foreground truncate flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
                       {selectedSession.title || selectedSession.session_id}
-                      <span className="text-xs text-zinc-500 flex-shrink-0">({selectedSession.messages.length})</span>
+                      <span className="text-xs text-muted-foreground flex-shrink-0">({selectedSession.messages.length})</span>
                     </SheetTitle>
                   </div>
                   <div className="flex items-center gap-1 flex-shrink-0">
@@ -1001,12 +1001,12 @@ export function SessionsClient() {
                       <MessageSquare className="w-3 h-3" />
                     </button>
                     <button onClick={() => exportSession("json")}
-                      className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                       title="Export as JSON">
                       <FileJson className="w-3.5 h-3.5" />
                     </button>
                     <button onClick={() => exportSession("markdown")}
-                      className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                      className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                       title="Export as Markdown">
                       <FileText className="w-3.5 h-3.5" />
                     </button>
@@ -1014,14 +1014,14 @@ export function SessionsClient() {
                 </SheetHeader>
                 <div className="flex-1 overflow-y-auto px-2 py-3 space-y-3">
                   {detailLoading ? (
-                    <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+                    <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
                   ) : selectedSession.messages.length === 0 ? (
-                    <div className="text-center py-12 text-zinc-500 text-xs lg:text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
+                    <div className="text-center py-12 text-muted-foreground text-xs lg:text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
                   ) : (
                     selectedSession.messages.map((msg, i) => (
                       <div key={msg.id || i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
                         {msg.role !== "user" && (
-                          <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                          <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                             <span className={`text-xs font-medium ${roleColor(msg.role)}`}>
                               {msg.role === "assistant" ? "AI" : msg.role[0].toUpperCase()}
                             </span>
@@ -1032,11 +1032,11 @@ export function SessionsClient() {
                             ? "bg-blue-600/20 text-blue-100"
                             : msg.role === "system"
                             ? "bg-yellow-900/20 text-yellow-200 border border-yellow-800/30"
-                            : "bg-zinc-800/50 text-zinc-300"
+                            : "bg-muted/50 text-foreground"
                         }`}>
                           <div className="whitespace-pre-wrap break-words">{msg.content}</div>
                           {msg.timestamp && (
-                            <div className="text-[10px] text-zinc-600 mt-1">{new Date(msg.timestamp).toLocaleString()}</div>
+                            <div className="text-[10px] text-muted-foreground/70 mt-1">{new Date(msg.timestamp).toLocaleString()}</div>
                           )}
                         </div>
                         {msg.role === "user" && (
@@ -1054,13 +1054,13 @@ export function SessionsClient() {
         ) : (
           selectedSession ? (
             <div className="flex flex-1 min-w-0 flex-col overflow-hidden">
-              <div className="flex items-center justify-between px-4 h-12 border-b border-zinc-800">
+              <div className="flex items-center justify-between px-4 h-12 border-b border-border">
                 <div className="flex items-center gap-2 min-w-0">
                   <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
-                  <span className="text-sm font-medium text-zinc-200 truncate">
+                  <span className="text-sm font-medium text-foreground truncate">
                     {selectedSession.title || selectedSession.session_id}
                   </span>
-                  <span className="text-xs text-zinc-500 flex-shrink-0">({selectedSession.messages.length} {t("sessions.messages", "messages")})</span>
+                  <span className="text-xs text-muted-foreground flex-shrink-0">({selectedSession.messages.length} {t("sessions.messages", "messages")})</span>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
                   <button onClick={() => router.push(`/chat?session=${selectedSession.session_id}`)}
@@ -1070,31 +1070,31 @@ export function SessionsClient() {
                     {t("sessions.openChat", "Chat")}
                   </button>
                   <button onClick={() => exportSession("json")}
-                    className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                     title="Export as JSON">
                     <FileJson className="w-3.5 h-3.5" />
                   </button>
                   <button onClick={() => exportSession("markdown")}
-                    className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-500 hover:text-zinc-300 transition-colors"
+                    className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
                     title="Export as Markdown">
                     <FileText className="w-3.5 h-3.5" />
                   </button>
                   <button onClick={() => setSelectedSession(null)}
-                    className="p-1.5 rounded-lg hover:bg-zinc-800 text-zinc-400 hover:text-zinc-200">
+                    className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground">
                     <XCircle className="w-4 h-4" />
                   </button>
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
                 {detailLoading ? (
-                  <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-zinc-500" /></div>
+                  <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
                 ) : selectedSession.messages.length === 0 ? (
-                  <div className="text-center py-12 text-zinc-500 text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
+                  <div className="text-center py-12 text-muted-foreground text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
                 ) : (
                   selectedSession.messages.map((msg, i) => (
                     <div key={msg.id || i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
                       {msg.role !== "user" && (
-                        <div className="w-7 h-7 rounded-full bg-zinc-800 flex items-center justify-center flex-shrink-0">
+                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
                           <span className={`text-xs font-medium ${roleColor(msg.role)}`}>
                             {msg.role === "assistant" ? "AI" : msg.role[0].toUpperCase()}
                           </span>
@@ -1105,11 +1105,11 @@ export function SessionsClient() {
                           ? "bg-blue-600/20 text-blue-100"
                           : msg.role === "system"
                           ? "bg-yellow-900/20 text-yellow-200 border border-yellow-800/30"
-                          : "bg-zinc-800/50 text-zinc-300"
+                          : "bg-muted/50 text-foreground"
                       }`}>
                         <div className="whitespace-pre-wrap break-words">{msg.content}</div>
                         {msg.timestamp && (
-                          <div className="text-[10px] text-zinc-600 mt-1">{new Date(msg.timestamp).toLocaleString()}</div>
+                          <div className="text-[10px] text-muted-foreground/70 mt-1">{new Date(msg.timestamp).toLocaleString()}</div>
                         )}
                       </div>
                       {msg.role === "user" && (
@@ -1123,7 +1123,7 @@ export function SessionsClient() {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-zinc-500">
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
                 <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
                 <p className="text-sm">{t("sessions.selectSession", "Select a session to view")}</p>
