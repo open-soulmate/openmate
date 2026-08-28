@@ -5,14 +5,76 @@ import { useRouter, usePathname } from "next/navigation";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 
-// ── Panel route order for swipe navigation ─────────────────────────
+// ── Panel route order — matches bottom nav order exactly ──────────
 
 const PANEL_ROUTES = [
   "/chat",
-  "/knowledge",
+  "/dashboard",
+  "/notifications",
+  "/ai-groups",
   "/agents",
+  "/knowledge",
+  "/learn",
+  "/graph",
+  "/graph-builder",
+  "/search",
+  "/kb-sharing",
+  "/knowledge-requests",
+  "/cron",
   "/workflow",
+  "/workflow-builder",
+  "/pipeline",
+  "/will",
   "/skills",
+  "/mcp",
+  "/workspace",
+  "/capture",
+  "/download",
+  "/tags",
+  "/body-map",
+  "/soma",
+  "/discovery",
+  "/cortex",
+  "/vein",
+  "/gene",
+  "/vital",
+  "/gland",
+  "/hippo",
+  "/reflex",
+  "/heredity",
+  "/pulse",
+  "/nerve",
+  "/sense",
+  "/immune",
+  "/marrow",
+  "/echo",
+  "/mirror",
+  "/link",
+  "/nest",
+  "/limb",
+  "/voice",
+  "/vision",
+  "/mind",
+  "/system",
+  "/soul",
+  "/soma-admin",
+  "/admin",
+  "/permission",
+  "/enterprise",
+  "/sessions",
+  "/diagnostics",
+  "/metrics",
+  "/benchmark",
+  "/intelligence",
+  "/ai-engine",
+  "/healer",
+  "/topology",
+  "/registry",
+  "/trajectory",
+  "/timeline",
+  "/changelog",
+  "/plugins",
+  "/marketplace",
 ];
 
 const SWIPE_THRESHOLD = 50;
@@ -124,20 +186,11 @@ export function SwipeablePanels({ children, isHomePage }: SwipeablePanelsProps) 
         {children}
       </div>
 
-      {/* Dot indicators */}
-      <div className="flex items-center justify-center gap-1.5 py-1.5 shrink-0">
-        {PANEL_ROUTES.map((route, index) => (
-          <button
-            key={route}
-            onClick={() => router.push(route)}
-            className={cn(
-              "rounded-full transition-all duration-300",
-              currentIndex === index
-                ? "w-5 h-2 bg-primary"
-                : "w-2 h-2 bg-muted-foreground/30",
-            )}
-          />
-        ))}
+      {/* Current page indicator */}
+      <div className="flex items-center justify-center py-1.5 shrink-0">
+        <span className="text-[10px] text-muted-foreground">
+          {currentIndex + 1} / {PANEL_ROUTES.length}
+        </span>
       </div>
 
       <style jsx global>{`
