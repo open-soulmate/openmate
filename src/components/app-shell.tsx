@@ -33,6 +33,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { ConversationTree, type AgentInfo } from "@/components/conversation-tree";
 import { MobileSidebar } from "@/components/mobile-sidebar";
 import { SwipeablePanels, getPanelIndex } from "@/components/swipeable-panels";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -97,6 +98,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setStoreTheme = useAppStore((s) => s.setTheme);
   const [menuOpen, setMenuOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
+  const isMobile = useIsMobile();
   const mobileConvOpen = useAppStore((s) => s.mobileConvOpen);
   const setMobileConvOpen = useAppStore((s) => s.setMobileConvOpen);
   const currentPanel = useAppStore((s) => s.currentPanel);
