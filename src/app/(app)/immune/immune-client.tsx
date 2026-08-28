@@ -318,7 +318,7 @@ export function ImmuneClient() {
               <h3 className="font-semibold flex items-center gap-2">
                 <Clock className="w-4 h-4" /> {t('immune.rateLimitConfig')}
               </h3>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
                   <label className="text-xs text-muted-foreground">{t('immune.t70683')}</label>
                   <input
