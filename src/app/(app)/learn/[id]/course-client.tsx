@@ -12,9 +12,12 @@ import {
   BrainCircuit,
   GraduationCap,
   Loader2,
+  PanelLeft,
 } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useMediaQuery } from "@/hooks/use-mobile";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 interface QuizQuestion {
   question: string;
@@ -53,6 +56,8 @@ export function CourseClient({ courseId }: { courseId: string }) {
   const [showQuiz, setShowQuiz] = useState(false);
   const [quizAnswers, setQuizAnswers] = useState<(number | null)[]>([]);
   const [quizSubmitted, setQuizSubmitted] = useState(false);
+  const isMobile = useMediaQuery("(max-width: 1023px)");
+  const [showSidebar, setShowSidebar] = useState(true);
 
   const fetchCourse = useCallback(async () => {
     try {
@@ -147,8 +152,13 @@ export function CourseClient({ courseId }: { courseId: string }) {
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between border-b border-border px-4 md:px-6 py-3 md:py-4">
+        <div className="flex items-center gap-2 md:gap-3">
+          {isMobile && (
+            <button onClick={() => setShowSidebar(true)} className="p-1 rounded hover:bg-muted">
+              <PanelLeft size={16} />
+            </button>
+          )}
           <Link
             href="/learn"
             className="flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:bg-accent hover:text-foreground"
@@ -170,51 +180,101 @@ export function CourseClient({ courseId }: { courseId: string }) {
               className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent"
             >
               <BrainCircuit size={14} />
-              {showQuiz ? t("learn.hideQuiz") || "Hide Quiz" : t("learn.takeQuiz") || "Take Quiz"}
+              <span className="hidden sm:inline">{showQuiz ? t("learn.hideQuiz") || "Hide Quiz" : t("learn.takeQuiz") || "Take Quiz"}</span>
             </button>
           )}
         </div>
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Chapter sidebar */}
-        <aside className="w-64 shrink-0 overflow-y-auto border-r border-border p-4">
-          {/* Progress */}
-          <div className="mb-4">
-            <div className="mb-1 flex items-center justify-between text-xs">
-              <span className="text-muted-foreground">{t("learn.progress")}</span>
-              <span className="font-medium">{progress}%</span>
-            </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-primary transition-all"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
-          </div>
+        {/* Chapter sidebar — Sheet on mobile, inline on desktop */}
+        {isMobile ? (
+          <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
+            <SheetContent side="left" showCloseButton={false} className="w-72 p-0 flex flex-col">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <h3 className="text-sm font-medium">{t("learn.chapters") || "Chapters"}</h3>
+                <button onClick={() => setShowSidebar(false)} className="p-1 rounded hover:bg-muted">
+                  <ChevronLeft size={16} />
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto p-4">
+                {/* Progress */}
+                <div className="mb-4">
+                  <div className="mb-1 flex items-center justify-between text-xs">
+                    <span className="text-muted-foreground">{t("learn.progress")}</span>
+                    <span className="font-medium">{progress}%</span>
+                  </div>
+                  <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                    <div
+                      className="h-full rounded-full bg-primary transition-all"
+                      style={{ width: `${progress}%` }}
+                    />
+                  </div>
+                </div>
 
-          {/* Chapter list */}
-          <nav className="space-y-0.5">
-            {chapters.map((ch, i) => (
-              <button
-                key={ch.id}
-                onClick={() => handleChapterChange(i)}
-                className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
-                  i === currentIndex
-                    ? "bg-accent text-foreground font-medium"
-                    : "text-muted-foreground hover:bg-accent hover:text-foreground"
-                }`}
-              >
-                {ch.completed ? (
-                  <CheckCircle2 size={14} className="shrink-0 text-green-500" />
-                ) : (
-                  <Circle size={14} className="shrink-0" />
-                )}
-                <span className="truncate">{ch.title}</span>
-              </button>
-            ))}
-          </nav>
-        </aside>
+                {/* Chapter list */}
+                <nav className="space-y-0.5">
+                  {chapters.map((ch, i) => (
+                    <button
+                      key={ch.id}
+                      onClick={() => { handleChapterChange(i); if (isMobile) setShowSidebar(false); }}
+                      className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                        i === currentIndex
+                          ? "bg-accent text-foreground font-medium"
+                          : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                      }`}
+                    >
+                      {ch.completed ? (
+                        <CheckCircle2 size={14} className="shrink-0 text-green-500" />
+                      ) : (
+                        <Circle size={14} className="shrink-0" />
+                      )}
+                      <span className="truncate">{ch.title}</span>
+                    </button>
+                  ))}
+                </nav>
+              </div>
+            </SheetContent>
+          </Sheet>
+        ) : (
+          <aside className="w-64 shrink-0 overflow-y-auto border-r border-border p-4">
+            {/* Progress */}
+            <div className="mb-4">
+              <div className="mb-1 flex items-center justify-between text-xs">
+                <span className="text-muted-foreground">{t("learn.progress")}</span>
+                <span className="font-medium">{progress}%</span>
+              </div>
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div
+                  className="h-full rounded-full bg-primary transition-all"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+
+            {/* Chapter list */}
+            <nav className="space-y-0.5">
+              {chapters.map((ch, i) => (
+                <button
+                  key={ch.id}
+                  onClick={() => handleChapterChange(i)}
+                  className={`flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors ${
+                    i === currentIndex
+                      ? "bg-accent text-foreground font-medium"
+                      : "text-muted-foreground hover:bg-accent hover:text-foreground"
+                  }`}
+                >
+                  {ch.completed ? (
+                    <CheckCircle2 size={14} className="shrink-0 text-green-500" />
+                  ) : (
+                    <Circle size={14} className="shrink-0" />
+                  )}
+                  <span className="truncate">{ch.title}</span>
+                </button>
+              ))}
+            </nav>
+          </aside>
+        )}
 
         {/* Main content */}
         <div className="flex-1 overflow-y-auto">
