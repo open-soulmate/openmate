@@ -1179,7 +1179,7 @@ export default function AIGroupsPage() {
       {/* Left: Group List — Sheet on mobile, inline on desktop */}
       {isMobile ? (
         <Sheet open={showSidebar} onOpenChange={(open) => { setShowSidebar(open); if (open) setShowRightPanel(false); }}>
-          <SheetContent side="left" size="sm" showCloseButton={false} className="p-0 flex flex-col">
+          <SheetContent side="left" size="md" showCloseButton={false} className="p-0 flex flex-col">
             <div className="shrink-0 flex flex-col h-full border-r-0 bg-card">
               {renderGroupList()}
             </div>
@@ -1188,7 +1188,7 @@ export default function AIGroupsPage() {
       ) : (
         <div
           className="shrink-0 flex flex-col border-r border-border bg-card overflow-hidden transition-all duration-250 ease-in-out"
-          style={{ width: desktopSidebarOpen ? 256 : 0, borderWidth: desktopSidebarOpen ? 1 : 0 }}
+          style={{ width: desktopSidebarOpen ? 288 : 0, borderWidth: desktopSidebarOpen ? 1 : 0 }}
         >
           {renderGroupList()}
         </div>
