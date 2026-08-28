@@ -3,7 +3,7 @@ import { MarkdownContent } from "@/components/markdown-content";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/app-store';
-import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, ChevronRight, Plus, MessageSquare, Cpu, Trash2, Search as SearchIcon, Bookmark, RotateCcw, Zap, Brain, PanelLeft } from "lucide-react";
+import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, PanelRightClose, PanelRightOpen, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { Dialog } from '@/components/ui/dialog';
 import { Sheet, SheetContent } from '@/components/ui/sheet';
@@ -25,20 +25,6 @@ interface Checkpoint { id: string; messageId: string; timestamp: Date; messages:
 type AgentMode = 'plan' | 'act';
 interface Message { id: string; role: 'user' | 'agent'; parts: MessagePart[]; timestamp: Date; source?: string; fileChanges?: FileChange[]; tokenUsage?: TokenUsage; }
 interface Session { id: string; name?: string; title?: string; platform: string; chat_id?: string; last_message?: string; unread?: number; workspace?: string; last_active?: string; updated_at?: string; created_at?: string; message_count?: number; source?: string; }
-
-function formatRelativeTime(dateStr: string): string {
-  const date = new Date(dateStr);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMin = Math.floor(diffMs / 60000);
-  if (diffMin < 1) return 'just now';
-  if (diffMin < 60) return `${diffMin}m ago`;
-  const diffH = Math.floor(diffMin / 60);
-  if (diffH < 24) return `${diffH}h ago`;
-  const diffD = Math.floor(diffH / 24);
-  if (diffD < 7) return `${diffD}d ago`;
-  return date.toLocaleDateString();
-}
 
 // Agent definitions with detection
 interface SourceGroup {
@@ -165,9 +151,6 @@ function parseFileChanges(content: string): FileChange[] {
 
 export function ChatClient() {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [searchResults, setSearchResults] = useState<any[]>([]);
-  const [searching, setSearching] = useState(false);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [agents, setAgents] = useState<AgentInfo[]>([]);
@@ -326,21 +309,6 @@ export function ChatClient() {
   }, []);
 
   // Load history for a session
-  // Search sessions (title + content)
-  const handleSearch = useCallback(async (q: string) => {
-    setSearchQuery(q);
-    if (!q.trim()) { setSearchResults([]); return; }
-    setSearching(true);
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/api/sessions/search?q=${encodeURIComponent(q)}`, { headers: { Authorization: `Bearer ${getToken()}` } });
-      if (res.ok) {
-        const data = await res.json();
-        setSearchResults(data.sessions || []);
-      }
-    } catch (e) { console.error("Search failed:", e); }
-    setSearching(false);
-  }, []);
-
   // Delete session
   const deleteSession = useCallback(async (sessionId: string) => {
     try {
@@ -610,25 +578,6 @@ export function ChatClient() {
     }
   };
 
-  const toggleAgent = (agentId: string) => {
-    setAgents(prev => prev.map(a => {
-      if (a.id === agentId) return { ...a, expanded: !a.expanded };
-      return { ...a, expanded: false };
-    }));
-  };
-
-  const toggleSourceGroup = (agentId: string, source: string) => {
-    setAgents(prev => prev.map(a => {
-      if (a.id !== agentId || !a.sourceGroups) return a;
-      return {
-        ...a,
-        sourceGroups: a.sourceGroups.map(g =>
-          g.source === source ? { ...g, expanded: !g.expanded } : { ...g, expanded: false }
-        ),
-      };
-    }));
-  };
-
   const selectSession = (session: Session, agent: AgentInfo) => {
     setSelectedSession(session);
     selectedSessionRef.current = session;
@@ -636,14 +585,6 @@ export function ChatClient() {
     setDeleteConfirm(null);
     setEditingTitle(false);
     loadHistory(session.id);
-  };
-
-  const newSession = (agent: AgentInfo) => {
-    const session = { id: '', name: `${agent.name} ${t("chat.newSession")}`, platform: agent.id };
-    setSelectedSession(session);
-    selectedSessionRef.current = session;
-    setSelectedAgent(agent);
-    setMessages([]);
   };
 
   const startEditTitle = () => {
@@ -677,95 +618,6 @@ export function ChatClient() {
   const allAttachments = messages.flatMap(m => m.parts.filter(p => p.type === 'image' || p.type === 'file'));
   const imageCount = allAttachments.filter(p => p.type === 'image').length;
   const fileCount = allAttachments.filter(p => p.type === 'file').length;
-
-  // Shared sidebar content (used by both mobile Sheet and desktop inline)
-  const renderSidebarContent = () => (
-    <>
-      <div className="h-12 px-3 flex items-center border-b border-border">
-        <input placeholder={t("chat.searchSessions")} value={searchQuery} onChange={(e) => handleSearch(e.target.value)} className="w-full px-3 py-1.5 rounded-lg bg-muted text-sm outline-none" />
-      </div>
-      <div className="flex-1 overflow-y-auto">
-        {searchQuery.trim() ? (
-          <div>
-            {searching && <div className="p-3 text-xs text-muted-foreground">{t("chat.searching")}</div>}
-            {!searching && searchResults.length === 0 && (
-              <div className="p-3 text-xs text-muted-foreground">{t("chat.noSearchResults")}</div>
-            )}
-            {searchResults.map(r => {
-              const matchedAgent = agents.find(a => a.sessions.some(s => s.id === r.id));
-              return (
-                <button key={r.id} onClick={() => {
-                  if (matchedAgent) {
-                    const session = matchedAgent.sessions.find(s => s.id === r.id);
-                    if (session) { selectSession(session, matchedAgent); setSearchQuery(''); setSearchResults([]); }
-                  }
-                }} className="w-full text-left px-3 py-2 hover:bg-muted/80 transition-colors border-b border-border/30">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-xs">{r.match_type === 'title' ? '📋' : '💬'}</span>
-                    <span className="text-xs font-medium truncate">{r.title || r.id}</span>
-                  </div>
-                  {r.snippet && <p className="text-[11px] text-muted-foreground mt-0.5 line-clamp-2">{r.snippet}</p>}
-                </button>
-              );
-            })}
-          </div>
-        ) : (
-        agents.map(agent => (
-          <div key={agent.id}>
-            <div className="flex items-center justify-between px-2 py-1.5 hover:bg-muted/50 group">
-              <button onClick={() => toggleAgent(agent.id)} className="flex items-center gap-1.5 flex-1 min-w-0">
-                {agent.expanded ? <ChevronDown className="w-3.5 h-3.5 text-muted-foreground shrink-0" /> : <ChevronRight className="w-3.5 h-3.5 text-muted-foreground shrink-0" />}
-                {agent.logo ? <img src={agent.logo} alt={agent.name} className="w-5 h-5 rounded object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display="none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} /> : null}<span className={`text-sm ${agent.logo ? "hidden" : ""}`}>{agent.icon}</span>
-                <span className="text-sm font-medium truncate">{agent.name}</span>
-                <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{agent.sessions.length}</span>
-              </button>
-              <button onClick={() => newSession(agent)} className="opacity-0 group-hover:opacity-100 p-1.5 rounded-md hover:bg-muted transition-opacity" title={`${agent.name} ${t("chat.newSession")}`}>
-                <Plus className="w-4 h-4 text-muted-foreground" />
-              </button>
-            </div>
-            {agent.expanded && agent.sourceGroups && agent.sourceGroups.length > 0 ? (
-              agent.sourceGroups.map(group => (
-                <div key={group.source}>
-                  <button onClick={() => toggleSourceGroup(agent.id, group.source)} className="w-full flex items-center gap-1.5 pl-6 pr-3 py-1.5 hover:bg-muted/40 transition-colors">
-                    {group.expanded ? <ChevronDown className="w-3 h-3 text-muted-foreground shrink-0" /> : <ChevronRight className="w-3 h-3 text-muted-foreground shrink-0" />}
-                    <span className="text-xs">{group.icon}</span>
-                    <span className="text-xs font-medium text-muted-foreground">{group.label}</span>
-                    <span className="text-[10px] text-muted-foreground ml-auto">{group.sessions.length}</span>
-                  </button>
-                  {group.expanded && group.sessions.map(session => (
-                    <div key={session.id} role="button" tabIndex={0} onClick={() => selectSession(session, agent)}
-                      className={`group w-full text-left pl-12 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer ${selectedSession?.id === session.id ? 'bg-[rgba(124,58,237,0.12)] text-[#7c3aed]' : ''}`}>
-                      <div className="flex items-center gap-1.5">
-                        <MessageSquare className={`w-3 h-3 shrink-0 ${selectedSession?.id === session.id ? 'text-[#7c3aed]' : 'text-muted-foreground'}`} />
-                        <span className={`text-xs truncate flex-1 ${selectedSession?.id === session.id ? 'text-[#7c3aed]' : 'text-foreground'}`}>{session.name || session.title || "Untitled"}</span>
-                        <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: session.id, name: session.name || session.title || "Untitled" }); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
-                      </div>
-                      {(session.last_active || session.updated_at) && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{formatRelativeTime(session.last_active || session.updated_at!)}</div>}
-                    </div>
-                  ))}
-                </div>
-              ))
-            ) : (
-              agent.expanded && agent.sessions.map(session => (
-                <div key={session.id} role="button" tabIndex={0} onClick={() => selectSession(session, agent)}
-                  className={`group w-full text-left pl-8 pr-3 py-2 hover:bg-muted/80 transition-colors cursor-pointer ${selectedSession?.id === session.id ? 'bg-[rgba(124,58,237,0.12)] text-[#7c3aed]' : ''}`}>
-                  <div className="flex items-center gap-1.5">
-                    <MessageSquare className={`w-3 h-3 shrink-0 ${selectedSession?.id === session.id ? 'text-[#7c3aed]' : 'text-muted-foreground'}`} />
-                    <span className={`text-xs truncate flex-1 ${selectedSession?.id === session.id ? 'text-[#7c3aed]' : 'text-foreground'}`}>{session.name || session.title || "Untitled"}</span>
-                    <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm({ id: session.id, name: session.name || session.title || "Untitled" }); }} className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-red-500 transition-opacity ml-1 shrink-0" title={t("chat.delete")}><Trash2 className="w-3 h-3" /></button>
-                  </div>
-                  {(session.last_active || session.updated_at) && <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">{formatRelativeTime(session.last_active || session.updated_at!)}</div>}
-                </div>
-              ))
-            )}
-            {agent.expanded && agent.sessions.length === 0 && (
-              <div className="pl-8 pr-3 py-2 text-xs text-muted-foreground italic">{t("chat.noSessions")}</div>
-            )}
-          </div>
-        )))}
-      </div>
-    </>
-  );
 
   // Shared details panel content (used by both mobile Sheet and desktop inline)
   const renderDetailsContent = () => (
@@ -1048,7 +900,7 @@ export function ChatClient() {
 
       {/* Details Panel: Sheet on mobile, inline on desktop */}
       {isMobile ? (
-        <Sheet open={showDetails} onOpenChange={(open) => { setShowDetails(open); if (open) setShowSidebar(false); }}>
+        <Sheet open={showDetails} onOpenChange={setShowDetails}>
           <SheetContent side="right" className="w-80 p-0 flex flex-col">
             {renderDetailsContent()}
           </SheetContent>
