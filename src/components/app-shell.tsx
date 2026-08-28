@@ -484,10 +484,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
         </SidebarProvider>
 
-      {/* Right Panel — workspace tabs (mobile: Sheet, desktop: inline) */}
-      {!isMobile && rightPanelOpen && (
-        <div className="flex flex-col h-full overflow-hidden border-l border-border w-80 shrink-0">
-          <RightPanel open={true} onToggle={() => setRightPanelOpen(false)} />
+      {/* Right Panel — workspace tabs (mobile: Sheet, desktop: inline with transition) */}
+      {!isMobile && (
+        <div
+          className="flex flex-col h-full overflow-hidden border-l border-border shrink-0 transition-all duration-250 ease-in-out"
+          style={{ width: rightPanelOpen ? 320 : 0, borderWidth: rightPanelOpen ? 1 : 0 }}
+        >
+          <RightPanel open={rightPanelOpen} onToggle={() => setRightPanelOpen(false)} />
         </div>
       )}
       {isMobile && (
