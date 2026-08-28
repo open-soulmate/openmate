@@ -353,7 +353,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Middle: sidebar + content + right panel */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <SidebarProvider open={!collapsed} onOpenChange={(open) => { if (open === collapsed) toggle(); }} className="flex-1 min-h-0 overflow-hidden">
+        <SidebarProvider open={!collapsed} onOpenChange={(open) => { if (open === collapsed) toggle(); }} className="flex-1 min-h-0 overflow-hidden h-full">
           {/* Desktop sidebar - conversation list */}
           <Sidebar collapsible="icon" className="hidden md:flex">
         <SidebarHeader>
