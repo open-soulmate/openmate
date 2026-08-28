@@ -473,6 +473,33 @@ export function SessionsClient() {
                     )
                   })}
                 </div>
+                {/* Tag filter chips (mobile) */}
+                {allTags.length > 0 && (
+                  <div className="flex flex-nowrap gap-1.5 overflow-x-auto">
+                    <div className="flex items-center gap-1 mr-1">
+                      <Tag className="w-3 h-3 text-zinc-600" />
+                      <span className="text-[10px] text-zinc-600">{t("sessions.tags", "Tags")}:</span>
+                    </div>
+                    {allTags.map(tag => {
+                      const active = activeTagFilter === tag.name
+                      return (
+                        <button
+                          key={tag.name}
+                          onClick={() => setActiveTagFilter(prev => prev === tag.name ? null : tag.name)}
+                          className={`flex items-center gap-1 px-2 py-0.5 rounded-md text-[11px] transition-colors ${
+                            active
+                              ? "bg-indigo-900/30 text-indigo-400 border border-indigo-700/30 font-medium"
+                              : "bg-zinc-800/60 text-zinc-500 border border-zinc-800 hover:text-zinc-300"
+                          }`}
+                        >
+                          <Tag className="w-3 h-3" />
+                          {tag.name}
+                          <span className="opacity-60">{tag.count}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
               </div>
               {/* Session list */}
               <div className="flex-1 overflow-y-auto">
@@ -540,7 +567,7 @@ export function SessionsClient() {
                                   >
                                     <button
                                       onClick={(e) => { e.stopPropagation(); toggleFavorite(session.session_id) }}
-                                      className={`p-1 rounded transition-colors flex-shrink-0 touch-manipulation ${
+                                      className={`p-1 lg:p-0.5 rounded transition-colors flex-shrink-0 touch-manipulation ${
                                         isFav ? "text-yellow-400 hover:text-yellow-300" : "text-zinc-700 hover:text-yellow-400"
                                       }`}
                                     >
@@ -550,7 +577,9 @@ export function SessionsClient() {
                                       <div className={`text-xs truncate ${selectedSession?.session_id === session.session_id ? "text-[#7c3aed]" : "text-zinc-300"}`}>
                                         {session.title || session.session_id.replace(/^20\d{6}_\d{6}_/, "")}
                                       </div>
-                                      <div className={`flex items-center gap-2 mt-0.5 text-[10px] ${selectedSession?.session_id === session.session_id ? "text-purple-400/60" : "text-zinc-600"}`}>
+                                      <div className={`flex items-center gap-2 mt-0.5 text-[10px] ${
+                                        selectedSession?.session_id === session.session_id ? "text-purple-400/60" : "text-zinc-600"
+                                      }`}>
                                         {session.message_count !== undefined && (
                                           <span className="flex items-center gap-0.5"><MessageSquare className="w-2.5 h-2.5" /> {session.message_count}</span>
                                         )}
@@ -558,11 +587,81 @@ export function SessionsClient() {
                                           <span className="flex items-center gap-0.5"><Clock className="w-2.5 h-2.5" /> {new Date(session.created_at).toLocaleDateString()}</span>
                                         )}
                                       </div>
+                                      {/* Tag chips (mobile) */}
+                                      {(session.tags && session.tags.length > 0) && (
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {session.tags.map(tag => (
+                                            <span
+                                              key={tag}
+                                              onClick={(e) => { e.stopPropagation(); setActiveTagFilter(prev => prev === tag ? null : tag) }}
+                                              className="inline-flex items-center gap-0.5 px-1.5 py-0 rounded text-[9px] bg-indigo-900/20 text-indigo-400 border border-indigo-800/30 cursor-pointer hover:bg-indigo-900/40 transition-colors"
+                                            >
+                                              <Tag className="w-2 h-2" />
+                                              {tag}
+                                              <button
+                                                onClick={(e) => { e.stopPropagation(); removeTag(session.session_id, tag) }}
+                                                className="ml-0.5 hover:text-red-400 transition-colors"
+                                                title={t("sessions.removeTag", "Remove tag")}
+                                              >
+                                                <X className="w-2 h-2" />
+                                              </button>
+                                            </span>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {/* Tag input (mobile) */}
+                                      {taggingSession === session.session_id && (
+                                        <div className="mt-1" onClick={e => e.stopPropagation()}>
+                                          <form
+                                            onSubmit={e => { e.preventDefault(); addTag(session.session_id, tagInput) }}
+                                            className="flex items-center gap-1"
+                                          >
+                                            <input
+                                              autoFocus
+                                              value={tagInput}
+                                              onChange={e => setTagInput(e.target.value)}
+                                              onKeyDown={e => { if (e.key === "Escape") { setTaggingSession(null); setTagInput("") } }}
+                                              placeholder={t("sessions.tagPlaceholder", "tag name...")}
+                                              className="w-20 px-1.5 py-0.5 text-[10px] bg-zinc-800 border border-zinc-700 rounded text-zinc-200 placeholder:text-zinc-600 focus:outline-none focus:border-indigo-500"
+                                            />
+                                            <button type="submit" className="p-0.5 text-indigo-400 hover:text-indigo-300">
+                                              <Plus className="w-3 h-3" />
+                                            </button>
+                                          </form>
+                                        </div>
+                                      )}
                                     </div>
-                                    <button onClick={(e) => { e.stopPropagation(); deleteSession(session.session_id) }}
-                                      className="p-1 rounded hover:bg-zinc-700 text-zinc-600 hover:text-red-400 transition-colors opacity-100 sm:opacity-0 sm:group-hover:opacity-100">
-                                      <Trash2 className="w-3 h-3" />
-                                    </button>
+                                    <div className="flex items-center gap-1">
+                                      {/* Add tag button (mobile) */}
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); setTaggingSession(prev => prev === session.session_id ? null : session.session_id); setTagInput("") }}
+                                        className={`p-1 rounded transition-colors ${
+                                          taggingSession === session.session_id
+                                            ? "bg-indigo-800/30 text-indigo-400"
+                                            : "hover:bg-zinc-700 text-zinc-600 hover:text-indigo-400"
+                                        }`}
+                                        title={t("sessions.addTag", "Add tag")}
+                                      >
+                                        <Tag className="w-3 h-3" />
+                                      </button>
+                                      {deleteConfirm === session.session_id ? (
+                                        <div className="flex items-center gap-1">
+                                          <button onClick={(e) => { e.stopPropagation(); deleteSession(session.session_id) }}
+                                            className="px-1.5 py-0.5 bg-red-600 hover:bg-red-700 rounded text-[10px] text-white">
+                                            {t("sessions.confirmDelete", "OK")}
+                                          </button>
+                                          <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(null) }}
+                                            className="px-1.5 py-0.5 bg-zinc-700 hover:bg-zinc-600 rounded text-[10px] text-zinc-300">
+                                            {t("sessions.cancel", "Cancel")}
+                                          </button>
+                                        </div>
+                                      ) : (
+                                        <button onClick={(e) => { e.stopPropagation(); setDeleteConfirm(session.session_id) }}
+                                          className="p-1 rounded hover:bg-zinc-700 text-zinc-600 hover:text-red-400 transition-colors">
+                                          <Trash2 className="w-3 h-3" />
+                                        </button>
+                                      )}
+                                    </div>
                                   </div>
                                 )
                               })}
