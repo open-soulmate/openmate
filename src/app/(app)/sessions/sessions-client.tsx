@@ -981,7 +981,7 @@ export function SessionsClient() {
         {/* Session Detail — Sheet on mobile, inline on desktop */}
         {isMobile ? (
           selectedSession && (
-            <Sheet open={!!selectedSession} onOpenChange={(open) => { if (!open) setSelectedSession(null) }}>
+            <Sheet open={!!selectedSession} onOpenChange={(open) => { if (!open) { setSelectedSession(null); setSidebarOpen(true); } }}>
               <SheetContent side="right" size="lg" showCloseButton={false} className="p-0 flex flex-col">
                 <SheetHeader className="h-12 shrink-0 flex flex-row items-center justify-between px-2 border-b border-border">
                   <div className="flex items-center gap-2 min-w-0">

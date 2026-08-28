@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import {
   Users, Plus, Send, Bot, Shield, Zap, User, Trash2, ChevronDown,
@@ -1463,9 +1463,9 @@ export default function AIGroupsPage() {
       {isMobile ? (
         <Sheet open={showRightPanel && !!selectedGroup} onOpenChange={(open) => { if (!open) setShowRightPanel(false); else setShowSidebar(false); }}>
           <SheetContent side="right" size="md" className="p-0 flex flex-col">
-            <div className="h-12 shrink-0 px-3 flex items-center border-b border-border">
-              <span className="text-xs lg:text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</span>
-            </div>
+            <SheetHeader className="h-12 shrink-0 px-3 flex items-center border-b border-border">
+              <SheetTitle className="text-xs lg:text-sm font-medium flex items-center gap-1.5"><Settings className="w-4 h-4" />{t("aiGroups.groupManagement")}</SheetTitle>
+            </SheetHeader>
             <div className="flex-1 overflow-y-auto">
               {renderAgentManagement()}
             </div>
