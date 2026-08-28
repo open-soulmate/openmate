@@ -241,7 +241,7 @@ function InstallDialog({ onClose, onInstalled }: { onClose: () => void; onInstal
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="px-3 lg:px-6 py-4 space-y-4">
           <div>
             <label className="text-sm font-medium mb-1.5 block">Plugin Manifest (JSON)</label>
             <p className="text-xs text-muted-foreground mb-2">{t("plugins.manifestPlaceholder") || "Paste plugin manifest JSON configuration"}</p>
