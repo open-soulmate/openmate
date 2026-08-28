@@ -631,13 +631,9 @@ export function ChatClient() {
   const imageCount = allAttachments.filter(p => p.type === 'image').length;
   const fileCount = allAttachments.filter(p => p.type === 'file').length;
 
-  // Shared details panel content (used by both mobile Sheet and desktop inline)
-  const renderDetailsContent = () => (
-    <>
-      <div className="h-12 px-3 flex items-center border-b border-border">
-        <span className="text-sm font-medium flex items-center gap-1.5"><Info className="w-4 h-4" />{t("chat.sessionDetails")}</span>
-      </div>
-      <div className="flex-1 overflow-y-auto p-3 space-y-4">
+  // Shared details panel body (header excluded — mobile Sheet and desktop inline each provide their own header)
+  const renderDetailsBody = () => (
+    <div className="flex-1 overflow-y-auto p-3 space-y-4">
         {selectedAgent && (
           <div className="space-y-2">
             <div className="text-xs text-muted-foreground">Agent</div>
@@ -706,7 +702,6 @@ export function ChatClient() {
           )}
         </div>
       </div>
-    </>
   );
 
   return (
@@ -926,7 +921,10 @@ export function ChatClient() {
           if (open) setMobileConvOpen(false); // mutual exclusion: close left Sheet
         }}>
           <SheetContent side="right" className="w-80 p-0 flex flex-col">
-            {renderDetailsContent()}
+            <div className="h-12 px-3 flex items-center border-b border-border">
+              <span className="text-sm font-medium flex items-center gap-1.5"><Info className="w-4 h-4" />{t("chat.sessionDetails")}</span>
+            </div>
+            {renderDetailsBody()}
           </SheetContent>
         </Sheet>
       ) : (
@@ -938,7 +936,7 @@ export function ChatClient() {
           </button>
         </div>
         <div className="flex-1 overflow-y-auto w-72 shrink-0">
-          {renderDetailsContent()}
+          {renderDetailsBody()}
         </div>
       </div>
       )}

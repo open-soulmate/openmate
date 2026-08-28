@@ -467,7 +467,7 @@ export function SettingsClient() {
   );
 
   return (
-    <div className="flex h-full flex-col md:flex-row">
+    <div className="flex h-full flex-col lg:flex-row">
       {/* Mobile: top bar with hamburger + current section */}
       {isMobile && (
         <div className="flex items-center gap-3 px-4 py-3 border-b border-border bg-card/50 shrink-0">
@@ -500,7 +500,7 @@ export function SettingsClient() {
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="max-w-2xl mx-auto px-4 md:px-8 py-6 md:py-8 space-y-6">
           {/* Breadcrumb - hidden on mobile (shown in top bar) */}
-          <div className="hidden md:flex items-center gap-1.5 text-xs text-muted-foreground">
+          <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>{t("settings.title")}</span><ChevronRight size={10} />
             <span>{sections.find(s => s.id === active)?.group}</span><ChevronRight size={10} />
             <span className="text-foreground">{sections.find(s => s.id === active)?.label}</span>
