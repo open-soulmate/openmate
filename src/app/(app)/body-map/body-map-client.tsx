@@ -251,6 +251,8 @@ export function BodyMapClient() {
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [fullscreen, setFullscreen] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const isMobile = useIsMobile();
   const containerRef = useRef<HTMLDivElement>(null);
 
   const checkAllOrgans = useCallback(async () => {
@@ -316,19 +318,11 @@ export function BodyMapClient() {
 
   return (
     <div ref={containerRef} className="flex h-full flex-col overflow-hidden bg-background">
-      <style>{`
-        @media (max-width: 768px) {
-          .body-map-side { display: none !important; }
-          .body-map-header { padding: 12px 16px !important; }
-          .body-map-header h1 { font-size: 14px !important; }
-          .body-map-content { padding: 8px !important; }
-        }
-      `}</style>
       {/* Header */}
-      <div className="body-map-header flex items-center justify-between border-b border-border px-6 py-4">
+      <div className="body-map-header flex items-center justify-between border-b border-border px-4 lg:px-6 py-3 lg:py-4">
         <div className="flex items-center gap-3">
           <Activity size={20} className="text-primary" />
-          <h1 className="text-lg font-semibold">{t("bodyMap.title", "System Body Map")}</h1>
+          <h1 className="text-base lg:text-lg font-semibold">{t("bodyMap.title", "System Body Map")}</h1>
           <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
             {okCount}/{totalCount} {t("bodyMap.healthy", "Online")}
           </span>
