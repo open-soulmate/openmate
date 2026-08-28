@@ -390,7 +390,7 @@ function EventsList({
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       {Object.entries(grouped).map(([date, evts]) => (
         <div key={date}>
           <div className="flex items-center gap-2 mb-3">
@@ -472,7 +472,7 @@ function StatsPanel({ stats, types }: { stats: TimelineStats | null; types: Type
   const maxHourly = Math.max(...stats.hourly_distribution.map(h => h.count), 1)
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 lg:space-y-6">
       {/* Summary cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3">
         {[

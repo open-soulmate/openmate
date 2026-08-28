@@ -290,7 +290,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
                 <h2 className="text-lg font-semibold">{t("learn.chapterQuiz") || "Chapter Quiz"}</h2>
               </div>
 
-              <div className="space-y-6">
+              <div className="space-y-3 lg:space-y-6">
                 {currentQuiz.map((q, qi) => (
                   <div
                     key={qi}

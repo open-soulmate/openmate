@@ -336,7 +336,7 @@ export function VitalClient() {
 
         {/* Metrics Tab */}
         {activeTab === "metrics" && metrics && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             {/* Resource Gauges */}
             <Section title={t("vital.resourceUsage")} icon={Server}>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -450,7 +450,7 @@ export function VitalClient() {
 
         {/* History Tab */}
         {activeTab === "history" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             {/* Time range selector */}
             <div className="flex items-center gap-2 lg:gap-3">
               <span className="text-xs lg:text-sm text-muted-foreground">{t("vital.timeRange")}</span>

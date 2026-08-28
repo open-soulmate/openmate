@@ -220,7 +220,7 @@ export function GlandClient() {
 
         {/* ── Overview Tab ── */}
         {activeTab === "overview" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
@@ -464,7 +464,7 @@ export function GlandClient() {
 
         {/* ── Usage Tab ── */}
         {activeTab === "usage" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             {/* Usage by Model */}
             <div>
               <h3 className="text-xs lg:text-sm font-semibold text-foreground mb-3">{t("gland.form.byModel") || "By Model"}</h3>

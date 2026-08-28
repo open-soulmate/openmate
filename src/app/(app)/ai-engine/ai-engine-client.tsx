@@ -208,7 +208,7 @@ export function AiEngineClient() {
   const successPct = engineStatus ? Math.round(engineStatus.success_rate * 100) : 0;
 
   return (
-    <div className="h-full overflow-y-auto p-3 lg:p-6 space-y-6">
+    <div className="h-full overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">

@@ -215,7 +215,7 @@ export function SystemDoctorClient() {
         })}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {loading && !report && (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 size={32} className="animate-spin text-rose-500 mb-3" />

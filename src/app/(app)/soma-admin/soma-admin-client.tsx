@@ -189,7 +189,7 @@ export default function SomaAdminClient() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
 
         {/* ── Dashboard Tab ───────────────────────────────────────── */}
         {activeTab === "dashboard" && (

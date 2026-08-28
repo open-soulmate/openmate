@@ -449,7 +449,7 @@ export function CortexClient() {
 
         {/* ── Plan Tab ───────────────────────────────── */}
         {tab === "plan" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 flex items-center gap-2 text-xs lg:text-sm font-medium">
                 <Target size={15} className="text-primary" />
@@ -521,7 +521,7 @@ export function CortexClient() {
 
         {/* ── Agent Tab ──────────────────────────────── */}
         {tab === "agent" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 flex items-center gap-2 text-xs lg:text-sm font-medium">
                 <Users size={15} className="text-primary" />
@@ -598,7 +598,7 @@ export function CortexClient() {
 
         {/* ── Think Tab ──────────────────────────────── */}
         {tab === "think" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 flex items-center gap-2 text-xs lg:text-sm font-medium">
                 <Lightbulb size={15} className="text-primary" />
@@ -691,7 +691,7 @@ export function CortexClient() {
 
         {/* ── GraphRAG Tab ───────────────────────────── */}
         {tab === "graphrag" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             {/* Build Graph */}
             <div className="rounded-xl border border-border bg-card p-5">
               <h3 className="mb-3 flex items-center gap-2 text-xs lg:text-sm font-medium">
@@ -885,7 +885,7 @@ export function CortexClient() {
 
         {/* ── Recommend Tab ──────────────────────────── */}
         {tab === "recommend" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             {/* Sub-tabs */}
             <div className="flex gap-1">
               {(["trending", "recent", "related"] as const).map((st) => (
@@ -1012,7 +1012,7 @@ export function CortexClient() {
 
         {/* ── Quality Tab ────────────────────────────── */}
         {tab === "quality" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             {/* Actions */}
             <div className="flex gap-2">
               <button

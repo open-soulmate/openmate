@@ -258,7 +258,7 @@ export function DiscoveryClient() {
       {/* Content */}
       <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-4">
         {tab === "scan" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             {/* Stats Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
@@ -365,7 +365,7 @@ export function DiscoveryClient() {
         )}
 
         {tab === "adapters" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             {/* Adapter List */}
             <div className="rounded-xl border border-border bg-card/30">
               <div className="flex items-center justify-between px-2 lg:px-4 py-2 lg:py-3 border-b border-border">

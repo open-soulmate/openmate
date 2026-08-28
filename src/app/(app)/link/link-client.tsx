@@ -185,7 +185,7 @@ export function LinkClient() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4 md:p-3 lg:p-6 space-y-4 md:space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-3 lg:p-6 space-y-4 md:space-y-3 lg:space-y-6">
         {/* Stats */}
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

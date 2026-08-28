@@ -713,7 +713,7 @@ export function VeinClient() {
         ))}
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {/* Upload progress */}
         {uploadProgress && (
           <div className={cn(
@@ -1207,7 +1207,7 @@ export function VeinClient() {
         )}
 
         {tab === "cache" && stats && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             {/* Cache Overview */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
               <StatCard

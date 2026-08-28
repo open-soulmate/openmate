@@ -111,7 +111,7 @@ export function VisionClient() {
         </button>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {error && (
           <div className="rounded-lg border border-red-500/30 bg-red-500/10 p-4 text-xs lg:text-sm text-red-500">
             {error}
