@@ -209,6 +209,7 @@
     "hide": "隐藏",
     "view": "查看",
     "noCheckpoints": "暂无检查点",
+    "checkpointHint": "点击任意Agent消息上的书标图标保存检查点",
     "rollback": "回滚",
     "error": "错误",
     "noResponse": "无响应",

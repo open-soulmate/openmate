@@ -6,6 +6,7 @@ import { useAppStore } from '@/stores/app-store';
 import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { Dialog } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useTranslation } from 'react-i18next';
 
@@ -653,13 +654,13 @@ export function ChatClient() {
   }, [imageCount, fileCount]);
 
   return (
-    <div className="flex flex-1 min-h-0">
+    <div className="flex flex-1 min-h-0 relative">
       {/* Chat Window */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Chat header */}
         <div className="h-12 border-b border-border flex items-center px-3 lg:px-4 justify-between shrink-0">
           <div className="flex items-center gap-1.5 lg:gap-2 min-w-0 flex-1">
-            <button onClick={() => { if (isMobile) { setMobileConvOpen(true); setRightPanelOpen(false); } else { toggleSidebar(); } }} className="shrink-0 p-2 hover:bg-muted/50 transition-colors text-muted-foreground" aria-label="Toggle Sidebar">
+            <button onClick={() => { if (isMobile) { setMobileConvOpen(true); setRightPanelOpen(false); } else { toggleSidebar(); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Sidebar">
               <PanelLeft className="w-4 h-4" />
             </button>
             {selectedAgent && <span className="text-sm shrink-0">{selectedAgent.icon}</span>}
@@ -671,7 +672,7 @@ export function ChatClient() {
                   onChange={e => setEditTitleValue(e.target.value)}
                   onBlur={saveTitle}
                   onKeyDown={e => { if (e.key === 'Enter') saveTitle(); if (e.key === 'Escape') setEditingTitle(false); }}
-                  className="font-medium text-sm bg-transparent border-b border-primary outline-none px-0.5 min-w-0 max-w-[200px]"
+                  className="font-medium text-sm bg-transparent border-b border-primary outline-none px-0.5 min-w-0 max-w-[140px] lg:max-w-[200px]"
                 />
               ) : (
                 <span
@@ -683,12 +684,12 @@ export function ChatClient() {
                 </span>
               )}
             </div>
-            {selectedAgent && <span className="text-[10px] lg:text-xs text-muted-foreground px-1 lg:px-1.5 py-0.5 rounded bg-muted shrink-0 truncate max-w-[80px] lg:max-w-none">{selectedAgent.name}</span>}
+            {selectedAgent && <span className="hidden sm:inline text-[10px] lg:text-xs text-muted-foreground px-1 lg:px-1.5 py-0.5 rounded bg-muted shrink-0 truncate max-w-[80px] lg:max-w-none">{selectedAgent.name}</span>}
           </div>
           <div className="flex items-center gap-1 shrink-0">
             {wsConnected ? <Wifi className="w-4 h-4 text-green-500" /> : <WifiOff className="w-4 h-4 text-muted-foreground" />}
             <span className="hidden lg:inline text-xs text-muted-foreground">{wsConnected ? 'WS' : 'HTTP'}</span>
-            <button onClick={() => { toggleRightPanel(); if (isMobile) setMobileConvOpen(false); }} className="shrink-0 p-2 hover:bg-muted/50 transition-colors text-muted-foreground" aria-label="Toggle Workspace">
+            <button onClick={() => { toggleRightPanel(); if (isMobile) setMobileConvOpen(false); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
               <PanelLeft className="w-4 h-4 scale-x-[-1]" />
             </button>
           </div>
@@ -857,6 +858,81 @@ export function ChatClient() {
           </div>
         </div>
       </div>
+
+      {/* Checkpoints Panel — Sheet on mobile, overlay on desktop */}
+      {isMobile ? (
+        <Sheet open={showCheckpoints} onOpenChange={setShowCheckpoints}>
+          <SheetContent side="right" size="md" className="p-0 flex flex-col">
+            <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border justify-between">
+              <SheetTitle className="text-sm font-semibold flex items-center gap-2">
+                <RotateCcw className="w-4 h-4" />
+                {t("chat.checkpoints", "Checkpoints")}
+              </SheetTitle>
+            </SheetHeader>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {checkpoints.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                  <Bookmark className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-xs">{t("chat.noCheckpoints", "No checkpoints saved")}</p>
+                  <p className="text-[10px] text-muted-foreground mt-1">{t("chat.checkpointHint", "Click the bookmark icon on any agent message to save a checkpoint")}</p>
+                </div>
+              ) : (
+                checkpoints.map(cp => (
+                  <div key={cp.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium truncate">{cp.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{cp.timestamp.toLocaleString()} · {cp.messages.length} msgs</p>
+                    </div>
+                    <button
+                      onClick={() => rollbackToCheckpoint(cp.id)}
+                      className="shrink-0 ml-2 px-2.5 py-1.5 rounded-md text-xs text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      {t("chat.rollback", "Rollback")}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        showCheckpoints && (
+          <div className="absolute right-0 top-12 bottom-0 w-72 border-l border-border bg-card z-20 flex flex-col shadow-lg">
+            <div className="h-12 shrink-0 flex items-center justify-between px-3 border-b border-border">
+              <span className="text-sm font-semibold flex items-center gap-2">
+                <RotateCcw className="w-4 h-4" />
+                {t("chat.checkpoints", "Checkpoints")}
+              </span>
+              <button onClick={() => setShowCheckpoints(false)} className="p-1 rounded hover:bg-muted">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              {checkpoints.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                  <Bookmark className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-xs">{t("chat.noCheckpoints", "No checkpoints saved")}</p>
+                </div>
+              ) : (
+                checkpoints.map(cp => (
+                  <div key={cp.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-medium truncate">{cp.label}</p>
+                      <p className="text-[10px] text-muted-foreground">{cp.timestamp.toLocaleString()} · {cp.messages.length} msgs</p>
+                    </div>
+                    <button
+                      onClick={() => rollbackToCheckpoint(cp.id)}
+                      className="shrink-0 ml-2 px-2.5 py-1.5 rounded-md text-xs text-primary hover:bg-primary/10 transition-colors"
+                    >
+                      {t("chat.rollback", "Rollback")}
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        )
+      )}
 
       {/* Delete Confirmation Dialog */}
       <Dialog
