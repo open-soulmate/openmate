@@ -670,6 +670,34 @@ export function ChatClient() {
     }
   }, [imageCount, fileCount]);
 
+  // Shared checkpoint list content (used by both mobile Sheet and desktop overlay)
+  const renderCheckpointList = () => (
+    <div className="flex-1 overflow-y-auto p-3 space-y-2">
+      {checkpoints.length === 0 ? (
+        <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+          <Bookmark className="w-8 h-8 mb-2 opacity-40" />
+          <p className="text-xs">{t("chat.noCheckpoints", "No checkpoints saved")}</p>
+          <p className="text-[10px] text-muted-foreground mt-1">{t("chat.checkpointHint", "Click the bookmark icon on any agent message to save a checkpoint")}</p>
+        </div>
+      ) : (
+        checkpoints.map(cp => (
+          <div key={cp.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors">
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium truncate">{cp.label}</p>
+              <p className="text-[10px] text-muted-foreground">{cp.timestamp.toLocaleString()} · {cp.messages.length} msgs</p>
+            </div>
+            <button
+              onClick={() => rollbackToCheckpoint(cp.id)}
+              className="shrink-0 ml-2 px-2.5 py-1.5 rounded-md text-xs text-primary hover:bg-primary/10 transition-colors"
+            >
+              {t("chat.rollback", "Rollback")}
+            </button>
+          </div>
+        ))
+      )}
+    </div>
+  );
+
   return (
     <div className="flex flex-1 min-h-0 relative">
       {/* Chat Window */}
@@ -900,30 +928,7 @@ export function ChatClient() {
                 {t("chat.checkpoints", "Checkpoints")}
               </SheetTitle>
             </SheetHeader>
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {checkpoints.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-                  <Bookmark className="w-8 h-8 mb-2 opacity-40" />
-                  <p className="text-xs">{t("chat.noCheckpoints", "No checkpoints saved")}</p>
-                  <p className="text-[10px] text-muted-foreground mt-1">{t("chat.checkpointHint", "Click the bookmark icon on any agent message to save a checkpoint")}</p>
-                </div>
-              ) : (
-                checkpoints.map(cp => (
-                  <div key={cp.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium truncate">{cp.label}</p>
-                      <p className="text-[10px] text-muted-foreground">{cp.timestamp.toLocaleString()} · {cp.messages.length} msgs</p>
-                    </div>
-                    <button
-                      onClick={() => rollbackToCheckpoint(cp.id)}
-                      className="shrink-0 ml-2 px-2.5 py-1.5 rounded-md text-xs text-primary hover:bg-primary/10 transition-colors"
-                    >
-                      {t("chat.rollback", "Rollback")}
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+            {renderCheckpointList()}
           </SheetContent>
         </Sheet>
       ) : (
@@ -938,29 +943,7 @@ export function ChatClient() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-            <div className="flex-1 overflow-y-auto p-3 space-y-2">
-              {checkpoints.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-                  <Bookmark className="w-8 h-8 mb-2 opacity-40" />
-                  <p className="text-xs">{t("chat.noCheckpoints", "No checkpoints saved")}</p>
-                </div>
-              ) : (
-                checkpoints.map(cp => (
-                  <div key={cp.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors">
-                    <div className="min-w-0 flex-1">
-                      <p className="text-xs font-medium truncate">{cp.label}</p>
-                      <p className="text-[10px] text-muted-foreground">{cp.timestamp.toLocaleString()} · {cp.messages.length} msgs</p>
-                    </div>
-                    <button
-                      onClick={() => rollbackToCheckpoint(cp.id)}
-                      className="shrink-0 ml-2 px-2.5 py-1.5 rounded-md text-xs text-primary hover:bg-primary/10 transition-colors"
-                    >
-                      {t("chat.rollback", "Rollback")}
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+            {renderCheckpointList()}
           </div>
         )
       )}
