@@ -325,7 +325,7 @@ export default function SomaAdminClient() {
                               <span className="text-xs text-muted-foreground font-mono">{selectedConnector.id}</span>
                             </div>
 
-                            <div className="grid grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
                               <div><span className="text-muted-foreground">{t("somaAdmin.connType")}:</span> {selectedConnector.type}</div>
                               <div><span className="text-muted-foreground">{t("somaAdmin.connStatus")}:</span>{" "}
                                 <span className={cn("font-medium", STATUS_COLORS[selectedConnector.status])}>{selectedConnector.status}</span>
@@ -390,7 +390,7 @@ export default function SomaAdminClient() {
                         <span className="text-xs text-muted-foreground font-mono">{selectedConnector.id}</span>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
                         <div><span className="text-muted-foreground">{t("somaAdmin.connType")}:</span> {selectedConnector.type}</div>
                         <div><span className="text-muted-foreground">{t("somaAdmin.connStatus")}:</span>{" "}
                           <span className={cn("font-medium", STATUS_COLORS[selectedConnector.status])}>{selectedConnector.status}</span>

@@ -331,7 +331,7 @@ export function LinkClient() {
                           </button>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
                         <div><span className="text-muted-foreground">{t("link.t10867")}</span> {selected.type}</div>
                         <div><span className="text-muted-foreground">{t("link.t50013")}</span> {selected.status}</div>
                         <div className="col-span-2"><span className="text-muted-foreground">Endpoint:</span> <span className="font-mono text-xs">{selected.endpoint}</span></div>
@@ -373,7 +373,7 @@ export function LinkClient() {
                     </button>
                   </div>
                 </div>
-                <div className="grid grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
                   <div><span className="text-muted-foreground">{t("link.t10867")}</span> {selected.type}</div>
                   <div><span className="text-muted-foreground">{t("link.t50013")}</span> {selected.status}</div>
                   <div className="col-span-2"><span className="text-muted-foreground">Endpoint:</span> <span className="font-mono text-xs">{selected.endpoint}</span></div>

@@ -381,7 +381,7 @@ export function DiscoveryClient() {
                   <p className="text-xs mt-1">Add a REST, Database, or Filesystem adapter to get started.</p>
                 </div>
               ) : (
-                <div className="p-4 grid grid-cols-2 gap-2 lg:gap-3">
+                <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-3">
                   {adapters.map(a => (
                     <div key={a.name} onClick={() => setActiveAdapterId(activeAdapterId === a.name ? null : a.name)} className={cn("p-4 rounded-xl border cursor-pointer transition-all", activeAdapterId === a.name ? "border-amber-500 bg-amber-500/10" : "border-border hover:border-amber-500/50 bg-card/50")}>
                       <div className="flex items-center gap-2 lg:gap-3 mb-2">
@@ -413,7 +413,7 @@ export function DiscoveryClient() {
                 </div>
 
                 {adapterType === "rest" && (
-                  <div className="grid grid-cols-2 gap-2 lg:gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Base URL</label>
                       <input value={adapterConfig.url || ""} onChange={e => setAdapterConfig({...adapterConfig, url: e.target.value})} placeholder="https://api.example.com" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" />
@@ -438,7 +438,7 @@ export function DiscoveryClient() {
                 )}
 
                 {adapterType === "database" && (
-                  <div className="grid grid-cols-2 gap-2 lg:gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Database Type</label>
                       <select value={adapterConfig.db_type || "sqlite"} onChange={e => setAdapterConfig({...adapterConfig, db_type: e.target.value})} className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm">
@@ -455,7 +455,7 @@ export function DiscoveryClient() {
                 )}
 
                 {adapterType === "filesystem" && (
-                  <div className="grid grid-cols-2 gap-2 lg:gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 lg:gap-3">
                     <div>
                       <label className="text-xs text-muted-foreground mb-1 block">Root Path</label>
                       <input value={adapterConfig.root_path || ""} onChange={e => setAdapterConfig({...adapterConfig, root_path: e.target.value})} placeholder="/home/user/documents" className="w-full px-3 py-2 rounded-lg border border-border bg-background text-xs lg:text-sm" />
