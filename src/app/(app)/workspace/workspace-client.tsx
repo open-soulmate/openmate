@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { useMediaQuery } from "@/hooks/use-mobile";
 import { useTranslation } from "react-i18next";
 import { getApiBaseUrl } from "@/lib/api-client";
 import { cn } from "@/lib/utils";
@@ -50,6 +51,7 @@ function formatTime(modified: string | number, t: (key: string, opts?: Record<st
 
 export function WorkspaceClient() {
   const { t } = useTranslation();
+  const isMobile = useMediaQuery("(max-width: 1023px)");
   const [currentPath, setCurrentPath] = useState("~");
   const [entries, setEntries] = useState<DirEntry[]>([]);
   const [loading, setLoading] = useState(true);
@@ -246,10 +248,10 @@ export function WorkspaceClient() {
         ) : (
           <div className="rounded-lg border border-border overflow-hidden">
             {/* Table header */}
-            <div className="grid grid-cols-[1fr_100px_140px] bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border">
+            <div className={`grid bg-muted/50 px-4 py-2 text-xs font-medium text-muted-foreground border-b border-border ${isMobile ? "grid-cols-1" : "grid-cols-[1fr_100px_140px]"}`}>
               <span>{t("workspace.name", "Name")}</span>
-              <span className="text-right">{t("workspace.size", "Size")}</span>
-              <span className="text-right">{t("workspace.modified", "Modified")}</span>
+              {!isMobile && <span className="text-right">{t("workspace.size", "Size")}</span>}
+              {!isMobile && <span className="text-right">{t("workspace.modified", "Modified")}</span>}
             </div>
             {/* Rows */}
             {entries.map((entry) => (
@@ -258,7 +260,7 @@ export function WorkspaceClient() {
                 onClick={() => handleNavigate(entry)}
                 disabled={!entry.is_dir}
                 className={cn(
-                  "grid grid-cols-[1fr_100px_140px] w-full items-center px-4 py-2.5 text-sm border-b border-border last:border-b-0 transition-colors",
+                  `grid w-full items-center px-4 py-2.5 text-sm border-b border-border last:border-b-0 transition-colors ${isMobile ? "grid-cols-1" : "grid-cols-[1fr_100px_140px]"}`,
                   entry.is_dir
                     ? "hover:bg-accent cursor-pointer"
                     : "cursor-default"
@@ -274,12 +276,16 @@ export function WorkspaceClient() {
                     {entry.name}
                   </span>
                 </span>
-                <span className="text-right text-xs text-muted-foreground">
-                  {entry.is_dir ? "-" : formatBytes(entry.size)}
-                </span>
-                <span className="text-right text-xs text-muted-foreground">
-                  {formatTime(entry.modified, t)}
-                </span>
+                {!isMobile && (
+                  <span className="text-right text-xs text-muted-foreground">
+                    {entry.is_dir ? "-" : formatBytes(entry.size)}
+                  </span>
+                )}
+                {!isMobile && (
+                  <span className="text-right text-xs text-muted-foreground">
+                    {formatTime(entry.modified, t)}
+                  </span>
+                )}
               </button>
             ))}
           </div>
