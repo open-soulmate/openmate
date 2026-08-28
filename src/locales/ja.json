@@ -209,6 +209,7 @@
     "hide": "非表示",
     "view": "查看",
     "noCheckpoints": "暂なし检查点",
+    "checkpointHint": "エージェントメッセージのブックマークアイコンをクリックしてチェックポイントを保存",
     "rollback": "ロールバック",
     "error": "エラー",
     "noResponse": "なし响应",

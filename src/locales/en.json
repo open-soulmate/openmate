@@ -209,6 +209,7 @@
     "hide": "Hide",
     "view": "View",
     "noCheckpoints": "No checkpoints",
+    "checkpointHint": "Click the bookmark icon on any agent message to save a checkpoint",
     "rollback": "Rollback",
     "error": "Error",
     "noResponse": "No response",
