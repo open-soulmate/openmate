@@ -375,7 +375,7 @@ export function SomaConnectorClient() {
             </div>
 
             {/* Component List */}
-            <div className={`flex gap-6 ${isMobile ? 'flex-col' : ''}`}>
+            <div className={`flex gap-2 lg:gap-6 ${isMobile ? 'flex-col' : ''}`}>
               <div className={`${isMobile ? 'w-full' : 'w-80'} space-y-3`}>
                 {components.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">

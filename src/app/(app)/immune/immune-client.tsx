@@ -312,7 +312,7 @@ export function ImmuneClient() {
             })}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             {/* Rate Limiter Config */}
             <div className="bg-card border border-border rounded-xl p-5 space-y-4">
               <h3 className="font-semibold flex items-center gap-2">
@@ -382,7 +382,7 @@ export function ImmuneClient() {
       {/* Content Moderation Tab */}
       {activeTab === "moderate" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             <div className="space-y-4">
               <h3 className="font-semibold">{t('immune.contentModerationtest')}</h3>
               <p className="text-xs text-muted-foreground">
@@ -463,7 +463,7 @@ export function ImmuneClient() {
       {/* Rate Limit Tab */}
       {activeTab === "ratelimit" && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             <div className="bg-card border border-border rounded-xl p-5 space-y-4">
               <h3 className="font-semibold">{t('immune.rateLimitConfig1')}</h3>
               <div className="space-y-3">
@@ -589,7 +589,7 @@ export function ImmuneClient() {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             {/* Blacklist */}
             <div className="bg-card border border-border rounded-xl p-5">
               <div className="flex items-center justify-between mb-4">
@@ -675,7 +675,7 @@ export function ImmuneClient() {
             })}
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             {/* Request Inspector */}
             <div className="bg-card border border-border rounded-xl p-5 space-y-4">
               <h3 className="font-semibold flex items-center gap-2">

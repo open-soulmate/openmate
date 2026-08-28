@@ -624,7 +624,7 @@ export function NerveClient() {
 
       {/* Publish Tab */}
       {activeTab === "publish" && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
           <div className="space-y-4">
             <h3 className="font-semibold">{t('nerve.text5')}</h3>
             <div>

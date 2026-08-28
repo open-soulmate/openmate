@@ -332,7 +332,7 @@ export function EchoClient() {
               </button>
             </div>
 
-            <div className="flex gap-6">
+            <div className="flex gap-2 lg:gap-6">
               {/* Template List — full width on mobile, w-80 on desktop */}
               <div className={`${isMobile ? (selectedTemplate ? "hidden" : "w-full") : "w-80"} space-y-2`}>
                 {isMobile && (

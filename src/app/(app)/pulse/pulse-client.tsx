@@ -363,7 +363,7 @@ export function PulseClient() {
           <div className="space-y-4">
             <div className="rounded-xl border border-border bg-card p-5 space-y-4">
               <h3 className="text-xs lg:text-sm font-semibold">{t("pulse.precisionStats") || t('pulse.precisionStats')}</h3>
-              <div className="grid grid-cols-3 gap-6">
+              <div className="grid grid-cols-3 gap-2 lg:gap-6">
                 <div>
                   <label className="text-xs text-muted-foreground">{t("pulse.avgDrift") || t('pulse.avgDrift')}</label>
                   <div className="mt-1 text-xl lg:text-2xl font-bold">{formatMs(stats.precision.avg_drift_ms)}</div>

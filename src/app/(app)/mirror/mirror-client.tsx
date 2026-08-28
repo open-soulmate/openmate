@@ -302,7 +302,7 @@ export function MirrorClient() {
 
         {/* Sandboxes Tab */}
         {tab === "sandboxes" && (
-          <div className="flex gap-6">
+          <div className="flex gap-2 lg:gap-6">
             {/* Sandbox List — full width on mobile, w-80 on desktop */}
             <div className={`${isMobile ? (selected ? "hidden" : "w-full") : "w-80"} space-y-3`}>
               {isMobile && (

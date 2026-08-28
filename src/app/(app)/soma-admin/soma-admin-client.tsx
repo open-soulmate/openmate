@@ -275,7 +275,7 @@ export default function SomaAdminClient() {
                 <p className="text-xs mt-1">{t("somaAdmin.noConnectorsHint")}</p>
               </div>
             ) : (
-              <div className="flex gap-6">
+              <div className="flex gap-2 lg:gap-6">
                 {/* Connector List — full width on mobile, w-80 on desktop */}
                 <div className={`${isMobile ? (selectedConnector ? "hidden" : "w-full") : "w-80"} space-y-3`}>
                   {isMobile && (
