@@ -733,7 +733,7 @@ export function ChatClient() {
                   { icon: '🔍', label: t('chat.quickKnowledgeSearch'), desc: t('chat.quickKnowledgeSearchDesc') },
                 ].map(item => (
                   <button key={item.label} onClick={() => setInput(item.desc)}
-                    className="flex flex-col items-center gap-1.5 lg:gap-2 p-3 lg:p-4 rounded-xl border bg-card hover:bg-muted/80 hover:border-primary/30 active:bg-muted transition-all group">
+                    className="flex flex-col items-center gap-1.5 lg:gap-2 p-3 lg:p-4 rounded-xl border bg-card hover:bg-muted/80 hover:border-primary/30 active:bg-muted transition-all group touch-manipulation">
                     <span className="text-xl lg:text-2xl">{item.icon}</span>
                     <span className="text-xs lg:text-sm font-medium">{item.label}</span>
                   </button>

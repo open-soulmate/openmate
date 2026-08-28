@@ -408,7 +408,7 @@ export function SessionsClient() {
         {/* Session List — Sheet on mobile, inline on desktop */}
         {isMobile ? (
           <Sheet open={sidebarOpen} onOpenChange={(open) => { setSidebarOpen(open); if (open) setSelectedSession(null); }}>
-            <SheetContent side="left" size="md" className="p-0 flex flex-col bg-card">
+            <SheetContent side="left" size="md" className="p-0 flex flex-col bg-card border-r border-border">
               <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
                 <SheetTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <History className="w-4 h-4 text-cyan-400" />
@@ -982,7 +982,7 @@ export function SessionsClient() {
         {isMobile ? (
           selectedSession && (
             <Sheet open={!!selectedSession} onOpenChange={(open) => { if (!open) setSelectedSession(null) }}>
-              <SheetContent side="right" size="full" showCloseButton={false} className="p-0 flex flex-col">
+              <SheetContent side="right" size="lg" showCloseButton={false} className="p-0 flex flex-col">
                 <SheetHeader className="h-12 shrink-0 flex flex-row items-center justify-between px-2 border-b border-border">
                   <div className="flex items-center gap-2 min-w-0">
                     <button onClick={() => { setSelectedSession(null); setSidebarOpen(true); }} className="p-1.5 -ml-1 rounded-lg hover:bg-muted touch-manipulation">
@@ -994,19 +994,19 @@ export function SessionsClient() {
                       <span className="text-xs text-muted-foreground flex-shrink-0">({selectedSession.messages.length})</span>
                     </SheetTitle>
                   </div>
-                  <div className="flex items-center gap-1 flex-shrink-0">
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
                     <button onClick={() => router.push(`/chat?session=${selectedSession.session_id}`)}
                       className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-cyan-600/20 text-cyan-400 hover:bg-cyan-600/30 text-xs transition-colors"
                       title={t("sessions.openChat", "Open in Chat")}>
                       <MessageSquare className="w-3 h-3" />
                     </button>
                     <button onClick={() => exportSession("json")}
-                      className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
                       title="Export as JSON">
                       <FileJson className="w-3.5 h-3.5" />
                     </button>
                     <button onClick={() => exportSession("markdown")}
-                      className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors"
+                      className="p-2 rounded-lg hover:bg-muted text-muted-foreground hover:text-foreground transition-colors touch-manipulation"
                       title="Export as Markdown">
                       <FileText className="w-3.5 h-3.5" />
                     </button>
