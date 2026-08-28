@@ -1,5 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useRef } from 'react';
+import { Sheet, SheetContent } from '@/components/ui/sheet';
+import { useMediaQuery } from '@/hooks/use-mobile';
 import { Network, Loader2, Plus, Trash2, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Search } from 'lucide-react';
 import { api, getUserId, getApiBaseUrl } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
@@ -20,6 +22,7 @@ function getRelType(r: Relation): string { return r.relation_type || r.type || '
 
 export function GraphClient() {
   const { t } = useTranslation();
+  const isMobile = useMediaQuery("(max-width: 1023px)");
   const apiBase = getApiBaseUrl();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -449,8 +452,45 @@ export function GraphClient() {
         )}
       </div>
 
-      {/* Detail panel */}
-      {selected && (
+      {/* Detail panel — Sheet on mobile, inline on desktop */}
+      {selected && isMobile ? (
+        <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
+          <SheetContent side="right" className="w-80 p-0 flex flex-col overflow-y-auto">
+            <div className="p-4 space-y-3">
+              {entityType(selected) !== 'default' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">{t("graph.type") || "Type"}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: (COLORS[entityType(selected)] || COLORS.default) + '20', color: COLORS[entityType(selected)] || COLORS.default }}>{entityType(selected)}</span>
+                </div>
+              )}
+              {selected.description && <p className="text-sm text-muted-foreground">{selected.description}</p>}
+              {selected.properties && Object.entries(selected.properties).map(([k, v]) => (
+                <div key={k} className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">{k}</span>
+                  <span>{String(v)}</span>
+                </div>
+              ))}
+              <div className="pt-3 border-t">
+                <h3 className="text-xs font-medium text-muted-foreground mb-2">{t("graph.relatedRelations") || "Related Relations"}</h3>
+                {relations.filter(r => getRelSource(r) === selected.id || getRelTarget(r) === selected.id).map(r => {
+                  const other = getRelSource(r) === selected.id ? entities.find(e => e.id === getRelTarget(r)) : entities.find(e => e.id === getRelSource(r));
+                  return (
+                    <div key={r.id} className="flex items-center gap-2 py-1 text-xs">
+                      <span className="text-muted-foreground">{getRelSource(r) === selected.id ? '→' : '←'}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-muted">{getRelType(r)}</span>
+                      <span className="text-primary cursor-pointer hover:underline" onClick={() => { const ent = entities.find(e => e.id === (getRelSource(r) === selected.id ? getRelTarget(r) : getRelSource(r))); if (ent) setSelected(ent); }}>{other?.name || (t("graph.unknown") || "Unknown")}</span>
+                    </div>
+                  );
+                })}
+                {relations.filter(r => getRelSource(r) === selected.id || getRelTarget(r) === selected.id).length === 0 && <p className="text-xs text-muted-foreground">{t("graph.noRelations") || "No relations"}</p>}
+              </div>
+              <button onClick={() => handleDeleteEntity(selected.id)} className="w-full mt-4 py-2 rounded-lg border border-destructive/50 text-destructive text-sm hover:bg-destructive/10 flex items-center justify-center gap-1.5">
+                <Trash2 size={14} /> {t("graph.deleteEntity") || "Delete Entity"}
+              </button>
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : selected ? (
         <div className="w-80 border-l bg-card overflow-y-auto">
           <div className="p-4 border-b flex items-center justify-between">
             <h2 className="font-bold text-sm">{selected.name}</h2>
@@ -491,7 +531,7 @@ export function GraphClient() {
             </button>
           </div>
         </div>
-      )}
+      ) : null}
     </div>
   );
 }
