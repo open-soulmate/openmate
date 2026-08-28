@@ -8,6 +8,8 @@ import {
   FileCode, Terminal, Loader2, CheckCircle,
   XCircle, Clock, MousePointer, Zap,
 } from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
+import { useMediaQuery } from "@/hooks/use-mobile";
 
 interface RPATask {
   task_id: string;
@@ -86,6 +88,7 @@ export function LimbClient() {
   const [loading, setLoading] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
   const [showTemplate, setShowTemplate] = useState<Template | null>(null);
+  const isMobile = useMediaQuery("(max-width: 1023px)");
 
   // Quick create from template
   const [tplVars, setTplVars] = useState<Record<string, string>>({});
@@ -238,8 +241,8 @@ export function LimbClient() {
 
         {/* Tasks Tab */}
         {tab === "tasks" && (
-          <div className="flex gap-6">
-            <div className="flex-1 space-y-3">
+          <div className={`flex gap-6 ${isMobile ? 'flex-col' : ''}`}>
+            <div className={`${isMobile ? 'w-full' : 'flex-1'} space-y-3`}>
               {tasks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                   <Terminal size={40} className="mb-3 opacity-30" />
@@ -292,8 +295,77 @@ export function LimbClient() {
               ))}
             </div>
 
-            {/* Detail Panel */}
-            {selected && (
+            {/* Detail Panel — Sheet on mobile, inline on desktop */}
+            {selected && isMobile ? (
+              <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
+                <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col overflow-y-auto">
+                  <div className="p-4 space-y-4">
+                    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold text-sm">{selected.name}</h3>
+                        <button onClick={() => handleDelete(selected.task_id)}
+                          className="rounded-md p-1.5 text-red-500 hover:bg-red-500/10">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <div className="flex justify-between">
+                          <span>ID</span><span className="font-mono">{selected.task_id}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{t("limb.status") || "Status"}</span><span className={statusColor(selected.status)}>{selected.status}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{t("limb.t97513") || "Progress"}</span><span>{selected.progress}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>{t("limb.elapsed") || "Elapsed"}</span><span>{selected.elapsed_seconds}s</span>
+                        </div>
+                      </div>
+                      {selected.error && (
+                        <div className="rounded-lg bg-red-500/10 p-3 text-xs text-red-500">
+                          {selected.error}
+                        </div>
+                      )}
+                    </div>
+
+                    {selected.results && selected.results.length > 0 && (
+                      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+                        <h4 className="text-sm font-medium">{t("limb.t62005") || "Execution steps"}</h4>
+                        {selected.results.map((r, i) => (
+                          <div key={i} className="flex items-start gap-2 text-xs">
+                            <span className="shrink-0">{ACTION_ICONS[r.action_type] || "⚡"}</span>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1">
+                                {r.success ? <CheckCircle size={10} className="text-emerald-500" /> : <XCircle size={10} className="text-red-500" />}
+                                <span className="font-mono">{r.action_type}</span>
+                                <span className="text-muted-foreground ml-auto">{r.duration_ms}ms</span>
+                              </div>
+                              {r.output && <p className="text-muted-foreground truncate">{r.output}</p>}
+                              {r.error && <p className="text-red-500">{r.error}</p>}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {selected.actions && selected.actions.length > 0 && (
+                      <div className="rounded-xl border border-border bg-card p-4 space-y-2">
+                        <h4 className="text-sm font-medium">{t("limb.t47867") || "Action List"}</h4>
+                        {selected.actions.map((a, i) => (
+                          <div key={i} className="flex items-center gap-2 text-xs">
+                            <span>{ACTION_ICONS[a.action_type] || "⚡"}</span>
+                            <span className="font-mono">{a.action_type}</span>
+                            {a.target && <span className="text-muted-foreground truncate">{a.target}</span>}
+                            {a.description && <span className="text-muted-foreground ml-auto truncate">{a.description}</span>}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </SheetContent>
+              </Sheet>
+            ) : selected ? (
               <div className="w-96 space-y-4">
                 <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                   <div className="flex items-center justify-between">
@@ -360,7 +432,7 @@ export function LimbClient() {
                   </div>
                 )}
               </div>
-            )}
+            ) : null}
           </div>
         )}
 

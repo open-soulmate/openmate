@@ -1,10 +1,11 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { useRef, useEffect, useCallback } from "react";
+import { useRef, useEffect, useCallback, useState } from "react";
+import { getUserName, getUserId } from "@/lib/api-client";
 import {
   MessageSquare, Users, BookOpen, Workflow, Settings, Brain, Activity,
   LayoutDashboard, Bell, Server, GraduationCap, Network, Share2, Search,
@@ -12,7 +13,7 @@ import {
   Camera, Download, Tag, User, Bot, Droplets, Dna, Eye, Shield, Bone,
   Volume2, Layers, Link2, Home, MousePointer, Mic, ImageIcon, Smile,
   Stethoscope, Cpu, Bolt, Heart, Gauge, BarChart3, Package, ScrollText,
-  History, Store, Pill,
+  History, Store, Pill, LogOut, Moon, Sun,
 } from "lucide-react";
 
 interface BottomNavItem {
@@ -21,6 +22,7 @@ interface BottomNavItem {
   icon: React.ElementType;
 }
 
+// Settings is NOT in scrollable items — it's fixed on the right
 const navItems: BottomNavItem[] = [
   { href: "/chat", label: "nav.chat", icon: MessageSquare },
   { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
@@ -89,7 +91,6 @@ const navItems: BottomNavItem[] = [
   { href: "/changelog", label: "nav.changelog", icon: ScrollText },
   { href: "/plugins", label: "nav.plugins", icon: Puzzle },
   { href: "/marketplace", label: "nav.marketplace", icon: Store },
-  { href: "/settings", label: "nav.settings", icon: Settings },
 ];
 
 interface BottomNavProps {
@@ -98,11 +99,16 @@ interface BottomNavProps {
 
 export function BottomNav({ totalUnread = 0 }: BottomNavProps) {
   const pathname = usePathname();
+  const router = useRouter();
   const { t } = useTranslation();
   const scrollRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLAnchorElement>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPress = useRef(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+
+  const userId = getUserName() || getUserId() || "User";
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -125,6 +131,16 @@ export function BottomNav({ totalUnread = 0 }: BottomNavProps) {
       container.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
     }
   }, [pathname]);
+
+  // Close user menu on outside click
+  useEffect(() => {
+    if (!userMenuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) setUserMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [userMenuOpen]);
 
   const handlePointerDown = useCallback(() => {
     isLongPress.current = false;
@@ -151,9 +167,15 @@ export function BottomNav({ totalUnread = 0 }: BottomNavProps) {
     }
   }, []);
 
+  function handleLogout() {
+    localStorage.removeItem("openmate-token");
+    localStorage.removeItem("openmate-api-url");
+    window.location.href = "/login";
+  }
+
   return (
     <nav className="nav-wave relative shrink-0 h-12 bg-background border-t border-border">
-      {/* CSS wave bump — pure CSS, no SVG */}
+      {/* CSS wave bump */}
       <div className="nav-wave-bump" />
       <div className="nav-wave-border" />
 
@@ -171,52 +193,113 @@ export function BottomNav({ totalUnread = 0 }: BottomNavProps) {
         </button>
       </div>
 
-      {/* Scrollable items */}
-      <div
-        ref={scrollRef}
-        className="flex h-full items-center gap-0.5 overflow-x-auto px-2"
-        style={{
-          scrollbarWidth: "none",
-          WebkitOverflowScrolling: "touch",
-          paddingLeft: "40px",
-          paddingRight: "40px",
-        }}
-      >
-        {navItems.map((item) => {
-          const active = pathname.startsWith(item.href);
-          const Icon = item.icon;
-          const isChat = item.href === '/chat';
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              ref={active ? activeRef : undefined}
-              className={cn(
-                "relative flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[9px] font-medium transition-colors min-w-[48px]",
-                active
-                  ? "text-primary bg-primary/10"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              )}
-            >
-              <div className="relative">
-                <Icon size={16} strokeWidth={active ? 2.2 : 1.5} />
-                {isChat && totalUnread > 0 && (
-                  <span className="absolute -top-1.5 -right-2 flex items-center justify-center min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[7px] font-bold leading-none">
-                    {totalUnread > 99 ? '99+' : totalUnread}
-                  </span>
-                )}
+      <div className="flex h-full items-center">
+        {/* Fixed left: User avatar button */}
+        <div className="relative shrink-0 flex items-center justify-center w-12 h-full" ref={userMenuRef}>
+          <button
+            onClick={() => setUserMenuOpen(!userMenuOpen)}
+            className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground transition-transform hover:scale-105"
+          >
+            {userId[0].toUpperCase()}
+          </button>
+
+          {/* User popup menu */}
+          {userMenuOpen && (
+            <div className="absolute bottom-full left-0 mb-2 w-56 rounded-xl border border-border bg-card shadow-lg overflow-hidden z-50">
+              <div className="p-3 border-b border-border">
+                <div className="flex items-center gap-2.5">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-sm font-medium text-primary-foreground">
+                    {userId[0].toUpperCase()}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-medium truncate">{userId}</div>
+                    <div className="text-[10px] text-muted-foreground">v0.1.0</div>
+                  </div>
+                </div>
               </div>
-              <span className="truncate max-w-[42px] leading-tight">{t(item.label)}</span>
-            </Link>
-          );
-        })}
+              <div className="py-1">
+                <button onClick={() => { router.push('/settings#account'); setUserMenuOpen(false); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/50 transition-colors">
+                  <User size={14} className="text-muted-foreground" />
+                  {t("account.viewProfile", "个人资料")}
+                </button>
+                <button onClick={() => { router.push('/settings'); setUserMenuOpen(false); }}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/50 transition-colors">
+                  <Settings size={14} className="text-muted-foreground" />
+                  {t("nav.settings", "设置")}
+                </button>
+              </div>
+              <div className="border-t border-border py-1">
+                <button onClick={handleLogout}
+                  className="flex w-full items-center gap-2.5 px-3 py-2 text-sm hover:bg-muted/50 transition-colors text-red-500">
+                  <LogOut size={14} />
+                  {t("account.logout", "退出登录")}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Scrollable middle items */}
+        <div
+          ref={scrollRef}
+          className="flex-1 flex h-full items-center gap-0.5 overflow-x-auto"
+          style={{
+            scrollbarWidth: "none",
+            WebkitOverflowScrolling: "touch",
+            paddingLeft: "4px",
+            paddingRight: "4px",
+          }}
+        >
+          {navItems.map((item) => {
+            const active = pathname.startsWith(item.href);
+            const Icon = item.icon;
+            const isChat = item.href === '/chat';
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                ref={active ? activeRef : undefined}
+                className={cn(
+                  "relative flex shrink-0 flex-col items-center justify-center gap-0.5 rounded-lg px-2.5 py-1.5 text-[9px] font-medium transition-colors min-w-[48px]",
+                  active
+                    ? "text-primary bg-primary/10"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent"
+                )}
+              >
+                <div className="relative">
+                  <Icon size={16} strokeWidth={active ? 2.2 : 1.5} />
+                  {isChat && totalUnread > 0 && (
+                    <span className="absolute -top-1.5 -right-2 flex items-center justify-center min-w-[14px] h-3.5 px-0.5 rounded-full bg-red-500 text-white text-[7px] font-bold leading-none">
+                      {totalUnread > 99 ? '99+' : totalUnread}
+                    </span>
+                  )}
+                </div>
+                <span className="truncate max-w-[42px] leading-tight">{t(item.label)}</span>
+              </Link>
+            );
+          })}
+        </div>
+
+        {/* Fixed right: Settings button */}
+        <Link
+          href="/settings"
+          className={cn(
+            "shrink-0 flex flex-col items-center justify-center gap-0.5 w-12 h-full text-[9px] font-medium transition-colors",
+            pathname.startsWith('/settings')
+              ? "text-primary bg-primary/10"
+              : "text-muted-foreground hover:text-foreground hover:bg-accent"
+          )}
+        >
+          <Settings size={16} strokeWidth={pathname.startsWith('/settings') ? 2.2 : 1.5} />
+          <span className="leading-tight">{t("nav.settings")}</span>
+        </Link>
       </div>
 
       <style jsx global>{`
         .nav-wave {
           overflow: visible;
         }
-        /* The curved bump — a big circle clipped to show only bottom arc */
         .nav-wave-bump {
           position: absolute;
           left: 50%;
@@ -228,7 +311,6 @@ export function BottomNav({ totalUnread = 0 }: BottomNavProps) {
           background: hsl(var(--background));
           z-index: 5;
         }
-        /* Border arc that follows the curve */
         .nav-wave-border {
           position: absolute;
           left: 50%;
@@ -242,7 +324,6 @@ export function BottomNav({ totalUnread = 0 }: BottomNavProps) {
           z-index: 6;
           pointer-events: none;
         }
-        /* Button sits centered in the bump */
         .nav-wave-btn {
           position: absolute;
           left: 50%;
