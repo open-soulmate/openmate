@@ -97,7 +97,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setStoreTheme = useAppStore((s) => s.setTheme);
   const [menuOpen, setMenuOpen] = useState(false);
   const [rightPanelOpen, setRightPanelOpen] = useState(false);
-  const [mobileConvOpen, setMobileConvOpen] = useState(false);
+  const mobileConvOpen = useAppStore((s) => s.mobileConvOpen);
+  const setMobileConvOpen = useAppStore((s) => s.setMobileConvOpen);
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { t } = useTranslation();
   const [eventCount, setEventCount] = useState(0);
