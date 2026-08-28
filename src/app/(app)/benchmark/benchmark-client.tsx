@@ -246,7 +246,7 @@ export function BenchmarkClient() {
       <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {/* ── Run Tab ── */}
         {tab === "run" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             {/* Config Panel */}
             <div className="rounded-xl border border-border bg-card p-5">
               <div className="mb-4 flex items-center justify-between">

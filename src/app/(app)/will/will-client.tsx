@@ -281,7 +281,7 @@ export function WillClient() {
 
         {/* ── Overview Tab ── */}
         {activeTab === "overview" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
               {[
                 { label: t("will.totalWorkflows"), value: eng?.total_workflows ?? 0, icon: Workflow, color: "text-blue-400", bg: "from-blue-500/20 to-blue-600/10" },

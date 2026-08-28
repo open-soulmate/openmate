@@ -205,7 +205,7 @@ export function PomodoroClient() {
       <div className="flex-1 overflow-y-auto px-3 lg:px-6 py-4">
         {/* Timer Tab */}
         {tab === "timer" && (
-          <div className="flex flex-col items-center space-y-6 max-w-md mx-auto">
+          <div className="flex flex-col items-center space-y-3 lg:space-y-6 max-w-md mx-auto">
             {/* Circular timer */}
             <div className="relative w-64 h-64">
               <svg className="w-64 h-64 -rotate-90" viewBox="0 0 256 256">

@@ -183,7 +183,7 @@ export function PipelineClient() {
       </div>
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto p-3 lg:p-6 space-y-6">
+        <div className="max-w-4xl mx-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
 
           {/* Pipeline Flow Visualization */}
           <div className="rounded-xl border border-border bg-card p-5">

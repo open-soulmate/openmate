@@ -240,7 +240,7 @@ export function SenseClient() {
   ]
 
   return (
-    <div className="p-4 sm:p-3 lg:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-3 lg:p-6 max-w-6xl mx-auto space-y-3 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-2 lg:gap-3">
         <div className="p-2 rounded-lg bg-gradient-to-br from-amber-500/20 to-orange-500/20">
@@ -306,7 +306,7 @@ export function SenseClient() {
 
       {/* OCR Tab */}
       {activeTab === "ocr" && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             {/* Upload Area */}
             <div className="space-y-4">
@@ -437,7 +437,7 @@ export function SenseClient() {
 
       {/* ASR Tab */}
       {activeTab === "asr" && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             {/* Upload Area */}
             <div className="space-y-4">
@@ -552,7 +552,7 @@ export function SenseClient() {
 
       {/* Analyze Tab */}
       {activeTab === "analyze" && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             {/* Upload Area */}
             <div className="space-y-4">
@@ -672,7 +672,7 @@ export function SenseClient() {
 
       {/* Video Tab */}
       {activeTab === "video" && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             {/* Upload Area */}
             <div className="space-y-4">

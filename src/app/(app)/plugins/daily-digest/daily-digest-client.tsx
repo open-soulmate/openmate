@@ -168,7 +168,7 @@ export function DailyDigestClient() {
   const avgResponse = Object.values(digest?.organ_summary || {}).reduce((s, o) => s + o.response_time_ms, 0) / Math.max(Object.keys(digest?.organ_summary || {}).length, 1);
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-3 lg:space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -215,7 +215,7 @@ export function DailyDigestClient() {
 
       {/* Today Tab */}
       {tab === 'today' && digest && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           {/* Score & Quick Stats */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2 lg:gap-4">
             {/* Health Score */}
@@ -473,7 +473,7 @@ export function DailyDigestClient() {
 
       {/* Trends Tab */}
       {tab === 'trends' && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           <div className="flex gap-2">
             {[
               { key: 'health_score', label: t('plugins.healthScore') },

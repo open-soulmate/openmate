@@ -498,7 +498,7 @@ export function SettingsClient() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        <div className="max-w-2xl mx-auto px-4 md:px-8 py-3 lg:py-6 md:py-8 space-y-6">
+        <div className="max-w-2xl mx-auto px-4 md:px-8 py-3 lg:py-6 md:py-8 space-y-3 lg:space-y-6">
           {/* Breadcrumb - hidden on mobile (shown in top bar) */}
           <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>{t("settings.title")}</span><ChevronRight size={10} />

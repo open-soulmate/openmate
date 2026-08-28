@@ -256,7 +256,7 @@ export function ImmuneClient() {
   ]
 
   return (
-    <div className="p-4 sm:p-3 lg:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-3 lg:p-6 max-w-6xl mx-auto space-y-3 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-gradient-to-br from-red-500/20 to-pink-500/20">
@@ -291,7 +291,7 @@ export function ImmuneClient() {
 
       {/* Overview Tab */}
       {activeTab === "overview" && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { label: t('immune.auditRules'), value: String(modStats.patterns ?? 0), icon: Eye },
@@ -381,7 +381,7 @@ export function ImmuneClient() {
 
       {/* Content Moderation Tab */}
       {activeTab === "moderate" && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             <div className="space-y-4">
               <h3 className="font-semibold">{t('immune.contentModerationtest')}</h3>
@@ -462,7 +462,7 @@ export function ImmuneClient() {
 
       {/* Rate Limit Tab */}
       {activeTab === "ratelimit" && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-6">
             <div className="bg-card border border-border rounded-xl p-5 space-y-4">
               <h3 className="font-semibold">{t('immune.rateLimitConfig1')}</h3>
@@ -555,7 +555,7 @@ export function ImmuneClient() {
 
       {/* IP Control Tab */}
       {activeTab === "ip" && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           {/* Add IP */}
           <div className="bg-card border border-border rounded-xl p-5">
             <h3 className="font-semibold mb-4">{t('immune.t80747')}</h3>
@@ -652,7 +652,7 @@ export function ImmuneClient() {
 
       {/* Intrusion Detection Tab */}
       {activeTab === "intrusion" && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           {/* Stats row */}
           <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
             {[

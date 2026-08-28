@@ -356,7 +356,7 @@ export function MarrowClient() {
 
         {/* ── Overview Tab ── */}
         {activeTab === "overview" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               {[
                 { label: t("marrow.totalBackups") || "Total Backups", value: health?.backup.total_backups ?? 0, icon: Archive, color: "text-blue-400", bg: "from-blue-500/20 to-blue-600/10" },
@@ -620,7 +620,7 @@ export function MarrowClient() {
 
         {/* ── Migration Tab ── */}
         {activeTab === "migration" && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             {/* Export */}
             <div className="p-4 rounded-xl border border-border bg-card">
               <h3 className="text-xs lg:text-sm font-semibold text-foreground mb-3">{t("marrow.exportData") || "Export Data"}</h3>

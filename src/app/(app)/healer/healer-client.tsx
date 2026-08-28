@@ -189,7 +189,7 @@ export function HealerClient() {
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {/* Stats Cards */}
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -354,7 +354,7 @@ export function HealerClient() {
 
         {/* Stats Tab */}
         {tab === "stats" && stats && (
-          <div className="space-y-6">
+          <div className="space-y-3 lg:space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">{t("healer.totalDiagnosesLabel")}</span>

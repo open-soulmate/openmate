@@ -232,7 +232,7 @@ export function NerveClient() {
   ]
 
   return (
-    <div className="p-4 sm:p-3 lg:p-6 max-w-6xl mx-auto space-y-6">
+    <div className="p-4 sm:p-3 lg:p-6 max-w-6xl mx-auto space-y-3 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-2 lg:gap-3">
         <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500/20 to-purple-500/20">
@@ -288,7 +288,7 @@ export function NerveClient() {
 
       {/* Overview Tab */}
       {activeTab === "overview" && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           {/* Topics */}
           {bus?.topics && bus.topics.length > 0 && (
             <div className="bg-card border border-border rounded-xl p-5">
@@ -456,7 +456,7 @@ export function NerveClient() {
 
       {/* Subscriptions Tab */}
       {activeTab === "subscriptions" && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           {/* Add Subscription */}
           <div className="bg-card border border-border rounded-xl p-5">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
@@ -538,7 +538,7 @@ export function NerveClient() {
 
       {/* Nodes Tab */}
       {activeTab === "nodes" && (
-        <div className="space-y-6">
+        <div className="space-y-3 lg:space-y-6">
           {/* Register Node */}
           <div className="bg-card border border-border rounded-xl p-5">
             <h3 className="font-semibold mb-4 flex items-center gap-2">
