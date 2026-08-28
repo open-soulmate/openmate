@@ -99,7 +99,7 @@ export function KbSharingClient() {
       {showCreate && (
         <div className="p-4 border rounded-lg bg-card space-y-4">
           <h3 className="font-medium">{t('kbSharing.createTitle', 'Create Sharing Request')}</h3>
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-2 lg:gap-4">
             <div>
               <label className="text-xs lg:text-sm font-medium mb-1 block">{t('kbSharing.kbId', 'Knowledge Base ID')}</label>
               <input value={newKbId} onChange={(e) => setNewKbId(e.target.value)} className="w-full px-3 py-2 border rounded-md bg-background" placeholder="kb-xxx" />
@@ -118,7 +118,7 @@ export function KbSharingClient() {
         </div>
       )}
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 lg:gap-4">
         <div className="flex gap-2">
           {['', 'pending', 'approved', 'rejected'].map((s) => (
             <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-md text-xs lg:text-sm ${filter === s ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'}`}>

@@ -1096,7 +1096,7 @@ export function CortexClient() {
                   <BarChart3 size={15} className="text-primary" />
                   {t('cortex.quality.report')}
                 </h3>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-4">
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4 mb-4">
                   <div className="text-center rounded-lg bg-background p-3">
                     <p className="text-xl lg:text-2xl font-bold text-primary">{qualityReport.total}</p>
                     <p className="text-xs text-muted-foreground">{t('cortex.text60')}</p>
@@ -1149,7 +1149,7 @@ export function CortexClient() {
                 )}
 
                 {/* Top / Bottom */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:gap-4">
                   {qualityReport.top_5 && qualityReport.top_5.length > 0 && (
                     <div>
                       <p className="text-xs font-medium text-emerald-500 mb-2">🏆 {t('cortex.quality.topQuality')}</p>

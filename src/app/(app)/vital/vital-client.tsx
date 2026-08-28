@@ -339,7 +339,7 @@ export function VitalClient() {
           <div className="space-y-3 lg:space-y-6">
             {/* Resource Gauges */}
             <Section title={t("vital.resourceUsage")} icon={Server}>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:gap-4">
                 <div className="rounded-xl border border-border bg-card p-4 space-y-3">
                   <GaugeBar value={metrics.cpu_percent || 0} label={t("vital.cpuUsage")} color="blue" />
                   <GaugeBar value={metrics.memory_percent || 0} label={t("vital.memoryUsage")} color="purple" detail={`${((metrics.memory_used_mb || 0) / 1024).toFixed(1)} / ${((metrics.memory_total_mb || 0) / 1024).toFixed(1)} GB`} />
@@ -856,7 +856,7 @@ function MiniChart({ data, series, height = 160 }: {
       </svg>
 
       {/* Legend */}
-      <div className="flex items-center gap-4 justify-center">
+      <div className="flex items-center gap-2 lg:gap-4 justify-center">
         {series.map(s => (
           <div key={s.key} className="flex items-center gap-1.5">
             <div className="w-3 h-0.5 rounded-full" style={{ backgroundColor: s.color }} />

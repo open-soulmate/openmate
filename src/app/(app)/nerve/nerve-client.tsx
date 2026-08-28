@@ -245,7 +245,7 @@ export function NerveClient() {
       </div>
 
       {/* Stats Bar */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3 sm:gap-2 lg:gap-4">
         {[
           { label: t('nerve.t93835'), value: bus?.total_events ?? 0, icon: MessageSquare, color: "blue" },
           { label: t('nerve.t23323'), value: bus?.total_nodes ?? 0, icon: Server, color: "purple" },
@@ -310,7 +310,7 @@ export function NerveClient() {
           )}
 
           {/* Quick Actions */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-2 lg:gap-4">
             <button
               onClick={() => setActiveTab("publish")}
               className="bg-card border border-border rounded-xl p-5 text-left hover:border-blue-500/30 hover:bg-blue-500/5 transition-all group"

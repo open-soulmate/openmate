@@ -188,7 +188,7 @@ export function PulseClient() {
       <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
             <StatCard icon={Heart} label={t("pulse.signals") || t('pulse.text9')} value={String(stats.total_signals)}
               sub={`${stats.by_status.active || 0} ${t("pulse.active") || t('pulse.active')}`} color="text-red-500" bg="bg-red-500/10" />
             <StatCard icon={Zap} label={t("pulse.totalTicks") || t('pulse.text11')} value={String(stats.total_ticks)}
@@ -266,7 +266,7 @@ export function PulseClient() {
                               {TYPE_LABELS[s.signal_type] || s.signal_type}
                             </span>
                           </div>
-                          <div className="flex items-center gap-4 mt-1 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-2 lg:gap-4 mt-1 text-xs text-muted-foreground">
                             <span>{t("pulse.interval") || t('pulse.text19')}: {formatMs(s.interval_ms)}</span>
                             <span>{t("pulse.fired") || t('pulse.fired')}: {s.fire_count}{s.max_fires > 0 ? `/${s.max_fires}` : ""}</span>
                             <span>{t("pulse.drift") || t('pulse.text20')}: {formatMs(s.drift_correction)}</span>

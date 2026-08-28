@@ -292,7 +292,7 @@ export function ImmuneClient() {
       {/* Overview Tab */}
       {activeTab === "overview" && (
         <div className="space-y-3 lg:space-y-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
             {[
               { label: t('immune.auditRules'), value: String(modStats.patterns ?? 0), icon: Eye },
               { label: t('immune.t24575'), value: String((acStats.blacklist_count as number) ?? 0), icon: Ban },
@@ -654,7 +654,7 @@ export function ImmuneClient() {
       {activeTab === "intrusion" && (
         <div className="space-y-3 lg:space-y-6">
           {/* Stats row */}
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 lg:gap-4">
             {[
               { label: "Inspected", value: String((intrusionStats?.total_inspected as number) ?? 0), icon: Eye },
               { label: "Threats", value: String((intrusionStats?.total_threats as number) ?? 0), icon: AlertTriangle },

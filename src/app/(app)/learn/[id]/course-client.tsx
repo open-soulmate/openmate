@@ -90,7 +90,7 @@ export function CourseClient({ courseId }: { courseId: string }) {
 
   if (!course) {
     return (
-      <div className="flex h-full flex-col items-center justify-center gap-4">
+      <div className="flex h-full flex-col items-center justify-center gap-2 lg:gap-4">
         <p className="text-muted-foreground">{t("learn.courseNotFound") || "Course not found"}</p>
         <Link href="/learn" className="text-xs lg:text-sm text-primary hover:underline">
           ← {t("learn.backToCourses") || "Back to courses"}

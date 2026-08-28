@@ -434,7 +434,7 @@ export function BenchmarkClient() {
                           style={{ width: `${Math.max(pct, 1)}%` }}
                         />
                       </div>
-                      <div className="flex items-center gap-4 text-xs">
+                      <div className="flex items-center gap-2 lg:gap-4 text-xs">
                         <span className={`font-mono font-medium ${getLatencyColor(item.avg_ms)}`}>
                           {formatMs(item.avg_ms)}
                         </span>
@@ -458,7 +458,7 @@ export function BenchmarkClient() {
                   const item = comparison.find(c => c.organ === expandedOrgan)!;
                   return (
                     <div className="ml-11 rounded-lg border border-border bg-muted/30 p-4">
-                      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 text-xs">
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4 text-xs">
                         <div>
                           <span className="text-muted-foreground">{t("benchmark.minLatency")}</span>
                           <p className="font-mono font-medium">{formatMs(item.min_ms)}</p>

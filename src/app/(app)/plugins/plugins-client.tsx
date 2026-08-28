@@ -436,7 +436,7 @@ export function PluginsClient() {
             )}
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 lg:gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((plugin) => (
               <PluginCard
                 key={plugin.id}

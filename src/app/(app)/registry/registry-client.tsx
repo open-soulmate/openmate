@@ -236,7 +236,7 @@ export function RegistryClient() {
       {/* Component List */}
       <div className="flex-1 overflow-y-auto p-3 lg:p-6">
         {viewMode === "grid" ? (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+          <div className="grid gap-2 lg:gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
             {filtered.map((comp) => {
               const hs = getHealthStatus(comp.id);
               const isExpanded = expandedId === comp.id;
@@ -336,7 +336,7 @@ export function RegistryClient() {
                   )}
                   onClick={() => setExpandedId(isExpanded ? null : comp.id)}
                 >
-                  <div className="flex items-center gap-4 px-4 py-3">
+                  <div className="flex items-center gap-2 lg:gap-4 px-4 py-3">
                     <span className="text-xl">{comp.emoji}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
@@ -364,7 +364,7 @@ export function RegistryClient() {
 
                   {isExpanded && (
                     <div className="border-t border-border px-4 py-3 space-y-2">
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-2 gap-2 lg:gap-4">
                         <div>
                           <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider mb-1">Capabilities</div>
                           <div className="flex flex-wrap gap-1">

@@ -199,7 +199,7 @@ export function SystemOverviewClient() {
 
         {/* Resource Metrics */}
         {metrics && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 lg:gap-4">
             <MetricBar label={t("system.cpu")} value={metrics.cpu_percent} max={100} icon={Cpu} color="text-blue-500" unit="%" />
             <MetricBar label={t("system.memory")} value={metrics.memory.used_mb} max={metrics.memory.total_mb} icon={MemoryStick} color="text-emerald-500" unit=" MB" />
             <MetricBar label={t("system.disk")} value={metrics.disk.used_gb} max={metrics.disk.total_gb} icon={HardDrive} color="text-violet-500" unit=" GB" />
@@ -208,7 +208,7 @@ export function SystemOverviewClient() {
 
         {/* Quick Stats */}
         {data && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
               <div className="flex items-center gap-2 mb-1">
                 <Database size={14} className="text-blue-500" />

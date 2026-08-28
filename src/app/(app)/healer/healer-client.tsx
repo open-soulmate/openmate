@@ -192,7 +192,7 @@ export function HealerClient() {
       <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {/* Stats Cards */}
         {health && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
               <span className="text-xs text-muted-foreground">{t("healer.monitoredOrgans")}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.monitored_organs || 0}</p>
@@ -235,7 +235,7 @@ export function HealerClient() {
               </div>
               <span className="text-xs text-muted-foreground">{cycleResult.elapsed_seconds}s</span>
             </div>
-            <div className="mt-2 flex gap-4 text-xs lg:text-sm">
+            <div className="mt-2 flex gap-2 lg:gap-4 text-xs lg:text-sm">
               <span>✅ {t("healer.cycleHealthy", { count: cycleResult.healthy })}</span>
               <span className="text-red-500">❌ {t("healer.cycleUnhealthy", { count: cycleResult.unhealthy })}</span>
               <span className="text-teal-500">💊 {t("healer.cycleHealed", { count: cycleResult.healed })}</span>
@@ -355,7 +355,7 @@ export function HealerClient() {
         {/* Stats Tab */}
         {tab === "stats" && stats && (
           <div className="space-y-3 lg:space-y-6">
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">{t("healer.totalDiagnosesLabel")}</span>
                 <p className="text-xl lg:text-2xl font-bold">{stats.total_diagnoses}</p>

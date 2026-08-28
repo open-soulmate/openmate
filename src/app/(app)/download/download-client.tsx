@@ -160,7 +160,7 @@ export function DownloadClient() {
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Zap className="w-4 h-4" /> {t('download.download')}</>}
             </button>
           </div>
-          <div className="flex items-center gap-4 mt-3 text-xs text-muted-foreground">
+          <div className="flex items-center gap-2 lg:gap-4 mt-3 text-xs text-muted-foreground">
             <span className="flex items-center gap-1"><Link className="w-3 h-3" /> HTTP/FTP</span>
             <span className="flex items-center gap-1"><Magnet className="w-3 h-3" /> BT/Magnet</span>
             <span className="flex items-center gap-1"><Video className="w-3 h-3" /> YouTube/Bilibili</span>
@@ -225,7 +225,7 @@ export function DownloadClient() {
                       </div>
                     </div>
                   )}
-                  <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 lg:gap-4 text-xs text-muted-foreground">
                     {task.totalBytes > 0 && <span>{formatBytes(task.downloadedBytes)} / {formatBytes(task.totalBytes)}</span>}
                     {task.speed > 0 && <span className="flex items-center gap-1"><ArrowDown className="w-3 h-3" />{formatSpeed(task.speed)}</span>}
                     {task.eta > 0 && <span>ETA: {formatEta(task.eta)}</span>}

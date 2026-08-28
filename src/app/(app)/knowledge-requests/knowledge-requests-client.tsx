@@ -118,7 +118,7 @@ export function KnowledgeRequestsClient() {
         </div>
       )}
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-2 lg:gap-4">
         <div className="flex gap-2">
           {['', 'pending', 'approved', 'rejected'].map((s) => (
             <button key={s} onClick={() => setFilter(s)} className={`px-3 py-1.5 rounded-md text-xs lg:text-sm ${filter === s ? 'bg-primary text-primary-foreground' : 'bg-secondary hover:bg-secondary/80'}`}>

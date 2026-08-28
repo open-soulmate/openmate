@@ -222,7 +222,7 @@ export function GlandClient() {
         {activeTab === "overview" && (
           <div className="space-y-3 lg:space-y-6">
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
               {[
                 { label: "Providers", value: health?.providers.total ?? 0, icon: Server, color: "text-blue-400", bg: "from-blue-500/20 to-blue-600/10" },
                 { label: t("gland.enabled") || "Enabled", value: health?.providers.enabled ?? 0, icon: CheckCircle, color: "text-green-400", bg: "from-green-500/20 to-green-600/10" },
