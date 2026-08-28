@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { useMediaQuery } from "@/hooks/use-mobile";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   Link2, RefreshCw, Plus, Trash2, Play, Pause,
   Webhook, Globe, Plug, Activity, Settings, Send,
@@ -46,6 +48,7 @@ export function LinkClient() {
   const [events, setEvents] = useState<LinkEvent[]>([]);
   const [showEvents, setShowEvents] = useState(false);
   const [eventFilter, setEventFilter] = useState("");
+  const isMobile = useMediaQuery("(max-width: 1023px)");
   const apiBase = getApiBaseUrl();
 
   const fetchHealth = useCallback(async () => {
@@ -155,34 +158,34 @@ export function LinkClient() {
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      <div className="flex items-center justify-between border-b border-border px-6 py-4">
-        <div className="flex items-center gap-3">
-          <Link2 size={20} className="text-teal-500" />
-          <h1 className="text-lg font-semibold">{t("link.title") || "Link · Integration Gateway"}</h1>
-          <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-xs font-medium text-teal-500">
+      <div className="flex items-center justify-between border-b border-border px-4 md:px-6 py-3 md:py-4">
+        <div className="flex items-center gap-2 md:gap-3">
+          <Link2 size={18} className="text-teal-500" />
+          <h1 className="text-base md:text-lg font-semibold">{t("link.title") || "Link · Integration Gateway"}</h1>
+          <span className="rounded-full bg-teal-500/10 px-2 py-0.5 text-[10px] md:text-xs font-medium text-teal-500">
             {t("link.t69735")}
           </span>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 md:gap-2">
           <button onClick={() => setShowEvents(!showEvents)}
             className={cn(
-              "flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-sm transition-colors",
+              "flex items-center gap-1 md:gap-1.5 rounded-lg px-2.5 md:px-3 py-1.5 text-xs md:text-sm transition-colors",
               showEvents ? "bg-teal-500 text-white" : "border border-border hover:bg-muted"
             )}>
-            <Activity size={14} /> {t("link.t65547")}
+            <Activity size={14} /> <span className="hidden sm:inline">{t("link.t65547")}</span>
           </button>
           <button onClick={() => setShowCreate(true)}
-            className="flex items-center gap-1.5 rounded-lg bg-teal-500 px-3 py-1.5 text-sm text-white hover:bg-teal-600">
-            <Plus size={14} /> {t("link.t73119")}
+            className="flex items-center gap-1 md:gap-1.5 rounded-lg bg-teal-500 px-2.5 md:px-3 py-1.5 text-xs md:text-sm text-white hover:bg-teal-600">
+            <Plus size={14} /> <span className="hidden sm:inline">{t("link.t73119")}</span>
           </button>
           <button onClick={() => { fetchHealth(); fetchConnectors(); }}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm hover:bg-muted">
+            className="flex items-center gap-1 md:gap-1.5 rounded-lg border border-border px-2.5 md:px-3 py-1.5 text-xs md:text-sm hover:bg-muted">
             <RefreshCw size={14} />
           </button>
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto p-4 md:p-6 space-y-4 md:space-y-6">
         {/* Stats */}
         {health && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -265,8 +268,14 @@ export function LinkClient() {
         )}
 
         <div className="flex gap-6">
-          {/* Connector List */}
-          <div className="w-80 space-y-3">
+          {/* Connector List — full width on mobile, w-80 on desktop */}
+          <div className={`${isMobile ? (selected ? "hidden" : "w-full") : "w-80"} space-y-3`}>
+            {isMobile && (
+              <div className="flex items-center justify-between pb-2 border-b border-border">
+                <h3 className="text-sm font-medium">{t("link.connectors") || "Connectors"}</h3>
+                <span className="text-xs text-muted-foreground">{connectors.length}</span>
+              </div>
+            )}
             {connectors.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Plug size={40} className="mb-3 opacity-30" />
@@ -296,44 +305,91 @@ export function LinkClient() {
             })}
           </div>
 
-          {/* Detail Panel */}
-          {selected && (
-            <div className="flex-1 space-y-4">
-              <div className="flex items-center justify-between">
-                <h3 className="font-semibold">{selected.name}</h3>
-                <div className="flex gap-2">
-                  <button onClick={() => handleTest(selected.connector_id)}
-                    className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-                    <Activity size={12} /> {t("link.test")}
-                  </button>
-                  {(selected.type === "webhook_out" || selected.type === "rest_api") && (
-                    <button onClick={() => handleSend(selected.connector_id)}
-                      className="flex items-center gap-1 rounded-lg border border-teal-500/30 px-3 py-1.5 text-xs text-teal-600 hover:bg-teal-500/10">
-                      <Send size={12} /> {t("link.send")}
-                    </button>
+          {/* Detail Panel — Sheet on mobile, inline on desktop */}
+          {isMobile ? (
+            <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
+              <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col">
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  {selected && (
+                    <>
+                      <div className="flex items-center justify-between">
+                        <h3 className="font-semibold">{selected.name}</h3>
+                        <div className="flex gap-2">
+                          <button onClick={() => handleTest(selected.connector_id)}
+                            className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
+                            <Activity size={12} /> {t("link.test")}
+                          </button>
+                          {(selected.type === "webhook_out" || selected.type === "rest_api") && (
+                            <button onClick={() => handleSend(selected.connector_id)}
+                              className="flex items-center gap-1 rounded-lg border border-teal-500/30 px-3 py-1.5 text-xs text-teal-600 hover:bg-teal-500/10">
+                              <Send size={12} /> {t("link.send")}
+                            </button>
+                          )}
+                          <button onClick={() => handleDelete(selected.connector_id)}
+                            className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
+                            <Trash2 size={12} /> {t("link.delete")}
+                          </button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4 text-sm">
+                        <div><span className="text-muted-foreground">{t("link.t10867")}</span> {selected.type}</div>
+                        <div><span className="text-muted-foreground">{t("link.t50013")}</span> {selected.status}</div>
+                        <div className="col-span-2"><span className="text-muted-foreground">Endpoint:</span> <span className="font-mono text-xs">{selected.endpoint}</span></div>
+                      </div>
+                      <div>
+                        <label className="text-xs text-muted-foreground">{t("link.t90867")}</label>
+                        <textarea value={testPayload} onChange={(e) => setTestPayload(e.target.value)}
+                          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono min-h-[80px] mt-1" />
+                      </div>
+                      {testResult && (
+                        <div className="rounded-lg border border-border bg-muted p-3">
+                          <pre className="text-xs">{JSON.stringify(testResult, null, 2)}</pre>
+                        </div>
+                      )}
+                    </>
                   )}
-                  <button onClick={() => handleDelete(selected.connector_id)}
-                    className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
-                    <Trash2 size={12} /> {t("link.delete")}
-                  </button>
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div><span className="text-muted-foreground">{t("link.t10867")}</span> {selected.type}</div>
-                <div><span className="text-muted-foreground">{t("link.t50013")}</span> {selected.status}</div>
-                <div className="col-span-2"><span className="text-muted-foreground">Endpoint:</span> <span className="font-mono text-xs">{selected.endpoint}</span></div>
-              </div>
-              <div>
-                <label className="text-xs text-muted-foreground">{t("link.t90867")}</label>
-                <textarea value={testPayload} onChange={(e) => setTestPayload(e.target.value)}
-                  className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono min-h-[80px] mt-1" />
-              </div>
-              {testResult && (
-                <div className="rounded-lg border border-border bg-muted p-3">
-                  <pre className="text-xs">{JSON.stringify(testResult, null, 2)}</pre>
+              </SheetContent>
+            </Sheet>
+          ) : (
+            selected && (
+              <div className="flex-1 space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="font-semibold">{selected.name}</h3>
+                  <div className="flex gap-2">
+                    <button onClick={() => handleTest(selected.connector_id)}
+                      className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
+                      <Activity size={12} /> {t("link.test")}
+                    </button>
+                    {(selected.type === "webhook_out" || selected.type === "rest_api") && (
+                      <button onClick={() => handleSend(selected.connector_id)}
+                        className="flex items-center gap-1 rounded-lg border border-teal-500/30 px-3 py-1.5 text-xs text-teal-600 hover:bg-teal-500/10">
+                        <Send size={12} /> {t("link.send")}
+                      </button>
+                    )}
+                    <button onClick={() => handleDelete(selected.connector_id)}
+                      className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
+                      <Trash2 size={12} /> {t("link.delete")}
+                    </button>
+                  </div>
                 </div>
-              )}
-            </div>
+                <div className="grid grid-cols-2 gap-4 text-sm">
+                  <div><span className="text-muted-foreground">{t("link.t10867")}</span> {selected.type}</div>
+                  <div><span className="text-muted-foreground">{t("link.t50013")}</span> {selected.status}</div>
+                  <div className="col-span-2"><span className="text-muted-foreground">Endpoint:</span> <span className="font-mono text-xs">{selected.endpoint}</span></div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground">{t("link.t90867")}</label>
+                  <textarea value={testPayload} onChange={(e) => setTestPayload(e.target.value)}
+                    className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono min-h-[80px] mt-1" />
+                </div>
+                {testResult && (
+                  <div className="rounded-lg border border-border bg-muted p-3">
+                    <pre className="text-xs">{JSON.stringify(testResult, null, 2)}</pre>
+                  </div>
+                )}
+              </div>
+            )
           )}
         </div>
 
