@@ -757,7 +757,7 @@ export function ChatClient() {
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto">
               <h2 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-8">{t("chat.welcomeMessage")}</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3 w-full">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-3 w-full">
                 {[
                   { icon: '📝', label: t('chat.quickReqDoc'), desc: t('chat.quickReqDocDesc') },
                   { icon: '🎨', label: t('chat.quickPrototype'), desc: t('chat.quickPrototypeDesc') },
