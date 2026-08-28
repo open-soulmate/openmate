@@ -375,7 +375,7 @@ export function EchoClient() {
               {/* Template Detail / Send Panel — Sheet on mobile, inline on desktop */}
               {isMobile ? (
                 <Sheet open={!!selectedTemplate} onOpenChange={(open) => { if (!open) setSelectedTemplate(null); }}>
-                  <SheetContent side="right" className="w-full sm:w-96 p-0 flex flex-col">
+                  <SheetContent side="right" className="w-full p-0 flex flex-col">
                     <div className="flex-1 overflow-y-auto p-4 space-y-4">
                       {selectedTemplate && (
                         <>
