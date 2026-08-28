@@ -147,7 +147,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
 
   if (error && !job) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4">
+      <div className="flex flex-col items-center justify-center h-full gap-2 lg:gap-4">
         <AlertCircle className="w-12 h-12 text-destructive" />
         <p className="text-muted-foreground">{error}</p>
         <button onClick={() => router.push('/cron')} className="px-4 py-2 rounded-lg border text-xs lg:text-sm hover:bg-muted">
@@ -242,7 +242,7 @@ export function CronDetailClient({ taskId }: { taskId: string }) {
       )}
 
       {/* Info Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4 mb-6">
         <div className="p-4 rounded-xl border bg-card">
           <div className="flex items-center gap-2 mb-1">
             <Calendar className="w-4 h-4 text-muted-foreground" />

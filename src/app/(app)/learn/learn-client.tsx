@@ -498,7 +498,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
             </button>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-2 lg:gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {filtered.map((course) => {
               const cfg = statusConfig[course.status];
               const StatusIcon = cfg.icon;
@@ -796,7 +796,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
               </div>
               <div className="mb-4 text-xl font-bold text-gray-800">{selectedCourse.title}</div>
               <div className="mb-3 text-xs lg:text-sm text-gray-600">{selectedCourse.description}</div>
-              <div className="mb-4 flex items-center gap-4 text-xs text-gray-500">
+              <div className="mb-4 flex items-center gap-2 lg:gap-4 text-xs text-gray-500">
                 <span>📚 {selectedCourse.totalChapters} chapters</span>
                 <span>✅ {selectedCourse.completedChapters} completed</span>
                 <span>📅 {new Date(selectedCourse.updatedAt * 1000).toLocaleDateString("zh-CN")}</span>

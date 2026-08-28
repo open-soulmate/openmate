@@ -250,7 +250,7 @@ export function MetricsClient() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground mb-1">
             {t("metrics.uptime", "Uptime")}
@@ -286,7 +286,7 @@ export function MetricsClient() {
       </div>
 
       {/* System Resources */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-2 lg:gap-4">
         {/* CPU */}
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="text-xs lg:text-sm font-medium mb-3">
@@ -374,7 +374,7 @@ export function MetricsClient() {
       </div>
 
       {/* Top HTTP Endpoints */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:gap-4">
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="text-xs lg:text-sm font-medium mb-3">
             🔥 {t("metrics.topEndpoints", "Top HTTP Endpoints")}

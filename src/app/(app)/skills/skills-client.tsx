@@ -187,7 +187,7 @@ export function SkillsClient() {
           <p className="text-xs lg:text-sm">{t('skills.noSkills')}</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
           {filtered.map(skill => (
             <div key={skill.name} className={`rounded-xl border bg-card p-4 transition-all hover:border-primary/30 ${skill.installed ? 'border-green-500/20' : ''}`}>
               <div className="flex items-start justify-between mb-2">

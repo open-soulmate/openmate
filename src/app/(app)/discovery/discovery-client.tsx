@@ -260,7 +260,7 @@ export function DiscoveryClient() {
         {tab === "scan" && (
           <div className="space-y-3 lg:space-y-6">
             {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
               {[
                 { icon: Cpu, label: "Processes", value: processes.length, color: "cyan" },
                 { icon: Terminal, label: "CLI Tools", value: cliTools.length, color: "emerald" },
@@ -487,7 +487,7 @@ export function DiscoveryClient() {
             )}
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4">
               {/* REST Probe */}
               <div className="rounded-xl border border-border bg-card/30 p-4 space-y-3">
                 <h4 className="font-medium flex items-center gap-2 text-xs lg:text-sm"><Globe className="w-4 h-4 text-blue-400" /> REST Probe</h4>

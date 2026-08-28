@@ -357,7 +357,7 @@ export function MarrowClient() {
         {/* ── Overview Tab ── */}
         {activeTab === "overview" && (
           <div className="space-y-3 lg:space-y-6">
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-4">
               {[
                 { label: t("marrow.totalBackups") || "Total Backups", value: health?.backup.total_backups ?? 0, icon: Archive, color: "text-blue-400", bg: "from-blue-500/20 to-blue-600/10" },
                 { label: t("marrow.totalSize") || "Total Size", value: formatSize(health?.backup.total_size_bytes ?? 0), icon: HardDrive, color: "text-amber-400", bg: "from-amber-500/20 to-amber-600/10" },
@@ -392,7 +392,7 @@ export function MarrowClient() {
             </div>
 
             {/* Quick Actions */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 lg:gap-4">
               <button
                 onClick={() => { setActiveTab("backups"); setShowCreateBackup(true) }}
                 className="p-4 rounded-xl border border-border bg-card hover:border-primary/40 transition-all text-left"

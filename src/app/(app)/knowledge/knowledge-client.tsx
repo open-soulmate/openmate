@@ -184,7 +184,7 @@ export function KnowledgeClient() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-4">
           {filtered.map(item => (
             <div
               key={item.id}

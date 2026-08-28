@@ -121,7 +121,7 @@ export function VisionClient() {
         {stats && (
           <>
             {/* Stats Overview */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("vision.totalGenerated") || "Generated"}</span>
@@ -158,7 +158,7 @@ export function VisionClient() {
                 <Paintbrush size={14} className="text-indigo-500" />
                 {t("vision.backendStatus") || "Backend Status"}
               </h3>
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-2 lg:gap-4">
                 {Object.entries(backends).map(([name, available]) => (
                   <div
                     key={name}
@@ -210,7 +210,7 @@ export function VisionClient() {
                 </span>
               </h3>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4 p-4">
               {outputs.map((f) => (
                 <div key={f.filename} className="rounded-lg border border-border bg-background p-3 space-y-2">
                   <div className="aspect-square rounded bg-muted flex items-center justify-center overflow-hidden">

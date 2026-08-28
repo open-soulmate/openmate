@@ -166,7 +166,7 @@ export function TopologyClient() {
         {stats && (
           <>
             {/* Summary Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
                 <div className="flex items-center justify-between mb-2">
                   <span className="text-xs font-medium text-muted-foreground">{t("topology.totalNodes") || "Nodes"}</span>
@@ -270,7 +270,7 @@ export function TopologyClient() {
               {sortedNodes.map((node) => {
                 const colors = CATEGORY_COLORS[node.category] || CATEGORY_COLORS.system;
                 return (
-                  <div key={node.id} className="flex items-center gap-4 px-5 py-3 hover:bg-muted/30 transition-colors">
+                  <div key={node.id} className="flex items-center gap-2 lg:gap-4 px-5 py-3 hover:bg-muted/30 transition-colors">
                     <span className="text-lg">{node.emoji || "⚙️"}</span>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">

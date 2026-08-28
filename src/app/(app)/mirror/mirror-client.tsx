@@ -265,7 +265,7 @@ export function MirrorClient() {
       <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {/* Stats */}
         {health && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 lg:gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
               <span className="text-xs text-muted-foreground">{t("mirror.t22079") || "Sandboxes"}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.total_sandboxes || 0}</p>
@@ -536,7 +536,7 @@ export function MirrorClient() {
         {tab === "templates" && (
           <div className="space-y-4">
             <h3 className="text-xs lg:text-sm font-medium">{t("mirror.sandboxTemplates") || "Sandbox Templates"}</h3>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
               {templates.map((tpl) => (
                 <div key={tpl.template_id}
                   className={cn(

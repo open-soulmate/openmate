@@ -224,7 +224,7 @@ export function NestClient() {
       <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {/* Stats */}
         {stats && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
               <span className="text-xs text-muted-foreground">{t('nest.text6')}</span>
               <p className="text-xl lg:text-2xl font-bold">{stats.tenants.total_tenants}</p>
@@ -282,7 +282,7 @@ export function NestClient() {
                     </div>
                     <span className="text-xs text-muted-foreground">{formatTime(tenant.created_at)}</span>
                   </div>
-                  <div className="flex gap-4 text-xs text-muted-foreground">
+                  <div className="flex gap-2 lg:gap-4 text-xs text-muted-foreground">
                     <span>NS: {tenant.namespace}</span>
                     <span>{t('nest.status2')} {tenant.status}</span>
                     {tenant.tags.length > 0 && tenant.tags.map((tag) => (

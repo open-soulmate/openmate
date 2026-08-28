@@ -321,7 +321,7 @@ export function WorkflowClient() {
                       {wf.description && (
                         <p className="mb-2 text-xs text-muted-foreground">{wf.description}</p>
                       )}
-                      <div className="flex items-center gap-4 text-[11px] text-muted-foreground">
+                      <div className="flex items-center gap-2 lg:gap-4 text-[11px] text-muted-foreground">
                         <span className="flex items-center gap-1">
                           <Calendar size={11} />
                           {new Date(wf.created_at * 1000).toLocaleDateString()}

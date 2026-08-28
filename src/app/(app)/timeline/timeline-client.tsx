@@ -440,7 +440,7 @@ function EventsList({
 
                     {isExpanded && (
                       <div className="px-3 pb-3 border-t border-border pt-2 space-y-2">
-                        <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                        <div className="flex items-center gap-2 lg:gap-4 text-[10px] text-muted-foreground">
                           <span>ID: {ev.event_id}</span>
                           <span>{t("timeline.timeLabel")} {formatTimestamp(ev.timestamp)}</span>
                           <span>{t("timeline.collectedLabel")} {formatTimestamp(ev.collected_at)}</span>

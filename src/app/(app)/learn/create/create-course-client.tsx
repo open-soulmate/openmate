@@ -414,7 +414,7 @@ export function CreateCourseClient() {
 
           {/* AI Options */}
           {genMode === "ai" && (
-            <section className="grid grid-cols-2 gap-4">
+            <section className="grid grid-cols-2 gap-2 lg:gap-4">
               <div>
                 <label className="mb-2 block text-xs lg:text-sm font-medium">{t("learn.t10672") || "Course"}</label>
                 <select

@@ -238,7 +238,7 @@ export function AiEngineClient() {
       )}
 
       {/* Overview Cards */}
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 lg:gap-4 sm:grid-cols-4">
         <div className="rounded-xl border border-border bg-card p-4">
           <div className="text-xs text-muted-foreground mb-1">{t("aiEngine.totalTasks", "Total Tasks")}</div>
           <div className="text-xl lg:text-2xl font-bold">{engineStatus?.total_tasks ?? 0}</div>

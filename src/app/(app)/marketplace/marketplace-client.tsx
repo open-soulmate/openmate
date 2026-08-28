@@ -243,7 +243,7 @@ export function MarketplaceClient() {
 
       {/* Stats */}
       {stats && (
-        <div className="shrink-0 grid grid-cols-4 gap-4 border-b border-border px-3 lg:px-6 py-2 lg:py-4">
+        <div className="shrink-0 grid grid-cols-4 gap-2 lg:gap-4 border-b border-border px-3 lg:px-6 py-2 lg:py-4">
           <StatCard icon={Package} label={t("marketplace.skillSources") || "Skill Sources"} value={stats.skill_sources} color="text-blue-500" />
           <StatCard icon={Bot} label={t("marketplace.agentSources") || "Agent Sources"} value={stats.agent_sources} color="text-green-500" />
           <StatCard icon={Download} label={t("marketplace.installedSkills") || "Installed Skills"} value={stats.total_skills} color="text-purple-500" />
@@ -261,7 +261,7 @@ export function MarketplaceClient() {
       )}
 
       {/* Tabs + Search */}
-      <div className="shrink-0 flex items-center gap-4 border-b border-border px-3 lg:px-6 py-2">
+      <div className="shrink-0 flex items-center gap-2 lg:gap-4 border-b border-border px-3 lg:px-6 py-2">
         <div className="flex gap-1">
           <TabButton active={activeTab === "skills"} onClick={() => setActiveTab("skills")} icon={Package} label={t("marketplace.skillSources") || "Skill Sources"} count={skillSources.length} />
           <TabButton active={activeTab === "agents"} onClick={() => setActiveTab("agents")} icon={Bot} label={t("marketplace.agentSources") || "Agent Sources"} count={agentSources.length} />
@@ -360,7 +360,7 @@ function SourceGrid({ sources, syncing, onSync, type }: { sources: SourceItem[];
   }
 
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-2 lg:gap-4 sm:grid-cols-2 lg:grid-cols-3">
       {sources.map((source) => (
         <SourceCard key={source.id} source={source} syncing={syncing} onSync={onSync} />
       ))}

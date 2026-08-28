@@ -245,7 +245,7 @@ export function EchoClient() {
       <div className="flex-1 overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
         {/* Stats */}
         {health && (
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-2 lg:gap-4">
             <div className="rounded-xl border border-border bg-card p-4">
               <span className="text-xs text-muted-foreground">{t("echo.t38907") || "Total Messages"}</span>
               <p className="text-xl lg:text-2xl font-bold">{health.total_messages || 0}</p>
@@ -659,7 +659,7 @@ export function EchoClient() {
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2 lg:gap-4">
               {channels.map((ch) => {
                 const healthInfo = channelHealth?.channels?.find((h: any) => h.channel === ch.channel);
                 return (

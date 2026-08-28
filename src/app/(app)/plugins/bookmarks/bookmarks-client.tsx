@@ -315,7 +315,7 @@ export function BookmarksClient() {
                 <button onClick={openAdd} className="mt-3 text-violet-400 text-xs lg:text-sm hover:underline">Add your first bookmark</button>
               </div>
             ) : viewMode === "grid" ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 lg:gap-4">
                 {bookmarks.map(bm => (
                   <div key={bm.id} className="group bg-zinc-900/50 border border-zinc-800 rounded-xl p-4 hover:border-zinc-700 transition">
                     <div className="flex items-start gap-2 lg:gap-3 mb-3">
@@ -379,7 +379,7 @@ export function BookmarksClient() {
             /* Stats Tab */
             stats ? (
               <div className="space-y-3 lg:space-y-6 max-w-4xl">
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 lg:gap-4">
                   {[
                     { label: "Total Bookmarks", value: stats.total_bookmarks, icon: Bookmark, color: "violet" },
                     { label: "Favorites", value: stats.favorites, icon: Star, color: "yellow" },

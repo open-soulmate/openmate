@@ -227,7 +227,7 @@ export function SystemDoctorClient() {
         {activeTab === 'overview' && report && (
           <>
             {/* Score Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
               <div className="rounded-xl border border-border bg-card p-4">
                 <span className="text-xs text-muted-foreground">Health Score</span>
                 <p className="text-2xl lg:text-3xl font-bold mt-1">{report.health_score}<span className="text-base text-muted-foreground">/100</span></p>
@@ -452,7 +452,7 @@ export function SystemDoctorClient() {
               <p className="text-xs text-muted-foreground mb-4">
                 Clean up temporary files, old logs, and cache data older than 7 days.
               </p>
-              <div className="flex items-center gap-4 mb-4">
+              <div className="flex items-center gap-2 lg:gap-4 mb-4">
                 <label className="flex items-center gap-2 text-xs lg:text-sm cursor-pointer">
                   <input
                     type="checkbox"
