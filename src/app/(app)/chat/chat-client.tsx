@@ -617,6 +617,7 @@ export function ChatClient() {
     setSelectedAgent(agent);
     setDeleteConfirm(null);
     setEditingTitle(false);
+    setShowCheckpoints(false); // close checkpoints when switching sessions
     loadHistory(session.id);
     // Update store for right panel workspace details tab
     setSessionDetails({
@@ -732,7 +733,7 @@ export function ChatClient() {
             {selectedAgent && <span className="text-[10px] lg:text-xs text-muted-foreground px-1 lg:px-1.5 py-0.5 rounded bg-muted shrink-0 truncate max-w-[80px] lg:max-w-none">{selectedAgent.name}</span>}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); if (isMobile) { setShowCheckpoints(false); if (sidebarOpen) toggleSidebar(); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
+            <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); setShowCheckpoints(false); if (isMobile && sidebarOpen) toggleSidebar(); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
               <PanelLeft className="w-4 h-4 scale-x-[-1]" />
             </button>
           </div>
@@ -895,7 +896,7 @@ export function ChatClient() {
                 <ChevronDown className="w-3 h-3 hidden lg:inline" />
               </button>
 
-              <button onClick={() => { const next = !showCheckpoints; setShowCheckpoints(next); if (next && isMobile) { setRightPanelOpen(false); } }} className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors relative">
+              <button onClick={() => { const next = !showCheckpoints; setShowCheckpoints(next); if (next) { setRightPanelOpen(false); } }} className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors relative">
                 <RotateCcw className="w-4 h-4" />
                 <span className="hidden lg:inline">{t("chat.history", "历史")}</span>
                 {checkpoints.length > 0 && (
