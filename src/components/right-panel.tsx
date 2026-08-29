@@ -721,17 +721,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
   // ── Toggle button (rendered outside panel) ───────────────────────
 
   if (!open) {
-    return (
-      <Button
-        variant="ghost"
-        size="icon-sm"
-        onClick={onToggle}
-        className="fixed right-2 top-12 z-30 md:static md:right-auto md:top-auto"
-        title="Open workspace panel"
-      >
-        <PanelRightOpen className="w-4 h-4" />
-      </Button>
-    );
+    return null;
   }
 
   return (

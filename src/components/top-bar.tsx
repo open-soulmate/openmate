@@ -13,10 +13,9 @@ import { HealthWidget } from "@/components/health-widget";
 
 interface TopBarProps {
   eventCount?: number;
-  pageTitle?: React.ReactNode;
 }
 
-export function TopBar({ eventCount = 0, pageTitle }: TopBarProps) {
+export function TopBar({ eventCount = 0 }: TopBarProps) {
   const { t } = useTranslation();
   const pathname = usePathname();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -47,10 +46,6 @@ export function TopBar({ eventCount = 0, pageTitle }: TopBarProps) {
 
   return (
     <div className="flex h-12 shrink-0 items-center justify-end border-b border-border bg-background px-3">
-      {/* Left: page title on mobile only (desktop has sidebar) */}
-      <div className="shrink-0 min-w-0 lg:hidden">
-        {pageTitle || <span className="text-sm font-medium">OpenMate</span>}
-      </div>
 
       {/* Right: scrollable utility icons */}
       <div
