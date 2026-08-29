@@ -529,61 +529,178 @@ export function LearnClient() {
     <PageLayout title="Learn" icon={<GraduationCap size={16} className="text-primary" />}>
       <div className="h-full overflow-y-auto">
         {!selectedCourseId ? (
-          /* No course selected — show stats + grid */
-          <div className="p-3 lg:p-6">
-            {/* Stats */}
-            <div className="grid grid-cols-3 gap-2 lg:gap-4 mb-4 lg:mb-6">
-              <div className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border bg-card p-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500/10 text-blue-500">
-                  <CheckCircle2 size={16} />
+          /* No course selected — dashboard overview */
+          <div className="p-3 lg:p-6 space-y-4 lg:space-y-6">
+            {/* ── Continue Learning ────────────────────────── */}
+            {(() => {
+              const inProgress = courses.filter(c => c.status === 'in_progress').sort((a, b) => b.updatedAt - a.updatedAt);
+              const recent = inProgress[0] ?? courses.filter(c => c.status === 'reviewing').sort((a, b) => b.updatedAt - a.updatedAt)[0];
+              if (!recent) return null;
+              const prog = recent.totalChapters > 0 ? Math.round((recent.completedChapters / recent.totalChapters) * 100) : 0;
+              return (
+                <div className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-transparent p-4 lg:p-5">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-[10px] uppercase tracking-wider text-primary font-medium mb-1">
+                        {t('learn.continueLearning') || '继续学习'}
+                      </p>
+                      <h3 className="text-sm lg:text-base font-semibold truncate mb-1">{recent.title}</h3>
+                      <p className="text-xs text-muted-foreground line-clamp-1 mb-3">{recent.description}</p>
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1">
+                          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                            <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${prog}%` }} />
+                          </div>
+                        </div>
+                        <span className="text-[10px] text-muted-foreground shrink-0">
+                          {recent.completedChapters}/{recent.totalChapters} ch. · {prog}%
+                        </span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => setSelectedCourseId(recent.id)}
+                      className="shrink-0 inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-2 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                    >
+                      <ChevronRight size={14} />
+                      {t('learn.continue') || '继续'}
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <p className="text-base lg:text-lg font-semibold">{courses.reduce((s, c) => s + c.completedChapters, 0)}</p>
-                  <p className="text-[10px] text-muted-foreground">{t('learn.chaptersLearned') || 'Learned'}</p>
-                </div>
+              );
+            })()}
+
+            {/* ── Stats Row ────────────────────────────────── */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 lg:gap-3">
+              <div className="rounded-lg border border-border bg-card p-3">
+                <p className="text-xl lg:text-2xl font-bold">{courses.length}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t('learn.totalCourses') || '全部课程'}</p>
               </div>
-              <div className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border bg-card p-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-amber-500/10 text-amber-500">
-                  <Clock size={16} />
-                </div>
-                <div>
-                  <p className="text-base lg:text-lg font-semibold">{courses.reduce((s, c) => s + c.totalChapters - c.completedChapters, 0)}</p>
-                  <p className="text-[10px] text-muted-foreground">{t('learn.chaptersPending') || 'Pending'}</p>
-                </div>
+              <div className="rounded-lg border border-border bg-card p-3">
+                <p className="text-xl lg:text-2xl font-bold text-blue-500">{courses.reduce((s, c) => s + c.completedChapters, 0)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t('learn.chaptersLearned') || '已学章节'}</p>
               </div>
-              <div className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border bg-card p-3">
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-green-500/10 text-green-500">
-                  <RotateCcw size={16} />
-                </div>
-                <div>
-                  <p className="text-base lg:text-lg font-semibold">{courses.filter((c) => c.status === 'reviewing').length}</p>
-                  <p className="text-[10px] text-muted-foreground">{t('learn.coursesReviewing') || 'Reviewing'}</p>
-                </div>
+              <div className="rounded-lg border border-border bg-card p-3">
+                <p className="text-xl lg:text-2xl font-bold text-amber-500">{courses.reduce((s, c) => s + c.totalChapters - c.completedChapters, 0)}</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t('learn.chaptersPending') || '待学章节'}</p>
+              </div>
+              <div className="rounded-lg border border-border bg-card p-3">
+                <p className="text-xl lg:text-2xl font-bold text-green-500">
+                  {courses.reduce((s, c) => s + c.totalChapters, 0) > 0
+                    ? Math.round((courses.reduce((s, c) => s + c.completedChapters, 0) / courses.reduce((s, c) => s + c.totalChapters, 0)) * 100)
+                    : 0}%
+                </p>
+                <p className="text-[10px] text-muted-foreground mt-0.5">{t('learn.completionRate') || '完成率'}</p>
               </div>
             </div>
 
-            {/* Quick actions */}
-            <div className="flex gap-2 mb-4">
-              <button
-                onClick={() => setShowPolicyCard(true)}
-                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent"
-              >
-                <FileText size={14} />
-                {t('learn.policyCard') || 'Policy'}
-              </button>
+            {/* ── Quick Actions ────────────────────────────── */}
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                {t('learn.allCourses') || '全部课程'} ({courses.length})
+              </h3>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => setShowPolicyCard(true)}
+                  className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2.5 text-[11px] text-muted-foreground hover:bg-accent"
+                >
+                  <FileText size={12} /> {t('learn.policyCard') || 'Policy'}
+                </button>
+              </div>
             </div>
 
-            {/* Empty state */}
-            {courses.length === 0 && (
-              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+            {/* ── Course Cards Grid ────────────────────────── */}
+            {courses.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <BookOpen size={48} className="mb-4 opacity-30" />
-                <p className="text-sm">{t('learn.noCourses') || 'No courses yet'}</p>
+                <p className="text-sm">{t('learn.noCourses') || '暂无课程'}</p>
                 <button
                   onClick={() => { resetForm(); setShowCreateModal(true); }}
                   className="mt-2 text-xs text-primary hover:underline"
                 >
-                  {t('learn.generateFirst') || 'Generate your first course →'}
+                  {t('learn.generateFirst') || '生成你的第一门课程 →'}
                 </button>
+              </div>
+            ) : (
+              <div className="grid gap-2 lg:gap-3 sm:grid-cols-2 xl:grid-cols-3">
+                {courses.map((course) => {
+                  const cfg = statusConfig[course.status];
+                  const prog = course.totalChapters > 0 ? Math.round((course.completedChapters / course.totalChapters) * 100) : 0;
+                  return (
+                    <button
+                      key={course.id}
+                      onClick={() => setSelectedCourseId(course.id)}
+                      className="group relative text-left rounded-xl border border-border bg-card p-3 lg:p-4 transition-all hover:border-primary/30 hover:shadow-sm"
+                    >
+                      {/* Actions (hover) */}
+                      <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <span
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setFormTitle(course.title);
+                            setFormDescription(course.description);
+                            setFormTags(course.tags.join(', '));
+                            setShowEditModal(true);
+                          }}
+                          className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
+                        >
+                          <Edit3 size={12} />
+                        </span>
+                        <span
+                          onClick={(e) => { e.stopPropagation(); handleDelete(course.id); }}
+                          className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-red-500 cursor-pointer"
+                        >
+                          <Trash2 size={12} />
+                        </span>
+                      </div>
+
+                      {/* Icon + Title */}
+                      <div className="flex items-start gap-2.5 mb-2">
+                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
+                          <BookOpen size={14} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-xs lg:text-sm font-medium truncate">{course.title}</h4>
+                          <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{course.description}</p>
+                        </div>
+                      </div>
+
+                      {/* Progress */}
+                      <div className="mb-2">
+                        <div className="flex items-center justify-between text-[10px] mb-1">
+                          <span className={cn('flex items-center gap-1', cfg.color)}>
+                            <span className={cn('w-1.5 h-1.5 rounded-full', cfg.dot)} />
+                            {cfg.label}
+                          </span>
+                          <span className="text-muted-foreground">
+                            {course.completedChapters}/{course.totalChapters} ch. · {prog}%
+                          </span>
+                        </div>
+                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                          <div
+                            className={cn(
+                              'h-full rounded-full transition-all',
+                              prog === 100 ? 'bg-green-500' : 'bg-primary',
+                            )}
+                            style={{ width: `${prog}%` }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Tags + Time */}
+                      <div className="flex flex-wrap items-center gap-1">
+                        {course.tags.slice(0, 3).map((tag) => (
+                          <span key={tag} className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">
+                            {tag}
+                          </span>
+                        ))}
+                        {course.tags.length > 3 && (
+                          <span className="text-[9px] text-muted-foreground">+{course.tags.length - 3}</span>
+                        )}
+                        <span className="ml-auto text-[9px] text-muted-foreground">{timeAgo(course.updatedAt, t)}</span>
+                      </div>
+                    </button>
+                  );
+                })}
               </div>
             )}
           </div>
