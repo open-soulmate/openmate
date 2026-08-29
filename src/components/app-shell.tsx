@@ -33,6 +33,7 @@ import {
 } from "@/components/ui/sidebar";
 import { ConversationTree, type AgentInfo } from "@/components/conversation-tree";
 import { SwipeablePanels, getPanelIndex } from "@/components/swipeable-panels";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile, useMediaQuery } from "@/hooks/use-mobile";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -476,28 +477,31 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
         </SidebarProvider>
 
-      {/* Right Panel gap — reserves layout space on desktop; zero on mobile (panel overlays) */}
-      <div
-        className="shrink-0 transition-[width] duration-200 ease-linear"
-        style={{ width: isMobile ? 0 : (rightPanelOpen ? rightPanelWidth : 0) }}
-      />
-      {/* Backdrop overlay on mobile when right panel is open */}
-      {isMobile && rightPanelOpen && (
-        <div
-          className="fixed inset-0 z-[9] bg-black/40 backdrop-blur-[2px] opacity-100 transition-opacity duration-200"
-          onClick={() => setRightPanelOpen(false)}
-          aria-hidden="true"
-        />
+      {/* Right Panel — Sheet on mobile, inline transition on desktop */}
+      {isMobile ? (
+        <Sheet open={rightPanelOpen} onOpenChange={(open) => { setRightPanelOpen(open); if (open && isMobile) setMobileSidebarOpen(false); }}>
+          <SheetContent side="right" size="sm" className="p-0 w-[75vw] max-w-[384px]">
+            <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <>
+          {/* Right Panel gap — reserves layout space on desktop */}
+          <div
+            className="shrink-0 transition-[width] duration-200 ease-linear"
+            style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
+          />
+          <div
+            className="absolute inset-y-0 top-0 right-0 z-10 h-full min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
+            style={{
+              width: rightPanelWidth,
+              right: rightPanelOpen ? 0 : -rightPanelWidth,
+            }}
+          >
+            <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
+          </div>
+        </>
       )}
-      <div
-        className="absolute inset-y-0 top-0 right-0 z-10 h-full min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
-        style={{
-          width: rightPanelWidth,
-          right: rightPanelOpen ? 0 : -rightPanelWidth,
-        }}
-      >
-        <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
-      </div>
       </div>
 
       {/* Bottom navigation bar — full screen width */}
