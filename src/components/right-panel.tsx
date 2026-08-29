@@ -17,6 +17,7 @@ import {
   Paperclip,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SkirtTabs, type SkirtTab } from '@/components/skirt-tabs';
 import { Input } from '@/components/ui/input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -488,48 +489,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
   const [tabs, setTabs] = useState<Tab[]>([createTab('new-tab')]);
   const [activeTabId, setActiveTabId] = useState<string>(tabs[0].id);
   const [panelWidth, setPanelWidth] = useState(typeof window !== 'undefined' ? Math.min(384, Math.round(window.innerWidth / 2)) : 384);
-  const [tabWidths, setTabWidths] = useState<Record<string, number>>({});
-  const [activeTabLeft, setActiveTabLeft] = useState(0);
-  const [activeTabWidth, setActiveTabWidth] = useState(0);
-  const [barLeft, setBarLeft] = useState(0);
-  const [barRight, setBarRight] = useState(0);
-  const tabBarRef = useRef<HTMLDivElement>(null);
-  const activeTabRef = useRef<HTMLButtonElement>(null);
-  const measureTab = useCallback((id: string, el: HTMLButtonElement) => {
-    const w = el.offsetWidth;
-    setTabWidths((prev) => (prev[id] === w ? prev : { ...prev, [id]: w }));
-  }, []);
 
-  // Calculate active tab position for underline segments — use getBoundingClientRect like Doubao
-  useEffect(() => {
-    const calc = () => {
-      if (!tabBarRef.current || !activeTabRef.current) return;
-      const barRect = tabBarRef.current.getBoundingClientRect();
-      const tabRect = activeTabRef.current.getBoundingClientRect();
-      setBarLeft(barRect.left);
-      setBarRight(barRect.right);
-      setActiveTabLeft(tabRect.left);
-      setActiveTabWidth(tabRect.width);
-    };
-    calc();
-    // Fallback: recalc next frame in case refs weren't ready
-    requestAnimationFrame(calc);
-  }, [tabs, activeTabId, tabWidths]);
-
-  // Recalculate on resize — like Doubao
-  useEffect(() => {
-    const recalc = () => {
-      if (!tabBarRef.current || !activeTabRef.current) return;
-      const barRect = tabBarRef.current.getBoundingClientRect();
-      const tabRect = activeTabRef.current.getBoundingClientRect();
-      setBarLeft(barRect.left);
-      setBarRight(barRect.right);
-      setActiveTabLeft(tabRect.left);
-      setActiveTabWidth(tabRect.width);
-    };
-    window.addEventListener('resize', recalc);
-    return () => window.removeEventListener('resize', recalc);
-  }, []);
   const resizeRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
   const isMobile = useIsMobile();
@@ -740,77 +700,23 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
       )}
 
       {/* Tab bar — doubao-style SVG skirt tabs */}
-      {(() => {
-        const TOP_R = 12, SKIRT = 10, BULGE = 8, MARGIN = SKIRT + BULGE;
-        function genTabPath(w: number, h = 36) {
-          const r = TOP_R, s = SKIRT, m = MARGIN;
-          return [
-            `M ${r} 0`,
-            `Q 0 0 0 ${r}`,
-            `L 0 ${h - s}`,
-            `C 0 ${h} ${-m} ${h} ${-s} ${h}`,
-            `M ${w + s} ${h}`,
-            `C ${w + m} ${h} ${w} ${h} ${w} ${h - s}`,
-            `L ${w} ${r}`,
-            `Q ${w} 0 ${w - r} 0`,
-            `L ${r} 0`,
-          ].join(' ');
-        }
-        return (
+      <SkirtTabs
+        tabs={tabs.map((tab) => ({ id: tab.id, title: tab.title }))}
+        activeTabId={activeTabId}
+        onTabChange={setActiveTabId}
+        onAddTab={() => addTab('new-tab')}
+        minWidth={isMobile ? 100 : 140}
+        maxWidth={isMobile ? 160 : 240}
+        renderTabContent={(tab: SkirtTab, isActive: boolean) => (
           <>
-            <div ref={tabBarRef} className="flex items-end shrink-0 px-2" style={{ height: 36, marginTop: 12, gap: 0, overflowX: 'auto', overflowY: 'visible', scrollbarWidth: 'none' }}>
-              {tabs.map((tab) => {
-                const isActive = tab.id === activeTabId;
-                return (
-                  <button
-                    key={tab.id}
-                    ref={(el) => {
-                      if (el) measureTab(tab.id, el);
-                      if (isActive) (activeTabRef as React.MutableRefObject<HTMLButtonElement | null>).current = el;
-                    }}
-                    onClick={() => setActiveTabId(tab.id)}
-                    className="group relative shrink-0 cursor-pointer touch-manipulation"
-                    style={{ height: 36, minWidth: isMobile ? 100 : 140, maxWidth: isMobile ? 160 : 240, display: 'flex', alignItems: 'center', border: 'none', outline: 'none', padding: 0, background: 'transparent', overflow: 'visible' }}
-                  >
-                    {tabWidths[tab.id] && (
-                      <svg
-                        className="absolute pointer-events-none"
-                        style={{ left: -MARGIN, width: tabWidths[tab.id] + MARGIN * 2, height: 36, overflow: 'visible' }}
-                        viewBox={`${-MARGIN} 0 ${tabWidths[tab.id] + MARGIN * 2} 36`}
-                      >
-                        <path
-                          d={genTabPath(tabWidths[tab.id])}
-                          fill="none"
-                          stroke={isActive ? '#27272a' : 'transparent'}
-                          strokeWidth={1}
-                          strokeLinejoin="round"
-                          style={{ transition: 'stroke 0.15s' }}
-                        />
-                      </svg>
-                    )}
-                    <div className="relative flex items-center w-full h-full z-10" style={{ padding: '0 12px', gap: 8 }}>
-                      <Globe className="w-4 h-4 shrink-0 text-muted-foreground" />
-                      <span className={`truncate flex-1 text-[13px] transition-colors ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>{tab.title}</span>
-                      <span role="button" onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className="shrink-0 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-70 group-active:opacity-70 hover:!opacity-100 hover:bg-[rgba(255,255,255,0.1)] transition-all cursor-pointer touch-manipulation" style={{ width: 20, height: 20 }}>
-                        <X className="w-3 h-3 text-muted-foreground" />
-                      </span>
-                    </div>
-                  </button>
-                );
-              })}
-              <Button variant="ghost" size="icon-xs" onClick={() => addTab('new-tab')} className="shrink-0 mb-0.5 ml-1 touch-manipulation" title="New tab">
-                <Plus className="w-3.5 h-3.5" />
-              </Button>
-
-            </div>
-            {/* Underline: two segments, gap under skirt — Doubao method */}
-            <div className="relative shrink-0" style={{ height: 1, marginTop: -1 }}>
-              <div className="absolute top-0 left-0" style={{ height: 1, background: '#27272a', width: Math.max(0, activeTabLeft - barLeft - SKIRT - 1) }} />
-              <div className="absolute top-0 right-0" style={{ height: 1, background: '#27272a', width: Math.max(0, barRight - activeTabLeft - activeTabWidth - SKIRT - 1) }} />
-            </div>
+            <Globe className="w-4 h-4 shrink-0 text-muted-foreground" />
+            <span className={`truncate flex-1 text-[13px] transition-colors ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>{tab.title}</span>
+            <span role="button" onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className="shrink-0 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-70 group-active:opacity-70 hover:!opacity-100 hover:bg-[rgba(255,255,255,0.1)] transition-all cursor-pointer touch-manipulation" style={{ width: 20, height: 20 }}>
+              <X className="w-3 h-3 text-muted-foreground" />
+            </span>
           </>
-        );
-      })()}
+        )}
+      />
 
       {/* Content area */}
       <div className="flex-1 overflow-hidden min-h-0">
