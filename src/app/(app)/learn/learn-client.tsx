@@ -1,29 +1,38 @@
-"use client";
-import { useState, useEffect, useCallback, useRef } from "react";
-import Link from "next/link";
-import { useTranslation } from "react-i18next";
+'use client';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  BookOpen,
-  Plus,
-  Search,
-  GraduationCap,
-  Clock,
-  CheckCircle2,
-  RotateCcw,
-  Trash2,
-  Loader2,
-  X,
-  Upload,
-  Download,
-  CreditCard,
-  FileText,
-  Edit3,
-  Sparkles,
-  Award,
-  Image as ImageIcon,
-} from "lucide-react";
-import { getApiBaseUrl } from "@/lib/api-client";
+  BookOpen, Plus, Clock, CheckCircle2, RotateCcw, Trash2,
+  Loader2, X, Upload, Download, FileText, Edit3, Sparkles,
+  Award, Image as ImageIcon, GraduationCap, Circle,
+  ChevronRight, BrainCircuit, ChevronLeft,
+} from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import { getApiBaseUrl } from '@/lib/api-client';
 import { PageLayout } from '@/components/page-layout';
+import { DetailPanel } from '@/components/detail-panel';
+import { LeftPanel } from '@/components/left-panel';
+import { useAppStore } from '@/stores/app-store';
+import { useTranslation } from 'react-i18next';
+import { cn } from '@/lib/utils';
+
+// ── Types ────────────────────────────────────────────────────
+
+interface QuizQuestion {
+  question: string;
+  options: string[];
+  correctIndex: number;
+  explanation?: string;
+}
+
+interface Chapter {
+  id: string;
+  title: string;
+  content: string;
+  order: number;
+  completed: boolean;
+  completedAt: number | null;
+  quiz: QuizQuestion[];
+}
 
 interface Course {
   id: string;
@@ -32,89 +41,119 @@ interface Course {
   tags: string[];
   totalChapters: number;
   completedChapters: number;
-  status: "not_started" | "in_progress" | "reviewing" | "completed";
+  status: 'not_started' | 'in_progress' | 'reviewing' | 'completed';
   updatedAt: number;
+  chapters?: Chapter[];
 }
 
 function timeAgo(ts: number, t: (key: string, opts?: Record<string, unknown>) => string): string {
   const diff = Date.now() / 1000 - ts;
-  if (diff < 60) return t("common.justNow") || "just now";
+  if (diff < 60) return t('common.justNow') || 'just now';
   if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
   if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
   return `${Math.floor(diff / 86400)}d ago`;
 }
 
+// ── Status config ────────────────────────────────────────────
+
+const statusConfig = {
+  not_started: { label: 'Not Started', color: 'text-muted-foreground', icon: BookOpen, dot: 'bg-zinc-500' },
+  in_progress: { label: 'In Progress', color: 'text-blue-500', icon: Clock, dot: 'bg-blue-500' },
+  reviewing: { label: 'Reviewing', color: 'text-amber-500', icon: RotateCcw, dot: 'bg-amber-500' },
+  completed: { label: 'Completed', color: 'text-green-500', icon: CheckCircle2, dot: 'bg-green-500' },
+};
+
+// ── Main Component ───────────────────────────────────────────
+
 export function LearnClient() {
   const { t } = useTranslation();
-  const [query, setQuery] = useState("");
-  const [courses, setCourses] = useState<Course[]>([]);
-  const [stats, setStats] = useState<any>(null);
-  const [loading, setLoading] = useState(true);
   const apiBase = getApiBaseUrl();
+  const setPageSidebar = useAppStore((s) => s.setPageSidebar);
+  const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
+
+  // Data
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [selectedChapterIndex, setSelectedChapterIndex] = useState<number | null>(null);
+  const [courseDetail, setCourseDetail] = useState<Course | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
 
   // Modal states
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [showLearningCard, setShowLearningCard] = useState(false);
   const [showPolicyCard, setShowPolicyCard] = useState(false);
-  const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
   const [generating, setGenerating] = useState(false);
-  const cardRef = useRef<HTMLDivElement>(null);
 
   // Create/Edit form state
-  const [formTitle, setFormTitle] = useState("");
-  const [formDescription, setFormDescription] = useState("");
-  const [formTags, setFormTags] = useState("");
-  const [genMode, setGenMode] = useState<"ai" | "manual">("ai");
+  const [formTitle, setFormTitle] = useState('');
+  const [formDescription, setFormDescription] = useState('');
+  const [formTags, setFormTags] = useState('');
+  const [genMode, setGenMode] = useState<'ai' | 'manual'>('ai');
   const [numChapters, setNumChapters] = useState(5);
-  const [difficulty, setDifficulty] = useState("intermediate");
+  const [difficulty, setDifficulty] = useState('intermediate');
 
-  const statusConfig = {
-    not_started: { label: t("learn.notStarted") || "Not Started", color: "text-muted-foreground", icon: BookOpen },
-    in_progress: { label: t("learn.inProgress") || "In Progress", color: "text-blue-500", icon: Clock },
-    reviewing: { label: t("learn.reviewing") || "Reviewing", color: "text-amber-500", icon: RotateCcw },
-    completed: { label: t("learn.completed") || "Completed", color: "text-green-500", icon: CheckCircle2 },
-  };
+  // Quiz state
+  const [showQuiz, setShowQuiz] = useState(false);
+  const [quizAnswers, setQuizAnswers] = useState<(number | null)[]>([]);
+  const [quizSubmitted, setQuizSubmitted] = useState(false);
+
+  // ── Data fetching ──────────────────────────────────────────
 
   const fetchCourses = useCallback(async () => {
     try {
-      const [coursesRes, statsRes] = await Promise.all([
-        fetch(`${apiBase}/api/learn/courses`),
-        fetch(`${apiBase}/api/learn/stats`),
-      ]);
-      if (coursesRes.ok) {
-        const data = await coursesRes.json();
+      const res = await fetch(`${apiBase}/api/learn/courses`);
+      if (res.ok) {
+        const data = await res.json();
         setCourses(data.courses || []);
       }
-      if (statsRes.ok) {
-        setStats(await statsRes.json());
-      }
     } catch (e) {
-      console.error("Failed to fetch courses", e);
+      console.error('Failed to fetch courses', e);
     } finally {
       setLoading(false);
     }
   }, [apiBase]);
 
-  useEffect(() => {
-    fetchCourses();
-  }, [fetchCourses]);
+  const fetchCourseDetail = useCallback(async (courseId: string) => {
+    setDetailLoading(true);
+    try {
+      const res = await fetch(`${apiBase}/api/learn/courses/${courseId}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCourseDetail(data);
+      }
+    } catch (e) {
+      console.error('Failed to fetch course detail', e);
+    } finally {
+      setDetailLoading(false);
+    }
+  }, [apiBase]);
 
-  // Create course
+  useEffect(() => { fetchCourses(); }, [fetchCourses]);
+
+  useEffect(() => {
+    if (selectedCourseId) {
+      fetchCourseDetail(selectedCourseId);
+      setSelectedChapterIndex(null);
+      setShowQuiz(false);
+    } else {
+      setCourseDetail(null);
+      setSelectedChapterIndex(null);
+    }
+  }, [selectedCourseId, fetchCourseDetail]);
+
+  // ── Course actions ─────────────────────────────────────────
+
   const handleCreate = async () => {
     if (!formTitle.trim()) return;
     setGenerating(true);
     try {
-      if (genMode === "ai") {
+      if (genMode === 'ai') {
         const res = await fetch(`${apiBase}/api/learn/courses/generate`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            topic: formTitle,
-            num_chapters: numChapters,
-            language: "zh",
-            difficulty,
-          }),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ topic: formTitle, num_chapters: numChapters, language: 'zh', difficulty }),
         });
         if (res.ok) {
           const course = await res.json();
@@ -123,18 +162,14 @@ export function LearnClient() {
           resetForm();
         } else {
           const err = await res.json();
-          alert(err.detail || "AI generation failed");
+          alert(err.detail || 'AI generation failed');
         }
       } else {
-        const tags = formTags.split(",").map((t) => t.trim()).filter(Boolean);
+        const tags = formTags.split(',').map((t) => t.trim()).filter(Boolean);
         const res = await fetch(`${apiBase}/api/learn/courses`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            title: formTitle,
-            description: formDescription || `Course about ${formTitle}`,
-            tags,
-          }),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: formTitle, description: formDescription || `Course about ${formTitle}`, tags }),
         });
         if (res.ok) {
           const course = await res.json();
@@ -144,57 +179,50 @@ export function LearnClient() {
         }
       }
     } catch (e) {
-      console.error("Failed to create course", e);
+      console.error('Failed to create course', e);
     } finally {
       setGenerating(false);
     }
   };
 
-  // Edit course
   const handleEdit = async () => {
-    if (!selectedCourse || !formTitle.trim()) return;
+    if (!selectedCourseId || !formTitle.trim()) return;
     setGenerating(true);
     try {
-      const tags = formTags.split(",").map((t) => t.trim()).filter(Boolean);
-      const res = await fetch(`${apiBase}/api/learn/courses/${selectedCourse.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: formTitle,
-          description: formDescription,
-          tags,
-        }),
+      const tags = formTags.split(',').map((t) => t.trim()).filter(Boolean);
+      const res = await fetch(`${apiBase}/api/learn/courses/${selectedCourseId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: formTitle, description: formDescription, tags }),
       });
       if (res.ok) {
         await fetchCourses();
+        if (selectedCourseId) await fetchCourseDetail(selectedCourseId);
         setShowEditModal(false);
         resetForm();
       }
     } catch (e) {
-      console.error("Failed to update course", e);
+      console.error('Failed to update course', e);
     } finally {
       setGenerating(false);
     }
   };
 
-  // Delete course
-  const handleDelete = async (e: React.MouseEvent, courseId: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!confirm(t("learn.confirmDelete") || "Delete this course?")) return;
+  const handleDelete = async (courseId: string) => {
+    if (!confirm(t('learn.confirmDelete') || 'Delete this course?')) return;
     try {
-      await fetch(`${apiBase}/api/learn/courses/${courseId}`, { method: "DELETE" });
+      await fetch(`${apiBase}/api/learn/courses/${courseId}`, { method: 'DELETE' });
       setCourses((prev) => prev.filter((c) => c.id !== courseId));
+      if (selectedCourseId === courseId) setSelectedCourseId(null);
     } catch (e) {
-      console.error("Failed to delete", e);
+      console.error('Failed to delete', e);
     }
   };
 
-  // Import course (from JSON)
   const handleImport = () => {
-    const input = document.createElement("input");
-    input.type = "file";
-    input.accept = ".json";
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
     input.onchange = async (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (!file) return;
@@ -202,204 +230,290 @@ export function LearnClient() {
         const text = await file.text();
         const data = JSON.parse(text);
         const res = await fetch(`${apiBase}/api/learn/courses`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            title: data.title || file.name.replace(".json", ""),
-            description: data.description || "Imported course",
+            title: data.title || file.name.replace('.json', ''),
+            description: data.description || 'Imported course',
             tags: data.tags || [],
             chapters: data.chapters || [],
           }),
         });
-        if (res.ok) {
-          await fetchCourses();
-        }
-      } catch (err) {
-        alert("Import failed: invalid JSON");
+        if (res.ok) await fetchCourses();
+      } catch {
+        alert('Import failed: invalid JSON');
       }
     };
     input.click();
   };
 
-  // Open edit modal
-  const openEdit = (e: React.MouseEvent, course: Course) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setSelectedCourse(course);
-    setFormTitle(course.title);
-    setFormDescription(course.description);
-    setFormTags(course.tags.join(", "));
-    setShowEditModal(true);
+  // ── Chapter actions ────────────────────────────────────────
+
+  const chapters = courseDetail?.chapters || [];
+  const currentChapter = selectedChapterIndex !== null ? chapters[selectedChapterIndex] : null;
+  const currentQuiz = currentChapter?.quiz || [];
+  const quizScore = quizSubmitted ? quizAnswers.filter((a, i) => a === currentQuiz[i]?.correctIndex).length : null;
+
+  const handleChapterSelect = (index: number) => {
+    setSelectedChapterIndex(index);
+    setShowQuiz(false);
+    setQuizSubmitted(false);
+    setQuizAnswers(new Array(chapters[index]?.quiz?.length || 0).fill(null));
   };
 
-  // Open learning card
-  const openLearningCard = (e: React.MouseEvent, course: Course) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setSelectedCourse(course);
-    setShowLearningCard(true);
+  const toggleComplete = async () => {
+    if (!currentChapter || !selectedCourseId) return;
+    try {
+      const res = await fetch(
+        `${apiBase}/api/learn/courses/${selectedCourseId}/chapters/${currentChapter.id}/mark`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completed: !currentChapter.completed }),
+        },
+      );
+      if (res.ok) {
+        const updated = await res.json();
+        setCourseDetail((prev) => {
+          if (!prev) return prev;
+          const newChapters = prev.chapters!.map((ch) =>
+            ch.id === currentChapter.id ? { ...ch, completed: updated.completed, completedAt: updated.completedAt } : ch,
+          );
+          return { ...prev, chapters: newChapters, completedChapters: newChapters.filter((c) => c.completed).length };
+        });
+        // Also update list
+        setCourses((prev) =>
+          prev.map((c) =>
+            c.id === selectedCourseId
+              ? {
+                  ...c,
+                  completedChapters: updated.completed
+                    ? c.completedChapters + 1
+                    : c.completedChapters - 1,
+                }
+              : c,
+          ),
+        );
+      }
+    } catch (e) {
+      console.error('Failed to mark chapter', e);
+    }
   };
+
+  // ── Helpers ────────────────────────────────────────────────
 
   const resetForm = () => {
-    setFormTitle("");
-    setFormDescription("");
-    setFormTags("");
-    setGenMode("ai");
+    setFormTitle('');
+    setFormDescription('');
+    setFormTags('');
+    setGenMode('ai');
     setNumChapters(5);
-    setDifficulty("intermediate");
-    setSelectedCourse(null);
+    setDifficulty('intermediate');
   };
 
-  // Download learning card as image using pure Canvas API
-  const downloadCardAsImage = () => {
-    if (!selectedCourse) return;
-    const W = 600, H = 360;
-    const canvas = document.createElement("canvas");
-    canvas.width = W * 2; canvas.height = H * 2;
-    const ctx = canvas.getContext("2d")!;
-    ctx.scale(2, 2);
+  const selectedCourse = useMemo(() => courses.find((c) => c.id === selectedCourseId) ?? null, [courses, selectedCourseId]);
 
-    // Background gradient
-    const grad = ctx.createLinearGradient(0, 0, W, H);
-    grad.addColorStop(0, "#FFFBEB");
-    grad.addColorStop(0.5, "#FFFFFF");
-    grad.addColorStop(1, "#EFF6FF");
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, W, H);
+  const completedCount = chapters.filter((c) => c.completed).length;
+  const progress = chapters.length > 0 ? Math.round((completedCount / chapters.length) * 100) : 0;
 
-    // Border
-    ctx.strokeStyle = "#F59E0B";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(4, 4, W - 8, H - 8);
+  // ── LeftPanel sidebar ──────────────────────────────────────
 
-    // Inner border
-    ctx.strokeStyle = "#FCD34D";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(10, 10, W - 20, H - 20);
+  useEffect(() => {
+    setPageSidebar(
+      <LeftPanel
+        items={courses}
+        filter={(course, q) =>
+          course.title.toLowerCase().includes(q) ||
+          course.tags.some((t) => t.toLowerCase().includes(q))
+        }
+        renderItem={(course) => {
+          const cfg = statusConfig[course.status];
+          const prog = course.totalChapters > 0 ? Math.round((course.completedChapters / course.totalChapters) * 100) : 0;
+          return (
+            <button
+              key={course.id}
+              onClick={() => setSelectedCourseId(course.id)}
+              className={cn(
+                'w-full text-left px-2 py-2 rounded-lg transition-colors',
+                selectedCourseId === course.id
+                  ? 'bg-primary/10 border border-primary/30'
+                  : 'hover:bg-muted/50 border border-transparent',
+              )}
+            >
+              <div className="flex items-center gap-1.5 min-w-0">
+                <span className={cn('w-2 h-2 rounded-full shrink-0', cfg.dot)} />
+                <span className="text-xs font-medium truncate flex-1">{course.title}</span>
+              </div>
+              <div className="ml-3.5 mt-1">
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-0.5">
+                  <span>{course.completedChapters}/{course.totalChapters} ch.</span>
+                  <span>{prog}%</span>
+                </div>
+                <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                  <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${prog}%` }} />
+                </div>
+              </div>
+            </button>
+          );
+        }}
+        header={
+          <div className="px-2 pb-2 flex gap-1.5">
+            <button
+              onClick={() => { resetForm(); setShowCreateModal(true); }}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {t('learn.createCourse') || '新建课程'}
+            </button>
+            <button
+              onClick={handleImport}
+              className="flex items-center justify-center rounded-lg border border-border px-2.5 py-1.5 text-xs text-muted-foreground hover:bg-muted transition-colors"
+              title="Import"
+            >
+              <Upload className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        }
+        placeholder={t('learn.filterCourses') || '搜索课程...'}
+        emptyState={
+          <div className="px-2 py-8 text-center text-muted-foreground/50">
+            <BookOpen className="w-8 h-8 mx-auto mb-1.5" />
+            <p className="text-xs">{t('learn.noCourses') || '暂无课程'}</p>
+          </div>
+        }
+      />,
+    );
+    return () => setPageSidebar(null);
+  }, [courses, selectedCourseId, t, setPageSidebar]);
 
-    // Certificate header
-    ctx.fillStyle = "#D97706";
-    ctx.font = "bold 11px sans-serif";
-    ctx.letterSpacing = "3px";
-    ctx.fillText("CERTIFICATE OF COMPLETION", 24, 40);
+  // ── RightPanel workspace (chapter detail) ──────────────────
 
-    // Title
-    ctx.fillStyle = "#1F2937";
-    ctx.font = "bold 24px sans-serif";
-    const title = selectedCourse.title.length > 30 ? selectedCourse.title.slice(0, 30) + "..." : selectedCourse.title;
-    ctx.fillText(title, 24, 80);
+  useEffect(() => {
+    if (!currentChapter || !courseDetail) {
+      setPageWorkspace(null);
+      return;
+    }
 
-    // Description
-    ctx.fillStyle = "#6B7280";
-    ctx.font = "13px sans-serif";
-    const desc = selectedCourse.description.length > 60 ? selectedCourse.description.slice(0, 60) + "..." : selectedCourse.description;
-    ctx.fillText(desc, 24, 110);
+    setPageWorkspace(
+      <DetailPanel
+        title={currentChapter.title}
+        subtitle={`${courseDetail.title} · ${t('learn.chapter') || 'Chapter'} ${(selectedChapterIndex ?? 0) + 1}/${chapters.length}`}
+        icon={<BookOpen className="w-5 h-5 text-primary" />}
+        badge={currentChapter.completed ? '✓' : undefined}
+        onClose={() => { setSelectedChapterIndex(null); setShowQuiz(false); }}
+        headerActions={
+          currentQuiz.length > 0 ? (
+            <button
+              onClick={() => setShowQuiz(!showQuiz)}
+              className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground"
+              title={showQuiz ? 'Hide Quiz' : 'Take Quiz'}
+            >
+              <BrainCircuit className="w-4 h-4" />
+            </button>
+          ) : undefined
+        }
+      >
+        {/* Chapter content */}
+        <div className="space-y-4">
+          {showQuiz && currentQuiz.length > 0 ? (
+            /* Quiz mode */
+            <div className="space-y-4">
+              <h3 className="text-sm font-medium flex items-center gap-2">
+                <GraduationCap size={16} className="text-primary" />
+                {t('learn.chapterQuiz') || 'Chapter Quiz'}
+              </h3>
+              {currentQuiz.map((q, qi) => (
+                <div key={qi} className="rounded-lg border border-border bg-card p-3">
+                  <p className="mb-2 text-xs font-medium">{qi + 1}. {q.question}</p>
+                  <div className="space-y-1.5">
+                    {q.options.map((opt, oi) => {
+                      const isSelected = quizAnswers[qi] === oi;
+                      const isCorrect = quizSubmitted && oi === q.correctIndex;
+                      const isWrong = quizSubmitted && isSelected && oi !== q.correctIndex;
+                      return (
+                        <button
+                          key={oi}
+                          disabled={quizSubmitted}
+                          onClick={() => setQuizAnswers((prev) => { const next = [...prev]; next[qi] = oi; return next; })}
+                          className={cn(
+                            'flex w-full items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors',
+                            isCorrect ? 'border-green-500 bg-green-500/10 text-green-700'
+                              : isWrong ? 'border-red-500 bg-red-500/10 text-red-700'
+                              : isSelected ? 'border-primary bg-primary/10'
+                              : 'border-border hover:bg-accent',
+                          )}
+                        >
+                          <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-border text-[10px]">
+                            {String.fromCharCode(65 + oi)}
+                          </span>
+                          {opt}
+                        </button>
+                      );
+                    })}
+                  </div>
+                  {quizSubmitted && q.explanation && (
+                    <p className="mt-2 text-[10px] text-muted-foreground">💡 {q.explanation}</p>
+                  )}
+                </div>
+              ))}
+              <div className="flex items-center justify-between pt-2">
+                {quizSubmitted ? (
+                  <p className="text-xs font-medium">
+                    {t('learn.score') || 'Score'}: {quizScore}/{currentQuiz.length} ({Math.round(((quizScore ?? 0) / currentQuiz.length) * 100)}%)
+                  </p>
+                ) : <div />}
+                <button
+                  onClick={() => setQuizSubmitted(true)}
+                  disabled={quizSubmitted || quizAnswers.some((a) => a === null)}
+                  className="inline-flex h-7 items-center gap-1 rounded-md bg-primary px-3 text-[11px] font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+                >
+                  {quizSubmitted ? (t('learn.submitted') || 'Submitted') : (t('learn.submitAnswers') || 'Submit')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            /* Chapter content */
+            <div className="space-y-4">
+              <article className="prose prose-sm dark:prose-invert max-w-none text-xs lg:text-sm">
+                <ReactMarkdown>{currentChapter.content}</ReactMarkdown>
+              </article>
+              {/* Tags */}
+              {courseDetail.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5 pt-2">
+                  {courseDetail.tags.map((tag) => (
+                    <span key={tag} className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
+              )}
+              {/* Mark complete */}
+              <div className="pt-3 border-t border-border">
+                <button
+                  onClick={toggleComplete}
+                  className={cn(
+                    'w-full inline-flex items-center justify-center gap-1.5 rounded-md px-4 py-2 text-xs font-medium transition-colors',
+                    currentChapter.completed
+                      ? 'bg-green-500/10 text-green-600 hover:bg-green-500/20'
+                      : 'bg-primary text-primary-foreground hover:bg-primary/90',
+                  )}
+                >
+                  {currentChapter.completed ? (
+                    <><CheckCircle2 size={14} /> {t('learn.learned') || 'Learned'}</>
+                  ) : (
+                    <><BookOpen size={14} /> {t('learn.markAsLearned') || 'Mark as Learned'}</>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </DetailPanel>,
+    );
+    return () => setPageWorkspace(null);
+  }, [currentChapter, courseDetail, chapters, selectedChapterIndex, showQuiz, quizAnswers, quizSubmitted, quizScore, t, setPageWorkspace]);
 
-    // Stats
-    ctx.font = "12px sans-serif";
-    ctx.fillStyle = "#9CA3AF";
-    ctx.fillText(`📚 ${selectedCourse.totalChapters} chapters  ·  ✅ ${selectedCourse.completedChapters} completed  ·  📅 ${new Date(selectedCourse.updatedAt * 1000).toLocaleDateString("zh-CN")}`, 24, 145);
-
-    // Tags
-    let tagX = 24;
-    ctx.font = "10px sans-serif";
-    selectedCourse.tags.forEach((tag) => {
-      const tw = ctx.measureText(tag).width + 16;
-      ctx.fillStyle = "#FEF3C7";
-      ctx.beginPath();
-      ctx.roundRect(tagX, 160, tw, 20, 10);
-      ctx.fill();
-      ctx.fillStyle = "#92400E";
-      ctx.fillText(tag, tagX + 8, 174);
-      tagX += tw + 6;
-    });
-
-    // Decorative elements
-    ctx.fillStyle = "rgba(245,158,11,0.08)";
-    ctx.font = "120px sans-serif";
-    ctx.fillText("🎓", W - 140, 140);
-
-    // Progress bar
-    const progress = selectedCourse.totalChapters > 0 ? selectedCourse.completedChapters / selectedCourse.totalChapters : 0;
-    ctx.fillStyle = "#E5E7EB";
-    ctx.beginPath();
-    ctx.roundRect(24, 200, W - 48, 8, 4);
-    ctx.fill();
-    ctx.fillStyle = "#10B981";
-    ctx.beginPath();
-    ctx.roundRect(24, 200, (W - 48) * progress, 8, 4);
-    ctx.fill();
-
-    // Completion text
-    ctx.fillStyle = "#059669";
-    ctx.font = "bold 14px sans-serif";
-    ctx.fillText(`${Math.round(progress * 100)}% Complete`, 24, 235);
-
-    // Divider
-    ctx.strokeStyle = "#FDE68A";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(24, 260);
-    ctx.lineTo(W - 24, 260);
-    ctx.stroke();
-
-    // Footer
-    ctx.fillStyle = "#D1D5DB";
-    ctx.font = "10px sans-serif";
-    ctx.fillText(`OpenMate Learning System · ${new Date().toLocaleDateString("zh-CN")}`, 24, 280);
-
-    // Download
-    const link = document.createElement("a");
-    link.download = `learning-card-${selectedCourse.title.replace(/[^a-zA-Z0-9\u4e00-\u9fff]/g, "_")}.png`;
-    link.href = canvas.toDataURL("image/png");
-    link.click();
-  };
-
-  // Download policy card
-  const downloadPolicyCard = () => {
-    const policyContent = `
-# ${t("learn.policyCard")} / Learning Policy Card
-
-## ${t("learn.policyCourseMgmt")}
-1. ${t("learn.policyCreateEdit")}
-2. ${t("learn.policyAI")}
-3. ${t("learn.policyManualCreate")}
-
-## ${t("learn.policyProgress")}
-1. ${t("learn.policyChapters")}
-2. ${t("learn.policyComplete")}
-3. ${t("learn.policyLearningCard")}
-
-## ${t("learn.policySecurity")}
-1. ${t("learn.policyLocal")}
-2. ${t("learn.policyNoUpload")}
-3. ${t("learn.policyExport")}
-
-## ${t("learn.policyScoring")}
-1. ${t("learn.policyAutoGrade")}
-2. ${t("learn.policyPassRate")}
-3. ${t("learn.policyRetry")}
-
-Generated: ${new Date().toLocaleString("zh-CN")}
-    `.trim();
-
-    const blob = new Blob([policyContent], { type: "text/markdown;charset=utf-8" });
-    const link = document.createElement("a");
-    link.download = "learning-policy-card.md";
-    link.href = URL.createObjectURL(blob);
-    link.click();
-    URL.revokeObjectURL(link.href);
-  };
-
-  const filtered = courses.filter(
-    (c) =>
-      c.title.toLowerCase().includes(query.toLowerCase()) ||
-      c.tags.some((t) => t.toLowerCase().includes(query.toLowerCase()))
-  );
-
-  const totalLearned = stats?.completed_chapters ?? courses.reduce((s, c) => s + c.completedChapters, 0);
-  const totalPending = stats?.pending_chapters ?? courses.reduce((s, c) => s + c.totalChapters - c.completedChapters, 0);
-  const reviewingCount = stats?.reviewing_courses ?? courses.filter((c) => c.status === "reviewing").length;
+  // ── Loading state ──────────────────────────────────────────
 
   if (loading) {
     return (
@@ -409,181 +523,170 @@ Generated: ${new Date().toLocaleString("zh-CN")}
     );
   }
 
+  // ── Main content ───────────────────────────────────────────
+
   return (
-      <PageLayout title="Learn">
-        
-    <div className="flex h-full flex-col">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 lg:gap-3 border-b border-border px-3 lg:px-6 py-3 lg:py-4">
-        <div className="flex items-center gap-2">
-          <GraduationCap size={20} className="text-primary" />
-          <h1 className="text-lg font-semibold">{t("learn.title") || "Learning"}</h1>
-        </div>
-        <div className="flex items-center gap-2 lg:gap-3">
-          <div className="flex items-center gap-2 rounded-md border border-border bg-muted px-3 py-1.5 text-xs lg:text-sm">
-            <Search size={14} className="text-muted-foreground" />
-            <input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("learn.filterCourses") || "Filter courses..."}
-              className="w-48 bg-transparent text-xs lg:text-sm outline-none placeholder:text-muted-foreground"
-            />
-          </div>
-          {/* Policy Card Download */}
-          <button
-            onClick={() => setShowPolicyCard(true)}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent touch-manipulation"
-          >
-            <FileText size={14} />
-            {t("learn.policyCard") || "Policy"}
-          </button>
-          {/* Import */}
-          <button
-            onClick={handleImport}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent touch-manipulation"
-          >
-            <Upload size={14} />
-            {t("learn.import") || "Import"}
-          </button>
-          {/* Create */}
-          <button
-            onClick={() => { resetForm(); setShowCreateModal(true); }}
-            className="inline-flex h-8 items-center gap-1.5 rounded-md bg-primary px-3 text-xs font-medium text-primary-foreground hover:bg-primary/90 touch-manipulation"
-          >
-            <Plus size={14} />
-            {t("learn.createCourse") || "Create"}
-          </button>
-        </div>
-      </div>
+    <PageLayout title="Learn" icon={<GraduationCap size={16} className="text-primary" />}>
+      <div className="h-full overflow-y-auto">
+        {!selectedCourseId ? (
+          /* No course selected — show stats + grid */
+          <div className="p-3 lg:p-6">
+            {/* Stats */}
+            <div className="grid grid-cols-3 gap-2 lg:gap-4 mb-4 lg:mb-6">
+              <div className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border bg-card p-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-500/10 text-blue-500">
+                  <CheckCircle2 size={16} />
+                </div>
+                <div>
+                  <p className="text-base lg:text-lg font-semibold">{courses.reduce((s, c) => s + c.completedChapters, 0)}</p>
+                  <p className="text-[10px] text-muted-foreground">{t('learn.chaptersLearned') || 'Learned'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border bg-card p-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-amber-500/10 text-amber-500">
+                  <Clock size={16} />
+                </div>
+                <div>
+                  <p className="text-base lg:text-lg font-semibold">{courses.reduce((s, c) => s + c.totalChapters - c.completedChapters, 0)}</p>
+                  <p className="text-[10px] text-muted-foreground">{t('learn.chaptersPending') || 'Pending'}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border bg-card p-3">
+                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-green-500/10 text-green-500">
+                  <RotateCcw size={16} />
+                </div>
+                <div>
+                  <p className="text-base lg:text-lg font-semibold">{courses.filter((c) => c.status === 'reviewing').length}</p>
+                  <p className="text-[10px] text-muted-foreground">{t('learn.coursesReviewing') || 'Reviewing'}</p>
+                </div>
+              </div>
+            </div>
 
-      {/* Stats */}
-      <div className="grid gap-2 lg:gap-4 border-b border-border px-3 lg:px-6 py-3 lg:py-4 sm:grid-cols-3">
-        <div className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border bg-card p-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-blue-500/10 text-blue-500">
-            <CheckCircle2 size={18} />
-          </div>
-          <div>
-            <p className="text-lg font-semibold">{totalLearned}</p>
-            <p className="text-xs text-muted-foreground">{t("learn.chaptersLearned") || "Chapters Learned"}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border bg-card p-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-amber-500/10 text-amber-500">
-            <Clock size={18} />
-          </div>
-          <div>
-            <p className="text-lg font-semibold">{totalPending}</p>
-            <p className="text-xs text-muted-foreground">{t("learn.chaptersPending") || "Chapters Pending"}</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-2 lg:gap-3 rounded-lg border border-border bg-card p-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-md bg-green-500/10 text-green-500">
-            <RotateCcw size={18} />
-          </div>
-          <div>
-            <p className="text-lg font-semibold">{reviewingCount}</p>
-            <p className="text-xs text-muted-foreground">{t("learn.coursesReviewing") || "Reviewing"}</p>
-          </div>
-        </div>
-      </div>
+            {/* Quick actions */}
+            <div className="flex gap-2 mb-4">
+              <button
+                onClick={() => setShowPolicyCard(true)}
+                className="inline-flex h-8 items-center gap-1.5 rounded-md border border-border px-3 text-xs font-medium hover:bg-accent"
+              >
+                <FileText size={14} />
+                {t('learn.policyCard') || 'Policy'}
+              </button>
+            </div>
 
-      {/* Course List */}
-      <div className="flex-1 overflow-y-auto p-3 lg:p-6">
-        {filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
-            <BookOpen size={48} className="mb-4 opacity-30" />
-            <p className="text-xs lg:text-sm">{t("learn.noCourses") || "No courses yet"}</p>
-            <button
-              onClick={() => { resetForm(); setShowCreateModal(true); }}
-              className="mt-2 text-xs text-primary hover:underline"
-            >
-              {t("learn.generateFirst") || "Generate your first course →"}
-            </button>
+            {/* Empty state */}
+            {courses.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+                <BookOpen size={48} className="mb-4 opacity-30" />
+                <p className="text-sm">{t('learn.noCourses') || 'No courses yet'}</p>
+                <button
+                  onClick={() => { resetForm(); setShowCreateModal(true); }}
+                  className="mt-2 text-xs text-primary hover:underline"
+                >
+                  {t('learn.generateFirst') || 'Generate your first course →'}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
-          <div className="grid gap-2 lg:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((course) => {
-              const cfg = statusConfig[course.status];
-              const StatusIcon = cfg.icon;
-              const progress =
-                course.totalChapters > 0
-                  ? Math.round((course.completedChapters / course.totalChapters) * 100)
-                  : 0;
-
-              return (
-                <div
-                  key={course.id}
-                  className="group relative rounded-lg border border-border bg-card p-3 lg:p-4 transition-colors hover:border-primary/40"
+          /* Course selected — show chapters list */
+          <div className="p-3 lg:p-6">
+            {/* Course header */}
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-base lg:text-lg font-semibold">{selectedCourse?.title || courseDetail?.title}</h2>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {completedCount}/{chapters.length} {t('learn.chaptersCompleted') || 'chapters completed'} · {progress}%
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => {
+                    if (selectedCourse) {
+                      setFormTitle(selectedCourse.title);
+                      setFormDescription(selectedCourse.description);
+                      setFormTags(selectedCourse.tags.join(', '));
+                      setShowEditModal(true);
+                    }
+                  }}
+                  className="p-1.5 rounded-md hover:bg-muted text-muted-foreground"
+                  title="Edit"
                 >
-                  {/* Actions */}
-                  <div className="absolute right-2 top-2 flex items-center gap-1 opacity-100 sm:opacity-0 sm:transition-opacity sm:group-hover:opacity-100">
-                    <button
-                      onClick={(e) => openEdit(e, course)}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-foreground touch-manipulation"
-                      title="Edit"
-                    >
-                      <Edit3 size={13} />
-                    </button>
-                    <button
-                      onClick={(e) => handleDelete(e, course.id)}
-                      className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-red-500 touch-manipulation"
-                      title="Delete"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                    {course.status === "completed" && (
-                      <button
-                        onClick={(e) => openLearningCard(e, course)}
-                        className="rounded-md p-1.5 text-muted-foreground hover:bg-accent hover:text-amber-500 touch-manipulation"
-                        title="Learning Card"
-                      >
-                        <Award size={13} />
-                      </button>
-                    )}
-                  </div>
+                  <Edit3 size={14} />
+                </button>
+                <button
+                  onClick={() => handleDelete(selectedCourseId!)}
+                  className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-red-500"
+                  title="Delete"
+                >
+                  <Trash2 size={14} />
+                </button>
+                {selectedCourse?.status === 'completed' && (
+                  <button
+                    onClick={() => setShowLearningCard(true)}
+                    className="p-1.5 rounded-md hover:bg-muted text-muted-foreground hover:text-amber-500"
+                    title="Learning Card"
+                  >
+                    <Award size={14} />
+                  </button>
+                )}
+              </div>
+            </div>
 
-                  <Link href={`/learn/${course.id}`} className="block">
-                    <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-md bg-muted text-muted-foreground">
-                      <BookOpen size={16} />
-                    </div>
-                    <h3 className="mb-1 text-xs lg:text-sm font-medium">{course.title}</h3>
-                    <p className="mb-3 line-clamp-2 text-xs text-muted-foreground">
-                      {course.description}
-                    </p>
-                    <div className="mb-3">
-                      <div className="mb-1 flex items-center justify-between text-xs">
-                        <span className={cfg.color}>
-                          <StatusIcon size={12} className="mr-1 inline" />
-                          {cfg.label}
+            {/* Progress bar */}
+            <div className="mb-4 lg:mb-6">
+              <div className="h-2 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${progress}%` }} />
+              </div>
+            </div>
+
+            {/* Chapter list */}
+            {detailLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : chapters.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
+                <BookOpen size={36} className="mb-3 opacity-30" />
+                <p className="text-xs">{t('learn.noChapters') || 'No chapters yet'}</p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {chapters.map((ch, i) => (
+                  <button
+                    key={ch.id}
+                    onClick={() => handleChapterSelect(i)}
+                    className={cn(
+                      'w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-colors',
+                      selectedChapterIndex === i
+                        ? 'bg-primary/10 border border-primary/30'
+                        : 'hover:bg-muted/50 border border-transparent',
+                    )}
+                  >
+                    {ch.completed ? (
+                      <CheckCircle2 size={16} className="shrink-0 text-green-500" />
+                    ) : (
+                      <Circle size={16} className="shrink-0 text-muted-foreground/40" />
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <span className="text-xs lg:text-sm font-medium truncate block">{ch.title}</span>
+                      {ch.completedAt && (
+                        <span className="text-[10px] text-muted-foreground">
+                          ✓ {new Date(ch.completedAt * 1000).toLocaleDateString()}
                         </span>
-                        <span className="text-muted-foreground">
-                          {course.completedChapters}/{course.totalChapters} {t("learn.chapterAbbr") || "ch."}
-                        </span>
-                      </div>
-                      <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                        <div
-                          className="h-full rounded-full bg-primary transition-all"
-                          style={{ width: `${progress}%` }}
-                        />
-                      </div>
+                      )}
                     </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      {course.tags.map((tag) => (
-                        <span
-                          key={tag}
-                          className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"
-                        >
-                          {tag}
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {ch.quiz && ch.quiz.length > 0 && (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                          <BrainCircuit size={10} /> {ch.quiz.length}
                         </span>
-                      ))}
-                      <span className="ml-auto text-[10px] text-muted-foreground">
-                        {timeAgo(course.updatedAt, t)}
-                      </span>
+                      )}
+                      <ChevronRight size={14} className="text-muted-foreground/40" />
                     </div>
-                  </Link>
-                </div>
-              );
-            })}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
         )}
       </div>
@@ -591,119 +694,55 @@ Generated: ${new Date().toLocaleString("zh-CN")}
       {/* ===== CREATE MODAL ===== */}
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowCreateModal(false)}>
-          <div
-            className="w-full max-w-lg rounded-xl border border-border bg-background p-3 lg:p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="w-full max-w-lg rounded-xl border border-border bg-background p-3 lg:p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold">{t("learn.createCourse") || "Create Course"}</h2>
-              <button onClick={() => setShowCreateModal(false)} className="rounded-md p-1 hover:bg-accent touch-manipulation">
-                <X size={16} />
-              </button>
+              <h2 className="text-base font-semibold">{t('learn.createCourse') || 'Create Course'}</h2>
+              <button onClick={() => setShowCreateModal(false)} className="rounded-md p-1 hover:bg-accent"><X size={16} /></button>
             </div>
-
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-xs lg:text-sm font-medium">{t("learn.courseTitle") || "Title"}</label>
-                <input
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  placeholder={t("learn.courseTitlePlaceholder") || "Enter course title..."}
-                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
-                  autoFocus
-                />
+                <label className="mb-1 block text-xs font-medium">{t('learn.courseTitle') || 'Title'}</label>
+                <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} placeholder="Enter course title..." className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary" autoFocus />
               </div>
-
               <div>
-                <label className="mb-1 block text-xs lg:text-sm font-medium">{t("learn.description") || "Description"} <span className="text-xs text-muted-foreground">({t("learn.optional") || "optional"})</span></label>
-                <textarea
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  placeholder={t("learn.descriptionPlaceholder") || "Brief description..."}
-                  rows={2}
-                  className="w-full resize-none rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
-                />
+                <label className="mb-1 block text-xs font-medium">{t('learn.description') || 'Description'} <span className="text-muted-foreground">(optional)</span></label>
+                <textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} placeholder="Brief description..." rows={2} className="w-full resize-none rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary" />
               </div>
-
               <div>
-                <label className="mb-1 block text-xs lg:text-sm font-medium">{t("learn.tags") || "Tags"} <span className="text-xs text-muted-foreground">(comma separated)</span></label>
-                <input
-                  value={formTags}
-                  onChange={(e) => setFormTags(e.target.value)}
-                  placeholder="python, machine-learning, ..."
-                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
-                />
+                <label className="mb-1 block text-xs font-medium">{t('learn.tags') || 'Tags'} <span className="text-muted-foreground">(comma separated)</span></label>
+                <input value={formTags} onChange={(e) => setFormTags(e.target.value)} placeholder="python, machine-learning, ..." className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary" />
               </div>
-
-              {/* Gen Mode Toggle */}
               <div className="flex gap-2">
-                <button
-                  onClick={() => setGenMode("ai")}
-                  className={`flex-1 rounded-md border px-3 py-2 text-xs lg:text-sm transition-colors touch-manipulation ${
-                    genMode === "ai" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
-                  }`}
-                >
-                  <Sparkles size={14} className="mr-1 inline" />
-                  {t("learn.aiGenerate") || "AI Generate"}
+                <button onClick={() => setGenMode('ai')} className={cn('flex-1 rounded-md border px-3 py-2 text-sm transition-colors', genMode === 'ai' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40')}>
+                  <Sparkles size={14} className="mr-1 inline" /> AI Generate
                 </button>
-                <button
-                  onClick={() => setGenMode("manual")}
-                  className={`flex-1 rounded-md border px-3 py-2 text-xs lg:text-sm transition-colors touch-manipulation ${
-                    genMode === "manual" ? "border-primary bg-primary/10 text-primary" : "border-border text-muted-foreground hover:border-primary/40"
-                  }`}
-                >
-                  <BookOpen size={14} className="mr-1 inline" />
-                  {t("learn.manualCreate") || "Manual"}
+                <button onClick={() => setGenMode('manual')} className={cn('flex-1 rounded-md border px-3 py-2 text-sm transition-colors', genMode === 'manual' ? 'border-primary bg-primary/10 text-primary' : 'border-border text-muted-foreground hover:border-primary/40')}>
+                  <BookOpen size={14} className="mr-1 inline" /> Manual
                 </button>
               </div>
-
-              {genMode === "ai" && (
-                <div className="grid grid-cols-2 gap-2 lg:gap-3">
+              {genMode === 'ai' && (
+                <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("learn.chapters") || "Chapters"}</label>
-                    <select
-                      value={numChapters}
-                      onChange={(e) => setNumChapters(parseInt(e.target.value))}
-                      className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none"
-                    >
-                      {[3, 4, 5, 6, 7, 8, 10].map((n) => (
-                        <option key={n} value={n}>{n}</option>
-                      ))}
+                    <label className="mb-1 block text-xs text-muted-foreground">Chapters</label>
+                    <select value={numChapters} onChange={(e) => setNumChapters(parseInt(e.target.value))} className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none">
+                      {[3, 4, 5, 6, 7, 8, 10].map((n) => <option key={n} value={n}>{n}</option>)}
                     </select>
                   </div>
                   <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">{t("learn.difficulty") || "Difficulty"}</label>
-                    <select
-                      value={difficulty}
-                      onChange={(e) => setDifficulty(e.target.value)}
-                      className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none"
-                    >
-                      <option value="beginner">{t("learn.beginner") || "Beginner"}</option>
-                      <option value="intermediate">{t("learn.intermediate") || "Intermediate"}</option>
-                      <option value="advanced">{t("learn.advanced") || "Advanced"}</option>
+                    <label className="mb-1 block text-xs text-muted-foreground">Difficulty</label>
+                    <select value={difficulty} onChange={(e) => setDifficulty(e.target.value)} className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none">
+                      <option value="beginner">Beginner</option>
+                      <option value="intermediate">Intermediate</option>
+                      <option value="advanced">Advanced</option>
                     </select>
                   </div>
                 </div>
               )}
             </div>
-
             <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => { setShowCreateModal(false); resetForm(); }}
-                className="rounded-md border border-border px-4 py-2 text-xs lg:text-sm hover:bg-accent touch-manipulation"
-              >
-                {t("common.cancel") || "Cancel"}
-              </button>
-              <button
-                onClick={handleCreate}
-                disabled={!formTitle.trim() || generating}
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 touch-manipulation"
-              >
-                {generating ? (
-                  <><Loader2 size={14} className="animate-spin" /> {t("learn.creating") || "Creating..."}</>
-                ) : (
-                  <><Plus size={14} /> {t("learn.create") || "Create"}</>
-                )}
+              <button onClick={() => { setShowCreateModal(false); resetForm(); }} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent">Cancel</button>
+              <button onClick={handleCreate} disabled={!formTitle.trim() || generating} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                {generating ? <><Loader2 size={14} className="animate-spin" /> Creating...</> : <><Plus size={14} /> Create</>}
               </button>
             </div>
           </div>
@@ -711,63 +750,31 @@ Generated: ${new Date().toLocaleString("zh-CN")}
       )}
 
       {/* ===== EDIT MODAL ===== */}
-      {showEditModal && selectedCourse && (
+      {showEditModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowEditModal(false)}>
-          <div
-            className="w-full max-w-lg rounded-xl border border-border bg-background p-3 lg:p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="w-full max-w-lg rounded-xl border border-border bg-background p-3 lg:p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-semibold">{t("learn.editCourse") || "Edit Course"}</h2>
-              <button onClick={() => setShowEditModal(false)} className="rounded-md p-1 hover:bg-accent touch-manipulation">
-                <X size={16} />
-              </button>
+              <h2 className="text-base font-semibold">{t('learn.editCourse') || 'Edit Course'}</h2>
+              <button onClick={() => setShowEditModal(false)} className="rounded-md p-1 hover:bg-accent"><X size={16} /></button>
             </div>
             <div className="space-y-4">
               <div>
-                <label className="mb-1 block text-xs lg:text-sm font-medium">{t("learn.courseTitle") || "Title"}</label>
-                <input
-                  value={formTitle}
-                  onChange={(e) => setFormTitle(e.target.value)}
-                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
-                  autoFocus
-                />
+                <label className="mb-1 block text-xs font-medium">Title</label>
+                <input value={formTitle} onChange={(e) => setFormTitle(e.target.value)} className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary" autoFocus />
               </div>
               <div>
-                <label className="mb-1 block text-xs lg:text-sm font-medium">{t("learn.description") || "Description"}</label>
-                <textarea
-                  value={formDescription}
-                  onChange={(e) => setFormDescription(e.target.value)}
-                  rows={3}
-                  className="w-full resize-none rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
-                />
+                <label className="mb-1 block text-xs font-medium">Description</label>
+                <textarea value={formDescription} onChange={(e) => setFormDescription(e.target.value)} rows={3} className="w-full resize-none rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary" />
               </div>
               <div>
-                <label className="mb-1 block text-xs lg:text-sm font-medium">{t("learn.tags") || "Tags"} <span className="text-xs text-muted-foreground">(comma separated)</span></label>
-                <input
-                  value={formTags}
-                  onChange={(e) => setFormTags(e.target.value)}
-                  className="w-full rounded-md border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:border-primary"
-                />
+                <label className="mb-1 block text-xs font-medium">Tags</label>
+                <input value={formTags} onChange={(e) => setFormTags(e.target.value)} className="w-full rounded-md border border-border bg-muted px-3 py-2 text-sm outline-none focus:border-primary" />
               </div>
             </div>
             <div className="mt-6 flex justify-end gap-2">
-              <button
-                onClick={() => { setShowEditModal(false); resetForm(); }}
-                className="rounded-md border border-border px-4 py-2 text-xs lg:text-sm hover:bg-accent touch-manipulation"
-              >
-                {t("common.cancel") || "Cancel"}
-              </button>
-              <button
-                onClick={handleEdit}
-                disabled={!formTitle.trim() || generating}
-                className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50 touch-manipulation"
-              >
-                {generating ? (
-                  <><Loader2 size={14} className="animate-spin" /> {t("common.saving") || "Saving..."}</>
-                ) : (
-                  <><CheckCircle2 size={14} /> {t("common.save") || "Save"}</>
-                )}
+              <button onClick={() => { setShowEditModal(false); resetForm(); }} className="rounded-md border border-border px-4 py-2 text-sm hover:bg-accent">Cancel</button>
+              <button onClick={handleEdit} disabled={!formTitle.trim() || generating} className="inline-flex items-center gap-1.5 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50">
+                {generating ? <><Loader2 size={14} className="animate-spin" /> Saving...</> : <><CheckCircle2 size={14} /> Save</>}
               </button>
             </div>
           </div>
@@ -777,53 +784,28 @@ Generated: ${new Date().toLocaleString("zh-CN")}
       {/* ===== LEARNING CARD MODAL ===== */}
       {showLearningCard && selectedCourse && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowLearningCard(false)}>
-          <div
-            className="w-full max-w-md rounded-xl border border-border bg-background p-3 lg:p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="w-full max-w-md rounded-xl border border-border bg-background p-3 lg:p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold flex items-center gap-2">
                 <Award size={18} className="text-amber-500" />
-                {t("learn.learningCard") || "Learning Card"}
+                {t('learn.learningCard') || 'Learning Card'}
               </h2>
-              <button onClick={() => setShowLearningCard(false)} className="rounded-md p-1 hover:bg-accent touch-manipulation">
-                <X size={16} />
-              </button>
+              <button onClick={() => setShowLearningCard(false)} className="rounded-md p-1 hover:bg-accent"><X size={16} /></button>
             </div>
-
-            {/* Card Preview */}
-            <div ref={cardRef} className="relative overflow-hidden rounded-lg border-2 border-amber-400 bg-gradient-to-br from-amber-50 via-white to-blue-50 p-3 lg:p-6">
+            <div className="relative overflow-hidden rounded-lg border-2 border-amber-400 bg-gradient-to-br from-amber-50 via-white to-blue-50 p-3 lg:p-6">
               <div className="absolute right-4 top-4 text-6xl opacity-10">🎓</div>
-              <div className="mb-1 text-xs font-medium uppercase tracking-wider text-amber-600">
-                Certificate of Completion
-              </div>
-              <div className="mb-4 text-lg lg:text-xl font-bold text-foreground">{selectedCourse.title}</div>
-              <div className="mb-3 text-xs lg:text-sm text-muted-foreground/80">{selectedCourse.description}</div>
-              <div className="mb-4 flex items-center gap-2 lg:gap-4 text-xs text-muted-foreground">
+              <div className="mb-1 text-xs font-medium uppercase tracking-wider text-amber-600">Certificate of Completion</div>
+              <div className="mb-4 text-lg font-bold">{selectedCourse.title}</div>
+              <div className="mb-3 text-xs text-muted-foreground/80">{selectedCourse.description}</div>
+              <div className="mb-4 flex items-center gap-4 text-xs text-muted-foreground">
                 <span>📚 {selectedCourse.totalChapters} chapters</span>
                 <span>✅ {selectedCourse.completedChapters} completed</span>
-                <span>📅 {new Date(selectedCourse.updatedAt * 1000).toLocaleDateString("zh-CN")}</span>
               </div>
               <div className="flex flex-wrap gap-1">
                 {selectedCourse.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-700">
-                    {tag}
-                  </span>
+                  <span key={tag} className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] text-amber-700">{tag}</span>
                 ))}
               </div>
-              <div className="mt-4 border-t border-amber-200 pt-3 text-center text-[10px] text-muted-foreground/60">
-                OpenMate Learning System • {new Date().toLocaleDateString("zh-CN")}
-              </div>
-            </div>
-
-            <div className="mt-4 flex justify-center">
-              <button
-                onClick={downloadCardAsImage}
-                className="inline-flex items-center gap-2 rounded-md bg-amber-500 px-6 py-2 text-xs lg:text-sm font-medium text-white hover:bg-amber-600 touch-manipulation"
-              >
-                <ImageIcon size={16} />
-                {t("learn.downloadAsImage") || "Download as Image"}
-              </button>
             </div>
           </div>
         </div>
@@ -832,58 +814,40 @@ Generated: ${new Date().toLocaleString("zh-CN")}
       {/* ===== POLICY CARD MODAL ===== */}
       {showPolicyCard && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setShowPolicyCard(false)}>
-          <div
-            className="w-full max-w-lg rounded-xl border border-border bg-background p-3 lg:p-6 shadow-xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+          <div className="w-full max-w-lg rounded-xl border border-border bg-background p-3 lg:p-6 shadow-xl" onClick={(e) => e.stopPropagation()}>
             <div className="mb-4 flex items-center justify-between">
               <h2 className="text-base font-semibold flex items-center gap-2">
                 <FileText size={18} className="text-blue-500" />
-                {t("learn.policyCard") || "Learning Policy"}
+                {t('learn.policyCard') || 'Learning Policy'}
               </h2>
-              <button onClick={() => setShowPolicyCard(false)} className="rounded-md p-1 hover:bg-accent touch-manipulation">
-                <X size={16} />
-              </button>
+              <button onClick={() => setShowPolicyCard(false)} className="rounded-md p-1 hover:bg-accent"><X size={16} /></button>
             </div>
-
-            <div className="space-y-3 rounded-lg border border-border bg-muted/50 p-3 lg:p-4 text-xs lg:text-sm">
+            <div className="space-y-3 rounded-lg border border-border bg-muted/50 p-3 text-sm">
               <div>
-                <h3 className="font-medium">📋 {t("learn.policyCourseMgmt") || "Course Management"}</h3>
+                <h3 className="font-medium">📋 Course Management</h3>
                 <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
-                  <li>{t("learn.policyCreateEdit") || "Supports create, edit, delete, and import"}</li>
-                  <li>{t("learn.policyAI") || "AI generation requires Gland gateway"}</li>
+                  <li>Supports create, edit, delete, and import</li>
+                  <li>AI generation requires Gland gateway</li>
                 </ul>
               </div>
               <div>
-                <h3 className="font-medium">📊 {t("learn.policyProgress") || "Learning Progress"}</h3>
+                <h3 className="font-medium">📊 Learning Progress</h3>
                 <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
-                  <li>{t("learn.policyChapters") || "Each chapter tracked independently"}</li>
-                  <li>{t("learn.policyComplete") || "Course auto-marks complete when all chapters done"}</li>
+                  <li>Each chapter tracked independently</li>
+                  <li>Course auto-marks complete when all chapters done</li>
                 </ul>
               </div>
               <div>
-                <h3 className="font-medium">🔒 {t("learn.policySecurity") || "Data Security"}</h3>
+                <h3 className="font-medium">🔒 Data Security</h3>
                 <ul className="mt-1 list-inside list-disc text-xs text-muted-foreground">
-                  <li>{t("learn.policyLocal") || "All data stored locally"}</li>
-                  <li>{t("learn.policyNoUpload") || "No data uploaded to cloud"}</li>
+                  <li>All data stored locally</li>
+                  <li>No data uploaded to cloud</li>
                 </ul>
               </div>
-            </div>
-
-            <div className="mt-4 flex justify-center">
-              <button
-                onClick={downloadPolicyCard}
-                className="inline-flex items-center gap-2 rounded-md bg-blue-500 px-6 py-2 text-xs lg:text-sm font-medium text-white hover:bg-blue-600 touch-manipulation"
-              >
-                <Download size={16} />
-                {t("learn.downloadPolicy") || "Download Policy Card"}
-              </button>
             </div>
           </div>
         </div>
       )}
-    </div>
-  
-      </PageLayout>
-    );
+    </PageLayout>
+  );
 }
