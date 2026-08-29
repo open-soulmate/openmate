@@ -1,160 +1,204 @@
-# 4-Page Merge Analysis: admin / permission / enterprise / soma-admin
+# 四页面合并分析：admin / permission / enterprise / soma-admin
 
-> 生成时间: 2026-08-30
-> 分析范围: 4个管理类页面的 *-client.tsx 文件
-
----
-
-## 1. admin-client.tsx (775行, 34KB)
-
-### 核心功能
-- **系统仪表盘**: 展示OpenSoul所有organ的健康状态（healthy/total）
-- **快速操作**: 6个ActionCard — 清缓存、清理过期、备份、导出配置、系统报告、健康检查
-- **组件统计**: 监控20+个organ组件的详细指标（Vein/Gland/Hippo/Vital等）
-- **Organ状态网格**: 绿/红点阵展示每个organ在线状态
-
-### 数据源
-| API | 方法 | 用途 |
-|-----|------|------|
-| `/api/admin/overview` | GET | 系统总览（health + stats） |
-| `/api/admin/caches/clear` | POST | 清缓存 |
-| `/api/admin/cleanup` | POST | 清理过期数据 |
-| `/api/admin/backup` | POST | 运行备份 |
-| `/api/admin/export/config` | GET | 导出配置 |
-| `/api/admin/report` | GET | 系统报告 |
-| `/api/diagnostics/check-all` | GET | 全面健康检查 |
-
-### 独特特性
-- **轮询**: 每30秒自动刷新overview
-- **自定义子组件**: `ActionCard`（带执行按钮+结果状态）、`StatsCard`（emoji标题+双列指标）
-- **数据来源**: 主网关 `getApiBaseUrl()`（openmate端口3002代理到opensoul 8090）
-- **无认证头**: overview请求无Authorization header
-- **卡片式布局**: 全部用卡片，无表格/列表
+> 分析日期：2026-08-30 | 仅分析，未修改任何代码
 
 ---
 
-## 2. permission-client.tsx (331行, 17KB)
+## 1. 页面概览
 
-### 核心功能
-- **访问策略管理(CRUD)**: 列表展示 + 搜索 + 创建 + 删除（带确认）
-- **角色管理**: 查询用户角色 + 分配角色 + 删除角色
-- **2个Tab**: policies（策略表）/ roles（角色查询+分配）
-
-### 数据源
-| API | 方法 | 用途 |
-|-----|------|------|
-| `/api/permission/policies` | GET | 获取所有策略 |
-| `/api/permission/policy` | POST | 创建策略 |
-| `/api/permission/policy` | DELETE | 删除策略 |
-| `/api/permission/roles/{username}` | GET | 查询用户角色 |
-| `/api/permission/role` | POST | 分配角色 |
-| `/api/permission/role` | DELETE | 删除角色 |
-
-### 独特特性
-- **表格布局**: 策略列表用 `<table>` （4列: role/resource/action/effect）
-- **带认证**: `Authorization: Bearer {token}` via `apiHeaders()`
-- **内联删除确认**: 行内"确认/取消"按钮，非弹窗
-- **i18n完整**: 所有文案都有中英文fallback
-- **效果标签**: allow=绿/deny=红 的badge
+| 页面 | 文件 | 行数 | 核心功能 | 数据源 | 认证方式 |
+|------|------|------|----------|--------|----------|
+| **admin** | admin-client.tsx | 775 | 系统总览 + 快速操作 + 25+组件统计 | `apiBase/api/admin/overview` (30s轮询) | 无（直接fetch） |
+| **permission** | permission-client.tsx | 331 | RBAC策略CRUD + 用户角色查询/分配 | `apiBase/api/permission/*` | `getToken()` Bearer |
+| **enterprise** | enterprise-client.tsx | 568 | 用户管理 + 角色管理 + 审计日志 | `apiBase/api/enterprise/*` | 独立enterprise-token（localStorage） |
+| **soma-admin** | soma-admin-client.tsx | 613 | Soma连接器/收集器管理 + 系统状态 | `somaBase(8091)/api/*` | 无（直接fetch） |
 
 ---
 
-## 3. enterprise-client.tsx (568行, 28KB)
+## 2. 各页面详细结构
 
-### 核心功能
-- **用户管理**: 用户列表（头像+角色badge）+ 分配角色 + 分配权限
-- **角色管理**: 创建角色（名称+逗号分隔权限）+ 角色列表
-- **审计日志**: 可筛选的操作日志（action filter + limit选择）
-- **3个Tab**: users / roles / audit
+### 2.1 admin-client.tsx（775行）
 
-### 数据源
-| API | 方法 | 用途 |
-|-----|------|------|
-| `/api/enterprise/health` | GET | 企业模块健康检查 |
-| `/api/enterprise/auth/login` | POST | 企业独立登录 |
-| `/api/enterprise/auth/register` | POST | 企业用户注册 |
-| `/api/enterprise/users/list` | GET | 用户列表 |
-| `/api/enterprise/users/{id}/roles` | POST | 给用户分配角色 |
-| `/api/enterprise/roles` | POST | 创建角色 |
-| `/api/enterprise/permissions` | POST | 分配权限 |
-| `/api/enterprise/audit` | GET | 审计日志 |
+**核心功能：** OpenSoul系统全局监控仪表盘
 
-### 独特特性
-- **独立认证系统**: 有自己的 `enterprise-token`（localStorage），与主app token分离
-- **自动登录**: `ensureEntAuth()` — mount时自动尝试admin/admin登录，失败则自动注册+登录
-- **entFetch()**: 专用fetch封装，自动注入enterprise-token
-- **用户头像**: 首字母圆形头像（蓝底白字）
-- **审计日志**: 支持action筛选 + limit（20/50/100/200）+ 状态badge（success/failure）
-- **蓝色主题**: 按钮用 `bg-blue-600`，与permission的primary色不同
+**布局：** PageLayout > Header(标题+刷新) > 4列状态卡 > Quick Actions(7个操作卡) > Organ Grid > 组件统计(25+)
 
----
+**数据接口：**
+- `GET /api/admin/overview` → SystemOverview（health + stats）
+- `POST /api/admin/caches/clear`
+- `POST /api/admin/cleanup`
+- `POST /api/admin/backup`
+- `GET /api/admin/export/config`
+- `GET /api/admin/report`
+- `GET /api/diagnostics/check-all`
 
-## 4. soma-admin-client.tsx (613行, 32KB)
+**独特特性：**
+- 30秒自动轮询overview
+- 7个Quick Action按钮（清除缓存、清理过期、备份、导出配置、系统报告、健康检查、刷新）
+- 25+个StatsCard组件展示各organ统计（vein/gland/immune/gene/hippo/vital/mind/vision/pipeline/trajectory/reflex/mirror/echo/link/marrow/sense/nerve/will/limb/pulse/heredity/cortex/voice/nest/knowledge/agent/graph/entity/search/capture/workflow）
+- ActionCard + StatsCard 两个内部组件
+- 边框：`border border-border`
 
-### 核心功能
-- **Soma仪表盘**: 系统状态卡片（status/version/connectors_count/collectors_count）+ 详情 + uptime
-- **连接器管理**: 列表+详情面板（桌面端inline/移动端overlay滑出）+ 启用/禁用开关
-- **采集器管理**: 统计卡片（总数/运行/停止/错误）+ 采集器列表（状态badge+事件数+错误信息）
-- **配置查看**: JSON pre展示系统配置 + 连接信息
-- **4个Tab**: dashboard / connectors / collectors / config
-
-### 数据源
-| API | 方法 | 用途 |
-|-----|------|------|
-| `http://localhost:8091/api/status` | GET | Soma系统状态 |
-| `http://localhost:8091/api/connectors` | GET | 连接器列表 |
-| `http://localhost:8091/api/connectors/{name}/toggle` | POST | 切换连接器 |
-| `http://localhost:8091/api/collectors` | GET | 采集器列表 |
-
-### 独特特性
-- **直连Soma**: `somaBase = "http://localhost:8091"` 不走主网关代理
-- **移动端适配**: `useIsMobile()` + 连接器详情用 `fixed inset-0` overlay滑出面板
-- **状态颜色系统**: `STATUS_COLORS` map（online/running/active=绿, offline/error=红, degraded=黄）
-- **相对时间**: `formatTime()` 显示"刚刚"/"X分钟前"/"X小时前"
-- **Tab延迟加载**: 只在切换到对应tab时才请求数据
-- **Cyan主题**: `text-cyan-500`/`bg-cyan-500/10` 贯穿全页
-- **toggleConnector**: 启用/禁用连接器，本地乐观更新
+**子组件：**
+- `ActionCard`（685-748行）：icon + title + description + Execute按钮 + 结果反馈
+- `StatsCard`（750-775行）：emoji + title + 2xN grid数据项
 
 ---
 
-## 重叠矩阵
+### 2.2 permission-client.tsx（331行）
 
-| 功能维度 | admin | permission | enterprise | soma-admin |
-|----------|-------|------------|------------|------------|
-| **健康检查** | ✅ organ级 | ❌ | ✅ enterprise级 | ✅ soma级 |
-| **用户管理** | ❌ | ❌ | ✅ 用户列表+角色 | ❌ |
-| **角色/权限** | ❌ | ✅ RBAC策略 | ✅ 角色CRUD | ❌ |
-| **审计日志** | ❌ | ❌ | ✅ | ❌ |
-| **组件监控** | ✅ 20+organ | ❌ | ❌ | ✅ connector+collector |
-| **系统操作** | ✅ 6个操作 | ❌ | ❌ | ❌ |
-| **配置查看** | ✅ 导出JSON | ❌ | ❌ | ✅ JSON展示 |
-| **表格布局** | ❌ | ✅ | ❌ | ❌ |
-| **卡片布局** | ✅ | 部分 | 部分 | ✅ |
-| **独立认证** | ❌ | 用主token | ✅ enterprise-token | ❌ |
-| **Tab数量** | 0 | 2 | 3 | 4 |
-| **自动刷新** | ✅ 30s轮询 | ❌ | ❌ | ❌ |
+**核心功能：** RBAC权限策略管理
 
-## 可合并点
+**布局：** PageLayout > Header > Tabs(policies/roles) > 内容区
 
-1. **permission + enterprise 的角色/权限功能高度重叠**: permission有RBAC策略表，enterprise有角色CRUD+权限分配。可统一为一个页面的两个tab
-2. **admin + soma-admin 的监控功能**: admin监控opensoul organ，soma-admin监控soma connectors/collectors。可合并为统一监控页
-3. **健康检查**: 3个页面都有健康检查，但粒度不同（organ/enterprise/soma），合并后可统一展示
-4. **配置导出/查看**: admin有export config，soma-admin有config tab，可统一
+**数据接口：**
+- `GET /api/permission/policies` → Policy[]
+- `POST /api/permission/policy` → 创建策略
+- `DELETE /api/permission/policy` → 删除策略
+- `GET /api/permission/roles/{username}` → RoleInfo
+- `POST /api/permission/role` → 分配角色
+- `DELETE /api/permission/role` → 删除角色
 
-## 不可合并（独特功能）
+**独特特性：**
+- **列表视图**：policies用`<table>`展示（角色/资源/操作/效果/删除）
+- 搜索过滤（role/resource/action模糊匹配）
+- 创建策略表单（4列grid：角色/资源/操作select/效果select）
+- 角色管理tab：查询用户角色 + 分配角色
+- 删除确认inline（不是modal）
+- effect颜色编码：allow=green, deny=red
+- 认证：`getToken()` + Bearer header
 
-- **admin**: 快速操作（清缓存/备份/清理）+ 20+ organ统计卡片 — 唯一的运维操作页
-- **permission**: RBAC策略表（role×resource×action×effect）— 唯一的细粒度策略管理
-- **enterprise**: 独立认证系统 + 审计日志 — 唯一有操作审计的页面
-- **soma-admin**: 连接器toggle + 采集器监控 + 移动端overlay — 唯一管理外部服务连接的页面
+**接口定义：**
+```typescript
+interface Policy { id?, role, resource, action, effect, created_at? }
+interface RoleInfo { username, roles[] }
+```
 
-## UI风格差异
+---
 
-| 特征 | admin | permission | enterprise | soma-admin |
-|------|-------|------------|------------|------------|
-| 主色 | primary | primary | blue-600 | cyan-500 |
-| 圆角 | rounded-lg | rounded-md/rounded-lg | rounded-xl | rounded-xl |
-| 边框 | border-border ✅ | border ✅ | border-border ✅ | border-border ✅ |
-| 布局 | PageLayout+卡片 | PageLayout+表格 | PageLayout+列表 | PageLayout+卡片 |
-| 移动适配 | lg断点 | lg断点 | lg断点 | useIsMobile() |
-| 认证 | 无 | Bearer token | enterprise-token | 无 |
+### 2.3 enterprise-client.tsx（568行）
+
+**核心功能：** 企业级用户/角色/权限/审计管理
+
+**布局：** PageLayout > Header(健康状态) > Tabs(users/roles/audit) > 内容区
+
+**数据接口：**
+- `POST /api/enterprise/auth/login` → access_token
+- `POST /api/enterprise/auth/register`
+- `GET /api/enterprise/health`
+- `GET /api/enterprise/users/list` → User[]
+- `POST /api/enterprise/users/{id}/roles` → 分配角色
+- `POST /api/enterprise/roles` → 创建角色
+- `POST /api/enterprise/permissions` → 分配权限
+- `GET /api/enterprise/audit?limit=N&action=X` → AuditEntry[]
+
+**独特特性：**
+- **独立认证系统**：enterprise-token存在localStorage，与主app token分离
+- **自动认证**：ensureEntAuth() → 尝试admin登录 → 失败则自动注册+登录
+- **3个tab**：Users & Roles / Role Management / Audit Log
+- Users tab：分配角色表单 + 分配权限表单 + 用户列表（头像首字母+角色badge）
+- Roles tab：创建角色（名称+逗号分隔权限） + 角色列表
+- Audit tab：action过滤 + limit选择(20/50/100/200) + 审计条目列表（status颜色badge）
+- 健康状态指示器（header右侧）
+
+**接口定义：**
+```typescript
+interface User { id, username, email?, roles[], created_at? }
+interface Role { role, permissions[] }
+interface AuditEntry { id, timestamp, user_id, username?, action, resource, details?, ip?, status? }
+```
+
+---
+
+### 2.4 soma-admin-client.tsx（613行）
+
+**核心功能：** Soma连接器和收集器管理
+
+**布局：** PageLayout > Header(badge) > Tabs(dashboard/connectors/collectors/config) > 内容区
+
+**数据接口：**
+- `GET http://localhost:8091/api/status` → SystemStatus
+- `GET http://localhost:8091/api/connectors` → Connector[]
+- `GET http://localhost:8091/api/collectors` → Collector[]
+- `POST http://localhost:8091/api/connectors/{name}/toggle`
+
+**独特特性：**
+- **直连somaBase(8091)**，不走apiBase
+- Dashboard：4列状态卡 + 系统详情key-value + uptime
+- Connectors tab：左侧列表 + 右侧详情（桌面inline，移动端overlay滑出）
+- **移动端适配**：useIsMobile() + 条件渲染（列表/详情切换 + 背景遮罩）
+- Collectors tab：4列统计卡 + 收集器列表（状态badge + 错误提示）
+- Config tab：JSON pre展示 + 连接信息
+- toggleConnector：启用/禁用连接器
+- STATUS_COLORS映射：online/running/active=emerald, offline/error=red, degraded=amber
+- formatTime辅助函数（相对时间）
+
+**接口定义：**
+```typescript
+interface SystemStatus { status, version?, uptime?, connectors_count?, collectors_count? }
+interface Connector { id, name, type, status, enabled?, config?, last_active?, error_count?, last_error? }
+interface Collector { id, name, type, status, events_collected?, last_event_at?, error? }
+```
+
+---
+
+## 3. 重叠矩阵
+
+| 功能点 | admin | permission | enterprise | soma-admin |
+|--------|:-----:|:----------:|:----------:|:----------:|
+| PageLayout包装 | ✅ | ✅ | ✅ | ✅ |
+| Tab切换 | ❌ | ✅(2) | ✅(3) | ✅(4) |
+| 用户列表 | ❌ | ❌ | ✅ | ❌ |
+| 角色管理 | ❌ | ✅ | ✅ | ❌ |
+| 权限策略CRUD | ❌ | ✅ | 部分 | ❌ |
+| 审计日志 | ❌ | ❌ | ✅ | ❌ |
+| 系统健康状态 | ✅ | ❌ | ✅ | ✅ |
+| 组件统计 | ✅(25+) | ❌ | ❌ | 部分 |
+| 连接器管理 | ❌ | ❌ | ❌ | ✅ |
+| 收集器管理 | ❌ | ❌ | ❌ | ✅ |
+| 快速操作按钮 | ✅(7) | ❌ | ❌ | ❌ |
+| 搜索过滤 | ❌ | ✅ | ✅(audit) | ❌ |
+| 移动端适配 | 部分 | 部分 | 部分 | ✅(overlay) |
+| 自动轮询 | ✅(30s) | ❌ | ❌ | ❌ |
+| 独立认证 | ❌ | ❌ | ✅ | ❌ |
+
+---
+
+## 4. 关键差异
+
+### 认证方式
+- **admin**：无认证，直接fetch
+- **permission**：`getToken()` + Authorization Bearer
+- **enterprise**：独立enterprise-token，自动注册/登录流程
+- **soma-admin**：无认证，直连8091端口
+
+### API基础URL
+- admin/permission/enterprise → `getApiBaseUrl()`（主API）
+- soma-admin → `http://localhost:8091`（硬编码）
+
+### UI风格差异
+- **admin**：卡片网格布局，无tab
+- **permission**：表格列表，简洁
+- **enterprise**：列表+badge，蓝色主题
+- **soma-admin**：列表+详情面板，cyan主题，移动端overlay
+
+### 边框一致性
+- 全部使用 `border border-border`
+- soma-admin额外使用 `border-dashed` 用于uptime区域
+
+---
+
+## 5. 合并建议
+
+### 高价值合并点
+1. **permission + enterprise的角色管理**：功能高度重叠，enterprise是permission的超集
+2. **admin的组件统计** 可独立为子组件，便于其他页面复用
+3. **Tab组件**：4个页面都用tab，可抽取统一TabBar组件
+
+### 不建议合并
+1. **soma-admin**：独立服务(8091)，功能域完全不同，保持独立
+2. **admin**：系统级监控，与其他3个管理页面职责不同
+
+### 潜在合并方案
+- **方案A**：permission并入enterprise（enterprise已有权限管理功能）
+- **方案B**：4页面统一为一个"系统管理"页面，tab分为：总览(admin) / 权限(permission+enterprise) / 连接器(soma-admin)
