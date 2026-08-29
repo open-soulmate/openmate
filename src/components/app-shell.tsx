@@ -459,7 +459,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
       />
       <div
-        className="absolute inset-y-0 top-0 right-0 z-10 h-full border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
+        className="absolute inset-y-0 top-0 right-0 z-10 h-full min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
         style={{
           width: rightPanelWidth,
           right: rightPanelOpen ? 0 : -rightPanelWidth,
