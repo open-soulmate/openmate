@@ -44,7 +44,6 @@ const navItems: BottomNavItem[] = [
   { href: "/mcp", label: "nav.mcp", icon: Plug },
   { href: "/workspace", label: "nav.workspace", icon: FolderKanban },
   { href: "/capture", label: "nav.capture", icon: Camera },
-  { href: "/download", label: "nav.download", icon: Download },
   { href: "/tags", label: "nav.tags", icon: Tag },
   { href: "/body-map", label: "nav.bodyMap", icon: User },
   { href: "/soma", label: "nav.soma", icon: Bot },
