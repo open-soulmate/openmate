@@ -294,10 +294,10 @@ export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) 
   };
 
   return (
-    <div className="flex-1 min-h-0 w-full flex items-center justify-center p-2">
+    <div className="w-full h-full flex items-center justify-center">
       <ReactECharts
         option={option}
-        style={{ width: '100%', height: '100%' }}
+        style={{ width: 'min(90vw, 90vh)', height: 'min(90vw, 90vh)', maxWidth: 800, maxHeight: 800 }}
         opts={{ renderer: 'canvas' }}
         onChartReady={onChartReady}
         notMerge={false}
