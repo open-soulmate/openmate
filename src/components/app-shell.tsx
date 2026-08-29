@@ -330,9 +330,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMidScreenExpanded(false);
   }, [isMidScreen]);
 
-  // Track right panel width — desktop: 50vw, mobile: 75vw
+  // Track right panel width — desktop: 50vw, mobile: 75vw (capped at 384px)
   useEffect(() => {
-    const update = () => setRightPanelWidth(isMobile ? 256 : Math.round(window.innerWidth / 2));
+    const update = () => setRightPanelWidth(isMobile ? Math.min(Math.round(window.innerWidth * 0.75), 384) : Math.round(window.innerWidth / 2));
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
@@ -478,10 +478,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
         </SidebarProvider>
 
-      {/* Right Panel — sidebar-style sliding, same for mobile and desktop */}
+      {/* Right Panel gap — reserves layout space on desktop; zero on mobile (panel overlays) */}
       <div
         className="shrink-0 transition-[width] duration-200 ease-linear"
-        style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
+        style={{ width: isMobile ? 0 : (rightPanelOpen ? rightPanelWidth : 0) }}
       />
       {/* Backdrop overlay on mobile when right panel is open */}
       {isMobile && rightPanelOpen && (
