@@ -714,7 +714,7 @@ export function ChatClient() {
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); setShowCheckpoints(false); if (isMobile && sidebarOpen) toggleSidebar(); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
-              <PanelRightOpen className="w-4 h-4" />
+              <PanelLeft className="w-4 h-4 scale-x-[-1]" />
             </button>
           </div>
         </div>

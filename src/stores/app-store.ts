@@ -202,10 +202,6 @@ interface AppState {
   toggleRightPanel: () => void;
   setRightPanelOpen: (open: boolean) => void;
 
-  // Mobile conversation sheet (shared between app-shell and chat-client)
-  mobileConvOpen: boolean;
-  setMobileConvOpen: (open: boolean) => void;
-
   // Mobile swipeable panels (synced with bottom nav)
   currentPanel: number;
   setCurrentPanel: (n: number) => void;
@@ -333,9 +329,6 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
   setRightPanelOpen: (open: boolean) =>
     set({ rightPanelOpen: open }),
-
-  mobileConvOpen: false,
-  setMobileConvOpen: (open) => set({ mobileConvOpen: open }),
 
   currentPanel: 0,
   setCurrentPanel: (n) => set({ currentPanel: n }),
