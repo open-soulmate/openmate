@@ -257,7 +257,7 @@ export function NestClient() {
 
         {/* Tenants Tab */}
         {tab === "tenants" && (
-          <div className="flex gap-2 lg:gap-6">
+          <div className="flex gap-2 lg:gap-6 relative">
             <div className={`flex-1 space-y-3 ${isMobile ? 'w-full' : ''}`}>
               {tenants.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
@@ -310,10 +310,16 @@ export function NestClient() {
               ))}
             </div>
 
-            {/* Detail Panel — Sheet on mobile, inline on desktop */}
+            {/* Detail Panel — sidebar sliding on mobile, inline on desktop */}
+            {isMobile && !!selected && (
+              <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setSelected(null)} aria-hidden="true" />
+            )}
             {isMobile ? (
-              <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-                <SheetContent side="right" size="md" className="p-0 flex flex-col">
+              !!selected && (
+                <div
+                  className="absolute inset-y-0 right-0 z-10 h-full w-72 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+                  style={{ right: 0 }}
+                >
                   <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-4">
                     {selected && (
                       <>
