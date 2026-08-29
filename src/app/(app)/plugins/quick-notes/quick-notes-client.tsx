@@ -284,10 +284,16 @@ export function QuickNotesClient() {
         </div>
       )}
 
-      {/* Note List Panel — Sheet on mobile, inline on desktop */}
+      {/* Note List Panel — sidebar-style sliding on mobile, inline on desktop */}
+      {isMobile && showSidebar && (
+        <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowSidebar(false)} aria-hidden="true" />
+      )}
       {isMobile ? (
-        <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
-          <SheetContent side="left" size="md" showCloseButton={false} className="p-0 flex flex-col">
+        showSidebar && (
+          <div
+            className="absolute inset-y-0 left-0 z-10 h-full w-80 min-w-0 border-r border-border transition-[left] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+            style={{ left: 0 }}
+          >
             <NoteListContent
               notes={notes} pinnedNotes={pinnedNotes} regularNotes={regularNotes}
               searchQuery={searchQuery} setSearchQuery={setSearchQuery}
@@ -298,8 +304,8 @@ export function QuickNotesClient() {
               fetchNotes={fetchNotes} fetchTags={fetchTags} fetchStats={fetchStats}
               loading={loading} t={t}
             />
-          </SheetContent>
-        </Sheet>
+          </div>
+        )
       ) : (
       <div className="w-80 border-r border-border flex flex-col shrink-0">
         <NoteListContent

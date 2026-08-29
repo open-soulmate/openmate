@@ -369,7 +369,7 @@ export function BodyMapClient() {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
         {/* SVG Body Map */}
         <div className="body-map-content flex-1 flex items-center justify-center p-3 lg:p-6">
           <svg
@@ -446,10 +446,16 @@ export function BodyMapClient() {
           </svg>
         </div>
 
-        {/* Side panel: Sheet on mobile, inline on desktop */}
+        {/* Side panel: sidebar-style sliding on mobile, inline on desktop */}
+        {isMobile && showDetails && (
+          <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowDetails(false)} aria-hidden="true" />
+        )}
         {isMobile ? (
-          <Sheet open={showDetails} onOpenChange={setShowDetails}>
-            <SheetContent side="right" size="md" className="p-0 flex flex-col overflow-y-auto">
+          showDetails && (
+            <div
+              className="absolute inset-y-0 right-0 z-10 h-full w-72 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-y-auto bg-card"
+              style={{ right: 0 }}
+            >
               <div className="p-4 space-y-4">
                 {/* System legend */}
                 <div>
@@ -528,8 +534,8 @@ export function BodyMapClient() {
             </div>
           </div>
               </div>
-            </SheetContent>
-          </Sheet>
+            </div>
+          )
         ) : (
           showDetails && (
             <div className="w-72 shrink-0 border-l border-border overflow-y-auto p-3 lg:p-4 space-y-4">

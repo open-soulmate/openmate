@@ -239,10 +239,16 @@ export function BookmarksClient() {
 
   return (
     <div className="flex h-full overflow-hidden">
-      {/* Sidebar — Sheet on mobile, inline on desktop */}
+      {/* Sidebar — sidebar-style sliding on mobile, inline on desktop */}
+      {isMobile && showSidebar && (
+        <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowSidebar(false)} aria-hidden="true" />
+      )}
       {isMobile ? (
-        <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
-          <SheetContent side="left" size="sm" showCloseButton={false} className="p-0 flex flex-col bg-background/95">
+        showSidebar && (
+          <div
+            className="absolute inset-y-0 left-0 z-10 h-full w-64 min-w-0 border-r border-border transition-[left] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+            style={{ left: 0 }}
+          >
             <BookmarkSidebar
               allCollections={allCollections} collections={collections} tags={tags}
               activeCollection={activeCollection} setActiveCollection={setActiveCollection}
@@ -251,8 +257,8 @@ export function BookmarksClient() {
               openAdd={openAdd} setShowColModal={setShowColModal}
               bookmarks={bookmarks} t={t}
             />
-          </SheetContent>
-        </Sheet>
+          </div>
+        )
       ) : (
       <aside className="w-64 border-r border-border bg-background/50 flex flex-col shrink-0">
         <BookmarkSidebar

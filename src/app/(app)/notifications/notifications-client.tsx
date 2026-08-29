@@ -25,11 +25,11 @@ interface NotificationStats {
   read: number
 }
 
-const SEVERITY_META: Record<string, { icon: typeof Info; color: string; bg: string }> = {
-  info:    { icon: Info,          color: 'text-blue-400',   bg: 'bg-blue-900/20' },
-  warning: { icon: AlertTriangle, color: 'text-amber-400',  bg: 'bg-amber-900/20' },
-  error:   { icon: AlertCircle,   color: 'text-red-400',    bg: 'bg-red-900/20' },
-  success: { icon: CheckCircle2,  color: 'text-green-400',  bg: 'bg-green-900/20' },
+const SEVERITY_META: Record<string, { icon: typeof Info; color: string; dot: string }> = {
+  info:    { icon: Info,          color: 'text-blue-400',   dot: 'bg-blue-400' },
+  warning: { icon: AlertTriangle, color: 'text-amber-400',  dot: 'bg-amber-400' },
+  error:   { icon: AlertCircle,   color: 'text-red-400',    dot: 'bg-red-400' },
+  success: { icon: CheckCircle2,  color: 'text-green-400',  dot: 'bg-green-400' },
 }
 
 export function NotificationsClient() {
@@ -149,17 +149,26 @@ export function NotificationsClient() {
     return true
   })
 
+  // Group by date
+  const grouped = filtered.reduce<Record<string, Notification[]>>((acc, n) => {
+    const d = new Date(n.created_at)
+    const now = new Date()
+    const diffMs = now.getTime() - d.getTime()
+    const diffDays = Math.floor(diffMs / 86400000)
+    let label: string
+    if (diffDays === 0) label = t('notifications.today', '今天')
+    else if (diffDays === 1) label = t('notifications.yesterday', '昨天')
+    else if (diffDays < 7) label = t('notifications.daysAgo', '{{count}}天前', { count: diffDays })
+    else label = d.toLocaleDateString()
+    if (!acc[label]) acc[label] = []
+    acc[label].push(n)
+    return acc
+  }, {})
+
   const formatTime = (ts: string) => {
     try {
       const d = new Date(ts)
-      const now = new Date()
-      const diffMs = now.getTime() - d.getTime()
-      const diffMin = Math.floor(diffMs / 60000)
-      if (diffMin < 1) return t('notifications.justNow', 'Just now')
-      if (diffMin < 60) return t('notifications.minutesAgo', '{{count}}m ago', { count: diffMin })
-      const diffHr = Math.floor(diffMin / 60)
-      if (diffHr < 24) return t('notifications.hoursAgo', '{{count}}h ago', { count: diffHr })
-      return d.toLocaleDateString()
+      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     } catch { return ts }
   }
 
@@ -206,93 +215,60 @@ export function NotificationsClient() {
         </div>
       )}
 
-      {/* Stats */}
+      {/* Stats — compact inline */}
       {stats && (
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
-          {[
-            { label: t('notifications.total', 'Total'), value: stats.total, color: 'text-blue-400' },
-            { label: t('notifications.unread', 'Unread'), value: stats.unread, color: 'text-amber-400' },
-            { label: t('notifications.read', 'Read'), value: stats.read, color: 'text-green-400' },
-          ].map(s => (
-            <div key={s.label} className="bg-card border border-border rounded-lg p-2.5 lg:p-4 text-center">
-              <div className={cn('text-lg lg:text-2xl font-bold', s.color)}>{s.value}</div>
-              <div className="text-[10px] lg:text-xs text-muted-foreground mt-1">{s.label}</div>
-            </div>
-          ))}
+        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+          <span>{stats.total} {t('notifications.total', '总计')}</span>
+          <span className="text-amber-400">{stats.unread} {t('notifications.unread', '未读')}</span>
+          <span className="text-green-400">{stats.read} {t('notifications.read', '已读')}</span>
         </div>
       )}
 
-      {/* Filters & Actions */}
-      <div className="flex flex-wrap items-center justify-between gap-2 lg:gap-3">
-        <div className="flex gap-1.5 lg:gap-2">
-          {(['all', 'unread', 'read'] as const).map(f => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={cn(
-                'px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border touch-manipulation',
-                filter === f
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'bg-card text-muted-foreground border-border hover:bg-accent'
-              )}
-            >
-              {t(`notifications.filter.${f}`, f.charAt(0).toUpperCase() + f.slice(1))}
-            </button>
-          ))}
-        </div>
-
-        <div className="flex gap-1.5 lg:gap-2">
+      {/* Filters & Actions — single row */}
+      <div className="flex items-center gap-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+        {(['all', 'unread', 'read'] as const).map(f => (
           <button
-            onClick={markAllRead}
-            disabled={actionLoading === 'read-all' || unreadCount === 0}
+            key={f}
+            onClick={() => setFilter(f)}
             className={cn(
-              'flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border border-border touch-manipulation',
-              'bg-card hover:bg-accent text-muted-foreground disabled:opacity-40 disabled:pointer-events-none'
+              'shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border touch-manipulation',
+              filter === f
+                ? 'bg-primary text-primary-foreground border-primary'
+                : 'bg-card text-muted-foreground border-border hover:bg-accent'
             )}
           >
-            {actionLoading === 'read-all' ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <CheckCircle2 className="w-3.5 h-3.5" />
-            )}
-            {t('notifications.markAllRead', 'Mark All Read')}
+            {t(`notifications.filter.${f}`, f.charAt(0).toUpperCase() + f.slice(1))}
           </button>
+        ))}
 
-          <button
-            onClick={clearAll}
-            disabled={actionLoading === 'clear-all' || notifications.length === 0}
-            className={cn(
-              'flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border border-border touch-manipulation',
-              'bg-card hover:bg-red-900/20 text-muted-foreground hover:text-red-400 disabled:opacity-40 disabled:pointer-events-none'
-            )}
-          >
-            {actionLoading === 'clear-all' ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Trash2 className="w-3.5 h-3.5" />
-            )}
-            {t('notifications.clearAll', 'Clear All')}
-          </button>
+        <div className="w-px h-4 bg-border shrink-0 mx-1" />
 
-          <button
-            onClick={sendTest}
-            disabled={actionLoading === 'test'}
-            className={cn(
-              'flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-lg text-xs lg:text-sm font-medium transition-colors border border-border touch-manipulation',
-              'bg-card hover:bg-accent text-muted-foreground disabled:opacity-40 disabled:pointer-events-none'
-            )}
-          >
-            {actionLoading === 'test' ? (
-              <Loader2 className="w-3.5 h-3.5 animate-spin" />
-            ) : (
-              <Send className="w-3.5 h-3.5" />
-            )}
-            {t('notifications.test', 'Test')}
-          </button>
-        </div>
+        <button
+          onClick={markAllRead}
+          disabled={actionLoading === 'read-all' || unreadCount === 0}
+          className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border border-border bg-card hover:bg-accent text-muted-foreground disabled:opacity-40 disabled:pointer-events-none touch-manipulation"
+        >
+          {t('notifications.markAllRead', '全部已读')}
+        </button>
+
+        <button
+          onClick={clearAll}
+          disabled={actionLoading === 'clear-all' || notifications.length === 0}
+          className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border border-border bg-card hover:bg-red-900/20 text-muted-foreground hover:text-red-400 disabled:opacity-40 disabled:pointer-events-none touch-manipulation"
+        >
+          {t('notifications.clearAll', '清空')}
+        </button>
+
+        <button
+          onClick={sendTest}
+          disabled={actionLoading === 'test'}
+          className="shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors border border-border bg-card hover:bg-accent text-muted-foreground disabled:opacity-40 disabled:pointer-events-none touch-manipulation"
+        >
+          {t('notifications.test', '测试')}
+        </button>
       </div>
 
-      {/* Notification List */}
+      {/* Notification List — grouped by date */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 lg:py-20 text-muted-foreground">
           <BellOff className="w-12 h-12 lg:w-16 lg:h-16 mb-3 lg:mb-4 opacity-30" />
@@ -306,77 +282,87 @@ export function NotificationsClient() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
-          {filtered.map(n => {
-            const meta = SEVERITY_META[n.severity] || SEVERITY_META.info
-            const Icon = meta.icon
-            const isProcessing = actionLoading === `read-${n.id}` || actionLoading === `del-${n.id}`
-
-            return (
-              <div
-                key={n.id}
-                className={cn(
-                  'flex items-start gap-3 lg:gap-4 p-3 lg:p-4 rounded-lg border transition-colors',
-                  'bg-card border-border hover:bg-accent/50',
-                  n.read && 'opacity-60'
-                )}
-              >
-                {/* Severity icon */}
-                <div className={cn('flex-shrink-0 p-1.5 lg:p-2 rounded-lg', meta.bg)}>
-                  <Icon className={cn('w-4 h-4 lg:w-5 lg:h-5', meta.color)} />
-                </div>
-
-                {/* Content */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <h3 className={cn('text-xs lg:text-sm font-semibold text-foreground truncate')}>
-                      {n.title}
-                    </h3>
-                    {!n.read && (
-                      <span className="flex-shrink-0 w-2 h-2 rounded-full bg-blue-400" />
-                    )}
-                  </div>
-                  <p className="text-xs lg:text-sm text-muted-foreground mt-0.5 line-clamp-2">
-                    {n.message}
-                  </p>
-                  <span className="text-xs text-muted-foreground/60 mt-1 inline-block">
-                    {formatTime(n.created_at)}
-                  </span>
-                </div>
-
-                {/* Actions */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {isProcessing ? (
-                    <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" />
-                  ) : (
-                    <>
-                      <button
-                        onClick={() => n.read ? undefined : markAsRead(n.id)}
-                        className={cn(
-                          'p-1.5 rounded-md transition-colors touch-manipulation',
-                          n.read
-                            ? 'text-green-400/40 cursor-default'
-                            : 'text-muted-foreground hover:bg-accent hover:text-foreground'
-                        )}
-                        title={n.read
-                          ? t('notifications.alreadyRead', 'Already read')
-                          : t('notifications.markRead', 'Mark as read')}
-                      >
-                        {n.read ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
-                      </button>
-                      <button
-                        onClick={() => deleteNotification(n.id)}
-                        className="p-1.5 rounded-md text-muted-foreground hover:bg-red-900/20 hover:text-red-400 transition-colors touch-manipulation"
-                        title={t('notifications.delete', 'Delete')}
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </>
-                  )}
-                </div>
+        <div className="space-y-4">
+          {Object.entries(grouped).map(([dateLabel, items]) => (
+            <div key={dateLabel}>
+              {/* Date group header */}
+              <div className="flex items-center gap-2 mb-2 px-1">
+                <span className="text-[11px] font-medium text-muted-foreground/70">{dateLabel}</span>
+                <div className="flex-1 h-px bg-border/50" />
               </div>
-            )
-          })}
+
+              {/* Items in this group */}
+              <div className="bg-card border border-border rounded-xl overflow-hidden divide-y divide-border/50">
+                {items.map(n => {
+                  const meta = SEVERITY_META[n.severity] || SEVERITY_META.info
+                  const Icon = meta.icon
+                  const isProcessing = actionLoading === `read-${n.id}` || actionLoading === `del-${n.id}`
+
+                  return (
+                    <div
+                      key={n.id}
+                      className={cn(
+                        'flex items-start gap-3 px-4 py-3 transition-colors hover:bg-accent/30',
+                        n.read && 'opacity-50'
+                      )}
+                    >
+                      {/* Unread dot */}
+                      <div className="flex-shrink-0 mt-1.5">
+                        {!n.read ? (
+                          <span className={cn('block w-2 h-2 rounded-full', meta.dot)} />
+                        ) : (
+                          <span className="block w-2 h-2" />
+                        )}
+                      </div>
+
+                      {/* Content */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <h3 className={cn('text-sm font-medium text-foreground truncate', !n.read && 'font-semibold')}>
+                            {n.title}
+                          </h3>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                          {n.message}
+                        </p>
+                      </div>
+
+                      {/* Time + actions */}
+                      <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                        <span className="text-[11px] text-muted-foreground/60 whitespace-nowrap">
+                          {formatTime(n.created_at)}
+                        </span>
+                        <div className="flex items-center gap-0.5">
+                          {isProcessing ? (
+                            <Loader2 className="w-3.5 h-3.5 animate-spin text-muted-foreground" />
+                          ) : (
+                            <>
+                              {!n.read && (
+                                <button
+                                  onClick={() => markAsRead(n.id)}
+                                  className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors touch-manipulation"
+                                  title={t('notifications.markRead', 'Mark as read')}
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                              <button
+                                onClick={() => deleteNotification(n.id)}
+                                className="p-1 rounded-md text-muted-foreground hover:bg-red-900/20 hover:text-red-400 transition-colors touch-manipulation"
+                                title={t('notifications.delete', 'Delete')}
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>
