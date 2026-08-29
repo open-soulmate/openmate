@@ -1,5 +1,8 @@
 'use client';
 import { useMemo } from 'react';
+import dynamic from 'next/dynamic';
+
+const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
 
 interface CronJob {
   id: string;
@@ -14,50 +17,42 @@ interface CronJob {
 function parseScheduleHours(schedule: string): number[] {
   const s = schedule.trim().toLowerCase();
 
-  // "30m" / "every 30m" → every 30 minutes → plot at current hour
   const minMatch = s.match(/(\d+)\s*m/);
   if (minMatch) {
     const mins = parseInt(minMatch[1]);
-    if (mins <= 60) return Array.from({ length: 24 }, (_, i) => i); // frequent → all hours
+    if (mins <= 60) return Array.from({ length: 24 }, (_, i) => i);
     return Array.from({ length: Math.ceil(1440 / mins) }, (_, i) => (i * mins / 60) % 24);
   }
 
-  // "2h" / "every 2h" / "1h" / "every 1h"
   const hourMatch = s.match(/(\d+)\s*h/);
   if (hourMatch) {
     const hours = parseInt(hourMatch[1]);
     return Array.from({ length: Math.ceil(24 / hours) }, (_, i) => (i * hours) % 24);
   }
 
-  // "daily" / "every day" → 0:00
   if (s.includes('daily') || s.includes('every day')) return [0];
 
-  // Standard cron: "0 9 * * *" or "30 14 * * *"
   const cronParts = s.split(/\s+/);
   if (cronParts.length >= 2) {
     const minute = parseInt(cronParts[0]);
     const hourPart = cronParts[1];
 
     if (hourPart === '*') {
-      // Every hour at that minute
       return Array.from({ length: 24 }, (_, i) => i + minute / 60);
     }
 
-    const hours: number[] = [];
-    // Handle "*/N" pattern
     const stepMatch = hourPart.match(/^\*\/(\d+)$/);
     if (stepMatch) {
       const step = parseInt(stepMatch[1]);
+      const hours: number[] = [];
       for (let h = 0; h < 24; h += step) hours.push(h + minute / 60);
       return hours;
     }
 
-    // Handle comma-separated: "9,14,21"
     const hourValues = hourPart.split(',').map(h => parseInt(h.trim())).filter(h => !isNaN(h));
     return hourValues.map(h => h + minute / 60);
   }
 
-  // Fallback: try to find a number that looks like an hour
   const numMatch = s.match(/(\d{1,2})/);
   if (numMatch) {
     const h = parseInt(numMatch[1]);
@@ -76,125 +71,113 @@ interface ClockFaceProps {
 }
 
 export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) {
-  const size = 400;
-  const cx = size / 2;
-  const cy = size / 2;
-  const outerR = 180;
-  const innerR = 60;
-  const dotAreaR = outerR - 30;
-  const dotAreaInnerR = innerR + 20;
+  const option = useMemo(() => {
+    // Build scatter data: [hour, ringIndex, job]
+    const seriesData: { value: number[]; itemStyle: { color: string; borderColor: string; borderWidth: number }; job: CronJob }[] = [];
 
-  // Parse all jobs into positioned dots
-  const dots = useMemo(() => {
-    const result: { x: number; y: number; job: CronJob; hour: number }[] = [];
+    // Assign ring positions to avoid overlap
+    const jobRingMap = new Map<string, number>();
+    jobs.forEach((job, i) => {
+      jobRingMap.set(job.id, i % 4); // 4 rings
+    });
 
     jobs.forEach(job => {
       const hours = parseScheduleHours(job.schedule);
-      hours.forEach(h => {
-        // Angle: 0h = top (12 o'clock), clockwise
-        const angle = ((h / 24) * 360 - 90) * (Math.PI / 180);
-        // Spread dots radially based on a hash of the job id to avoid overlap
-        const hash = job.id.split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-        const radialOffset = (hash % 100) / 100; // 0-1
-        const r = dotAreaInnerR + radialOffset * (dotAreaR - dotAreaInnerR);
+      const ring = jobRingMap.get(job.id) ?? 0;
+      const radius = 0.55 + ring * 0.1; // 0.55, 0.65, 0.75, 0.85
 
-        result.push({
-          x: cx + r * Math.cos(angle),
-          y: cy + r * Math.sin(angle),
+      hours.forEach(h => {
+        const isActive = job.status === 'active';
+        const isSelected = (job.job_id || job.id) === selectedJobId;
+        seriesData.push({
+          value: [h % 24, radius],
+          itemStyle: {
+            color: isActive ? '#22c55e' : '#f59e0b',
+            borderColor: isSelected ? '#3b82f6' : 'transparent',
+            borderWidth: isSelected ? 3 : 0,
+          },
           job,
-          hour: h % 24,
         });
       });
     });
-    return result;
-  }, [jobs]);
 
-  // Hour tick marks
-  const ticks = Array.from({ length: 24 }, (_, i) => {
-    const angle = ((i / 24) * 360 - 90) * (Math.PI / 180);
-    const x1 = cx + (outerR - 5) * Math.cos(angle);
-    const y1 = cy + (outerR - 5) * Math.sin(angle);
-    const x2 = cx + outerR * Math.cos(angle);
-    const y2 = cy + outerR * Math.sin(angle);
-    const labelX = cx + (outerR + 14) * Math.cos(angle);
-    const labelY = cy + (outerR + 14) * Math.sin(angle);
-    const isMajor = i % 6 === 0;
-    return { x1, y1, x2, y2, labelX, labelY, hour: i, isMajor };
-  });
+    return {
+      polar: {},
+      angleAxis: {
+        type: 'value',
+        min: 0,
+        max: 24,
+        clockwise: true,
+        startAngle: 90, // 12 o'clock
+        axisLine: { show: true, lineStyle: { color: 'rgba(255,255,255,0.1)' } },
+        axisTick: { show: true, interval: 1, lineStyle: { color: 'rgba(255,255,255,0.15)' } },
+        axisLabel: {
+          interval: 0,
+          formatter: (val: number) => val % 1 === 0 ? `${val}` : '',
+          fontSize: 11,
+          color: 'rgba(255,255,255,0.5)',
+        },
+        splitLine: {
+          show: true,
+          lineStyle: { color: 'rgba(255,255,255,0.05)' },
+        },
+      },
+      radiusAxis: {
+        type: 'value',
+        min: 0,
+        max: 1,
+        show: false,
+      },
+      series: [
+        {
+          type: 'scatter',
+          coordinateSystem: 'polar',
+          symbolSize: (val: number[]) => {
+            const idx = seriesData.findIndex(d => d.value[0] === val[0] && d.value[1] === val[1]);
+            if (idx >= 0 && (seriesData[idx].job.job_id || seriesData[idx].job.id) === selectedJobId) return 22;
+            return 14;
+          },
+          data: seriesData,
+          label: {
+            show: false,
+          },
+          emphasis: {
+            itemStyle: {
+              shadowBlur: 10,
+              shadowColor: 'rgba(59,130,246,0.5)',
+            },
+          },
+        },
+      ],
+      tooltip: {
+        trigger: 'item',
+        formatter: (params: { data: { job: CronJob; value: number[] } }) => {
+          const job = params.data.job;
+          const hour = Math.floor(params.data.value[0]);
+          const min = Math.round((params.data.value[0] % 1) * 60);
+          return `<b>${job.name || job.job_id}</b><br/>Schedule: ${job.schedule}<br/>Time: ${String(hour).padStart(2, '0')}:${String(min).padStart(2, '0')}<br/>Status: ${job.status}`;
+        },
+        backgroundColor: 'rgba(0,0,0,0.8)',
+        borderColor: 'transparent',
+        textStyle: { color: '#fff', fontSize: 12 },
+      },
+    };
+  }, [jobs, selectedJobId]);
+
+  const handleClick = (params: { data: { job: CronJob } }) => {
+    if (params.data?.job) {
+      onSelectJob(params.data.job.job_id || params.data.job.id);
+    }
+  };
 
   return (
     <div className="flex items-center justify-center">
-      <svg
-        viewBox={`0 0 ${size} ${size}`}
-        className="w-full max-w-[400px] h-auto"
-        style={{ filter: 'drop-shadow(0 1px 3px rgba(0,0,0,0.1))' }}
-      >
-        {/* Outer ring */}
-        <circle cx={cx} cy={cy} r={outerR} fill="none" stroke="hsl(var(--border))" strokeWidth={1} />
-        <circle cx={cx} cy={cy} r={innerR} fill="none" stroke="hsl(var(--border))" strokeWidth={0.5} strokeDasharray="2,4" />
-
-        {/* Hour ticks */}
-        {ticks.map(t => (
-          <g key={t.hour}>
-            <line
-              x1={t.x1} y1={t.y1} x2={t.x2} y2={t.y2}
-              stroke="hsl(var(--muted-foreground))"
-              strokeWidth={t.isMajor ? 2 : 0.8}
-              opacity={t.isMajor ? 0.6 : 0.3}
-            />
-            <text
-              x={t.labelX} y={t.labelY}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={t.isMajor ? 11 : 8}
-              fill="hsl(var(--muted-foreground))"
-              opacity={t.isMajor ? 0.8 : 0.4}
-            >
-              {t.hour === 0 ? '0' : t.hour}
-            </text>
-          </g>
-        ))}
-
-        {/* Job dots */}
-        {dots.map((dot, i) => {
-          const isActive = dot.job.status === 'active';
-          const isSelected = (dot.job.job_id || dot.job.id) === selectedJobId;
-          return (
-            <g key={`${dot.job.id}-${i}`}>
-              {/* Selection ring */}
-              {isSelected && (
-                <circle
-                  cx={dot.x} cy={dot.y} r={10}
-                  fill="none"
-                  stroke="hsl(var(--primary))"
-                  strokeWidth={2}
-                  opacity={0.8}
-                />
-              )}
-              {/* Dot */}
-              <circle
-                cx={dot.x} cy={dot.y}
-                r={isSelected ? 6 : 5}
-                fill={isActive ? '#22c55e' : '#f59e0b'}
-                stroke={isSelected ? 'hsl(var(--primary))' : 'transparent'}
-                strokeWidth={isSelected ? 2 : 0}
-                className="cursor-pointer transition-all hover:r-7"
-                onClick={() => onSelectJob(dot.job.job_id || dot.job.id)}
-              >
-                <title>{dot.job.name || dot.job.job_id} — {dot.job.schedule}</title>
-              </circle>
-            </g>
-          );
-        })}
-
-        {/* Center label */}
-        <text x={cx} y={cy - 6} textAnchor="middle" fontSize={12} fontWeight="bold" fill="hsl(var(--foreground))">
-          {jobs.length}
-        </text>
-        <text x={cx} y={cy + 10} textAnchor="middle" fontSize={9} fill="hsl(var(--muted-foreground))">
-          tasks
-        </text>
-      </svg>
+      <ReactECharts
+        option={option}
+        style={{ height: 400, width: 400 }}
+        opts={{ renderer: 'svg' }}
+        onEvents={{ click: handleClick }}
+      />
     </div>
   );
 }
