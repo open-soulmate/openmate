@@ -193,6 +193,15 @@ export function CronClient() {
             </button>
           );
         }}
+        header={
+          <div className="px-2 pb-2">
+            <button onClick={() => setShowCreate(true)}
+              className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors">
+              <Plus className="w-3.5 h-3.5" />
+              {t('cron.newJob', '新建任务')}
+            </button>
+          </div>
+        }
         placeholder={t('cron.searchPlaceholder', 'Search jobs...')}
         emptyState={
           <div className="px-2 py-8 text-center text-muted-foreground/50">
