@@ -376,6 +376,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           if (open === effectiveCollapsed) {
             if (isMobile) {
               setMobileSidebarOpen(prev => !prev);
+              if (!mobileSidebarOpen) setRightPanelOpen(false); // mutual exclusion: close right panel when sidebar opens
             } else if (isMidScreen) {
               setMidScreenExpanded(prev => !prev);
             } else {
@@ -452,22 +453,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
         </SidebarProvider>
 
-      {/* Right Panel — sidebar-style sliding (gap + absolute container) */}
-      {/* Gap: flex child that transitions width to push content */}
-      <div
-        className="shrink-0 transition-[width] duration-200 ease-linear"
-        style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
-      />
-      {/* Container: absolute positioned, slides visually */}
-      <div
-        className="absolute inset-y-0 top-0 right-0 z-10 h-full border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
-        style={{
-          width: rightPanelWidth,
-          right: rightPanelOpen ? 0 : -rightPanelWidth,
-        }}
-      >
-        <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
-      </div>
+      {/* Right Panel — Sheet overlay on mobile, inline on desktop */}
+      {isMobile ? (
+        <Sheet open={rightPanelOpen} onOpenChange={(open) => {
+          setRightPanelOpen(open);
+          if (open) setMobileSidebarOpen(false); // mutual exclusion: close sidebar when right panel opens
+        }}>
+          <SheetContent side="right" size="sm" className="p-0 flex flex-col">
+            <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
+          </SheetContent>
+        </Sheet>
+      ) : (
+        <>
+          {/* Gap: flex child that transitions width to push content */}
+          <div
+            className="shrink-0 transition-[width] duration-200 ease-linear"
+            style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
+          />
+          {/* Container: absolute positioned, slides visually */}
+          <div
+            className="absolute inset-y-0 top-0 right-0 z-10 h-full border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
+            style={{
+              width: rightPanelWidth,
+              right: rightPanelOpen ? 0 : -rightPanelWidth,
+            }}
+          >
+            <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
+          </div>
+        </>
+      )}
       </div>
 
       {/* Bottom navigation bar — full screen width */}
