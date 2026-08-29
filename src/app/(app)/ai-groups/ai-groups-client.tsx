@@ -41,9 +41,10 @@ function getAgentAvatarColor(index: number) {
 
 export default function AIGroupsPage() {
   const { t } = useTranslation();
-  const { toggleSidebar } = useSidebar();
+  const { toggleSidebar, open: sidebarOpen } = useSidebar();
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
   const setRightPanelOpen = useAppStore((s) => s.setRightPanelOpen);
+  const rightPanelOpen = useAppStore((s) => s.rightPanelOpen);
   const isMobile = useIsMobile();
 
   const authHeaders = (): Record<string, string> => {
@@ -87,6 +88,13 @@ export default function AIGroupsPage() {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+
+  // Close group panel when sidebar or right panel opens on mobile (handles external triggers like bottom nav)
+  useEffect(() => {
+    if (isMobile && showGroupPanel && (sidebarOpen || rightPanelOpen)) {
+      setShowGroupPanel(false);
+    }
+  }, [sidebarOpen, rightPanelOpen, isMobile, showGroupPanel]);
 
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
 

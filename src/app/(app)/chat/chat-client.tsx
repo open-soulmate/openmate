@@ -173,6 +173,7 @@ export function ChatClient() {
   const { toggleSidebar, open: sidebarOpen } = useSidebar();
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
   const setRightPanelOpen = useAppStore((s) => s.setRightPanelOpen);
+  const rightPanelOpen = useAppStore((s) => s.rightPanelOpen);
   // Agent metadata from store (set by sidebar when selecting a session)
   const storeAgentIcon = useAppStore((s) => s.activeAgentIcon);
   const storeAgentName = useAppStore((s) => s.activeAgentName);
@@ -194,6 +195,13 @@ export function ChatClient() {
   }, []);
 
   useEffect(() => { autoResizeTextarea(); }, [input, autoResizeTextarea]);
+
+  // Close checkpoints when sidebar or right panel opens on mobile (handles external triggers like bottom nav)
+  useEffect(() => {
+    if (isMobile && showCheckpoints && (sidebarOpen || rightPanelOpen)) {
+      setShowCheckpoints(false);
+    }
+  }, [sidebarOpen, rightPanelOpen, isMobile, showCheckpoints]);
 
   // Cost calculation (approximate pricing per 1K tokens)
   const calculateCost = (usage: TokenUsage): number => {
