@@ -463,6 +463,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         className="shrink-0 transition-[width] duration-200 ease-linear"
         style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
       />
+      {/* Backdrop overlay on mobile when right panel is open */}
+      {isMobile && rightPanelOpen && (
+        <div
+          className="fixed inset-0 z-[9] bg-black/40 backdrop-blur-[2px] opacity-100 transition-opacity duration-200"
+          onClick={() => setRightPanelOpen(false)}
+          aria-hidden="true"
+        />
+      )}
       <div
         className="absolute inset-y-0 top-0 right-0 z-10 h-full min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
         style={{
