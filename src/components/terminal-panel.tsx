@@ -72,13 +72,13 @@ export function TerminalPanel({ apiBase, token }: TerminalPanelProps) {
   return (
     <>
       {/* Toggle button */}
-      <button onClick={() => setOpen(!open)} className="fixed bottom-4 right-4 z-50 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors" title={t('terminal.title')}>
+      <button onClick={() => setOpen(!open)} className="fixed bottom-16 lg:bottom-4 right-4 z-50 w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center shadow-lg hover:bg-primary/90 transition-colors" title={t('terminal.title')}>
         <TerminalIcon className="w-5 h-5" />
       </button>
 
       {/* Terminal panel */}
       {open && (
-        <div className={`fixed z-40 bg-[#0a0a0f] border border-border rounded-t-xl shadow-2xl transition-all ${maximized ? 'inset-0' : 'bottom-0 right-14 w-[700px] h-[400px]'}`}>
+        <div className={`fixed z-40 bg-[#0a0a0f] border border-border rounded-t-xl shadow-2xl transition-all ${maximized ? 'inset-0' : 'bottom-0 right-2 lg:right-14 w-[calc(100%-1rem)] lg:w-[700px] h-[50vh] lg:h-[400px]'}`}>
           <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-[#111118] rounded-t-xl">
             <div className="flex items-center gap-2">
               <TerminalIcon className="w-4 h-4 text-muted-foreground" />
