@@ -653,15 +653,11 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
 
   // ── Toggle button (rendered outside panel) ───────────────────────
 
-  if (!open) {
-    return null;
-  }
-
   return (
     <div
       key={sessionId}
       className="flex flex-col h-full min-w-0 bg-background relative"
-      style={{ width: '100%' }}
+      style={{ width: '100%', visibility: open ? 'visible' : 'hidden' }}
     >
       {/* Resize handle — desktop only */}
       {!isMobile && (
