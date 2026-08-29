@@ -876,7 +876,7 @@ export function ChatClient() {
                 <ChevronDown className="w-3 h-3 hidden lg:inline" />
               </button>
 
-              <button onClick={() => { const next = !showCheckpoints; setShowCheckpoints(next); if (next) { setRightPanelOpen(false); } }} className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors relative">
+              <button onClick={() => { const next = !showCheckpoints; setShowCheckpoints(next); if (next) { setRightPanelOpen(false); if (isMobile && sidebarOpen) toggleSidebar(); } }} className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors relative">
                 <RotateCcw className="w-4 h-4" />
                 <span className="hidden lg:inline">{t("chat.history", "历史")}</span>
                 {checkpoints.length > 0 && (

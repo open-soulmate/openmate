@@ -43,6 +43,7 @@ export default function AIGroupsPage() {
   const { t } = useTranslation();
   const { toggleSidebar } = useSidebar();
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
+  const setRightPanelOpen = useAppStore((s) => s.setRightPanelOpen);
   const isMobile = useIsMobile();
 
   const authHeaders = (): Record<string, string> => {
@@ -534,7 +535,7 @@ export default function AIGroupsPage() {
       {/* Chat header */}
       <div className="h-12 border-b border-border flex items-center px-2 lg:px-4 justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <button onClick={(e) => { e.stopPropagation(); toggleSidebar(); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Sidebar">
+          <button onClick={(e) => { e.stopPropagation(); toggleSidebar(); if (isMobile) { setRightPanelOpen(false); setShowGroupPanel(false); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Sidebar">
             <PanelLeft className="w-4 h-4" />
           </button>
           <Users className="w-4 h-4 text-primary" />
@@ -552,11 +553,11 @@ export default function AIGroupsPage() {
         </div>
         <div className="flex items-center gap-2">
           {selectedGroup && (
-            <button onClick={(e) => { e.stopPropagation(); setShowGroupPanel(true); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Group Settings">
+            <button onClick={(e) => { e.stopPropagation(); setShowGroupPanel(true); if (isMobile) setRightPanelOpen(false); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Group Settings">
               <Settings className="w-4 h-4" />
             </button>
           )}
-          <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
+          <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); if (isMobile) setShowGroupPanel(false); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
             <PanelLeft className="w-4 h-4 scale-x-[-1]" />
           </button>
         </div>
