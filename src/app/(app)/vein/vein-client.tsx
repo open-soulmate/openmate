@@ -1042,16 +1042,21 @@ export function VeinClient() {
                 </div>
               )}
 
-              {/* File Detail Panel — Sheet on mobile, inline on desktop */}
+              {/* File Detail Panel — sidebar-style sliding on mobile, inline on desktop */}
+              {selectedFile && isMobile && (
+                <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => { setSelectedFile(null); setPreviewContent(null); }} aria-hidden="true" />
+              )}
               {selectedFile && isMobile ? (
-                <Sheet open={!!selectedFile} onOpenChange={(open) => { if (!open) { setSelectedFile(null); setPreviewContent(null); } }}>
-                  <SheetContent side="right" size="md" className="p-0 flex flex-col overflow-y-auto">
-                    <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
-                      <SheetTitle className="text-sm font-medium flex items-center gap-2">
-                        {(() => { const Icon = getFileIcon(selectedFile.mime_type); return <Icon size={16} className="shrink-0 text-primary" />; })()}
-                        <span className="truncate">{selectedFile.name}</span>
-                      </SheetTitle>
-                    </SheetHeader>
+                <div
+                  className="absolute inset-y-0 right-0 z-10 h-full w-80 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-y-auto bg-card"
+                  style={{ right: 0 }}
+                >
+                  <div className="h-12 shrink-0 flex items-center px-3 border-b border-border">
+                    <span className="text-sm font-medium flex items-center gap-2">
+                      {(() => { const Icon = getFileIcon(selectedFile.mime_type); return <Icon size={16} className="shrink-0 text-primary" />; })()}
+                      <span className="truncate">{selectedFile.name}</span>
+                    </span>
+                  </div>
                     <div className="flex-1 overflow-y-auto p-3 space-y-3">
                       {/* Preview Area */}
                       {loadingPreview ? (
@@ -1105,8 +1110,7 @@ export function VeinClient() {
                         </button>
                       </div>
                     </div>
-                  </SheetContent>
-                </Sheet>
+                </div>
               ) : selectedFile && (
                 <div className="rounded-xl border border-border bg-card overflow-hidden">
                   <div className="flex items-center justify-between px-2 lg:px-4 py-3 border-b border-border bg-muted/20">

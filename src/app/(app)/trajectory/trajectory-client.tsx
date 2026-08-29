@@ -981,25 +981,29 @@ export function TrajectoryClient() {
           </div>
         )}
 
-        {/* Mobile: session list Sheet for detail view */}
-        {view === "detail" && isMobile && (
-          <Sheet open={sessionListOpen} onOpenChange={setSessionListOpen}>
-            <SheetContent side="left" size="md" className="p-0 flex flex-col">
-              <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
-                <SheetTitle className="text-sm font-semibold">{t("trajectory.sessions")}</SheetTitle>
-              </SheetHeader>
-              <div className="flex-1 overflow-y-auto p-2">
-                {sessions.map(s => (
-                  <SessionCard
-                    key={s.id}
-                    session={s}
-                    selected={selectedSession === s.id}
-                    onSelect={() => selectSession(s.id)}
-                  />
-                ))}
-              </div>
-            </SheetContent>
-          </Sheet>
+        {/* Mobile: session list sidebar-style sliding for detail view */}
+        {view === "detail" && isMobile && sessionListOpen && (
+          <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setSessionListOpen(false)} aria-hidden="true" />
+        )}
+        {view === "detail" && isMobile && sessionListOpen && (
+          <div
+            className="absolute inset-y-0 left-0 z-10 h-full w-80 min-w-0 border-r border-border transition-[left] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+            style={{ left: 0 }}
+          >
+            <div className="h-12 shrink-0 flex items-center px-3 border-b border-border">
+              <span className="text-sm font-semibold">{t("trajectory.sessions")}</span>
+            </div>
+            <div className="flex-1 overflow-y-auto p-2">
+              {sessions.map(s => (
+                <SessionCard
+                  key={s.id}
+                  session={s}
+                  selected={selectedSession === s.id}
+                  onSelect={() => selectSession(s.id)}
+                />
+              ))}
+            </div>
+          </div>
         )}
 
         {/* Right: Event Timeline */}

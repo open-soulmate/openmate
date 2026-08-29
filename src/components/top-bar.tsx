@@ -81,13 +81,17 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
 
   return (
     <div className="flex h-12 shrink-0 items-center border-b border-border bg-background safe-area-top">
-      {/* Scrollable middle area: logo + health + status + nav + search */}
+      {/* Fixed left: logo only */}
+      <div className="flex items-center shrink-0 px-3">
+        <span className="text-sm font-bold text-primary">OM</span>
+      </div>
+
+      {/* Scrollable middle area: health + status + nav + search */}
       <div
         ref={scrollRef}
-        className="flex-1 flex items-center gap-1 overflow-x-auto px-3"
+        className="flex-1 flex items-center gap-1 overflow-x-auto"
         style={{ scrollbarWidth: "none" }}
       >
-        <span className="text-sm font-bold text-primary px-1 shrink-0">OM</span>
         <HealthWidget />
         {statusItems.map(renderItem)}
         {/* Divider */}
