@@ -224,27 +224,12 @@ function WebBrowserView({ tab, onNavigate, onBack, onForward, onRefresh }: {
           src={tab.url}
           className="flex-1 min-w-0 border-0 bg-white"
           style={{ width: '100%', height: '100%' }}
-          sandbox="allow-same-origin allow-scripts allow-forms"
           title="Web Browser"
           onLoad={() => {
             try {
               const iframe = iframeRef.current;
-              if (!iframe?.contentDocument) return;
-              // Rewrite target="_blank" links to navigate within iframe
-              iframe.contentDocument.querySelectorAll('a[target="_blank"]').forEach((a) => {
-                (a as HTMLAnchorElement).target = '_self';
-              });
-              // Also catch dynamically loaded links
-              const observer = new MutationObserver(() => {
-                try {
-                  iframe.contentDocument?.querySelectorAll('a[target="_blank"]').forEach((a) => {
-                    (a as HTMLAnchorElement).target = '_self';
-                  });
-                } catch {}
-              });
-              observer.observe(iframe.contentDocument.body, { childList: true, subtree: true });
-              // Sync URL bar on same-origin navigation
-              const currentUrl = iframe.contentWindow?.location?.href;
+              if (!iframe?.contentWindow?.location?.href) return;
+              const currentUrl = iframe.contentWindow.location.href;
               if (currentUrl && currentUrl !== 'about:blank' && currentUrl !== tab.url) {
                 onNavigate(currentUrl);
               }
