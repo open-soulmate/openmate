@@ -163,6 +163,23 @@ export interface Workspace {
   description?: string;
 }
 
+export type WorkspaceTabType = 'new-tab' | 'web-browser' | 'file-preview' | 'terminal' | 'details';
+
+export interface WorkspaceTab {
+  id: string;
+  type: WorkspaceTabType;
+  title: string;
+  url?: string;
+  filePath?: string;
+  history: string[];
+  historyIndex: number;
+}
+
+export interface WorkspaceState {
+  tabs: WorkspaceTab[];
+  activeTabId: string;
+}
+
 export interface FileNode {
   name: string;
   path: string;
@@ -187,6 +204,11 @@ export interface GroupChatMessage {
   agentName?: string;
   agentType?: AgentType;
   timestamp: number;
+}
+
+export interface WorkspaceState {
+  tabs: WorkspaceTab[];
+  activeTabId: string;
 }
 
 interface AppState {
@@ -305,6 +327,19 @@ interface AppState {
   addWorkspace: (ws: Workspace) => void;
   removeWorkspace: (id: string) => void;
   updateWorkspace: (id: string, updates: Partial<Workspace>) => void;
+
+  // Per-session workspace tabs (right panel state)
+  workspaceTabsBySession: Record<string, WorkspaceState>;
+  getWorkspaceTabs: (sessionId: string) => WorkspaceState;
+  setWorkspaceTabs: (sessionId: string, state: WorkspaceState) => void;
+  updateWorkspaceTab: (sessionId: string, tabId: string, updates: Partial<WorkspaceTab>) => void;
+  addWorkspaceTab: (sessionId: string, tab: WorkspaceTab, makeActive?: boolean) => void;
+  removeWorkspaceTab: (sessionId: string, tabId: string) => void;
+  setActiveWorkspaceTab: (sessionId: string, tabId: string) => void;
+  navigateWorkspaceTab: (sessionId: string, tabId: string, url: string) => void;
+  goBackWorkspaceTab: (sessionId: string, tabId: string) => void;
+  goForwardWorkspaceTab: (sessionId: string, tabId: string) => void;
+  setWorkspaceTabFilePath: (sessionId: string, tabId: string, filePath: string) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -669,6 +704,136 @@ export const useAppStore = create<AppState>((set, get) => ({
         w.id === id ? { ...w, ...updates, lastModified: Date.now() } : w,
       ),
     })),
+
+  // Per-session workspace tabs (right panel state)
+  workspaceTabsBySession: {},
+  getWorkspaceTabs: (sessionId) => {
+    const state = get();
+    return state.workspaceTabsBySession[sessionId] || { tabs: [], activeTabId: '' };
+  },
+  setWorkspaceTabs: (sessionId, wsState) =>
+    set((s) => ({ workspaceTabsBySession: { ...s.workspaceTabsBySession, [sessionId]: wsState } })),
+  addWorkspaceTab: (sessionId, tab, makeActive) =>
+    set((s) => {
+      const existing = s.workspaceTabsBySession[sessionId] || { tabs: [], activeTabId: '' };
+      return {
+        workspaceTabsBySession: {
+          ...s.workspaceTabsBySession,
+          [sessionId]: {
+            tabs: [...existing.tabs, tab],
+            activeTabId: makeActive ? tab.id : existing.activeTabId,
+          },
+        },
+      };
+    }),
+  removeWorkspaceTab: (sessionId, tabId) =>
+    set((s) => {
+      const existing = s.workspaceTabsBySession[sessionId];
+      if (!existing) return s;
+      const nextTabs = existing.tabs.filter((t) => t.id !== tabId);
+      const nextActive = existing.activeTabId === tabId
+        ? (nextTabs[Math.max(0, existing.tabs.findIndex((t) => t.id === tabId) - 1)]?.id || '')
+        : existing.activeTabId;
+      return {
+        workspaceTabsBySession: {
+          ...s.workspaceTabsBySession,
+          [sessionId]: { tabs: nextTabs, activeTabId: nextActive },
+        },
+      };
+    }),
+  updateWorkspaceTab: (sessionId, tabId, updates) =>
+    set((s) => {
+      const existing = s.workspaceTabsBySession[sessionId];
+      if (!existing) return s;
+      return {
+        workspaceTabsBySession: {
+          ...s.workspaceTabsBySession,
+          [sessionId]: {
+            ...existing,
+            tabs: existing.tabs.map((t) => (t.id === tabId ? { ...t, ...updates } : t)),
+          },
+        },
+      };
+    }),
+  setActiveWorkspaceTab: (sessionId, tabId) =>
+    set((s) => {
+      const existing = s.workspaceTabsBySession[sessionId];
+      if (!existing) return s;
+      return {
+        workspaceTabsBySession: {
+          ...s.workspaceTabsBySession,
+          [sessionId]: { ...existing, activeTabId: tabId },
+        },
+      };
+    }),
+  navigateWorkspaceTab: (sessionId, tabId, url) =>
+    set((s) => {
+      const existing = s.workspaceTabsBySession[sessionId];
+      if (!existing) return s;
+      return {
+        workspaceTabsBySession: {
+          ...s.workspaceTabsBySession,
+          [sessionId]: {
+            ...existing,
+            tabs: existing.tabs.map((t) => {
+              if (t.id !== tabId) return t;
+              const newHistory = [...t.history.slice(0, t.historyIndex + 1), url];
+              return { ...t, url, history: newHistory, historyIndex: newHistory.length - 1, title: new URL(url).hostname };
+            }),
+          },
+        },
+      };
+    }),
+  goBackWorkspaceTab: (sessionId, tabId) =>
+    set((s) => {
+      const existing = s.workspaceTabsBySession[sessionId];
+      if (!existing) return s;
+      return {
+        workspaceTabsBySession: {
+          ...s.workspaceTabsBySession,
+          [sessionId]: {
+            ...existing,
+            tabs: existing.tabs.map((t) => {
+              if (t.id !== tabId || t.historyIndex <= 0) return t;
+              const newIndex = t.historyIndex - 1;
+              return { ...t, url: t.history[newIndex], historyIndex: newIndex };
+            }),
+          },
+        },
+      };
+    }),
+  goForwardWorkspaceTab: (sessionId, tabId) =>
+    set((s) => {
+      const existing = s.workspaceTabsBySession[sessionId];
+      if (!existing) return s;
+      return {
+        workspaceTabsBySession: {
+          ...s.workspaceTabsBySession,
+          [sessionId]: {
+            ...existing,
+            tabs: existing.tabs.map((t) => {
+              if (t.id !== tabId || t.historyIndex >= t.history.length - 1) return t;
+              const newIndex = t.historyIndex + 1;
+              return { ...t, url: t.history[newIndex], historyIndex: newIndex };
+            }),
+          },
+        },
+      };
+    }),
+  setWorkspaceTabFilePath: (sessionId, tabId, filePath) =>
+    set((s) => {
+      const existing = s.workspaceTabsBySession[sessionId];
+      if (!existing) return s;
+      return {
+        workspaceTabsBySession: {
+          ...s.workspaceTabsBySession,
+          [sessionId]: {
+            ...existing,
+            tabs: existing.tabs.map((t) => (t.id === tabId ? { ...t, filePath } : t)),
+          },
+        },
+      };
+    }),
 }));
 
 // ─── localStorage persistence for conversations ────────────────────────────
