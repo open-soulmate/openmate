@@ -99,9 +99,9 @@ function NewTabView({ onOpenBrowser, onOpenFile, onOpenTerminal, onOpenDetails }
   };
 
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-6 p-6 text-center">
-      <div className="text-2xl font-bold text-foreground/80">OpenMate Workspace</div>
-      <p className="text-sm text-muted-foreground max-w-xs">
+    <div className="flex flex-col items-center justify-center h-full gap-4 lg:gap-6 p-3 lg:p-6 text-center">
+      <div className="text-lg lg:text-2xl font-bold text-foreground/80">OpenMate Workspace</div>
+      <p className="text-xs lg:text-sm text-muted-foreground max-w-xs">
         Open a webpage, preview a file, or launch a terminal.
       </p>
 
@@ -770,7 +770,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
                     }}
                     onClick={() => setActiveTabId(tab.id)}
                     className="group relative shrink-0 cursor-pointer touch-manipulation"
-                    style={{ height: 36, minWidth: 140, maxWidth: 240, display: 'flex', alignItems: 'center', border: 'none', outline: 'none', padding: 0, background: 'transparent', overflow: 'visible' }}
+                    style={{ height: 36, minWidth: isMobile ? 100 : 140, maxWidth: isMobile ? 160 : 240, display: 'flex', alignItems: 'center', border: 'none', outline: 'none', padding: 0, background: 'transparent', overflow: 'visible' }}
                   >
                     {tabWidths[tab.id] && (
                       <svg
