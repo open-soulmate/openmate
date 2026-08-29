@@ -657,7 +657,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
     <div
       key={sessionId}
       className="flex flex-col h-full min-w-0 bg-background relative"
-      style={{ width: '100%', visibility: open ? 'visible' : 'hidden' }}
+      style={{ width: '100%' }}
     >
       {/* Resize handle — desktop only */}
       {!isMobile && (
