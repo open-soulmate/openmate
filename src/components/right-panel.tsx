@@ -486,6 +486,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
     ? (selectedGroup?.id || '__no_group__')
     : (activeSessionId || '__default__');
 
+  const pageWorkspace = useAppStore((s) => s.pageWorkspace);
   const wsBySession = useAppStore((s) => s.workspaceTabsBySession);
   const storeSetWorkspaceTabs = useAppStore((s) => s.setWorkspaceTabs);
 
@@ -692,7 +693,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
 
       {/* Content area */}
       <div className="flex-1 overflow-hidden min-h-0">
-        {renderContent()}
+        {pageWorkspace || renderContent()}
       </div>
     </div>
   );
