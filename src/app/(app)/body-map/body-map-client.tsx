@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { PageLayout } from '@/components/page-layout';
 
 interface OrganStatus {
   key: string;
@@ -294,7 +295,11 @@ export function BodyMapClient() {
   useEffect(() => {
     if (!autoRefresh) return;
     const timer = setInterval(checkAllOrgans, 30000);
-    return () => clearInterval(timer);
+    return (
+        <PageLayout title="Body Map">
+          
+        </PageLayout>
+      ) => clearInterval(timer);
   }, [autoRefresh, checkAllOrgans]);
 
   const okCount = Object.values(organStatuses).filter((s) => s.status === "ok").length;

@@ -8,6 +8,7 @@ import {
   XCircle, AlertTriangle, Clock, Loader2, Heart,
   Activity, Wrench, History, ChevronDown, ChevronRight,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface OrganResult {
   organ: string;
@@ -159,6 +160,10 @@ export function HealerClient() {
   ];
 
   return (
+
+      <PageLayout title="Healer">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-2 lg:gap-3">
@@ -404,5 +409,9 @@ export function HealerClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

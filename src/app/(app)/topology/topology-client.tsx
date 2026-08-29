@@ -8,6 +8,7 @@ import {
   Layers, GitBranch, Activity, Clock, Zap,
   Box, Server, Cpu, Globe,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface TopologyStats {
   status: string;
@@ -109,7 +110,11 @@ export function TopologyClient() {
   useEffect(() => {
     fetchStats();
     const interval = setInterval(fetchStats, 30000);
-    return () => clearInterval(interval);
+    return (
+        <PageLayout title="Topology">
+          
+        </PageLayout>
+      ) => clearInterval(interval);
   }, [fetchStats]);
 
   const nodes = graph?.nodes || [];

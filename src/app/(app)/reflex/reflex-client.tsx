@@ -8,6 +8,7 @@ import {
   Activity, Settings, Target, BarChart3,
   CheckCircle, XCircle, Loader2, Edit3, Save,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface CacheEntry {
   entry_id: string;
@@ -157,6 +158,10 @@ export function ReflexClient() {
   ];
 
   return (
+
+      <PageLayout title="Reflex">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-2 lg:gap-3">
@@ -400,7 +405,11 @@ export function ReflexClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }
 
 function StatCard({ icon: Icon, label, value, sub, color, bg }: {

@@ -23,6 +23,7 @@ import {
   Image as ImageIcon,
 } from "lucide-react";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { PageLayout } from '@/components/page-layout';
 
 interface Course {
   id: string;
@@ -402,10 +403,14 @@ Generated: ${new Date().toLocaleString("zh-CN")}
 
   if (loading) {
     return (
+        <PageLayout title="Learn">
+          
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
-    );
+    
+        </PageLayout>
+      );
   }
 
   return (

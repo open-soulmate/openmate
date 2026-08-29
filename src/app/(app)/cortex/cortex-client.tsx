@@ -10,6 +10,7 @@ import {
   Network, TrendingUp, Star, Award, Search,
   RefreshCw, BookOpen, BarChart3,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 // ── Types ────────────────────────────────────────────────
 
@@ -406,6 +407,10 @@ export function CortexClient() {
   ];
 
   return (
+
+      <PageLayout title="Cortex">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center gap-2 lg:gap-3 border-b border-border px-3 lg:px-6 py-4">
@@ -1216,5 +1221,9 @@ export function CortexClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

@@ -8,6 +8,7 @@ import {
   CheckCircle, AlertTriangle, Copy, Trash2, Volume2, Image as ImageIcon,
   Video, Film,
 } from "lucide-react"
+import { PageLayout } from '@/components/page-layout';
 
 interface SenseHealth {
   status: string
@@ -222,10 +223,14 @@ export function SenseClient() {
 
   if (loading) {
     return (
+        <PageLayout title="Sense">
+          
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    )
+    
+        </PageLayout>
+      )
   }
 
   const ocrAvailable = health?.engines?.ocr?.available ?? false

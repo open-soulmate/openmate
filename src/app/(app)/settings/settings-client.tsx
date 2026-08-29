@@ -16,6 +16,7 @@ import { useToast } from "@/components/toast-provider";
 import i18n from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { PageLayout } from '@/components/page-layout';
 
 type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "organs" | "account" | "about";
 
@@ -466,6 +467,10 @@ export function SettingsClient() {
   );
 
   return (
+
+      <PageLayout title="Settings">
+
+        
     <div className="flex h-full flex-col lg:flex-row">
       {/* Mobile: top bar with hamburger + current section */}
       {isMobile && (
@@ -748,7 +753,11 @@ export function SettingsClient() {
         </div>
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }
 
 // ─── Organs Management Section ─────────────────────────────────────

@@ -8,6 +8,7 @@ import {
   BookOpen, Loader2, Trash2, Search, Tag, RefreshCw,
   Pin, PinOff, Star, StarOff, X, Package, Calendar, Tag as TagIcon,
 } from "lucide-react"
+import { PageLayout } from '@/components/page-layout';
 
 interface KnowledgeItem {
   id: string
@@ -56,7 +57,11 @@ export function KnowledgeClient() {
   // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(fetchAll, 30000)
-    return () => clearInterval(interval)
+    return (
+        <PageLayout title="Knowledge">
+          
+        </PageLayout>
+      ) => clearInterval(interval)
   }, [fetchAll])
 
   const handleRefresh = useCallback(async () => {

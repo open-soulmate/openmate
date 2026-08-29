@@ -8,6 +8,7 @@ import {
   Search, Loader2, Clock, Filter, X, Zap, BarChart3,
   Globe, FileText, Database, Layers, ChevronDown,
 } from "lucide-react"
+import { PageLayout } from '@/components/page-layout';
 
 interface SearchResult {
   id: string
@@ -117,6 +118,10 @@ export function SearchClient() {
   }
 
   return (
+
+      <PageLayout title="Search">
+
+        
     <div className="px-3 lg:px-6 py-4 lg:py-6 max-w-6xl mx-auto space-y-4 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -322,5 +327,9 @@ export function SearchClient() {
         </div>
       )}
     </div>
-  )
+  
+
+      </PageLayout>
+
+    )
 }

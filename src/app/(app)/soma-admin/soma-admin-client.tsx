@@ -9,6 +9,7 @@ import {
   CheckCircle, XCircle, AlertTriangle, Wifi, WifiOff,
   Monitor, Database, Zap, HardDrive, Cpu, BarChart3,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface SystemStatus {
   status: string;
@@ -151,6 +152,10 @@ export default function SomaAdminClient() {
   ];
 
   return (
+
+      <PageLayout title="Soma Admin">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-3 lg:py-4 gap-2">
@@ -604,5 +609,9 @@ export default function SomaAdminClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Search, Download, Check, Trash2, Play, Loader2, CheckCircle2, XCircle, Puzzle, RefreshCw, ExternalLink, Package } from 'lucide-react';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
+import { PageLayout } from '@/components/page-layout';
 
 interface Skill {
   name: string;
@@ -121,6 +122,10 @@ export function SkillsClient() {
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
+
+      <PageLayout title="Skills">
+
+        
     <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
       {/* Toast */}
       {toast && (
@@ -224,5 +229,9 @@ export function SkillsClient() {
         </div>
       )}
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

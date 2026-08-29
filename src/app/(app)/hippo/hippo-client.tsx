@@ -8,6 +8,7 @@ import {
   Activity, Clock, Archive, Zap, Settings,
   TrendingDown, BarChart3, Loader2,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface Memory {
   memory_id: string;
@@ -225,6 +226,10 @@ export function HippoClient() {
   ];
 
   return (
+
+      <PageLayout title="Hippo">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
@@ -532,7 +537,11 @@ export function HippoClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }
 
 function StatCard({ icon: Icon, label, value, sub, color, bg }: {

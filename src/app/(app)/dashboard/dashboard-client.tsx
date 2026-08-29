@@ -14,6 +14,7 @@ import {
 import { useState, useEffect, useCallback } from "react";
 import { getApiBaseUrl } from "@/lib/api-client";
 import Link from "next/link";
+import { PageLayout } from '@/components/page-layout';
 
 interface UsageSummary {
   total_tokens: number;
@@ -179,7 +180,11 @@ export function DashboardClient() {
     fetchCronJobs();
     fetchSysMetrics();
     const metricsInterval = setInterval(fetchSysMetrics, 10000);
-    return () => clearInterval(metricsInterval);
+    return (
+        <PageLayout title="Dashboard">
+          
+        </PageLayout>
+      ) => clearInterval(metricsInterval);
   }, [checkOrganHealth, fetchUsage, fetchRecentUsage, fetchCronJobs, fetchSysMetrics]);
 
   const { t } = useTranslation();
