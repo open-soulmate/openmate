@@ -426,7 +426,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onToggleSourceGroup={toggleSourceGroup}
             onSelectSession={(session, agent) => {
               clearSessionUnread(session.id);
-              setActiveSession(session.id, agent.id);
+              setActiveSession(session.id, agent.id, {
+                agentIcon: agent.icon,
+                agentName: agent.name,
+                agentDescription: agent.description || '',
+                sessionName: session.name || session.title || '',
+              });
               if (isMobile) setMobileSidebarOpen(false);
               router.push('/chat');
             }}
