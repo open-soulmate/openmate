@@ -9,6 +9,8 @@ import { DetailPanel } from '@/components/detail-panel';
 import { LeftPanel } from '@/components/left-panel';
 import { useAppStore } from '@/stores/app-store';
 import { ClockFace } from './clock-face';
+import { CronCalendar, filterJobsByDate } from './cron-calendar';
+import { WeekSchedule } from './week-schedule';
 
 const getApiUrl = () => getApiBaseUrl();
 
@@ -70,6 +72,7 @@ export function CronClient() {
   const [creating, setCreating] = useState(false);
   const [createError, setCreateError] = useState('');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const { t } = useTranslation();
   const setPageSidebar = useAppStore((s) => s.setPageSidebar);
   const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
@@ -330,15 +333,15 @@ export function CronClient() {
         </button>
       </div>
 
-      {/* Clock Face */}
+      {/* Week Schedule View */}
       {jobs.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
           <Clock className="w-12 h-12 mb-3 opacity-30" />
           <p className="text-sm">{t('cron.noJobs', '暂无定时任务')}</p>
         </div>
       ) : (
-        <div className="flex-1 flex items-center justify-center">
-          <ClockFace jobs={jobs} selectedJobId={selectedJobId} onSelectJob={setSelectedJobId} />
+        <div className="flex-1 min-h-0">
+          <WeekSchedule jobs={jobs} selectedJobId={selectedJobId} onSelectJob={setSelectedJobId} />
         </div>
       )}
 
