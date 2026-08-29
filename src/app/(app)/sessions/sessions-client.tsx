@@ -715,7 +715,7 @@ export function SessionsClient() {
           </Sheet>
         ) : (
         <div
-          className="shrink-0 border-r border-border flex flex-col overflow-hidden transition-all duration-250 ease-in-out"
+          className="shrink-0 border-r border-border flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
           style={{ width: desktopSidebarOpen ? 320 : 0, borderWidth: desktopSidebarOpen ? 1 : 0 }}
         >
           {/* Search */}
