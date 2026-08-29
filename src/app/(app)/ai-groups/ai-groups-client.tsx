@@ -12,8 +12,8 @@ import {
   MessageCircle, Hand, FileText, Lightbulb,
   Target, ArrowUp, ArrowRight, ArrowDown,
   PanelLeft, Settings, X,
+  PanelRightOpen,
 } from 'lucide-react';
-import { PanelRightOpen } from 'lucide-react';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAIGroupsStore, type AgentRole, type GroupMessage, type AIGroup, type DiscussionMessage, type TaskReview } from '@/stores/ai-groups-store';
@@ -558,7 +558,7 @@ export default function AIGroupsPage() {
             </button>
           )}
           <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
-            <PanelLeft className="w-4 h-4 scale-x-[-1]" />
+            <PanelRightOpen className="w-4 h-4" />
           </button>
         </div>
       </div>
