@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/bottom-nav";
 import { TopBar } from "@/components/top-bar";
 import { NotificationCenter } from "@/components/notification-center";
 import { RightPanel } from "@/components/right-panel";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 
 
@@ -326,13 +327,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMidScreenExpanded(false);
   }, [isMidScreen]);
 
-  // Track right panel width — default 384px, capped at 50% viewport
+  // Track right panel width — desktop: 50vw, mobile: 75vw
   useEffect(() => {
-    const update = () => setRightPanelWidth(Math.min(384, Math.round(window.innerWidth / 2)));
+    const update = () => setRightPanelWidth(isMobile ? 256 : Math.round(window.innerWidth / 2));
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
-  }, []);
+  }, [isMobile]);
 
   useEffect(() => { setMenuOpen(false); setRightPanelOpen(false); setMobileSidebarOpen(false); }, [pathname]);
 
@@ -439,7 +440,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Sidebar>
 
       {/* Main content area */}
-      <SidebarInset className="min-h-0 overflow-hidden">
+      <SidebarInset className="min-h-0 overflow-hidden" onClick={() => { if (rightPanelOpen) setRightPanelOpen(false); }}>
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           <SwipeablePanels isHomePage={getPanelIndex(pathname) >= 0}>
             {children}
@@ -451,25 +452,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
         </SidebarProvider>
 
-      {/* Right Panel — workspace tabs (desktop: inline, mobile: overlay) */}
+      {/* Right Panel — Sheet overlay on mobile, inline on desktop */}
       {isMobile ? (
-        rightPanelOpen && (
-          <>
-            <div
-              className="fixed inset-0 z-20 bg-black/40 animate-in fade-in-0"
-              onClick={() => setRightPanelOpen(false)}
-              aria-hidden="true"
-            />
-            <div
-              className="fixed top-12 right-0 bottom-12 z-25 w-80 max-w-[85vw] border-l border-border bg-card flex flex-col shadow-xl animate-in slide-in-from-right"
-            >
-              <RightPanel open={true} onToggle={() => toggleRightPanel()} />
-            </div>
-          </>
-        )
+        <Sheet open={rightPanelOpen} onOpenChange={(open) => setRightPanelOpen(open)}>
+          <SheetContent side="right" size="md" className="p-0 flex flex-col">
+            <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
+          </SheetContent>
+        </Sheet>
       ) : (
         <div
-          className="flex flex-col h-full overflow-hidden border-l border-border shrink-0 transition-all duration-250 ease-in-out"
+          className="flex flex-col h-full overflow-hidden border-l border-border shrink-0 transition-[width] duration-200 ease-linear"
           style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
         >
           <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
