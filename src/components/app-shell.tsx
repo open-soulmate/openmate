@@ -5,6 +5,9 @@ import { BottomNav } from "@/components/bottom-nav";
 import { TopBar } from "@/components/top-bar";
 import { NotificationCenter } from "@/components/notification-center";
 import { RightPanel } from "@/components/right-panel";
+import { AIGroupsSidebar } from "@/components/ai-groups-sidebar";
+import { AIGroupsWorkspace } from "@/components/ai-groups-workspace";
+import { useAIGroupsStore } from "@/stores/ai-groups-store";
 
 import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 
@@ -15,7 +18,7 @@ import { useTranslation } from "react-i18next";
 import {
   Search, Plus, PanelRightOpen,
 } from "lucide-react";
-import { useState, useRef, useCallback, useEffect } from "react";
+import { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { getUserId, getUserName, getApiBaseUrl, getToken } from "@/lib/api-client";
 import { type ThemeId, persistTheme } from "@/lib/theme";
 import {
@@ -359,6 +362,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const displayAgents = filteredAgents();
 
+  // Detect AI Groups route for conditional sidebar/workspace rendering
+  const isAIGroupsRoute = pathname.startsWith('/ai-groups');
+  const fetchAIGroups = useAIGroupsStore((s) => s.fetchGroups);
+
+  // Fetch AI groups when on the ai-groups route
+  useEffect(() => {
+    if (isAIGroupsRoute) {
+      fetchAIGroups();
+    }
+  }, [isAIGroupsRoute, fetchAIGroups]);
+
   return (
     <div className="flex flex-col h-svh overflow-hidden">
       {/* Top utility bar — full screen width */}
@@ -396,47 +410,53 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarHeader>
 
         <SidebarContent>
-          {/* Search + New Chat */}
-          <div className="px-2 pb-2 flex items-center gap-1 h-12 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
-            <div className="relative flex-1 group-data-[collapsible=icon]:hidden">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <input
-                type="text"
-                value={sessionSearch}
-                onChange={(e) => setSessionSearch(e.target.value)}
-                placeholder={t("chat.searchPlaceholder", "搜索会话...")}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/50 rounded-md border border-border/50 focus:outline-none focus:border-primary/50 transition-colors"
-              />
-            </div>
-            <button
-              onClick={() => router.push('/chat')}
-              className="p-1.5 rounded-md hover:bg-muted/50 transition-colors shrink-0"
-              title={t("chat.newChat", "新对话")}
-            >
-              <Plus className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </div>
+          {isAIGroupsRoute ? (
+            <AIGroupsSidebar />
+          ) : (
+            <>
+              {/* Search + New Chat */}
+              <div className="px-2 pb-2 flex items-center gap-1 h-12 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
+                <div className="relative flex-1 group-data-[collapsible=icon]:hidden">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                  <input
+                    type="text"
+                    value={sessionSearch}
+                    onChange={(e) => setSessionSearch(e.target.value)}
+                    placeholder={t("chat.searchPlaceholder", "搜索会话...")}
+                    className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/50 rounded-md border border-border/50 focus:outline-none focus:border-primary/50 transition-colors"
+                  />
+                </div>
+                <button
+                  onClick={() => router.push('/chat')}
+                  className="p-1.5 rounded-md hover:bg-muted/50 transition-colors shrink-0"
+                  title={t("chat.newChat", "新对话")}
+                >
+                  <Plus className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </div>
 
-          {/* Agent → Source → Session tree */}
-          <ConversationTree
-            agents={displayAgents}
-            activeSessionId={activeSessionIdFromStore}
-            getUnread={getUnread}
-            onToggleAgent={toggleAgent}
-            onToggleSourceGroup={toggleSourceGroup}
-            onSelectSession={(session, agent) => {
-              clearSessionUnread(session.id);
-              setActiveSession(session.id, agent.id, {
-                agentIcon: agent.icon,
-                agentName: agent.name,
-                agentDescription: agent.description || '',
-                sessionName: session.name || session.title || '',
-              });
-              if (isMobile) setMobileSidebarOpen(false);
-              router.push('/chat');
-            }}
-            className="group-data-[collapsible=icon]:hidden"
-          />
+              {/* Agent → Source → Session tree */}
+              <ConversationTree
+                agents={displayAgents}
+                activeSessionId={activeSessionIdFromStore}
+                getUnread={getUnread}
+                onToggleAgent={toggleAgent}
+                onToggleSourceGroup={toggleSourceGroup}
+                onSelectSession={(session, agent) => {
+                  clearSessionUnread(session.id);
+                  setActiveSession(session.id, agent.id, {
+                    agentIcon: agent.icon,
+                    agentName: agent.name,
+                    agentDescription: agent.description || '',
+                    sessionName: session.name || session.title || '',
+                  });
+                  if (isMobile) setMobileSidebarOpen(false);
+                  router.push('/chat');
+                }}
+                className="group-data-[collapsible=icon]:hidden"
+              />
+            </>
+          )}
         </SidebarContent>
 
         <SidebarFooter>
@@ -478,7 +498,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           right: rightPanelOpen ? 0 : -rightPanelWidth,
         }}
       >
-        <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
+        {isAIGroupsRoute ? (
+          <div className="flex flex-col h-full">
+            <div className="h-12 shrink-0 px-3 flex items-center border-b border-border">
+              <span className="text-xs font-medium text-muted-foreground">{t("aiGroups.groupManagement", "群组管理")}</span>
+            </div>
+            <div className="flex-1 overflow-y-auto">
+              <AIGroupsWorkspace />
+            </div>
+          </div>
+        ) : (
+          <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
+        )}
       </div>
       </div>
 
