@@ -6,7 +6,6 @@ import { TopBar } from "@/components/top-bar";
 import { NotificationCenter } from "@/components/notification-center";
 import { RightPanel } from "@/components/right-panel";
 import { AIGroupsSidebar } from "@/components/ai-groups-sidebar";
-import { AIGroupsWorkspace } from "@/components/ai-groups-workspace";
 import { useAIGroupsStore } from "@/stores/ai-groups-store";
 
 import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
@@ -498,18 +497,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           right: rightPanelOpen ? 0 : -rightPanelWidth,
         }}
       >
-        {isAIGroupsRoute ? (
-          <div className="flex flex-col h-full">
-            <div className="h-12 shrink-0 px-3 flex items-center border-b border-border">
-              <span className="text-xs font-medium text-muted-foreground">{t("aiGroups.groupManagement", "群组管理")}</span>
-            </div>
-            <div className="flex-1 overflow-y-auto">
-              <AIGroupsWorkspace />
-            </div>
-          </div>
-        ) : (
-          <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
-        )}
+        <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
       </div>
       </div>
 

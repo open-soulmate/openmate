@@ -4,13 +4,14 @@ import { useTranslation } from 'react-i18next';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useAppStore } from '@/stores/app-store';
+import { AIGroupsWorkspace } from '@/components/ai-groups-workspace';
 import {
   Users, Send, Bot, Shield, Zap, User, Loader2, Search,
   MessageSquare, AtSign,
   Star, Trophy, Award,
   MessageCircle, Hand, FileText, Lightbulb,
   Target, ArrowUp, ArrowRight, ArrowDown,
-  PanelLeft,
+  PanelLeft, Settings, X,
 } from 'lucide-react';
 import { useAIGroupsStore, type AgentRole, type GroupMessage, type AIGroup, type DiscussionMessage, type TaskReview } from '@/stores/ai-groups-store';
 
@@ -74,6 +75,7 @@ export default function AIGroupsPage() {
   const setScorerAgentId = useAIGroupsStore((s) => s.setScorerAgentId);
 
   // Local UI state
+  const [showGroupPanel, setShowGroupPanel] = useState(false);
   const [input, setInput] = useState('');
   const [showMention, setShowMention] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
@@ -546,6 +548,11 @@ export default function AIGroupsPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
+          {selectedGroup && (
+            <button onClick={(e) => { e.stopPropagation(); setShowGroupPanel(true); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Group Settings">
+              <Settings className="w-4 h-4" />
+            </button>
+          )}
           <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
             <PanelLeft className="w-4 h-4 scale-x-[-1]" />
           </button>
@@ -857,6 +864,25 @@ export default function AIGroupsPage() {
               className="w-full px-2 lg:px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-xs lg:text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
               提交评分
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Group Management Modal */}
+      {showGroupPanel && selectedGroup && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-border shrink-0">
+              <h3 className="text-sm font-semibold flex items-center gap-2">
+                <Settings className="w-4 h-4" /> {t("aiGroups.groupManagement", "群组管理")}
+              </h3>
+              <button onClick={() => setShowGroupPanel(false)} className="p-1 rounded hover:bg-muted">
+                <X className="w-4 h-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto p-4">
+              <AIGroupsWorkspace />
+            </div>
           </div>
         </div>
       )}
