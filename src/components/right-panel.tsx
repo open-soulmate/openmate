@@ -19,6 +19,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { SkirtTabs, type SkirtTab } from '@/components/skirt-tabs';
 import { useAppStore, type WorkspaceTab, type WorkspaceTabType } from '@/stores/app-store';
+import { useAIGroupsStore } from '@/stores/ai-groups-store';
+import { usePathname } from 'next/navigation';
 import { Input } from '@/components/ui/input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
@@ -477,8 +479,13 @@ function TabIcon({ type }: { type: TabType }) {
 // ── Main component ─────────────────────────────────────────────────
 
 export function RightPanel({ open, onToggle }: RightPanelProps) {
+  const pathname = usePathname();
   const activeSessionId = useAppStore((s) => s.activeSessionId);
-  const sessionId = activeSessionId || '__default__';
+  const selectedGroup = useAIGroupsStore((s) => s.selectedGroup);
+  // Workspace key: group ID for ai-groups route, session ID otherwise
+  const sessionId = pathname.startsWith('/ai-groups')
+    ? (selectedGroup?.id || '__no_group__')
+    : (activeSessionId || '__default__');
 
   const wsBySession = useAppStore((s) => s.workspaceTabsBySession);
   const wsState = wsBySession[sessionId] ?? { tabs: [{ id: `tab-${sessionId}-0`, type: 'new-tab' as const, title: 'New Tab', history: [], historyIndex: -1 }], activeTabId: `tab-${sessionId}-0` };
