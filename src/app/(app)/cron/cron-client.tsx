@@ -316,7 +316,7 @@ export function CronClient() {
   return (
       <PageLayout title="Cron">
         
-    <div className="h-full flex flex-col overflow-hidden">
+    <div className="flex-1 min-h-0 flex flex-col overflow-hidden">
       {/* View tabs + Legend */}
       <div className="flex items-center justify-between px-3 lg:px-6 pt-3 pb-2 shrink-0">
         <div className="flex items-center gap-0.5 bg-muted/50 rounded-lg p-0.5">

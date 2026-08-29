@@ -214,7 +214,7 @@ export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) 
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center">
+    <div className="flex-1 min-h-0 w-full flex items-center justify-center">
       <ReactECharts
         option={option}
         style={{ width: 'min(100%, 100vh)', height: 'min(100%, 100vh)', maxWidth: 800, maxHeight: 800 }}
