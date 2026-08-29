@@ -413,18 +413,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   pageSidebar
                 ) : (
                   <>
-                    <div className="px-2 flex items-center justify-center h-12 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
-                      <div className="relative flex-1 group-data-[collapsible=icon]:hidden">
-                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                        <input
-                          type="text"
-                          value={sessionSearch}
-                          onChange={(e) => setSessionSearch(e.target.value)}
-                          placeholder={t("chat.searchPlaceholder", "搜索会话...")}
-                          className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/50 rounded-md border border-border focus:outline-none focus:border-primary/50 transition-colors"
-                        />
-                      </div>
-                    </div>
                     <ConversationTree
                       agents={displayAgents}
                       activeSessionId={activeSessionIdFromStore}
