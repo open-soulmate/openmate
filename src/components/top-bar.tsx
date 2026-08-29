@@ -10,6 +10,7 @@ import {
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { HealthWidget } from "@/components/health-widget";
+import { ContextRing } from "@/components/context-ring";
 
 interface TopBarProps {
   eventCount?: number;
@@ -81,11 +82,12 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
 
   return (
     <div className="flex h-12 shrink-0 items-center border-b border-border bg-background safe-area-top">
-      {/* Fixed left: logo + name */}
+      {/* Fixed left: logo + name + context ring */}
       <Link href="/chat" className="flex items-center gap-1.5 shrink-0 px-3 hover:opacity-80 transition-opacity">
         <img src="/logo.svg" alt="OpenMate" className="w-7 h-7" />
         <span className="text-sm font-semibold text-foreground hidden sm:inline">OpenMate</span>
       </Link>
+      <ContextRing />
 
       {/* Scrollable middle area: health + status + nav + search */}
       <div
