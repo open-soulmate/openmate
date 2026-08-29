@@ -184,7 +184,7 @@ function WebBrowserView({ tab, onNavigate, onBack, onForward, onRefresh }: {
   const canForward = tab.historyIndex < tab.history.length - 1;
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full min-w-0">
       {/* URL bar */}
       <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border bg-muted/30 shrink-0">
         <Button
@@ -228,7 +228,8 @@ function WebBrowserView({ tab, onNavigate, onBack, onForward, onRefresh }: {
         <iframe
           ref={iframeRef}
           src={tab.url}
-          className="flex-1 w-full border-0 bg-white"
+          className="flex-1 min-w-0 border-0 bg-white"
+          style={{ width: '100%', height: '100%' }}
           sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
           title="Web Browser"
         />
@@ -726,8 +727,8 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
 
   return (
     <div
-      className="flex flex-col h-full bg-background shrink-0 relative"
-      style={isMobile ? undefined : { width: panelWidth }}
+      className="flex flex-col h-full min-w-0 bg-background relative"
+      style={{ width: '100%' }}
     >
       {/* Resize handle — desktop only (mobile uses Sheet) */}
       {!isMobile && (
