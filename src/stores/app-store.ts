@@ -213,7 +213,11 @@ interface AppState {
   // Active session (shared between sidebar and chat page)
   activeSessionId: string | null;
   activeAgentId: string | null;
-  setActiveSession: (sessionId: string | null, agentId: string | null) => void;
+  activeAgentIcon: string | null;
+  activeAgentName: string | null;
+  activeAgentDescription: string | null;
+  activeSessionName: string | null;
+  setActiveSession: (sessionId: string | null, agentId: string | null, meta?: { agentIcon?: string; agentName?: string; agentDescription?: string; sessionName?: string }) => void;
 
   // Session details (shared between chat and right panel workspace)
   sessionDetails: {
@@ -339,8 +343,19 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Active session
   activeSessionId: null,
   activeAgentId: null,
-  setActiveSession: (sessionId, agentId) =>
-    set({ activeSessionId: sessionId, activeAgentId: agentId }),
+  activeAgentIcon: null,
+  activeAgentName: null,
+  activeAgentDescription: null,
+  activeSessionName: null,
+  setActiveSession: (sessionId, agentId, meta) =>
+    set({
+      activeSessionId: sessionId,
+      activeAgentId: agentId,
+      activeAgentIcon: meta?.agentIcon ?? null,
+      activeAgentName: meta?.agentName ?? null,
+      activeAgentDescription: meta?.agentDescription ?? null,
+      activeSessionName: meta?.sessionName ?? null,
+    }),
 
   // Session details
   sessionDetails: null,

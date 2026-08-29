@@ -173,6 +173,10 @@ export function ChatClient() {
   const { toggleSidebar, open: sidebarOpen } = useSidebar();
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
   const setRightPanelOpen = useAppStore((s) => s.setRightPanelOpen);
+  // Agent metadata from store (set by sidebar when selecting a session)
+  const storeAgentIcon = useAppStore((s) => s.activeAgentIcon);
+  const storeAgentName = useAppStore((s) => s.activeAgentName);
+  const storeSessionName = useAppStore((s) => s.activeSessionName);
   const wsRef = useRef<WebSocket | null>(null);
   const streamingSessionIdRef = useRef<string | null>(null);
 
@@ -471,12 +475,27 @@ export function ChatClient() {
   useEffect(() => {
     if (!activeSessionIdFromStore) return;
     if (selectedSession?.id === activeSessionIdFromStore) return;
+    // Try to find session in local agents list
     for (const agent of agents) {
       const session = agent.sessions.find(s => s.id === activeSessionIdFromStore);
       if (session) {
         selectSession(session, agent);
         return;
       }
+    }
+    // Fallback: if agents list hasn't loaded yet, create minimal objects from store data
+    if (storeAgentName && !selectedSession) {
+      const minimalSession: Session = { id: activeSessionIdFromStore, name: storeSessionName || '', platform: 'hermes' };
+      const minimalAgent: AgentInfo = {
+        id: activeAgentIdFromStore || 'unknown',
+        name: storeAgentName,
+        icon: storeAgentIcon || '🤖',
+        description: '',
+        installed: true,
+        sessions: [],
+        expanded: false,
+      };
+      selectSession(minimalSession, minimalAgent);
     }
   }, [activeSessionIdFromStore, agents]);
 
@@ -619,7 +638,7 @@ export function ChatClient() {
     setEditingTitle(false);
     setShowCheckpoints(false); // close checkpoints when switching sessions
     loadHistory(session.id);
-    // Update store for right panel workspace details tab
+    // Update store with agent metadata for cross-component access
     setSessionDetails({
       agentIcon: agent.icon,
       agentName: agent.name,
@@ -709,7 +728,7 @@ export function ChatClient() {
             <button onClick={(e) => { e.stopPropagation(); toggleSidebar(); if (isMobile) { setRightPanelOpen(false); setShowCheckpoints(false); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Sidebar">
               <PanelLeft className="w-4 h-4" />
             </button>
-            {selectedAgent && <span className="text-sm shrink-0">{selectedAgent.icon}</span>}
+            {(selectedAgent || storeAgentIcon) && <span className="text-sm shrink-0">{selectedAgent?.icon || storeAgentIcon}</span>}
             <div className="min-w-0 flex-1">
               {editingTitle ? (
                 <input
@@ -726,11 +745,11 @@ export function ChatClient() {
                   onClick={startEditTitle}
                   title={selectedSession?.id ? 'Click to rename' : undefined}
                 >
-                  {selectedSession?.name || selectedSession?.title || (selectedAgent ? `${selectedAgent.name} ${t('chat.newSession')}` : t('chat.newChat'))}
+                  {selectedSession?.name || selectedSession?.title || storeSessionName || (selectedAgent || storeAgentName ? `${selectedAgent?.name || storeAgentName} ${t('chat.newSession')}` : t('chat.newChat'))}
                 </span>
               )}
             </div>
-            {selectedAgent && <span className="text-[10px] lg:text-xs text-muted-foreground px-1 lg:px-1.5 py-0.5 rounded bg-muted shrink-0 truncate max-w-[80px] lg:max-w-none">{selectedAgent.name}</span>}
+            {(selectedAgent || storeAgentName) && <span className="text-[10px] lg:text-xs text-muted-foreground px-1 lg:px-1.5 py-0.5 rounded bg-muted shrink-0 truncate max-w-[80px] lg:max-w-none">{selectedAgent?.name || storeAgentName}</span>}
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); setShowCheckpoints(false); if (isMobile && sidebarOpen) toggleSidebar(); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
