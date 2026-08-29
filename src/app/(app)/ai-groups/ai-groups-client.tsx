@@ -13,7 +13,6 @@ import {
   Target, ArrowUp, ArrowRight, ArrowDown,
   PanelLeft, Settings, X,
 } from 'lucide-react';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useAIGroupsStore, type AgentRole, type GroupMessage, type AIGroup, type DiscussionMessage, type TaskReview } from '@/stores/ai-groups-store';
 
@@ -880,21 +879,27 @@ export default function AIGroupsPage() {
         </div>
       )}
 
-      {/* Group Management — Sheet on mobile, modal on desktop */}
+      {/* Group Management — sidebar-style sliding on mobile, modal on desktop */}
+      {isMobile && showGroupPanel && selectedGroup && (
+        <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowGroupPanel(false)} aria-hidden="true" />
+      )}
       {isMobile ? (
-        <Sheet open={showGroupPanel && !!selectedGroup} onOpenChange={setShowGroupPanel}>
-          <SheetContent side="right" size="md" className="p-0 flex flex-col">
-            <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
-              <SheetTitle className="text-sm font-semibold flex items-center gap-2">
+        showGroupPanel && selectedGroup && (
+          <div
+            className="absolute inset-y-0 right-0 z-10 h-full w-80 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+            style={{ right: 0 }}
+          >
+            <div className="h-12 shrink-0 flex items-center px-3 border-b border-border">
+              <span className="text-sm font-semibold flex items-center gap-2">
                 <Settings className="w-4 h-4" />
                 {t("aiGroups.groupManagement", "群组管理")}
-              </SheetTitle>
-            </SheetHeader>
+              </span>
+            </div>
             <div className="flex-1 overflow-y-auto p-4">
               <AIGroupsWorkspace />
             </div>
-          </SheetContent>
-        </Sheet>
+          </div>
+        )
       ) : (
         showGroupPanel && selectedGroup && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
