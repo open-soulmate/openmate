@@ -4,17 +4,21 @@ import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import {
-  Server, Puzzle, MessageSquare, Clock, Users, Workflow,
-  BookOpen, Network, TrendingUp, Activity, ArrowRight,
-  DollarSign, Cpu, Zap,
-  Droplets, Eye, Shield, Bone, Dna, Volume2, Layers, Link2,
-  Brain, Bolt, Heart, Home, MousePointer, Mic, ImageIcon, Smile,
-  CheckCircle, XCircle, Loader2, HardDrive, AlertTriangle,
+  Clock, TrendingUp, Cpu, Zap,
+  CheckCircle, XCircle, Loader2, HardDrive,
+  ExternalLink,
 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { getApiBaseUrl } from "@/lib/api-client";
 import Link from "next/link";
 import { PageLayout } from '@/components/page-layout';
+import { LeftPanel } from '@/components/left-panel';
+import { DetailPanel } from '@/components/detail-panel';
+import dynamic from 'next/dynamic';
+
+const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
+
+// ── Interfaces ──────────────────────────────────────────────────
 
 interface UsageSummary {
   total_tokens: number;
@@ -68,44 +72,64 @@ interface SystemMetrics {
   };
 }
 
+// ── Organ definitions ───────────────────────────────────────────
+
+const organs = [
+  { key: "soul", label: "🧠 Soul", endpoint: "/api/health" },
+  { key: "cortex", label: "🧩 Cortex", endpoint: "/api/cortex/health" },
+  { key: "nerve", label: "⚡ Nerve", endpoint: "/api/nerve/health" },
+  { key: "vein", label: "🩸 Vein", endpoint: "/api/vein/health" },
+  { key: "soma", label: "🤖 Soma", endpoint: "/api/health" },
+  { key: "sense", label: "👁 Sense", endpoint: "/api/sense/health" },
+  { key: "will", label: "✨ Will", endpoint: "/api/will/health" },
+  { key: "mate", label: "👤 Mate", endpoint: "/api/health" },
+  { key: "immune", label: "🛡 Immune", endpoint: "/api/immune/health" },
+  { key: "vital", label: "📊 Vital", endpoint: "/api/vital/health" },
+  { key: "marrow", label: "🦴 Marrow", endpoint: "/api/marrow/health" },
+  { key: "gland", label: "🧪 Gland", endpoint: "/api/gland/health" },
+  { key: "gene", label: "🧬 Gene", endpoint: "/api/gene/health" },
+  { key: "echo", label: "🔊 Echo", endpoint: "/api/echo/health" },
+  { key: "mirror", label: "🪞 Mirror", endpoint: "/api/mirror/health" },
+  { key: "link", label: "🔗 Link", endpoint: "/api/link/health" },
+  { key: "hippo", label: "🧠 Hippo", endpoint: "/api/hippo/health" },
+  { key: "reflex", label: "⚡ Reflex", endpoint: "/api/reflex/health" },
+  { key: "heredity", label: "🔗 Heredity", endpoint: "/api/heredity/health" },
+  { key: "nest", label: "🏠 Nest", endpoint: "/api/nest/health" },
+  { key: "pulse", label: "💓 Pulse", endpoint: "/api/pulse/health" },
+  { key: "limb", label: "💪 Limb", endpoint: "/api/limb/health" },
+  { key: "voice", label: "🎤 Voice", endpoint: "/api/voice/health" },
+  { key: "vision", label: "🎨 Vision", endpoint: "/api/vision/health" },
+  { key: "mind", label: "💭 Mind", endpoint: "/api/mind/health" },
+  { key: "trajectory", label: "📊 Trajectory", endpoint: "/api/trajectory/health" },
+  { key: "mcp", label: "🔌 MCP", endpoint: "/api/mcp/health" },
+];
+
+// ── Component ───────────────────────────────────────────────────
+
 export function DashboardClient() {
   const apiBase = getApiBaseUrl();
+  const { t } = useTranslation();
+  const setPageSidebar = useAppStore((s) => s.setPageSidebar);
+  const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
+
+  // Data state
   const [organHealth, setOrganHealth] = useState<Record<string, "ok" | "error" | "loading">>({});
   const [usageSummary, setUsageSummary] = useState<UsageSummary | null>(null);
   const [recentRecords, setRecentRecords] = useState<RecentRecord[]>([]);
   const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
-  const [cronCount, setCronCount] = useState(0);
   const [sysMetrics, setSysMetrics] = useState<SystemMetrics | null>(null);
+  const [selectedOrganKey, setSelectedOrganKey] = useState<string | null>(null);
 
-  const organs = [
-    { key: "soul", label: "🧠 Soul", endpoint: "/api/health" },
-    { key: "cortex", label: "🧩 Cortex", endpoint: "/api/cortex/health" },
-    { key: "nerve", label: "⚡ Nerve", endpoint: "/api/nerve/health" },
-    { key: "vein", label: "🩸 Vein", endpoint: "/api/vein/health" },
-    { key: "soma", label: "🤖 Soma", endpoint: "/api/health" },
-    { key: "sense", label: "👁 Sense", endpoint: "/api/sense/health" },
-    { key: "will", label: "✨ Will", endpoint: "/api/will/health" },
-    { key: "mate", label: "👤 Mate", endpoint: "/api/health" },
-    { key: "immune", label: "🛡 Immune", endpoint: "/api/immune/health" },
-    { key: "vital", label: "📊 Vital", endpoint: "/api/vital/health" },
-    { key: "marrow", label: "🦴 Marrow", endpoint: "/api/marrow/health" },
-    { key: "gland", label: "🧪 Gland", endpoint: "/api/gland/health" },
-    { key: "gene", label: "🧬 Gene", endpoint: "/api/gene/health" },
-    { key: "echo", label: "🔊 Echo", endpoint: "/api/echo/health" },
-    { key: "mirror", label: "🪞 Mirror", endpoint: "/api/mirror/health" },
-    { key: "link", label: "🔗 Link", endpoint: "/api/link/health" },
-    { key: "hippo", label: "🧠 Hippo", endpoint: "/api/hippo/health" },
-    { key: "reflex", label: "⚡ Reflex", endpoint: "/api/reflex/health" },
-    { key: "heredity", label: "🔗 Heredity", endpoint: "/api/heredity/health" },
-    { key: "nest", label: "🏠 Nest", endpoint: "/api/nest/health" },
-    { key: "pulse", label: "💓 Pulse", endpoint: "/api/pulse/health" },
-    { key: "limb", label: "💪 Limb", endpoint: "/api/limb/health" },
-    { key: "voice", label: "🎤 Voice", endpoint: "/api/voice/health" },
-    { key: "vision", label: "🎨 Vision", endpoint: "/api/vision/health" },
-    { key: "mind", label: "💭 Mind", endpoint: "/api/mind/health" },
-    { key: "trajectory", label: "📊 Trajectory", endpoint: "/api/trajectory/health" },
-    { key: "mcp", label: "🔌 MCP", endpoint: "/api/mcp/health" },
-  ];
+  // Zustand store reads
+  const agentNodes = useAppStore((s) => s.agentNodes);
+  const skills = useAppStore((s) => s.skills);
+  const conversations = useAppStore((s) => s.conversations);
+  const groups = useAppStore((s) => s.groups);
+  const teams = useAppStore((s) => s.teams);
+  const knowledgeItems = useAppStore((s) => s.knowledgeItems);
+  const workspaces = useAppStore((s) => s.workspaces);
+
+  // ── Data fetching ────────────────────────────────────────────
 
   const checkOrganHealth = useCallback(async () => {
     try {
@@ -114,7 +138,6 @@ export function DashboardClient() {
         const data = await res.json();
         setOrganHealth(data.organs || {});
       } else {
-        // Fallback: mark all as error
         const fallback: Record<string, "error"> = {};
         organs.forEach((o) => (fallback[o.key] = "error"));
         setOrganHealth(fallback);
@@ -129,13 +152,8 @@ export function DashboardClient() {
   const fetchUsage = useCallback(async () => {
     try {
       const res = await fetch(`${apiBase}/api/gland/usage`, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) {
-        const data = await res.json();
-        setUsageSummary(data);
-      }
-    } catch (e) {
-      console.error("Failed to fetch usage", e);
-    }
+      if (res.ok) setUsageSummary(await res.json());
+    } catch (e) { console.error("Failed to fetch usage", e); }
   }, [apiBase]);
 
   const fetchRecentUsage = useCallback(async () => {
@@ -145,9 +163,7 @@ export function DashboardClient() {
         const data = await res.json();
         setRecentRecords(data.records || []);
       }
-    } catch (e) {
-      console.error("Failed to fetch recent usage", e);
-    }
+    } catch (e) { console.error("Failed to fetch recent usage", e); }
   }, [apiBase]);
 
   const fetchCronJobs = useCallback(async () => {
@@ -157,19 +173,14 @@ export function DashboardClient() {
         const data = await res.json();
         const jobs = data.jobs || data || [];
         setCronJobs(Array.isArray(jobs) ? jobs : []);
-        setCronCount(Array.isArray(jobs) ? jobs.length : 0);
       }
-    } catch (e) {
-      console.error("Failed to fetch cron jobs", e);
-    }
+    } catch (e) { console.error("Failed to fetch cron jobs", e); }
   }, [apiBase]);
 
   const fetchSysMetrics = useCallback(async () => {
     try {
       const res = await fetch(`${apiBase}/api/vital/stats`, { signal: AbortSignal.timeout(5000) });
-      if (res.ok) {
-        setSysMetrics(await res.json());
-      }
+      if (res.ok) setSysMetrics(await res.json());
     } catch {}
   }, [apiBase]);
 
@@ -183,493 +194,382 @@ export function DashboardClient() {
     return () => clearInterval(metricsInterval);
   }, [checkOrganHealth, fetchUsage, fetchRecentUsage, fetchCronJobs, fetchSysMetrics]);
 
-  const { t } = useTranslation();
-  const agentNodes = useAppStore((s) => s.agentNodes);
-  const skills = useAppStore((s) => s.skills);
-  const conversations = useAppStore((s) => s.conversations);
-  const groups = useAppStore((s) => s.groups);
-  const teams = useAppStore((s) => s.teams);
-  const knowledgeItems = useAppStore((s) => s.knowledgeItems);
-  const workspaces = useAppStore((s) => s.workspaces);
+  // ── Organ list (sorted: errors first) ────────────────────────
 
-  const onlineAgents = agentNodes.filter((a) => a.status === "online").length;
-  const enabledSkills = skills.filter((s) => s.enabled).length;
-  const totalMessages = conversations.reduce((acc, c) => acc + c.messages.length, 0);
+  const sortedOrgans = useMemo(() => {
+    return [...organs].sort((a, b) => {
+      const sa = organHealth[a.key] || "loading";
+      const sb = organHealth[b.key] || "loading";
+      if (sa === "error" && sb !== "error") return -1;
+      if (sa !== "error" && sb === "error") return 1;
+      return 0;
+    });
+  }, [organHealth]);
 
-  const stats = [
-    {
-      label: t("dashboard.agents"),
-      value: agentNodes.length,
-      sub: `${onlineAgents} ${t("dashboard.online")}`,
-      icon: Server,
-      href: "/agents",
-      color: "text-blue-500",
-      bg: "bg-blue-500/10",
-    },
-    {
-      label: t("dashboard.skills"),
-      value: skills.length,
-      sub: `${enabledSkills} ${t("dashboard.enabled")}`,
-      icon: Puzzle,
-      href: "/skills",
-      color: "text-violet-500",
-      bg: "bg-violet-500/10",
-    },
-    {
-      label: t("dashboard.conversations"),
-      value: conversations.length,
-      sub: `${totalMessages} ${t("dashboard.messages")}`,
-      icon: MessageSquare,
-      href: "/chat",
-      color: "text-emerald-500",
-      bg: "bg-emerald-500/10",
-    },
-    {
-      label: t("dashboard.cronJobs"),
-      value: cronCount,
-      sub: t("dashboard.managed"),
-      icon: Clock,
-      href: "/cron",
-      color: "text-amber-500",
-      bg: "bg-amber-500/10",
-    },
-  ];
+  const selectedOrgan = useMemo(
+    () => organs.find((o) => o.key === selectedOrganKey) ?? null,
+    [selectedOrganKey],
+  );
 
-  // Compute cost stats from real usage data
-  // Estimate cost: ~$0.01 per 1K tokens (rough average across models)
+  // ── Sidebar: organ list via LeftPanel ────────────────────────
+
+  useEffect(() => {
+    setPageSidebar(
+      <LeftPanel
+        items={sortedOrgans}
+        placeholder={t("dashboard.searchOrgans", "Search organs...")}
+        filter={(organ, query) => organ.label.toLowerCase().includes(query)}
+        renderItem={(organ) => {
+          const status = organHealth[organ.key] || "loading";
+          return (
+            <button
+              key={organ.key}
+              onClick={() => setSelectedOrganKey(organ.key)}
+              className={cn(
+                "w-full flex items-center gap-2 px-3 py-2 text-xs transition-colors hover:bg-muted/50",
+                selectedOrganKey === organ.key && "bg-muted/70",
+              )}
+            >
+              <span
+                className={cn(
+                  "w-2 h-2 rounded-full shrink-0",
+                  status === "ok" && "bg-emerald-500",
+                  status === "error" && "bg-red-500",
+                  status === "loading" && "bg-muted-foreground/30 animate-pulse",
+                )}
+              />
+              <span className="truncate">{organ.label}</span>
+            </button>
+          );
+        }}
+        header={
+          <div className="px-3 pb-2 flex items-center gap-3 text-[10px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-emerald-500" />
+              {Object.values(organHealth).filter((s) => s === "ok").length}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-2 h-2 rounded-full bg-red-500" />
+              {Object.values(organHealth).filter((s) => s === "error").length}
+            </span>
+            <button
+              onClick={checkOrganHealth}
+              className="ml-auto text-muted-foreground hover:text-foreground transition-colors"
+            >
+              ↻
+            </button>
+          </div>
+        }
+      />,
+    );
+    return () => setPageSidebar(null);
+  }, [sortedOrgans, organHealth, selectedOrganKey, setPageSidebar, checkOrganHealth, t]);
+
+  // ── Workspace: organ detail via DetailPanel ──────────────────
+
+  useEffect(() => {
+    if (!selectedOrgan) {
+      setPageWorkspace(null);
+      return;
+    }
+    const status = organHealth[selectedOrgan.key] || "loading";
+    setPageWorkspace(
+      <DetailPanel
+        title={selectedOrgan.label}
+        subtitle={selectedOrgan.endpoint}
+        icon={selectedOrgan.label.split(" ")[0]}
+        badge={status === "ok" ? "Healthy" : status === "error" ? "Error" : "Checking..."}
+        onClose={() => setSelectedOrganKey(null)}
+        sections={[
+          {
+            title: t("dashboard.organStatus", "Status"),
+            items: [
+              {
+                label: t("dashboard.healthStatus", "Health"),
+                value: status === "ok" ? "✅ Healthy" : status === "error" ? "❌ Error" : "⏳ Checking...",
+                icon: status === "ok" ? <CheckCircle className="w-3.5 h-3.5 text-emerald-500" /> : status === "error" ? <XCircle className="w-3.5 h-3.5 text-red-500" /> : <Loader2 className="w-3.5 h-3.5 animate-spin" />,
+              },
+              {
+                label: t("dashboard.endpoint", "Endpoint"),
+                value: selectedOrgan.endpoint,
+                icon: <ExternalLink className="w-3.5 h-3.5" />,
+              },
+              {
+                label: t("dashboard.lastCheck", "Last Check"),
+                value: new Date().toLocaleTimeString(),
+                icon: <Clock className="w-3.5 h-3.5" />,
+              },
+            ],
+          },
+        ]}
+        headerActions={
+          <Link
+            href={`/${selectedOrgan.key}`}
+            className="text-xs text-primary hover:underline flex items-center gap-1"
+          >
+            {t("dashboard.viewFullPage", "View Full Page")}
+            <ExternalLink className="w-3 h-3" />
+          </Link>
+        }
+      />,
+    );
+    return () => setPageWorkspace(null);
+  }, [selectedOrgan, organHealth, setPageWorkspace, t]);
+
+  // ── Computed values ──────────────────────────────────────────
+
   const totalTokens = usageSummary?.total_tokens ?? 0;
   const callCount = usageSummary?.call_count ?? 0;
-  const estimatedCost = totalTokens * 0.00001; // $0.01 per 1K tokens
+  const estimatedCost = totalTokens * 0.00001;
 
-  // Build model breakdown from by_model
-  const modelBreakdown = Object.entries(usageSummary?.by_model || {}).map(([model, tokens]) => ({
-    model,
-    tokens,
-    cost: tokens * 0.00001,
-  })).sort((a, b) => b.tokens - a.tokens);
+  const modelBreakdown = Object.entries(usageSummary?.by_model || {})
+    .map(([model, tokens]) => ({ model, tokens, cost: tokens * 0.00001 }))
+    .sort((a, b) => b.tokens - a.tokens);
 
-  // Compute today's usage from recent records
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todayTs = todayStart.getTime() / 1000;
   const todayTokens = recentRecords
     .filter((r) => r.timestamp >= todayTs)
     .reduce((sum, r) => sum + r.total_tokens, 0);
-  const todayCost = todayTokens * 0.00001;
 
-  // Input/output tokens from recent records
-  const inputTokens = recentRecords.reduce((sum, r) => sum + r.prompt_tokens, 0);
-  const outputTokens = recentRecords.reduce((sum, r) => sum + r.completion_tokens, 0);
+  // ── ECharts options ──────────────────────────────────────────
 
-  const costStats = {
-    totalTokens,
-    inputTokens,
-    outputTokens,
-    estimatedCost,
-    todayCost,
-    modelBreakdown,
-  };
+  // 1. Token Usage Trend (line chart - grouped by hour)
+  const tokenTrendOption = useMemo(() => {
+    const hourly: Record<string, number> = {};
+    recentRecords.forEach((r) => {
+      const d = new Date(r.timestamp * 1000);
+      const key = `${String(d.getHours()).padStart(2, "0")}:00`;
+      hourly[key] = (hourly[key] || 0) + r.total_tokens;
+    });
+    const hours = Object.keys(hourly).sort();
+    return {
+      tooltip: { trigger: "axis" as const },
+      grid: { top: 20, right: 16, bottom: 24, left: 48 },
+      xAxis: { type: "category" as const, data: hours, axisLabel: { fontSize: 10 } },
+      yAxis: { type: "value" as const, axisLabel: { fontSize: 10 } },
+      series: [{
+        type: "line",
+        data: hours.map((h) => hourly[h]),
+        smooth: true,
+        areaStyle: { opacity: 0.15 },
+        itemStyle: { color: "#3b82f6" },
+      }],
+    };
+  }, [recentRecords]);
 
-  const quickLinks = [
-    { label: t("nav.knowledge"), icon: BookOpen, href: "/knowledge", count: knowledgeItems.length },
-    { label: t("nav.groups"), icon: Users, href: "/groups", count: groups.length },
-    { label: t("nav.team"), icon: Users, href: "/team", count: teams.length },
-    { label: t("nav.graph"), icon: Network, href: "/graph", count: 0 },
-    { label: t("nav.workflow"), icon: Workflow, href: "/workflow", count: 0 },
-    { label: t("nav.workspace"), icon: Activity, href: "/workspace", count: workspaces.length },
-  ];
+  // 2. Model Breakdown (pie chart)
+  const modelPieOption = useMemo(() => ({
+    tooltip: { trigger: "item" as const, formatter: "{b}: {c} tokens ({d}%)" },
+    series: [{
+      type: "pie",
+      radius: ["35%", "65%"],
+      data: modelBreakdown.map((m) => ({ name: m.model, value: m.tokens })),
+      label: { fontSize: 10 },
+      itemStyle: { borderRadius: 4 },
+    }],
+  }), [modelBreakdown]);
+
+  // 3. Cost Trend (area chart - grouped by day)
+  const costTrendOption = useMemo(() => {
+    const daily: Record<string, number> = {};
+    recentRecords.forEach((r) => {
+      const d = new Date(r.timestamp * 1000);
+      const key = `${d.getMonth() + 1}/${d.getDate()}`;
+      daily[key] = (daily[key] || 0) + r.total_tokens * 0.00001;
+    });
+    const days = Object.keys(daily).sort();
+    return {
+      tooltip: { trigger: "axis" as const, formatter: (params: any) => `${params[0]?.axisValue}<br/>$${params[0]?.value?.toFixed(4)}` },
+      grid: { top: 20, right: 16, bottom: 24, left: 48 },
+      xAxis: { type: "category" as const, data: days, axisLabel: { fontSize: 10 } },
+      yAxis: { type: "value" as const, axisLabel: { fontSize: 10, formatter: "${value}" } },
+      series: [{
+        type: "line",
+        data: days.map((d) => +daily[d].toFixed(4)),
+        smooth: true,
+        areaStyle: { opacity: 0.2, color: "#f59e0b" },
+        itemStyle: { color: "#f59e0b" },
+      }],
+    };
+  }, [recentRecords]);
+
+  // 4. System Health (gauge)
+  const sysGaugeOption = useMemo(() => {
+    if (!sysMetrics) return {};
+    return {
+      series: [
+        {
+          type: "gauge",
+          center: ["25%", "55%"],
+          radius: "70%",
+          title: { fontSize: 10 },
+          detail: { fontSize: 12, formatter: "{value}%", offsetCenter: [0, "70%"] },
+          data: [{ value: +sysMetrics.system.cpu_percent.toFixed(1), name: "CPU" }],
+          axisLabel: { fontSize: 8 },
+          min: 0,
+          max: 100,
+        },
+        {
+          type: "gauge",
+          center: ["75%", "55%"],
+          radius: "70%",
+          title: { fontSize: 10 },
+          detail: { fontSize: 12, formatter: "{value}%", offsetCenter: [0, "70%"] },
+          data: [{ value: +sysMetrics.system.memory_percent.toFixed(1), name: "MEM" }],
+          axisLabel: { fontSize: 8 },
+          min: 0,
+          max: 100,
+        },
+      ],
+    };
+  }, [sysMetrics]);
+
+  // ── Render ───────────────────────────────────────────────────
 
   return (
-      <PageLayout title="Dashboard">
-        
-    <div className="h-full overflow-y-auto">
-      <div className="mx-auto max-w-5xl px-3 lg:px-6 py-4 lg:py-8">
-        {/* Header */}
-        <div className="mb-8">
-          <h2 className="text-xl lg:text-2xl font-bold tracking-tight">
-            {t("dashboard.title")}
-          </h2>
-          <p className="mt-1 text-xs lg:text-sm text-muted-foreground">
-            {t("dashboard.subtitle")}
-          </p>
-        </div>
+    <PageLayout title="Dashboard" showSidebarToggle showWorkspaceToggle>
+      <div className="h-full overflow-y-auto">
+        <div className="mx-auto max-w-6xl px-3 lg:px-6 py-4 lg:py-6 space-y-6">
 
-        {/* Stat cards */}
-        <div className="mb-8 grid grid-cols-1 gap-2 lg:gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stats.map((stat) => (
-            <Link
-              key={stat.label}
-              href={stat.href}
-              className="group rounded-xl border border-border bg-card p-5 transition-colors hover:border-primary/30"
-            >
-              <div className="flex items-center justify-between">
-                <div className={cn("flex h-10 w-10 items-center justify-center rounded-lg", stat.bg)}>
-                  <stat.icon size={20} className={stat.color} />
-                </div>
-                <ArrowRight size={14} className="text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
+          {/* ── System Metric Cards (4 in a row) ─────────────── */}
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 lg:gap-3">
+            {/* CPU */}
+            <div className="rounded-lg border border-border bg-card p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Cpu className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-[10px] text-muted-foreground">CPU</span>
               </div>
-              <div className="mt-4">
-                <p className="text-xl lg:text-2xl font-bold">{stat.value}</p>
-                <p className="text-xs lg:text-sm text-muted-foreground">{stat.label}</p>
-                <p className="mt-1 text-xs text-muted-foreground">{stat.sub}</p>
-              </div>
-            </Link>
-          ))}
-        </div>
-
-        {/* Cost Statistics Card */}
-        <div className="mb-8 rounded-xl border border-border bg-card p-3 lg:p-6">
-          <div className="flex items-center justify-between mb-3 lg:mb-6">
-            <div>
-              <h3 className="text-lg font-semibold flex items-center gap-2">
-                <DollarSign className="w-5 h-5 text-yellow-500" />
-                {t("dashboard.costStats")}
-              </h3>
-              <p className="text-xs lg:text-sm text-muted-foreground mt-1">
-                {t("dashboard.costStatsDesc")}
+              <p className={cn("text-lg font-bold", (sysMetrics?.system.cpu_percent ?? 0) > 80 ? "text-red-500" : (sysMetrics?.system.cpu_percent ?? 0) > 50 ? "text-amber-500" : "text-emerald-500")}>
+                {sysMetrics ? `${sysMetrics.system.cpu_percent.toFixed(1)}%` : "—"}
               </p>
             </div>
-            <div className="text-right">
-              <div className="text-xl lg:text-2xl font-bold text-yellow-500">${costStats.estimatedCost.toFixed(2)}</div>
-              <div className="text-xs text-muted-foreground">{t("dashboard.totalCost")}</div>
+            {/* Memory */}
+            <div className="rounded-lg border border-border bg-card p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <HardDrive className="w-3.5 h-3.5 text-violet-500" />
+                <span className="text-[10px] text-muted-foreground">{t("dashboard.memory", "Memory")}</span>
+              </div>
+              <p className={cn("text-lg font-bold", (sysMetrics?.system.memory_percent ?? 0) > 85 ? "text-red-500" : (sysMetrics?.system.memory_percent ?? 0) > 60 ? "text-amber-500" : "text-emerald-500")}>
+                {sysMetrics ? `${sysMetrics.system.memory_percent.toFixed(1)}%` : "—"}
+              </p>
+              {sysMetrics && (
+                <p className="text-[10px] text-muted-foreground">{(sysMetrics.system.memory_used_mb / 1024).toFixed(1)}/{(sysMetrics.system.memory_total_mb / 1024).toFixed(1)} GB</p>
+              )}
+            </div>
+            {/* Disk */}
+            <div className="rounded-lg border border-border bg-card p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <HardDrive className="w-3.5 h-3.5 text-amber-500" />
+                <span className="text-[10px] text-muted-foreground">{t("dashboard.disk", "Disk")}</span>
+              </div>
+              <p className={cn("text-lg font-bold", (sysMetrics?.system.disk_percent ?? 0) > 90 ? "text-red-500" : (sysMetrics?.system.disk_percent ?? 0) > 75 ? "text-amber-500" : "text-emerald-500")}>
+                {sysMetrics ? `${sysMetrics.system.disk_percent.toFixed(1)}%` : "—"}
+              </p>
+              {sysMetrics && (
+                <p className="text-[10px] text-muted-foreground">{sysMetrics.system.disk_used_gb.toFixed(0)}/{sysMetrics.system.disk_total_gb.toFixed(0)} GB</p>
+              )}
+            </div>
+            {/* QPS */}
+            <div className="rounded-lg border border-border bg-card p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <Zap className="w-3.5 h-3.5 text-blue-500" />
+                <span className="text-[10px] text-muted-foreground">QPS</span>
+              </div>
+              <p className="text-lg font-bold">{sysMetrics ? sysMetrics.app.request_qps.toFixed(1) : "—"}</p>
+              {sysMetrics && (
+                <p className="text-[10px] text-muted-foreground">P99 {sysMetrics.app.latency_p99_ms.toFixed(0)}ms</p>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-2 lg:gap-4 mb-3 lg:mb-6">
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 mb-2">
-                <Cpu className="w-4 h-4 text-blue-500" />
-                <span className="text-xs lg:text-sm font-medium">{t("dashboard.totalTokens")}</span>
-              </div>
-              <div className="text-xl lg:text-2xl font-bold">{(costStats.totalTokens / 1000000).toFixed(1)}M</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {t("dashboard.input")}: {(costStats.inputTokens / 1000000).toFixed(1)}M | 
-                {t("dashboard.output")}: {(costStats.outputTokens / 1000000).toFixed(1)}M
+          {/* ── Charts row 1: Token trend + Model pie ─────────── */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3">
+            <div className="rounded-lg border border-border bg-card p-3">
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.tokenUsageTrend", "Token Usage Trend")}</h4>
+              <div className="h-48">
+                <ReactECharts option={tokenTrendOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
               </div>
             </div>
-
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 mb-2">
-                <Zap className="w-4 h-4 text-green-500" />
-                <span className="text-xs lg:text-sm font-medium">{t("dashboard.todayCost")}</span>
-              </div>
-              <div className="text-xl lg:text-2xl font-bold text-green-500">${costStats.todayCost.toFixed(2)}</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {t("dashboard.vsYesterday")}
-              </div>
-            </div>
-
-            <div className="p-4 rounded-lg bg-muted/50">
-              <div className="flex items-center gap-2 mb-2">
-                <TrendingUp className="w-4 h-4 text-violet-500" />
-                <span className="text-xs lg:text-sm font-medium">{t("dashboard.avgCostPerMsg")}</span>
-              </div>
-              <div className="text-xl lg:text-2xl font-bold">${(costStats.estimatedCost / Math.max(totalMessages, 1)).toFixed(4)}</div>
-              <div className="text-xs text-muted-foreground mt-1">
-                {totalMessages} {t("dashboard.messages")}
+            <div className="rounded-lg border border-border bg-card p-3">
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.modelBreakdown", "Model Breakdown")}</h4>
+              <div className="h-48">
+                <ReactECharts option={modelPieOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
               </div>
             </div>
           </div>
 
-          <div>
-            <h4 className="text-xs lg:text-sm font-medium mb-3">{t("dashboard.modelBreakdown")}</h4>
-            <div className="space-y-2">
-              {costStats.modelBreakdown.map((model) => (
-                <div key={model.model} className="flex items-center justify-between p-3 rounded-lg bg-muted/30">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Cpu className="w-4 h-4 text-primary" />
-                    </div>
-                    <div>
-                      <div className="text-xs lg:text-sm font-medium">{model.model}</div>
-                      <div className="text-xs text-muted-foreground">{(model.tokens / 1000).toFixed(0)}K tokens</div>
-                    </div>
-                  </div>
-                  <div className="text-right">
-                    <div className="text-xs lg:text-sm font-bold">${model.cost.toFixed(2)}</div>
-                    <div className="text-xs text-muted-foreground">{((model.cost / costStats.estimatedCost) * 100).toFixed(1)}%</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* System Metrics */}
-        {sysMetrics && (
-          <div className="mb-8 rounded-xl border border-border bg-card p-3 lg:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h3 className="text-lg font-semibold flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-emerald-500" />
-                  {t("dashboard.systemMetrics")}
-                </h3>
-                <p className="text-xs lg:text-sm text-muted-foreground mt-1">
-                  {t("dashboard.systemMetricsDesc")}
-                </p>
-              </div>
-              <button onClick={fetchSysMetrics} className="text-xs text-muted-foreground hover:text-foreground transition-colors">
-                ↻ {t("common.refresh")}
+          {/* ── Recent Usage Table ────────────────────────────── */}
+          <div className="rounded-lg border border-border bg-card overflow-hidden">
+            <div className="flex items-center justify-between px-3 py-2 border-b border-border">
+              <h4 className="text-xs font-medium text-muted-foreground">{t("dashboard.recentActivity", "Recent Usage")}</h4>
+              <button onClick={() => { fetchRecentUsage(); fetchCronJobs(); }} className="text-[10px] text-muted-foreground hover:text-foreground transition-colors">
+                ↻ {t("common.refresh", "Refresh")}
               </button>
             </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2 lg:gap-4 mb-4">
-              {/* CPU */}
-              <div className="p-4 rounded-lg bg-muted/50">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <Cpu className="w-4 h-4 text-blue-500" />
-                    <span className="text-xs lg:text-sm font-medium">CPU</span>
-                  </div>
-                  <span className={cn("text-lg font-bold", sysMetrics.system.cpu_percent > 80 ? "text-red-500" : sysMetrics.system.cpu_percent > 50 ? "text-amber-500" : "text-emerald-500")}>
-                    {sysMetrics.system.cpu_percent.toFixed(1)}%
-                  </span>
+            {recentRecords.length > 0 ? (
+              <>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/30">
+                        <th className="px-3 py-1.5 text-left font-medium text-muted-foreground text-[10px]">{t("dashboard.time", "Time")}</th>
+                        <th className="px-3 py-1.5 text-left font-medium text-muted-foreground text-[10px]">{t("dashboard.model", "Model")}</th>
+                        <th className="px-3 py-1.5 text-left font-medium text-muted-foreground text-[10px]">{t("dashboard.provider", "Provider")}</th>
+                        <th className="px-3 py-1.5 text-right font-medium text-muted-foreground text-[10px]">{t("dashboard.tokens", "Tokens")}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {recentRecords.slice(0, 10).map((r, i) => (
+                        <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
+                          <td className="px-3 py-1.5 text-[10px] text-muted-foreground">
+                            {new Date(r.timestamp * 1000).toLocaleString(undefined, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                          </td>
+                          <td className="px-3 py-1.5 text-[10px] font-medium">{r.model}</td>
+                          <td className="px-3 py-1.5 text-[10px] text-muted-foreground">{r.provider}</td>
+                          <td className="px-3 py-1.5 text-[10px] text-right">
+                            <span className="text-blue-500">{r.prompt_tokens.toLocaleString()}</span>
+                            <span className="text-muted-foreground mx-1">→</span>
+                            <span className="text-emerald-500">{r.completion_tokens.toLocaleString()}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
-                <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className={cn("h-full rounded-full transition-all duration-500", sysMetrics.system.cpu_percent > 80 ? "bg-red-500" : sysMetrics.system.cpu_percent > 50 ? "bg-amber-500" : "bg-emerald-500")}
-                    style={{ width: `${Math.min(sysMetrics.system.cpu_percent, 100)}%` }}
-                  />
+                <div className="px-3 py-1.5 text-[10px] text-muted-foreground bg-muted/20 border-t border-border">
+                  {recentRecords.length} {t("dashboard.records", "records")} · {callCount} {t("dashboard.totalCalls", "total calls")}
                 </div>
+              </>
+            ) : (
+              <div className="p-6 text-center">
+                <TrendingUp size={24} className="mx-auto mb-2 text-muted-foreground/50" />
+                <p className="text-xs text-muted-foreground">{t("dashboard.noActivity", "No recent activity")}</p>
               </div>
+            )}
+          </div>
 
-              {/* Memory */}
-              <div className="p-4 rounded-lg bg-muted/50">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <HardDrive className="w-4 h-4 text-violet-500" />
-                    <span className="text-xs lg:text-sm font-medium">{t("dashboard.memory")}</span>
-                  </div>
-                  <span className={cn("text-lg font-bold", sysMetrics.system.memory_percent > 85 ? "text-red-500" : sysMetrics.system.memory_percent > 60 ? "text-amber-500" : "text-emerald-500")}>
-                    {sysMetrics.system.memory_percent.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className={cn("h-full rounded-full transition-all duration-500", sysMetrics.system.memory_percent > 85 ? "bg-red-500" : sysMetrics.system.memory_percent > 60 ? "bg-amber-500" : "bg-emerald-500")}
-                    style={{ width: `${Math.min(sysMetrics.system.memory_percent, 100)}%` }}
-                  />
-                </div>
-                <div className="text-[10px] text-muted-foreground mt-1">
-                  {(sysMetrics.system.memory_used_mb / 1024).toFixed(1)} / {(sysMetrics.system.memory_total_mb / 1024).toFixed(1)} GB
-                </div>
-              </div>
-
-              {/* Disk */}
-              <div className="p-4 rounded-lg bg-muted/50">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="flex items-center gap-2">
-                    <HardDrive className="w-4 h-4 text-amber-500" />
-                    <span className="text-xs lg:text-sm font-medium">{t("dashboard.disk")}</span>
-                  </div>
-                  <span className={cn("text-lg font-bold", sysMetrics.system.disk_percent > 90 ? "text-red-500" : sysMetrics.system.disk_percent > 75 ? "text-amber-500" : "text-emerald-500")}>
-                    {sysMetrics.system.disk_percent.toFixed(1)}%
-                  </span>
-                </div>
-                <div className="w-full h-2 rounded-full bg-muted overflow-hidden">
-                  <div
-                    className={cn("h-full rounded-full transition-all duration-500", sysMetrics.system.disk_percent > 90 ? "bg-red-500" : sysMetrics.system.disk_percent > 75 ? "bg-amber-500" : "bg-emerald-500")}
-                    style={{ width: `${Math.min(sysMetrics.system.disk_percent, 100)}%` }}
-                  />
-                </div>
-                <div className="text-[10px] text-muted-foreground mt-1">
-                  {sysMetrics.system.disk_used_gb.toFixed(0)} / {sysMetrics.system.disk_total_gb.toFixed(0)} GB
-                </div>
+          {/* ── Charts row 2: Cost trend + System health gauges ─ */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-2 lg:gap-3">
+            <div className="rounded-lg border border-border bg-card p-3">
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.costTrend", "Cost Trend")}</h4>
+              <div className="h-48">
+                <ReactECharts option={costTrendOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
               </div>
             </div>
-
-            {/* App metrics row */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
-                <Zap className="w-4 h-4 text-blue-500" />
-                <div>
-                  <div className="text-xs text-muted-foreground">QPS</div>
-                  <div className="text-xs lg:text-sm font-bold">{sysMetrics.app.request_qps.toFixed(1)}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
-                <Clock className="w-4 h-4 text-amber-500" />
-                <div>
-                  <div className="text-xs text-muted-foreground">P99 {t("dashboard.latency")}</div>
-                  <div className="text-xs lg:text-sm font-bold">{sysMetrics.app.latency_p99_ms.toFixed(0)}ms</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
-                <Activity className="w-4 h-4 text-emerald-500" />
-                <div>
-                  <div className="text-xs text-muted-foreground">{t("dashboard.totalRequests")}</div>
-                  <div className="text-xs lg:text-sm font-bold">{sysMetrics.app.total_requests.toLocaleString()}</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/30">
-                <AlertTriangle className="w-4 h-4 text-red-500" />
-                <div>
-                  <div className="text-xs text-muted-foreground">{t("dashboard.activeAlerts")}</div>
-                  <div className={cn("text-xs lg:text-sm font-bold", sysMetrics.alerts.active > 0 ? "text-red-500" : "text-emerald-500")}>{sysMetrics.alerts.active}</div>
-                </div>
+            <div className="rounded-lg border border-border bg-card p-3">
+              <h4 className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.systemHealth", "System Health")}</h4>
+              <div className="h-48">
+                {sysMetrics && (
+                  <ReactECharts option={sysGaugeOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                )}
               </div>
             </div>
           </div>
-        )}
 
-        {/* Quick links */}
-        <div className="mb-8">
-          <h3 className="mb-4 text-xs lg:text-sm font-medium text-muted-foreground">
-            {t("dashboard.quickLinks")}
-          </h3>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {quickLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="group flex items-center gap-3 rounded-lg border border-border bg-card p-3 lg:p-4 transition-colors hover:border-primary/30"
-              >
-                <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-muted">
-                  <link.icon size={18} className="text-muted-foreground" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs lg:text-sm font-medium">{link.label}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {link.count} {t("dashboard.items")}
-                  </p>
-                </div>
-                <ArrowRight size={14} className="text-muted-foreground opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity" />
-              </Link>
-            ))}
-          </div>
-        </div>
-
-        {/* Organ Health Overview */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs lg:text-sm font-medium text-muted-foreground">
-              {t("dashboard.organHealth")}
-            </h3>
-            <button
-              onClick={checkOrganHealth}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ↻ {t("dashboard.refreshHealth")}
-            </button>
-          </div>
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-5 lg:grid-cols-8">
-            {organs.map((organ) => {
-              const status = organHealth[organ.key];
-              return (
-                <div
-                  key={organ.key}
-                  className={cn(
-                    "flex flex-col items-center gap-1 rounded-lg border p-3 text-center transition-colors",
-                    status === "ok" && "border-emerald-500/30 bg-emerald-500/5",
-                    status === "error" && "border-red-500/30 bg-red-500/5",
-                    status === "loading" && "border-border bg-card"
-                  )}
-                >
-                  <span className="text-lg">{organ.label.split(" ")[0]}</span>
-                  <span className="text-[10px] font-medium leading-tight">
-                    {organ.label.split(" ").slice(1).join(" ")}
-                  </span>
-                  {status === "ok" && <CheckCircle size={12} className="text-emerald-500" />}
-                  {status === "error" && <XCircle size={12} className="text-red-500" />}
-                  {status === "loading" && <Loader2 size={12} className="animate-spin text-muted-foreground" />}
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-2 flex items-center gap-2 lg:gap-4 text-[10px] text-muted-foreground">
-            <span className="flex items-center gap-1">
-              <CheckCircle size={10} className="text-emerald-500" />
-              {Object.values(organHealth).filter((s) => s === "ok").length} {t("dashboard.healthy")}
-            </span>
-            <span className="flex items-center gap-1">
-              <XCircle size={10} className="text-red-500" />
-              {Object.values(organHealth).filter((s) => s === "error").length} {t("dashboard.unhealthy")}
-            </span>
-          </div>
-        </div>
-
-        {/* Recent activity — from recent usage records */}
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-xs lg:text-sm font-medium text-muted-foreground">
-              {t("dashboard.recentActivity")}
-            </h3>
-            <button
-              onClick={() => { fetchRecentUsage(); fetchCronJobs(); }}
-              className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-            >
-              ↻ {t("common.refresh")}
-            </button>
-          </div>
-          {recentRecords.length > 0 ? (
-            <div className="rounded-xl border border-border bg-card overflow-x-auto">
-              <table className="w-full text-xs lg:text-sm">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30">
-                    <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.time")}</th>
-                    <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.model")}</th>
-                    <th className="px-2 lg:px-4 py-2.5 text-left font-medium text-muted-foreground text-xs">{t("dashboard.provider")}</th>
-                    <th className="px-2 lg:px-4 py-2.5 text-right font-medium text-muted-foreground text-xs">{t("dashboard.tokens")}</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentRecords.slice(0, 10).map((r, i) => (
-                    <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
-                      <td className="px-2 lg:px-4 py-2 text-xs text-muted-foreground">
-                        {new Date(r.timestamp * 1000).toLocaleString(undefined, {
-                          month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
-                        })}
-                      </td>
-                      <td className="px-2 lg:px-4 py-2 text-xs font-medium">{r.model}</td>
-                      <td className="px-2 lg:px-4 py-2 text-xs text-muted-foreground">{r.provider}</td>
-                      <td className="px-2 lg:px-4 py-2 text-xs text-right">
-                        <span className="text-blue-500">{r.prompt_tokens.toLocaleString()}</span>
-                        <span className="text-muted-foreground mx-1">→</span>
-                        <span className="text-emerald-500">{r.completion_tokens.toLocaleString()}</span>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="px-2 lg:px-4 py-2 text-[10px] text-muted-foreground bg-muted/20 border-t border-border">
-                {t("dashboard.showingRecent")} 10 / {recentRecords.length} {t("dashboard.records")} · {callCount} {t("dashboard.totalCalls")}
-              </div>
-            </div>
-          ) : cronJobs.length > 0 ? (
-            <div className="rounded-xl border border-border bg-card overflow-hidden">
-              <div className="px-2 lg:px-4 py-3 space-y-2">
-                <p className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.cronJobs")}</p>
-                {cronJobs.slice(0, 5).map((job, i) => (
-                  <div key={i} className="flex items-center justify-between py-2 border-b border-border last:border-0">
-                    <div className="flex items-center gap-2">
-                      <div className={cn("w-2 h-2 rounded-full", job.enabled ? "bg-emerald-500" : "bg-muted-foreground/30")} />
-                      <span className="text-xs lg:text-sm font-medium">{job.name || job.id}</span>
-                      <span className="text-[10px] text-muted-foreground font-mono">{job.schedule}</span>
-                    </div>
-                    {job.next_run && (
-                      <span className="text-[10px] text-muted-foreground">
-                        {t("dashboard.nextRun")}: {new Date(job.next_run).toLocaleString(undefined, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
-                      </span>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          ) : (
-            <div className="rounded-xl border border-border bg-card p-8 text-center">
-              <TrendingUp size={32} className="mx-auto mb-3 text-muted-foreground/50" />
-              <p className="text-xs lg:text-sm text-muted-foreground">
-                {t("dashboard.noActivity")}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {t("dashboard.noActivityHint")}
-              </p>
-            </div>
-          )}
         </div>
       </div>
-    </div>
-  
-      </PageLayout>
-    );
+    </PageLayout>
+  );
 }
