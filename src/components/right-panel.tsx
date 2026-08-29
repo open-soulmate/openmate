@@ -659,6 +659,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
 
   return (
     <div
+      key={sessionId}
       className="flex flex-col h-full min-w-0 bg-background relative"
       style={{ width: '100%' }}
     >
