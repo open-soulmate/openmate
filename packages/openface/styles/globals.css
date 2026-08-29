@@ -1,0 +1,222 @@
+/* ─── OpenFace Design System ──────────────────────────────────────────────
+   Standalone stylesheet: CSS custom properties + Tailwind v4 @theme mapping
+   Import via: @import '@opensoulmate/openface/styles/globals.css'
+   ─────────────────────────────────────────────────────────────────────────── */
+
+@import "tailwindcss";
+
+/* ─── CSS Custom Properties (theme-overridable) ────────────────────────── */
+
+:root {
+  --background: #0a0a0f;
+  --foreground: #e4e4e7;
+  --card: #111118;
+  --card-foreground: #e4e4e7;
+  --popover: #111118;
+  --popover-foreground: #e4e4e7;
+  --primary: #7c3aed;
+  --primary-foreground: #fafafa;
+  --secondary: #1e1e2a;
+  --secondary-foreground: #a1a1aa;
+  --muted: #18181b;
+  --muted-foreground: #71717a;
+  --accent: #1a1a20;
+  --accent-foreground: #e4e4e7;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #27272a;
+  --input: #27272a;
+  --ring: #7c3aed;
+  --sidebar: #111118;
+  --sidebar-foreground: #a1a1aa;
+  --sidebar-accent: #1a1a20;
+  --radius: 0.625rem;
+  --success: #22c55e;
+  --warning: #f59e0b;
+  --error: #ef4444;
+  --info: #3b82f6;
+}
+
+/* ─── Light Theme ──────────────────────────────────────────────────────── */
+
+[data-theme='light'],
+.light {
+  --background: #ffffff;
+  --foreground: #18181b;
+  --card: #fafafa;
+  --card-foreground: #18181b;
+  --popover: #fafafa;
+  --popover-foreground: #18181b;
+  --primary: #6366f1;
+  --primary-foreground: #ffffff;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #71717a;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
+  --accent: #f4f4f5;
+  --accent-foreground: #18181b;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: #e4e4e7;
+  --input: #e4e4e7;
+  --ring: #6366f1;
+  --sidebar: #111118;
+  --sidebar-foreground: #a1a1aa;
+  --sidebar-accent: #1a1a20;
+}
+
+/* ─── Purple Theme ─────────────────────────────────────────────────────── */
+
+[data-theme='purple'],
+.theme-purple {
+  --background: #0c0514;
+  --foreground: #e8e0f0;
+  --card: #130a1f;
+  --card-foreground: #e8e0f0;
+  --popover: #130a1f;
+  --popover-foreground: #e8e0f0;
+  --primary: #a855f7;
+  --primary-foreground: #fafafa;
+  --secondary: #1e1230;
+  --secondary-foreground: #a78bbc;
+  --muted: #160d24;
+  --muted-foreground: #8b72a0;
+  --accent: #1e1230;
+  --accent-foreground: #e8e0f0;
+  --destructive: #ef4444;
+  --destructive-foreground: #fafafa;
+  --border: #2a1a40;
+  --input: #2a1a40;
+  --ring: #a855f7;
+  --sidebar: #111118;
+  --sidebar-foreground: #a1a1aa;
+  --sidebar-accent: #1a1a20;
+}
+
+/* ─── Tailwind v4 @theme Mappings ──────────────────────────────────────── */
+
+@theme {
+  --font-sans: "Inter", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-error: var(--error);
+  --color-info: var(--info);
+
+  --radius: var(--radius);
+}
+
+/* ─── Base Layer ───────────────────────────────────────────────────────── */
+
+* {
+  border-color: var(--color-border);
+}
+
+body {
+  background-color: var(--color-background);
+  color: var(--color-foreground);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* ─── Scrollbar ────────────────────────────────────────────────────────── */
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: transparent transparent;
+}
+
+*:hover {
+  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: transparent;
+  border-radius: 3px;
+  transition: background 0.3s ease;
+}
+
+*:hover::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* Chat scrollbar: stable gutter prevents layout shift */
+.chat-scrollbar {
+  scrollbar-gutter: stable;
+}
+
+/* ─── Selection ────────────────────────────────────────────────────────── */
+
+::selection {
+  background: color-mix(in srgb, var(--color-primary) 30%, transparent);
+}
+
+/* ─── Light theme scrollbars ───────────────────────────────────────────── */
+
+.light * {
+  scrollbar-color: transparent transparent;
+}
+
+.light *:hover {
+  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
+}
+
+.light *:hover::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.3);
+}
+
+/* ─── Safe Area (iOS notch / home indicator) ───────────────────────────── */
+
+.safe-area-top {
+  padding-top: env(safe-area-inset-top);
+}
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+.safe-area-left {
+  padding-left: env(safe-area-inset-left);
+}
+.safe-area-right {
+  padding-right: env(safe-area-inset-right);
+}
