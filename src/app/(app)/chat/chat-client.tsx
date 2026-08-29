@@ -3,7 +3,7 @@ import { MarkdownContent } from "@/components/markdown-content";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/app-store';
-import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, PanelRightOpen } from "lucide-react";
+import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { Dialog } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
