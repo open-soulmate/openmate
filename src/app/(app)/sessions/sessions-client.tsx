@@ -12,7 +12,6 @@ import {
   Download, FileJson, FileText, Tag, Plus,
   PanelLeft,
 } from "lucide-react"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { useIsMobile } from "@/hooks/use-mobile"
 
 interface Session {
@@ -188,7 +187,7 @@ export function SessionsClient() {
         return next
       })
     }
-    setSidebarOpen(false) // close mobile sidebar Sheet
+    setSidebarOpen(false) // close mobile sidebar
     setDetailLoading(true)
     try {
       const token = typeof window !== "undefined" ? localStorage.getItem("openmate-token") : null
@@ -308,7 +307,7 @@ export function SessionsClient() {
     }
   }
 
-  // Shared message list renderer (used by both mobile Sheet and desktop inline)
+  // Shared message list renderer (used by both mobile sliding panel and desktop inline)
   const renderMessageList = (fontSize: string = "text-sm") => {
     if (detailLoading) {
       return <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
@@ -443,16 +442,21 @@ export function SessionsClient() {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Session List — Sheet on mobile, inline on desktop */}
+        {/* Session List — sidebar-style sliding on mobile, inline on desktop */}
+        {isMobile && sidebarOpen && (
+          <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setSidebarOpen(false)} aria-hidden="true" />
+        )}
         {isMobile ? (
-          <Sheet open={sidebarOpen} onOpenChange={(open) => { setSidebarOpen(open); if (open) setSelectedSession(null); }}>
-            <SheetContent side="left" size="md" className="p-0 flex flex-col bg-card border-r border-border">
-              <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
-                <SheetTitle className="text-sm font-semibold text-foreground flex items-center gap-2">
+          <div
+            className="absolute inset-y-0 left-0 z-10 h-full w-80 min-w-0 border-r border-border transition-[left] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+            style={{ left: sidebarOpen ? 0 : -320 }}
+          >
+              <div className="h-12 shrink-0 flex items-center px-3 border-b border-border">
+                <span className="text-sm font-semibold text-foreground flex items-center gap-2">
                   <History className="w-4 h-4 text-cyan-400" />
                   {t("sessions.title", "Sessions")}
-                </SheetTitle>
-              </SheetHeader>
+                </span>
+              </div>
               {/* Search */}
               <form onSubmit={handleSearch} className="px-3 h-12 flex items-center border-b border-border gap-2">
                 <div className="relative flex-1">
@@ -711,8 +715,7 @@ export function SessionsClient() {
                   </div>
                 )}
               </div>
-            </SheetContent>
-          </Sheet>
+            </div>
         ) : (
         <div
           className="shrink-0 border-r border-border flex flex-col overflow-hidden transition-all duration-300 ease-in-out"
@@ -1016,21 +1019,26 @@ export function SessionsClient() {
         </div>
         )}
 
-        {/* Session Detail — Sheet on mobile, inline on desktop */}
+        {/* Session Detail — sidebar-style sliding on mobile, inline on desktop */}
+        {isMobile && selectedSession && (
+          <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => { setSelectedSession(null); setSidebarOpen(true); }} aria-hidden="true" />
+        )}
         {isMobile ? (
           selectedSession && (
-            <Sheet open={!!selectedSession} onOpenChange={(open) => { if (!open) { setSelectedSession(null); setSidebarOpen(true); } }}>
-              <SheetContent side="right" size="lg" showCloseButton={false} className="p-0 flex flex-col">
-                <SheetHeader className="h-12 shrink-0 flex flex-row items-center justify-between px-2 border-b border-border">
+            <div
+              className="absolute inset-y-0 right-0 z-10 h-full w-[85vw] max-w-lg min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+              style={{ right: 0 }}
+            >
+                <div className="h-12 shrink-0 flex items-center justify-between px-2 border-b border-border">
                   <div className="flex items-center gap-2 min-w-0">
                     <button onClick={() => { setSelectedSession(null); setSidebarOpen(true); }} className="p-1.5 -ml-1 rounded-lg hover:bg-muted touch-manipulation">
                       <ChevronLeft className="w-4 h-4 text-muted-foreground" />
                     </button>
-                    <SheetTitle className="text-xs font-medium text-foreground truncate flex items-center gap-2">
+                    <span className="text-xs font-medium text-foreground truncate flex items-center gap-2">
                       <MessageSquare className="w-4 h-4 text-cyan-400 flex-shrink-0" />
                       {selectedSession.title || selectedSession.session_id}
                       <span className="text-xs text-muted-foreground flex-shrink-0">({selectedSession.messages.length})</span>
-                    </SheetTitle>
+                    </span>
                   </div>
                   <div className="flex items-center gap-1.5 flex-shrink-0">
                     <button onClick={() => router.push(`/chat?session=${selectedSession.session_id}`)}
@@ -1049,12 +1057,11 @@ export function SessionsClient() {
                       <FileText className="w-3.5 h-3.5" />
                     </button>
                   </div>
-                </SheetHeader>
+                </div>
                 <div className="flex-1 overflow-y-auto px-2 py-3 space-y-3">
                   {renderMessageList("text-xs")}
                 </div>
-              </SheetContent>
-            </Sheet>
+            </div>
           )
         ) : (
           selectedSession ? (
