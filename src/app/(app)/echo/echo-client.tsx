@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   Volume2, RefreshCw, Send, Radio, Settings,
   CheckCircle, XCircle, Clock, MessageSquare,

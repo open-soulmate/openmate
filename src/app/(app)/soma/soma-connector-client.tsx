@@ -10,7 +10,6 @@ import {
   Play, Square, RotateCcw, Database, HardDrive,
   Monitor, Layers, History,
 } from "lucide-react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface SomaComponent {

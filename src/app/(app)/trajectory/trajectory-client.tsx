@@ -5,7 +5,6 @@ import { cn } from "@/lib/utils"
 import { getApiBaseUrl } from "@/lib/api-client"
 import { useTranslation } from "react-i18next"
 import { useIsMobile } from "@/hooks/use-mobile"
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { PanelLeft } from "lucide-react"
 import {
   Activity, Search, GitBranch, Play, Pause, SkipForward, SkipBack,

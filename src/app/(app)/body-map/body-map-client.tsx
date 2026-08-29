@@ -8,7 +8,6 @@ import {
   CheckCircle, XCircle, Loader2, Clock, PanelRightOpen, PanelRightClose,
 } from "lucide-react";
 import Link from "next/link";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface OrganStatus {
