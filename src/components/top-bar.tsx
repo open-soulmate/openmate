@@ -84,6 +84,7 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
       {/* Fixed left: logo only */}
       <div className="flex items-center shrink-0 px-3">
         <span className="text-sm font-bold text-primary">OM</span>
+        <span className="text-sm font-semibold text-foreground hidden sm:inline">OpenMate</span>
       </div>
 
       {/* Scrollable middle area: health + status + nav + search */}

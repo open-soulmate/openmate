@@ -925,8 +925,8 @@ export function TrajectoryClient() {
           )}
         </div>
       ) : (
-      <div style={{ display: "flex", gap: 16, minHeight: 400 }}>
-        {/* Left: Session List — Sheet on mobile, inline on desktop */}
+      <div style={{ display: "flex", gap: 16, minHeight: 400, position: "relative" }}>
+        {/* Left: Session List — sidebar-style sliding on mobile, inline on desktop */}
         {view === "list" && (
           <div style={{ width: "100%" }}>
             <div style={{
