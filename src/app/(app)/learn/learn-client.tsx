@@ -1,10 +1,10 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
+import { LearningCharts } from './learning-charts';
 import {
   BookOpen, Plus, Clock, CheckCircle2, RotateCcw, Trash2,
-  Loader2, X, Upload, Download, FileText, Edit3, Sparkles,
-  Award, Image as ImageIcon, GraduationCap, Circle,
-  ChevronRight, BrainCircuit, ChevronLeft,
+  Loader2, X, Upload, FileText, Edit3, Sparkles,
+  Award, BrainCircuit, GraduationCap, Circle, ChevronRight,
 } from 'lucide-react';
 import ReactMarkdown from 'react-markdown';
 import { getApiBaseUrl } from '@/lib/api-client';
@@ -593,23 +593,10 @@ export function LearnClient() {
               </div>
             </div>
 
-            {/* ── Quick Actions ────────────────────────────── */}
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
-                {t('learn.allCourses') || '全部课程'} ({courses.length})
-              </h3>
-              <div className="flex gap-1.5">
-                <button
-                  onClick={() => setShowPolicyCard(true)}
-                  className="inline-flex h-7 items-center gap-1 rounded-md border border-border px-2.5 text-[11px] text-muted-foreground hover:bg-accent"
-                >
-                  <FileText size={12} /> {t('learn.policyCard') || 'Policy'}
-                </button>
-              </div>
-            </div>
+            {/* ── Learning Charts (Flint) ──────────────── */}
+            <LearningCharts courses={courses} />
 
-            {/* ── Course Cards Grid ────────────────────────── */}
-            {courses.length === 0 ? (
+            {courses.length === 0 && (
               <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <BookOpen size={48} className="mb-4 opacity-30" />
                 <p className="text-sm">{t('learn.noCourses') || '暂无课程'}</p>
@@ -619,88 +606,6 @@ export function LearnClient() {
                 >
                   {t('learn.generateFirst') || '生成你的第一门课程 →'}
                 </button>
-              </div>
-            ) : (
-              <div className="grid gap-2 lg:gap-3 sm:grid-cols-2 xl:grid-cols-3">
-                {courses.map((course) => {
-                  const cfg = statusConfig[course.status];
-                  const prog = course.totalChapters > 0 ? Math.round((course.completedChapters / course.totalChapters) * 100) : 0;
-                  return (
-                    <button
-                      key={course.id}
-                      onClick={() => setSelectedCourseId(course.id)}
-                      className="group relative text-left rounded-xl border border-border bg-card p-3 lg:p-4 transition-all hover:border-primary/30 hover:shadow-sm"
-                    >
-                      {/* Actions (hover) */}
-                      <div className="absolute right-2 top-2 flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                        <span
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setFormTitle(course.title);
-                            setFormDescription(course.description);
-                            setFormTags(course.tags.join(', '));
-                            setShowEditModal(true);
-                          }}
-                          className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-foreground cursor-pointer"
-                        >
-                          <Edit3 size={12} />
-                        </span>
-                        <span
-                          onClick={(e) => { e.stopPropagation(); handleDelete(course.id); }}
-                          className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-red-500 cursor-pointer"
-                        >
-                          <Trash2 size={12} />
-                        </span>
-                      </div>
-
-                      {/* Icon + Title */}
-                      <div className="flex items-start gap-2.5 mb-2">
-                        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground">
-                          <BookOpen size={14} />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h4 className="text-xs lg:text-sm font-medium truncate">{course.title}</h4>
-                          <p className="text-[10px] text-muted-foreground line-clamp-1 mt-0.5">{course.description}</p>
-                        </div>
-                      </div>
-
-                      {/* Progress */}
-                      <div className="mb-2">
-                        <div className="flex items-center justify-between text-[10px] mb-1">
-                          <span className={cn('flex items-center gap-1', cfg.color)}>
-                            <span className={cn('w-1.5 h-1.5 rounded-full', cfg.dot)} />
-                            {cfg.label}
-                          </span>
-                          <span className="text-muted-foreground">
-                            {course.completedChapters}/{course.totalChapters} ch. · {prog}%
-                          </span>
-                        </div>
-                        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-                          <div
-                            className={cn(
-                              'h-full rounded-full transition-all',
-                              prog === 100 ? 'bg-green-500' : 'bg-primary',
-                            )}
-                            style={{ width: `${prog}%` }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Tags + Time */}
-                      <div className="flex flex-wrap items-center gap-1">
-                        {course.tags.slice(0, 3).map((tag) => (
-                          <span key={tag} className="rounded-full bg-muted px-1.5 py-0.5 text-[9px] text-muted-foreground">
-                            {tag}
-                          </span>
-                        ))}
-                        {course.tags.length > 3 && (
-                          <span className="text-[9px] text-muted-foreground">+{course.tags.length - 3}</span>
-                        )}
-                        <span className="ml-auto text-[9px] text-muted-foreground">{timeAgo(course.updatedAt, t)}</span>
-                      </div>
-                    </button>
-                  );
-                })}
               </div>
             )}
           </div>
