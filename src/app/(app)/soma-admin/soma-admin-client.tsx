@@ -152,9 +152,7 @@ export default function SomaAdminClient() {
   ];
 
   return (
-
       <PageLayout title="Soma Admin">
-
         
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
@@ -610,8 +608,6 @@ export default function SomaAdminClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }

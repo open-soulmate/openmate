@@ -233,9 +233,7 @@ export function MirrorClient() {
   ];
 
   return (
-
       <PageLayout title="Mirror">
-
         
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-3 lg:py-4 gap-2">
@@ -640,8 +638,6 @@ export function MirrorClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }

@@ -713,11 +713,7 @@ export function TrajectoryClient() {
         return prev + 1
       })
     }, replaySpeed)
-    return (
-        <PageLayout title="Trajectory">
-          
-        </PageLayout>
-      ) => { if (replayTimer.current) clearInterval(replayTimer.current) }
+    return () => { if (replayTimer.current) clearInterval(replayTimer.current) }
   }, [replayPlaying, replayMode, replaySpeed, events.length])
 
   // ── Display Events ─────────────────────────────────────────
@@ -728,6 +724,8 @@ export function TrajectoryClient() {
   // ── Render ─────────────────────────────────────────────────
 
   return (
+      <PageLayout title="Trajectory">
+        
     <div className="px-3 lg:px-5 py-4 lg:py-5 h-full overflow-auto">
       {/* Title bar */}
       <div className="flex items-center gap-2 lg:gap-3 mb-4 lg:mb-5">
@@ -1128,5 +1126,7 @@ export function TrajectoryClient() {
       </div>
       )}
     </div>
-  )
+  
+      </PageLayout>
+    )
 }

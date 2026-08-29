@@ -82,9 +82,7 @@ export function KbSharingClient() {
   };
 
   return (
-
       <PageLayout title="Kb Sharing">
-
         
     <div className="px-3 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
@@ -183,8 +181,6 @@ export function KbSharingClient() {
       )}
     </div>
   
-
       </PageLayout>
-
     );
 }

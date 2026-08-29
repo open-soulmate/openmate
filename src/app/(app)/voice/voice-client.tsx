@@ -102,17 +102,15 @@ export function VoiceClient() {
     fetchStats();
     fetchProfiles();
     const interval = setInterval(fetchStats, 30000);
-    return (
-        <PageLayout title="Voice">
-          
-        </PageLayout>
-      ) => clearInterval(interval);
+    return () => clearInterval(interval);
   }, [fetchStats, fetchProfiles]);
 
   const backends = stats?.engine?.backends || {};
   const languages = stats?.profiles?.by_language || {};
 
   return (
+      <PageLayout title="Voice">
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-3 lg:py-4 gap-2">
@@ -294,5 +292,7 @@ export function VoiceClient() {
         )}
       </div>
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

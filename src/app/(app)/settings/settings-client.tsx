@@ -467,9 +467,7 @@ export function SettingsClient() {
   );
 
   return (
-
       <PageLayout title="Settings">
-
         
     <div className="flex h-full flex-col lg:flex-row">
       {/* Mobile: top bar with hamburger + current section */}
@@ -754,9 +752,7 @@ export function SettingsClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }
 

@@ -154,9 +154,7 @@ export function WorkspaceClient() {
   };
 
   return (
-
       <PageLayout title="Workspace">
-
         
     <div className="flex h-full flex-col">
       {/* Header */}
@@ -342,8 +340,6 @@ export function WorkspaceClient() {
       </Dialog>
     </div>
   
-
       </PageLayout>
-
     );
 }

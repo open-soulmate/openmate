@@ -156,11 +156,7 @@ export function AiEngineClient() {
   useEffect(() => {
     if (!autoRefresh) return;
     const interval = setInterval(() => fetchAll(true), 15000);
-    return (
-        <PageLayout title="Ai Engine">
-          
-        </PageLayout>
-      ) => clearInterval(interval);
+    return () => clearInterval(interval);
   }, [autoRefresh, fetchAll]);
 
   const handleAnalyze = async () => {
@@ -213,6 +209,8 @@ export function AiEngineClient() {
   const successPct = engineStatus ? Math.round(engineStatus.success_rate * 100) : 0;
 
   return (
+      <PageLayout title="Ai Engine">
+        
     <div className="h-full overflow-y-auto p-3 lg:p-6 space-y-3 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -440,5 +438,7 @@ export function AiEngineClient() {
         )}
       </div>
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

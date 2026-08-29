@@ -174,11 +174,7 @@ export function MetricsClient() {
   useEffect(() => {
     if (!autoRefresh) return;
     const timer = setInterval(fetchMetrics, 15000);
-    return (
-        <PageLayout title="Metrics">
-          
-        </PageLayout>
-      ) => clearInterval(timer);
+    return () => clearInterval(timer);
   }, [autoRefresh, fetchMetrics]);
 
   if (loading) {
@@ -213,6 +209,8 @@ export function MetricsClient() {
       : 0;
 
   return (
+      <PageLayout title="Metrics">
+        
     <div className="px-3 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6 max-w-7xl mx-auto">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -481,5 +479,7 @@ export function MetricsClient() {
         </div>
       )}
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

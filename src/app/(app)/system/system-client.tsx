@@ -126,16 +126,14 @@ export function SystemOverviewClient() {
     if (autoRefresh && refreshInterval > 0) {
       intervalRef.current = setInterval(() => fetchOverview(true), refreshInterval * 1000);
     }
-    return (
-        <PageLayout title="System">
-          
-        </PageLayout>
-      ) => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [autoRefresh, refreshInterval, fetchOverview]);
 
   const metrics = data?.metrics && !("error" in data.metrics) ? data.metrics as SystemMetrics : null;
 
   return (
+      <PageLayout title="System">
+        
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
@@ -281,5 +279,7 @@ export function SystemOverviewClient() {
         )}
       </div>
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

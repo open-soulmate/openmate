@@ -217,9 +217,7 @@ export function DiscoveryClient() {
   };
 
   return (
-
       <PageLayout title="Discovery">
-
         
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
@@ -548,8 +546,6 @@ export function DiscoveryClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }

@@ -403,17 +403,15 @@ Generated: ${new Date().toLocaleString("zh-CN")}
 
   if (loading) {
     return (
-        <PageLayout title="Learn">
-          
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
-    
-        </PageLayout>
-      );
+    );
   }
 
   return (
+      <PageLayout title="Learn">
+        
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 lg:gap-3 border-b border-border px-3 lg:px-6 py-3 lg:py-4">
@@ -885,5 +883,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
         </div>
       )}
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

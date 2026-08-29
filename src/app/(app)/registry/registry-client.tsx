@@ -89,11 +89,7 @@ export function RegistryClient() {
   useEffect(() => {
     if (!autoRefresh) return;
     const timer = setInterval(fetchAll, 30000);
-    return (
-        <PageLayout title="Registry">
-          
-        </PageLayout>
-      ) => clearInterval(timer);
+    return () => clearInterval(timer);
   }, [autoRefresh, fetchAll]);
 
   const filtered = components.filter((c) => {
@@ -134,6 +130,8 @@ export function RegistryClient() {
   const phases = Object.keys(stats?.by_phase || {});
 
   return (
+      <PageLayout title="Registry">
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="shrink-0 border-b border-border px-3 lg:px-6 py-4">
@@ -403,5 +401,7 @@ export function RegistryClient() {
         )}
       </div>
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

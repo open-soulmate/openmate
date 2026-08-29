@@ -85,16 +85,14 @@ export function VisionClient() {
     fetchStats();
     fetchOutputs();
     const interval = setInterval(fetchStats, 30000);
-    return (
-        <PageLayout title="Vision">
-          
-        </PageLayout>
-      ) => clearInterval(interval);
+    return () => clearInterval(interval);
   }, [fetchStats, fetchOutputs]);
 
   const backends = stats?.backends || {};
 
   return (
+      <PageLayout title="Vision">
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-3 lg:py-4 gap-2">
@@ -242,5 +240,7 @@ export function VisionClient() {
         )}
       </div>
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

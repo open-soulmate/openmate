@@ -664,9 +664,7 @@ export function VeinClient() {
   ];
 
   return (
-
       <PageLayout title="Vein">
-
         
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
@@ -1459,8 +1457,6 @@ export function VeinClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }

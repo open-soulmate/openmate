@@ -175,17 +175,15 @@ export function NotificationsClient() {
 
   if (loading) {
     return (
-        <PageLayout title="Notifications">
-          
       <div className="flex items-center justify-center h-96">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
-    
-        </PageLayout>
-      )
+    )
   }
 
   return (
+      <PageLayout title="Notifications">
+        
     <div className="max-w-4xl mx-auto px-3 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
@@ -371,5 +369,7 @@ export function NotificationsClient() {
         </div>
       )}
     </div>
-  )
+  
+      </PageLayout>
+    )
 }

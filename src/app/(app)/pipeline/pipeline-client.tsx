@@ -147,9 +147,7 @@ export function PipelineClient() {
   };
 
   return (
-
       <PageLayout title="Pipeline">
-
         
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
@@ -370,9 +368,7 @@ export function PipelineClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }
 

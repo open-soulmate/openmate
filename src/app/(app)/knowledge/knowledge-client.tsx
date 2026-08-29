@@ -57,11 +57,7 @@ export function KnowledgeClient() {
   // Auto-refresh every 30 seconds
   useEffect(() => {
     const interval = setInterval(fetchAll, 30000)
-    return (
-        <PageLayout title="Knowledge">
-          
-        </PageLayout>
-      ) => clearInterval(interval)
+    return () => clearInterval(interval)
   }, [fetchAll])
 
   const handleRefresh = useCallback(async () => {
@@ -114,6 +110,8 @@ export function KnowledgeClient() {
   }
 
   return (
+      <PageLayout title="Knowledge">
+        
     <div className="px-3 lg:px-6 py-4 lg:py-6 max-w-6xl mx-auto space-y-4 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-2">
@@ -275,5 +273,7 @@ export function KnowledgeClient() {
         </div>
       )}
     </div>
-  )
+  
+      </PageLayout>
+    )
 }

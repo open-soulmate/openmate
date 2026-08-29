@@ -180,11 +180,7 @@ export function DashboardClient() {
     fetchCronJobs();
     fetchSysMetrics();
     const metricsInterval = setInterval(fetchSysMetrics, 10000);
-    return (
-        <PageLayout title="Dashboard">
-          
-        </PageLayout>
-      ) => clearInterval(metricsInterval);
+    return () => clearInterval(metricsInterval);
   }, [checkOrganHealth, fetchUsage, fetchRecentUsage, fetchCronJobs, fetchSysMetrics]);
 
   const { t } = useTranslation();
@@ -284,6 +280,8 @@ export function DashboardClient() {
   ];
 
   return (
+      <PageLayout title="Dashboard">
+        
     <div className="h-full overflow-y-auto">
       <div className="mx-auto max-w-5xl px-3 lg:px-6 py-4 lg:py-8">
         {/* Header */}
@@ -671,5 +669,7 @@ export function DashboardClient() {
         </div>
       </div>
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

@@ -157,9 +157,7 @@ export function LinkClient() {
   };
 
   return (
-
       <PageLayout title="Link">
-
         
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-4 md:px-3 lg:px-6 py-3 md:py-4">
@@ -436,8 +434,6 @@ export function LinkClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }

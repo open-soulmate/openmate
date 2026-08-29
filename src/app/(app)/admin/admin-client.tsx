@@ -63,11 +63,7 @@ export function AdminClient() {
   useEffect(() => {
     fetchOverview();
     const interval = setInterval(fetchOverview, 30000);
-    return (
-        <PageLayout title="Admin">
-          
-        </PageLayout>
-      ) => clearInterval(interval);
+    return () => clearInterval(interval);
   }, [fetchOverview]);
 
   const runAction = async (name: string, endpoint: string, method: string = "POST", body?: any) => {
@@ -109,6 +105,8 @@ export function AdminClient() {
   }
 
   return (
+      <PageLayout title="Admin">
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-3 lg:py-4">
@@ -679,7 +677,9 @@ export function AdminClient() {
         )}
       </div>
     </div>
-  );
+  
+      </PageLayout>
+    );
 }
 
 function ActionCard({

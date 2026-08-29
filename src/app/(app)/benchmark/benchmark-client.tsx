@@ -215,9 +215,7 @@ export function BenchmarkClient() {
   ];
 
   return (
-
       <PageLayout title="Benchmark">
-
         
     <div className="flex h-full flex-col bg-background">
       {/* Header */}
@@ -566,8 +564,6 @@ export function BenchmarkClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }

@@ -416,9 +416,7 @@ export function SessionsClient() {
   const activeFilterCount = (showFavoritesOnly ? 1 : 0) + (activeSourceFilter ? 1 : 0) + (activeTagFilter ? 1 : 0)
 
   return (
-
       <PageLayout title="Sessions">
-
         
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
@@ -1118,8 +1116,6 @@ export function SessionsClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     )
 }

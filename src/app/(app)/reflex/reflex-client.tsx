@@ -158,9 +158,7 @@ export function ReflexClient() {
   ];
 
   return (
-
       <PageLayout title="Reflex">
-
         
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
@@ -406,9 +404,7 @@ export function ReflexClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }
 
