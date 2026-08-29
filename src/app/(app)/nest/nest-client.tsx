@@ -402,8 +402,8 @@ export function NestClient() {
                       </>
                     )}
                   </div>
-                </SheetContent>
-              </Sheet>
+                </div>
+              )
             ) : (
               selected && (
                 <div className="w-80 space-y-4">
