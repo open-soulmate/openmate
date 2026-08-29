@@ -11,6 +11,7 @@ import { useAppStore } from '@/stores/app-store';
 import { ClockFace } from './clock-face';
 import { CronCalendar, filterJobsByDate } from './cron-calendar';
 import { WeekSchedule } from './week-schedule';
+import { YearView, MonthView } from './calendar-views';
 
 const getApiUrl = () => getApiBaseUrl();
 
@@ -73,6 +74,7 @@ export function CronClient() {
   const [createError, setCreateError] = useState('');
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [viewMode, setViewMode] = useState<'year' | 'month' | 'week' | 'day'>('week');
   const { t } = useTranslation();
   const setPageSidebar = useAppStore((s) => s.setPageSidebar);
   const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
@@ -314,34 +316,58 @@ export function CronClient() {
   return (
       <PageLayout title="Cron">
         
-    <div className="h-full flex flex-col overflow-y-auto p-3 lg:p-6">
-      {/* Legend */}
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-4">
+    <div className="h-full flex flex-col overflow-hidden">
+      {/* View tabs + Legend */}
+      <div className="flex items-center justify-between px-3 lg:px-6 pt-3 pb-2 shrink-0">
+        <div className="flex items-center gap-0.5 bg-muted/50 rounded-lg p-0.5">
+          {(['year', 'month', 'week', 'day'] as const).map(mode => (
+            <button
+              key={mode}
+              onClick={() => setViewMode(mode)}
+              className={cn(
+                'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                viewMode === mode
+                  ? 'bg-background text-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground',
+              )}
+            >
+              {mode === 'year' ? '年' : mode === 'month' ? '月' : mode === 'week' ? '周' : '日'}
+            </button>
+          ))}
+        </div>
+        <div className="flex items-center gap-3">
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-green-500" />
-            <span className="text-[10px] text-muted-foreground">{t('cron.running', 'Active')}</span>
+            <span className="w-2 h-2 rounded-full bg-green-500" />
+            <span className="text-[10px] text-muted-foreground">Active</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-            <span className="text-[10px] text-muted-foreground">{t('cron.paused', 'Paused')}</span>
+            <span className="w-2 h-2 rounded-full bg-amber-500" />
+            <span className="text-[10px] text-muted-foreground">Paused</span>
           </div>
         </div>
-        <button onClick={loadJobs}
-          className="p-1.5 rounded-lg hover:bg-muted text-muted-foreground" title="Refresh">
-          <RefreshCw className="w-3.5 h-3.5" />
-        </button>
       </div>
 
-      {/* Week Schedule View */}
+      {/* View content */}
       {jobs.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground">
           <Clock className="w-12 h-12 mb-3 opacity-30" />
           <p className="text-sm">{t('cron.noJobs', '暂无定时任务')}</p>
         </div>
-      ) : (
+      ) : viewMode === 'week' ? (
         <div className="flex-1 min-h-0">
           <WeekSchedule jobs={jobs} selectedJobId={selectedJobId} onSelectJob={setSelectedJobId} />
+        </div>
+      ) : viewMode === 'month' ? (
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 lg:px-6">
+          <MonthView jobs={jobs} selectedJobId={selectedJobId} onSelectJob={setSelectedJobId} />
+        </div>
+      ) : viewMode === 'year' ? (
+        <div className="flex-1 min-h-0 overflow-y-auto px-3 lg:px-6">
+          <YearView jobs={jobs} />
+        </div>
+      ) : (
+        <div className="flex-1 min-h-0 flex items-center justify-center">
+          <ClockFace jobs={jobs} selectedJobId={selectedJobId} onSelectJob={setSelectedJobId} />
         </div>
       )}
 
