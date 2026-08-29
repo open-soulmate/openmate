@@ -17,6 +17,7 @@ import i18n from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PageLayout } from '@/components/page-layout';
+import { LeftPanel } from '@/components/left-panel';
 
 type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "organs" | "account" | "about";
 
@@ -204,52 +205,56 @@ export function SettingsClient() {
 
   // Register sidebar navigation into the global app shell sidebar
   useEffect(() => {
-    const sidebarContent = (
-      <>
-        <div className="mb-4 px-2 pt-2">
-          <div className="flex items-center gap-2 mb-1">
-            <Settings size={14} className="text-muted-foreground" />
-            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider group-data-[collapsible=icon]:hidden">
-              {t("settings.title")}
-            </span>
-          </div>
-        </div>
-        <nav className="flex-1 space-y-4 px-2">
-          {Object.entries(groups).map(([group, items]) => (
-            <div key={group}>
-              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-3 mb-1.5 group-data-[collapsible=icon]:hidden">
-                {group}
+    setPageSidebar(
+      <LeftPanel
+        items={sections}
+        filter={(s, q) => s.label.toLowerCase().includes(q)}
+        renderItem={(s) => (
+          <button
+            key={s.id}
+            onClick={() => setActive(s.id)}
+            className={cn(
+              "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:gap-0",
+              active === s.id
+                ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium"
+                : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+            )}
+            title={s.label}
+          >
+            <s.icon size={15} />
+            <span className="group-data-[collapsible=icon]:hidden">{s.label}</span>
+          </button>
+        )}
+        placeholder={t("settings.searchPlaceholder") || "Search settings..."}
+        header={
+          <>
+            <div className="mb-4 px-2 pt-2">
+              <div className="flex items-center gap-2 mb-1">
+                <Settings size={14} className="text-muted-foreground" />
+                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider group-data-[collapsible=icon]:hidden">
+                  {t("settings.title")}
+                </span>
               </div>
-              {items.map((s) => (
-                <button
-                  key={s.id}
-                  onClick={() => setActive(s.id)}
-                  className={cn(
-                    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:gap-0",
-                    active === s.id
-                      ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium"
-                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
-                  )}
-                  title={s.label}
-                >
-                  <s.icon size={15} />
-                  <span className="group-data-[collapsible=icon]:hidden">{s.label}</span>
-                </button>
-              ))}
             </div>
-          ))}
-        </nav>
-        <div className="mt-auto pt-4 px-2 border-t border-border">
-          <div className="text-[10px] text-muted-foreground px-3 space-y-0.5 group-data-[collapsible=icon]:hidden">
-            <div>OpenMate v0.1.0</div>
-            {backendVersion && <div>OpenSoul v{backendVersion}</div>}
-          </div>
-        </div>
-      </>
+            <nav className="space-y-4 px-2 mb-2">
+              {Object.entries(groups).map(([group]) => (
+                <div key={group} className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-3 group-data-[collapsible=icon]:hidden">
+                  {group}
+                </div>
+              ))}
+            </nav>
+            <div className="px-2 pb-2 border-b border-border">
+              <div className="text-[10px] text-muted-foreground px-3 space-y-0.5 group-data-[collapsible=icon]:hidden">
+                <div>OpenMate v0.1.0</div>
+                {backendVersion && <div>OpenSoul v{backendVersion}</div>}
+              </div>
+            </div>
+          </>
+        }
+      />
     );
-    setPageSidebar(sidebarContent);
     return () => setPageSidebar(null);
-  }, [active, groups, backendVersion, setPageSidebar, t]);
+  }, [active, groups, sections, backendVersion, setPageSidebar, t]);
 
   const update = useCallback(<K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
     setSettings((s) => ({ ...s, [key]: value }));

@@ -11,6 +11,7 @@ import {
 import { useTranslation } from 'react-i18next'
 import { PageLayout } from '@/components/page-layout'
 import { DetailPanel } from '@/components/detail-panel'
+import { LeftPanel } from '@/components/left-panel'
 import { useAppStore } from '@/stores/app-store'
 
 interface Notification {
@@ -173,49 +174,52 @@ export function NotificationsClient() {
     ] as const
 
     setPageSidebar(
-      <div className="flex flex-col h-full">
-        <div className="px-3 py-3 border-b border-border">
-          <div className="flex items-center gap-2">
-            <Bell className="w-4 h-4 text-muted-foreground" />
-            <span className="text-sm font-medium">{t('notifications.title', 'Notifications')}</span>
+      <LeftPanel
+        items={categories as unknown as typeof categories[number][]}
+        filter={(cat, q) => cat.label.toLowerCase().includes(q)}
+        renderItem={(cat) => {
+          const isActive =
+            (cat.key === 'all' && filter === 'all') ||
+            (cat.key === 'unread' && filter === 'unread') ||
+            (cat.key === 'system' && filter === 'all') ||
+            (cat.key === 'agent' && filter === 'all')
+          return (
+            <button
+              key={cat.key}
+              onClick={() => {
+                if (cat.key === 'unread') setFilter('unread')
+                else setFilter('all')
+              }}
+              className={cn(
+                'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors text-left',
+                isActive
+                  ? 'bg-accent text-accent-foreground font-medium'
+                  : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+              )}
+            >
+              <span className="shrink-0">{cat.icon}</span>
+              <span className="flex-1 truncate">{cat.label}</span>
+              {cat.count > 0 && (
+                <span className={cn(
+                  'text-[11px] px-1.5 py-0.5 rounded-full shrink-0',
+                  isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+                )}>
+                  {cat.count}
+                </span>
+              )}
+            </button>
+          )
+        }}
+        placeholder={t('notifications.searchPlaceholder') || 'Search categories...'}
+        header={
+          <div className="px-3 py-3 border-b border-border">
+            <div className="flex items-center gap-2">
+              <Bell className="w-4 h-4 text-muted-foreground" />
+              <span className="text-sm font-medium">{t('notifications.title', 'Notifications')}</span>
+            </div>
           </div>
-        </div>
-        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
-          {categories.map(cat => {
-            const isActive =
-              (cat.key === 'all' && filter === 'all') ||
-              (cat.key === 'unread' && filter === 'unread') ||
-              (cat.key === 'system' && filter === 'all') ||
-              (cat.key === 'agent' && filter === 'all')
-            return (
-              <button
-                key={cat.key}
-                onClick={() => {
-                  if (cat.key === 'unread') setFilter('unread')
-                  else setFilter('all')
-                }}
-                className={cn(
-                  'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors text-left',
-                  isActive
-                    ? 'bg-accent text-accent-foreground font-medium'
-                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
-                )}
-              >
-                <span className="shrink-0">{cat.icon}</span>
-                <span className="flex-1 truncate">{cat.label}</span>
-                {cat.count > 0 && (
-                  <span className={cn(
-                    'text-[11px] px-1.5 py-0.5 rounded-full shrink-0',
-                    isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
-                  )}>
-                    {cat.count}
-                  </span>
-                )}
-              </button>
-            )
-          })}
-        </div>
-      </div>,
+        }
+      />,
     )
     return () => setPageSidebar(null)
   }, [categoryCounts, filter, t, setPageSidebar])

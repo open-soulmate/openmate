@@ -10,6 +10,7 @@ import {
 } from "lucide-react"
 import { PageLayout } from '@/components/page-layout';
 import { DetailPanel } from '@/components/detail-panel';
+import { LeftPanel } from '@/components/left-panel';
 import { useAppStore } from '@/stores/app-store';
 
 interface KnowledgeItem {
@@ -40,7 +41,6 @@ export function KnowledgeClient() {
   const [loading, setLoading] = useState(true)
   const [refreshing, setRefreshing] = useState(false)
   const [selectedItem, setSelectedItem] = useState<KnowledgeItem | null>(null)
-  const [sidebarSearch, setSidebarSearch] = useState<string>("")
   const setPageSidebar = useAppStore((s) => s.setPageSidebar)
   const setPageWorkspace = useAppStore((s) => s.setPageWorkspace)
 
@@ -65,93 +65,60 @@ export function KnowledgeClient() {
     return () => clearInterval(interval)
   }, [fetchAll])
 
-  // Filtered items for sidebar search
-  const sidebarFiltered = items.filter(item => {
-    if (!sidebarSearch) return true
-    const q = sidebarSearch.toLowerCase()
-    return (
-      item.title.toLowerCase().includes(q) ||
-      (item.description || "").toLowerCase().includes(q) ||
-      (item.tags || []).some(tag => tag.toLowerCase().includes(q))
-    )
-  })
-
   // Register sidebar content: knowledge items list
   useEffect(() => {
     setPageSidebar(
-      <div className="flex flex-col h-full">
-        {/* Search */}
-        <div className="px-2 pb-2 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input
-              type="text"
-              value={sidebarSearch}
-              onChange={(e) => setSidebarSearch(e.target.value)}
-              placeholder={t("knowledge.searchPlaceholder") || "Search..."}
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/50 rounded-md border border-border/50 focus:outline-none focus:border-violet-500/50 transition-colors"
-            />
-            {sidebarSearch && (
-              <button
-                onClick={() => setSidebarSearch("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-3 h-3" />
-              </button>
+      <LeftPanel
+        items={items}
+        filter={(item, q) =>
+          item.title.toLowerCase().includes(q) ||
+          (item.description || "").toLowerCase().includes(q) ||
+          (item.tags || []).some((tag: string) => tag.toLowerCase().includes(q))
+        }
+        renderItem={(item) => (
+          <button
+            key={item.id}
+            onClick={() => setSelectedItem(item)}
+            className={cn(
+              "w-full text-left px-2 py-2 rounded-lg transition-colors group/item",
+              selectedItem?.id === item.id
+                ? "bg-violet-500/15 border border-violet-500/30"
+                : "hover:bg-muted/50 border border-transparent"
             )}
-          </div>
-        </div>
-        {/* Items list */}
-        <div className="flex-1 overflow-y-auto px-1 space-y-0.5">
-          {sidebarFiltered.length === 0 ? (
-            <div className="px-2 py-8 text-center text-muted-foreground/50">
-              <Package className="w-8 h-8 mx-auto mb-1.5" />
-              <p className="text-xs">
-                {sidebarSearch
-                  ? (t("knowledge.noResults") || "No matches")
-                  : (t("knowledge.empty") || "No items yet")}
-              </p>
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <span className="text-xs font-medium truncate flex-1">{item.title}</span>
+              {item.pinned && <Pin className="w-3 h-3 text-amber-400 shrink-0" />}
+              {item.starred && <Star className="w-3 h-3 text-yellow-400 fill-yellow-400 shrink-0" />}
             </div>
-          ) : (
-            sidebarFiltered.map(item => (
-              <button
-                key={item.id}
-                onClick={() => setSelectedItem(item)}
-                className={cn(
-                  "w-full text-left px-2 py-2 rounded-lg transition-colors group/item",
-                  selectedItem?.id === item.id
-                    ? "bg-violet-500/15 border border-violet-500/30"
-                    : "hover:bg-muted/50 border border-transparent"
+            {item.tags && item.tags.length > 0 && (
+              <div className="flex flex-wrap gap-1 mt-1">
+                {item.tags.slice(0, 3).map(tag => (
+                  <span
+                    key={tag}
+                    className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20"
+                  >
+                    {tag}
+                  </span>
+                ))}
+                {item.tags.length > 3 && (
+                  <span className="text-[10px] text-muted-foreground">+{item.tags.length - 3}</span>
                 )}
-              >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <span className="text-xs font-medium truncate flex-1">{item.title}</span>
-                  {item.pinned && <Pin className="w-3 h-3 text-amber-400 shrink-0" />}
-                  {item.starred && <Star className="w-3 h-3 text-yellow-400 fill-yellow-400 shrink-0" />}
-                </div>
-                {item.tags && item.tags.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mt-1">
-                    {item.tags.slice(0, 3).map(tag => (
-                      <span
-                        key={tag}
-                        className="text-[10px] px-1.5 py-0.5 rounded bg-violet-500/10 text-violet-400 border border-violet-500/20"
-                      >
-                        {tag}
-                      </span>
-                    ))}
-                    {item.tags.length > 3 && (
-                      <span className="text-[10px] text-muted-foreground">+{item.tags.length - 3}</span>
-                    )}
-                  </div>
-                )}
-              </button>
-            ))
-          )}
-        </div>
-      </div>
+              </div>
+            )}
+          </button>
+        )}
+        placeholder={t("knowledge.searchPlaceholder") || "Search..."}
+        emptyState={
+          <div className="px-2 py-8 text-center text-muted-foreground/50">
+            <Package className="w-8 h-8 mx-auto mb-1.5" />
+            <p className="text-xs">{t("knowledge.empty") || "No items yet"}</p>
+          </div>
+        }
+      />
     )
     return () => setPageSidebar(null)
-  }, [sidebarFiltered, sidebarSearch, selectedItem, t, setPageSidebar])
+  }, [items, selectedItem, t, setPageSidebar])
 
   // Register workspace content: detail panel for selected item
   useEffect(() => {

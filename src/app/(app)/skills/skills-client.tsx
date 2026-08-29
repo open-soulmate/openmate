@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { cn } from '@/lib/utils';
 import { PageLayout } from '@/components/page-layout';
 import { DetailPanel } from '@/components/detail-panel';
+import { LeftPanel } from '@/components/left-panel';
 import { useAppStore } from '@/stores/app-store';
 
 interface Skill {
@@ -27,7 +28,6 @@ export function SkillsClient() {
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [migrating, setMigrating] = useState(false);
   const [selectedSkill, setSelectedSkill] = useState<Skill | null>(null);
-  const [sidebarSearch, setSidebarSearch] = useState('');
   const setPageSidebar = useAppStore((s) => s.setPageSidebar);
   const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
 
@@ -116,14 +116,6 @@ export function SkillsClient() {
   // Get unique categories
   const categories = ['all', ...new Set(skills.map(s => s.category).filter(Boolean))];
 
-  // Filtered items for sidebar search
-  const sidebarFiltered = skills.filter(s => {
-    const matchQuery = !sidebarSearch || s.name.toLowerCase().includes(sidebarSearch.toLowerCase()) || s.description.toLowerCase().includes(sidebarSearch.toLowerCase());
-    const matchCategory = category === 'all' || s.category === category;
-    const matchFilter = filter === 'all' || (filter === 'installed' ? s.installed : !s.installed);
-    return matchQuery && matchCategory && matchFilter;
-  });
-
   // Main content filter (same but uses main search)
   const filtered = skills.filter(s => {
     const matchQuery = s.name.toLowerCase().includes(query.toLowerCase()) || s.description.toLowerCase().includes(query.toLowerCase());
@@ -137,99 +129,76 @@ export function SkillsClient() {
   // Register sidebar content: skill list with search
   useEffect(() => {
     setPageSidebar(
-      <div className="flex flex-col h-full">
-        {/* Search */}
-        <div className="px-2 pb-2 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input
-              type="text"
-              value={sidebarSearch}
-              onChange={(e) => setSidebarSearch(e.target.value)}
-              placeholder={t('skills.searchPlaceholder') || 'Search skills...'}
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/50 rounded-md border border-border/50 focus:outline-none focus:border-primary/50 transition-colors"
-            />
-            {sidebarSearch && (
-              <button
-                onClick={() => setSidebarSearch('')}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-3 h-3" />
-              </button>
+      <LeftPanel
+        items={skills.filter(s => {
+          const matchCategory = category === 'all' || s.category === category;
+          const matchFilter = filter === 'all' || (filter === 'installed' ? s.installed : !s.installed);
+          return matchCategory && matchFilter;
+        })}
+        filter={(s, q) => s.name.toLowerCase().includes(q) || s.description.toLowerCase().includes(q)}
+        renderItem={(skill) => (
+          <button
+            key={skill.name}
+            onClick={() => setSelectedSkill(skill)}
+            className={cn(
+              "w-full text-left px-2 py-2 rounded-lg transition-colors group/item",
+              selectedSkill?.name === skill.name
+                ? "bg-primary/15 border border-primary/30"
+                : "hover:bg-muted/50 border border-transparent"
             )}
-          </div>
-        </div>
-
-        {/* Category filter pills */}
-        {categories.length > 1 && (
-          <div className="px-2 pb-2 flex flex-wrap gap-1 shrink-0">
-            {categories.map(c => (
-              <button
-                key={c}
-                onClick={() => setCategory(c)}
-                className={cn(
-                  "px-2 py-0.5 rounded-md text-[10px] transition-colors",
-                  category === c
-                    ? "bg-primary/15 text-primary font-medium border border-primary/30"
-                    : "text-muted-foreground hover:text-foreground border border-transparent"
-                )}
-              >
-                {c === 'all' ? (t('skills.all') || 'All') : c}
-              </button>
-            ))}
-          </div>
-        )}
-
-        {/* Skills list */}
-        <div className="flex-1 overflow-y-auto px-1 space-y-0.5">
-          {sidebarFiltered.length === 0 ? (
-            <div className="px-2 py-8 text-center text-muted-foreground/50">
-              <Package className="w-8 h-8 mx-auto mb-1.5" />
-              <p className="text-xs">
-                {sidebarSearch
-                  ? (t('skills.noSkills') || 'No matches')
-                  : (t('skills.noSkills') || 'No skills yet')}
-              </p>
+          >
+            <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 shrink-0">
+                <Puzzle size={12} className="text-primary" />
+              </div>
+              <span className="text-xs font-medium truncate flex-1">{skill.name}</span>
+              {skill.installed && (
+                <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
+              )}
             </div>
-          ) : (
-            sidebarFiltered.map(skill => (
-              <button
-                key={skill.name}
-                onClick={() => setSelectedSkill(skill)}
-                className={cn(
-                  "w-full text-left px-2 py-2 rounded-lg transition-colors group/item",
-                  selectedSkill?.name === skill.name
-                    ? "bg-primary/15 border border-primary/30"
-                    : "hover:bg-muted/50 border border-transparent"
-                )}
-              >
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 shrink-0">
-                    <Puzzle size={12} className="text-primary" />
-                  </div>
-                  <span className="text-xs font-medium truncate flex-1">{skill.name}</span>
-                  {skill.installed && (
-                    <CheckCircle2 className="w-3 h-3 text-green-500 shrink-0" />
+            <div className="flex items-center gap-1.5 mt-1 pl-7">
+              {skill.category && (
+                <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground">
+                  {skill.category}
+                </span>
+              )}
+              {skill.version && (
+                <span className="text-[10px] text-muted-foreground">v{skill.version}</span>
+              )}
+            </div>
+          </button>
+        )}
+        placeholder={t('skills.searchPlaceholder') || 'Search skills...'}
+        header={
+          categories.length > 1 ? (
+            <div className="px-2 pb-2 flex flex-wrap gap-1 shrink-0">
+              {categories.map(c => (
+                <button
+                  key={c}
+                  onClick={() => setCategory(c)}
+                  className={cn(
+                    "px-2 py-0.5 rounded-md text-[10px] transition-colors",
+                    category === c
+                      ? "bg-primary/15 text-primary font-medium border border-primary/30"
+                      : "text-muted-foreground hover:text-foreground border border-transparent"
                   )}
-                </div>
-                <div className="flex items-center gap-1.5 mt-1 pl-7">
-                  {skill.category && (
-                    <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground">
-                      {skill.category}
-                    </span>
-                  )}
-                  {skill.version && (
-                    <span className="text-[10px] text-muted-foreground">v{skill.version}</span>
-                  )}
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-      </div>
+                >
+                  {c === 'all' ? (t('skills.all') || 'All') : c}
+                </button>
+              ))}
+            </div>
+          ) : undefined
+        }
+        emptyState={
+          <div className="px-2 py-8 text-center text-muted-foreground/50">
+            <Package className="w-8 h-8 mx-auto mb-1.5" />
+            <p className="text-xs">{t('skills.noSkills') || 'No skills yet'}</p>
+          </div>
+        }
+      />
     );
     return () => setPageSidebar(null);
-  }, [sidebarFiltered, sidebarSearch, selectedSkill, category, categories, t, setPageSidebar]);
+  }, [skills, selectedSkill, category, categories, filter, t, setPageSidebar]);
 
   // Register workspace content: detail panel for selected skill
   useEffect(() => {
