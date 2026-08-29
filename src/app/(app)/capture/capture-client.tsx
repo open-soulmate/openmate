@@ -48,7 +48,7 @@ function StatusBadge({ status, t }: { status: string; t: (k: string) => string }
     promoted: "bg-blue-500/10 text-blue-500",
   };
   return (
-    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium", colors[status] || "bg-gray-500/10 text-gray-500")}>
+    <span className={cn("inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-medium", colors[status] || "bg-muted-foreground/10 text-muted-foreground")}>
       {t(`capture.${status}`) || status}
     </span>
   );

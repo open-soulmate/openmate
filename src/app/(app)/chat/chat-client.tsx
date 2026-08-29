@@ -705,7 +705,7 @@ export function ChatClient() {
         {/* Chat header */}
         <div className="h-12 border-b border-border flex items-center px-3 lg:px-4 justify-between shrink-0">
           <div className="flex items-center gap-1.5 lg:gap-2 min-w-0 flex-1">
-            <button onClick={() => { toggleSidebar(); if (isMobile) { setRightPanelOpen(false); setShowCheckpoints(false); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Sidebar">
+            <button onClick={(e) => { e.stopPropagation(); toggleSidebar(); if (isMobile) { setRightPanelOpen(false); setShowCheckpoints(false); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Sidebar">
               <PanelLeft className="w-4 h-4" />
             </button>
             {selectedAgent && <span className="text-sm shrink-0">{selectedAgent.icon}</span>}
@@ -732,7 +732,7 @@ export function ChatClient() {
             {selectedAgent && <span className="text-[10px] lg:text-xs text-muted-foreground px-1 lg:px-1.5 py-0.5 rounded bg-muted shrink-0 truncate max-w-[80px] lg:max-w-none">{selectedAgent.name}</span>}
           </div>
           <div className="flex items-center gap-1 shrink-0">
-            <button onClick={() => { toggleRightPanel(); if (isMobile) { setShowCheckpoints(false); if (sidebarOpen) toggleSidebar(); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
+            <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); if (isMobile) { setShowCheckpoints(false); if (sidebarOpen) toggleSidebar(); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
               <PanelLeft className="w-4 h-4 scale-x-[-1]" />
             </button>
           </div>

@@ -153,7 +153,7 @@ export function LinkClient() {
     webhook_out: "text-violet-500 bg-violet-500/10",
     rest_api: "text-emerald-500 bg-emerald-500/10",
     oa_system: "text-amber-500 bg-amber-500/10",
-    custom: "text-gray-500 bg-gray-500/10",
+    custom: "text-muted-foreground bg-muted-foreground/10",
   };
 
   return (
@@ -283,7 +283,7 @@ export function LinkClient() {
               </div>
             ) : connectors.map((c) => {
               const Icon = typeIcons[c.type] || Plug;
-              const colorCls = typeColors[c.type] || "text-gray-500 bg-gray-500/10";
+              const colorCls = typeColors[c.type] || "text-muted-foreground bg-muted-foreground/10";
               return (
                 <div key={c.connector_id}
                   onClick={() => setSelected(c)}

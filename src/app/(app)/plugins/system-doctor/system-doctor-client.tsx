@@ -172,7 +172,7 @@ export function SystemDoctorClient() {
           {report && (
             <span className={cn(
               'rounded-full border px-2.5 py-0.5 text-xs lg:text-sm font-bold',
-              GRADE_COLORS[report.grade] || 'text-gray-400'
+              GRADE_COLORS[report.grade] || 'text-muted-foreground/60'
             )}>
               {report.grade}
             </span>
@@ -499,7 +499,7 @@ export function SystemDoctorClient() {
                           r.action === 'cleaned' ? 'bg-emerald-500/10 text-emerald-500' :
                           r.action === 'dry_run' ? 'bg-blue-500/10 text-blue-500' :
                           r.action === 'error' ? 'bg-red-500/10 text-red-500' :
-                          'bg-gray-500/10 text-gray-500'
+                          'bg-muted-foreground/10 text-muted-foreground'
                         )}>
                           {r.action}
                         </span>
