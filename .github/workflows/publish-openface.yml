@@ -1,0 +1,36 @@
+name: Publish @opensoulmate/openface
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'packages/openface/**'
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          registry-url: https://npm.pkg.github.com
+          scope: '@opensoulmate'
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: Build openface
+        working-directory: packages/openface
+        run: pnpm build
+
+      - name: Publish to GitHub Packages
+        working-directory: packages/openface
+        run: pnpm publish --no-git-checks --access restricted
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
