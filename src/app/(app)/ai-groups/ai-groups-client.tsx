@@ -6,7 +6,7 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { useAppStore } from '@/stores/app-store';
 import {
   Users, Send, Bot, Shield, Zap, User, Loader2, Search,
-  MessageSquare, AtSign, PanelRightOpen,
+  MessageSquare, AtSign,
   Star, Trophy, Award,
   MessageCircle, Hand, FileText, Lightbulb,
   Target, ArrowUp, ArrowRight, ArrowDown,
@@ -529,7 +529,7 @@ export default function AIGroupsPage() {
       {/* Chat header */}
       <div className="h-12 border-b border-border flex items-center px-2 lg:px-4 justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <button onClick={() => { toggleSidebar(); }} className="p-1.5 -ml-1 rounded-lg hover:bg-muted/50 transition-colors text-muted-foreground" aria-label="Toggle Sidebar">
+          <button onClick={(e) => { e.stopPropagation(); toggleSidebar(); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Sidebar">
             <PanelLeft className="w-4 h-4" />
           </button>
           <Users className="w-4 h-4 text-primary" />
@@ -546,8 +546,8 @@ export default function AIGroupsPage() {
           )}
         </div>
         <div className="flex items-center gap-2">
-          <button onClick={() => toggleRightPanel()} className="p-1 rounded hover:bg-muted touch-manipulation">
-            <PanelRightOpen className="w-4 h-4" />
+          <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
+            <PanelLeft className="w-4 h-4 scale-x-[-1]" />
           </button>
         </div>
       </div>
