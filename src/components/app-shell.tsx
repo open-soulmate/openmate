@@ -480,10 +480,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarProvider>
 
       {/* Right Panel — sidebar-style sliding, unified mobile/desktop */}
+      {/* Placeholder: reserves space on desktop, zero on mobile (overlay mode) */}
       <div
-        className="shrink-0 transition-[width] duration-200 ease-linear"
+        className="shrink-0 transition-[width] duration-200 ease-linear max-lg:!w-0"
         style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
       />
+      {/* Mobile backdrop — tap to close right panel */}
+      {isMobile && rightPanelOpen && (
+        <div
+          className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0"
+          onClick={() => setRightPanelOpen(false)}
+          aria-hidden="true"
+        />
+      )}
       <div
         className="absolute inset-y-0 top-0 right-0 z-10 h-full min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
         style={{
