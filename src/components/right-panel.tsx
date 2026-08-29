@@ -58,10 +58,6 @@ function createTab(type: TabType, extra?: { url?: string; filePath?: string }): 
   };
 }
 
-function proxyUrl(url: string): string {
-  return `/api/proxy?url=${encodeURIComponent(url)}`;
-}
-
 function ensureProtocol(url: string): string {
   if (/^https?:\/\//i.test(url)) return url;
   return `https://${url}`;
@@ -225,22 +221,10 @@ function WebBrowserView({ tab, onNavigate, onBack, onForward, onRefresh }: {
       {tab.url ? (
         <iframe
           ref={iframeRef}
-          src={proxyUrl(tab.url)}
+          src={tab.url}
           className="flex-1 min-w-0 border-0 bg-white"
           style={{ width: '100%', height: '100%' }}
-          sandbox="allow-same-origin allow-scripts allow-forms"
           title="Web Browser"
-          onLoad={() => {
-            // Listen for proxy-navigate messages from injected script
-            const handler = (e: MessageEvent) => {
-              if (e.data?.type === 'proxy-navigate') {
-                onNavigate(e.data.url);
-              }
-            };
-            window.addEventListener('message', handler);
-            // Cleanup on next load
-            return () => window.removeEventListener('message', handler);
-          }}
         />
       ) : (
         <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
