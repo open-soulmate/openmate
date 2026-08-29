@@ -412,7 +412,7 @@ export function GraphClient() {
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
-    <div className="flex h-full overflow-hidden">
+    <div className="flex h-full overflow-hidden relative">
       {/* Canvas area */}
       <div ref={containerRef} className="flex-1 relative">
         <canvas
@@ -495,16 +495,20 @@ export function GraphClient() {
         )}
       </div>
 
-      {/* Detail panel — Sheet on mobile, inline on desktop */}
+      {/* Detail panel — sidebar sliding on mobile, inline on desktop */}
+      {selected && isMobile && (
+        <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setSelected(null)} aria-hidden="true" />
+      )}
       {selected && isMobile ? (
-        <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-          <SheetContent side="right" size="md" className="p-0 flex flex-col overflow-y-auto">
-            <div className="p-4">
-              <h2 className="font-bold text-sm mb-3">{selected.name}</h2>
-              <EntityDetail entity={selected} entities={entities} relations={relations} onDelete={handleDeleteEntity} onSelectEntity={setSelected} />
-            </div>
-          </SheetContent>
-        </Sheet>
+        <div
+          className="absolute inset-y-0 right-0 z-10 h-full w-72 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+          style={{ right: 0 }}
+        >
+          <div className="p-4 overflow-y-auto flex-1">
+            <h2 className="font-bold text-sm mb-3">{selected.name}</h2>
+            <EntityDetail entity={selected} entities={entities} relations={relations} onDelete={handleDeleteEntity} onSelectEntity={setSelected} />
+          </div>
+        </div>
       ) : selected ? (
         <div className="w-80 border-l bg-card overflow-y-auto">
           <div className="p-4 border-b flex items-center justify-between">

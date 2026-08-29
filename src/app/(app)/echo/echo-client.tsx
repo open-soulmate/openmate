@@ -331,7 +331,7 @@ export function EchoClient() {
               </button>
             </div>
 
-            <div className="flex gap-2 lg:gap-6">
+            <div className="flex gap-2 lg:gap-6 relative">
               {/* Template List — full width on mobile, w-80 on desktop */}
               <div className={`${isMobile ? (selectedTemplate ? "hidden" : "w-full") : "w-80"} space-y-2`}>
                 {isMobile && (
@@ -371,10 +371,16 @@ export function EchoClient() {
                 )}
               </div>
 
-              {/* Template Detail / Send Panel — Sheet on mobile, inline on desktop */}
+              {/* Template Detail / Send Panel — sidebar-style sliding on mobile, inline on desktop */}
+              {isMobile && !!selectedTemplate && (
+                <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setSelectedTemplate(null)} aria-hidden="true" />
+              )}
               {isMobile ? (
-                <Sheet open={!!selectedTemplate} onOpenChange={(open) => { if (!open) setSelectedTemplate(null); }}>
-                  <SheetContent side="right" size="full" className="p-0 flex flex-col">
+                !!selectedTemplate && (
+                  <div
+                    className="absolute inset-y-0 right-0 z-10 h-full w-full min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+                    style={{ right: 0 }}
+                  >
                     <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-4">
                       {selectedTemplate && (
                         <>
@@ -475,8 +481,8 @@ export function EchoClient() {
                         </>
                       )}
                     </div>
-                  </SheetContent>
-                </Sheet>
+                  </div>
+                )
               ) : (
                 selectedTemplate && (
                   <div className="flex-1 space-y-4">

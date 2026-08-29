@@ -240,7 +240,7 @@ export function LimbClient() {
 
         {/* Tasks Tab */}
         {tab === "tasks" && (
-          <div className={`flex gap-2 lg:gap-6 ${isMobile ? 'flex-col' : ''}`}>
+          <div className={`flex gap-2 lg:gap-6 ${isMobile ? 'flex-col' : ''} relative`}>
             <div className={`${isMobile ? 'w-full' : 'flex-1'} space-y-3`}>
               {tasks.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
@@ -294,76 +294,80 @@ export function LimbClient() {
               ))}
             </div>
 
-            {/* Detail Panel — Sheet on mobile, inline on desktop */}
+            {/* Detail Panel — sidebar sliding on mobile, inline on desktop */}
+            {selected && isMobile && (
+              <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setSelected(null)} aria-hidden="true" />
+            )}
             {selected && isMobile ? (
-              <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-                <SheetContent side="right" size="full" className="p-0 flex flex-col overflow-y-auto">
-                  <div className="p-4 space-y-4">
-                    <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
-                      <div className="flex items-center justify-between">
-                        <h3 className="font-semibold text-xs lg:text-sm">{selected.name}</h3>
-                        <button onClick={() => handleDelete(selected.task_id)}
-                          className="rounded-md p-1.5 text-red-500 hover:bg-red-500/10">
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <div className="flex justify-between">
-                          <span>ID</span><span className="font-mono">{selected.task_id}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>{t("limb.status") || "Status"}</span><span className={statusColor(selected.status)}>{selected.status}</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>{t("limb.t97513") || "Progress"}</span><span>{selected.progress}%</span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>{t("limb.elapsed") || "Elapsed"}</span><span>{selected.elapsed_seconds}s</span>
-                        </div>
-                      </div>
-                      {selected.error && (
-                        <div className="rounded-lg bg-red-500/10 p-3 text-xs text-red-500">
-                          {selected.error}
-                        </div>
-                      )}
+              <div
+                className="absolute inset-y-0 right-0 z-10 h-full w-72 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+                style={{ right: 0 }}
+              >
+                <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                  <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-semibold text-xs lg:text-sm">{selected.name}</h3>
+                      <button onClick={() => handleDelete(selected.task_id)}
+                        className="rounded-md p-1.5 text-red-500 hover:bg-red-500/10">
+                        <Trash2 size={14} />
+                      </button>
                     </div>
-
-                    {selected.results && selected.results.length > 0 && (
-                      <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-2">
-                        <h4 className="text-xs lg:text-sm font-medium">{t("limb.t62005") || "Execution steps"}</h4>
-                        {selected.results.map((r, i) => (
-                          <div key={i} className="flex items-start gap-2 text-xs">
-                            <span className="shrink-0">{ACTION_ICONS[r.action_type] || "⚡"}</span>
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1">
-                                {r.success ? <CheckCircle size={10} className="text-emerald-500" /> : <XCircle size={10} className="text-red-500" />}
-                                <span className="font-mono">{r.action_type}</span>
-                                <span className="text-muted-foreground ml-auto">{r.duration_ms}ms</span>
-                              </div>
-                              {r.output && <p className="text-muted-foreground truncate">{r.output}</p>}
-                              {r.error && <p className="text-red-500">{r.error}</p>}
-                            </div>
-                          </div>
-                        ))}
+                    <div className="space-y-1 text-xs text-muted-foreground">
+                      <div className="flex justify-between">
+                        <span>ID</span><span className="font-mono">{selected.task_id}</span>
                       </div>
-                    )}
-
-                    {selected.actions && selected.actions.length > 0 && (
-                      <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-2">
-                        <h4 className="text-xs lg:text-sm font-medium">{t("limb.t47867") || "Action List"}</h4>
-                        {selected.actions.map((a, i) => (
-                          <div key={i} className="flex items-center gap-2 text-xs">
-                            <span>{ACTION_ICONS[a.action_type] || "⚡"}</span>
-                            <span className="font-mono">{a.action_type}</span>
-                            {a.target && <span className="text-muted-foreground truncate">{a.target}</span>}
-                            {a.description && <span className="text-muted-foreground ml-auto truncate">{a.description}</span>}
-                          </div>
-                        ))}
+                      <div className="flex justify-between">
+                        <span>{t("limb.status") || "Status"}</span><span className={statusColor(selected.status)}>{selected.status}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>{t("limb.t97513") || "Progress"}</span><span>{selected.progress}%</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span>{t("limb.elapsed") || "Elapsed"}</span><span>{selected.elapsed_seconds}s</span>
+                      </div>
+                    </div>
+                    {selected.error && (
+                      <div className="rounded-lg bg-red-500/10 p-3 text-xs text-red-500">
+                        {selected.error}
                       </div>
                     )}
                   </div>
-                </SheetContent>
-              </Sheet>
+
+                  {selected.results && selected.results.length > 0 && (
+                    <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-2">
+                      <h4 className="text-xs lg:text-sm font-medium">{t("limb.t62005") || "Execution steps"}</h4>
+                      {selected.results.map((r, i) => (
+                        <div key={i} className="flex items-start gap-2 text-xs">
+                          <span className="shrink-0">{ACTION_ICONS[r.action_type] || "⚡"}</span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1">
+                              {r.success ? <CheckCircle size={10} className="text-emerald-500" /> : <XCircle size={10} className="text-red-500" />}
+                              <span className="font-mono">{r.action_type}</span>
+                              <span className="text-muted-foreground ml-auto">{r.duration_ms}ms</span>
+                            </div>
+                            {r.output && <p className="text-muted-foreground truncate">{r.output}</p>}
+                            {r.error && <p className="text-red-500">{r.error}</p>}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {selected.actions && selected.actions.length > 0 && (
+                    <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-2">
+                      <h4 className="text-xs lg:text-sm font-medium">{t("limb.t47867") || "Action List"}</h4>
+                      {selected.actions.map((a, i) => (
+                        <div key={i} className="flex items-center gap-2 text-xs">
+                          <span>{ACTION_ICONS[a.action_type] || "⚡"}</span>
+                          <span className="font-mono">{a.action_type}</span>
+                          {a.target && <span className="text-muted-foreground truncate">{a.target}</span>}
+                          {a.description && <span className="text-muted-foreground ml-auto truncate">{a.description}</span>}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
             ) : selected ? (
               <div className="w-96 space-y-4">
                 <div className="rounded-xl border border-border bg-card p-3 lg:p-4 space-y-3">

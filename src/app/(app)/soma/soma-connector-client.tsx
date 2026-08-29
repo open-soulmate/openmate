@@ -374,7 +374,7 @@ export function SomaConnectorClient() {
             </div>
 
             {/* Component List */}
-            <div className={`flex gap-2 lg:gap-6 ${isMobile ? 'flex-col' : ''}`}>
+            <div className={`flex gap-2 lg:gap-6 ${isMobile ? 'flex-col' : ''} relative`}>
               <div className={`${isMobile ? 'w-full' : 'w-80'} space-y-3`}>
                 {components.length === 0 ? (
                   <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
@@ -410,62 +410,66 @@ export function SomaConnectorClient() {
                 ))}
               </div>
 
-              {/* Detail Panel — Sheet on mobile, inline on desktop */}
+              {/* Detail Panel — sidebar sliding on mobile, inline on desktop */}
+              {selected && isMobile && (
+                <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setSelected(null)} aria-hidden="true" />
+              )}
               {selected && isMobile ? (
-                <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-                  <SheetContent side="right" size="full" className="p-0 flex flex-col overflow-y-auto">
-                    <div className="p-4 space-y-4">
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-semibold">{selected.name}</h3>
-                          <span className="text-xs text-muted-foreground font-mono">{selected.component_id}</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <button onClick={() => handleHeartbeat(selected.component_id)}
-                            className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
-                            <Zap size={12} /> {t("soma.sendHeartbeat")}
-                          </button>
-                          <button onClick={() => handleUnregister(selected.component_id)}
-                            className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
-                            <Trash2 size={12} /> {t("soma.unregister")}
-                          </button>
-                        </div>
+                <div
+                  className="absolute inset-y-0 right-0 z-10 h-full w-72 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+                  style={{ right: 0 }}
+                >
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="font-semibold">{selected.name}</h3>
+                        <span className="text-xs text-muted-foreground font-mono">{selected.component_id}</span>
                       </div>
-
-                      <div className="grid grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
-                        <div><span className="text-muted-foreground">{t("soma.type")}:</span> {selected.component_type}</div>
-                        <div><span className="text-muted-foreground">{t("soma.version")}:</span> v{selected.version}</div>
-                        <div><span className="text-muted-foreground">{t("soma.registeredAt")}:</span> {formatTime(selected.registered_at, t)}</div>
-                        <div><span className="text-muted-foreground">{t("soma.lastHeartbeat")}:</span> {formatTime(selected.last_heartbeat, t)}</div>
-                        <div><span className="text-muted-foreground">{t("soma.dataPush")}:</span> {selected.data_push_count} {t("soma.times")}</div>
-                        <div><span className="text-muted-foreground">{t("soma.errorCount")}:</span> {selected.error_count}</div>
+                      <div className="flex gap-2">
+                        <button onClick={() => handleHeartbeat(selected.component_id)}
+                          className="flex items-center gap-1 rounded-lg border border-border px-3 py-1.5 text-xs hover:bg-muted">
+                          <Zap size={12} /> {t("soma.sendHeartbeat")}
+                        </button>
+                        <button onClick={() => handleUnregister(selected.component_id)}
+                          className="flex items-center gap-1 rounded-lg border border-red-500/30 px-3 py-1.5 text-xs text-red-500 hover:bg-red-500/10">
+                          <Trash2 size={12} /> {t("soma.unregister")}
+                        </button>
                       </div>
-
-                      {selected.capabilities.length > 0 && (
-                        <div>
-                          <h4 className="text-xs text-muted-foreground mb-2">{t("soma.capabilityTags")}</h4>
-                          <div className="flex flex-wrap gap-2">
-                            {selected.capabilities.map((cap) => (
-                              <span key={cap} className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs text-cyan-600">
-                                {cap}
-                              </span>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {selected.last_error && (
-                        <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3">
-                          <div className="flex items-center gap-2 text-xs text-red-500">
-                            <AlertTriangle size={12} />
-                            <span className="font-medium">{t("soma.recentError")}</span>
-                          </div>
-                          <p className="text-xs text-red-400 mt-1">{selected.last_error}</p>
-                        </div>
-                      )}
                     </div>
-                  </SheetContent>
-                </Sheet>
+
+                    <div className="grid grid-cols-2 gap-2 lg:gap-4 text-xs lg:text-sm">
+                      <div><span className="text-muted-foreground">{t("soma.type")}:</span> {selected.component_type}</div>
+                      <div><span className="text-muted-foreground">{t("soma.version")}:</span> v{selected.version}</div>
+                      <div><span className="text-muted-foreground">{t("soma.registeredAt")}:</span> {formatTime(selected.registered_at, t)}</div>
+                      <div><span className="text-muted-foreground">{t("soma.lastHeartbeat")}:</span> {formatTime(selected.last_heartbeat, t)}</div>
+                      <div><span className="text-muted-foreground">{t("soma.dataPush")}:</span> {selected.data_push_count} {t("soma.times")}</div>
+                      <div><span className="text-muted-foreground">{t("soma.errorCount")}:</span> {selected.error_count}</div>
+                    </div>
+
+                    {selected.capabilities.length > 0 && (
+                      <div>
+                        <h4 className="text-xs text-muted-foreground mb-2">{t("soma.capabilityTags")}</h4>
+                        <div className="flex flex-wrap gap-2">
+                          {selected.capabilities.map((cap) => (
+                            <span key={cap} className="rounded-full bg-cyan-500/10 px-3 py-1 text-xs text-cyan-600">
+                              {cap}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {selected.last_error && (
+                      <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-3">
+                        <div className="flex items-center gap-2 text-xs text-red-500">
+                          <AlertTriangle size={12} />
+                          <span className="font-medium">{t("soma.recentError")}</span>
+                        </div>
+                        <p className="text-xs text-red-400 mt-1">{selected.last_error}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
               ) : selected ? (
                 <div className="flex-1 space-y-4">
                   <div className="flex items-center justify-between">

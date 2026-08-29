@@ -155,7 +155,7 @@ export function GraphBuilderClient() {
     relations.filter(r => r.source_id === entityId || r.target_id === entityId);
 
   return (
-    <div className="flex h-full">
+    <div className="flex h-full relative">
       <div className="flex-1 px-4 md:px-6 py-4 md:py-3 lg:py-6 overflow-y-auto">
         {/* Header */}
         <div className="flex items-center justify-between mb-3 lg:mb-6">
@@ -265,14 +265,18 @@ export function GraphBuilderClient() {
       </div>
 
       {/* Detail Sidebar */}
+      {selected && isMobile && (
+        <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setSelected(null)} aria-hidden="true" />
+      )}
       {selected && isMobile ? (
-        <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
-          <SheetContent side="right" size="md" className="p-0 flex flex-col">
-            <div className="px-3 lg:px-6 py-4 overflow-y-auto flex-1">
-              <GraphBuilderDetail entity={selected} relations={getEntityRelations(selected.id)} entities={entities} onDelete={() => setDeleteTarget(selected)} onSelectEntity={setSelected} />
-            </div>
-          </SheetContent>
-        </Sheet>
+        <div
+          className="absolute inset-y-0 right-0 z-10 h-full w-72 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+          style={{ right: 0 }}
+        >
+          <div className="px-3 lg:px-6 py-4 overflow-y-auto flex-1">
+            <GraphBuilderDetail entity={selected} relations={getEntityRelations(selected.id)} entities={entities} onDelete={() => setDeleteTarget(selected)} onSelectEntity={setSelected} />
+          </div>
+        </div>
       ) : selected ? (
         <div className="w-80 border-l p-3 lg:p-6 overflow-y-auto">
           <GraphBuilderDetail entity={selected} relations={getEntityRelations(selected.id)} entities={entities} onDelete={() => setDeleteTarget(selected)} onSelectEntity={setSelected} />
