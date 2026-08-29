@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 
 interface ContextRingProps {
   className?: string;
@@ -73,14 +74,15 @@ export function ContextRing({ className }: ContextRingProps) {
         </span>
       </div>
 
-      {hover && (
+      {hover && createPortal(
         <div
           className="fixed z-[9999] text-xs text-foreground bg-card border border-border rounded-lg px-3 py-2 shadow-lg whitespace-nowrap pointer-events-none"
           style={{ left: pos.x, top: pos.y - 8, transform: "translate(-50%, -100%)" }}
         >
           {tip}
           <div className="absolute left-1/2 -translate-x-1/2 top-full w-2 h-2 bg-card border-r border-b border-border rotate-45 -mt-1" />
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );
