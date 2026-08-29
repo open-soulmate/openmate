@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { MessageSquare, ChevronDown, ChevronRight } from "lucide-react";
@@ -67,6 +67,8 @@ interface ConversationTreeProps {
   onToggleAgent: (agentId: string) => void;
   onToggleSourceGroup: (agentId: string, source: string) => void;
   onSelectSession: (session: Session, agent: AgentInfo) => void;
+  /** Optional search query — filters agents/sessions when non-empty */
+  search?: string;
   /** Optional class for the root container */
   className?: string;
 }
@@ -80,10 +82,37 @@ export function ConversationTree({
   onToggleAgent,
   onToggleSourceGroup,
   onSelectSession,
+  search,
   className,
 }: ConversationTreeProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
+
+  // Filter agents/sessions when search is active
+  const displayAgents = useMemo(() => {
+    const q = (search || '').trim().toLowerCase();
+    if (!q) return agents;
+    return agents.filter(a => {
+      const nameMatch = a.name.toLowerCase().includes(q);
+      const sessionMatch = a.sessions.some(s =>
+        (s.title || s.name || '').toLowerCase().includes(q) ||
+        (s.last_message || '').toLowerCase().includes(q)
+      );
+      return nameMatch || sessionMatch;
+    }).map(a => ({
+      ...a,
+      expanded: true, // auto-expand when searching
+      sourceGroups: a.sourceGroups?.map(g => ({
+        ...g,
+        expanded: true,
+        sessions: g.sessions.filter(s =>
+          a.name.toLowerCase().includes(q) ||
+          (s.title || s.name || '').toLowerCase().includes(q) ||
+          (s.last_message || '').toLowerCase().includes(q)
+        ),
+      })).filter(g => g.sessions.length > 0),
+    }));
+  }, [agents, search]);
 
   // Sort sessions: unread first, then by last_active desc
   const sortSessions = (sessions: Session[]) =>
@@ -98,7 +127,7 @@ export function ConversationTree({
 
   return (
     <div className={cn("flex-1 overflow-y-auto", className)}>
-      {agents.length === 0 ? (
+      {displayAgents.length === 0 ? (
         <div className="px-4 py-8 text-center">
           <MessageSquare size={24} className="mx-auto mb-2 text-muted-foreground/50" />
           <p className="text-xs text-muted-foreground">
@@ -106,7 +135,7 @@ export function ConversationTree({
           </p>
         </div>
       ) : (
-        agents.map(agent => (
+        displayAgents.map(agent => (
           <div key={agent.id}>
             {/* Agent header */}
             <div className="flex items-center justify-between px-2 py-2 lg:py-1.5 hover:bg-muted/50 active:bg-muted/70 group touch-manipulation">

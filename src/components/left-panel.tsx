@@ -4,12 +4,14 @@ import { Search, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface LeftPanelProps<T> {
-  /** Items to display */
-  items: T[];
+  /** Items to display — optional when using renderContent */
+  items?: T[];
   /** Custom filter function — return true to include item */
-  filter: (item: T, query: string) => boolean;
+  filter?: (item: T, query: string) => boolean;
   /** Render each item */
-  renderItem: (item: T) => ReactNode;
+  renderItem?: (item: T) => ReactNode;
+  /** Render full content below search (replaces items list when provided) */
+  renderContent?: (query: string) => ReactNode;
   /** Optional header content below search */
   header?: ReactNode;
   /** Optional empty state */
@@ -21,9 +23,10 @@ interface LeftPanelProps<T> {
 }
 
 export function LeftPanel<T>({
-  items,
+  items = [],
   filter,
   renderItem,
+  renderContent,
   header,
   emptyState,
   placeholder = '搜索...',
@@ -32,8 +35,8 @@ export function LeftPanel<T>({
   const [query, setQuery] = useState('');
 
   const filtered = useMemo(() => {
-    if (!query.trim()) return items;
-    return items.filter(item => filter(item, query.trim().toLowerCase()));
+    if (!query.trim() || !filter) return items ?? [];
+    return (items ?? []).filter(item => filter(item, query.trim().toLowerCase()));
   }, [items, query, filter]);
 
   return (
@@ -63,19 +66,23 @@ export function LeftPanel<T>({
       {/* Optional header */}
       {header}
 
-      {/* Item list */}
-      <div className="flex-1 overflow-y-auto min-h-0">
-        {filtered.length > 0 ? (
-          filtered.map(item => renderItem(item))
-        ) : (
-          emptyState || (
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <Search className="w-8 h-8 mb-2 opacity-30" />
-              <p className="text-xs">无匹配结果</p>
-            </div>
-          )
-        )}
-      </div>
+      {/* Content — renderContent or item list */}
+      {renderContent ? (
+        renderContent(query.trim().toLowerCase())
+      ) : (
+        <div className="flex-1 overflow-y-auto min-h-0">
+          {filtered.length > 0 ? (
+            filtered.map(item => renderItem?.(item))
+          ) : (
+            emptyState || (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <Search className="w-8 h-8 mb-2 opacity-30" />
+                <p className="text-xs">无匹配结果</p>
+              </div>
+            )
+          )}
+        </div>
+      )}
     </div>
   );
 }

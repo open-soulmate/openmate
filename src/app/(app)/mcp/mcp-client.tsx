@@ -26,6 +26,7 @@ import { useTranslation } from "react-i18next";
 import { PageLayout } from '@/components/page-layout';
 import { DetailPanel } from '@/components/detail-panel';
 import { useAppStore } from '@/stores/app-store';
+import { LeftPanel } from '@/components/left-panel';
 import { cn } from "@/lib/utils";
 
 interface McpTool {
@@ -229,110 +230,64 @@ export function McpClient() {
   // ── Register sidebar content ────────────────────────────────────
   useEffect(() => {
     setPageSidebar(
-      <div className="flex flex-col h-full">
-        {/* Search */}
-        <div className="px-2 py-2 shrink-0">
-          <div className="relative">
-            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder={t("mcp.searchPlaceholder") || "Search servers or tools..."}
-              className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/50 rounded-md border border-border/50 focus:outline-none focus:border-primary/50 transition-colors"
-            />
-            {query && (
-              <button
-                onClick={() => setQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                <X className="w-3 h-3" />
-              </button>
-            )}
+      <LeftPanel
+        items={servers}
+        filter={(item, q) => item.name.toLowerCase().includes(q) || item.tools.some(t => t.toLowerCase().includes(q))}
+        placeholder={t("mcp.searchPlaceholder") || "搜索服务器..."}
+        header={
+          <div className="flex items-center gap-2 px-2 pb-2 shrink-0">
+            <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] text-green-400">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-400" />{stats.connected}
+            </span>
+            <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+              <Wrench size={9} />{stats.total_tools} {t("mcp.tools") || "Tools"}
+            </span>
           </div>
-        </div>
-
-        {/* Stats badges */}
-        <div className="flex items-center gap-2 px-2 pb-2 shrink-0">
-          <span className="flex items-center gap-1 rounded-full bg-green-500/10 px-2 py-0.5 text-[10px] text-green-400">
-            <span className="h-1.5 w-1.5 rounded-full bg-green-400" />{stats.connected}
-          </span>
-          <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
-            <Wrench size={9} />{stats.total_tools} {t("mcp.tools") || "Tools"}
-          </span>
-        </div>
-
-        {/* Server list */}
-        <div className="flex-1 overflow-y-auto px-1 space-y-0.5">
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
-            </div>
-          ) : filtered.length === 0 ? (
-            <div className="px-2 py-8 text-center text-muted-foreground/50">
-              <Plug className="w-8 h-8 mx-auto mb-1.5" />
-              <p className="text-xs">
-                {query
-                  ? (t("mcp.noMatch") || "No matching servers")
-                  : (t("mcp.noServers") || "No MCP servers yet")}
-              </p>
-            </div>
-          ) : (
-            filtered.map((server) => (
-              <button
-                key={server.id}
-                onClick={() => setSelectedServer(server)}
-                className={cn(
-                  "w-full text-left px-2 py-2 rounded-lg transition-colors",
-                  selectedServer?.id === server.id
-                    ? "bg-primary/15 border border-primary/30"
-                    : "hover:bg-muted/50 border border-transparent"
-                )}
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <div className={cn(
-                    "flex h-6 w-6 items-center justify-center rounded shrink-0",
-                    server.connected
-                      ? "bg-green-500/10 text-green-400"
-                      : "bg-muted text-muted-foreground"
-                  )}>
-                    <Server size={12} />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5">
-                      <span className="text-xs font-medium truncate">{server.name}</span>
-                      {server.connected ? (
-                        <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
-                      ) : (
-                        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
-                      )}
-                      {!server.enabled && (
-                        <span className="text-[9px] px-1 py-0.5 rounded bg-yellow-500/10 text-yellow-400 shrink-0">
-                          {t("mcp.disabledBadge") || "Off"}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-[10px] text-muted-foreground truncate">
-                      {server.tools.length} {t("mcp.tools") || "tools"} · {server.transport}
-                    </p>
-                  </div>
-                </div>
-              </button>
-            ))
-          )}
-        </div>
-
-        {/* Add server button */}
-        <div className="px-2 py-2 border-t border-border shrink-0">
+        }
+        renderItem={(server) => (
           <button
-            onClick={() => setShowAdd(true)}
-            className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+            key={server.id}
+            onClick={() => setSelectedServer(server)}
+            className={cn(
+              "w-full text-left px-2 py-2 rounded-lg transition-colors",
+              selectedServer?.id === server.id
+                ? "bg-primary/15 border border-primary/30"
+                : "hover:bg-muted/50 border border-transparent"
+            )}
           >
-            <Plus size={12} />
-            {t("mcp.addServer") || "Add Server"}
+            <div className="flex items-center gap-2 min-w-0">
+              <div className={cn(
+                "flex h-6 w-6 items-center justify-center rounded shrink-0",
+                server.connected ? "bg-green-500/10 text-green-400" : "bg-muted text-muted-foreground"
+              )}>
+                <Server size={12} />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-xs font-medium truncate">{server.name}</span>
+                  {server.connected ? (
+                    <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
+                  ) : (
+                    <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
+                  )}
+                  {!server.enabled && (
+                    <span className="text-[9px] px-1 py-0.5 rounded bg-yellow-500/10 text-yellow-400 shrink-0">Off</span>
+                  )}
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {server.tools.length} {t("mcp.tools") || "tools"} · {server.transport}
+                </p>
+              </div>
+            </div>
           </button>
-        </div>
-      </div>
+        )}
+        emptyState={
+          <div className="px-2 py-8 text-center text-muted-foreground/50">
+            <Plug className="w-8 h-8 mx-auto mb-1.5" />
+            <p className="text-xs">{t("mcp.noServers") || "No MCP servers yet"}</p>
+          </div>
+        }
+      />
     );
     return () => setPageSidebar(null);
   }, [servers, filtered, loading, query, stats, selectedServer, t, setPageSidebar, setShowAdd]);

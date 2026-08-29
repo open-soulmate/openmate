@@ -13,9 +13,6 @@ import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
-import {
-  Search, Plus,
-} from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getUserName, getApiBaseUrl, getToken } from "@/lib/api-client";
 import { type ThemeId, persistTheme } from "@/lib/theme";
@@ -32,6 +29,7 @@ import {
   SidebarInset,
 } from "@/components/ui/sidebar";
 import { ConversationTree, type AgentInfo } from "@/components/conversation-tree";
+import { LeftPanel } from "@/components/left-panel";
 import { SwipeablePanels, getPanelIndex } from "@/components/swipeable-panels";
 import { useIsMobile, useMediaQuery } from "@/hooks/use-mobile";
 
@@ -118,7 +116,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // ── Conversation list state ──────────────────────────────────────
   const [agents, setAgents] = useState<AgentInfo[]>([]);
-  const [sessionSearch, setSessionSearch] = useState('');
   const [clearedUnreads, setClearedUnreads] = useState<Set<string>>(new Set());
 
   // Clear unread for a session (called on click)
@@ -275,32 +272,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     ));
   }, []);
 
-  // Search filter
-  const filteredAgents = useCallback(() => {
-    const q = sessionSearch.trim().toLowerCase();
-    if (!q) return agents;
-    return agents.filter(a => {
-      const nameMatch = a.name.toLowerCase().includes(q);
-      const sessionMatch = a.sessions.some(s =>
-        (s.title || s.name || '').toLowerCase().includes(q) ||
-        (s.last_message || '').toLowerCase().includes(q)
-      );
-      return nameMatch || sessionMatch;
-    }).map(a => ({
-      ...a,
-      expanded: true, // auto-expand when searching
-      sourceGroups: a.sourceGroups?.map(g => ({
-        ...g,
-        expanded: true,
-        sessions: g.sessions.filter(s =>
-          a.name.toLowerCase().includes(q) ||
-          (s.title || s.name || '').toLowerCase().includes(q) ||
-          (s.last_message || '').toLowerCase().includes(q)
-        ),
-      })).filter(g => g.sessions.length > 0),
-    }));
-  }, [agents, sessionSearch]);
-
   // Fetch event count
   useVisibilityPoll(() => {
     const apiBase = getApiBaseUrl();
@@ -365,8 +336,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.location.href = "/login";
   }
 
-  const displayAgents = filteredAgents();
-
   // Detect AI Groups route for conditional sidebar/workspace rendering
   const isAIGroupsRoute = pathname.startsWith('/ai-groups');
   const fetchAIGroups = useAIGroupsStore((s) => s.fetchGroups);
@@ -413,23 +382,29 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   pageSidebar
                 ) : (
                   <>
-                    <ConversationTree
-                      agents={displayAgents}
-                      activeSessionId={activeSessionIdFromStore}
-                      getUnread={getUnread}
-                      onToggleAgent={toggleAgent}
-                      onToggleSourceGroup={toggleSourceGroup}
-                      onSelectSession={(session, agent) => {
-                        clearSessionUnread(session.id);
-                        setActiveSession(session.id, agent.id, {
-                          agentIcon: agent.icon,
-                          agentName: agent.name,
-                          agentDescription: agent.description || '',
-                          sessionName: session.name || session.title || '',
-                        });
-                        router.push('/chat');
-                      }}
-                      className="group-data-[collapsible=icon]:hidden"
+                    <LeftPanel
+                      placeholder={t("sidebar.searchPlaceholder", "搜索会话...")}
+                      renderContent={(query) => (
+                        <ConversationTree
+                          agents={agents}
+                          activeSessionId={activeSessionIdFromStore}
+                          getUnread={getUnread}
+                          onToggleAgent={toggleAgent}
+                          onToggleSourceGroup={toggleSourceGroup}
+                          onSelectSession={(session, agent) => {
+                            clearSessionUnread(session.id);
+                            setActiveSession(session.id, agent.id, {
+                              agentIcon: agent.icon,
+                              agentName: agent.name,
+                              agentDescription: agent.description || '',
+                              sessionName: session.name || session.title || '',
+                            });
+                            router.push('/chat');
+                          }}
+                          search={query}
+                          className="group-data-[collapsible=icon]:hidden"
+                        />
+                      )}
                     />
                   </>
                 )}
