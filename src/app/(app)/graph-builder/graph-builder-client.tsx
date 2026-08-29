@@ -9,6 +9,50 @@ import { useTranslation } from 'react-i18next';
 interface Entity { id: string; name: string; type: string; description?: string; properties?: Record<string, unknown>; }
 interface Relation { id: string; source_id: string; target_id: string; type: string; }
 
+function GraphBuilderDetail({ entity, relations, entities, onDelete, onSelectEntity }: {
+  entity: Entity;
+  relations: Relation[];
+  entities: Entity[];
+  onDelete: () => void;
+  onSelectEntity: (entity: Entity) => void;
+}) {
+  const { t } = useTranslation();
+  return (
+    <>
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="font-bold">{entity.name}</h2>
+        <button onClick={onDelete}
+          className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive" title={t('graphBuilder.deleteEntity')}>
+          <Trash2 className="w-4 h-4" />
+        </button>
+      </div>
+      <p className="text-xs lg:text-sm mb-2"><span className="text-muted-foreground">{t('graphBuilder.type')}：</span>{entity.type}</p>
+      {entity.description && <p className="text-xs lg:text-sm mb-2"><span className="text-muted-foreground">{t('graphBuilder.description')}：</span>{entity.description}</p>}
+      {entity.properties && Object.entries(entity.properties).map(([k, v]) => (
+        <p key={k} className="text-xs lg:text-sm mb-1"><span className="text-muted-foreground">{k}：</span>{String(v)}</p>
+      ))}
+      <div className="mt-4 pt-4 border-t">
+        <h3 className="text-xs lg:text-sm font-medium mb-2">{t('graphBuilder.relatedRelations')}</h3>
+        {relations.map(r => {
+          const other = r.source_id === entity.id
+            ? entities.find(e => e.id === r.target_id)
+            : entities.find(e => e.id === r.source_id);
+          return (
+            <div key={r.id} className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5 p-1.5 rounded bg-muted/30">
+              <span className="font-mono">{r.source_id === entity.id ? '→' : '←'}</span>
+              <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary">{r.type}</span>
+              <span className="font-medium cursor-pointer hover:underline" onClick={() => { if (other) onSelectEntity(other); }}>{other?.name || t('graphBuilder.unknown')}</span>
+            </div>
+          );
+        })}
+        {relations.length === 0 && (
+          <p className="text-xs text-muted-foreground">{t('graphBuilder.noRelations')}</p>
+        )}
+      </div>
+    </>
+  );
+}
+
 export function GraphBuilderClient() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -226,73 +270,13 @@ export function GraphBuilderClient() {
         <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
           <SheetContent side="right" size="md" className="p-0 flex flex-col">
             <div className="px-3 lg:px-6 py-4 overflow-y-auto flex-1">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="font-bold">{selected.name}</h2>
-                <button onClick={() => setDeleteTarget(selected)}
-                  className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive" title={t('graphBuilder.deleteEntity')}>
-                  <Trash2 className="w-4 h-4" />
-                </button>
-              </div>
-              <p className="text-xs lg:text-sm mb-2"><span className="text-muted-foreground">{t('graphBuilder.type')}：</span>{selected.type}</p>
-              {selected.description && <p className="text-xs lg:text-sm mb-2"><span className="text-muted-foreground">{t('graphBuilder.description')}：</span>{selected.description}</p>}
-              {selected.properties && Object.entries(selected.properties).map(([k, v]) => (
-                <p key={k} className="text-xs lg:text-sm mb-1"><span className="text-muted-foreground">{k}：</span>{String(v)}</p>
-              ))}
-              <div className="mt-4 pt-4 border-t">
-                <h3 className="text-xs lg:text-sm font-medium mb-2">{t('graphBuilder.relatedRelations')}</h3>
-                {getEntityRelations(selected.id).map(r => {
-                  const other = r.source_id === selected.id
-                    ? entities.find(e => e.id === r.target_id)
-                    : entities.find(e => e.id === r.source_id);
-                  return (
-                    <div key={r.id} className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5 p-1.5 rounded bg-muted/30">
-                      <span className="font-mono">{r.source_id === selected.id ? '→' : '←'}</span>
-                      <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary">{r.type}</span>
-                      <span className="font-medium">{other?.name || t('graphBuilder.unknown')}</span>
-                    </div>
-                  );
-                })}
-                {getEntityRelations(selected.id).length === 0 && (
-                  <p className="text-xs text-muted-foreground">{t('graphBuilder.noRelations')}</p>
-                )}
-              </div>
+              <GraphBuilderDetail entity={selected} relations={getEntityRelations(selected.id)} entities={entities} onDelete={() => setDeleteTarget(selected)} onSelectEntity={setSelected} />
             </div>
           </SheetContent>
         </Sheet>
       ) : selected ? (
         <div className="w-80 border-l p-3 lg:p-6 overflow-y-auto">
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="font-bold">{selected.name}</h2>
-            <button onClick={() => setDeleteTarget(selected)}
-              className="p-1 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive" title={t('graphBuilder.deleteEntity')}>
-              <Trash2 className="w-4 h-4" />
-            </button>
-          </div>
-          <p className="text-xs lg:text-sm mb-2"><span className="text-muted-foreground">{t('graphBuilder.type')}：</span>{selected.type}</p>
-          {selected.description && <p className="text-xs lg:text-sm mb-2"><span className="text-muted-foreground">{t('graphBuilder.description')}：</span>{selected.description}</p>}
-          {selected.properties && Object.entries(selected.properties).map(([k, v]) => (
-            <p key={k} className="text-xs lg:text-sm mb-1"><span className="text-muted-foreground">{k}：</span>{String(v)}</p>
-          ))}
-
-          {/* Relations */}
-          <div className="mt-4 pt-4 border-t">
-            <h3 className="text-xs lg:text-sm font-medium mb-2">{t('graphBuilder.relatedRelations')}</h3>
-            {getEntityRelations(selected.id).map(r => {
-              const other = r.source_id === selected.id
-                ? entities.find(e => e.id === r.target_id)
-                : entities.find(e => e.id === r.source_id);
-              return (
-                <div key={r.id} className="flex items-center gap-2 text-xs text-muted-foreground mb-1.5 p-1.5 rounded bg-muted/30">
-                  <span className="font-mono">{r.source_id === selected.id ? '→' : '←'}</span>
-                  <span className="px-1.5 py-0.5 rounded bg-primary/10 text-primary">{r.type}</span>
-                  <span className="font-medium">{other?.name || t('graphBuilder.unknown')}</span>
-                </div>
-              );
-            })}
-            {getEntityRelations(selected.id).length === 0 && (
-              <p className="text-xs text-muted-foreground">{t('graphBuilder.noRelations')}</p>
-            )}
-          </div>
+          <GraphBuilderDetail entity={selected} relations={getEntityRelations(selected.id)} entities={entities} onDelete={() => setDeleteTarget(selected)} onSelectEntity={setSelected} />
         </div>
       ) : null}
 
