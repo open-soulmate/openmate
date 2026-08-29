@@ -166,11 +166,12 @@ function StatusPie({ courses }: { courses: Course[] }) {
       data: { values },
       semantic_types: { status: 'Nominal', count: 'Quantity' },
       chart_spec: {
-        chartType: 'Donut Chart',
+        chartType: 'Pie Chart',
         encodings: {
           x: { field: 'status' },
           y: { field: 'count' },
         },
+        chartProperties: { innerRadius: 35 },
         canvasSize: { width: 300, height: 200 },
       },
     });
