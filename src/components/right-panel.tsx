@@ -18,10 +18,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SkirtTabs, type SkirtTab } from '@/components/skirt-tabs';
+import { useAppStore, type WorkspaceTab } from '@/stores/app-store';
 import { Input } from '@/components/ui/input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
-import { useAppStore } from '@/stores/app-store';
 
 // ── Types ──────────────────────────────────────────────────────────
 
@@ -486,105 +486,69 @@ function TabIcon({ type }: { type: TabType }) {
 // ── Main component ─────────────────────────────────────────────────
 
 export function RightPanel({ open, onToggle }: RightPanelProps) {
-  const [tabs, setTabs] = useState<Tab[]>([createTab('new-tab')]);
-  const [activeTabId, setActiveTabId] = useState<string>(tabs[0].id);
-  const [panelWidth, setPanelWidth] = useState(typeof window !== 'undefined' ? Math.min(384, Math.round(window.innerWidth / 2)) : 384);
+  const activeSessionId = useAppStore((s) => s.activeSessionId);
+  const sessionId = activeSessionId || '__default__';
 
+  const wsState = useAppStore((s) => s.getWorkspaceTabs(sessionId));
+  const storeSetWorkspaceTabs = useAppStore((s) => s.setWorkspaceTabs);
+  const storeAddWorkspaceTab = useAppStore((s) => s.addWorkspaceTab);
+  const storeRemoveWorkspaceTab = useAppStore((s) => s.removeWorkspaceTab);
+  const storeUpdateWorkspaceTab = useAppStore((s) => s.updateWorkspaceTab);
+  const storeSetActiveTab = useAppStore((s) => s.setActiveWorkspaceTab);
+  const storeNavigateTab = useAppStore((s) => s.navigateWorkspaceTab);
+  const storeGoBack = useAppStore((s) => s.goBackWorkspaceTab);
+  const storeGoForward = useAppStore((s) => s.goForwardWorkspaceTab);
+
+  const tabs = wsState.tabs;
+  const activeTabId = wsState.activeTabId;
+
+  const [panelWidth, setPanelWidth] = useState(typeof window !== 'undefined' ? Math.min(384, Math.round(window.innerWidth / 2)) : 384);
   const resizeRef = useRef<HTMLDivElement>(null);
   const isResizingRef = useRef(false);
   const isMobile = useIsMobile();
 
-  // Sync active tab id when tabs change
-  useEffect(() => {
-    if (!tabs.find((t) => t.id === activeTabId) && tabs.length > 0) {
-      setActiveTabId(tabs[tabs.length - 1].id);
-    }
-  }, [tabs, activeTabId]);
-
-  // ── Tab management ───────────────────────────────────────────────
+  // ── Tab management (delegates to store) ───────────────────────────
 
   const addTab = useCallback((type: TabType, extra?: { url?: string; filePath?: string }) => {
     const tab = createTab(type, extra);
-    setTabs((prev) => [...prev, tab]);
-    setActiveTabId(tab.id);
-  }, []);
+    storeAddWorkspaceTab(sessionId, tab, true);
+  }, [sessionId, storeAddWorkspaceTab]);
 
   const closeTab = useCallback((tabId: string) => {
-    setTabs((prev) => {
-      const next = prev.filter((t) => t.id !== tabId);
-      if (next.length === 0) {
-        const fresh = createTab('new-tab');
-        setActiveTabId(fresh.id);
-        return [fresh];
-      }
-      if (tabId === activeTabId) {
-        const idx = prev.findIndex((t) => t.id === tabId);
-        setActiveTabId(next[Math.min(idx, next.length - 1)].id);
-      }
-      return next;
-    });
-  }, [activeTabId]);
+    if (tabs.length === 1) {
+      const fresh = createTab('new-tab');
+      storeSetWorkspaceTabs(sessionId, { tabs: [fresh], activeTabId: fresh.id });
+      return;
+    }
+    storeRemoveWorkspaceTab(sessionId, tabId);
+  }, [sessionId, tabs.length, storeRemoveWorkspaceTab, storeSetWorkspaceTabs]);
 
   const updateTab = useCallback((tabId: string, updates: Partial<Tab>) => {
-    setTabs((prev) => prev.map((t) => (t.id === tabId ? { ...t, ...updates } : t)));
-  }, []);
+    storeUpdateWorkspaceTab(sessionId, tabId, updates);
+  }, [sessionId, storeUpdateWorkspaceTab]);
 
-  // ── Browser navigation ───────────────────────────────────────────
+  // ── Browser navigation (delegates to store) ──────────────────────
 
   const navigateTab = useCallback((tabId: string, url: string) => {
-    setTabs((prev) =>
-      prev.map((t) => {
-        if (t.id !== tabId) return t;
-        const newHistory = [...t.history.slice(0, t.historyIndex + 1), url];
-        return {
-          ...t,
-          url,
-          title: (() => { try { return new URL(url).hostname; } catch { return 'Web Browser'; } })(),
-          history: newHistory,
-          historyIndex: newHistory.length - 1,
-        };
-      })
-    );
-  }, []);
+    storeNavigateTab(sessionId, tabId, url);
+  }, [sessionId, storeNavigateTab]);
 
   const goBack = useCallback((tabId: string) => {
-    setTabs((prev) =>
-      prev.map((t) => {
-        if (t.id !== tabId || t.historyIndex <= 0) return t;
-        const newIndex = t.historyIndex - 1;
-        return { ...t, url: t.history[newIndex], historyIndex: newIndex };
-      })
-    );
-  }, []);
+    storeGoBack(sessionId, tabId);
+  }, [sessionId, storeGoBack]);
 
   const goForward = useCallback((tabId: string) => {
-    setTabs((prev) =>
-      prev.map((t) => {
-        if (t.id !== tabId || t.historyIndex >= t.history.length - 1) return t;
-        const newIndex = t.historyIndex + 1;
-        return { ...t, url: t.history[newIndex], historyIndex: newIndex };
-      })
-    );
-  }, []);
+    storeGoForward(sessionId, tabId);
+  }, [sessionId, storeGoForward]);
 
   const refreshTab = useCallback((tabId: string) => {
-    // Force iframe re-render by toggling url
-    setTabs((prev) =>
-      prev.map((t) => {
-        if (t.id !== tabId || !t.url) return t;
-        return { ...t, url: '' };
-      })
-    );
+    storeUpdateWorkspaceTab(sessionId, tabId, { url: '' });
     setTimeout(() => {
-      setTabs((prev) =>
-        prev.map((t) => {
-          if (t.id !== tabId) return t;
-          const url = t.history[t.historyIndex] || '';
-          return { ...t, url };
-        })
-      );
+      const ws = useAppStore.getState().getWorkspaceTabs(sessionId);
+      const tab = ws.tabs.find((t) => t.id === tabId);
+      if (tab) storeUpdateWorkspaceTab(sessionId, tabId, { url: tab.history[tab.historyIndex] || '' });
     }, 50);
-  }, []);
+  }, [sessionId, storeUpdateWorkspaceTab]);
 
   // ── Resize handling ──────────────────────────────────────────────
 
@@ -703,7 +667,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
       <SkirtTabs
         tabs={tabs.map((tab) => ({ id: tab.id, title: tab.title }))}
         activeTabId={activeTabId}
-        onTabChange={setActiveTabId}
+        onTabChange={(id) => storeSetActiveTab(sessionId, id)}
         onAddTab={() => addTab('new-tab')}
         minWidth={isMobile ? 100 : 140}
         maxWidth={isMobile ? 160 : 240}
