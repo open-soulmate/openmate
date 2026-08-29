@@ -336,7 +336,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   // Track right panel width — desktop: 50vw, mobile: 75vw (capped at 384px)
   useEffect(() => {
-    const update = () => setRightPanelWidth(isMobile ? Math.min(Math.round(window.innerWidth * 0.75), 384) : Math.round(window.innerWidth / 2));
+    const update = () => setRightPanelWidth(isMobile ? 288 : Math.round(window.innerWidth / 2));
     update();
     window.addEventListener('resize', update);
     return () => window.removeEventListener('resize', update);
