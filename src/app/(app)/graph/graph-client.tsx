@@ -20,50 +20,6 @@ function getRelSource(r: Relation): string { return r.source_entity_id || r.sour
 function getRelTarget(r: Relation): string { return r.target_entity_id || r.target_id || ''; }
 function getRelType(r: Relation): string { return r.relation_type || r.type || 'related'; }
 
-function EntityDetail({ entity, entities, relations, onDelete, onSelectEntity }: {
-  entity: Entity;
-  entities: Entity[];
-  relations: Relation[];
-  onDelete: (id: string) => void;
-  onSelectEntity: (entity: Entity) => void;
-}) {
-  const { t } = useTranslation();
-  return (
-    <div className="space-y-3">
-      {entityType(entity) !== 'default' && (
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{t("graph.type") || "Type"}</span>
-          <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: (COLORS[entityType(entity)] || COLORS.default) + '20', color: COLORS[entityType(entity)] || COLORS.default }}>{entityType(entity)}</span>
-        </div>
-      )}
-      {entity.description && <p className="text-xs lg:text-sm text-muted-foreground">{entity.description}</p>}
-      {entity.properties && Object.entries(entity.properties).map(([k, v]) => (
-        <div key={k} className="flex justify-between text-xs lg:text-sm">
-          <span className="text-muted-foreground">{k}</span>
-          <span>{String(v)}</span>
-        </div>
-      ))}
-      <div className="pt-3 border-t">
-        <h3 className="text-xs font-medium text-muted-foreground mb-2">{t("graph.relatedRelations") || "Related Relations"}</h3>
-        {relations.filter(r => getRelSource(r) === entity.id || getRelTarget(r) === entity.id).map(r => {
-          const other = getRelSource(r) === entity.id ? entities.find(e => e.id === getRelTarget(r)) : entities.find(e => e.id === getRelSource(r));
-          return (
-            <div key={r.id} className="flex items-center gap-2 py-1 text-xs">
-              <span className="text-muted-foreground">{getRelSource(r) === entity.id ? '→' : '←'}</span>
-              <span className="px-1.5 py-0.5 rounded bg-muted">{getRelType(r)}</span>
-              <span className="text-primary cursor-pointer hover:underline" onClick={() => { const ent = entities.find(e => e.id === (getRelSource(r) === entity.id ? getRelTarget(r) : getRelSource(r))); if (ent) onSelectEntity(ent); }}>{other?.name || (t("graph.unknown") || "Unknown")}</span>
-            </div>
-          );
-        })}
-        {relations.filter(r => getRelSource(r) === entity.id || getRelTarget(r) === entity.id).length === 0 && <p className="text-xs text-muted-foreground">{t("graph.noRelations") || "No relations"}</p>}
-      </div>
-      <button onClick={() => onDelete(entity.id)} className="w-full mt-4 py-2 rounded-lg border border-destructive/50 text-destructive text-xs lg:text-sm hover:bg-destructive/10 flex items-center justify-center gap-1.5">
-        <Trash2 size={14} /> {t("graph.deleteEntity") || "Delete Entity"}
-      </button>
-    </div>
-  );
-}
-
 export function GraphClient() {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -500,9 +456,37 @@ export function GraphClient() {
       {selected && isMobile ? (
         <Sheet open={!!selected} onOpenChange={(open) => { if (!open) setSelected(null); }}>
           <SheetContent side="right" size="md" className="p-0 flex flex-col overflow-y-auto">
-            <div className="p-4">
-              <h2 className="font-bold text-sm mb-3">{selected.name}</h2>
-              <EntityDetail entity={selected} entities={entities} relations={relations} onDelete={handleDeleteEntity} onSelectEntity={setSelected} />
+            <div className="p-4 space-y-3">
+              {entityType(selected) !== 'default' && (
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-muted-foreground">{t("graph.type") || "Type"}</span>
+                  <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: (COLORS[entityType(selected)] || COLORS.default) + '20', color: COLORS[entityType(selected)] || COLORS.default }}>{entityType(selected)}</span>
+                </div>
+              )}
+              {selected.description && <p className="text-xs lg:text-sm text-muted-foreground">{selected.description}</p>}
+              {selected.properties && Object.entries(selected.properties).map(([k, v]) => (
+                <div key={k} className="flex justify-between text-xs lg:text-sm">
+                  <span className="text-muted-foreground">{k}</span>
+                  <span>{String(v)}</span>
+                </div>
+              ))}
+              <div className="pt-3 border-t">
+                <h3 className="text-xs font-medium text-muted-foreground mb-2">{t("graph.relatedRelations") || "Related Relations"}</h3>
+                {relations.filter(r => getRelSource(r) === selected.id || getRelTarget(r) === selected.id).map(r => {
+                  const other = getRelSource(r) === selected.id ? entities.find(e => e.id === getRelTarget(r)) : entities.find(e => e.id === getRelSource(r));
+                  return (
+                    <div key={r.id} className="flex items-center gap-2 py-1 text-xs">
+                      <span className="text-muted-foreground">{getRelSource(r) === selected.id ? '→' : '←'}</span>
+                      <span className="px-1.5 py-0.5 rounded bg-muted">{getRelType(r)}</span>
+                      <span className="text-primary cursor-pointer hover:underline" onClick={() => { const ent = entities.find(e => e.id === (getRelSource(r) === selected.id ? getRelTarget(r) : getRelSource(r))); if (ent) setSelected(ent); }}>{other?.name || (t("graph.unknown") || "Unknown")}</span>
+                    </div>
+                  );
+                })}
+                {relations.filter(r => getRelSource(r) === selected.id || getRelTarget(r) === selected.id).length === 0 && <p className="text-xs text-muted-foreground">{t("graph.noRelations") || "No relations"}</p>}
+              </div>
+              <button onClick={() => handleDeleteEntity(selected.id)} className="w-full mt-4 py-2 rounded-lg border border-destructive/50 text-destructive text-xs lg:text-sm hover:bg-destructive/10 flex items-center justify-center gap-1.5">
+                <Trash2 size={14} /> {t("graph.deleteEntity") || "Delete Entity"}
+              </button>
             </div>
           </SheetContent>
         </Sheet>
@@ -512,8 +496,39 @@ export function GraphClient() {
             <h2 className="font-bold text-xs lg:text-sm">{selected.name}</h2>
             <button onClick={() => setSelected(null)} className="text-muted-foreground hover:text-foreground"><X size={16} /></button>
           </div>
-          <div className="p-4">
-            <EntityDetail entity={selected} entities={entities} relations={relations} onDelete={handleDeleteEntity} onSelectEntity={setSelected} />
+          <div className="p-4 space-y-3">
+            {entityType(selected) !== 'default' && (
+              <div className="flex items-center gap-2">
+                <span className="text-xs text-muted-foreground">{t("graph.type") || "Type"}</span>
+                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: (COLORS[entityType(selected)] || COLORS.default) + '20', color: COLORS[entityType(selected)] || COLORS.default }}>{entityType(selected)}</span>
+              </div>
+            )}
+            {selected.description && <p className="text-xs lg:text-sm text-muted-foreground">{selected.description}</p>}
+            {selected.properties && Object.entries(selected.properties).map(([k, v]) => (
+              <div key={k} className="flex justify-between text-xs lg:text-sm">
+                <span className="text-muted-foreground">{k}</span>
+                <span>{String(v)}</span>
+              </div>
+            ))}
+
+            <div className="pt-3 border-t">
+              <h3 className="text-xs font-medium text-muted-foreground mb-2">{t("graph.relatedRelations") || "Related Relations"}</h3>
+              {relations.filter(r => getRelSource(r) === selected.id || getRelTarget(r) === selected.id).map(r => {
+                const other = getRelSource(r) === selected.id ? entities.find(e => e.id === getRelTarget(r)) : entities.find(e => e.id === getRelSource(r));
+                return (
+                  <div key={r.id} className="flex items-center gap-2 py-1 text-xs">
+                    <span className="text-muted-foreground">{getRelSource(r) === selected.id ? '→' : '←'}</span>
+                    <span className="px-1.5 py-0.5 rounded bg-muted">{getRelType(r)}</span>
+                    <span className="text-primary cursor-pointer hover:underline" onClick={() => { const ent = entities.find(e => e.id === (getRelSource(r) === selected.id ? getRelTarget(r) : getRelSource(r))); if (ent) setSelected(ent); }}>{other?.name || (t("graph.unknown") || "Unknown")}</span>
+                  </div>
+                );
+              })}
+              {relations.filter(r => getRelSource(r) === selected.id || getRelTarget(r) === selected.id).length === 0 && <p className="text-xs text-muted-foreground">{t("graph.noRelations") || "No relations"}</p>}
+            </div>
+
+            <button onClick={() => handleDeleteEntity(selected.id)} className="w-full mt-4 py-2 rounded-lg border border-destructive/50 text-destructive text-xs lg:text-sm hover:bg-destructive/10 flex items-center justify-center gap-1.5">
+              <Trash2 size={14} /> {t("graph.deleteEntity") || "Delete Entity"}
+            </button>
           </div>
         </div>
       ) : null}
