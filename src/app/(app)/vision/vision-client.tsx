@@ -7,6 +7,7 @@ import {
   ImageIcon, RefreshCw, CheckCircle, XCircle, Loader2,
   Paintbrush, BarChart3, Folder, FileImage, AlertTriangle,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface VisionStats {
   status: string;
@@ -84,7 +85,11 @@ export function VisionClient() {
     fetchStats();
     fetchOutputs();
     const interval = setInterval(fetchStats, 30000);
-    return () => clearInterval(interval);
+    return (
+        <PageLayout title="Vision">
+          
+        </PageLayout>
+      ) => clearInterval(interval);
   }, [fetchStats, fetchOutputs]);
 
   const backends = stats?.backends || {};

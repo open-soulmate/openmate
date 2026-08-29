@@ -8,6 +8,7 @@ import {
   RefreshCw, MessageSquare, Clock, Filter, Globe, Wifi, WifiOff,
   ChevronDown, ChevronRight, Copy,
 } from "lucide-react"
+import { PageLayout } from '@/components/page-layout';
 
 interface BusStats {
   total_events: number
@@ -126,7 +127,11 @@ export function NerveClient() {
   useEffect(() => {
     if (activeTab !== "events") return
     const interval = setInterval(fetchEvents, 5000)
-    return () => clearInterval(interval)
+    return (
+        <PageLayout title="Nerve">
+          
+        </PageLayout>
+      ) => clearInterval(interval)
   }, [activeTab, fetchEvents])
 
   const handlePublish = useCallback(async () => {

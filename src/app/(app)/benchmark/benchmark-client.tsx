@@ -7,6 +7,7 @@ import {
   Loader2, CheckCircle, XCircle, ChevronDown, ChevronUp,
   RefreshCw, History, Target, Gauge, ArrowUpDown,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface BenchmarkTarget {
   organ: string;
@@ -214,6 +215,10 @@ export function BenchmarkClient() {
   ];
 
   return (
+
+      <PageLayout title="Benchmark">
+
+        
     <div className="flex h-full flex-col bg-background">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
@@ -560,5 +565,9 @@ export function BenchmarkClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

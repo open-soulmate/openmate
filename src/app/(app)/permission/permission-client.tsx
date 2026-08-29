@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Shield, Loader2, Plus, Trash2, Users, FileText, Search, Eye, X, Save, ChevronRight } from 'lucide-react';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
+import { PageLayout } from '@/components/page-layout';
 
 interface Policy {
   id?: string;
@@ -159,6 +160,10 @@ export function PermissionClient() {
   const EFFECTS = ['allow', 'deny'];
 
   return (
+
+      <PageLayout title="Permission">
+
+        
     <div className="px-3 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
@@ -322,5 +327,9 @@ export function PermissionClient() {
         </div>
       )}
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

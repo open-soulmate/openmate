@@ -8,6 +8,7 @@ import {
   FileText, Type, CheckCircle, Loader2, ArrowUpCircle,
   Globe, Clock, Hash,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface Capture {
   id: number;
@@ -119,6 +120,10 @@ export function CaptureClient() {
   });
 
   return (
+
+      <PageLayout title="Capture">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
@@ -240,5 +245,9 @@ export function CaptureClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

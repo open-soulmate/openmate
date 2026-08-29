@@ -13,6 +13,7 @@ import {
   PanelLeft,
 } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
+import { PageLayout } from '@/components/page-layout';
 
 interface Session {
   session_id: string
@@ -415,6 +416,10 @@ export function SessionsClient() {
   const activeFilterCount = (showFavoritesOnly ? 1 : 0) + (activeSourceFilter ? 1 : 0) + (activeTagFilter ? 1 : 0)
 
   return (
+
+      <PageLayout title="Sessions">
+
+        
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-2 lg:px-6 h-12 border-b border-border">
@@ -1112,5 +1117,9 @@ export function SessionsClient() {
         )}
       </div>
     </div>
-  )
+  
+
+      </PageLayout>
+
+    )
 }

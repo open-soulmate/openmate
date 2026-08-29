@@ -8,6 +8,7 @@ import {
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl, getToken } from "@/lib/api-client";
 import { useTranslation } from "react-i18next";
+import { PageLayout } from '@/components/page-layout';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -205,10 +206,14 @@ export function MarketplaceClient() {
 
   if (loading) {
     return (
+        <PageLayout title="Marketplace">
+          
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
-    );
+    
+        </PageLayout>
+      );
   }
 
   const filteredSkills = filterSources(skillSources);

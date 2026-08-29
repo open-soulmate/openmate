@@ -9,6 +9,7 @@ import {
   Activity, BarChart3, Layers, FolderSync, AlertCircle, CheckCircle, Info,
   XCircle, Zap, Settings, Database,
 } from "lucide-react"
+import { PageLayout } from '@/components/page-layout';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -206,6 +207,10 @@ export function TimelineClient() {
   // ── Render ─────────────────────────────────────────────────
 
   return (
+
+      <PageLayout title="Timeline">
+
+        
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between px-3 lg:px-6 py-4 border-b border-border">
@@ -356,7 +361,11 @@ export function TimelineClient() {
         )}
       </div>
     </div>
-  )
+  
+
+      </PageLayout>
+
+    )
 }
 
 // ── Events List ────────────────────────────────────────────────

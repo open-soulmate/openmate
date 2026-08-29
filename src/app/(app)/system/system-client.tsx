@@ -8,6 +8,7 @@ import {
   Puzzle, Zap, CheckCircle, XCircle, AlertTriangle,
   RefreshCw, Loader2, Server, Clock, Play, Pause,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface OrganStatus {
   [key: string]: string;
@@ -125,7 +126,11 @@ export function SystemOverviewClient() {
     if (autoRefresh && refreshInterval > 0) {
       intervalRef.current = setInterval(() => fetchOverview(true), refreshInterval * 1000);
     }
-    return () => { if (intervalRef.current) clearInterval(intervalRef.current); };
+    return (
+        <PageLayout title="System">
+          
+        </PageLayout>
+      ) => { if (intervalRef.current) clearInterval(intervalRef.current); };
   }, [autoRefresh, refreshInterval, fetchOverview]);
 
   const metrics = data?.metrics && !("error" in data.metrics) ? data.metrics as SystemMetrics : null;

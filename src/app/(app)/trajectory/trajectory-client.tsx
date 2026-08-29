@@ -12,6 +12,7 @@ import {
   BarChart3, Layers, AlertCircle, CheckCircle, XCircle, Eye,
   Copy, Terminal, MessageSquare, Bot, Wrench, ArrowLeft,
 } from "lucide-react"
+import { PageLayout } from '@/components/page-layout';
 
 // ── Types ──────────────────────────────────────────────────────
 
@@ -712,7 +713,11 @@ export function TrajectoryClient() {
         return prev + 1
       })
     }, replaySpeed)
-    return () => { if (replayTimer.current) clearInterval(replayTimer.current) }
+    return (
+        <PageLayout title="Trajectory">
+          
+        </PageLayout>
+      ) => { if (replayTimer.current) clearInterval(replayTimer.current) }
   }, [replayPlaying, replayMode, replaySpeed, events.length])
 
   // ── Display Events ─────────────────────────────────────────

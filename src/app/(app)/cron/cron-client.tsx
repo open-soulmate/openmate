@@ -4,6 +4,7 @@ import { Clock, Play, Pause, Trash2, RefreshCw, Loader2, AlertCircle, ChevronRig
 import { getApiBaseUrl } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
 import { useTranslation } from 'react-i18next';
+import { PageLayout } from '@/components/page-layout';
 
 const getApiUrl = () => getApiBaseUrl();
 
@@ -140,10 +141,14 @@ export function CronClient() {
 
   if (loading) {
     return (
+        <PageLayout title="Cron">
+          
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
-    );
+    
+        </PageLayout>
+      );
   }
 
   return (

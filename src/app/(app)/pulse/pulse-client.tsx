@@ -8,6 +8,7 @@ import {
   Activity, Settings, Clock, Zap, BarChart3,
   Loader2, ChevronRight, Timer,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface PulseSignal {
   signal_id: string;
@@ -170,6 +171,10 @@ export function PulseClient() {
   ];
 
   return (
+
+      <PageLayout title="Pulse">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
@@ -406,7 +411,11 @@ export function PulseClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }
 
 function StatCard({ icon: Icon, label, value, sub, color, bg }: {

@@ -4,6 +4,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Network, Loader2, Plus, Trash2, RefreshCw, ZoomIn, ZoomOut, Maximize2, X, Search } from 'lucide-react';
 import { api, getUserId, getApiBaseUrl } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
+import { PageLayout } from '@/components/page-layout';
 
 interface Entity { id: string; name: string; entity_type?: string; type?: string; description?: string; properties?: Record<string, unknown>; }
 interface Relation { id: string; source_entity_id?: string; source_id?: string; target_entity_id?: string; target_id?: string; relation_type?: string; type?: string; }
@@ -154,7 +155,15 @@ export function GraphClient() {
     };
     animRef.current = requestAnimationFrame(tick);
 
-    return () => {
+    return (
+
+        <PageLayout title="Graph">
+
+          
+
+        </PageLayout>
+
+      ) => {
       running = false;
       cancelAnimationFrame(animRef.current);
       ro.disconnect();

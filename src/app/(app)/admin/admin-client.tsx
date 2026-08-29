@@ -17,6 +17,7 @@ import {
   HardDrive,
   Clock,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface ActionResult {
   action: string;
@@ -62,7 +63,11 @@ export function AdminClient() {
   useEffect(() => {
     fetchOverview();
     const interval = setInterval(fetchOverview, 30000);
-    return () => clearInterval(interval);
+    return (
+        <PageLayout title="Admin">
+          
+        </PageLayout>
+      ) => clearInterval(interval);
   }, [fetchOverview]);
 
   const runAction = async (name: string, endpoint: string, method: string = "POST", body?: any) => {

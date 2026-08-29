@@ -8,6 +8,7 @@ import {
   CheckCircle, XCircle, Loader2, Zap, Shield, Clock,
   BarChart3, ChevronDown, ChevronUp, Lightbulb,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface SystemSummary {
   health_score: number;
@@ -116,6 +117,10 @@ export function IntelligenceClient() {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   return (
+
+      <PageLayout title="Intelligence">
+
+        
     <div className="flex flex-col h-full">
       {/* Header */}
       <div className="flex items-center justify-between p-3 lg:p-4 border-b border-border gap-2">
@@ -330,5 +335,9 @@ export function IntelligenceClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

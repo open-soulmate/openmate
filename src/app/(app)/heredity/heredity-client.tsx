@@ -9,6 +9,7 @@ import {
   CheckCircle, XCircle, Loader2, ChevronRight,
   ArrowUpCircle, AlertTriangle, Tag,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface ComponentInfo {
   component_id: string;
@@ -187,6 +188,10 @@ export function HeredityClient() {
   ];
 
   return (
+
+      <PageLayout title="Heredity">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-3 lg:py-4 gap-2">
         <div className="flex items-center gap-2 lg:gap-3 min-w-0 flex-1">
@@ -520,7 +525,11 @@ export function HeredityClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }
 
 function StatCard({ icon: Icon, label, value, sub, color, bg }: {

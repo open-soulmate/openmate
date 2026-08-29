@@ -8,6 +8,7 @@ import {
   Mic, Languages, Hash, Zap, Database, Settings,
   Globe, TrendingUp, BarChart3,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface VoiceStats {
   status: string;
@@ -101,7 +102,11 @@ export function VoiceClient() {
     fetchStats();
     fetchProfiles();
     const interval = setInterval(fetchStats, 30000);
-    return () => clearInterval(interval);
+    return (
+        <PageLayout title="Voice">
+          
+        </PageLayout>
+      ) => clearInterval(interval);
   }, [fetchStats, fetchProfiles]);
 
   const backends = stats?.engine?.backends || {};

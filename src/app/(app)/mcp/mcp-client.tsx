@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { getApiBaseUrl, getToken } from "@/lib/api-client";
 import { useTranslation } from "react-i18next";
+import { PageLayout } from '@/components/page-layout';
 
 interface McpTool {
   name: string;
@@ -103,10 +104,14 @@ export function McpClient() {
     if (!query) return true;
     const q = query.toLowerCase();
     return (
+        <PageLayout title="Mcp">
+          
       s.name.toLowerCase().includes(q) ||
       s.description.toLowerCase().includes(q) ||
       s.tools.some((t) => t.name.toLowerCase().includes(q))
-    );
+    
+        </PageLayout>
+      );
   });
 
   const toggleExpand = (id: string) => {

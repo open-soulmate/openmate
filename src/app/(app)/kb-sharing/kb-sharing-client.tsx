@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { Share2, Loader2, CheckCircle, XCircle, Clock, Send, Eye } from 'lucide-react';
 import { api } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
+import { PageLayout } from '@/components/page-layout';
 
 interface SharingRequest {
   id: string;
@@ -81,6 +82,10 @@ export function KbSharingClient() {
   };
 
   return (
+
+      <PageLayout title="Kb Sharing">
+
+        
     <div className="px-3 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center justify-between">
         <div>
@@ -177,5 +182,9 @@ export function KbSharingClient() {
         </div>
       )}
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

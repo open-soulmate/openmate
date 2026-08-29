@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import i18n from "@/lib/i18n";
+import { PageLayout } from '@/components/page-layout';
 
 interface ComponentStatus {
   name: string;
@@ -229,6 +230,10 @@ export function VitalClient() {
   ];
 
   return (
+
+      <PageLayout title="Vital">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
@@ -664,7 +669,11 @@ export function VitalClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }
 
 function Section({ title, icon: Icon, children }: { title: string; icon: React.ElementType; children: React.ReactNode }) {

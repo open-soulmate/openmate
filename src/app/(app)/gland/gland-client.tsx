@@ -10,6 +10,7 @@ import {
   Settings, CheckCircle, XCircle, Loader2, Eye, EyeOff,
   Server, Cpu, DollarSign, BarChart3,
 } from "lucide-react"
+import { PageLayout } from '@/components/page-layout';
 
 interface Provider {
   name: string
@@ -167,10 +168,14 @@ export function GlandClient() {
 
   if (loading) {
     return (
+        <PageLayout title="Gland">
+          
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    )
+    
+        </PageLayout>
+      )
   }
 
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Zap }> = [

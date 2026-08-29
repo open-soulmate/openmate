@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { getApiBaseUrl, getToken } from "@/lib/api-client";
 import { useTranslation } from "react-i18next";
+import { PageLayout } from '@/components/page-layout';
 
 type TaskStatus = "active" | "draft" | "paused" | "completed" | "failed";
 
@@ -196,6 +197,10 @@ export function WorkflowClient() {
   const filtered = workflows;
 
   return (
+
+      <PageLayout title="Workflow">
+
+        
     <div className="flex h-full flex-col">
       {/* Toast */}
       {toast && (
@@ -404,5 +409,9 @@ export function WorkflowClient() {
         </div>
       )}
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

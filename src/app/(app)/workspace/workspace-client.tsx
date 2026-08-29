@@ -18,6 +18,7 @@ import {
   HardDrive,
   Clock,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface DirEntry {
   name: string;
@@ -153,6 +154,10 @@ export function WorkspaceClient() {
   };
 
   return (
+
+      <PageLayout title="Workspace">
+
+        
     <div className="flex h-full flex-col">
       {/* Header */}
       <div className="shrink-0 border-b border-border px-2 lg:px-4 md:px-3 lg:px-6 py-4">
@@ -336,5 +341,9 @@ export function WorkspaceClient() {
         </div>
       </Dialog>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

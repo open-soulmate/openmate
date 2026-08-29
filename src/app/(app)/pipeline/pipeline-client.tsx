@@ -8,6 +8,7 @@ import {
   Shield, Eye, Brain, Droplets, Play, Clock, FileText, Zap,
   ChevronRight, ChevronDown, History, Settings, ArrowRight,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface PipelineStep {
   step: string;
@@ -146,6 +147,10 @@ export function PipelineClient() {
   };
 
   return (
+
+      <PageLayout title="Pipeline">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
@@ -364,7 +369,11 @@ export function PipelineClient() {
         </div>
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }
 
 function PipelineResultCard({ result, stages }: { result: PipelineResult; stages: PipelineStage[] }) {

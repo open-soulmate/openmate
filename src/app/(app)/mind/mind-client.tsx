@@ -9,6 +9,7 @@ import {
   Heart, Shield, Sparkles, Loader2, ChevronDown,
   MessageSquare, Frown, Laugh, Meh, AlertTriangle,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface EmotionResult {
   primary_emotion: string;
@@ -135,6 +136,10 @@ export function MindClient() {
   };
 
   return (
+
+      <PageLayout title="Mind">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
@@ -389,5 +394,9 @@ export function MindClient() {
         </div>
       )}
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

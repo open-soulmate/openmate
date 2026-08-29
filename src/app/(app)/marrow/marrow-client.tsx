@@ -9,6 +9,7 @@ import {
   Activity, ArrowUpDown, Clock, Play, Pause, CalendarClock,
 } from "lucide-react"
 import { useTranslation } from "react-i18next"
+import { PageLayout } from '@/components/page-layout';
 
 interface MarrowHealth {
   status: string
@@ -288,10 +289,14 @@ export function MarrowClient() {
 
   if (loading) {
     return (
+        <PageLayout title="Marrow">
+          
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    )
+    
+        </PageLayout>
+      )
   }
 
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Bone }> = [

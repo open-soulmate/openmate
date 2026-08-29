@@ -10,6 +10,7 @@ import {
   ChevronUp, Play, Minimize2, Search, Settings,
   Gauge, Target, Users, ListTodo,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface LayerStatus {
   status: string;
@@ -155,7 +156,11 @@ export function AiEngineClient() {
   useEffect(() => {
     if (!autoRefresh) return;
     const interval = setInterval(() => fetchAll(true), 15000);
-    return () => clearInterval(interval);
+    return (
+        <PageLayout title="Ai Engine">
+          
+        </PageLayout>
+      ) => clearInterval(interval);
   }, [autoRefresh, fetchAll]);
 
   const handleAnalyze = async () => {

@@ -4,6 +4,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { Network, Plus, Trash2, Loader2, Link2, X } from 'lucide-react';
 import { api, getUserId } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
+import { PageLayout } from '@/components/page-layout';
 
 interface Entity { id: string; name: string; type: string; description?: string; properties?: Record<string, unknown>; }
 interface Relation { id: string; source_id: string; target_id: string; type: string; }
@@ -155,6 +156,10 @@ export function GraphBuilderClient() {
     relations.filter(r => r.source_id === entityId || r.target_id === entityId);
 
   return (
+
+      <PageLayout title="Graph Builder">
+
+        
     <div className="flex h-full relative">
       <div className="flex-1 px-4 md:px-6 py-4 md:py-3 lg:py-6 overflow-y-auto">
         {/* Header */}
@@ -303,5 +308,9 @@ export function GraphBuilderClient() {
         </div>
       )}
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

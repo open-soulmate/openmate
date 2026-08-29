@@ -11,6 +11,7 @@ import {
   Smile, Clock, Sparkles, ChevronDown,
   BarChart3,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface StreamEvent {
   id: string;
@@ -159,7 +160,15 @@ export function ActivityFeedClient() {
     // Refresh summary periodically (not via SSE)
     const summaryTimer = setInterval(fetchSummary, 30000);
 
-    return () => {
+    return (
+
+        <PageLayout title="Activity">
+
+          
+
+        </PageLayout>
+
+      ) => {
       es.close();
       sseRef.current = null;
       setSseConnected(false);

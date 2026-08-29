@@ -8,6 +8,7 @@ import {
   ChevronDown, ChevronRight, Copy, CheckCircle, X, Settings,
   Download, Upload, CopyPlus,
 } from "lucide-react"
+import { PageLayout } from '@/components/page-layout';
 
 interface Template {
   template_id: string
@@ -228,10 +229,14 @@ export function GeneClient() {
 
   if (loading) {
     return (
+        <PageLayout title="Gene">
+          
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    )
+    
+        </PageLayout>
+      )
   }
 
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Dna }> = [

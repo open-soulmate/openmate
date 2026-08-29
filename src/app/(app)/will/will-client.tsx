@@ -9,6 +9,7 @@ import {
   XCircle, Loader2, Clock, Activity, ChevronRight, GitBranch,
   AlertTriangle, Pause, Eye,
 } from "lucide-react"
+import { PageLayout } from '@/components/page-layout';
 
 interface WorkflowNode {
   id: string
@@ -214,10 +215,14 @@ export function WillClient() {
 
   if (loading) {
     return (
+        <PageLayout title="Will">
+          
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    )
+    
+        </PageLayout>
+      )
   }
 
   const eng = health?.engine

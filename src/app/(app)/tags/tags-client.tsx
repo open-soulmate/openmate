@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils"
 import {
   Tag, Loader2, Plus, Trash2, Edit3, X, Check, Palette, Hash, RefreshCw,
 } from "lucide-react"
+import { PageLayout } from '@/components/page-layout';
 
 interface TagItem {
   id: string
@@ -113,10 +114,14 @@ export function TagsClient() {
 
   if (loading) {
     return (
+        <PageLayout title="Tags">
+          
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    )
+    
+        </PageLayout>
+      )
   }
 
   return (

@@ -8,6 +8,7 @@ import {
   Grid3X3, List, ArrowUpRight, Package, Shield, Cpu, Brain,
 } from "lucide-react";
 import { useTranslation } from "react-i18next";
+import { PageLayout } from '@/components/page-layout';
 
 interface ComponentInfo {
   id: string;
@@ -88,7 +89,11 @@ export function RegistryClient() {
   useEffect(() => {
     if (!autoRefresh) return;
     const timer = setInterval(fetchAll, 30000);
-    return () => clearInterval(timer);
+    return (
+        <PageLayout title="Registry">
+          
+        </PageLayout>
+      ) => clearInterval(timer);
   }, [autoRefresh, fetchAll]);
 
   const filtered = components.filter((c) => {

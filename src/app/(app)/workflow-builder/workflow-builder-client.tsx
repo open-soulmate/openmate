@@ -25,6 +25,7 @@ import { NodeConfigPanel } from "./node-config-panel";
 import { WorkflowToolbar } from "./workflow-toolbar";
 import { WorkflowListPanel } from "./workflow-list-panel";
 import { WorkflowExecutionPanel } from "./workflow-execution-panel";
+import { PageLayout } from '@/components/page-layout';
 
 const defaultNodes: Node<WorkflowNodeData>[] = [
   {
@@ -168,6 +169,10 @@ export function WorkflowBuilderClient() {
     : null;
 
   return (
+
+      <PageLayout title="Workflow Builder">
+
+        
     <div className="flex h-full flex-col">
       <WorkflowToolbar onCreateNew={handleCreateNew} />
       <div className="flex flex-1 overflow-hidden">
@@ -245,5 +250,9 @@ export function WorkflowBuilderClient() {
       {/* Execution Panel */}
       {showExecutionPanel && <WorkflowExecutionPanel />}
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

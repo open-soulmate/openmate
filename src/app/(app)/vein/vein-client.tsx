@@ -13,6 +13,7 @@ import {
   X, Copy, Hash, Clock, FileType, Tag, Eye,
   BookOpen,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface FileItem {
   file_id: string;
@@ -663,6 +664,10 @@ export function VeinClient() {
   ];
 
   return (
+
+      <PageLayout title="Vein">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
@@ -1453,5 +1458,9 @@ export function VeinClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

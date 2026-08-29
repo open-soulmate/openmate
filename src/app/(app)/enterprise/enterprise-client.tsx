@@ -8,6 +8,7 @@ import {
   CheckCircle, XCircle, Clock, ChevronDown, ChevronRight, UserPlus,
   Key, Eye, AlertTriangle,
 } from "lucide-react"
+import { PageLayout } from '@/components/page-layout';
 
 interface User {
   id: string
@@ -299,6 +300,10 @@ export function EnterpriseClient() {
   const StatusIcon = health === "ok" || health === "healthy" ? CheckCircle : XCircle
 
   return (
+
+      <PageLayout title="Enterprise">
+
+        
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 lg:px-6 py-2 lg:py-4 border-b border-border">
@@ -559,5 +564,9 @@ export function EnterpriseClient() {
         )}
       </div>
     </div>
-  )
+  
+
+      </PageLayout>
+
+    )
 }

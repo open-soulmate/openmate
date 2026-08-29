@@ -11,6 +11,7 @@ import {
   Monitor, Layers, History,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { PageLayout } from '@/components/page-layout';
 
 interface SomaComponent {
   component_id: string;
@@ -251,6 +252,10 @@ export function SomaConnectorClient() {
   ];
 
   return (
+
+      <PageLayout title="Soma">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
@@ -770,5 +775,9 @@ export function SomaConnectorClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

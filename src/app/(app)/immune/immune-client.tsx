@@ -9,6 +9,7 @@ import {
   Plus, Trash2, RefreshCw, Settings, Globe, Lock,
   Zap, Crosshair,
 } from "lucide-react"
+import { PageLayout } from '@/components/page-layout';
 
 interface ModuleStats {
   [k: string]: unknown
@@ -234,10 +235,14 @@ export function ImmuneClient() {
 
   if (loading) {
     return (
+        <PageLayout title="Immune">
+          
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    )
+    
+        </PageLayout>
+      )
   }
 
   const modules = health?.modules || {}

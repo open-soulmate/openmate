@@ -10,6 +10,7 @@ import {
   Server, Cpu, HardDrive, Network, Layers, ChevronDown, ChevronRight,
   Plus, Trash2, Eye, Zap, ArrowRight, FileText,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface ProcessInfo {
   pid: number;
@@ -216,6 +217,10 @@ export function DiscoveryClient() {
   };
 
   return (
+
+      <PageLayout title="Discovery">
+
+        
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between px-3 lg:px-6 py-4 border-b border-border bg-card/50 backdrop-blur">
@@ -542,5 +547,9 @@ export function DiscoveryClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

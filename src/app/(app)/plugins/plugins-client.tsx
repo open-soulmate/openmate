@@ -8,6 +8,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl, getToken } from "@/lib/api-client";
+import { PageLayout } from '@/components/page-layout';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -328,6 +329,10 @@ export function PluginsClient() {
   const enabledCount = plugins.filter((p) => p.enabled).length;
 
   return (
+
+      <PageLayout title="Plugins">
+
+        
     <div className="flex-1 overflow-y-auto">
       <div className="mx-auto max-w-6xl px-3 lg:px-6 py-4 lg:py-8">
         {/* Header */}
@@ -457,5 +462,9 @@ export function PluginsClient() {
         />
       )}
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

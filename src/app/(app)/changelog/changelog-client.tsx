@@ -8,6 +8,7 @@ import {
   CheckCircle, AlertTriangle, Search, Filter, ChevronDown,
   Layers, Link2, Database,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface Component {
   component_id: string;
@@ -103,6 +104,10 @@ export function ChangelogClient() {
   ];
 
   return (
+
+      <PageLayout title="Changelog">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
@@ -340,5 +345,9 @@ export function ChangelogClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

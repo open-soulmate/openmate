@@ -8,6 +8,7 @@ import {
   Server, Clock, Cpu, HardDrive, MemoryStick,
   Gauge, AlertTriangle, Info, Wifi, WifiOff,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface OrganResult {
   key: string;
@@ -131,7 +132,11 @@ export function DiagnosticsClient() {
   useEffect(() => {
     runCheck();
     const interval = setInterval(runCheck, 60000);
-    return () => clearInterval(interval);
+    return (
+        <PageLayout title="Diagnostics">
+          
+        </PageLayout>
+      ) => clearInterval(interval);
   }, [runCheck]);
 
   // Sort organs by response time

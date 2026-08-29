@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import { getApiBaseUrl } from "@/lib/api-client";
+import { PageLayout } from '@/components/page-layout';
 
 interface MetricLine {
   name: string;
@@ -173,7 +174,11 @@ export function MetricsClient() {
   useEffect(() => {
     if (!autoRefresh) return;
     const timer = setInterval(fetchMetrics, 15000);
-    return () => clearInterval(timer);
+    return (
+        <PageLayout title="Metrics">
+          
+        </PageLayout>
+      ) => clearInterval(timer);
   }, [autoRefresh, fetchMetrics]);
 
   if (loading) {

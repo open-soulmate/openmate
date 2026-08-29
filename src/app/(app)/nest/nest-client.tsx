@@ -9,6 +9,7 @@ import {
   Settings, BarChart3, Loader2, AlertTriangle,
   CheckCircle, XCircle, Search, Activity, PanelRightOpen,
 } from "lucide-react";
+import { PageLayout } from '@/components/page-layout';
 
 interface Tenant {
   tenant_id: string;
@@ -199,6 +200,10 @@ export function NestClient() {
   ];
 
   return (
+
+      <PageLayout title="Nest">
+
+        
     <div className="flex h-full flex-col overflow-hidden">
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
         <div className="flex items-center gap-3">
@@ -612,5 +617,9 @@ export function NestClient() {
         )}
       </div>
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }

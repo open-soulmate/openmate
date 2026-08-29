@@ -3,6 +3,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Download, Trash2, RefreshCw, FolderOpen, ArrowDown, CheckCircle, XCircle, Loader2, Plus, Magnet, Video, Settings, Zap, Link, Pause, Play } from 'lucide-react';
 import { getApiBaseUrl } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
+import { PageLayout } from '@/components/page-layout';
 
 interface DownloadTask {
   id: string;
@@ -134,6 +135,10 @@ export function DownloadClient() {
   const urlType = detectUrlType(newUrl);
 
   return (
+
+      <PageLayout title="Download">
+
+        
     <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
       <div className="flex items-center justify-between mb-3 lg:mb-6">
         <div>
@@ -334,5 +339,9 @@ export function DownloadClient() {
         </div>
       )}
     </div>
-  );
+  
+
+      </PageLayout>
+
+    );
 }
