@@ -33,7 +33,6 @@ import {
 } from "@/components/ui/sidebar";
 import { ConversationTree, type AgentInfo } from "@/components/conversation-tree";
 import { SwipeablePanels, getPanelIndex } from "@/components/swipeable-panels";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { useIsMobile, useMediaQuery } from "@/hooks/use-mobile";
 
 // ── Types ────────────────────────────────────────────────────────
