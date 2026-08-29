@@ -434,7 +434,7 @@ export function SettingsClient() {
     return acc;
   }, {});
 
-  // Sidebar content extracted for reuse in both PC and mobile Sheet
+  // Sidebar content extracted for reuse in both PC sidebar and mobile sliding panel
   const SidebarNav = () => (
     <>
       <div className="mb-4">
@@ -486,14 +486,12 @@ export function SettingsClient() {
         <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowSidebar(false)} aria-hidden="true" />
       )}
       {isMobile ? (
-        showSidebar && (
-          <div
-            className="absolute inset-y-0 left-0 z-10 h-full w-64 min-w-0 border-r border-border transition-[left] duration-200 ease-linear flex flex-col overflow-hidden bg-card p-4"
-            style={{ left: 0 }}
-          >
-            <SidebarNav />
-          </div>
-        )
+        <div
+          className="absolute inset-y-0 left-0 z-10 h-full w-64 min-w-0 border-r border-border transition-[left] duration-200 ease-linear flex flex-col overflow-hidden bg-card p-4"
+          style={{ left: showSidebar ? 0 : -256 }}
+        >
+          <SidebarNav />
+        </div>
       ) : (
         /* PC: fixed sidebar */
         <div className="w-56 shrink-0 border-r border-border bg-card/50 p-3 lg:p-4 flex flex-col">
@@ -502,7 +500,7 @@ export function SettingsClient() {
       )}
 
       {/* Main Content */}
-      <div className="flex-1 overflow-y-auto min-h-0">
+      <div className="flex-1 overflow-y-auto min-h-0" onClick={() => { if (isMobile && showSidebar) setShowSidebar(false); }}>
         <div className="max-w-2xl mx-auto px-4 md:px-8 py-3 lg:py-6 md:py-8 space-y-3 lg:space-y-6">
           {/* Breadcrumb - hidden on mobile (shown in top bar) */}
           <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground">
