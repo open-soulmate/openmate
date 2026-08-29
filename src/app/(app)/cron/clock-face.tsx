@@ -223,6 +223,7 @@ export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) 
           onEvents={{ click: handleClick }}
           notMerge={false}
           lazyUpdate={true}
+          autoResize={true}
         />
       </div>
     </div>

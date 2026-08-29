@@ -366,7 +366,7 @@ export function CronClient() {
           <YearView jobs={jobs} />
         </div>
       ) : (
-        <div className="flex-1 min-h-0 flex items-center justify-center">
+        <div className="flex-1 min-h-0 w-full">
           <ClockFace jobs={jobs} selectedJobId={selectedJobId} onSelectJob={setSelectedJobId} />
         </div>
       )}
