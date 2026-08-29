@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect, useCallback, type ReactNode, type MutableRefObject } from 'react';
+import { useState, useRef, useEffect, useCallback, Fragment, type ReactNode, type MutableRefObject } from 'react';
 import { X, Plus } from 'lucide-react';
 
 // ── SVG Constants ─────────────────────────────────────────────────
@@ -146,9 +146,8 @@ export function SkirtTabs({
           const nextTab = tabs[index + 1];
           const showDivider = !isActive && nextTab && nextTab.id !== activeTabId;
           return (
-            <>
+            <Fragment key={tab.id}>
             <button
-              key={tab.id}
               ref={(el) => {
                 if (el) measureTab(tab.id, el);
                 if (isActive) (activeTabRef as MutableRefObject<HTMLButtonElement | null>).current = el;
@@ -191,7 +190,7 @@ export function SkirtTabs({
             {showDivider && (
               <div className="shrink-0 self-center" style={{ width: 1, height: 20, background: dividerColor, margin: '0 2px' }} />
             )}
-            </>
+            </Fragment>
           );
         })}
         {onAddTab && (
