@@ -338,11 +338,10 @@ export function ActivityFeedClient() {
           <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowSummary(false)} aria-hidden="true" />
         )}
         {isMobile ? (
-          showSummary && (
-            <div
-              className="absolute inset-y-0 right-0 z-10 h-full w-72 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-y-auto bg-card"
-              style={{ right: 0 }}
-            >
+          <div
+            className="absolute inset-y-0 right-0 z-10 h-full w-72 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-y-auto bg-card"
+            style={{ right: showSummary ? 0 : -288 }}
+          >
               <div className="p-4 space-y-4">
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t('activity.summary')}</h3>
@@ -402,7 +401,6 @@ export function ActivityFeedClient() {
                 )}
               </div>
             </div>
-          )
         ) : (
         <div className="w-64 border-l border-border overflow-y-auto p-3 lg:p-4 space-y-4">
           <div>
