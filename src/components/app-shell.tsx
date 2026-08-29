@@ -14,9 +14,9 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
 import {
-  Search, Plus, PanelRightOpen,
+  Search, Plus,
 } from "lucide-react";
-import { useState, useRef, useCallback, useEffect, useMemo } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getUserName, getApiBaseUrl, getToken } from "@/lib/api-client";
 import { type ThemeId, persistTheme } from "@/lib/theme";
 import {
@@ -328,6 +328,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setMidScreenExpanded(false);
   }, [isMidScreen]);
+
+  // Close mobile sidebar when switching to desktop (prevents stale Sheet open state)
+  useEffect(() => {
+    if (!isMobile) setMobileSidebarOpen(false);
+  }, [isMobile]);
 
   // Track right panel width — desktop: 50vw, mobile: 75vw (capped at 384px)
   useEffect(() => {
