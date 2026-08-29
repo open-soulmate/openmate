@@ -42,7 +42,7 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
   ];
 
   const navItems = [
-    { id: "notifications", icon: Bell, label: t("nav.notifications", "通知"), badge: eventCount, href: "/notifications" },
+    { id: "notifications", icon: Bell, label: t("nav.notifications", "通知"), href: "/notifications", ...(eventCount > 0 ? { badge: eventCount } : {}) },
     { id: "download", icon: Download, label: t("nav.download", "下载"), href: "/download" },
     { id: "plugins", icon: Plug, label: t("nav.plugins", "插件"), href: "/plugins" },
     { id: "system", icon: Shield, label: t("nav.system", "系统"), href: "/system" },

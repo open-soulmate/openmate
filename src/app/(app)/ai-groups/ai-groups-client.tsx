@@ -14,6 +14,7 @@ import {
   PanelLeft, Settings, X,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useAIGroupsStore, type AgentRole, type GroupMessage, type AIGroup, type DiscussionMessage, type TaskReview } from '@/stores/ai-groups-store';
 
 const ROLE_ICONS: Record<string, any> = { advisor: Shield, executor: Zap, verifier: Bot, human: User };
@@ -807,27 +808,23 @@ export default function AIGroupsPage() {
         </div>
       )}
 
-      {/* Group Management — sidebar-style sliding on mobile, modal on desktop */}
-      {isMobile && showGroupPanel && selectedGroup && (
-        <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowGroupPanel(false)} aria-hidden="true" />
-      )}
+      {/* Group Management — Sheet on mobile, modal on desktop */}
       {isMobile ? (
-        showGroupPanel && selectedGroup && (
-          <div
-            className="absolute inset-y-0 right-0 z-10 h-full w-80 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
-            style={{ right: 0 }}
-          >
-            <div className="h-12 shrink-0 flex items-center px-3 border-b border-border">
-              <span className="text-sm font-semibold flex items-center gap-2">
-                <Settings className="w-4 h-4" />
-                {t("aiGroups.groupManagement", "群组管理")}
-              </span>
-            </div>
+        <Sheet open={showGroupPanel && !!selectedGroup} onOpenChange={setShowGroupPanel}>
+          <SheetContent side="right" size="sm" showCloseButton={false}>
+            <SheetHeader className="border-b border-border pb-3">
+              <div className="flex items-center">
+                <SheetTitle className="flex items-center gap-2 text-sm">
+                  <Settings className="w-4 h-4" />
+                  {t("aiGroups.groupManagement", "群组管理")}
+                </SheetTitle>
+              </div>
+            </SheetHeader>
             <div className="flex-1 overflow-y-auto p-4">
               <AIGroupsWorkspace />
             </div>
-          </div>
-        )
+          </SheetContent>
+        </Sheet>
       ) : (
         showGroupPanel && selectedGroup && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
