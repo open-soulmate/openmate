@@ -488,8 +488,17 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
     : (activeSessionId || '__default__');
 
   const wsBySession = useAppStore((s) => s.workspaceTabsBySession);
-  const wsState = wsBySession[sessionId] ?? { tabs: [{ id: `tab-${sessionId}-0`, type: 'new-tab' as const, title: 'New Tab', history: [], historyIndex: -1 }], activeTabId: `tab-${sessionId}-0` };
   const storeSetWorkspaceTabs = useAppStore((s) => s.setWorkspaceTabs);
+
+  // Persist default workspace for new sessionId
+  useEffect(() => {
+    if (!wsBySession[sessionId]) {
+      const defaultTab = { id: `tab-${sessionId}-0`, type: 'new-tab' as const, title: 'New Tab', history: [] as string[], historyIndex: -1 };
+      storeSetWorkspaceTabs(sessionId, { tabs: [defaultTab], activeTabId: defaultTab.id });
+    }
+  }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const wsState = wsBySession[sessionId] ?? { tabs: [{ id: `tab-${sessionId}-0`, type: 'new-tab' as const, title: 'New Tab', history: [], historyIndex: -1 }], activeTabId: `tab-${sessionId}-0` };
   const storeAddWorkspaceTab = useAppStore((s) => s.addWorkspaceTab);
   const storeRemoveWorkspaceTab = useAppStore((s) => s.removeWorkspaceTab);
   const storeUpdateWorkspaceTab = useAppStore((s) => s.updateWorkspaceTab);
