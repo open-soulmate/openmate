@@ -413,7 +413,7 @@ export function GraphClient() {
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
-      <PageLayout title="Graph">
+      <PageLayout title="知识图谱">
         
     <div className="flex h-full overflow-hidden relative">
       {/* Canvas area */}

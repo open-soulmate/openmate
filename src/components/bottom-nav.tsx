@@ -31,7 +31,6 @@ const navItems: BottomNavItem[] = [
   { href: "/knowledge", label: "nav.knowledge", icon: BookOpen },
   { href: "/learn", label: "nav.learn", icon: GraduationCap },
   { href: "/graph", label: "nav.graph", icon: Network },
-  { href: "/graph-builder", label: "nav.graphBuilder", icon: Share2 },
   { href: "/kb-sharing", label: "nav.kbSharing", icon: Share2 },
   { href: "/knowledge-requests", label: "nav.knowledgeRequests", icon: FileText },
   { href: "/cron", label: "nav.cron", icon: Clock },
