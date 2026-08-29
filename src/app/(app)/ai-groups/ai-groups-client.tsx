@@ -8,7 +8,7 @@ import { AIGroupsWorkspace } from '@/components/ai-groups-workspace';
 import {
   Users, Send, Bot, Shield, Zap, User, Loader2, Search,
   MessageSquare, AtSign,
-  Star, Trophy, Award,
+  Star,
   MessageCircle, Hand, FileText, Lightbulb,
   Target, ArrowUp, ArrowRight, ArrowDown,
   PanelLeft, Settings, X,
@@ -667,79 +667,7 @@ export default function AIGroupsPage() {
           </div>
         )}
 
-        {/* Scoring UI */}
-        {scoringTaskId && activeTaskReview && (
-          <div className="mx-auto max-w-lg bg-muted/50 border border-border rounded-xl p-3 lg:p-4 space-y-3">
-            <div className="flex items-center gap-2">
-              <Award className="w-4 h-4 text-amber-400" />
-              <span className="text-xs lg:text-sm font-medium">任务评审</span>
-              {activeTaskReview.avg_score > 0 && (
-                <span className="ml-auto text-xs lg:text-sm font-bold text-amber-400">
-                  平均分: {activeTaskReview.avg_score.toFixed(1)}/10
-                </span>
-              )}
-            </div>
-
-            {activeTaskReview.scores.length > 0 && (
-              <div className="space-y-1.5">
-                {activeTaskReview.scores.map((s, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs">
-                    <span className="text-muted-foreground w-20 truncate">{s.scorer_name}</span>
-                    <div className="flex-1 h-1.5 bg-background rounded-full overflow-hidden">
-                      <div className="h-full bg-amber-400 rounded-full" style={{ width: `${s.score * 10}%` }} />
-                    </div>
-                    <span className="font-medium w-8 text-right">{s.score}</span>
-                    <span className="text-muted-foreground flex-1 truncate">{s.reason}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {activeTaskReview.status !== 'scored' && (
-              <div className="space-y-2 pt-2 border-t border-border">
-                <div className="flex items-center gap-2">
-                  <label className="text-[11px] text-muted-foreground w-16">评分者</label>
-                  <select value={scorerAgentId} onChange={e => setScorerAgentId(e.target.value)}
-                    className="flex-1 px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none">
-                    <option value="">选择Agent...</option>
-                    {(selectedGroup?.agents || []).map(a => (
-                      <option key={a.agent_id} value={a.agent_id}>{a.name} ({a.role})</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-[11px] text-muted-foreground w-16">分数</label>
-                  <input type="range" min="1" max="10" value={scoreValue}
-                    onChange={e => setScoreValue(parseInt(e.target.value))}
-                    className="flex-1" />
-                  <span className="text-xs lg:text-sm font-bold w-6 text-center">{scoreValue}</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-[11px] text-muted-foreground w-16">能力维度</label>
-                  <input value={scoreCapability} onChange={e => setScoreCapability(e.target.value)}
-                    placeholder="如：代码、设计、分析..."
-                    className="flex-1 px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <label className="text-[11px] text-muted-foreground w-16">理由</label>
-                  <input value={scoreReason} onChange={e => setScoreReason(e.target.value)}
-                    placeholder="评分理由..."
-                    className="flex-1 px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none" />
-                </div>
-                <button onClick={handleSubmitScore}
-                  disabled={!scorerAgentId || !scoreReason.trim() || !scoreCapability.trim()}
-                  className="w-full px-3 py-1.5 bg-amber-500 text-white rounded text-xs hover:bg-amber-600 disabled:opacity-50 transition-colors">
-                  提交评分
-                </button>
-              </div>
-            )}
-            {activeTaskReview.status === 'scored' && (
-              <div className="text-center text-xs text-emerald-400 pt-1">
-                ✅ 所有评分已完成
-              </div>
-            )}
-          </div>
-        )}
+        {/* Scoring UI — rendered as modal below (avoids duplicate rendering) */}
       </div>
 
       {/* Input area */}
