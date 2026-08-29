@@ -329,7 +329,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setMidScreenExpanded(false);
   }, [isMidScreen]);
 
-  // Close mobile sidebar when switching to desktop (prevents stale Sheet open state)
+  // Close mobile sidebar when switching to desktop (prevents stale state)
   useEffect(() => {
     if (!isMobile) setMobileSidebarOpen(false);
   }, [isMobile]);

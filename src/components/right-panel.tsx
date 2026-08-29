@@ -662,7 +662,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
       className="flex flex-col h-full min-w-0 bg-background relative"
       style={{ width: '100%' }}
     >
-      {/* Resize handle — desktop only (mobile uses Sheet) */}
+      {/* Resize handle — desktop only */}
       {!isMobile && (
         <div
           ref={resizeRef}

@@ -17,7 +17,6 @@ import {
 import ReactMarkdown from "react-markdown";
 import { getApiBaseUrl } from "@/lib/api-client";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 interface QuizQuestion {
   question: string;
@@ -187,10 +186,16 @@ export function CourseClient({ courseId }: { courseId: string }) {
       </div>
 
       <div className="flex flex-1 overflow-hidden">
-        {/* Chapter sidebar — Sheet on mobile, inline on desktop */}
+        {/* Chapter sidebar — sidebar-style sliding on mobile, inline on desktop */}
+        {isMobile && showSidebar && (
+          <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowSidebar(false)} aria-hidden="true" />
+        )}
         {isMobile ? (
-          <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
-            <SheetContent side="left" showCloseButton={false} className="w-72 p-0 flex flex-col">
+          showSidebar && (
+            <div
+              className="absolute inset-y-0 left-0 z-10 h-full w-72 min-w-0 border-r border-border transition-[left] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+              style={{ left: 0 }}
+            >
               <div className="p-4 border-b border-border flex items-center justify-between">
                 <h3 className="text-xs lg:text-sm font-medium">{t("learn.chapters") || "Chapters"}</h3>
                 <button onClick={() => setShowSidebar(false)} className="p-1 rounded hover:bg-muted">
@@ -234,8 +239,8 @@ export function CourseClient({ courseId }: { courseId: string }) {
                   ))}
                 </nav>
               </div>
-            </SheetContent>
-          </Sheet>
+            </div>
+          )
         ) : (
           <aside className="w-64 shrink-0 overflow-y-auto border-r border-border p-3 lg:p-4">
             {/* Progress */}

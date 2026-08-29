@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect, useCallback, useRef } from "react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
@@ -334,10 +333,16 @@ export function ActivityFeedClient() {
           )}
         </div>
 
-        {/* Summary sidebar — Sheet on mobile, inline on desktop */}
+        {/* Summary sidebar — sidebar-style sliding on mobile, inline on desktop */}
+        {isMobile && showSummary && (
+          <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowSummary(false)} aria-hidden="true" />
+        )}
         {isMobile ? (
-          <Sheet open={showSummary} onOpenChange={setShowSummary}>
-            <SheetContent side="right" className="w-72 p-0 flex flex-col overflow-y-auto">
+          showSummary && (
+            <div
+              className="absolute inset-y-0 right-0 z-10 h-full w-72 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-y-auto bg-card"
+              style={{ right: 0 }}
+            >
               <div className="p-4 space-y-4">
                 <div>
                   <h3 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">{t('activity.summary')}</h3>
@@ -396,8 +401,8 @@ export function ActivityFeedClient() {
                   </div>
                 )}
               </div>
-            </SheetContent>
-          </Sheet>
+            </div>
+          )
         ) : (
         <div className="w-64 border-l border-border overflow-y-auto p-3 lg:p-4 space-y-4">
           <div>
