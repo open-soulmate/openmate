@@ -3,7 +3,6 @@
 import { TerminalPanel } from "@/components/terminal-panel";
 import { BottomNav } from "@/components/bottom-nav";
 import { TopBar } from "@/components/top-bar";
-import { NotificationCenter } from "@/components/notification-center";
 import { RightPanel } from "@/components/right-panel";
 import { AIGroupsSidebar } from "@/components/ai-groups-sidebar";
 import { useAIGroupsStore } from "@/stores/ai-groups-store";
