@@ -214,18 +214,16 @@ export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) 
   };
 
   return (
-    <div className="w-full h-full flex items-center justify-center p-4">
-      <div className="w-full h-full max-w-[800px] max-h-[800px] aspect-square">
-        <ReactECharts
-          option={option}
-          style={{ width: '100%', height: '100%' }}
-          opts={{ renderer: 'canvas' }}
-          onEvents={{ click: handleClick }}
-          notMerge={false}
-          lazyUpdate={true}
-          autoResize={true}
-        />
-      </div>
+    <div className="w-full h-full flex items-center justify-center">
+      <ReactECharts
+        option={option}
+        style={{ width: 'min(100%, 100vh)', height: 'min(100%, 100vh)', maxWidth: 800, maxHeight: 800 }}
+        opts={{ renderer: 'canvas' }}
+        onEvents={{ click: handleClick }}
+        notMerge={false}
+        lazyUpdate={true}
+        autoResize={true}
+      />
     </div>
   );
 }
