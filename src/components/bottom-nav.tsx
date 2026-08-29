@@ -296,19 +296,7 @@ export function BottomNav({ totalUnread = 0, onOpenConversations }: BottomNavPro
           })}
         </div>
 
-        {/* Fixed right: Settings button */}
-        <Link
-          href="/settings"
-          className={cn(
-            "shrink-0 flex flex-col items-center justify-center gap-0.5 w-12 h-full text-[9px] font-medium transition-colors",
-            pathname.startsWith('/settings')
-              ? "text-primary bg-primary/10"
-              : "text-muted-foreground hover:text-foreground hover:bg-accent"
-          )}
-        >
-          <Settings size={16} strokeWidth={pathname.startsWith('/settings') ? 2.2 : 1.5} />
-          <span className="leading-tight">{t("nav.settings")}</span>
-        </Link>
+
       </div>
 
       <style jsx global>{`
