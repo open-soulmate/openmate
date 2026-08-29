@@ -308,6 +308,44 @@ export function SessionsClient() {
     }
   }
 
+  // Shared message list renderer (used by both mobile Sheet and desktop inline)
+  const renderMessageList = (fontSize: string = "text-sm") => {
+    if (detailLoading) {
+      return <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
+    }
+    if (!selectedSession || selectedSession.messages.length === 0) {
+      return <div className="text-center py-12 text-muted-foreground text-xs lg:text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
+    }
+    return selectedSession.messages.map((msg, i) => (
+      <div key={msg.id || i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
+        {msg.role !== "user" && (
+          <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+            <span className={`text-xs font-medium ${roleColor(msg.role)}`}>
+              {msg.role === "assistant" ? "AI" : msg.role[0].toUpperCase()}
+            </span>
+          </div>
+        )}
+        <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 ${fontSize} ${
+          msg.role === "user"
+            ? "bg-blue-600/20 text-blue-100"
+            : msg.role === "system"
+            ? "bg-yellow-900/20 text-yellow-200 border border-yellow-800/30"
+            : "bg-muted/50 text-foreground"
+        }`}>
+          <div className="whitespace-pre-wrap break-words">{msg.content}</div>
+          {msg.timestamp && (
+            <div className="text-[10px] text-muted-foreground/70 mt-1">{new Date(msg.timestamp).toLocaleString()}</div>
+          )}
+        </div>
+        {msg.role === "user" && (
+          <div className="w-7 h-7 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
+            <span className="text-xs font-medium text-blue-400">U</span>
+          </div>
+        )}
+      </div>
+    ))
+  }
+
   // ── Export helpers ──────────────────────────────────────────
   const exportSession = useCallback((format: "json" | "markdown") => {
     if (!selectedSession) return
@@ -1013,40 +1051,7 @@ export function SessionsClient() {
                   </div>
                 </SheetHeader>
                 <div className="flex-1 overflow-y-auto px-2 py-3 space-y-3">
-                  {detailLoading ? (
-                    <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-                  ) : selectedSession.messages.length === 0 ? (
-                    <div className="text-center py-12 text-muted-foreground text-xs lg:text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
-                  ) : (
-                    selectedSession.messages.map((msg, i) => (
-                      <div key={msg.id || i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
-                        {msg.role !== "user" && (
-                          <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                            <span className={`text-xs font-medium ${roleColor(msg.role)}`}>
-                              {msg.role === "assistant" ? "AI" : msg.role[0].toUpperCase()}
-                            </span>
-                          </div>
-                        )}
-                        <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 text-xs lg:text-sm ${
-                          msg.role === "user"
-                            ? "bg-blue-600/20 text-blue-100"
-                            : msg.role === "system"
-                            ? "bg-yellow-900/20 text-yellow-200 border border-yellow-800/30"
-                            : "bg-muted/50 text-foreground"
-                        }`}>
-                          <div className="whitespace-pre-wrap break-words">{msg.content}</div>
-                          {msg.timestamp && (
-                            <div className="text-[10px] text-muted-foreground/70 mt-1">{new Date(msg.timestamp).toLocaleString()}</div>
-                          )}
-                        </div>
-                        {msg.role === "user" && (
-                          <div className="w-7 h-7 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs font-medium text-blue-400">U</span>
-                          </div>
-                        )}
-                      </div>
-                    ))
-                  )}
+                  {renderMessageList("text-xs")}
                 </div>
               </SheetContent>
             </Sheet>
@@ -1086,40 +1091,7 @@ export function SessionsClient() {
                 </div>
               </div>
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
-                {detailLoading ? (
-                  <div className="flex items-center justify-center h-40"><Loader2 className="w-5 h-5 animate-spin text-muted-foreground" /></div>
-                ) : selectedSession.messages.length === 0 ? (
-                  <div className="text-center py-12 text-muted-foreground text-sm">{t("sessions.noMessages", "No messages in this session")}</div>
-                ) : (
-                  selectedSession.messages.map((msg, i) => (
-                    <div key={msg.id || i} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
-                      {msg.role !== "user" && (
-                        <div className="w-7 h-7 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                          <span className={`text-xs font-medium ${roleColor(msg.role)}`}>
-                            {msg.role === "assistant" ? "AI" : msg.role[0].toUpperCase()}
-                          </span>
-                        </div>
-                      )}
-                      <div className={`max-w-[75%] rounded-xl px-3.5 py-2.5 text-sm ${
-                        msg.role === "user"
-                          ? "bg-blue-600/20 text-blue-100"
-                          : msg.role === "system"
-                          ? "bg-yellow-900/20 text-yellow-200 border border-yellow-800/30"
-                          : "bg-muted/50 text-foreground"
-                      }`}>
-                        <div className="whitespace-pre-wrap break-words">{msg.content}</div>
-                        {msg.timestamp && (
-                          <div className="text-[10px] text-muted-foreground/70 mt-1">{new Date(msg.timestamp).toLocaleString()}</div>
-                        )}
-                      </div>
-                      {msg.role === "user" && (
-                        <div className="w-7 h-7 rounded-full bg-blue-600/20 flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs font-medium text-blue-400">U</span>
-                        </div>
-                      )}
-                    </div>
-                  ))
-                )}
+                {renderMessageList("text-sm")}
               </div>
             </div>
           ) : (
