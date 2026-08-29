@@ -12,7 +12,7 @@ import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
 import {
-  Search, Plus, PanelRightOpen, Menu,
+  Search, Plus, PanelRightOpen,
 } from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getUserName, getApiBaseUrl, getToken } from "@/lib/api-client";
@@ -29,9 +29,7 @@ import {
   SidebarRail,
   SidebarInset,
 } from "@/components/ui/sidebar";
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ConversationTree, type AgentInfo } from "@/components/conversation-tree";
-import { MobileSidebar } from "@/components/mobile-sidebar";
 import { SwipeablePanels, getPanelIndex } from "@/components/swipeable-panels";
 import { useIsMobile, useMediaQuery } from "@/hooks/use-mobile";
 
@@ -105,12 +103,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // User can override by clicking the toggle button
   const isMidScreen = useMediaQuery("(min-width: 1024px) and (max-width: 1279px)");
   const [midScreenExpanded, setMidScreenExpanded] = useState(false);
-  const effectiveCollapsed = collapsed || (isMidScreen && !midScreenExpanded);
-  const mobileConvOpen = useAppStore((s) => s.mobileConvOpen);
-  const setMobileConvOpen = useAppStore((s) => s.setMobileConvOpen);
+  const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+  const effectiveCollapsed = isMobile ? !mobileSidebarOpen : (collapsed || (isMidScreen && !midScreenExpanded));
   const currentPanel = useAppStore((s) => s.currentPanel);
   const setCurrentPanel = useAppStore((s) => s.setCurrentPanel);
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const { t } = useTranslation();
   const [eventCount, setEventCount] = useState(0);
   const [rightPanelWidth, setRightPanelWidth] = useState(0);
@@ -338,7 +334,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('resize', update);
   }, []);
 
-  useEffect(() => { setMenuOpen(false); setRightPanelOpen(false); setMobileConvOpen(false); }, [pathname]);
+  useEffect(() => { setMenuOpen(false); setRightPanelOpen(false); setMobileSidebarOpen(false); }, [pathname]);
 
   // Sync swipeable panel index with current route
   useEffect(() => {
@@ -366,70 +362,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-svh overflow-hidden">
       {/* Top utility bar — full screen width */}
       <div className="flex items-center">
-        <button
-          onClick={() => setMobileNavOpen(true)}
-          className="lg:hidden shrink-0 p-2 hover:bg-muted/50 transition-colors"
-          aria-label="Menu"
-        >
-          <Menu className="w-5 h-5 text-muted-foreground" />
-        </button>
         <div className="flex-1 min-w-0">
           <TopBar
             eventCount={eventCount}
-            pageTitle={<MobilePageTitle />}
           />
         </div>
       </div>
-
-      {/* Mobile: conversation list Sheet (left drawer) */}
-      <Sheet open={mobileConvOpen} onOpenChange={(open) => { setMobileConvOpen(open); if (open) setRightPanelOpen(false); }}>
-        <SheetContent side="left" size="md" className="p-0 flex flex-col">
-          <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border justify-between">
-            <SheetTitle className="text-sm font-semibold">{t("nav.chat", "Chat")}</SheetTitle>
-            <button
-              onClick={() => { setActiveSession(null, null); setMobileConvOpen(false); router.push('/chat'); }}
-              className="p-1.5 rounded-md hover:bg-muted/50 transition-colors"
-              title={t("chat.newChat", "新对话")}
-            >
-              <Plus className="w-4 h-4 text-muted-foreground" />
-            </button>
-          </SheetHeader>
-          <div className="px-2 pb-2">
-            <div className="relative">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-              <input
-                type="text"
-                value={sessionSearch}
-                onChange={(e) => setSessionSearch(e.target.value)}
-                placeholder={t("chat.searchPlaceholder", "搜索会话...")}
-                className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/50 rounded-md border border-border/50 focus:outline-none focus:border-primary/50 transition-colors"
-              />
-            </div>
-          </div>
-          <ConversationTree
-            agents={displayAgents}
-            activeSessionId={activeSessionIdFromStore}
-            getUnread={getUnread}
-            onToggleAgent={toggleAgent}
-            onToggleSourceGroup={toggleSourceGroup}
-            onSelectSession={(session, agent) => {
-              clearSessionUnread(session.id);
-              setActiveSession(session.id, agent.id);
-              setMobileConvOpen(false);
-              router.push('/chat');
-            }}
-          />
-        </SheetContent>
-      </Sheet>
-
-      {/* Mobile: navigation Sheet (left drawer) */}
-      <MobileSidebar open={mobileNavOpen} onOpenChange={setMobileNavOpen} />
 
       {/* Middle: sidebar + content + right panel */}
       <div className="flex flex-1 min-h-0 overflow-hidden">
         <SidebarProvider open={!effectiveCollapsed} onOpenChange={(open) => {
           if (open === effectiveCollapsed) {
-            if (isMidScreen) {
+            if (isMobile) {
+              setMobileSidebarOpen(prev => !prev);
+            } else if (isMidScreen) {
               setMidScreenExpanded(prev => !prev);
             } else {
               toggle();
@@ -437,7 +383,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           }
         }} className="flex-1 min-h-0 overflow-hidden h-full">
           {/* Desktop sidebar - conversation list */}
-          <Sidebar collapsible="offcanvas" className="hidden lg:flex">
+          <Sidebar collapsible="offcanvas">
         <SidebarHeader>
           <div className="flex h-12 shrink-0 items-center px-2">
             <span className="text-sm font-bold text-primary">OM</span>
@@ -479,6 +425,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             onSelectSession={(session, agent) => {
               clearSessionUnread(session.id);
               setActiveSession(session.id, agent.id);
+              if (isMobile) setMobileSidebarOpen(false);
               router.push('/chat');
             }}
             className="group-data-[collapsible=icon]:hidden"
@@ -504,8 +451,23 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
         </SidebarProvider>
 
-      {/* Right Panel — workspace tabs (mobile: Sheet, desktop: inline with transition) */}
-      {!isMobile && (
+      {/* Right Panel — workspace tabs (desktop: inline, mobile: overlay) */}
+      {isMobile ? (
+        rightPanelOpen && (
+          <>
+            <div
+              className="fixed inset-0 z-20 bg-black/40 animate-in fade-in-0"
+              onClick={() => setRightPanelOpen(false)}
+              aria-hidden="true"
+            />
+            <div
+              className="fixed top-12 right-0 bottom-12 z-25 w-80 max-w-[85vw] border-l border-border bg-card flex flex-col shadow-xl animate-in slide-in-from-right"
+            >
+              <RightPanel open={true} onToggle={() => toggleRightPanel()} />
+            </div>
+          </>
+        )
+      ) : (
         <div
           className="flex flex-col h-full overflow-hidden border-l border-border shrink-0 transition-all duration-250 ease-in-out"
           style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
@@ -513,58 +475,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
         </div>
       )}
-      {isMobile && (
-        <Sheet open={rightPanelOpen} onOpenChange={(open) => { setRightPanelOpen(open); if (open) setMobileConvOpen(false); }}>
-          <SheetContent side="right" size="md" className="p-0 flex flex-col">
-            <RightPanel open={true} onToggle={() => toggleRightPanel()} />
-          </SheetContent>
-        </Sheet>
-      )}
       </div>
 
       {/* Bottom navigation bar — full screen width */}
-      <BottomNav totalUnread={totalUnread} onOpenConversations={() => { setMobileConvOpen(true); setRightPanelOpen(false); }} />
+      <BottomNav totalUnread={totalUnread} onOpenConversations={() => { if (isMobile) { setMobileSidebarOpen(true); } else { toggle(); } setRightPanelOpen(false); }} />
     </div>
   );
 }
 
-function MobilePageTitle() {
-  const pathname = usePathname();
-  const { t } = useTranslation();
-
-  const titles: Record<string, string> = {
-    "/chat": t("nav.chat"),
-    "/knowledge": t("nav.knowledge"),
-    "/graph": t("nav.graph"),
-    "/search": t("nav.search"),
-    "/skills": t("nav.skills"),
-    "/agents": t("nav.agents"),
-    "/workflow": t("nav.workflow"),
-    "/workflow-builder": t("nav.workflowBuilder"),
-    "/settings": t("nav.settings"),
-    "/learn": t("nav.learn"),
-    "/mcp": t("nav.mcp"),
-    "/groups": t("nav.groups"),
-    "/dashboard": t("nav.dashboard"),
-    "/team": t("nav.team") || "Team",
-    "/workspace": t("nav.workspace") || "Workspace",
-    "/graph-builder": t("nav.graphBuilder") || "Graph Builder",
-    "/ai-groups": t("nav.aiGroups") || "AI Groups",
-    "/cron": t("nav.cron"),
-    "/download": t("nav.download"),
-    "/notifications": t("nav.notifications") || "Notifications",
-    "/sessions": t("nav.sessions") || "Sessions",
-    "/diagnostics": t("nav.diagnostics") || "Diagnostics",
-    "/system": t("nav.system") || "System",
-    "/pipeline": t("nav.pipeline") || "Pipeline",
-    "/will": t("nav.will") || "Will",
-    "/capture": t("nav.capture") || "Capture",
-    "/soma": t("nav.soma") || "Soma",
-    "/cortex": t("nav.cortex") || "Cortex",
-  };
-
-  for (const [path, title] of Object.entries(titles)) {
-    if (pathname.startsWith(path)) return <span className="text-sm font-medium truncate">{title}</span>;
-  }
-  return <span className="text-sm font-medium truncate">OpenMate</span>;
-}
