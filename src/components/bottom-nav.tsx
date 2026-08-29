@@ -26,7 +26,6 @@ interface BottomNavItem {
 const navItems: BottomNavItem[] = [
   { href: "/chat", label: "nav.chat", icon: MessageSquare },
   { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
-  { href: "/notifications", label: "nav.notifications", icon: Bell },
   { href: "/ai-groups", label: "nav.aiGroups", icon: Users },
   { href: "/agents", label: "nav.agents", icon: Server },
   { href: "/knowledge", label: "nav.knowledge", icon: BookOpen },
@@ -71,16 +70,12 @@ const navItems: BottomNavItem[] = [
   { href: "/voice", label: "nav.voice", icon: Mic },
   { href: "/vision", label: "nav.vision", icon: ImageIcon },
   { href: "/mind", label: "nav.mind", icon: Smile },
-  { href: "/system", label: "nav.system", icon: Server },
   { href: "/soul", label: "nav.soul", icon: Brain },
   { href: "/soma-admin", label: "nav.somaAdmin", icon: Bot },
   { href: "/admin", label: "nav.admin", icon: Shield },
   { href: "/permission", label: "nav.permission", icon: Shield },
   { href: "/enterprise", label: "nav.enterprise", icon: Shield },
   { href: "/sessions", label: "nav.sessions", icon: History },
-  { href: "/diagnostics", label: "nav.diagnostics", icon: Stethoscope },
-  { href: "/metrics", label: "nav.metrics", icon: BarChart3 },
-  { href: "/benchmark", label: "nav.benchmark", icon: Gauge },
   { href: "/intelligence", label: "nav.intelligence", icon: Brain },
   { href: "/ai-engine", label: "nav.aiEngine", icon: Cpu },
   { href: "/healer", label: "nav.healer", icon: Pill },
@@ -89,7 +84,6 @@ const navItems: BottomNavItem[] = [
   { href: "/trajectory", label: "nav.trajectory", icon: Activity },
   { href: "/timeline", label: "nav.timeline", icon: History },
   { href: "/changelog", label: "nav.changelog", icon: ScrollText },
-  { href: "/plugins", label: "nav.plugins", icon: Puzzle },
   { href: "/marketplace", label: "nav.marketplace", icon: Store },
 ];
 

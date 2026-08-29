@@ -34,32 +34,61 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
     return () => el.removeEventListener("wheel", handler);
   }, []);
 
-  const utilityItems = [
-    { id: "notifications", icon: Bell, label: t("nav.notifications", "通知"), badge: eventCount, href: "/notifications" },
+  const statusItems = [
     { id: "activity", icon: Activity, label: t("nav.activity", "动态"), href: "/activity" },
     { id: "diagnostics", icon: Stethoscope, label: t("nav.diagnostics", "诊断"), href: "/diagnostics" },
     { id: "metrics", icon: BarChart3, label: t("nav.metrics", "指标"), href: "/metrics" },
     { id: "benchmark", icon: Gauge, label: t("nav.benchmark", "基准"), href: "/benchmark" },
+  ];
+
+  const settingItems = [
+    { id: "notifications", icon: Bell, label: t("nav.notifications", "通知"), badge: eventCount, href: "/notifications" },
     { id: "plugins", icon: Plug, label: t("nav.plugins", "插件"), href: "/plugins" },
     { id: "system", icon: Shield, label: t("nav.system", "系统"), href: "/system" },
   ];
 
-  return (
-    <div className="flex h-12 shrink-0 items-center justify-end border-b border-border bg-background px-3">
+  type NavItem = { id: string; icon: React.ElementType; label: string; href: string; badge?: number };
 
-      {/* Right: scrollable utility icons */}
-      <div
-        ref={scrollRef}
-        className="flex items-center gap-0.5 overflow-x-auto ml-2"
-        style={{
-          scrollbarWidth: "none",
-          WebkitOverflowScrolling: "touch",
-        }}
+  const renderItem = (item: NavItem) => {
+    const Icon = item.icon;
+    const active = item.href && pathname.startsWith(item.href);
+
+    return (
+      <Link
+        key={item.id}
+        href={item.href}
+        className={cn(
+          "relative flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-medium transition-colors",
+          active
+            ? "text-primary bg-primary/10"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent"
+        )}
+        title={item.label}
       >
-        {/* Health Widget */}
-        <HealthWidget />
+        <div className="relative">
+          <Icon size={14} />
+          {item.badge && item.badge > 0 && (
+            <span className="absolute -top-1 -right-1.5 flex items-center justify-center min-w-[12px] h-3 px-0.5 rounded-full bg-red-500 text-white text-[6px] font-bold leading-none">
+              {item.badge > 99 ? '99+' : item.badge}
+            </span>
+          )}
+        </div>
+        <span className="hidden lg:inline truncate">{item.label}</span>
+      </Link>
+    );
+  };
 
-        {/* Global Search (⌘K) */}
+  return (
+    <div className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-3 gap-2">
+      {/* Left: logo + status */}
+      <div className="flex items-center gap-1 shrink-0 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
+        <span className="text-sm font-bold text-primary px-1">OM</span>
+        <HealthWidget />
+        {statusItems.map(renderItem)}
+      </div>
+
+      {/* Right: search + settings */}
+      <div className="flex items-center gap-0.5 shrink-0">
         <button
           onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true }))}
           className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -69,36 +98,7 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
           <span className="hidden lg:inline truncate">{t("nav.search", "搜索")}</span>
           <kbd className="hidden lg:inline pointer-events-none select-none rounded border border-border bg-muted px-1 text-[9px] font-mono text-muted-foreground">⌘K</kbd>
         </button>
-
-        {utilityItems.map((item) => {
-          const Icon = item.icon;
-          const active = item.href && pathname.startsWith(item.href);
-
-          return (
-            <Link
-              key={item.id}
-              href={item.href}
-              className={cn(
-                "relative flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-medium transition-colors",
-                active
-                  ? "text-primary bg-primary/10"
-                  : "text-muted-foreground hover:text-foreground hover:bg-accent"
-              )}
-              title={item.label}
-            >
-              <div className="relative">
-                <Icon size={14} />
-                {item.badge && item.badge > 0 && (
-                  <span className="absolute -top-1 -right-1.5 flex items-center justify-center min-w-[12px] h-3 px-0.5 rounded-full bg-red-500 text-white text-[6px] font-bold leading-none">
-                    {item.badge > 99 ? '99+' : item.badge}
-                  </span>
-                )}
-              </div>
-              <span className="hidden lg:inline truncate">{item.label}</span>
-            </Link>
-          );
-        })}
-
+        {settingItems.map(renderItem)}
       </div>
     </div>
   );
