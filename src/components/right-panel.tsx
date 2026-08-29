@@ -480,7 +480,8 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
   const activeSessionId = useAppStore((s) => s.activeSessionId);
   const sessionId = activeSessionId || '__default__';
 
-  const wsState = useAppStore((s) => s.getWorkspaceTabs(sessionId));
+  const wsBySession = useAppStore((s) => s.workspaceTabsBySession);
+  const wsState = wsBySession[sessionId] ?? { tabs: [{ id: `tab-${sessionId}-0`, type: 'new-tab' as const, title: 'New Tab', history: [], historyIndex: -1 }], activeTabId: `tab-${sessionId}-0` };
   const storeSetWorkspaceTabs = useAppStore((s) => s.setWorkspaceTabs);
   const storeAddWorkspaceTab = useAppStore((s) => s.addWorkspaceTab);
   const storeRemoveWorkspaceTab = useAppStore((s) => s.removeWorkspaceTab);
