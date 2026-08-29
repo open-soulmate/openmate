@@ -122,7 +122,7 @@ export function HealthWidget() {
 
       {/* Dropdown Panel */}
       {open && (
-        <div className="absolute right-0 top-full mt-2 w-[320px] rounded-xl border border-border bg-card shadow-xl overflow-hidden z-50">
+        <div className="absolute right-0 top-full mt-2 w-[calc(100vw-2rem)] sm:w-[320px] rounded-xl border border-border bg-card shadow-xl overflow-hidden z-50">
           {/* Header */}
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="flex items-center gap-2">
