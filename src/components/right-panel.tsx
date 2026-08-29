@@ -781,7 +781,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
                         <path
                           d={genTabPath(tabWidths[tab.id])}
                           fill="none"
-                          stroke={isActive ? 'hsl(var(--border))' : 'transparent'}
+                          stroke={isActive ? 'var(--color-border)' : 'transparent'}
                           strokeWidth={1}
                           strokeLinejoin="round"
                           style={{ transition: 'stroke 0.15s' }}
@@ -805,8 +805,8 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
             </div>
             {/* Underline: two segments, gap under skirt — Doubao method */}
             <div className="relative shrink-0" style={{ height: 1, marginTop: -1 }}>
-              <div className="absolute top-0 left-0 bg-border" style={{ height: 1, width: Math.max(0, activeTabLeft - barLeft - SKIRT - 1) }} />
-              <div className="absolute top-0 right-0 bg-border" style={{ height: 1, width: Math.max(0, barRight - activeTabLeft - activeTabWidth - SKIRT - 1) }} />
+              <div className="absolute top-0 left-0" style={{ height: 1, background: 'var(--color-border)', width: Math.max(0, activeTabLeft - barLeft - SKIRT - 1) }} />
+              <div className="absolute top-0 right-0" style={{ height: 1, background: 'var(--color-border)', width: Math.max(0, barRight - activeTabLeft - activeTabWidth - SKIRT - 1) }} />
             </div>
           </>
         );
