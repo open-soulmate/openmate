@@ -4,11 +4,13 @@ import { useTranslation } from "react-i18next";
 import {
   Puzzle, Plus, Trash2, Power, PowerOff, RefreshCw,
   Package, Code, AlertCircle, CheckCircle2, Loader2,
-  X, Search, ChevronDown,
+  X, Search, ChevronDown, Info, Settings,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl, getToken } from "@/lib/api-client";
 import { PageLayout } from '@/components/page-layout';
+import { DetailPanel } from '@/components/detail-panel';
+import { useAppStore } from '@/stores/app-store';
 
 // ─── Types ──────────────────────────────────────────────────────────
 
@@ -291,6 +293,11 @@ export function PluginsClient() {
   const [showInstall, setShowInstall] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [filterType, setFilterType] = useState<string>("all");
+  const [sidebarTab, setSidebarTab] = useState<"installed" | "available">("installed");
+  const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null);
+
+  const setPageSidebar = useAppStore((s) => s.setPageSidebar);
+  const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
 
   const loadPlugins = useCallback(async () => {
     setLoading(true);
@@ -310,11 +317,14 @@ export function PluginsClient() {
   const handleToggle = async (id: string, enabled: boolean) => {
     await togglePlugin(id, enabled);
     setPlugins((prev) => prev.map((p) => (p.id === id ? { ...p, enabled } : p)));
+    // Update selected plugin if it's the one being toggled
+    setSelectedPlugin((prev) => (prev?.id === id ? { ...prev, enabled } : prev));
   };
 
   const handleUninstall = async (id: string) => {
     await uninstallPlugin(id);
     setPlugins((prev) => prev.filter((p) => p.id !== id));
+    if (selectedPlugin?.id === id) setSelectedPlugin(null);
   };
 
   const types = ["all", ...new Set(plugins.map((p) => p.type))];
@@ -328,107 +338,203 @@ export function PluginsClient() {
 
   const enabledCount = plugins.filter((p) => p.enabled).length;
 
-  return (
-      <PageLayout title="Plugins">
-        
-    <div className="flex-1 overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-3 lg:px-6 py-4 lg:py-8">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-8">
-          <div>
-            <h1 className="text-xl lg:text-2xl font-bold tracking-tight flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
-                <Puzzle size={22} />
-              </div>
-              {t("plugins.pluginManagement") || "Plugin Management"}
-            </h1>
-            <p className="text-xs lg:text-sm text-muted-foreground mt-1.5">
-              {t("plugins.managePlugins") || "Install, configure, and manage system plugins"}
-              {plugins.length > 0 && (
-                <span className="ml-2 text-xs">
-                  · {t("plugins.pluginCount", { total: plugins.length, enabled: enabledCount }) || `${plugins.length} plugins, ${enabledCount} enabled`}
-                </span>
+  // ── Register sidebar content ────────────────────────────────────
+  useEffect(() => {
+    setPageSidebar(
+      <div className="flex flex-col h-full">
+        {/* Tabs */}
+        <div className="flex border-b border-border shrink-0">
+          {(["installed", "available"] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setSidebarTab(tab)}
+              className={cn(
+                "flex-1 py-2 text-xs font-medium transition-colors border-b-2",
+                sidebarTab === tab
+                  ? "border-primary text-primary"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
               )}
-            </p>
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={loadPlugins}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs lg:text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
             >
-              <RefreshCw size={14} />
-              {t("plugins.refresh") || "Refresh"}
+              {tab === "installed"
+                ? (t("plugins.installed") || "已安装")
+                : (t("plugins.available") || "可用")}
             </button>
-            <button
-              onClick={() => setShowInstall(true)}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-            >
-              <Plus size={14} />
-              {t("plugins.installPlugin") || "Install Plugin"}
-            </button>
+          ))}
+        </div>
+
+        {/* Search */}
+        <div className="px-2 py-2 shrink-0">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder={t("plugins.searchPlugins") || "Search plugins..."}
+              className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/50 rounded-md border border-border/50 focus:outline-none focus:border-primary/50 transition-colors"
+            />
+            {searchQuery && (
+              <button
+                onClick={() => setSearchQuery("")}
+                className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+              >
+                <X className="w-3 h-3" />
+              </button>
+            )}
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex items-center gap-3 mb-3 lg:mb-6">
-          <div className="relative flex-1 max-w-sm">
-            <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder={t("plugins.searchPlugins") || "Search plugins..."}
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full rounded-lg border border-border bg-muted/50 pl-9 pr-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            />
-          </div>
-          {types.length > 2 && (
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30"
-            >
-              {types.map((tp) => (
-                <option key={tp} value={tp}>{tp === "all" ? (t("plugins.allTypes") || "All Types") : tp}</option>
-              ))}
-            </select>
+        {/* Plugin list */}
+        <div className="flex-1 overflow-y-auto px-1 space-y-0.5">
+          {loading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="w-5 h-5 animate-spin text-muted-foreground" />
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="px-2 py-8 text-center text-muted-foreground/50">
+              <Package className="w-8 h-8 mx-auto mb-1.5" />
+              <p className="text-xs">
+                {searchQuery
+                  ? (t("plugins.noMatchPlugins") || "No matching plugins")
+                  : (t("plugins.noPlugins") || "No plugins")}
+              </p>
+            </div>
+          ) : (
+            filtered.map((plugin) => (
+              <button
+                key={plugin.id}
+                onClick={() => setSelectedPlugin(plugin)}
+                className={cn(
+                  "w-full text-left px-2 py-2 rounded-lg transition-colors group/item",
+                  selectedPlugin?.id === plugin.id
+                    ? "bg-primary/15 border border-primary/30"
+                    : "hover:bg-muted/50 border border-transparent"
+                )}
+              >
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="flex h-6 w-6 items-center justify-center rounded bg-primary/10 text-primary shrink-0">
+                    <Package size={12} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="text-xs font-medium truncate">{plugin.name}</span>
+                      {plugin.enabled ? (
+                        <span className="h-1.5 w-1.5 rounded-full bg-green-400 shrink-0" />
+                      ) : (
+                        <span className="h-1.5 w-1.5 rounded-full bg-muted-foreground/30 shrink-0" />
+                      )}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground truncate">v{plugin.version} · {plugin.type}</p>
+                  </div>
+                </div>
+              </button>
+            ))
           )}
         </div>
 
-        {/* Content */}
-        {loading ? (
-          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-            <Loader2 size={32} className="animate-spin mb-4" />
-            <p className="text-xs lg:text-sm">{t("plugins.loadingPlugins") || "Loading plugins..."}</p>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center py-24">
-            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-4">
-              <AlertCircle size={24} />
-            </div>
-            <p className="text-xs lg:text-sm font-medium mb-1">{t("plugins.loadFailed") || "Load failed"}</p>
-            <p className="text-xs text-muted-foreground mb-4">{error}</p>
+        {/* Install button at bottom */}
+        <div className="px-2 py-2 border-t border-border shrink-0">
+          <button
+            onClick={() => setShowInstall(true)}
+            className="w-full flex items-center justify-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+          >
+            <Plus size={12} />
+            {t("plugins.installPlugin") || "Install Plugin"}
+          </button>
+        </div>
+      </div>
+    );
+    return () => setPageSidebar(null);
+  }, [plugins, filtered, loading, searchQuery, sidebarTab, selectedPlugin, t, setPageSidebar, setSearchQuery, setSidebarTab, setShowInstall]);
+
+  // ── Register workspace content ──────────────────────────────────
+  useEffect(() => {
+    if (!selectedPlugin) {
+      setPageWorkspace(null);
+      return;
+    }
+    setPageWorkspace(
+      <DetailPanel
+        title={selectedPlugin.name}
+        subtitle={selectedPlugin.description || `v${selectedPlugin.version}`}
+        icon={<Puzzle className="w-5 h-5 text-primary" />}
+        badge={selectedPlugin.enabled ? (t("plugins.enabled") || "Enabled") : (t("plugins.disabled") || "Disabled")}
+        onClose={() => setSelectedPlugin(null)}
+        headerActions={
+          <div className="flex items-center gap-1">
             <button
-              onClick={loadPlugins}
-              className="flex items-center gap-1.5 rounded-lg bg-primary px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              onClick={() => handleToggle(selectedPlugin.id, !selectedPlugin.enabled)}
+              className={cn(
+                "flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
+                selectedPlugin.enabled
+                  ? "bg-amber-500/10 text-amber-600 hover:bg-amber-500/20"
+                  : "bg-green-500/10 text-green-600 hover:bg-green-500/20"
+              )}
             >
-              <RefreshCw size={14} />
-              {t("plugins.retry") || "Retry"}
+              {selectedPlugin.enabled ? <PowerOff size={11} /> : <Power size={11} />}
+              {selectedPlugin.enabled ? (t("plugins.disable") || "Disable") : (t("plugins.enable") || "Enable")}
             </button>
           </div>
-        ) : filtered.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
-            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-4">
-              <Package size={32} />
+        }
+        sections={[
+          {
+            title: t("plugins.details") || "Details",
+            items: [
+              { label: "ID", value: selectedPlugin.id },
+              { label: t("plugins.version") || "Version", value: `v${selectedPlugin.version}`, icon: <Code className="w-3.5 h-3.5" /> },
+              { label: t("plugins.type") || "Type", value: <TypeBadge type={selectedPlugin.type} /> },
+              ...(selectedPlugin.author ? [{ label: t("plugins.author") || "Author", value: selectedPlugin.author }] : []),
+              ...(selectedPlugin.description ? [{ label: t("plugins.description") || "Description", value: selectedPlugin.description }] : []),
+            ],
+          },
+          {
+            title: t("plugins.status") || "Status",
+            items: [
+              {
+                label: t("plugins.state") || "State",
+                value: <StatusBadge enabled={selectedPlugin.enabled} />,
+                icon: selectedPlugin.enabled
+                  ? <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
+                  : <AlertCircle className="w-3.5 h-3.5 text-muted-foreground" />,
+              },
+            ],
+          },
+        ]}
+      />
+    );
+    return () => setPageWorkspace(null);
+  }, [selectedPlugin, t, setPageWorkspace]);
+
+  return (
+    <PageLayout title="Plugins">
+      <div className="flex-1 overflow-y-auto">
+        <div className="mx-auto max-w-6xl px-3 lg:px-6 py-4 lg:py-8">
+          {/* Header */}
+          <div className="flex items-center justify-between mb-8">
+            <div>
+              <h1 className="text-xl lg:text-2xl font-bold tracking-tight flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary/10 text-primary">
+                  <Puzzle size={22} />
+                </div>
+                {t("plugins.pluginManagement") || "Plugin Management"}
+              </h1>
+              <p className="text-xs lg:text-sm text-muted-foreground mt-1.5">
+                {t("plugins.managePlugins") || "Install, configure, and manage system plugins"}
+                {plugins.length > 0 && (
+                  <span className="ml-2 text-xs">
+                    · {t("plugins.pluginCount", { total: plugins.length, enabled: enabledCount }) || `${plugins.length} plugins, ${enabledCount} enabled`}
+                  </span>
+                )}
+              </p>
             </div>
-            <p className="text-xs lg:text-sm font-medium mb-1">
-              {searchQuery || filterType !== "all" ? (t("plugins.noMatchPlugins") || "No matching plugins") : (t("plugins.noPlugins") || "No plugins")}
-            </p>
-            <p className="text-xs text-muted-foreground mb-4">
-              {searchQuery || filterType !== "all"
-                ? (t("plugins.adjustSearch") || "Try adjusting search criteria")
-                : (t("plugins.installHint") || "Click 'Install Plugin' to start extending system features")}
-            </p>
-            {!searchQuery && filterType === "all" && (
+            <div className="flex items-center gap-2">
+              <button
+                onClick={loadPlugins}
+                className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-2 text-xs lg:text-sm font-medium text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+              >
+                <RefreshCw size={14} />
+                {t("plugins.refresh") || "Refresh"}
+              </button>
               <button
                 onClick={() => setShowInstall(true)}
                 className="flex items-center gap-1.5 rounded-lg bg-primary px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
@@ -436,31 +542,100 @@ export function PluginsClient() {
                 <Plus size={14} />
                 {t("plugins.installPlugin") || "Install Plugin"}
               </button>
+            </div>
+          </div>
+
+          {/* Filters */}
+          <div className="flex items-center gap-3 mb-3 lg:mb-6">
+            <div className="relative flex-1 max-w-sm">
+              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder={t("plugins.searchPlugins") || "Search plugins..."}
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full rounded-lg border border-border bg-muted/50 pl-9 pr-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+            {types.length > 2 && (
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="rounded-lg border border-border bg-muted/50 px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30"
+              >
+                {types.map((tp) => (
+                  <option key={tp} value={tp}>{tp === "all" ? (t("plugins.allTypes") || "All Types") : tp}</option>
+                ))}
+              </select>
             )}
           </div>
-        ) : (
-          <div className="grid gap-2 lg:gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {filtered.map((plugin) => (
-              <PluginCard
-                key={plugin.id}
-                plugin={plugin}
-                onToggle={handleToggle}
-                onUninstall={handleUninstall}
-              />
-            ))}
-          </div>
+
+          {/* Content */}
+          {loading ? (
+            <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+              <Loader2 size={32} className="animate-spin mb-4" />
+              <p className="text-xs lg:text-sm">{t("plugins.loadingPlugins") || "Loading plugins..."}</p>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center py-24">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mb-4">
+                <AlertCircle size={24} />
+              </div>
+              <p className="text-xs lg:text-sm font-medium mb-1">{t("plugins.loadFailed") || "Load failed"}</p>
+              <p className="text-xs text-muted-foreground mb-4">{error}</p>
+              <button
+                onClick={loadPlugins}
+                className="flex items-center gap-1.5 rounded-lg bg-primary px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+              >
+                <RefreshCw size={14} />
+                {t("plugins.retry") || "Retry"}
+              </button>
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-muted mb-4">
+                <Package size={32} />
+              </div>
+              <p className="text-xs lg:text-sm font-medium mb-1">
+                {searchQuery || filterType !== "all" ? (t("plugins.noMatchPlugins") || "No matching plugins") : (t("plugins.noPlugins") || "No plugins")}
+              </p>
+              <p className="text-xs text-muted-foreground mb-4">
+                {searchQuery || filterType !== "all"
+                  ? (t("plugins.adjustSearch") || "Try adjusting search criteria")
+                  : (t("plugins.installHint") || "Click 'Install Plugin' to start extending system features")}
+              </p>
+              {!searchQuery && filterType === "all" && (
+                <button
+                  onClick={() => setShowInstall(true)}
+                  className="flex items-center gap-1.5 rounded-lg bg-primary px-2 lg:px-4 py-2 text-xs lg:text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                >
+                  <Plus size={14} />
+                  {t("plugins.installPlugin") || "Install Plugin"}
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="grid gap-2 lg:gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((plugin) => (
+                <PluginCard
+                  key={plugin.id}
+                  plugin={plugin}
+                  onToggle={handleToggle}
+                  onUninstall={handleUninstall}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Install Dialog */}
+        {showInstall && (
+          <InstallDialog
+            onClose={() => setShowInstall(false)}
+            onInstalled={loadPlugins}
+          />
         )}
       </div>
-
-      {/* Install Dialog */}
-      {showInstall && (
-        <InstallDialog
-          onClose={() => setShowInstall(false)}
-          onInstalled={loadPlugins}
-        />
-      )}
-    </div>
-  
-      </PageLayout>
-    );
+    </PageLayout>
+  );
 }
