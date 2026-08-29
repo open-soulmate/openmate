@@ -35,7 +35,7 @@ const navItems: BottomNavItem[] = [
   { href: "/knowledge-requests", label: "nav.knowledgeRequests", icon: FileText },
   { href: "/cron", label: "nav.cron", icon: Clock },
   { href: "/workflow", label: "nav.workflow", icon: Workflow },
-  { href: "/workflow-builder", label: "nav.workflowBuilder", icon: GitBranch },
+
   { href: "/pipeline", label: "nav.pipeline", icon: Zap },
   { href: "/will", label: "nav.will", icon: Sparkles },
   { href: "/skills", label: "nav.skills", icon: Puzzle },

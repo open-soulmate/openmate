@@ -77,7 +77,7 @@ export function CommandMenu() {
     // Automation
     { id: "nav-cron", label: "定时任务", labelEn: "Cron Jobs", labelJa: "定时ジョブ", icon: <Clock size={16} />, action: () => router.push("/cron"), keywords: ["cron", "定时", "schedule"], group: "自动化", groupEn: "Automation", groupJa: "自動化" },
     { id: "nav-workflow", label: "工作流", labelEn: "Workflow", labelJa: "ワークフロー", icon: <Workflow size={16} />, action: () => router.push("/workflow"), keywords: ["workflow", "工作流"], group: "自动化", groupEn: "Automation", groupJa: "自動化" },
-    { id: "nav-workflow-builder", label: "工作流编排", labelEn: "Workflow Builder", labelJa: "ワークフロービルダー", icon: <GitBranch size={16} />, action: () => router.push("/workflow-builder"), keywords: ["workflow", "builder", "编排"], group: "自动化", groupEn: "Automation", groupJa: "自動化" },
+    { id: "nav-workflow-builder", label: "工作流编排", labelEn: "Workflow Builder", labelJa: "ワークフロービルダー", icon: <GitBranch size={16} />, action: () => router.push("/workflow"), keywords: ["workflow", "builder", "编排"], group: "自动化", groupEn: "Automation", groupJa: "自動化" },
     { id: "nav-pipeline", label: "流水线", labelEn: "Pipeline", labelJa: "パイプライン", icon: <Zap size={16} />, action: () => router.push("/pipeline"), keywords: ["pipeline", "流水线"], group: "自动化", groupEn: "Automation", groupJa: "自動化" },
     { id: "nav-will", label: "意志", labelEn: "Will", labelJa: "意志", icon: <Sparkles size={16} />, action: () => router.push("/will"), keywords: ["will", "意志"], group: "自动化", groupEn: "Automation", groupJa: "自動化" },
 
@@ -133,7 +133,7 @@ export function CommandMenu() {
     { id: "new-chat", label: "新建对话", labelEn: "New Chat", labelJa: "新しいチャット", icon: <Plus size={16} />, action: () => router.push("/chat"), keywords: ["new", "新建", "chat"], group: "快捷操作", groupEn: "Quick Actions", groupJa: "クイックアクション" },
     { id: "new-knowledge", label: "新建知识", labelEn: "New Knowledge", labelJa: "新しいナレッジ", icon: <Plus size={16} />, action: () => router.push("/knowledge"), keywords: ["new", "新建", "knowledge"], group: "快捷操作", groupEn: "Quick Actions", groupJa: "クイックアクション" },
     { id: "new-learn", label: "新建课程", labelEn: "New Course", labelJa: "新しいコース", icon: <Plus size={16} />, action: () => router.push("/learn"), keywords: ["new", "新建", "course"], group: "快捷操作", groupEn: "Quick Actions", groupJa: "クイックアクション" },
-    { id: "new-workflow", label: "新建工作流", labelEn: "New Workflow", labelJa: "新しいワークフロー", icon: <Plus size={16} />, action: () => router.push("/workflow-builder"), keywords: ["new", "新建", "workflow"], group: "快捷操作", groupEn: "Quick Actions", groupJa: "クイックアクション" },
+    { id: "new-workflow", label: "新建工作流", labelEn: "New Workflow", labelJa: "新しいワークフロー", icon: <Plus size={16} />, action: () => router.push("/workflow"), keywords: ["new", "新建", "workflow"], group: "快捷操作", groupEn: "Quick Actions", groupJa: "クイックアクション" },
 
     // System actions
     { id: "refresh", label: "刷新页面", labelEn: "Refresh Page", labelJa: "ページ更新", icon: <RefreshCw size={16} />, action: () => window.location.reload(), keywords: ["refresh", "刷新", "reload"], group: "系统操作", groupEn: "System Actions", groupJa: "システムアクション" },

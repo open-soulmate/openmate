@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef } from "react";
-import { useWorkflowStore } from "@//stores/workflow-store";
+import { useWorkflowStore } from "@/stores/workflow-store";
 import {
   Play,
   Bug,

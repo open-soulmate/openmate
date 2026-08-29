@@ -117,7 +117,7 @@ export function MobileSidebar({ open, onOpenChange }: { open: boolean; onOpenCha
       items: [
         { href: "/cron", label: t("nav.cron"), icon: Clock },
         { href: "/workflow", label: t("nav.workflow"), icon: Workflow },
-        { href: "/workflow-builder", label: t("nav.workflowBuilder"), icon: GitBranch },
+        { href: "/workflow", label: t("nav.workflow"), icon: GitBranch },
         { href: "/pipeline", label: t("nav.pipeline"), icon: Zap },
         { href: "/will", label: t("nav.will"), icon: Sparkles },
       ],
