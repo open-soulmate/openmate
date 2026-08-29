@@ -709,7 +709,11 @@ export const useAppStore = create<AppState>((set, get) => ({
   workspaceTabsBySession: {},
   getWorkspaceTabs: (sessionId) => {
     const state = get();
-    return state.workspaceTabsBySession[sessionId] || { tabs: [], activeTabId: '' };
+    const existing = state.workspaceTabsBySession[sessionId];
+    if (existing && existing.tabs.length > 0) return existing;
+    // Default: one empty new-tab
+    const defaultTab: WorkspaceTab = { id: `tab-${Date.now()}-0`, type: 'new-tab', title: 'New Tab', history: [], historyIndex: -1 };
+    return { tabs: [defaultTab], activeTabId: defaultTab.id };
   },
   setWorkspaceTabs: (sessionId, wsState) =>
     set((s) => ({ workspaceTabsBySession: { ...s.workspaceTabsBySession, [sessionId]: wsState } })),

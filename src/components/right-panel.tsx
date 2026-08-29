@@ -18,24 +18,15 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { SkirtTabs, type SkirtTab } from '@/components/skirt-tabs';
-import { useAppStore, type WorkspaceTab } from '@/stores/app-store';
+import { useAppStore, type WorkspaceTab, type WorkspaceTabType } from '@/stores/app-store';
 import { Input } from '@/components/ui/input';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { cn } from '@/lib/utils';
 
 // ── Types ──────────────────────────────────────────────────────────
 
-type TabType = 'new-tab' | 'web-browser' | 'file-preview' | 'terminal' | 'details';
-
-interface Tab {
-  id: string;
-  type: TabType;
-  title: string;
-  url?: string;
-  filePath?: string;
-  history: string[];
-  historyIndex: number;
-}
+type TabType = WorkspaceTabType;
+type Tab = WorkspaceTab;
 
 interface RightPanelProps {
   open: boolean;
