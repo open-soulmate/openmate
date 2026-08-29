@@ -1,5 +1,5 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import dynamic from 'next/dynamic';
 
 const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
@@ -69,6 +69,19 @@ interface ClockFaceProps {
 
 export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) {
   const [time, setTime] = useState(() => new Date());
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [size, setSize] = useState(500);
+
+  // Track container size
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const obs = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect;
+      setSize(Math.min(width, height));
+    });
+    obs.observe(containerRef.current);
+    return () => obs.disconnect();
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
@@ -84,21 +97,21 @@ export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) 
     const minuteAngle = (m + s / 60) * 6;
     const secondAngle = s * 6;
 
+    const S = size; // actual pixel size of the clock
+    const C = S / 2; // center
+
     // Sort jobs by frequency
     const sortedJobs = [...jobs].sort((a, b) => getFrequency(b.schedule) - getFrequency(a.schedule));
     const maxFreq = Math.max(...sortedJobs.map(j => getFrequency(j.schedule)), 1);
     const minFreq = Math.min(...sortedJobs.map(j => getFrequency(j.schedule)), 1);
 
-    // Helper: percent string
-    const P = (v: number) => `${v}%`;
-
-    // ── Task dots (graphic circles on the clock face) ──
+    // ── Task dots ──
     const taskGraphics: any[] = [];
     sortedJobs.forEach((job) => {
       const freq = getFrequency(job.schedule);
       const radiusNorm = maxFreq === minFreq ? 0.5 : (freq - minFreq) / (maxFreq - minFreq);
       // High freq → 28% (near center), Low freq → 42% (near edge)
-      const radius = 28 + (1 - radiusNorm) * 14;
+      const radius = S * (0.28 + (1 - radiusNorm) * 0.14);
 
       const hoursList = parseScheduleHours(job.schedule);
       const isActive = job.status === 'active';
@@ -107,21 +120,21 @@ export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) 
 
       hoursList.forEach(hour => {
         const angle = (((hour % 24) / 12) * 360 - 90) * (Math.PI / 180);
-        const cx = 50 + radius * Math.cos(angle);
-        const cy = 50 + radius * Math.sin(angle);
-        const dotR = isSelected ? 1.8 : 1.4;
+        const cx = C + radius * Math.cos(angle);
+        const cy = C + radius * Math.sin(angle);
+        const dotR = isSelected ? S * 0.018 : S * 0.014;
 
         if (isSelected) {
           taskGraphics.push({
             type: 'circle',
-            shape: { cx: P(cx), cy: P(cy), r: P(2.5) },
+            shape: { cx, cy, r: S * 0.025 },
             style: { fill: 'transparent', stroke: '#3b82f6', lineWidth: 2 },
             z: 20,
           });
         }
         taskGraphics.push({
           type: 'circle',
-          shape: { cx: P(cx), cy: P(cy), r: P(dotR) },
+          shape: { cx, cy, r: dotR },
           style: {
             fill: color,
             shadowColor: isActive ? 'rgba(34,197,94,0.5)' : 'rgba(245,158,11,0.5)',
@@ -133,28 +146,28 @@ export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) 
       });
     });
 
-    // ── Hand calculations (all in percentage) ──
-    const handX = (angle: number, len: number) => 50 + len * Math.cos(((angle - 90) * Math.PI) / 180);
-    const handY = (angle: number, len: number) => 50 + len * Math.sin(((angle - 90) * Math.PI) / 180);
+    // ── Hand calculations ──
+    const handX = (angle: number, len: number) => C + S * len * Math.cos(((angle - 90) * Math.PI) / 180);
+    const handY = (angle: number, len: number) => C + S * len * Math.sin(((angle - 90) * Math.PI) / 180);
 
     return {
       backgroundColor: 'transparent',
       graphic: [
         // ── Outer ring ──
-        { type: 'circle', shape: { cx: '50%', cy: '50%', r: '49%' }, style: { fill: 'rgba(255,255,255,0.03)', stroke: 'rgba(255,255,255,0.15)', lineWidth: 2 }, z: 0 },
-        { type: 'circle', shape: { cx: '50%', cy: '50%', r: '47%' }, style: { fill: 'transparent', stroke: 'rgba(255,255,255,0.06)', lineWidth: 0.5 }, z: 0 },
+        { type: 'circle', shape: { cx: C, cy: C, r: S * 0.49 }, style: { fill: 'rgba(255,255,255,0.03)', stroke: 'rgba(255,255,255,0.15)', lineWidth: 2 }, z: 0 },
+        { type: 'circle', shape: { cx: C, cy: C, r: S * 0.47 }, style: { fill: 'transparent', stroke: 'rgba(255,255,255,0.06)', lineWidth: 0.5 }, z: 0 },
 
         // ── Minute ticks (60) ──
         ...Array.from({ length: 60 }, (_, i) => {
           const a = ((i * 6 - 90) * Math.PI) / 180;
           const isMajor = i % 5 === 0;
-          const r1 = isMajor ? 43 : 45;
-          const r2 = 47;
+          const r1 = isMajor ? S * 0.43 : S * 0.45;
+          const r2 = S * 0.47;
           return {
             type: 'line',
             shape: {
-              x1: P(50 + r1 * Math.cos(a)), y1: P(50 + r1 * Math.sin(a)),
-              x2: P(50 + r2 * Math.cos(a)), y2: P(50 + r2 * Math.sin(a)),
+              x1: C + r1 * Math.cos(a), y1: C + r1 * Math.sin(a),
+              x2: C + r2 * Math.cos(a), y2: C + r2 * Math.sin(a),
             },
             style: {
               stroke: isMajor ? 'rgba(255,255,255,0.5)' : 'rgba(255,255,255,0.12)',
@@ -169,15 +182,15 @@ export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) 
         ...Array.from({ length: 12 }, (_, i) => {
           const hour = i === 0 ? 12 : i;
           const a = ((i * 30 - 90) * Math.PI) / 180;
-          const x = 50 + 40 * Math.cos(a);
-          const y = 50 + 40 * Math.sin(a);
+          const x = C + S * 0.40 * Math.cos(a);
+          const y = C + S * 0.40 * Math.sin(a);
           return {
             type: 'text',
-            x: P(x), y: P(y),
+            x, y,
             style: {
               text: `${hour}`,
               fill: 'rgba(255,255,255,0.6)',
-              font: 'bold 14px sans-serif',
+              font: `bold ${Math.max(12, S * 0.035)}px sans-serif`,
               textAlign: 'center' as const,
               textVerticalAlign: 'middle' as const,
             },
@@ -186,22 +199,22 @@ export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) 
         }),
 
         // ── Hour hand ──
-        { type: 'line', shape: { x1: '50%', y1: '50%', x2: P(handX(hourAngle, 22)), y2: P(handY(hourAngle, 22)) }, style: { stroke: '#e2e8f0', lineWidth: 4, lineCap: 'round' }, z: 30 },
+        { type: 'line', shape: { x1: C, y1: C, x2: handX(hourAngle, 0.22), y2: handY(hourAngle, 0.22) }, style: { stroke: '#e2e8f0', lineWidth: 4, lineCap: 'round' }, z: 30 },
         // ── Minute hand ──
-        { type: 'line', shape: { x1: '50%', y1: '50%', x2: P(handX(minuteAngle, 32)), y2: P(handY(minuteAngle, 32)) }, style: { stroke: '#94a3b8', lineWidth: 2.5, lineCap: 'round' }, z: 31 },
+        { type: 'line', shape: { x1: C, y1: C, x2: handX(minuteAngle, 0.32), y2: handY(minuteAngle, 0.32) }, style: { stroke: '#94a3b8', lineWidth: 2.5, lineCap: 'round' }, z: 31 },
         // ── Second hand ──
-        { type: 'line', shape: { x1: '50%', y1: '50%', x2: P(handX(secondAngle, 38)), y2: P(handY(secondAngle, 38)) }, style: { stroke: '#ef4444', lineWidth: 1.5, lineCap: 'round' }, z: 32 },
+        { type: 'line', shape: { x1: C, y1: C, x2: handX(secondAngle, 0.38), y2: handY(secondAngle, 0.38) }, style: { stroke: '#ef4444', lineWidth: 1.5, lineCap: 'round' }, z: 32 },
         // ── Center dot ──
-        { type: 'circle', shape: { cx: '50%', cy: '50%', r: '1.5%' }, style: { fill: '#ef4444' }, z: 33 },
+        { type: 'circle', shape: { cx: C, cy: C, r: S * 0.015 }, style: { fill: '#ef4444' }, z: 33 },
 
         // ── Digital time ──
         {
           type: 'text',
-          x: '50%', y: '65%',
+          x: C, y: C + S * 0.15,
           style: {
             text: `${String(now.getHours()).padStart(2, '0')}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`,
             fill: 'rgba(255,255,255,0.5)',
-            font: '14px monospace',
+            font: `${Math.max(12, S * 0.035)}px monospace`,
             textAlign: 'center' as const,
             textVerticalAlign: 'middle' as const,
           },
@@ -213,7 +226,7 @@ export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) 
       ],
       tooltip: { show: false },
     };
-  }, [time, jobs, selectedJobId]);
+  }, [time, jobs, selectedJobId, size]);
 
   const onChartReady = (chart: any) => {
     chart.getZr().on('click', (e: any) => {
@@ -255,10 +268,10 @@ export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) 
   };
 
   return (
-    <div className="flex-1 min-h-0 w-full flex items-center justify-center">
+    <div ref={containerRef} className="flex-1 min-h-0 w-full flex items-center justify-center">
       <ReactECharts
         option={option}
-        style={{ width: '90vmin', height: '90vmin', maxWidth: 800, maxHeight: 800 }}
+        style={{ width: size, height: size }}
         opts={{ renderer: 'canvas' }}
         onChartReady={onChartReady}
         notMerge={false}
