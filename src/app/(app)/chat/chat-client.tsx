@@ -554,47 +554,8 @@ export function ChatClient() {
       }, 500);
       return;
     }
-    try {
-      const imageAttachment = attachments.find(a => a.type === 'image');
-      const fileAttachment = attachments.find(a => a.type === 'file');
-      let r: Response;
-      if (imageAttachment) {
-        r = await fetch(`${getAcpProxyUrl()}/acp/send-image`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-          body: JSON.stringify({ text: messageText, image_data: imageAttachment.data, mime_type: imageAttachment.mime_type || 'image/png', session_id: selectedSession?.id }),
-        });
-      } else if (fileAttachment) {
-        r = await fetch(`${getAcpProxyUrl()}/acp/send-file`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-          body: JSON.stringify({ text: messageText, file_data: fileAttachment.data, file_name: fileAttachment.name || 'file', mime_type: fileAttachment.mime_type || 'application/octet-stream', session_id: selectedSession?.id }),
-        });
-      } else {
-        r = await fetch(`${getAcpProxyUrl()}/acp/send`, {
-          method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-          body: JSON.stringify({ text: messageText, session_id: selectedSession?.id, mode: agentMode }),
-        });
-      }
-      const d = await r.json();
-      const content = d.content || d.error || t("chat.noResponse");
-      const tokenUsage = d.tokenUsage || simulateTokenUsage(content);
-      setMessages(prev => [...prev, {
-        id: Date.now().toString(),
-        role: 'agent',
-        parts: [{ type: 'text', text: content }],
-        timestamp: new Date(),
-        source: d.source,
-        fileChanges: parseFileChanges(content),
-        tokenUsage,
-      }]);
-      // Update selectedSession with new session_id and refresh list
-      if (selectedSession && !selectedSession.id && d.session_id) {
-        setSelectedSession(prev => prev ? { ...prev, id: d.session_id } : prev);
-        initAgents();
-      }
-    } catch {
-      setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: t("chat.requestTimeout") }], timestamp: new Date() }]);
-    }
-    setLoading(false);
+    // All paths above return — WS send or WS-wait handles everything.
+    // No HTTP fallback needed.
   };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
