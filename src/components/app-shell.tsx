@@ -306,7 +306,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     fetch(`${apiBase}/api/events/summary`)
       .then((res) => (res.ok ? res.json() : null))
       .then((data) => {
-        if (data?.total_events) setEventCount(Math.min(data.total_events, 99));
+        if (data?.total_events && data.total_events > 0) setEventCount(Math.min(data.total_events, 99));
       })
       .catch(() => {});
   }, 30000, []);

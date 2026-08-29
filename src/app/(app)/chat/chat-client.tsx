@@ -7,6 +7,7 @@ import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image 
 import { ContextRing } from "@/components/context-ring";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { Dialog } from '@/components/ui/dialog';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useTranslation } from 'react-i18next';
@@ -907,28 +908,24 @@ export function ChatClient() {
         </div>
       </div>
 
-      {/* Checkpoints Panel — sidebar-style sliding on mobile, overlay on desktop */}
-      {isMobile && showCheckpoints && (
-        <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowCheckpoints(false)} aria-hidden="true" />
-      )}
+      {/* Checkpoints Panel — Sheet on mobile, inline overlay on desktop */}
       {isMobile ? (
-        showCheckpoints && (
-          <div
-            className="absolute inset-y-0 right-0 z-10 h-full w-80 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
-            style={{ right: 0 }}
-          >
-            <div className="h-12 shrink-0 flex items-center justify-between px-3 border-b border-border">
-              <span className="text-sm font-semibold flex items-center gap-2">
-                <RotateCcw className="w-4 h-4" />
-                {t("chat.checkpoints", "Checkpoints")}
-              </span>
-              <button onClick={() => setShowCheckpoints(false)} className="p-1 rounded hover:bg-muted">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
+        <Sheet open={showCheckpoints} onOpenChange={setShowCheckpoints}>
+          <SheetContent side="right" size="sm" showCloseButton={false}>
+            <SheetHeader className="border-b border-border pb-3">
+              <div className="flex items-center justify-between">
+                <SheetTitle className="flex items-center gap-2 text-sm">
+                  <RotateCcw className="w-4 h-4" />
+                  {t("chat.checkpoints", "Checkpoints")}
+                </SheetTitle>
+                <button onClick={() => setShowCheckpoints(false)} className="p-1 rounded hover:bg-muted">
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </SheetHeader>
             {renderCheckpointList()}
-          </div>
-        )
+          </SheetContent>
+        </Sheet>
       ) : (
         showCheckpoints && (
           <div className="absolute right-0 top-12 bottom-0 w-72 border-l border-border bg-card z-20 flex flex-col shadow-lg">
