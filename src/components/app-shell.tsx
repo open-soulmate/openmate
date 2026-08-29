@@ -405,14 +405,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }} className="flex-1 min-h-0 overflow-hidden h-full">
           {/* Sidebar — unified mobile/desktop */}
           <Sidebar collapsible="offcanvas">
-              <SidebarHeader>
-                <div className="flex h-12 shrink-0 items-center px-2">
-                  <span className="text-sm font-bold text-primary">OM</span>
-                  <span className="ml-2 text-sm font-semibold text-foreground group-data-[collapsible=icon]:hidden">
-                    OpenMate
-                  </span>
-                </div>
-              </SidebarHeader>
+
               <SidebarContent>
                 {isAIGroupsRoute ? (
                   <AIGroupsSidebar />
