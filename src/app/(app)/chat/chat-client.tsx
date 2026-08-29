@@ -3,7 +3,7 @@ import { MarkdownContent } from "@/components/markdown-content";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAppStore } from '@/stores/app-store';
-import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft } from "lucide-react";
+import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, PanelRightOpen } from "lucide-react";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { Dialog } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -714,7 +714,7 @@ export function ChatClient() {
           </div>
           <div className="flex items-center gap-1 shrink-0">
             <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); setShowCheckpoints(false); if (isMobile && sidebarOpen) toggleSidebar(); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
-              <PanelLeft className="w-4 h-4 scale-x-[-1]" />
+              <PanelRightOpen className="w-4 h-4" />
             </button>
           </div>
         </div>
