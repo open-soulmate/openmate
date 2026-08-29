@@ -9,7 +9,6 @@ import {
   ArrowUpRight, BookmarkCheck, FolderPlus, Hash,
   PanelLeft,
 } from "lucide-react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface BookmarkItem {

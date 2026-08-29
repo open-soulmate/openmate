@@ -4,7 +4,7 @@ import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useRef, useEffect } from "react";
 import {
-  Bell, Search,
+  Bell, Search, Download, Settings,
   Activity, BarChart3, Stethoscope, Gauge, Shield, Plug,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
@@ -41,8 +41,9 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
     { id: "benchmark", icon: Gauge, label: t("nav.benchmark", "基准"), href: "/benchmark" },
   ];
 
-  const settingItems = [
+  const navItems = [
     { id: "notifications", icon: Bell, label: t("nav.notifications", "通知"), badge: eventCount, href: "/notifications" },
+    { id: "download", icon: Download, label: t("nav.download", "下载"), href: "/download" },
     { id: "plugins", icon: Plug, label: t("nav.plugins", "插件"), href: "/plugins" },
     { id: "system", icon: Shield, label: t("nav.system", "系统"), href: "/system" },
   ];
@@ -79,16 +80,19 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
   };
 
   return (
-    <div className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-3 gap-2 safe-area-top">
-      {/* Left: logo + status */}
-      <div className="flex items-center gap-1 shrink-0 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-        <span className="text-sm font-bold text-primary px-1">OM</span>
+    <div className="flex h-12 shrink-0 items-center border-b border-border bg-background safe-area-top">
+      {/* Scrollable middle area: logo + health + status + nav + search */}
+      <div
+        ref={scrollRef}
+        className="flex-1 flex items-center gap-1 overflow-x-auto px-3"
+        style={{ scrollbarWidth: "none" }}
+      >
+        <span className="text-sm font-bold text-primary px-1 shrink-0">OM</span>
         <HealthWidget />
         {statusItems.map(renderItem)}
-      </div>
-
-      {/* Right: search + settings */}
-      <div className="flex items-center gap-0.5 shrink-0">
+        {/* Divider */}
+        <div className="w-px h-4 bg-border shrink-0 mx-1" />
+        {navItems.map(renderItem)}
         <button
           onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true }))}
           className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-accent"
@@ -98,8 +102,21 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
           <span className="hidden lg:inline truncate">{t("nav.search", "搜索")}</span>
           <kbd className="hidden lg:inline pointer-events-none select-none rounded border border-border bg-muted px-1 text-[9px] font-mono text-muted-foreground">⌘K</kbd>
         </button>
-        {settingItems.map(renderItem)}
       </div>
+
+      {/* Fixed settings button on far right */}
+      <Link
+        href="/settings"
+        className={cn(
+          "flex shrink-0 items-center gap-1 rounded-md px-3 py-1.5 text-[10px] font-medium transition-colors border-l border-border h-full",
+          pathname.startsWith("/settings")
+            ? "text-primary bg-primary/10"
+            : "text-muted-foreground hover:text-foreground hover:bg-accent"
+        )}
+        title={t("nav.settings", "设置")}
+      >
+        <Settings size={16} />
+      </Link>
     </div>
   );
 }

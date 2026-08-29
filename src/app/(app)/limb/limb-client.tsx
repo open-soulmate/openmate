@@ -8,7 +8,6 @@ import {
   FileCode, Terminal, Loader2, CheckCircle,
   XCircle, Clock, MousePointer, Zap,
 } from "lucide-react";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 interface RPATask {

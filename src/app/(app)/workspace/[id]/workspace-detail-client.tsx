@@ -6,7 +6,6 @@ import { cn } from "@/lib/utils";
 import { useAppStore, type FileNode, type TerminalLine } from "@/stores/app-store";
 import { listDir, readFile, executeCommand } from "@/lib/tauri-bridge";
 import { SCMPanel } from "@/components/scm-panel";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
   FolderOpen,
@@ -474,11 +473,17 @@ export function WorkspaceDetailClient() {
   }
 
   return (
-    <div className="flex h-full overflow-hidden">
-      {/* Left: File tree — Sheet on mobile, inline on desktop */}
+    <div className="flex h-full overflow-hidden relative">
+      {/* Left: File tree — sidebar sliding on mobile, inline on desktop */}
+      {isMobile && showFileTree && (
+        <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowFileTree(false)} aria-hidden="true" />
+      )}
       {isMobile ? (
-        <Sheet open={showFileTree} onOpenChange={setShowFileTree}>
-          <SheetContent side="left" size="sm" className="p-0 flex flex-col">
+        showFileTree && (
+          <div
+            className="absolute inset-y-0 left-0 z-10 h-full w-72 min-w-0 border-r border-border transition-[left] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+            style={{ left: 0 }}
+          >
             <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
               <FolderOpen size={14} className="text-muted-foreground" />
               <span className="text-xs font-medium text-foreground truncate">
@@ -503,8 +508,8 @@ export function WorkspaceDetailClient() {
                 ))
               )}
             </div>
-          </SheetContent>
-        </Sheet>
+          </div>
+        )
       ) : (
         <div className="w-56 shrink-0 border-r border-border bg-sidebar flex flex-col">
           <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
@@ -604,17 +609,23 @@ export function WorkspaceDetailClient() {
         </div>
       </div>
 
-      {/* Right: SCM Panel — Sheet on mobile, inline on desktop */}
+      {/* Right: SCM Panel — sidebar sliding on mobile, inline on desktop */}
+      {isMobile && scmOpen && (
+        <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setScmOpen(false)} aria-hidden="true" />
+      )}
       {isMobile ? (
-        <Sheet open={scmOpen} onOpenChange={setScmOpen}>
-          <SheetContent side="right" size="md" className="p-0 flex flex-col">
+        scmOpen && (
+          <div
+            className="absolute inset-y-0 right-0 z-10 h-full w-72 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+            style={{ right: 0 }}
+          >
             <div className="flex h-10 shrink-0 items-center gap-2 border-b border-border px-3">
               <GitBranch size={14} className="text-primary" />
-              <span className="text-xs font-medium text-foreground">SCM</span>
+              <span className="text-xs font-medium text-foreground truncate">SCM</span>
             </div>
             <SCMPanel workspacePath={workspace.path} className="flex-1" />
-          </SheetContent>
-        </Sheet>
+          </div>
+        )
       ) : scmOpen ? (
         <div className="w-72 shrink-0 border-l border-border bg-sidebar flex flex-col">
           <div className="flex h-10 shrink-0 items-center justify-between border-b border-border px-3">

@@ -1,6 +1,5 @@
 'use client';
 import { useState, useEffect, useCallback } from 'react';
-import { Sheet, SheetContent } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Network, Plus, Trash2, Loader2, Link2, X } from 'lucide-react';
 import { api, getUserId } from '@/lib/api-client';

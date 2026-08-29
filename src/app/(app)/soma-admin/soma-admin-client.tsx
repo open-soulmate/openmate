@@ -4,7 +4,6 @@ import { useTranslation } from "react-i18next";
 import { cn } from "@/lib/utils";
 import { getApiBaseUrl } from "@/lib/api-client";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 import {
   Bot, RefreshCw, Activity, Settings, Server, Plug,
   CheckCircle, XCircle, AlertTriangle, Wifi, WifiOff,
@@ -275,7 +274,7 @@ export default function SomaAdminClient() {
                 <p className="text-xs mt-1">{t("somaAdmin.noConnectorsHint")}</p>
               </div>
             ) : (
-              <div className="flex gap-2 lg:gap-6">
+              <div className="flex gap-2 lg:gap-6 relative">
                 {/* Connector List — full width on mobile, w-80 on desktop */}
                 <div className={`${isMobile ? (selectedConnector ? "hidden" : "w-full") : "w-80"} space-y-3`}>
                   {isMobile && (
@@ -313,10 +312,16 @@ export default function SomaAdminClient() {
                   ))}
                 </div>
 
-                {/* Connector Detail — Sheet on mobile, inline on desktop */}
+                {/* Connector Detail — sidebar sliding on mobile, inline on desktop */}
+                {isMobile && !!selectedConnector && (
+                  <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setSelectedConnector(null)} aria-hidden="true" />
+                )}
                 {isMobile ? (
-                  <Sheet open={!!selectedConnector} onOpenChange={(open) => { if (!open) setSelectedConnector(null); }}>
-                    <SheetContent side="right" size="full" className="p-0 flex flex-col">
+                  !!selectedConnector && (
+                    <div
+                      className="absolute inset-y-0 right-0 z-10 h-full w-72 min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden bg-card"
+                      style={{ right: 0 }}
+                    >
                       <div className="flex-1 overflow-y-auto p-3 lg:p-4 space-y-4">
                         {selectedConnector && (
                           <>
@@ -380,8 +385,8 @@ export default function SomaAdminClient() {
                           </>
                         )}
                       </div>
-                    </SheetContent>
-                  </Sheet>
+                    </div>
+                  )
                 ) : (
                   selectedConnector && (
                     <div className="flex-1 space-y-4">
