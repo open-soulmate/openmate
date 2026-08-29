@@ -1,15 +1,17 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import { getApiBaseUrl } from '@/lib/api-client'
 import { cn } from '@/lib/utils'
 import {
   Bell, RefreshCw, Loader2, Trash2, CheckCircle2,
   AlertCircle, AlertTriangle, Info, Eye, EyeOff,
-  BellOff, Send, BellRing,
+  BellOff, Send, BellRing, Inbox, Filter,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { PageLayout } from '@/components/page-layout';
+import { PageLayout } from '@/components/page-layout'
+import { DetailPanel } from '@/components/detail-panel'
+import { useAppStore } from '@/stores/app-store'
 
 interface Notification {
   id: string
@@ -42,8 +44,10 @@ export function NotificationsClient() {
   const [error, setError] = useState('')
   const [filter, setFilter] = useState<'all' | 'unread' | 'read'>('all')
   const [actionLoading, setActionLoading] = useState<string | null>(null)
+  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const apiBase = getApiBaseUrl()
+  const setPageSidebar = useAppStore((s) => s.setPageSidebar)
 
   const fetchAll = useCallback(async () => {
     if (!apiBase) {
@@ -112,6 +116,7 @@ export function NotificationsClient() {
     try {
       await fetch(`${apiBase}/api/notifications/${notifId}`, { method: 'DELETE' })
       setNotifications(prev => prev.filter(n => n.id !== notifId))
+      setSelectedId(prev => prev === notifId ? null : prev)
       setStats(prev => {
         if (!prev) return prev
         const wasUnread = notifications.find(n => n.id === notifId)?.read === false
@@ -129,6 +134,7 @@ export function NotificationsClient() {
       await fetch(`${apiBase}/api/notifications/`, { method: 'DELETE' })
       setNotifications([])
       setUnreadCount(0)
+      setSelectedId(null)
       setStats(prev => prev ? { total: 0, read: 0, unread: 0 } : prev)
     } catch { /* silent */ }
     finally { setActionLoading(null) }
@@ -143,6 +149,121 @@ export function NotificationsClient() {
     } catch { /* silent */ }
     finally { setActionLoading(null) }
   }, [apiBase, fetchAll])
+
+  // ── Category counts for sidebar ──────────────────────────────────
+  const categoryCounts = useMemo(() => ({
+    all: notifications.length,
+    unread: notifications.filter(n => !n.read).length,
+    system: notifications.filter(n => n.severity === 'info').length,
+    agent: notifications.filter(n => n.severity !== 'info').length,
+  }), [notifications])
+
+  const selectedNotification = useMemo(
+    () => notifications.find(n => n.id === selectedId) ?? null,
+    [notifications, selectedId],
+  )
+
+  // ── Register sidebar content ─────────────────────────────────────
+  useEffect(() => {
+    const categories = [
+      { key: 'all', label: t('notifications.filter.all', '全部'), icon: <Inbox className="w-4 h-4" />, count: categoryCounts.all },
+      { key: 'unread', label: t('notifications.unread', '未读'), icon: <BellRing className="w-4 h-4" />, count: categoryCounts.unread },
+      { key: 'system', label: t('notifications.category.system', '系统'), icon: <Info className="w-4 h-4" />, count: categoryCounts.system },
+      { key: 'agent', label: t('notifications.category.agent', 'Agent'), icon: <Bell className="w-4 h-4" />, count: categoryCounts.agent },
+    ] as const
+
+    setPageSidebar(
+      <div className="flex flex-col h-full">
+        <div className="px-3 py-3 border-b border-border">
+          <div className="flex items-center gap-2">
+            <Bell className="w-4 h-4 text-muted-foreground" />
+            <span className="text-sm font-medium">{t('notifications.title', 'Notifications')}</span>
+          </div>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2 space-y-0.5">
+          {categories.map(cat => {
+            const isActive =
+              (cat.key === 'all' && filter === 'all') ||
+              (cat.key === 'unread' && filter === 'unread') ||
+              (cat.key === 'system' && filter === 'all') ||
+              (cat.key === 'agent' && filter === 'all')
+            return (
+              <button
+                key={cat.key}
+                onClick={() => {
+                  if (cat.key === 'unread') setFilter('unread')
+                  else setFilter('all')
+                }}
+                className={cn(
+                  'w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg text-sm transition-colors text-left',
+                  isActive
+                    ? 'bg-accent text-accent-foreground font-medium'
+                    : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+                )}
+              >
+                <span className="shrink-0">{cat.icon}</span>
+                <span className="flex-1 truncate">{cat.label}</span>
+                {cat.count > 0 && (
+                  <span className={cn(
+                    'text-[11px] px-1.5 py-0.5 rounded-full shrink-0',
+                    isActive ? 'bg-primary/10 text-primary' : 'bg-muted text-muted-foreground',
+                  )}>
+                    {cat.count}
+                  </span>
+                )}
+              </button>
+            )
+          })}
+        </div>
+      </div>,
+    )
+    return () => setPageSidebar(null)
+  }, [categoryCounts, filter, t, setPageSidebar])
+
+  // ── Workspace content: notification detail ───────────────────────
+  const workspaceContent = selectedNotification ? (() => {
+    const n = selectedNotification
+    const meta = SEVERITY_META[n.severity] || SEVERITY_META.info
+    const Icon = meta.icon
+    const createdDate = new Date(n.created_at)
+    return (
+      <DetailPanel
+        title={n.title}
+        subtitle={n.read ? t('notifications.read', '已读') : t('notifications.unread', '未读')}
+        icon={<Icon className={cn('w-5 h-5', meta.color)} />}
+        badge={n.severity.toUpperCase()}
+        onClose={() => setSelectedId(null)}
+        headerActions={
+          !n.read ? (
+            <button
+              onClick={() => markAsRead(n.id)}
+              className="p-1.5 rounded-md hover:bg-muted/50 transition-colors text-muted-foreground"
+              title={t('notifications.markRead', 'Mark as read')}
+            >
+              <Eye className="w-4 h-4" />
+            </button>
+          ) : undefined
+        }
+        sections={[
+          {
+            title: t('notifications.detail.info', '通知信息'),
+            items: [
+              { label: 'ID', value: n.id },
+              { label: t('notifications.detail.severity', '级别'), value: n.severity.toUpperCase(), icon: <Icon className={cn('w-3.5 h-3.5', meta.color)} /> },
+              { label: t('notifications.detail.status', '状态'), value: n.read ? t('notifications.read', '已读') : t('notifications.unread', '未读'), icon: n.read ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5" /> },
+              { label: t('notifications.detail.time', '时间'), value: createdDate.toLocaleString() },
+            ],
+          },
+          {
+            title: t('notifications.detail.content', '通知内容'),
+            items: [
+              { label: t('notifications.detail.message', '消息'), value: n.message },
+            ],
+          },
+        ]}
+      />
+    )
+  })() : null
 
   const filtered = notifications.filter(n => {
     if (filter === 'unread') return !n.read
@@ -182,7 +303,7 @@ export function NotificationsClient() {
   }
 
   return (
-      <PageLayout title="Notifications">
+      <PageLayout title="Notifications" workspace={workspaceContent}>
         
     <div className="max-w-4xl mx-auto px-3 lg:px-6 py-4 lg:py-6 space-y-4 lg:space-y-6">
       {/* Header */}
@@ -304,9 +425,11 @@ export function NotificationsClient() {
                   return (
                     <div
                       key={n.id}
+                      onClick={() => setSelectedId(n.id)}
                       className={cn(
-                        'flex items-start gap-3 px-4 py-3 transition-colors hover:bg-accent/30',
-                        n.read && 'opacity-50'
+                        'flex items-start gap-3 px-4 py-3 transition-colors hover:bg-accent/30 cursor-pointer',
+                        n.read && 'opacity-50',
+                        selectedId === n.id && 'bg-accent/50 ring-1 ring-inset ring-primary/20',
                       )}
                     >
                       {/* Unread dot */}
@@ -342,7 +465,7 @@ export function NotificationsClient() {
                             <>
                               {!n.read && (
                                 <button
-                                  onClick={() => markAsRead(n.id)}
+                                  onClick={(e) => { e.stopPropagation(); markAsRead(n.id); }}
                                   className="p-1 rounded-md text-muted-foreground hover:bg-accent hover:text-foreground transition-colors touch-manipulation"
                                   title={t('notifications.markRead', 'Mark as read')}
                                 >
@@ -350,7 +473,7 @@ export function NotificationsClient() {
                                 </button>
                               )}
                               <button
-                                onClick={() => deleteNotification(n.id)}
+                                onClick={(e) => { e.stopPropagation(); deleteNotification(n.id); }}
                                 className="p-1 rounded-md text-muted-foreground hover:bg-red-900/20 hover:text-red-400 transition-colors touch-manipulation"
                                 title={t('notifications.delete', 'Delete')}
                               >

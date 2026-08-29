@@ -128,10 +128,18 @@ export function SettingsClient() {
     { id: "about", label: t("settings.about"), icon: Info, group: t("settings.account") },
   ];
 
+  // Group sections
+  const groups = sections.reduce<Record<string, typeof sections>>((acc, s) => {
+    if (!acc[s.group]) acc[s.group] = [];
+    acc[s.group].push(s);
+    return acc;
+  }, {});
+
   const storeTheme = useAppStore((s) => s.theme);
   const setStoreTheme = useAppStore((s) => s.setTheme);
   const llmConfig = useAppStore((s) => s.llmConfig);
   const setLLMConfig = useAppStore((s) => s.setLLMConfig);
+  const setPageSidebar = useAppStore((s) => s.setPageSidebar);
 
   const [active, setActive] = useState<SectionId>(() => {
     if (typeof window !== "undefined") {
@@ -193,6 +201,55 @@ export function SettingsClient() {
   }, []);
 
   useEffect(() => { setSettings((s) => ({ ...s, theme: storeTheme })); }, [storeTheme]);
+
+  // Register sidebar navigation into the global app shell sidebar
+  useEffect(() => {
+    const sidebarContent = (
+      <>
+        <div className="mb-4 px-2 pt-2">
+          <div className="flex items-center gap-2 mb-1">
+            <Settings size={14} className="text-muted-foreground" />
+            <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider group-data-[collapsible=icon]:hidden">
+              {t("settings.title")}
+            </span>
+          </div>
+        </div>
+        <nav className="flex-1 space-y-4 px-2">
+          {Object.entries(groups).map(([group, items]) => (
+            <div key={group}>
+              <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-3 mb-1.5 group-data-[collapsible=icon]:hidden">
+                {group}
+              </div>
+              {items.map((s) => (
+                <button
+                  key={s.id}
+                  onClick={() => setActive(s.id)}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:gap-0",
+                    active === s.id
+                      ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium"
+                      : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
+                  )}
+                  title={s.label}
+                >
+                  <s.icon size={15} />
+                  <span className="group-data-[collapsible=icon]:hidden">{s.label}</span>
+                </button>
+              ))}
+            </div>
+          ))}
+        </nav>
+        <div className="mt-auto pt-4 px-2 border-t border-border">
+          <div className="text-[10px] text-muted-foreground px-3 space-y-0.5 group-data-[collapsible=icon]:hidden">
+            <div>OpenMate v0.1.0</div>
+            {backendVersion && <div>OpenSoul v{backendVersion}</div>}
+          </div>
+        </div>
+      </>
+    );
+    setPageSidebar(sidebarContent);
+    return () => setPageSidebar(null);
+  }, [active, groups, backendVersion, setPageSidebar, t]);
 
   const update = useCallback(<K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
     setSettings((s) => ({ ...s, [key]: value }));
@@ -428,15 +485,8 @@ export function SettingsClient() {
   const currentProvider = llmProviders.find((p) => p.value === settings.llmProvider);
   const modelOptions = currentProvider?.models.length ? currentProvider.models.map((m) => ({ value: m, label: m })) : [{ value: settings.model, label: settings.model || t("settings.inputModelName") }];
 
-  // Group sections
-  const groups = sections.reduce<Record<string, typeof sections>>((acc, s) => {
-    if (!acc[s.group]) acc[s.group] = [];
-    acc[s.group].push(s);
-    return acc;
-  }, {});
-
-  // Sidebar content extracted for reuse in both PC sidebar and mobile sliding panel
-  const SidebarNav = () => (
+  // Mobile sidebar navigation (PC sidebar is registered via setPageSidebar into the app shell)
+  const MobileSidebarNav = () => (
     <>
       <div className="mb-4">
         <div className="flex items-center gap-2 mb-1">
@@ -449,8 +499,8 @@ export function SettingsClient() {
           <div key={group}>
             <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-3 mb-1.5">{group}</div>
             {items.map((s) => (
-              <button key={s.id} onClick={() => { setActive(s.id); if (isMobile) setShowSidebar(false); }}
-                className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs lg:text-sm transition-colors", active === s.id ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground")}>
+              <button key={s.id} onClick={() => { setActive(s.id); setShowSidebar(false); }}
+                className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors", active === s.id ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground")}>
                 <s.icon size={15} />{s.label}
               </button>
             ))}
@@ -488,17 +538,12 @@ export function SettingsClient() {
       {isMobile && showSidebar && (
         <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowSidebar(false)} aria-hidden="true" />
       )}
-      {isMobile ? (
+      {isMobile && (
         <div
           className="absolute inset-y-0 left-0 z-10 h-full w-64 min-w-0 border-r border-border transition-[left] duration-200 ease-linear flex flex-col overflow-hidden bg-card p-4"
           style={{ left: showSidebar ? 0 : -256 }}
         >
-          <SidebarNav />
-        </div>
-      ) : (
-        /* PC: fixed sidebar */
-        <div className="w-56 shrink-0 border-r border-border bg-card/50 p-3 lg:p-4 flex flex-col">
-          <SidebarNav />
+          <MobileSidebarNav />
         </div>
       )}
 
