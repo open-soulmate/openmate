@@ -402,63 +402,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             }
           }
         }} className="flex-1 min-h-0 overflow-hidden h-full">
-          {/* Sidebar — Sheet on mobile (left slide), offcanvas on desktop */}
-          {isMobile ? (
-            <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
-              <SheetContent side="left" size="sm" showCloseButton={true} className="p-0">
-                <SheetHeader className="h-12 shrink-0 flex flex-row items-center px-3 border-b border-border">
-                  <span className="text-sm font-bold text-primary">OM</span>
-                  <SheetTitle className="ml-2 text-sm font-semibold text-foreground">OpenMate</SheetTitle>
-                </SheetHeader>
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  {isAIGroupsRoute ? (
-                    <AIGroupsSidebar />
-                  ) : (
-                    <>
-                      <div className="px-2 pb-2 flex items-center gap-1 h-12">
-                        <div className="relative flex-1">
-                          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
-                          <input
-                            type="text"
-                            value={sessionSearch}
-                            onChange={(e) => setSessionSearch(e.target.value)}
-                            placeholder={t("chat.searchPlaceholder", "搜索会话...")}
-                            className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/50 rounded-md border border-border/50 focus:outline-none focus:border-primary/50 transition-colors"
-                          />
-                        </div>
-                        <button
-                          onClick={() => { router.push('/chat'); setMobileSidebarOpen(false); }}
-                          className="p-1.5 rounded-md hover:bg-muted/50 transition-colors shrink-0"
-                          title={t("chat.newChat", "新对话")}
-                        >
-                          <Plus className="w-4 h-4 text-muted-foreground" />
-                        </button>
-                      </div>
-                      <ConversationTree
-                        agents={displayAgents}
-                        activeSessionId={activeSessionIdFromStore}
-                        getUnread={getUnread}
-                        onToggleAgent={toggleAgent}
-                        onToggleSourceGroup={toggleSourceGroup}
-                        onSelectSession={(session, agent) => {
-                          clearSessionUnread(session.id);
-                          setActiveSession(session.id, agent.id, {
-                            agentIcon: agent.icon,
-                            agentName: agent.name,
-                            agentDescription: agent.description || '',
-                            sessionName: session.name || session.title || '',
-                          });
-                          setMobileSidebarOpen(false);
-                          router.push('/chat');
-                        }}
-                      />
-                    </>
-                  )}
-                </div>
-              </SheetContent>
-            </Sheet>
-          ) : (
-            <Sidebar collapsible="offcanvas">
+          {/* Sidebar — unified mobile/desktop */}
+          <Sidebar collapsible="offcanvas">
               <SidebarHeader>
                 <div className="flex h-12 shrink-0 items-center px-2">
                   <span className="text-sm font-bold text-primary">OM</span>
@@ -515,7 +460,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <SidebarFooter />
               <SidebarRail />
             </Sidebar>
-          )}
 
       {/* Main content area */}
       <SidebarInset className="min-h-0 overflow-hidden">
@@ -530,31 +474,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <TerminalPanel apiBase="" token={typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : ''} />
         </SidebarProvider>
 
-      {/* Right Panel — Sheet on mobile, inline transition on desktop */}
-      {isMobile ? (
-        <Sheet open={rightPanelOpen} onOpenChange={(open) => { setRightPanelOpen(open); if (open && isMobile) setMobileSidebarOpen(false); }}>
-          <SheetContent side="right" size="sm" className="p-0 w-[75vw] max-w-[384px]">
-            <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
-          </SheetContent>
-        </Sheet>
-      ) : (
-        <>
-          {/* Right Panel gap — reserves layout space on desktop */}
-          <div
-            className="shrink-0 transition-[width] duration-200 ease-linear"
-            style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
-          />
-          <div
-            className="absolute inset-y-0 top-0 right-0 z-10 h-full min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
-            style={{
-              width: rightPanelWidth,
-              right: rightPanelOpen ? 0 : -rightPanelWidth,
-            }}
-          >
-            <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
-          </div>
-        </>
-      )}
+      {/* Right Panel — sidebar-style sliding, unified mobile/desktop */}
+      <div
+        className="shrink-0 transition-[width] duration-200 ease-linear"
+        style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
+      />
+      <div
+        className="absolute inset-y-0 top-0 right-0 z-10 h-full min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
+        style={{
+          width: rightPanelWidth,
+          right: rightPanelOpen ? 0 : -rightPanelWidth,
+        }}
+      >
+        <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
+      </div>
       </div>
 
       {/* Bottom navigation bar — full screen width */}
