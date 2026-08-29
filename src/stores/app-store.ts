@@ -224,6 +224,12 @@ interface AppState {
   toggleRightPanel: () => void;
   setRightPanelOpen: (open: boolean) => void;
 
+  // Page-specific sidebar/workspace content (for PageLayout framework)
+  pageSidebar: React.ReactNode | null;
+  pageWorkspace: React.ReactNode | null;
+  setPageSidebar: (content: React.ReactNode | null) => void;
+  setPageWorkspace: (content: React.ReactNode | null) => void;
+
   // Mobile swipeable panels (synced with bottom nav)
   currentPanel: number;
   setCurrentPanel: (n: number) => void;
@@ -364,6 +370,12 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
   setRightPanelOpen: (open: boolean) =>
     set({ rightPanelOpen: open }),
+
+  // Page-specific sidebar/workspace content
+  pageSidebar: null,
+  pageWorkspace: null,
+  setPageSidebar: (content) => set({ pageSidebar: content }),
+  setPageWorkspace: (content) => set({ pageWorkspace: content }),
 
   currentPanel: 0,
   setCurrentPanel: (n) => set({ currentPanel: n }),

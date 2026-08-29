@@ -100,6 +100,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const rightPanelOpen = useAppStore((s) => s.rightPanelOpen);
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
   const setRightPanelOpen = useAppStore((s) => s.setRightPanelOpen);
+  const pageSidebar = useAppStore((s) => s.pageSidebar);
+  const pageWorkspace = useAppStore((s) => s.pageWorkspace);
   const isMobile = useIsMobile();
   // Auto-collapse sidebar on mid-sized screens (lg but not xl)
   // User can override by clicking the toggle button
@@ -414,6 +416,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <SidebarContent>
                 {isAIGroupsRoute ? (
                   <AIGroupsSidebar />
+                ) : pageSidebar ? (
+                  pageSidebar
                 ) : (
                   <>
                     <div className="px-2 pb-2 flex items-center gap-1 h-12 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">

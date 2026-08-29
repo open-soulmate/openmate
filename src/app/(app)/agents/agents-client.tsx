@@ -3,6 +3,8 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { Bot, CheckCircle, XCircle, Loader2, Download, RefreshCw, Play, Pause, Trash2, ArrowUpCircle, Terminal, Monitor, Apple, ChevronDown, ChevronRight, Square, CheckSquare, RotateCcw } from 'lucide-react';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
+import { PageLayout } from '@/components/page-layout';
+import { DetailPanel, useDetailPanel } from '@/components/detail-panel';
 
 interface AgentInfo {
   id: string; name: string; binary: string; description: string; icon: string;
@@ -33,6 +35,11 @@ export function AgentsClient() {
   const [agentConfigs, setAgentConfigs] = useState<Record<string, {provider: string; model: string; custom?: boolean}>>({});
   const [providers, setProviders] = useState<Array<{name: string; base_url: string; models: Record<string, string>}>>([]);
   const eventSources = useRef<Record<string, EventSource>>({});
+  const { detailItem, openDetail, closeDetail, isOpen: hasDetail } = useDetailPanel();
+
+  const handleAgentClick = useCallback((agent: AgentInfo) => {
+    openDetail(agent.id, 'agent', agent);
+  }, [openDetail]);
 
   const detect = useCallback(async () => {
     setLoading(true);
@@ -191,18 +198,50 @@ export function AgentsClient() {
 
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
-  return (
-    <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 lg:mb-6">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2"><Bot className="w-6 h-6" /> {t('agents.title')}</h1>
-          <p className="text-xs lg:text-sm text-muted-foreground mt-1">{t('agents.autoDetect')} · {agents.length} {t('agents.category')}</p>
-        </div>
-        <button onClick={detect} className="px-2 lg:px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-xs lg:text-sm self-start sm:self-auto"><RefreshCw className="w-4 h-4" /> {t('agents.autoDetect')}</button>
-      </div>
+  // Build workspace content from detail item
+  const workspaceContent = detailItem?.type === 'agent' ? (
+    <DetailPanel
+      title={detailItem.data.name}
+      subtitle={detailItem.data.description}
+      icon={<span className="text-lg">{detailItem.data.icon}</span>}
+      badge={detailItem.data.available ? '可用' : '不可用'}
+      onClose={closeDetail}
+      sections={[
+        {
+          title: '基本信息',
+          items: [
+            { label: 'ID', value: detailItem.data.id },
+            { label: '二进制', value: detailItem.data.binary || 'N/A' },
+            { label: '路径', value: detailItem.data.path || 'N/A' },
+            { label: '操作系统', value: detailItem.data.os || 'N/A' },
+          ],
+        },
+        {
+          title: '配置',
+          items: [
+            { label: '提供商', value: detailItem.data.provider || '默认' },
+            { label: '模型', value: detailItem.data.model || '默认' },
+          ],
+        },
+      ]}
+    />
+  ) : null;
 
-      {/* Stats */}
+  return (
+    <PageLayout
+      title={t('agents.title')}
+      icon={<Bot className="w-5 h-5" />}
+      badge={agents.length + " 个Agent"}
+      workspace={workspaceContent}
+      headerActions={
+        <button onClick={detect} className="px-2 lg:px-4 py-2 rounded-lg border hover:bg-muted flex items-center gap-2 text-xs lg:text-sm">
+          <RefreshCw className="w-4 h-4" /> {t('agents.autoDetect')}
+        </button>
+      }
+    >
+      <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
+        {/* Stats */}
+
       <div className="grid grid-cols-2 md:grid-cols-3 gap-2 md:gap-4 mb-3 lg:mb-6">
         <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-primary">{agents.length}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('agents.title')}</p></div>
         <div className="p-4 rounded-xl border bg-card"><p className="text-xl lg:text-2xl font-bold text-green-500">{availableCount}</p><p className="text-xs lg:text-sm text-muted-foreground">{t('agents.available')}</p></div>
@@ -248,14 +287,16 @@ export function AgentsClient() {
           const install = installs[agent.id];
           const isInstalling = install && (install.status === 'running' || install.status === 'starting');
           const isExpanded = expanded[agent.id];
+          const isDetailSelected = detailItem?.id === agent.id;
           const isSelected = selected.has(agent.id);
 
           return (
-            <div key={agent.id} className={`rounded-xl border bg-card transition-all ${isSelected ? 'border-primary ring-1 ring-primary/30' : agent.available ? 'border-green-500/30' : 'border-border'}`}>
+            <div key={agent.id} className={`rounded-xl border bg-card transition-all cursor-pointer ${isDetailSelected ? 'border-primary ring-1 ring-primary/30' : isSelected ? 'border-primary/50' : agent.available ? 'border-green-500/30' : 'border-border'} hover:border-primary/50`}
+                  onClick={() => handleAgentClick(agent)}>
               <div className="p-4">
                 <div className="flex items-start gap-3 mb-3">
                   {/* Checkbox */}
-                  <button onClick={() => toggleSelect(agent.id)} className="mt-1 shrink-0 touch-manipulation">
+                  <button onClick={(e) => { e.stopPropagation(); toggleSelect(agent.id); }} className="mt-1 shrink-0 touch-manipulation">
                     {isSelected ? <CheckSquare size={16} className="text-primary" /> : <Square size={16} className="text-muted-foreground" />}
                   </button>
                   {(agent as any).logo ? <img src={(agent as any).logo} alt={agent.name} className="w-10 h-10 rounded-lg object-contain bg-muted" onError={(e) => { (e.target as HTMLImageElement).style.display = "none"; (e.target as HTMLImageElement).nextElementSibling?.classList.remove("hidden"); }} /> : null}
@@ -278,21 +319,21 @@ export function AgentsClient() {
                   <div className="flex gap-1">
                     {agent.available ? (
                       <>
-                        <button onClick={() => setConfiguringAgent(configuringAgent === agent.id ? null : agent.id)}
+                        <button onClick={(e) => { e.stopPropagation(); setConfiguringAgent(configuringAgent === agent.id ? null : agent.id); }}
                           className="px-2 py-1.5 lg:py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 touch-manipulation" title={t('agents.modelConfig')}>
                           ⚙️
                         </button>
-                        <button onClick={() => handleUpdate(agent)} disabled={!!isInstalling}
+                        <button onClick={(e) => { e.stopPropagation(); handleUpdate(agent); }} disabled={!!isInstalling}
                           className="px-2 py-1.5 lg:py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50 touch-manipulation" title={t('agents.restart')}>
                           <ArrowUpCircle className="w-3 h-3" />
                         </button>
-                        <button onClick={() => handleUninstall(agent)}
+                        <button onClick={(e) => { e.stopPropagation(); handleUninstall(agent); }}
                           className="px-2 py-1.5 lg:py-1 rounded-lg text-xs border border-red-500/30 text-red-500 hover:bg-red-500/5 flex items-center gap-1 touch-manipulation" title={t('agents.deleteAgent')}>
                           <Trash2 className="w-3 h-3" />
                         </button>
                       </>
                     ) : (
-                      <button onClick={() => startInstall(agent)} disabled={!!isInstalling}
+                      <button onClick={(e) => { e.stopPropagation(); startInstall(agent); }} disabled={!!isInstalling}
                         className="px-2.5 py-1.5 lg:py-1 rounded-lg text-xs border hover:bg-muted flex items-center gap-1 disabled:opacity-50 transition-colors touch-manipulation">
                         {isInstalling ? <><Loader2 className="w-3 h-3 animate-spin" /> {t('agents.installing')}</> : <><Download className="w-3 h-3" /> {t('agents.install')}</>}
                       </button>
@@ -316,7 +357,7 @@ export function AgentsClient() {
                       {install.status === 'starting' && <span className="text-muted-foreground">{t('agents.detecting')}</span>}
                     </div>
                     {install.lines.length > 0 && (
-                      <button onClick={() => setExpanded(prev => ({ ...prev, [agent.id]: !prev[agent.id] }))} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
+                      <button onClick={(e) => { e.stopPropagation(); setExpanded(prev => ({ ...prev, [agent.id]: !prev[agent.id] })); }} className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1">
                         {isExpanded ? <ChevronDown className="w-3 h-3" /> : <ChevronRight className="w-3 h-3" />}{t('agents.logs')}
                       </button>
                     )}
@@ -417,6 +458,7 @@ export function AgentsClient() {
           );
         })}
       </div>
-    </div>
+      </div>
+    </PageLayout>
   );
 }
