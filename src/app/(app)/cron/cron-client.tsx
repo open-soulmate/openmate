@@ -174,24 +174,45 @@ export function CronClient() {
           const jobId = job.job_id || job.id;
           const isActive = job.status === 'active';
           return (
-            <button
+            <div
               key={jobId}
-              onClick={() => setSelectedJobId(jobId)}
               className={cn(
-                'w-full text-left px-2 py-2 rounded-lg transition-colors',
+                'w-full px-2 py-2 rounded-lg transition-colors',
                 selectedJobId === jobId
                   ? 'bg-primary/10 border border-primary/30'
-                  : 'hover:bg-muted/50 border border-transparent'
+                  : 'hover:bg-muted/50 border border-transparent',
               )}
             >
-              <div className="flex items-center gap-1.5 min-w-0">
+              <div className="flex items-center gap-1.5 min-w-0" onClick={() => setSelectedJobId(jobId)}>
                 <span className={cn('w-2 h-2 rounded-full shrink-0', isActive ? 'bg-green-500' : 'bg-amber-500')} />
-                <span className="text-xs font-medium truncate flex-1">{job.name || jobId}</span>
+                <span className="text-xs font-medium truncate flex-1 cursor-pointer">{job.name || jobId}</span>
+                {/* Action buttons */}
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleAction(jobId, isActive ? 'pause' : 'resume'); }}
+                  className={cn('p-1 rounded hover:bg-muted shrink-0', isActive ? 'text-amber-500' : 'text-green-500')}
+                  title={isActive ? 'Pause' : 'Resume'}
+                >
+                  {isActive ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleAction(jobId, 'run'); }}
+                  className="p-1 rounded hover:bg-muted text-primary shrink-0"
+                  title="Run Now"
+                >
+                  <Zap className="w-3 h-3" />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); handleAction(jobId, 'delete'); }}
+                  className="p-1 rounded hover:bg-muted text-destructive shrink-0"
+                  title="Delete"
+                >
+                  <Trash2 className="w-3 h-3" />
+                </button>
               </div>
               <div className="ml-3.5 mt-0.5">
                 <span className="text-[10px] text-muted-foreground font-mono">{job.schedule}</span>
               </div>
-            </button>
+            </div>
           );
         }}
         header={
