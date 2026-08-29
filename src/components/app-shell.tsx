@@ -441,7 +441,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </Sidebar>
 
       {/* Main content area */}
-      <SidebarInset className="min-h-0 overflow-hidden" onClick={() => { if (rightPanelOpen) setRightPanelOpen(false); }}>
+      <SidebarInset className="min-h-0 overflow-hidden">
         <div className="flex flex-1 flex-col overflow-hidden min-h-0">
           <SwipeablePanels isHomePage={getPanelIndex(pathname) >= 0}>
             {children}
