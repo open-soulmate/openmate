@@ -781,7 +781,7 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
                         <path
                           d={genTabPath(tabWidths[tab.id])}
                           fill="none"
-                          stroke={isActive ? '#27272a' : 'transparent'}
+                          stroke={isActive ? 'hsl(var(--border))' : 'transparent'}
                           strokeWidth={1}
                           strokeLinejoin="round"
                           style={{ transition: 'stroke 0.15s' }}
@@ -789,10 +789,10 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
                       </svg>
                     )}
                     <div className="relative flex items-center w-full h-full z-10" style={{ padding: '0 12px', gap: 8 }}>
-                      <Globe className="w-4 h-4 shrink-0" style={{ color: '#9aa0a6' }} />
-                      <span className="truncate flex-1" style={{ color: isActive ? '#e8eaed' : '#8a8a8a', fontSize: '13px', transition: 'color 0.15s' }}>{tab.title}</span>
+                      <Globe className="w-4 h-4 shrink-0 text-muted-foreground" />
+                      <span className={`truncate flex-1 text-[13px] transition-colors ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>{tab.title}</span>
                       <span role="button" onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }} className="shrink-0 flex items-center justify-center rounded-full opacity-0 group-hover:opacity-70 group-active:opacity-70 hover:!opacity-100 hover:bg-[rgba(255,255,255,0.1)] transition-all cursor-pointer touch-manipulation" style={{ width: 20, height: 20 }}>
-                        <X className="w-3 h-3" style={{ color: '#9aa0a6' }} />
+                        <X className="w-3 h-3 text-muted-foreground" />
                       </span>
                     </div>
                   </button>
@@ -805,8 +805,8 @@ export function RightPanel({ open, onToggle }: RightPanelProps) {
             </div>
             {/* Underline: two segments, gap under skirt — Doubao method */}
             <div className="relative shrink-0" style={{ height: 1, marginTop: -1 }}>
-              <div className="absolute top-0 left-0" style={{ height: 1, background: '#27272a', width: Math.max(0, activeTabLeft - barLeft - SKIRT - 1) }} />
-              <div className="absolute top-0 right-0" style={{ height: 1, background: '#27272a', width: Math.max(0, barRight - activeTabLeft - activeTabWidth - SKIRT - 1) }} />
+              <div className="absolute top-0 left-0 bg-border" style={{ height: 1, width: Math.max(0, activeTabLeft - barLeft - SKIRT - 1) }} />
+              <div className="absolute top-0 right-0 bg-border" style={{ height: 1, width: Math.max(0, barRight - activeTabLeft - activeTabWidth - SKIRT - 1) }} />
             </div>
           </>
         );
