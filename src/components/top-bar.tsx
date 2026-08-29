@@ -81,11 +81,11 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
 
   return (
     <div className="flex h-12 shrink-0 items-center border-b border-border bg-background safe-area-top">
-      {/* Fixed left: logo only */}
-      <div className="flex items-center shrink-0 px-3">
-        <span className="text-sm font-bold text-primary">OM</span>
+      {/* Fixed left: logo + name */}
+      <Link href="/chat" className="flex items-center gap-1.5 shrink-0 px-3 hover:opacity-80 transition-opacity">
+        <img src="/logo.svg" alt="OpenMate" className="w-7 h-7" />
         <span className="text-sm font-semibold text-foreground hidden sm:inline">OpenMate</span>
-      </div>
+      </Link>
 
       {/* Scrollable middle area: health + status + nav + search */}
       <div
