@@ -42,7 +42,7 @@ const EMOTION_ICONS: Record<string, string> = {
 const EMOTION_COLORS: Record<string, string> = {
   joy: "text-emerald-500", sadness: "text-blue-500", anger: "text-red-500",
   fear: "text-amber-500", surprise: "text-purple-500", trust: "text-teal-500",
-  anticipation: "text-orange-500", confusion: "text-gray-500", neutral: "text-slate-500",
+  anticipation: "text-orange-500", confusion: "text-muted-foreground", neutral: "text-slate-500",
 };
 
 const TONE_OPTIONS = ["neutral", "friendly", "professional", "humorous", "empathetic", "assertive"] as const;
@@ -131,7 +131,7 @@ export function MindClient() {
   const sentimentIcon = (s: string) => {
     if (s === "positive") return <Laugh size={16} className="text-emerald-500" />;
     if (s === "negative") return <Frown size={16} className="text-red-500" />;
-    return <Meh size={16} className="text-gray-500" />;
+    return <Meh size={16} className="text-muted-foreground" />;
   };
 
   return (
@@ -216,7 +216,7 @@ export function MindClient() {
                     <div className="flex items-center gap-3">
                       <span className="text-4xl">{EMOTION_ICONS[emotionResult.primary_emotion] || "😐"}</span>
                       <div>
-                        <p className={cn("text-lg font-bold", EMOTION_COLORS[emotionResult.primary_emotion] || "text-gray-500")}>
+                        <p className={cn("text-lg font-bold", EMOTION_COLORS[emotionResult.primary_emotion] || "text-muted-foreground")}>
                           {emotionResult.primary_emotion}
                         </p>
                         <p className="text-xs text-muted-foreground">

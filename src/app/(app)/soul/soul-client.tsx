@@ -470,7 +470,7 @@ export default function SoulClient() {
                       <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full",
                         agent.status === "online" || agent.status === "running" ? "bg-emerald-500/10 text-emerald-500" :
                         agent.status === "error" ? "bg-red-500/10 text-red-500" :
-                        "bg-gray-500/10 text-gray-500")}>
+                        "bg-muted-foreground/10 text-muted-foreground")}>
                         {agent.status || "unknown"}
                       </span>
                     </div>

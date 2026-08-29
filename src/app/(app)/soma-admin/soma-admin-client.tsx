@@ -49,7 +49,7 @@ const STATUS_COLORS: Record<string, string> = {
   running: "text-emerald-500",
   active: "text-emerald-500",
   offline: "text-red-500",
-  stopped: "text-gray-500",
+  stopped: "text-muted-foreground",
   error: "text-red-500",
   degraded: "text-amber-500",
 };
@@ -476,7 +476,7 @@ export default function SomaAdminClient() {
               </div>
               <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("somaAdmin.stoppedCollectors")}</span>
-                <p className="text-xl lg:text-2xl font-bold text-gray-500">{collectors.filter(c => c.status === "stopped").length}</p>
+                <p className="text-xl lg:text-2xl font-bold text-muted-foreground">{collectors.filter(c => c.status === "stopped").length}</p>
               </div>
               <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <span className="text-xs text-muted-foreground">{t("somaAdmin.errorCollectors")}</span>
@@ -500,10 +500,10 @@ export default function SomaAdminClient() {
                       <div className="flex items-center gap-2 lg:gap-3">
                         <div className={cn("rounded-lg p-2",
                           col.status === "running" || col.status === "active" ? "bg-emerald-500/10" :
-                          col.status === "error" ? "bg-red-500/10" : "bg-gray-500/10")}>
+                          col.status === "error" ? "bg-red-500/10" : "bg-muted-foreground/10")}>
                           {col.status === "running" || col.status === "active" ? <Activity size={16} className="text-emerald-500" /> :
                            col.status === "error" ? <AlertTriangle size={16} className="text-red-500" /> :
-                           <HardDrive size={16} className="text-gray-500" />}
+                           <HardDrive size={16} className="text-muted-foreground" />}
                         </div>
                         <div>
                           <p className="font-medium text-xs lg:text-sm">{col.name}</p>
@@ -513,7 +513,7 @@ export default function SomaAdminClient() {
                       <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full",
                         col.status === "running" || col.status === "active" ? "bg-emerald-500/10 text-emerald-500" :
                         col.status === "error" ? "bg-red-500/10 text-red-500" :
-                        "bg-gray-500/10 text-gray-500")}>
+                        "bg-muted-foreground/10 text-muted-foreground")}>
                         {col.status}
                       </span>
                     </div>

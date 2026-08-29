@@ -64,7 +64,7 @@ const TYPE_COLORS: Record<string, string> = {
   processor: "text-violet-500 bg-violet-500/10",
   connector: "text-emerald-500 bg-emerald-500/10",
   agent: "text-amber-500 bg-amber-500/10",
-  custom: "text-gray-500 bg-gray-500/10",
+  custom: "text-muted-foreground bg-muted-foreground/10",
 };
 
 const STATUS_COLORS: Record<string, string> = {
@@ -72,9 +72,9 @@ const STATUS_COLORS: Record<string, string> = {
   offline: "text-red-500",
   busy: "text-amber-500",
   error: "text-red-500",
-  maintenance: "text-gray-500",
+  maintenance: "text-muted-foreground",
   running: "text-emerald-500",
-  stopped: "text-gray-500",
+  stopped: "text-muted-foreground",
 };
 
 function formatTime(iso: string, t: (k: string, o?: Record<string, unknown>) => string): string {
@@ -556,10 +556,10 @@ export function SomaConnectorClient() {
                       <div className="flex items-center gap-2 lg:gap-3">
                         <div className={cn("rounded-lg p-2",
                           col.status === "running" ? "bg-emerald-500/10" :
-                          col.status === "error" ? "bg-red-500/10" : "bg-gray-500/10")}>
+                          col.status === "error" ? "bg-red-500/10" : "bg-muted-foreground/10")}>
                           {col.status === "running" ? <Activity size={16} className="text-emerald-500" /> :
                            col.status === "error" ? <AlertTriangle size={16} className="text-red-500" /> :
-                           <Square size={16} className="text-gray-500" />}
+                           <Square size={16} className="text-muted-foreground" />}
                         </div>
                         <div>
                           <p className="font-medium text-xs lg:text-sm">{col.name}</p>
@@ -570,7 +570,7 @@ export function SomaConnectorClient() {
                         <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full",
                           col.status === "running" ? "bg-emerald-500/10 text-emerald-500" :
                           col.status === "error" ? "bg-red-500/10 text-red-500" :
-                          "bg-gray-500/10 text-gray-500")}>
+                          "bg-muted-foreground/10 text-muted-foreground")}>
                           {col.status === "running" ? t("soma.collectorRunning") :
                            col.status === "error" ? t("soma.collectorError") :
                            t("soma.collectorStopped")}

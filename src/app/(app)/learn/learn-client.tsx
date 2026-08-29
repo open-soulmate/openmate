@@ -795,8 +795,8 @@ Generated: ${new Date().toLocaleString("zh-CN")}
                 Certificate of Completion
               </div>
               <div className="mb-4 text-lg lg:text-xl font-bold text-foreground">{selectedCourse.title}</div>
-              <div className="mb-3 text-xs lg:text-sm text-gray-600">{selectedCourse.description}</div>
-              <div className="mb-4 flex items-center gap-2 lg:gap-4 text-xs text-gray-500">
+              <div className="mb-3 text-xs lg:text-sm text-muted-foreground/80">{selectedCourse.description}</div>
+              <div className="mb-4 flex items-center gap-2 lg:gap-4 text-xs text-muted-foreground">
                 <span>📚 {selectedCourse.totalChapters} chapters</span>
                 <span>✅ {selectedCourse.completedChapters} completed</span>
                 <span>📅 {new Date(selectedCourse.updatedAt * 1000).toLocaleDateString("zh-CN")}</span>
@@ -808,7 +808,7 @@ Generated: ${new Date().toLocaleString("zh-CN")}
                   </span>
                 ))}
               </div>
-              <div className="mt-4 border-t border-amber-200 pt-3 text-center text-[10px] text-gray-400">
+              <div className="mt-4 border-t border-amber-200 pt-3 text-center text-[10px] text-muted-foreground/60">
                 OpenMate Learning System • {new Date().toLocaleDateString("zh-CN")}
               </div>
             </div>
