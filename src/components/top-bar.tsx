@@ -79,7 +79,7 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
   };
 
   return (
-    <div className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-3 gap-2">
+    <div className="flex h-12 shrink-0 items-center justify-between border-b border-border bg-background px-3 gap-2 safe-area-top">
       {/* Left: logo + status */}
       <div className="flex items-center gap-1 shrink-0 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
         <span className="text-sm font-bold text-primary px-1">OM</span>

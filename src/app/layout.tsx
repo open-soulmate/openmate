@@ -5,6 +5,9 @@ import I18nProvider from "@/components/i18n-provider";
 
 export const viewport: Viewport = {
   themeColor: "#7c3aed",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export const metadata: Metadata = {
