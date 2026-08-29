@@ -224,8 +224,28 @@ function WebBrowserView({ tab, onNavigate, onBack, onForward, onRefresh }: {
           src={tab.url}
           className="flex-1 min-w-0 border-0 bg-white"
           style={{ width: '100%', height: '100%' }}
-          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+          sandbox="allow-same-origin allow-scripts allow-forms"
           title="Web Browser"
+          onLoad={() => {
+            // Intercept link clicks inside iframe to navigate within workspace
+            try {
+              const iframe = iframeRef.current;
+              if (!iframe?.contentDocument) return;
+              // Override target="_blank" links to open in same iframe
+              iframe.contentDocument.querySelectorAll('a[target="_blank"]').forEach((a) => {
+                a.removeAttribute('target');
+              });
+              // Listen for future navigations inside the iframe
+              const handleClick = (e: Event) => {
+                const link = (e.target as HTMLElement).closest('a');
+                if (link && link.href) {
+                  e.preventDefault();
+                  onNavigate(link.href);
+                }
+              };
+              iframe.contentDocument.addEventListener('click', handleClick, true);
+            } catch {}
+          }}
         />
       ) : (
         <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
