@@ -22,7 +22,7 @@ const PANEL_ROUTES = [
   "/knowledge-requests",
   "/cron",
   "/workflow",
-  "/workflow-builder",
+  "/workflow",
   "/pipeline",
   "/will",
   "/skills",
