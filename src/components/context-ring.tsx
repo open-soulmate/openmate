@@ -100,7 +100,7 @@ export function ContextRing({ className }: ContextRingProps) {
 
       {/* Detail popup */}
       {showDetail && (
-        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 w-52 rounded-xl border border-border bg-card shadow-lg p-3 z-50">
+        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-52 rounded-xl border border-border bg-card shadow-lg p-3 z-50">
           <div className="text-xs font-medium text-foreground mb-2">上下文窗口</div>
           
           {/* Progress bar */}
@@ -124,7 +124,7 @@ export function ContextRing({ className }: ContextRingProps) {
           </div>
 
           {/* Arrow */}
-          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-card border-l border-t border-border rotate-45" />
+          <div className="absolute -bottom-1.5 left-1/2 -translate-x-1/2 w-3 h-3 bg-card border-r border-b border-border rotate-45" />
         </div>
       )}
     </div>
