@@ -215,14 +215,10 @@ export function WillClient() {
 
   if (loading) {
     return (
-        <PageLayout title="Will">
-          
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    
-        </PageLayout>
-      )
+    )
   }
 
   const eng = health?.engine
@@ -233,6 +229,8 @@ export function WillClient() {
   ]
 
   return (
+      <PageLayout title="Will">
+        
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="shrink-0 px-3 lg:px-6 pt-6 pb-4">
@@ -575,5 +573,7 @@ export function WillClient() {
         )}
       </div>
     </div>
-  )
+  
+      </PageLayout>
+    )
 }

@@ -158,9 +158,7 @@ export default function SoulClient() {
   ];
 
   return (
-
       <PageLayout title="Soul">
-
         
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
@@ -621,8 +619,6 @@ export default function SoulClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }

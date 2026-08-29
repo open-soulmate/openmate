@@ -155,15 +155,7 @@ export function GraphClient() {
     };
     animRef.current = requestAnimationFrame(tick);
 
-    return (
-
-        <PageLayout title="Graph">
-
-          
-
-        </PageLayout>
-
-      ) => {
+    return () => {
       running = false;
       cancelAnimationFrame(animRef.current);
       ro.disconnect();
@@ -421,6 +413,8 @@ export function GraphClient() {
   if (loading) return <div className="flex items-center justify-center h-full"><Loader2 className="w-8 h-8 animate-spin text-primary" /></div>;
 
   return (
+      <PageLayout title="Graph">
+        
     <div className="flex h-full overflow-hidden relative">
       {/* Canvas area */}
       <div ref={containerRef} className="flex-1 relative">
@@ -530,5 +524,7 @@ export function GraphClient() {
         </div>
       ) : null}
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

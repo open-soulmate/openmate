@@ -235,14 +235,10 @@ export function ImmuneClient() {
 
   if (loading) {
     return (
-        <PageLayout title="Immune">
-          
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    
-        </PageLayout>
-      )
+    )
   }
 
   const modules = health?.modules || {}
@@ -261,6 +257,8 @@ export function ImmuneClient() {
   ]
 
   return (
+      <PageLayout title="Immune">
+        
     <div className="p-4 sm:p-3 lg:p-6 max-w-6xl mx-auto space-y-3 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
@@ -909,5 +907,7 @@ export function ImmuneClient() {
         </div>
       )}
     </div>
-  )
+  
+      </PageLayout>
+    )
 }

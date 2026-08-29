@@ -104,14 +104,10 @@ export function McpClient() {
     if (!query) return true;
     const q = query.toLowerCase();
     return (
-        <PageLayout title="Mcp">
-          
       s.name.toLowerCase().includes(q) ||
       s.description.toLowerCase().includes(q) ||
       s.tools.some((t) => t.name.toLowerCase().includes(q))
-    
-        </PageLayout>
-      );
+    );
   });
 
   const toggleExpand = (id: string) => {
@@ -217,6 +213,8 @@ export function McpClient() {
   // ── Render ─────────────────────────────────────────────
 
   return (
+      <PageLayout title="Mcp">
+        
     <div className="flex flex-col h-full overflow-hidden">
       {/* Toast */}
       {toast && (
@@ -417,5 +415,7 @@ export function McpClient() {
         )}
       </div>
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

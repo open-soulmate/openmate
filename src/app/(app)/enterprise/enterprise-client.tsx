@@ -300,9 +300,7 @@ export function EnterpriseClient() {
   const StatusIcon = health === "ok" || health === "healthy" ? CheckCircle : XCircle
 
   return (
-
       <PageLayout title="Enterprise">
-
         
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
@@ -565,8 +563,6 @@ export function EnterpriseClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     )
 }

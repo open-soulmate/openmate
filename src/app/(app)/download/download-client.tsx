@@ -135,9 +135,7 @@ export function DownloadClient() {
   const urlType = detectUrlType(newUrl);
 
   return (
-
       <PageLayout title="Download">
-
         
     <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
       <div className="flex items-center justify-between mb-3 lg:mb-6">
@@ -340,8 +338,6 @@ export function DownloadClient() {
       )}
     </div>
   
-
       </PageLayout>
-
     );
 }

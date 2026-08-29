@@ -132,11 +132,7 @@ export function DiagnosticsClient() {
   useEffect(() => {
     runCheck();
     const interval = setInterval(runCheck, 60000);
-    return (
-        <PageLayout title="Diagnostics">
-          
-        </PageLayout>
-      ) => clearInterval(interval);
+    return () => clearInterval(interval);
   }, [runCheck]);
 
   // Sort organs by response time
@@ -160,6 +156,8 @@ export function DiagnosticsClient() {
   };
 
   return (
+      <PageLayout title="Diagnostics">
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
@@ -332,5 +330,7 @@ export function DiagnosticsClient() {
         )}
       </div>
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

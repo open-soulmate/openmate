@@ -407,9 +407,7 @@ export function CortexClient() {
   ];
 
   return (
-
       <PageLayout title="Cortex">
-
         
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
@@ -1222,8 +1220,6 @@ export function CortexClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }

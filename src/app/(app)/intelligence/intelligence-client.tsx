@@ -117,9 +117,7 @@ export function IntelligenceClient() {
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   return (
-
       <PageLayout title="Intelligence">
-
         
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -336,8 +334,6 @@ export function IntelligenceClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }

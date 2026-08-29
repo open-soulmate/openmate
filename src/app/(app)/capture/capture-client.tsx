@@ -120,9 +120,7 @@ export function CaptureClient() {
   });
 
   return (
-
       <PageLayout title="Capture">
-
         
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
@@ -246,8 +244,6 @@ export function CaptureClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }

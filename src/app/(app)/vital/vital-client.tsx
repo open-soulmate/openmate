@@ -230,9 +230,7 @@ export function VitalClient() {
   ];
 
   return (
-
       <PageLayout title="Vital">
-
         
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
@@ -670,9 +668,7 @@ export function VitalClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }
 

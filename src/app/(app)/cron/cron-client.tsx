@@ -141,17 +141,15 @@ export function CronClient() {
 
   if (loading) {
     return (
-        <PageLayout title="Cron">
-          
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
-    
-        </PageLayout>
-      );
+    );
   }
 
   return (
+      <PageLayout title="Cron">
+        
     <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3 lg:mb-6">
@@ -394,5 +392,7 @@ export function CronClient() {
         </div>
       )}
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

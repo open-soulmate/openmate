@@ -207,9 +207,7 @@ export function TimelineClient() {
   // ── Render ─────────────────────────────────────────────────
 
   return (
-
       <PageLayout title="Timeline">
-
         
     <div className="flex flex-col h-full">
       {/* Header */}
@@ -362,9 +360,7 @@ export function TimelineClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     )
 }
 

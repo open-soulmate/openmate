@@ -197,9 +197,7 @@ export function WorkflowClient() {
   const filtered = workflows;
 
   return (
-
       <PageLayout title="Workflow">
-
         
     <div className="flex h-full flex-col">
       {/* Toast */}
@@ -410,8 +408,6 @@ export function WorkflowClient() {
       )}
     </div>
   
-
       </PageLayout>
-
     );
 }

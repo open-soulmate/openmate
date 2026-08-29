@@ -206,20 +206,18 @@ export function MarketplaceClient() {
 
   if (loading) {
     return (
-        <PageLayout title="Marketplace">
-          
       <div className="flex h-full items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
       </div>
-    
-        </PageLayout>
-      );
+    );
   }
 
   const filteredSkills = filterSources(skillSources);
   const filteredAgents = filterSources(agentSources);
 
   return (
+      <PageLayout title="Marketplace">
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="shrink-0 border-b border-border px-3 lg:px-6 py-2 lg:py-4">
@@ -302,7 +300,9 @@ export function MarketplaceClient() {
         )}
       </div>
     </div>
-  );
+  
+      </PageLayout>
+    );
 }
 
 // ─── Sub-components ─────────────────────────────────────────────────

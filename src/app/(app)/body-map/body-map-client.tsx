@@ -295,11 +295,7 @@ export function BodyMapClient() {
   useEffect(() => {
     if (!autoRefresh) return;
     const timer = setInterval(checkAllOrgans, 30000);
-    return (
-        <PageLayout title="Body Map">
-          
-        </PageLayout>
-      ) => clearInterval(timer);
+    return () => clearInterval(timer);
   }, [autoRefresh, checkAllOrgans]);
 
   const okCount = Object.values(organStatuses).filter((s) => s.status === "ok").length;
@@ -321,6 +317,8 @@ export function BodyMapClient() {
   const selectedStatus = selectedOrgan ? organStatuses[selectedOrgan] : null;
 
   return (
+      <PageLayout title="Body Map">
+        
     <div ref={containerRef} className="flex h-full flex-col overflow-hidden bg-background">
       {/* Header */}
       <div className="body-map-header flex items-center justify-between border-b border-border px-4 lg:px-6 py-3 lg:py-4">
@@ -625,5 +623,7 @@ export function BodyMapClient() {
         )}
       </div>
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

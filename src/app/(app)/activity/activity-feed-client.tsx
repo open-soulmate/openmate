@@ -160,15 +160,7 @@ export function ActivityFeedClient() {
     // Refresh summary periodically (not via SSE)
     const summaryTimer = setInterval(fetchSummary, 30000);
 
-    return (
-
-        <PageLayout title="Activity">
-
-          
-
-        </PageLayout>
-
-      ) => {
+    return () => {
       es.close();
       sseRef.current = null;
       setSseConnected(false);
@@ -189,6 +181,8 @@ export function ActivityFeedClient() {
   const uniqueOrgans = [...new Set(events.map((e) => e.organ))];
 
   return (
+      <PageLayout title="Activity">
+        
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
       <div className="flex items-center justify-between border-b border-border px-3 lg:px-6 py-4">
@@ -477,5 +471,7 @@ export function ActivityFeedClient() {
         )}
       </div>
     </div>
-  );
+  
+      </PageLayout>
+    );
 }

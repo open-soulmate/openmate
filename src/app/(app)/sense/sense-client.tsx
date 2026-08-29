@@ -223,14 +223,10 @@ export function SenseClient() {
 
   if (loading) {
     return (
-        <PageLayout title="Sense">
-          
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    
-        </PageLayout>
-      )
+    )
   }
 
   const ocrAvailable = health?.engines?.ocr?.available ?? false
@@ -245,6 +241,8 @@ export function SenseClient() {
   ]
 
   return (
+      <PageLayout title="Sense">
+        
     <div className="p-4 sm:p-3 lg:p-6 max-w-6xl mx-auto space-y-3 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-2 lg:gap-3">
@@ -826,5 +824,7 @@ export function SenseClient() {
         </div>
       )}
     </div>
-  )
+  
+      </PageLayout>
+    )
 }

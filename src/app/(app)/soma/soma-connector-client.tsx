@@ -252,9 +252,7 @@ export function SomaConnectorClient() {
   ];
 
   return (
-
       <PageLayout title="Soma">
-
         
     <div className="flex h-full flex-col overflow-hidden">
       {/* Header */}
@@ -776,8 +774,6 @@ export function SomaConnectorClient() {
       </div>
     </div>
   
-
       </PageLayout>
-
     );
 }

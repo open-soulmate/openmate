@@ -127,11 +127,7 @@ export function NerveClient() {
   useEffect(() => {
     if (activeTab !== "events") return
     const interval = setInterval(fetchEvents, 5000)
-    return (
-        <PageLayout title="Nerve">
-          
-        </PageLayout>
-      ) => clearInterval(interval)
+    return () => clearInterval(interval)
   }, [activeTab, fetchEvents])
 
   const handlePublish = useCallback(async () => {
@@ -237,6 +233,8 @@ export function NerveClient() {
   ]
 
   return (
+      <PageLayout title="Nerve">
+        
     <div className="p-4 sm:p-3 lg:p-6 max-w-6xl mx-auto space-y-3 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center gap-2 lg:gap-3">
@@ -709,5 +707,7 @@ export function NerveClient() {
         </div>
       )}
     </div>
-  )
+  
+      </PageLayout>
+    )
 }

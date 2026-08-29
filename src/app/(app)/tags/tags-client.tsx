@@ -114,17 +114,15 @@ export function TagsClient() {
 
   if (loading) {
     return (
-        <PageLayout title="Tags">
-          
       <div className="flex items-center justify-center h-64">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    
-        </PageLayout>
-      )
+    )
   }
 
   return (
+      <PageLayout title="Tags">
+        
     <div className="px-3 lg:px-6 py-4 lg:py-6 max-w-6xl mx-auto space-y-4 lg:space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
@@ -326,5 +324,7 @@ export function TagsClient() {
         </div>
       )}
     </div>
-  )
+  
+      </PageLayout>
+    )
 }

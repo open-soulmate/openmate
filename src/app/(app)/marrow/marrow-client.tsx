@@ -289,14 +289,10 @@ export function MarrowClient() {
 
   if (loading) {
     return (
-        <PageLayout title="Marrow">
-          
       <div className="flex items-center justify-center h-full">
         <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
-    
-        </PageLayout>
-      )
+    )
   }
 
   const tabs: Array<{ key: ActiveTab; label: string; icon: typeof Bone }> = [
@@ -307,6 +303,8 @@ export function MarrowClient() {
   ]
 
   return (
+      <PageLayout title="Marrow">
+        
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
       <div className="shrink-0 px-3 lg:px-6 pt-6 pb-4">
@@ -699,5 +697,7 @@ export function MarrowClient() {
         )}
       </div>
     </div>
-  )
+  
+      </PageLayout>
+    )
 }

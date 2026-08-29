@@ -169,9 +169,7 @@ export function WorkflowBuilderClient() {
     : null;
 
   return (
-
       <PageLayout title="Workflow Builder">
-
         
     <div className="flex h-full flex-col">
       <WorkflowToolbar onCreateNew={handleCreateNew} />
@@ -251,8 +249,6 @@ export function WorkflowBuilderClient() {
       {showExecutionPanel && <WorkflowExecutionPanel />}
     </div>
   
-
       </PageLayout>
-
     );
 }
