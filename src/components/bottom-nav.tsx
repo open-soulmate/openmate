@@ -32,7 +32,6 @@ const navItems: BottomNavItem[] = [
   { href: "/learn", label: "nav.learn", icon: GraduationCap },
   { href: "/graph", label: "nav.graph", icon: Network },
   { href: "/graph-builder", label: "nav.graphBuilder", icon: Share2 },
-  { href: "/search", label: "nav.search", icon: Search },
   { href: "/kb-sharing", label: "nav.kbSharing", icon: Share2 },
   { href: "/knowledge-requests", label: "nav.knowledgeRequests", icon: FileText },
   { href: "/cron", label: "nav.cron", icon: Clock },
@@ -149,9 +148,6 @@ export function BottomNav({ totalUnread = 0, onOpenConversations }: BottomNavPro
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
     }
-    if (!isLongPress.current) {
-      document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", ctrlKey: true }));
-    }
   }, []);
 
   const handlePointerLeave = useCallback(() => {
@@ -181,7 +177,7 @@ export function BottomNav({ totalUnread = 0, onOpenConversations }: BottomNavPro
           onPointerLeave={handlePointerLeave}
           onContextMenu={(e) => e.preventDefault()}
           className="flex h-10 w-10 items-center justify-center rounded-full bg-background border border-border transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
-          title="Click: Search · Hold: Voice"
+          title="Hold: Voice"
         >
           <Mic size={18} className="text-muted-foreground" />
         </button>
