@@ -40,6 +40,18 @@ export function ContextRing({ className }: ContextRingProps) {
     return () => clearInterval(interval);
   }, []);
 
+  // Dismiss tooltip on outside click (mobile support)
+  useEffect(() => {
+    if (!hover) return;
+    const dismiss = (e: MouseEvent) => {
+      if (ringRef.current && !ringRef.current.contains(e.target as Node)) {
+        setHover(false);
+      }
+    };
+    document.addEventListener("click", dismiss);
+    return () => document.removeEventListener("click", dismiss);
+  }, [hover]);
+
   const pct = total > 0 ? Math.min((used / total) * 100, 100) : 0;
   const radius = 8;
   const circumference = 2 * Math.PI * radius;
@@ -62,8 +74,16 @@ export function ContextRing({ className }: ContextRingProps) {
     setHover(true);
   };
 
+  const handleClick = () => {
+    if (ringRef.current) {
+      const rect = ringRef.current.getBoundingClientRect();
+      setPos({ x: rect.left + rect.width / 2, y: rect.top });
+    }
+    setHover(prev => !prev);
+  };
+
   return (
-    <div className="shrink-0" ref={ringRef} onMouseEnter={handleEnter} onMouseLeave={() => setHover(false)}>
+    <div className="shrink-0" ref={ringRef} onMouseEnter={handleEnter} onMouseLeave={() => setHover(false)} onClick={handleClick}>
       <div className="flex items-center gap-1 cursor-default touch-manipulation">
         <svg width="22" height="22" viewBox="0 0 22 22" className="shrink-0">
           <circle cx="11" cy="11" r={radius} fill="none" stroke="currentColor" className="text-border/50" strokeWidth="2.5" />
