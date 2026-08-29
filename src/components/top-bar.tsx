@@ -10,7 +10,6 @@ import {
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { HealthWidget } from "@/components/health-widget";
-import { ContextRing } from "@/components/context-ring";
 
 interface TopBarProps {
   eventCount?: number;
@@ -87,7 +86,6 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
         <img src="/logo.svg" alt="OpenMate" className="w-7 h-7" />
         <span className="text-sm font-semibold text-foreground hidden sm:inline">OpenMate</span>
       </Link>
-      <ContextRing />
 
       {/* Scrollable middle area: health + status + nav + search */}
       <div
