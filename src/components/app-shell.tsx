@@ -483,9 +483,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarProvider>
 
       {/* Right Panel — sidebar-style sliding, unified mobile/desktop */}
-      {/* Placeholder: reserves space on desktop, zero on mobile (overlay mode) */}
+      {/* Gap: reserves space on desktop, zero on mobile (overlay mode) */}
       <div
-        className="shrink-0 transition-[width] duration-200 ease-in-out max-lg:!w-0"
+        className="shrink-0 transition-[width] duration-200 ease-linear max-lg:!w-0"
         style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
       />
       {/* Mobile backdrop — tap to close right panel */}
@@ -496,11 +496,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           aria-hidden="true"
         />
       )}
+      {/* Container: absolute positioned, slides with right property */}
       <div
-        className="absolute inset-y-0 top-0 right-0 z-10 h-full min-w-0 border-l border-border transition-transform duration-200 ease-in-out flex flex-col overflow-hidden"
+        className="absolute inset-y-0 top-0 z-10 h-full min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
         style={{
           width: rightPanelWidth,
-          transform: rightPanelOpen ? 'translateX(0)' : `translateX(${rightPanelWidth}px)`,
+          right: rightPanelOpen ? 0 : -rightPanelWidth,
         }}
       >
         <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
