@@ -424,7 +424,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/50 rounded-md border border-border focus:outline-none focus:border-primary/50 transition-colors"
                         />
                       </div>
-
                     </div>
                     <ConversationTree
                       agents={displayAgents}
