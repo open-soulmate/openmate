@@ -16,7 +16,6 @@ import { useToast } from "@/components/toast-provider";
 import i18n from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { Sheet, SheetContent } from "@/components/ui/sheet";
 
 type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "organs" | "account" | "about";
 
@@ -482,13 +481,19 @@ export function SettingsClient() {
         </div>
       )}
 
-      {/* Mobile: Sheet drawer for sidebar */}
+      {/* Mobile: sidebar-style sliding panel */}
+      {isMobile && showSidebar && (
+        <div className="fixed inset-0 z-9 bg-black/40 animate-in fade-in-0" onClick={() => setShowSidebar(false)} aria-hidden="true" />
+      )}
       {isMobile ? (
-        <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
-          <SheetContent side="left" size="sm" className="p-4 flex flex-col">
+        showSidebar && (
+          <div
+            className="absolute inset-y-0 left-0 z-10 h-full w-64 min-w-0 border-r border-border transition-[left] duration-200 ease-linear flex flex-col overflow-hidden bg-card p-4"
+            style={{ left: 0 }}
+          >
             <SidebarNav />
-          </SheetContent>
-        </Sheet>
+          </div>
+        )
       ) : (
         /* PC: fixed sidebar */
         <div className="w-56 shrink-0 border-r border-border bg-card/50 p-3 lg:p-4 flex flex-col">
