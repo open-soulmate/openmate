@@ -182,7 +182,7 @@ export function SmartPrompt({
   return (
     <div
       className={cn(
-        'bg-background space-y-2 transition-all',
+        'border border-border rounded-xl bg-background space-y-2 transition-all',
         className,
       )}
     >
