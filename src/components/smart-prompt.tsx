@@ -140,6 +140,13 @@ export function SmartPrompt({
     setFields((prev) => ({ ...prev, [key]: value }));
   };
 
+  const handleClear = () => {
+    if (fields.task || generated) {
+      setFields({ task: '', role: '', background: '', constraints: '', format: '' });
+      setGenerated(false);
+    }
+  };
+
   const handleSend = () => {
     if (!fields.task.trim()) return;
     const assembled = assemblePrompt(fields);
@@ -155,11 +162,6 @@ export function SmartPrompt({
       e.preventDefault();
       handleSend();
     }
-  };
-
-  const handleClear = () => {
-    setFields({ task: '', role: '', background: '', constraints: '', format: '' });
-    setGenerated(false);
   };
 
   return (
@@ -191,37 +193,16 @@ export function SmartPrompt({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-
-
-          {/* Clear */}
+          {/* Clear — small, muted, away from send */}
           {(fields.task || generated) && (
             <button
               onClick={handleClear}
-              className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground transition-colors"
-              title="清空"
+              className="p-1 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+              title="清空所有字段"
             >
-              <RotateCcw className="w-4 h-4" />
+              <RotateCcw className="w-3 h-3" />
             </button>
           )}
-
-          {/* Send */}
-          <button
-            onClick={handleSend}
-            disabled={!fields.task.trim() || isLoading}
-            className={cn(
-              'p-1.5 rounded-md transition-colors',
-              fields.task.trim()
-                ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                : 'text-muted-foreground cursor-not-allowed',
-            )}
-            title="发送 (Enter)"
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Send className="w-4 h-4" />
-            )}
-          </button>
         </div>
       </div>
 
@@ -247,7 +228,7 @@ export function SmartPrompt({
             </div>
           ))}
 
-          {/* Hint */}
+          {/* Hint + Send button */}
           <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
             <span>
               {generated ? (
@@ -259,7 +240,26 @@ export function SmartPrompt({
                 '输入任务后自动生成其他字段'
               )}
             </span>
-            <span>Enter 发送 · Shift+Enter 换行</span>
+            <div className="flex items-center gap-2">
+              <span>Enter 发送</span>
+              <button
+                onClick={handleSend}
+                disabled={!fields.task.trim() || isLoading}
+                className={cn(
+                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
+                  fields.task.trim()
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                    : 'bg-muted text-muted-foreground cursor-not-allowed',
+                )}
+              >
+                {isLoading ? (
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                ) : (
+                  <Send className="w-3 h-3" />
+                )}
+                发送
+              </button>
+            </div>
           </div>
         </div>
       )}
