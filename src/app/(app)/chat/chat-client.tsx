@@ -881,8 +881,7 @@ export function ChatClient() {
               }}
               isLoading={loading}
               placeholder={t("chat.inputPlaceholder", "输入任务，点 ✨ 展开字段（Enter 发送，Shift+Enter 换行）")}
-              footer={
-                <div className="flex items-center gap-0.5 lg:gap-1 px-1.5 lg:px-2">
+              footer={<>
                   <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center w-9 h-9 lg:w-auto lg:h-auto lg:px-2.5 lg:py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors">
                     <Plus className="w-4 h-4" />
                   </button>
@@ -903,7 +902,6 @@ export function ChatClient() {
                     {checkpoints.length > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">{checkpoints.length}</span>}
                   </button>
                   <ContextRing />
-                  <div className="flex-1" />
                   <button
                     onClick={() => { window.dispatchEvent(new CustomEvent('smart-prompt-send')); }}
                     disabled={loading}
@@ -911,8 +909,7 @@ export function ChatClient() {
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </button>
-                </div>
-              }
+              </>}
             />
           </div>
         </div>
