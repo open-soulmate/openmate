@@ -1,7 +1,6 @@
 "use client";
 import dynamic from "next/dynamic";
-const SystemClient = dynamic(() => import("./system-client").then((m) => m.SystemOverviewClient), { ssr: false });
-// Note: export name is SystemOverviewClient in system-client.tsx
+const SystemClient = dynamic(() => import("./system-client").then((m) => m.SystemClient), { ssr: false });
 export default function SystemPage() {
   return <SystemClient />;
 }
