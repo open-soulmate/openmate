@@ -846,7 +846,7 @@ export function ChatClient() {
         </div>
 
         {/* Input area — Doubao style */}
-        <div className="border-t border-border px-3 lg:px-4 pt-3 pb-6 shrink-0">
+        <div className="px-3 lg:px-4 pt-3 pb-6 shrink-0">
           {attachments.length > 0 && (
             <div className="flex gap-2 mb-2 flex-wrap">
               {attachments.map((a, i) => (
