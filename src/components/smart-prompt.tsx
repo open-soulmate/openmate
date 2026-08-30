@@ -192,6 +192,16 @@ export function SmartPrompt({
       {/* Task input — always visible */}
       <div className="flex items-end gap-2 p-3">
         <div className="flex-1 relative min-h-[48px]">
+          {/* Clear — top-left */}
+          {(fields.task || generated) && (
+            <button
+              onClick={handleClear}
+              className="absolute top-0 left-0 p-1 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors z-10"
+              title="清空所有字段"
+            >
+              <RotateCcw className="w-3 h-3" />
+            </button>
+          )}
           <RichInput
             value={fields.task}
             onChange={(val) => updateField('task', val)}
@@ -212,7 +222,7 @@ export function SmartPrompt({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {/* Expand with AI — triggers LLM generation */}
+          {/* Expand with AI — top-right */}
           <button
             onClick={() => {
               if (!expanded) {
@@ -234,16 +244,6 @@ export function SmartPrompt({
           >
             {expanded ? <ChevronUp className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
           </button>
-          {/* Clear — small, muted */}
-          {(fields.task || generated) && (
-            <button
-              onClick={handleClear}
-              className="p-1 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-              title="清空所有字段"
-            >
-              <RotateCcw className="w-3 h-3" />
-            </button>
-          )}
         </div>
       </div>
 
