@@ -880,7 +880,7 @@ export function ChatClient() {
                 }
               }}
               isLoading={loading}
-              placeholder={t("chat.inputPlaceholder", "输入任务，AI会自动补全prompt...")}
+              placeholder={t("chat.inputPlaceholder", "输入任务，点 ✨ 展开字段（Enter 发送，Shift+Enter 换行）")}
             />
             <div className="flex items-center gap-0.5 lg:gap-1 px-1.5 lg:px-2">
               <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center w-9 h-9 lg:w-auto lg:h-auto lg:px-2.5 lg:py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors">
