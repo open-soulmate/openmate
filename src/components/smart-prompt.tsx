@@ -10,7 +10,9 @@ import {
   ChevronUp,
   ChevronDown,
   Mic,
-  AudioLines,
+  Smile,
+  Star,
+  Paperclip,
 } from 'lucide-react';
 import { RichInput } from '@/components/rich-input';
 
@@ -37,6 +39,8 @@ interface SmartPromptProps {
   className?: string;
   /** Footer slot (e.g. action buttons) rendered inside the border */
   footer?: React.ReactNode;
+  /** Called when file attach button is clicked */
+  onFileClick?: () => void;
 }
 
 // ── Field Definitions ────────────────────────────────────────────
@@ -81,6 +85,7 @@ export function SmartPrompt({
   context,
   className,
   footer,
+  onFileClick,
 }: SmartPromptProps) {
   const [fields, setFields] = useState<SmartPromptFields>({
     task: '',
@@ -240,17 +245,20 @@ export function SmartPrompt({
         </div>
       )}
 
-      {/* Footer — all buttons in one row, WeChat style */}
+      {/* Footer — single row, left: media buttons, right: action buttons */}
       <div className="flex items-center gap-0.5 px-2 py-1.5">
-        {/* SmartPrompt built-in buttons */}
-        <button onClick={handleClear} disabled={!fields.task && !generated} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors disabled:opacity-20 disabled:cursor-not-allowed" title="清空">
-            <RotateCcw className="w-4 h-4" />
-          </button>
+        {/* Left — media & input buttons */}
+        <button className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="表情">
+          <Smile className="w-4 h-4" />
+        </button>
+        <button className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="收藏">
+          <Star className="w-4 h-4" />
+        </button>
+        <button onClick={onFileClick} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="文件">
+          <Paperclip className="w-4 h-4" />
+        </button>
         <button className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="语音输入">
           <Mic className="w-4 h-4" />
-        </button>
-        <button className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="发送语音">
-          <AudioLines className="w-4 h-4" />
         </button>
         <button
           onClick={() => {
@@ -263,8 +271,10 @@ export function SmartPrompt({
           {expanded ? <ChevronUp className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
         </button>
 
-        {/* Spacer + external footer slot */}
+        {/* Spacer */}
         <div className="flex-1" />
+
+        {/* Right — action buttons from chat-client */}
         {footer}
       </div>
 

@@ -859,6 +859,7 @@ export function ChatClient() {
             </div>
           )}
           <div className="space-y-2">
+            <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
             <SmartPrompt
               onSend={(assembled) => {
                 if ((!assembled.trim() && attachments.length === 0) || loading) return;
@@ -881,31 +882,29 @@ export function ChatClient() {
               }}
               isLoading={loading}
               placeholder={t("chat.inputPlaceholder", "输入任务，点 ✨ 展开字段（Enter 发送，Shift+Enter 换行）")}
+              onFileClick={() => fileRef.current?.click()}
               footer={<>
-                  <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center w-9 h-9 lg:w-auto lg:h-auto lg:px-2.5 lg:py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors">
-                    <Plus className="w-4 h-4" />
-                  </button>
-                  <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
-                  <div className="w-px h-4 bg-border mx-0.5 lg:mx-1" />
                   <button
                     onClick={() => setAgentMode(prev => prev === 'plan' ? 'act' : 'plan')}
-                    className={`flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs font-medium touch-manipulation transition-colors ${
+                    className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       agentMode === 'plan' ? 'text-blue-400 hover:bg-blue-500/10' : 'text-green-400 hover:bg-green-500/10'
                     }`}
                   >
                     {agentMode === 'plan' ? <Brain className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
                     <span className="hidden lg:inline">{agentMode === 'plan' ? 'Plan' : 'Act'}</span>
                   </button>
-                  <button onClick={() => { const next = !showCheckpoints; setShowCheckpoints(next); if (next) { setRightPanelOpen(false); if (isMobile && sidebarOpen) toggleSidebar(); } }} className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors relative">
+                  <button onClick={() => setMessages([])} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="清空">
                     <RotateCcw className="w-4 h-4" />
-                    <span className="hidden lg:inline">{t("chat.history", "历史")}</span>
+                  </button>
+                  <button onClick={() => { const next = !showCheckpoints; setShowCheckpoints(next); if (next) { setRightPanelOpen(false); if (isMobile && sidebarOpen) toggleSidebar(); } }} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors relative" title="历史">
+                    <Bookmark className="w-4 h-4" />
                     {checkpoints.length > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">{checkpoints.length}</span>}
                   </button>
                   <ContextRing />
                   <button
                     onClick={() => { window.dispatchEvent(new CustomEvent('smart-prompt-send')); }}
                     disabled={loading}
-                    className={`flex items-center justify-center w-10 h-10 lg:w-8 lg:h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 touch-manipulation transition-colors`}
+                    className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 transition-colors"
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </button>
