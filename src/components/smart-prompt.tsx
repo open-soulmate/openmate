@@ -167,12 +167,10 @@ export function SmartPrompt({
     }
   };
 
-  // Auto-expand when user types task (3+ chars)
-  useEffect(() => {
-    if (fields.task.trim().length >= 3) {
-      setExpanded(true);
-    }
-  }, [fields.task]);
+  // Auto-expand when RichInput content wraps (triggers onOverflow)
+  const handleOverflow = useCallback(() => {
+    setExpanded(true);
+  }, []);
 
   // Listen for external send trigger (from chat action bar button)
   useEffect(() => {
@@ -194,6 +192,7 @@ export function SmartPrompt({
           <RichInput
             value={fields.task}
             onChange={(val) => updateField('task', val)}
+            onOverflow={handleOverflow}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
             disabled={isLoading}

@@ -12,6 +12,8 @@ interface RichInputProps {
   className?: string;
   minRows?: number;
   maxRows?: number;
+  /** Called when content wraps beyond first line (scrollHeight > minHeight) */
+  onOverflow?: () => void;
 }
 
 /**
@@ -33,6 +35,7 @@ export function RichInput({
   className,
   minRows = 1,
   maxRows = 15,
+  onOverflow,
 }: RichInputProps) {
   const editorRef = useRef<HTMLDivElement>(null);
   const [isEmpty, setIsEmpty] = useState(true);
@@ -68,7 +71,12 @@ export function RichInput({
     
     // Enable scroll if content exceeds max height
     el.style.overflowY = scrollHeight > maxHeight ? 'auto' : 'hidden';
-  }, [minRows, maxRows]);
+    
+    // Fire onOverflow when content wraps beyond single line
+    if (onOverflow && scrollHeight > minHeight + 4) {
+      onOverflow();
+    }
+  }, [minRows, maxRows, onOverflow]);
 
   // Handle input
   const handleInput = useCallback(() => {
