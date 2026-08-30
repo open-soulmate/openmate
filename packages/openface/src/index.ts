@@ -7,6 +7,12 @@ export { LeftPanel } from './components/left-panel';
 export { DetailPanel, useDetailPanel } from './components/detail-panel';
 export type { DetailPanelProps, DetailSection, DetailItem } from './components/detail-panel';
 
+export { TopBar } from './components/top-bar';
+export type { TopBarProps } from './components/top-bar';
+
+export { BottomBar } from './components/bottom-bar';
+export type { BottomBarProps } from './components/bottom-bar';
+
 // Hooks
 export { useIsMobile, useMediaQuery } from './hooks/use-mobile';
 export { useResizeObserver } from './hooks/use-resize-observer';
