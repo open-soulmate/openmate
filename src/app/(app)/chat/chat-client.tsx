@@ -11,6 +11,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { useIsMobile } from '@/hooks/use-mobile';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useTranslation } from 'react-i18next';
+import { SmartPrompt } from '@/components/smart-prompt';
 
 const getApiUrl = () => getApiBaseUrl();
 const getWsUrl = () => getApiUrl().replace('http', 'ws');
@@ -857,57 +858,55 @@ export function ChatClient() {
               ))}
             </div>
           )}
-          <div className="rounded-2xl border border-primary/40 bg-background overflow-hidden">
-            {/* Input row */}
-            <textarea ref={textareaRef} value={input} onChange={e => setInput(e.target.value)} onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-              onPaste={handlePaste} placeholder={t("chat.inputPlaceholder", "发消息或按住空格说话...")} rows={1}
-              className="w-full resize-none bg-transparent px-4 py-3 text-sm focus:outline-none min-h-[48px]" />
-
-            {/* Action buttons row */}
-            <div className="flex items-center gap-0.5 lg:gap-1 px-1.5 lg:px-2 pb-2">
+          <div className="space-y-2">
+            <SmartPrompt
+              onSend={(assembled) => {
+                if ((!assembled.trim() && attachments.length === 0) || loading) return;
+                const text = assembled.trim();
+                const userMsg: Message = { id: Date.now().toString(), role: 'user', parts: [{ type: 'text', text }, ...attachments], timestamp: new Date() };
+                setMessages(prev => [...prev, userMsg]);
+                setAttachments([]); setLoading(true);
+                const messageText = agentMode === 'plan' ? `[PLAN MODE] ${text}` : text;
+                const wsPayload = {
+                  type: 'message', text: messageText,
+                  mode: selectedAgent ? 'agent_proxy' : 'hermes',
+                  session_id: selectedSession?.id,
+                  ...(selectedAgent ? { agent_id: selectedAgent.id } : {}),
+                  attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
+                };
+                streamingSessionIdRef.current = selectedSession?.id || null;
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                  wsRef.current.send(JSON.stringify(wsPayload));
+                }
+              }}
+              isLoading={loading}
+              placeholder={t("chat.inputPlaceholder", "输入任务，AI会自动补全prompt...")}
+            />
+            <div className="flex items-center gap-0.5 lg:gap-1 px-1.5 lg:px-2">
               <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center w-9 h-9 lg:w-auto lg:h-auto lg:px-2.5 lg:py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors">
                 <Plus className="w-4 h-4" />
               </button>
               <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
-
               <div className="w-px h-4 bg-border mx-0.5 lg:mx-1" />
-
               <button
                 onClick={() => setAgentMode(prev => prev === 'plan' ? 'act' : 'plan')}
                 className={`flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs font-medium touch-manipulation transition-colors ${
-                  agentMode === 'plan'
-                    ? 'text-blue-400 hover:bg-blue-500/10'
-                    : 'text-green-400 hover:bg-green-500/10'
+                  agentMode === 'plan' ? 'text-blue-400 hover:bg-blue-500/10' : 'text-green-400 hover:bg-green-500/10'
                 }`}
               >
                 {agentMode === 'plan' ? <Brain className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
                 <span className="hidden lg:inline">{agentMode === 'plan' ? 'Plan' : 'Act'}</span>
-                <ChevronDown className="w-3 h-3 hidden lg:inline" />
               </button>
-
               <button onClick={() => { const next = !showCheckpoints; setShowCheckpoints(next); if (next) { setRightPanelOpen(false); if (isMobile && sidebarOpen) toggleSidebar(); } }} className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors relative">
                 <RotateCcw className="w-4 h-4" />
                 <span className="hidden lg:inline">{t("chat.history", "历史")}</span>
-                {checkpoints.length > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">
-                    {checkpoints.length}
-                  </span>
-                )}
+                {checkpoints.length > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">{checkpoints.length}</span>}
               </button>
-
               <ContextRing />
-
-              <div className="flex-1" />
-
-              <button onClick={handleSend} disabled={loading || (!input.trim() && attachments.length === 0)}
-                className="flex items-center justify-center w-10 h-10 lg:w-8 lg:h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 touch-manipulation transition-colors">
-                <Send className="w-4 h-4" />
-              </button>
             </div>
           </div>
         </div>
       </div>
-
       {/* Checkpoints Panel — Sheet on mobile, inline overlay on desktop */}
       {isMobile ? (
         <Sheet open={showCheckpoints} onOpenChange={setShowCheckpoints}>
