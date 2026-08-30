@@ -13,6 +13,7 @@ import { PageLayout } from '@/components/page-layout'
 import { DetailPanel } from '@/components/detail-panel'
 import { LeftPanel } from '@/components/left-panel'
 import { useAppStore } from '@/stores/app-store'
+import { NotificationCharts } from './notification-charts'
 
 interface Notification {
   id: string
@@ -395,6 +396,9 @@ export function NotificationsClient() {
           {t('notifications.test', '测试')}
         </button>
       </div>
+
+      {/* Dashboard Charts */}
+      <NotificationCharts notifications={notifications} />
 
       {/* Notification List — grouped by date */}
       {filtered.length === 0 ? (
