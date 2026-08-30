@@ -18,7 +18,9 @@ import {
   FileText, CheckCircle, XCircle, Clock, Send, Eye,
   BarChart3, PieChart, TrendingUp, ChevronRight,
   Plus,
+  Share2,
 } from 'lucide-react';
+import { SharingTab } from './tabs/sharing-tab';
 
 const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
 
@@ -229,7 +231,7 @@ export function KnowledgeClient() {
   const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
 
   // Tab state
-  const [activeTab, setActiveTab] = useState<'items' | 'requests'>('items');
+  const [activeTab, setActiveTab] = useState<'items' | 'requests' | 'sharing'>('items');
 
   // Knowledge items state
   const [items, setItems] = useState<KnowledgeItem[]>([]);
@@ -420,7 +422,7 @@ export function KnowledgeClient() {
           }
         />
       );
-    } else {
+    } else if (activeTab === 'requests') {
       // Requests tab sidebar
       setPageSidebar(
         <LeftPanel
@@ -484,6 +486,9 @@ export function KnowledgeClient() {
           }
         />
       );
+    } else {
+      // Sharing tab — no sidebar needed (content handles its own layout)
+      setPageSidebar(null);
     }
     return () => setPageSidebar(null);
   }, [activeTab, items, selectedItem, selectedRequest, requests, refreshing, t, setPageSidebar, handleRefresh]);
@@ -677,6 +682,18 @@ export function KnowledgeClient() {
                   {pendingRequests}
                 </span>
               )}
+            </button>
+            <button
+              onClick={() => { setActiveTab('sharing'); setSelectedItem(null); setSelectedRequest(null); }}
+              className={cn(
+                'px-3 py-2 text-xs font-medium border-b-2 transition-colors',
+                activeTab === 'sharing'
+                  ? 'border-emerald-500 text-emerald-500'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground/30'
+              )}
+            >
+              <Share2 className="w-3.5 h-3.5 inline mr-1.5" />
+              {t('knowledge.tabSharing', '知识共享')}
             </button>
           </div>
         </div>
@@ -982,6 +999,11 @@ export function KnowledgeClient() {
               </div>
             )}
           </div>
+        )}
+
+        {/* ── Knowledge Sharing Tab ──────────────────────────── */}
+        {activeTab === 'sharing' && (
+          <SharingTab />
         )}
       </div>
     </PageLayout>
