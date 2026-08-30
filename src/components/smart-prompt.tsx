@@ -243,11 +243,9 @@ export function SmartPrompt({
       {/* Footer — all buttons in one row, WeChat style */}
       <div className="flex items-center gap-0.5 px-2 py-1.5">
         {/* SmartPrompt built-in buttons */}
-        {(fields.task || generated) && (
-          <button onClick={handleClear} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="清空">
+        <button onClick={handleClear} disabled={!fields.task && !generated} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors disabled:opacity-20 disabled:cursor-not-allowed" title="清空">
             <RotateCcw className="w-4 h-4" />
           </button>
-        )}
         <button className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="语音输入">
           <Mic className="w-4 h-4" />
         </button>
