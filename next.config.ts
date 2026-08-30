@@ -15,18 +15,6 @@ const nextConfig: NextConfig = {
         source: "/api/soul/:path*",
         destination: `${soulApiUrl}/:path*`,
       },
-      {
-        source: "/api/sessions/:path*",
-        destination: `${soulApiUrl}/api/sessions/:path*`,
-      },
-      {
-        source: "/api/agents/:path*",
-        destination: `${soulApiUrl}/api/agents/:path*`,
-      },
-      {
-        source: "/api/health/:path*",
-        destination: `${soulApiUrl}/api/health/:path*`,
-      },
     ];
   },
   images: {

@@ -1,6 +1,5 @@
-// Empty string = same-origin, uses Next.js rewrites to proxy to OpenSoul
 const DEFAULT_API_URL = typeof window !== 'undefined'
-  ? ''
+  ? `http://${window.location.hostname}:8090`
   : 'http://127.0.0.1:8090';
 
 export function getApiBaseUrl(): string {
