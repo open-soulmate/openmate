@@ -209,7 +209,7 @@ export function SmartPrompt({
       {/* Fields — always visible */}
       {(
         <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
-          {FIELD_DEFS.map((def) => (
+          {FIELD_DEFS.map((def, idx) => (
             <div key={def.key} className="flex items-center gap-2">
               <span className="text-sm shrink-0 w-5 text-center">{def.icon}</span>
               <label className="text-xs text-muted-foreground shrink-0 w-8">
@@ -224,6 +224,22 @@ export function SmartPrompt({
               />
               {generated && fields[def.key] && (
                 <span title="AI生成"><Sparkles className="w-3 h-3 text-amber-500 shrink-0" /></span>
+              )}
+              {/* Send button — inline with last field (format) */}
+              {idx === FIELD_DEFS.length - 1 && (
+                <button
+                  onClick={handleSend}
+                  disabled={!fields.task.trim() || isLoading}
+                  className={cn(
+                    'flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium transition-colors shrink-0',
+                    fields.task.trim()
+                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
+                      : 'bg-muted text-muted-foreground cursor-not-allowed',
+                  )}
+                >
+                  {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                  发送
+                </button>
               )}
             </div>
           ))}
@@ -242,26 +258,6 @@ export function SmartPrompt({
         </div>
       )}
 
-      {/* Send button — absolute bottom-right corner */}
-      <div className="flex justify-end px-3 pb-2">
-        <button
-          onClick={handleSend}
-          disabled={!fields.task.trim() || isLoading}
-          className={cn(
-            'flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-            fields.task.trim()
-              ? 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80'
-              : 'bg-muted text-muted-foreground cursor-not-allowed',
-          )}
-        >
-          {isLoading ? (
-            <Loader2 className="w-4 h-4 animate-spin" />
-          ) : (
-            <Send className="w-4 h-4" />
-          )}
-          发送
-        </button>
-      </div>
     </div>
   );
 }
