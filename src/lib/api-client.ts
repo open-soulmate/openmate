@@ -4,8 +4,8 @@ const DEFAULT_API_URL = typeof window !== 'undefined'
   : 'http://127.0.0.1:8090';
 
 export function getApiBaseUrl(): string {
-  if (typeof window === 'undefined') return DEFAULT_API_URL;
-  return localStorage.getItem('openmate-api-url') || DEFAULT_API_URL;
+  // Always use same-origin (Next.js rewrites proxy to OpenSoul)
+  return DEFAULT_API_URL;
 }
 
 export function setApiBaseUrl(url: string) {
