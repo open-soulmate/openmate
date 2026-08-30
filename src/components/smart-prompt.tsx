@@ -7,6 +7,8 @@ import {
   Sparkles,
   Loader2,
   RotateCcw,
+  ChevronUp,
+  ChevronDown,
 } from 'lucide-react';
 import { RichInput } from '@/components/rich-input';
 
@@ -85,7 +87,7 @@ export function SmartPrompt({
 
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
-  const expanded = true; // Always show all fields
+  const [expanded, setExpanded] = useState(false);
   let generateTimerRef: ReturnType<typeof setTimeout> | null = null;
 
   // Auto-generate other fields when task changes (debounced)
@@ -151,9 +153,10 @@ export function SmartPrompt({
     if (!fields.task.trim()) return;
     const assembled = assemblePrompt(fields);
     onSend(assembled, fields);
-    // Reset after send
+    // Reset after send and collapse
     setFields({ task: '', role: '', background: '', constraints: '', format: '' });
     setGenerated(false);
+    setExpanded(false);
 
   };
 
@@ -193,7 +196,15 @@ export function SmartPrompt({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {/* Clear — small, muted, away from send */}
+          {/* Toggle expand */}
+          <button
+            onClick={() => setExpanded(!expanded)}
+            className="p-1 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+            title={expanded ? '折叠字段' : '展开字段'}
+          >
+            {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+          {/* Clear — small, muted */}
           {(fields.task || generated) && (
             <button
               onClick={handleClear}
@@ -206,8 +217,8 @@ export function SmartPrompt({
         </div>
       </div>
 
-      {/* Fields — always visible */}
-      {(
+      {/* Fields — expandable */}
+      {expanded && (
         <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
           {FIELD_DEFS.map((def, idx) => (
             <div key={def.key} className="flex items-center gap-2">
@@ -237,7 +248,7 @@ export function SmartPrompt({
                 AI已预填，可编辑后发送
               </span>
             ) : (
-              '输入任务后自动生成其他字段'
+              '输入任务后展开字段，可编辑后发送'
             )}
           </div>
         </div>
