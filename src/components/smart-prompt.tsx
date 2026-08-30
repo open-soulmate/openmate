@@ -228,41 +228,40 @@ export function SmartPrompt({
             </div>
           ))}
 
-          {/* Hint + Send button */}
-          <div className="flex items-center justify-between text-[10px] text-muted-foreground pt-1">
-            <span>
-              {generated ? (
-                <span className="flex items-center gap-1">
-                  <Sparkles className="w-3 h-3 text-amber-500" />
-                  AI已预填，可编辑后发送
-                </span>
-              ) : (
-                '输入任务后自动生成其他字段'
-              )}
-            </span>
-            <div className="flex items-center gap-2">
-              <span>Enter 发送</span>
-              <button
-                onClick={handleSend}
-                disabled={!fields.task.trim() || isLoading}
-                className={cn(
-                  'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors',
-                  fields.task.trim()
-                    ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                    : 'bg-muted text-muted-foreground cursor-not-allowed',
-                )}
-              >
-                {isLoading ? (
-                  <Loader2 className="w-3 h-3 animate-spin" />
-                ) : (
-                  <Send className="w-3 h-3" />
-                )}
-                发送
-              </button>
-            </div>
+          {/* Hint */}
+          <div className="text-[10px] text-muted-foreground pt-1">
+            {generated ? (
+              <span className="flex items-center gap-1">
+                <Sparkles className="w-3 h-3 text-amber-500" />
+                AI已预填，可编辑后发送
+              </span>
+            ) : (
+              '输入任务后自动生成其他字段'
+            )}
           </div>
         </div>
       )}
+
+      {/* Send button — absolute bottom-right corner */}
+      <div className="flex justify-end px-3 pb-2">
+        <button
+          onClick={handleSend}
+          disabled={!fields.task.trim() || isLoading}
+          className={cn(
+            'flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-colors',
+            fields.task.trim()
+              ? 'bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80'
+              : 'bg-muted text-muted-foreground cursor-not-allowed',
+          )}
+        >
+          {isLoading ? (
+            <Loader2 className="w-4 h-4 animate-spin" />
+          ) : (
+            <Send className="w-4 h-4" />
+          )}
+          发送
+        </button>
+      </div>
     </div>
   );
 }
