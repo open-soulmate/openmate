@@ -146,6 +146,7 @@ export function RichInput({
         onInput={handleInput}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
+        onKeyUp={handleInput}
         onFocus={handleFocus}
         className={cn(
           'w-full text-sm outline-none min-h-[24px] px-1 py-0.5',
