@@ -73,7 +73,7 @@ function assemblePrompt(fields: SmartPromptFields): string {
 export function SmartPrompt({
   onSend,
   isLoading = false,
-  placeholder = '输入任务...',
+  placeholder = '输入任务，点 ✨ 展开字段（Enter 发送, Shift+Enter 换行）',
   context,
   className,
 }: SmartPromptProps) {
@@ -267,17 +267,7 @@ export function SmartPrompt({
             </div>
           ))}
 
-          {/* Hint */}
-          <div className="text-[10px] text-muted-foreground pt-1">
-            {generated ? (
-              <span className="flex items-center gap-1">
-                <Sparkles className="w-3 h-3 text-amber-500" />
-                AI已预填，可编辑后发送
-              </span>
-            ) : (
-              '输入任务后展开字段，可编辑后发送'
-            )}
-          </div>
+
         </div>
       )}
 
