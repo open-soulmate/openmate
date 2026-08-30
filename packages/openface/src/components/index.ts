@@ -12,3 +12,6 @@ export type { BottomBarProps } from './bottom-bar';
 
 export { MainHeader } from './main-header';
 export type { MainHeaderProps } from './main-header';
+
+export { FileViewer } from './file-viewer';
+export type { FileViewerProps, FileCategory } from './file-viewer';

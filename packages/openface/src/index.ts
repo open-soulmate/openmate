@@ -1,6 +1,12 @@
 // @opensoulmate/openface — Soulmate Design System
 
 // Components
+export { AppShell } from './components/app-shell';
+export type { AppShellProps, NavItem } from './components/app-shell';
+export { SkirtTabs } from './components/skirt-tabs';
+export type { SkirtTabsProps, SkirtTab } from './components/skirt-tabs';
+export { WorkspacePanel } from './components/workspace-panel';
+export type { WorkspacePanelProps } from './components/workspace-panel';
 export { MainPanel } from './components/main-panel';
 export type { MainPanelProps } from './components/main-panel';
 export { LeftPanel } from './components/left-panel';
@@ -43,3 +49,8 @@ export { cn } from './lib/utils';
 
 export { MainHeader } from './components/main-header';
 export type { MainHeaderProps } from './components/main-header';
+
+export { FileViewer } from './components/file-viewer';
+export type { FileViewerProps, FileCategory } from './components/file-viewer';
+export { CanvasAnnotation } from './components/file-viewer';
+export type { CanvasAnnotationProps } from './components/file-viewer';

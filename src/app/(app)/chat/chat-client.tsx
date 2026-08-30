@@ -1,9 +1,9 @@
 'use client';
 import { MarkdownContent } from "@/components/markdown-content";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/stores/app-store';
-import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft } from "lucide-react";
+import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, Copy, ThumbsUp, ThumbsDown, Share2, RefreshCw, MoreHorizontal, Volume2 } from "lucide-react";
 import { ContextRing } from "@/components/context-ring";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { Dialog } from '@/components/ui/dialog';
@@ -240,14 +240,141 @@ export function ChatClient() {
     }
   }, [checkpoints]);
 
+  // ── Session cumulative stats ────────────────────────────────
+  const sessionStats = useMemo(() => {
+    let totalIn = 0, totalOut = 0, totalCost = 0, msgCount = 0;
+    for (const msg of messages) {
+      if (msg.role === 'agent' && msg.tokenUsage) {
+        totalIn += msg.tokenUsage.input;
+        totalOut += msg.tokenUsage.output;
+        totalCost += calculateCost(msg.tokenUsage);
+        msgCount++;
+      }
+    }
+    return { totalIn, totalOut, totalCost, msgCount };
+  }, [messages]);
+
+  // ── Message action handlers ──────────────────────────────────
+
+  // Get plain text from message parts
+  const getMessageText = useCallback((msg: Message): string => {
+    return msg.parts.filter(p => p.type === 'text').map(p => p.text).join('\n');
+  }, []);
+
+  // Copy message text to clipboard
+  const handleCopy = useCallback((msg: Message) => {
+    navigator.clipboard.writeText(getMessageText(msg));
+  }, [getMessageText]);
+
+  // Read aloud using Web Speech API
+  const handleReadAloud = useCallback((msg: Message) => {
+    const text = getMessageText(msg);
+    if (!text) return;
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'zh-CN';
+    utterance.rate = 1.0;
+    window.speechSynthesis.speak(utterance);
+  }, [getMessageText]);
+
+  // Like/dislike — send feedback to backend
+  const handleFeedback = useCallback(async (msg: Message, type: 'like' | 'dislike') => {
+    try {
+      await fetch(`${getApiUrl()}/api/feedback`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({
+          message_id: msg.id,
+          session_id: selectedSession?.id,
+          type,
+          content: getMessageText(msg).slice(0, 200),
+          user_id: getUserId(),
+        }),
+      });
+    } catch (e) { console.error('Feedback error:', e); }
+  }, [selectedSession, getMessageText]);
+
+  // Share via Web Share API or copy
+  const handleShare = useCallback(async (msg: Message) => {
+    const text = getMessageText(msg);
+    if (navigator.share) {
+      try { await navigator.share({ text }); } catch { /* user cancelled */ }
+    } else {
+      navigator.clipboard.writeText(text);
+    }
+  }, [getMessageText]);
+
+  // Regenerate — re-send the last user message before this agent message
+  const handleRegenerate = useCallback((agentMsgId: string) => {
+    const agentIdx = messages.findIndex(m => m.id === agentMsgId);
+    if (agentIdx < 0) return;
+    // Find the user message before this agent message
+    let userMsg: Message | null = null;
+    for (let i = agentIdx - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') { userMsg = messages[i]; break; }
+    }
+    if (!userMsg) return;
+    // Remove the agent message
+    setMessages(prev => prev.filter(m => m.id !== agentMsgId));
+    // Re-send via websocket
+    const text = getMessageText(userMsg);
+    setLoading(true);
+    const wsPayload = {
+      type: 'message', text,
+      mode: selectedAgent ? 'agent_proxy' : 'hermes',
+      session_id: selectedSession?.id,
+      ...(selectedAgent ? { agent_id: selectedAgent.id } : {}),
+    };
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(wsPayload));
+    }
+  }, [messages, selectedSession, selectedAgent, getMessageText]);
+
+  // Edit user message — put text back into input
+  const handleEditMessage = useCallback((msg: Message) => {
+    const text = getMessageText(msg);
+    // Remove the message from list
+    setMessages(prev => prev.filter(m => m.id !== msg.id));
+    // TODO: set the SmartPrompt content — for now just focus the input
+    // The user can paste back
+    navigator.clipboard.writeText(text);
+  }, [getMessageText]);
+
+  // Favorite message — save to store
+  const handleFavorite = useCallback(async (msg: Message) => {
+    try {
+      await fetch(`${getApiUrl()}/api/knowledge/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+        body: JSON.stringify({
+          content: getMessageText(msg),
+          content_type: 'feedback',
+          title: `收藏消息 ${new Date().toLocaleString()}`,
+          user_id: getUserId(),
+        }),
+      });
+    } catch (e) { console.error('Favorite error:', e); }
+  }, [getMessageText]);
+
+  // Delete message
+  const handleDeleteMessage = useCallback((msgId: string) => {
+    setMessages(prev => prev.filter(m => m.id !== msgId));
+  }, []);
+
   // Detect installed agents and load sessions
   const initAgents = useCallback(async () => {
-    // Detect installed agents via API — use full agent data from detect
+    // Use cached agents from store if available (set by app-shell)
+    const cached = useAppStore.getState().cachedAgents;
     let detectedAgents: Array<{id: string; name: string; icon: string; description: string; available: boolean; category?: string; path?: string; version?: string}> = [];
-    try {
-      const r = await fetch(`${getApiUrl()}/api/agents/detect`, { headers: { Authorization: `Bearer ${getToken()}` } });
-      if (r.ok) { const d = await r.json(); detectedAgents = d.agents || []; }
-    } catch {}
+    if (cached && cached.length > 0) {
+      detectedAgents = cached;
+    } else {
+      try {
+        const r = await fetch(`${getApiUrl()}/api/agents/detect`, { headers: { Authorization: `Bearer ${getToken()}` } });
+        if (r.ok) { const d = await r.json(); detectedAgents = d.agents || []; }
+        useAppStore.getState().setCachedAgents(detectedAgents);
+      } catch {}
+    }
 
     // Load all sessions
     let sessions: Session[] = [];
@@ -444,6 +571,13 @@ export function ChatClient() {
                 const content = last.parts[0]?.text || '';
                 const fileChanges = parseFileChanges(content);
                 const tokenUsage = data.tokenUsage || simulateTokenUsage(content);
+                // Persist spending to store
+                if (tokenUsage) {
+                  useAppStore.getState().addSessionSpending(
+                    currentSessionId || 'default',
+                    { input: tokenUsage.input, output: tokenUsage.output, cost: calculateCost(tokenUsage) }
+                  );
+                }
                 return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
               }
               return prev;
@@ -773,7 +907,20 @@ export function ChatClient() {
                       navigator.clipboard.writeText(code);
                     }} />}
                     {p.type === 'image' && p.data && <img src={`data:${p.mime_type || 'image/png'};base64,${p.data}`} alt={p.name || 'image'} className="max-w-xs w-auto max-h-64 rounded-lg mt-1 object-contain" />}
-                    {p.type === 'file' && <div className="flex items-center gap-2 mt-1 p-2 bg-background/50 rounded"><FileText className="w-4 h-4" /><span className="text-xs">{p.name || 'file'}</span></div>}
+                    {p.type === 'file' && <button onClick={() => {
+                      const store = useAppStore.getState();
+                      const sessionId = selectedSession?.id || '__default__';
+                      const dataUrl = p.data ? `data:${p.mime_type || 'application/octet-stream'};base64,${p.data}` : undefined;
+                      const ws = store.getWorkspaceTabs(sessionId);
+                      const activeTab = ws.tabs.find((t) => t.id === ws.activeTabId);
+                      if (activeTab && activeTab.type === 'new-tab') {
+                        store.updateWorkspaceTab(sessionId, activeTab.id, { type: 'file-preview', filePath: dataUrl, title: p.name || 'File Preview', fileMimeType: p.mime_type });
+                      } else {
+                        const tab = { id: `tab-${Date.now()}-fp`, type: 'file-preview' as const, title: p.name || 'File Preview', filePath: dataUrl, fileMimeType: p.mime_type, history: [] as string[], historyIndex: -1 };
+                        store.addWorkspaceTab(sessionId, tab, true);
+                      }
+                      store.setRightPanelOpen(true);
+                    }} className="flex items-center gap-2 mt-1 p-2 bg-background/50 rounded hover:bg-background/80 transition-colors cursor-pointer"><FileText className="w-4 h-4" /><span className="text-xs">{p.name || 'file'}</span></button>}
                   </div>
                 ))}
                 {/* Multi-file diff view for agent messages with file changes */}
@@ -795,28 +942,55 @@ export function ChatClient() {
                     }}
                   />
                 )}
-                <div className="text-[10px] mt-1.5 opacity-60 flex items-center gap-1 flex-wrap">
-                  <span>{msg.timestamp.toLocaleTimeString()}</span>
-                  {msg.source && <span className="px-1 py-0.5 rounded bg-black/10 text-[9px]">{msg.source}</span>}
-                  {msg.role === 'agent' && msg.tokenUsage && (
-                    <span className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-black/10 text-[9px]">
-                      <span>IN: {msg.tokenUsage.input.toLocaleString()}</span>
-                      <span>OUT: {msg.tokenUsage.output.toLocaleString()}</span>
-                      <span className="text-yellow-500">${calculateCost(msg.tokenUsage).toFixed(4)}</span>
-                    </span>
-                  )}
-                </div>
-                {/* Checkpoint button for agent messages */}
+                {/* AI message action bar */}
                 {msg.role === 'agent' && (
-                  <div className="mt-2 flex justify-end">
-                    <button
-                      onClick={() => saveCheckpoint(msg.id)}
-                      className="flex items-center gap-1 px-2 py-1 rounded text-[10px] text-muted-foreground hover:bg-muted-foreground/10 transition-colors"
-                      title={t("chat.saveCheckpoint")}
-                    >
-                      <Bookmark className="w-3 h-3" />
-                      <span>{t("chat.saveCheckpoint")}</span>
+                  <div className="flex items-center gap-0.5 mt-1.5 -mb-1">
+                    <button onClick={() => handleCopy(msg)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors" title="复制">
+                      <Copy className="w-3.5 h-3.5" />
                     </button>
+                    <button onClick={() => handleReadAloud(msg)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors" title="朗读">
+                      <Volume2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleFeedback(msg, 'like')} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-green-500 transition-colors" title="喜欢">
+                      <ThumbsUp className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleFeedback(msg, 'dislike')} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-red-500 transition-colors" title="不喜欢">
+                      <ThumbsDown className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleShare(msg)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors" title="转发">
+                      <Share2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleRegenerate(msg.id)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors" title="重新生成">
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => saveCheckpoint(msg.id)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors" title="保存检查点">
+                      <Bookmark className="w-3.5 h-3.5" />
+                    </button>
+                    <button className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors" title="更多">
+                      <MoreHorizontal className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-[10px] text-muted-foreground/40 ml-1 shrink-0">{msg.timestamp.toLocaleTimeString()}</span>
+                  </div>
+                )}
+                {/* User message action bar */}
+                {msg.role === 'user' && (
+                  <div className="flex items-center gap-0.5 mt-1.5 -mb-1 justify-end">
+                    <button onClick={() => handleCopy(msg)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors" title="复制">
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleShare(msg)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors" title="分享">
+                      <Share2 className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleEditMessage(msg)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors" title="修改">
+                      <RotateCcw className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleFavorite(msg)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-yellow-500 transition-colors" title="收藏">
+                      <Bookmark className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => handleDeleteMessage(msg.id)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-red-500 transition-colors" title="删除">
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="text-[10px] text-muted-foreground/40 ml-1 shrink-0">{msg.timestamp.toLocaleTimeString()}</span>
                   </div>
                 )}
               </div>
@@ -903,6 +1077,12 @@ export function ChatClient() {
                     {checkpoints.length > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">{checkpoints.length}</span>}
                   </button>
                   <ContextRing />
+                  {/* Session cumulative stats */}
+                  {sessionStats.msgCount > 0 && (
+                    <span className="text-[9px] text-muted-foreground/30 whitespace-nowrap">
+                      {sessionStats.msgCount}条 · ${sessionStats.totalCost.toFixed(3)}
+                    </span>
+                  )}
                   <button
                     onClick={() => { window.dispatchEvent(new CustomEvent('smart-prompt-send')); }}
                     disabled={loading}

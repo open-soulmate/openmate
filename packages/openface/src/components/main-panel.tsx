@@ -1,4 +1,3 @@
-'use client';
 
 import { useEffect, type ReactNode } from 'react';
 import { MainHeader } from './main-header';
@@ -33,6 +32,8 @@ export interface MainPanelProps {
   sidebarOpen?: boolean;
   /** Toggle left panel callback — consumer manages this */
   onToggleSidebar?: () => void;
+  /** Toggle right panel callback — consumer manages this (falls back to useAppStore.toggleRightPanel) */
+  onToggleRightPanel?: () => void;
 }
 
 // ── Main Component ───────────────────────────────────────────────
@@ -50,10 +51,11 @@ export function MainPanel({
   className,
   sidebarOpen,
   onToggleSidebar,
+  onToggleRightPanel,
 }: MainPanelProps) {
   // Register page-specific workspace content
   const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
-  const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
+  const storeToggleRight = useAppStore((s) => s.toggleRightPanel);
   const setRightPanelOpen = useAppStore((s) => s.setRightPanelOpen);
   const isMobile = useIsMobile();
 
@@ -70,7 +72,12 @@ export function MainPanel({
   };
 
   const handleToggleRight = () => {
-    toggleRightPanel();
+    // 优先用consumer传的callback，没有就用store
+    if (onToggleRightPanel) {
+      onToggleRightPanel();
+    } else {
+      storeToggleRight();
+    }
     if (isMobile && sidebarOpen) {
       onToggleSidebar?.();
     }

@@ -337,6 +337,21 @@ async def chat_websocket(websocket: WebSocket):
                     if mode == "agent_proxy" and agent_id:
                         # Create or get agent session for persistence
                         agent_session_id = _create_or_get_agent_session(agent_id, session_id)
+                        # Handle file attachments — save to temp and append path to text
+                        if file_attachments:
+                            import tempfile, base64 as b64mod, os
+                            file_paths = []
+                            for f in file_attachments:
+                                b64 = f.get("data", "")
+                                if "," in b64:
+                                    b64 = b64.split(",")[-1]
+                                ext = os.path.splitext(f.get("name", "file"))[1] or ".bin"
+                                fd, tmp_path = tempfile.mkstemp(suffix=ext, prefix="openmate_file_")
+                                with os.fdopen(fd, "wb") as fp:
+                                    fp.write(b64mod.b64decode(b64))
+                                file_paths.append(tmp_path)
+                                logger.info(f"File saved for agent_proxy: {tmp_path} ({f.get('name', 'file')})")
+                            text = text + "\n\n" + "\n".join(f"[文件已保存到: {p}]" for p in file_paths)
                         _store_agent_message(agent_session_id, "user", text)
                         response_text, source, success = await run_agent_proxy(agent_id, text)
                         if response_text:

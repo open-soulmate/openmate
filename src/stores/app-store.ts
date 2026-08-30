@@ -171,6 +171,8 @@ export interface WorkspaceTab {
   title: string;
   url?: string;
   filePath?: string;
+  fileBuffer?: ArrayBuffer;
+  fileMimeType?: string;
   history: string[];
   historyIndex: number;
 }
@@ -204,6 +206,25 @@ export interface GroupChatMessage {
   agentName?: string;
   agentType?: AgentType;
   timestamp: number;
+}
+
+export interface SessionSpending {
+  sessionId: string;
+  sessionName?: string;
+  totalInputTokens: number;
+  totalOutputTokens: number;
+  totalCost: number;
+  messageCount: number;
+  lastUpdated: number;
+}
+
+export interface GlobalWSState {
+  connected: boolean;
+  unreadBySession: Record<string, number>;
+  setConnected: (v: boolean) => void;
+  incrementUnread: (sessionId: string) => void;
+  clearUnread: (sessionId: string) => void;
+  getTotalUnread: () => number;
 }
 
 export interface WorkspaceState {
@@ -346,6 +367,24 @@ interface AppState {
   goBackWorkspaceTab: (sessionId: string, tabId: string) => void;
   goForwardWorkspaceTab: (sessionId: string, tabId: string) => void;
   setWorkspaceTabFilePath: (sessionId: string, tabId: string, filePath: string) => void;
+
+  // Session Spending Stats
+  sessionSpending: Record<string, SessionSpending>;
+  addSessionSpending: (sessionId: string, tokens: { input: number; output: number; cost: number }) => void;
+  getSessionSpending: (sessionId: string) => SessionSpending;
+  getAllSpending: () => SessionSpending[];
+
+  // Global WebSocket + Unread
+  globalWsConnected: boolean;
+  unreadBySession: Record<string, number>;
+  setGlobalWsConnected: (v: boolean) => void;
+  incrementUnread: (sessionId: string) => void;
+  clearUnread: (sessionId: string) => void;
+  getTotalUnread: () => number;
+
+  // Cached agents (avoid re-fetching /api/agents/detect on every mount)
+  cachedAgents: AgentInfo[] | null;
+  setCachedAgents: (agents: AgentInfo[]) => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -850,6 +889,70 @@ export const useAppStore = create<AppState>((set, get) => ({
         },
       };
     }),
+
+  // Session Spending Stats
+  sessionSpending: typeof window !== "undefined"
+    ? (() => { try { return JSON.parse(localStorage.getItem("openmate-session-spending") || "{}"); } catch { return {}; } })()
+    : {},
+  addSessionSpending: (sessionId, tokens) =>
+    set((s) => {
+      const existing = s.sessionSpending[sessionId] || {
+        sessionId,
+        totalInputTokens: 0,
+        totalOutputTokens: 0,
+        totalCost: 0,
+        messageCount: 0,
+        lastUpdated: 0,
+      };
+      const updated: SessionSpending = {
+        ...existing,
+        sessionId,
+        totalInputTokens: existing.totalInputTokens + tokens.input,
+        totalOutputTokens: existing.totalOutputTokens + tokens.output,
+        totalCost: existing.totalCost + tokens.cost,
+        messageCount: existing.messageCount + 1,
+        lastUpdated: Date.now(),
+      };
+      const next = { ...s.sessionSpending, [sessionId]: updated };
+      try { localStorage.setItem("openmate-session-spending", JSON.stringify(next)); } catch {}
+      return { sessionSpending: next };
+    }),
+  getSessionSpending: (sessionId) => {
+    return get().sessionSpending[sessionId] || {
+      sessionId, totalInputTokens: 0, totalOutputTokens: 0, totalCost: 0, messageCount: 0, lastUpdated: 0,
+    };
+  },
+  getAllSpending: () => {
+    return Object.values(get().sessionSpending).sort((a, b) => b.lastUpdated - a.lastUpdated);
+  },
+
+  // Global WebSocket + Unread state
+  globalWsConnected: false,
+  unreadBySession: typeof window !== "undefined"
+    ? (() => { try { return JSON.parse(localStorage.getItem("openmate-unread") || "{}"); } catch { return {}; } })()
+    : {},
+  setGlobalWsConnected: (v) => set({ globalWsConnected: v }),
+  incrementUnread: (sessionId) =>
+    set((s) => {
+      const next = { ...s.unreadBySession, [sessionId]: (s.unreadBySession[sessionId] || 0) + 1 };
+      try { localStorage.setItem("openmate-unread", JSON.stringify(next)); } catch {}
+      return { unreadBySession: next };
+    }),
+  clearUnread: (sessionId) =>
+    set((s) => {
+      if (!s.unreadBySession[sessionId]) return s;
+      const next = { ...s.unreadBySession };
+      delete next[sessionId];
+      try { localStorage.setItem("openmate-unread", JSON.stringify(next)); } catch {}
+      return { unreadBySession: next };
+    }),
+  getTotalUnread: () => {
+    return Object.values(get().unreadBySession).reduce((sum, n) => sum + n, 0);
+  },
+
+  // Cached agents
+  cachedAgents: null,
+  setCachedAgents: (agents) => set({ cachedAgents: agents }),
 }));
 
 // ─── localStorage persistence for conversations ────────────────────────────

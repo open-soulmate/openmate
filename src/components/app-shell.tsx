@@ -8,6 +8,7 @@ import { AIGroupsSidebar } from "@/components/ai-groups-sidebar";
 import { useAIGroupsStore } from "@/stores/ai-groups-store";
 
 import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
+import { GlobalWebSocket } from "@/components/global-websocket";
 
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -125,6 +126,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       next.add(sessionId);
       return next;
     });
+    // Also clear store unread
+    useAppStore.getState().clearUnread(sessionId);
     // Also call API to clear server-side
     const apiBase = getApiBaseUrl();
     const token = getToken();
@@ -136,11 +139,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Get effective unread count (respects local clearing)
+  // Get effective unread count — combine API unread + WS real-time unread
+  const unreadBySession = useAppStore((s) => s.unreadBySession);
   const getUnread = useCallback((session: Session): number => {
     if (clearedUnreads.has(session.id)) return 0;
-    return session.unread ?? 0;
-  }, [clearedUnreads]);
+    // WS real-time unread takes priority (more accurate)
+    const wsUnread = unreadBySession[session.id] || 0;
+    const apiUnread = session.unread ?? 0;
+    return Math.max(wsUnread, apiUnread);
+  }, [clearedUnreads, unreadBySession]);
 
   // Total unread across all sessions
   const totalUnread = agents.reduce((sum, a) =>
@@ -157,10 +164,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     // 1. Detect agents
     let detectedAgents: Array<{ id: string; name: string; icon: string; description: string; available: boolean; logo?: string }> = [];
-    try {
-      const r = await fetch(`${apiBase}/api/agents/detect`, { headers });
-      if (r.ok) { const d = await r.json(); detectedAgents = d.agents || []; } else { console.error("agents/detect failed:", r.status); }
-    } catch (e) { console.error("agents/detect error:", e); }
+    // Check store cache first
+    const cachedAgents = useAppStore.getState().cachedAgents;
+    if (cachedAgents && cachedAgents.length > 0) {
+      detectedAgents = cachedAgents as any;
+    } else {
+      try {
+        const r = await fetch(`${apiBase}/api/agents/detect`, { headers });
+        if (r.ok) { const d = await r.json(); detectedAgents = d.agents || []; } else { console.error("agents/detect failed:", r.status); }
+        useAppStore.getState().setCachedAgents(detectedAgents as any);
+      } catch (e) { console.error("agents/detect error:", e); }
+    }
 
     // 2. Fetch sessions
     let sessions: Session[] = [];
@@ -250,8 +264,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
   }, [t]);
 
-  // Visibility-aware polling
-  useVisibilityPoll(fetchSessions, 30000, [fetchSessions]);
+  // Only fetch sessions on chat page — other pages don't need the session list
+  const isChatRoute = pathname.startsWith('/chat');
+  useEffect(() => {
+    if (isChatRoute) {
+      fetchSessions();
+    }
+  }, [isChatRoute, fetchSessions]);
 
   // Toggle agent expand
   const toggleAgent = useCallback((agentId: string) => {
@@ -349,6 +368,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col h-svh overflow-hidden">
+      <GlobalWebSocket />
       {/* Top utility bar — full screen width */}
       <div className="flex items-center">
         <div className="flex-1 min-w-0">
@@ -380,10 +400,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <AIGroupsSidebar />
                 ) : pageSidebar ? (
                   pageSidebar
-                ) : (
+                ) : isChatRoute ? (
                   <>
-                    {/* Debug: show agents count */}
-                    {agents.length === 0 && <div className="px-3 py-1 text-[10px] text-yellow-500">Loading sessions... ({new Date().toLocaleTimeString()})</div>}
+                    {agents.length === 0 && <div className="px-3 py-1 text-[10px] text-muted-foreground">Loading...</div>}
                     <LeftPanel
                       placeholder={t("sidebar.searchPlaceholder", "搜索会话...")}
                       renderContent={(query) => (
@@ -409,7 +428,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       )}
                     />
                   </>
-                )}
+                ) : null}
               </SidebarContent>
               <SidebarFooter />
               <SidebarRail />

@@ -13,7 +13,7 @@ import {
   Camera, Download, Tag, User, Bot, Droplets, Dna, Eye, Shield, Bone,
   Volume2, Layers, Link2, Home, MousePointer, Mic, ImageIcon, Smile,
   Stethoscope, Cpu, Bolt, Heart, Gauge, BarChart3, Package, ScrollText,
-  History, Store, Pill, LogOut, Moon, Sun,
+  History, Store, Pill, LogOut, Moon, Sun, DollarSign,
 } from "lucide-react";
 
 interface BottomNavItem {
@@ -73,6 +73,7 @@ const navItems: BottomNavItem[] = [
   { href: "/permission", label: "nav.permission", icon: Shield },
   { href: "/enterprise", label: "nav.enterprise", icon: Shield },
   { href: "/sessions", label: "nav.sessions", icon: History },
+  { href: "/spending", label: "nav.spending", icon: DollarSign },
   { href: "/intelligence", label: "nav.intelligence", icon: Brain },
   { href: "/ai-engine", label: "nav.aiEngine", icon: Cpu },
   { href: "/healer", label: "nav.healer", icon: Pill },

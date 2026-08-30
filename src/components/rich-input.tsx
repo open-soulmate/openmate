@@ -149,7 +149,23 @@ export function RichInput({
   }, [handleInput]);
 
   return (
-    <div className={cn('relative', className)}>
+    <div className={cn('relative cursor-text', className)} onClick={(e) => {
+      // Click on wrapper (not on contentEditable itself) → focus editor
+      const editor = editorRef.current;
+      if (editor && e.target !== editor && !editor.contains(e.target as Node)) {
+        editor.focus();
+        const range = document.createRange();
+        const sel = window.getSelection();
+        if (editor.childNodes.length > 0) {
+          range.selectNodeContents(editor);
+          range.collapse(false);
+        } else {
+          range.setStart(editor, 0);
+        }
+        sel?.removeAllRanges();
+        sel?.addRange(range);
+      }
+    }}>
       {/* Placeholder */}
       {isEmpty && (
         <div className="absolute top-0 left-0 pointer-events-none text-muted-foreground/50 text-sm px-1 py-0.5">
@@ -167,8 +183,8 @@ export function RichInput({
         onKeyDown={handleKeyDown}
         onFocus={handleFocus}
         className={cn(
-          'w-full text-sm outline-none min-h-[24px] px-1 py-0.5',
-          'break-words whitespace-pre-wrap',
+          'w-full text-sm outline-none min-h-[24px] px-1 py-1.5',
+          'break-words whitespace-pre-wrap cursor-text h-full',
           'empty:before:content-[""]', // handled by placeholder above
           disabled && 'opacity-50 cursor-not-allowed',
           // Rich text styles

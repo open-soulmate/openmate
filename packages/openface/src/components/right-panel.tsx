@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { X } from 'lucide-react';
-import { cn } from '@opensoulmate/openface/lib/utils';
+import { cn } from '../lib/utils';
 
 // ── Types ────────────────────────────────────────────────────────
 

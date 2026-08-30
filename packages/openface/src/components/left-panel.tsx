@@ -1,7 +1,7 @@
 'use client';
 import { useState, useMemo, type ReactNode } from 'react';
 import { Search, X } from 'lucide-react';
-import { cn } from '@opensoulmate/openface/lib/utils';
+import { cn } from '../lib/utils';
 
 interface LeftPanelProps<T> {
   /** Items to display — optional when using renderContent */
@@ -40,10 +40,10 @@ export function LeftPanel<T>({
   }, [items, query, filter]);
 
   return (
-    <div className={cn('flex flex-col h-full min-w-0', className)}>
+    <div className={cn('flex flex-col h-full min-w-0 border-r border-border', className)}>
       {/* Search bar */}
       <div className="px-2 flex items-center justify-center h-12 shrink-0">
-        <div className="relative flex-1 group-data-[collapsible=icon]:hidden">
+        <div className="relative flex-1 ">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
           <input
             type="text"
