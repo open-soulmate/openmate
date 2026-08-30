@@ -382,8 +382,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   pageSidebar
                 ) : (
                   <>
-                    {/* Debug: show agents count */}
-                    {agents.length === 0 && <div className="px-3 py-1 text-[10px] text-yellow-500">Loading sessions... ({new Date().toLocaleTimeString()})</div>}
                     <LeftPanel
                       placeholder={t("sidebar.searchPlaceholder", "搜索会话...")}
                       renderContent={(query) => (
