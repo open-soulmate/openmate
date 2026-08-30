@@ -129,7 +129,7 @@ export function SmartPrompt({
     if (fields.task.trim().length >= 10) {
       generateTimerRef = setTimeout(() => {
         autoGenerate(fields.task);
-      }, 1500); // 1.5s debounce
+      }, 300); // 1.5s debounce
     }
     return () => {
       if (generateTimerRef) clearTimeout(generateTimerRef);

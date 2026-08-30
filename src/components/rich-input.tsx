@@ -96,16 +96,11 @@ export function RichInput({
     const text = e.clipboardData.getData('text/plain');
     
     if (html) {
-      // Clean HTML: keep basic formatting, remove styles/scripts
       const cleaned = cleanPastedHtml(html);
       document.execCommand('insertHTML', false, cleaned);
     } else {
-      // Plain text: preserve line breaks
-      const formatted = text
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/\n/g, '<br>');
+      // Detect code blocks in plain text and highlight them
+      const formatted = formatPlainTextWithCode(text);
       document.execCommand('insertHTML', false, formatted);
     }
     
@@ -175,6 +170,15 @@ export function RichInput({
           '[&_td]:border [&_td]:border-border [&_td]:px-2 [&_td]:py-1 [&_td]:text-xs',
           '[&_th]:border [&_th]:border-border [&_th]:px-2 [&_th]:py-1 [&_th]:text-xs [&_th]:font-semibold [&_th]:bg-muted/30',
           '[&_img]:max-w-full [&_img]:max-h-40 [&_img]:rounded [&_img]:my-1',
+          // Code blocks
+          '[&_.rich-code-block]:bg-zinc-900 [&_.rich-code-block]:text-green-400',
+          '[&_.rich-code-block]:p-3 [&_.rich-code-block]:rounded-lg',
+          '[&_.rich-code-block]:font-mono [&_.rich-code-block]:text-xs',
+          '[&_.rich-code-block]:my-2 [&_.rich-code-block]:overflow-x-auto',
+          '[&_.rich-code-block]:border [&_.rich-code-block]:border-zinc-700',
+          '[&_.rich-inline-code]:bg-muted/50 [&_.rich-inline-code]:px-1.5',
+          '[&_.rich-inline-code]:rounded [&_.rich-inline-code]:font-mono',
+          '[&_.rich-inline-code]:text-xs [&_.rich-inline-code]:text-orange-400',
           // Scrollbar
           '[&::-webkit-scrollbar]:w-1',
           '[&::-webkit-scrollbar-thumb]:bg-border [&::-webkit-scrollbar-thumb]:rounded-full',
@@ -183,6 +187,61 @@ export function RichInput({
       />
     </div>
   );
+}
+
+/**
+ * Format plain text with code block detection and syntax highlighting
+ */
+function formatPlainTextWithCode(text: string): string {
+  // Detect code blocks (indented lines, or lines with code patterns)
+  const lines = text.split('\n');
+  const result: string[] = [];
+  let inCodeBlock = false;
+  let codeLines: string[] = [];
+  
+  for (const line of lines) {
+    // Detect fenced code blocks
+    if (line.trim().startsWith('```')) {
+      if (inCodeBlock) {
+        // End code block
+        const code = codeLines.join('\n')
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+        result.push(`<pre class="rich-code-block"><code>${code}</code></pre>`);
+        codeLines = [];
+        inCodeBlock = false;
+      } else {
+        inCodeBlock = true;
+      }
+      continue;
+    }
+    
+    if (inCodeBlock) {
+      codeLines.push(line);
+      continue;
+    }
+    
+    // Detect inline code patterns
+    const escaped = line
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/`([^`]+)`/g, '<code class="rich-inline-code">$1</code>');
+    
+    result.push(escaped || '<br>');
+  }
+  
+  // Unclosed code block
+  if (inCodeBlock && codeLines.length > 0) {
+    const code = codeLines.join('\n')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;');
+    result.push(`<pre class="rich-code-block"><code>${code}</code></pre>`);
+  }
+  
+  return result.join('<br>');
 }
 
 /**
