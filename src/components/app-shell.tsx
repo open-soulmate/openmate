@@ -159,15 +159,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     let detectedAgents: Array<{ id: string; name: string; icon: string; description: string; available: boolean; logo?: string }> = [];
     try {
       const r = await fetch(`${apiBase}/api/agents/detect`, { headers });
-      if (r.ok) { const d = await r.json(); detectedAgents = d.agents || []; }
-    } catch {}
+      if (r.ok) { const d = await r.json(); detectedAgents = d.agents || []; } else { console.error("agents/detect failed:", r.status); }
+    } catch (e) { console.error("agents/detect error:", e); }
 
     // 2. Fetch sessions
     let sessions: Session[] = [];
     try {
       const r = await fetch(`${apiBase}/api/sessions?limit=500`, { headers });
-      if (r.ok) { const d = await r.json(); sessions = d.sessions || []; }
-    } catch {}
+      if (r.ok) { const d = await r.json(); sessions = d.sessions || []; } else { console.error("sessions failed:", r.status); }
+    } catch (e) { console.error("sessions error:", e); }
 
     // 3. Group sessions by agent
     const agentSessionMap: Record<string, Session[]> = {};
