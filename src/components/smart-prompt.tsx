@@ -182,13 +182,13 @@ export function SmartPrompt({
   return (
     <div
       className={cn(
-        'border border-border rounded-xl bg-background shadow-sm space-y-2 transition-all',
+        'bg-background space-y-2 transition-all',
         className,
       )}
     >
       {/* Task input — always visible */}
       <div className="flex items-end gap-2 p-3">
-        <div className="flex-1 relative min-h-[48px] border border-border/50 rounded-lg p-2 hover:border-border focus-within:border-primary transition-colors">
+        <div className="flex-1 relative min-h-[48px]">
           <RichInput
             value={fields.task}
             onChange={(val) => updateField('task', val)}
