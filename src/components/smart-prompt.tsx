@@ -225,22 +225,7 @@ export function SmartPrompt({
               {generated && fields[def.key] && (
                 <span title="AI生成"><Sparkles className="w-3 h-3 text-amber-500 shrink-0" /></span>
               )}
-              {/* Send button — inline with last field (format) */}
-              {idx === FIELD_DEFS.length - 1 && (
-                <button
-                  onClick={handleSend}
-                  disabled={!fields.task.trim() || isLoading}
-                  className={cn(
-                    'flex items-center gap-1 px-3 py-1 rounded-md text-xs font-medium transition-colors shrink-0',
-                    fields.task.trim()
-                      ? 'bg-primary text-primary-foreground hover:bg-primary/90'
-                      : 'bg-muted text-muted-foreground cursor-not-allowed',
-                  )}
-                >
-                  {isLoading ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-                  发送
-                </button>
-              )}
+
             </div>
           ))}
 
