@@ -25,6 +25,12 @@
     "paths": {
       "@/*": [
         "./src/*"
+      ],
+      "@opensoulmate/openface": [
+        "./packages/openface/src/index.ts"
+      ],
+      "@opensoulmate/openface/*": [
+        "./packages/openface/src/*"
       ]
     }
   },

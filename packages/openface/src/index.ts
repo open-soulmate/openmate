@@ -4,7 +4,7 @@
 export { PageLayout } from './components/page-layout';
 export type { PageLayoutProps } from './components/page-layout';
 export { LeftPanel } from './components/left-panel';
-export { DetailPanel } from './components/detail-panel';
+export { DetailPanel, useDetailPanel } from './components/detail-panel';
 export type { DetailPanelProps, DetailSection, DetailItem } from './components/detail-panel';
 
 // Hooks

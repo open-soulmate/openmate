@@ -6,15 +6,6 @@ import { useAppStore } from '@opensoulmate/openface/store/app-store';
 import { useIsMobile } from '@opensoulmate/openface/hooks/use-mobile';
 import { cn } from '@opensoulmate/openface/lib/utils';
 
-// ── Sidebar stub ─────────────────────────────────────────────────
-// TODO: Replace with real shadcn/ui sidebar hook when sidebar component is added.
-function useSidebar() {
-  return {
-    toggleSidebar: () => {},
-    open: true,
-  };
-}
-
 // ── Types ────────────────────────────────────────────────────────
 
 export interface PageLayoutProps {
@@ -38,6 +29,10 @@ export interface PageLayoutProps {
   showWorkspaceToggle?: boolean;
   /** Additional class names for the root container */
   className?: string;
+  /** Sidebar open state — consumer manages this */
+  sidebarOpen?: boolean;
+  /** Toggle sidebar callback — consumer manages this */
+  onToggleSidebar?: () => void;
 }
 
 // ── Default Header ───────────────────────────────────────────────
@@ -49,6 +44,8 @@ function DefaultHeader({
   headerActions,
   showSidebarToggle,
   showWorkspaceToggle,
+  sidebarOpen,
+  onToggleSidebar,
 }: {
   title?: string;
   icon?: ReactNode;
@@ -56,15 +53,16 @@ function DefaultHeader({
   headerActions?: ReactNode;
   showSidebarToggle: boolean;
   showWorkspaceToggle: boolean;
+  sidebarOpen?: boolean;
+  onToggleSidebar?: () => void;
 }) {
-  const { toggleSidebar, open: sidebarOpen } = useSidebar();
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
   const setRightPanelOpen = useAppStore((s) => s.setRightPanelOpen);
   const isMobile = useIsMobile();
 
   const handleToggleSidebar = (e: React.MouseEvent) => {
     e.stopPropagation();
-    toggleSidebar();
+    onToggleSidebar?.();
     if (isMobile) {
       setRightPanelOpen(false);
     }
@@ -74,7 +72,7 @@ function DefaultHeader({
     e.stopPropagation();
     toggleRightPanel();
     if (isMobile && sidebarOpen) {
-      toggleSidebar();
+      onToggleSidebar?.();
     }
   };
 
@@ -132,6 +130,8 @@ export function PageLayout({
   showSidebarToggle = true,
   showWorkspaceToggle = true,
   className,
+  sidebarOpen,
+  onToggleSidebar,
 }: PageLayoutProps) {
   // Register page-specific workspace content
   const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
@@ -154,6 +154,8 @@ export function PageLayout({
             headerActions={headerActions}
             showSidebarToggle={showSidebarToggle}
             showWorkspaceToggle={showWorkspaceToggle}
+            sidebarOpen={sidebarOpen}
+            onToggleSidebar={onToggleSidebar}
           />
         )}
 
