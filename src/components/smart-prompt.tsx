@@ -246,9 +246,9 @@ export function SmartPrompt({
 
       {/* Fields — expandable */}
       {expanded && (
-        <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
+        <div className="px-3 pb-3 grid grid-cols-2 gap-x-3 gap-y-1.5 border-t border-border pt-2">
           {FIELD_DEFS.map((def, idx) => (
-            <div key={def.key} className="flex items-center gap-2">
+            <div key={def.key} className="flex items-center gap-1.5">
               <span className="text-sm shrink-0 w-5 text-center">{def.icon}</span>
               <label className="text-xs text-muted-foreground shrink-0 w-8">
                 {def.label}
@@ -258,7 +258,7 @@ export function SmartPrompt({
                 value={fields[def.key]}
                 onChange={(e) => updateField(def.key, e.target.value)}
                 placeholder={def.placeholder}
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground/50 border-b border-transparent hover:border-border focus:border-primary transition-colors py-1"
+                className="flex-1 bg-transparent text-xs outline-none placeholder:text-muted-foreground/50 border-b border-transparent hover:border-border focus:border-primary transition-colors py-0.5 min-w-0"
               />
               {generated && fields[def.key] && (
                 <span title="AI生成"><Sparkles className="w-3 h-3 text-amber-500 shrink-0" /></span>
