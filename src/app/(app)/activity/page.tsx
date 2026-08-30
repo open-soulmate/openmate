@@ -1,8 +1,8 @@
 "use client";
 import dynamic from "next/dynamic";
 
-const ActivityFeedClient = dynamic(() => import("./activity-feed-client").then((m) => m.ActivityFeedClient), { ssr: false });
+const ActivityClient = dynamic(() => import("./activity-client").then((m) => m.ActivityClient), { ssr: false });
 
 export default function ActivityPage() {
-  return <ActivityFeedClient />;
+  return <ActivityClient />;
 }
