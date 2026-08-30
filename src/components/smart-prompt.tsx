@@ -240,55 +240,35 @@ export function SmartPrompt({
         </div>
       )}
 
-      {/* Action bar — WeChat style */}
-      <div className="flex items-center gap-0.5 px-2 py-1">
+      {/* Footer — all buttons in one row, WeChat style */}
+      <div className="flex items-center gap-0.5 px-2 py-1.5">
+        {/* SmartPrompt built-in buttons */}
         {(fields.task || generated) && (
-          <button
-            onClick={handleClear}
-            className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-            title="清空所有字段"
-          >
+          <button onClick={handleClear} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="清空">
             <RotateCcw className="w-4 h-4" />
           </button>
         )}
-        <div className="flex-1" />
-        <button
-          className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-          title="语音输入"
-        >
+        <button className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="语音输入">
           <Mic className="w-4 h-4" />
         </button>
-        <button
-          className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-          title="发送语音"
-        >
+        <button className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="发送语音">
           <AudioLines className="w-4 h-4" />
         </button>
         <button
           onClick={() => {
-            if (!expanded) {
-              setExpanded(true);
-              if (fields.task.trim().length >= 5) {
-                autoGenerate(fields.task);
-              }
-            } else {
-              setExpanded(false);
-            }
+            if (!expanded) { setExpanded(true); if (fields.task.trim().length >= 5) autoGenerate(fields.task); }
+            else setExpanded(false);
           }}
-          className={cn(
-            "p-1.5 rounded transition-colors",
-            expanded
-              ? "bg-primary/10 text-primary hover:bg-primary/20"
-              : "hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground"
-          )}
+          className={cn("p-1.5 rounded transition-colors", expanded ? "bg-primary/10 text-primary hover:bg-primary/20" : "hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground")}
           title={expanded ? '折叠字段' : '展开AI字段'}
         >
           {expanded ? <ChevronUp className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
         </button>
-      </div>
 
-      {/* Footer — action buttons inside the border */}
-      {footer}
+        {/* Spacer + external footer slot */}
+        <div className="flex-1" />
+        {footer}
+      </div>
 
     </div>
   );
