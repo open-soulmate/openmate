@@ -886,6 +886,7 @@ export function ChatClient() {
               footer={<>
                   <button
                     onClick={() => setAgentMode(prev => prev === 'plan' ? 'act' : 'plan')}
+                    title={agentMode === 'plan' ? '切换到执行模式' : '切换到计划模式'}
                     className={`flex items-center gap-1 px-2 py-1.5 rounded-lg text-xs font-medium transition-colors ${
                       agentMode === 'plan' ? 'text-blue-400 hover:bg-blue-500/10' : 'text-green-400 hover:bg-green-500/10'
                     }`}
@@ -905,6 +906,7 @@ export function ChatClient() {
                     onClick={() => { window.dispatchEvent(new CustomEvent('smart-prompt-send')); }}
                     disabled={loading}
                     className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 transition-colors"
+                    title="发送"
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </button>
