@@ -129,6 +129,17 @@ export function RichInput({
     sel?.addRange(range);
   }, []);
 
+  // MutationObserver: detect ALL DOM changes including IME composition
+  useEffect(() => {
+    const el = editorRef.current;
+    if (!el) return;
+    const observer = new MutationObserver(() => {
+      handleInput();
+    });
+    observer.observe(el, { childList: true, subtree: true, characterData: true });
+    return () => observer.disconnect();
+  }, [handleInput]);
+
   return (
     <div className={cn('relative', className)}>
       {/* Placeholder */}
@@ -146,7 +157,6 @@ export function RichInput({
         onInput={handleInput}
         onPaste={handlePaste}
         onKeyDown={handleKeyDown}
-        onKeyUp={handleInput}
         onFocus={handleFocus}
         className={cn(
           'w-full text-sm outline-none min-h-[24px] px-1 py-0.5',
