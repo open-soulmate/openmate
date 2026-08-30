@@ -209,13 +209,27 @@ export function SmartPrompt({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {/* Toggle expand */}
+          {/* Expand with AI — triggers LLM generation */}
           <button
-            onClick={() => setExpanded(!expanded)}
-            className="p-1 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
-            title={expanded ? '折叠字段' : '展开字段'}
+            onClick={() => {
+              if (!expanded) {
+                setExpanded(true);
+                if (fields.task.trim().length >= 5) {
+                  autoGenerate(fields.task);
+                }
+              } else {
+                setExpanded(false);
+              }
+            }}
+            className={cn(
+              "p-1.5 rounded transition-colors",
+              expanded
+                ? "bg-primary/10 text-primary hover:bg-primary/20"
+                : "hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground"
+            )}
+            title={expanded ? '折叠字段' : '展开AI字段'}
           >
-            {expanded ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+            {expanded ? <ChevronUp className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
           </button>
           {/* Clear — small, muted */}
           {(fields.task || generated) && (
