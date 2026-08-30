@@ -1,8 +1,8 @@
 // @opensoulmate/openface — Soulmate Design System
 
 // Components
-export { Main } from './components/main';
-export type { MainProps } from './components/main';
+export { MainPanel } from './components/main-panel';
+export type { MainPanelProps } from './components/main-panel';
 export { LeftPanel } from './components/left-panel';
 export { RightPanel, useRightPanel } from './components/right-panel';
 export type { RightPanelProps, RightPanelSection, RightPanelItem } from './components/right-panel';
