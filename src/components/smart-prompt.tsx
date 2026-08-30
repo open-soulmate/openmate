@@ -167,6 +167,20 @@ export function SmartPrompt({
     }
   };
 
+  // Auto-expand when user types task (3+ chars)
+  useEffect(() => {
+    if (fields.task.trim().length >= 3) {
+      setExpanded(true);
+    }
+  }, [fields.task]);
+
+  // Listen for external send trigger (from chat action bar button)
+  useEffect(() => {
+    const handler = () => handleSend();
+    window.addEventListener('smart-prompt-send', handler);
+    return () => window.removeEventListener('smart-prompt-send', handler);
+  }, [handleSend]);
+
   return (
     <div
       className={cn(
