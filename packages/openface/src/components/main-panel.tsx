@@ -8,7 +8,7 @@ import { cn } from '../lib/utils';
 
 // ── Types ────────────────────────────────────────────────────────
 
-export interface MainProps {
+export interface MainPanelProps {
   /** Page title displayed in banner */
   title?: string;
   /** Icon/emoji displayed before title */
@@ -37,7 +37,7 @@ export interface MainProps {
 
 // ── Main Component ───────────────────────────────────────────────
 
-export function Main({
+export function MainPanel({
   title,
   icon,
   badge,
@@ -50,7 +50,7 @@ export function Main({
   className,
   sidebarOpen,
   onToggleSidebar,
-}: MainProps) {
+}: MainPanelProps) {
   // Register page-specific workspace content
   const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);

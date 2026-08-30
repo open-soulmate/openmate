@@ -1,5 +1,5 @@
-export { Main } from './main';
-export type { MainProps } from './main';
+export { MainPanel } from './main-panel';
+export type { MainPanelProps } from './main-panel';
 export { LeftPanel } from './left-panel';
 export { RightPanel, useRightPanel } from './right-panel';
 export type { RightPanelProps, RightPanelSection, RightPanelItem } from './right-panel';
