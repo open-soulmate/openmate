@@ -32,7 +32,7 @@ const navItems: BottomNavItem[] = [
   { href: "/learn", label: "nav.learn", icon: GraduationCap },
   { href: "/graph", label: "nav.graph", icon: Network },
   { href: "/kb-sharing", label: "nav.kbSharing", icon: Share2 },
-  { href: "/knowledge-requests", label: "nav.knowledgeRequests", icon: FileText },
+
   { href: "/cron", label: "nav.cron", icon: Clock },
   { href: "/workflow", label: "nav.workflow", icon: Workflow },
 
