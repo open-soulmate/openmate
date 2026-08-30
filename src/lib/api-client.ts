@@ -1,5 +1,6 @@
-const DEFAULT_API_URL = process.env.NEXT_PUBLIC_API_URL
-  || (typeof window !== 'undefined' ? `http://${window.location.hostname}:8090` : 'http://127.0.0.1:8090');
+const DEFAULT_API_URL = typeof window !== 'undefined'
+  ? `http://${window.location.hostname}:8090`
+  : 'http://127.0.0.1:8090';
 
 export function getApiBaseUrl(): string {
   if (typeof window === 'undefined') return DEFAULT_API_URL;
