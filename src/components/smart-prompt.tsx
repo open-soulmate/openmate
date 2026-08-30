@@ -33,6 +33,8 @@ interface SmartPromptProps {
   context?: string;
   /** Extra className */
   className?: string;
+  /** Footer slot (e.g. action buttons) rendered inside the border */
+  footer?: React.ReactNode;
 }
 
 // ── Field Definitions ────────────────────────────────────────────
@@ -73,9 +75,10 @@ function assemblePrompt(fields: SmartPromptFields): string {
 export function SmartPrompt({
   onSend,
   isLoading = false,
-  placeholder = '输入任务，点 ✨ 展开字段（Enter 发送, Shift+Enter 换行）',
+  placeholder = '输入任务，点 ✨ 展开字段（Enter 发送，Shift+Enter 换行）',
   context,
   className,
+  footer,
 }: SmartPromptProps) {
   const [fields, setFields] = useState<SmartPromptFields>({
     task: '',
@@ -267,9 +270,11 @@ export function SmartPrompt({
             </div>
           ))}
 
-
         </div>
       )}
+
+      {/* Footer — action buttons inside the border */}
+      {footer}
 
     </div>
   );

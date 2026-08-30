@@ -881,41 +881,39 @@ export function ChatClient() {
               }}
               isLoading={loading}
               placeholder={t("chat.inputPlaceholder", "输入任务，点 ✨ 展开字段（Enter 发送，Shift+Enter 换行）")}
+              footer={
+                <div className="flex items-center gap-0.5 lg:gap-1 px-1.5 lg:px-2">
+                  <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center w-9 h-9 lg:w-auto lg:h-auto lg:px-2.5 lg:py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors">
+                    <Plus className="w-4 h-4" />
+                  </button>
+                  <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
+                  <div className="w-px h-4 bg-border mx-0.5 lg:mx-1" />
+                  <button
+                    onClick={() => setAgentMode(prev => prev === 'plan' ? 'act' : 'plan')}
+                    className={`flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs font-medium touch-manipulation transition-colors ${
+                      agentMode === 'plan' ? 'text-blue-400 hover:bg-blue-500/10' : 'text-green-400 hover:bg-green-500/10'
+                    }`}
+                  >
+                    {agentMode === 'plan' ? <Brain className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
+                    <span className="hidden lg:inline">{agentMode === 'plan' ? 'Plan' : 'Act'}</span>
+                  </button>
+                  <button onClick={() => { const next = !showCheckpoints; setShowCheckpoints(next); if (next) { setRightPanelOpen(false); if (isMobile && sidebarOpen) toggleSidebar(); } }} className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors relative">
+                    <RotateCcw className="w-4 h-4" />
+                    <span className="hidden lg:inline">{t("chat.history", "历史")}</span>
+                    {checkpoints.length > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">{checkpoints.length}</span>}
+                  </button>
+                  <ContextRing />
+                  <div className="flex-1" />
+                  <button
+                    onClick={() => { window.dispatchEvent(new CustomEvent('smart-prompt-send')); }}
+                    disabled={loading}
+                    className={`flex items-center justify-center w-10 h-10 lg:w-8 lg:h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 touch-manipulation transition-colors`}
+                  >
+                    {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                  </button>
+                </div>
+              }
             />
-            <div className="flex items-center gap-0.5 lg:gap-1 px-1.5 lg:px-2">
-              <button onClick={() => fileRef.current?.click()} className="flex items-center justify-center w-9 h-9 lg:w-auto lg:h-auto lg:px-2.5 lg:py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors">
-                <Plus className="w-4 h-4" />
-              </button>
-              <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
-              <div className="w-px h-4 bg-border mx-0.5 lg:mx-1" />
-              <button
-                onClick={() => setAgentMode(prev => prev === 'plan' ? 'act' : 'plan')}
-                className={`flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs font-medium touch-manipulation transition-colors ${
-                  agentMode === 'plan' ? 'text-blue-400 hover:bg-blue-500/10' : 'text-green-400 hover:bg-green-500/10'
-                }`}
-              >
-                {agentMode === 'plan' ? <Brain className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
-                <span className="hidden lg:inline">{agentMode === 'plan' ? 'Plan' : 'Act'}</span>
-              </button>
-              <button onClick={() => { const next = !showCheckpoints; setShowCheckpoints(next); if (next) { setRightPanelOpen(false); if (isMobile && sidebarOpen) toggleSidebar(); } }} className="flex items-center gap-1 lg:gap-1.5 px-2 lg:px-2.5 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted active:bg-muted/80 touch-manipulation transition-colors relative">
-                <RotateCcw className="w-4 h-4" />
-                <span className="hidden lg:inline">{t("chat.history", "历史")}</span>
-                {checkpoints.length > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">{checkpoints.length}</span>}
-              </button>
-              <ContextRing />
-              <div className="flex-1" />
-              <button
-                onClick={() => {
-                  // Trigger SmartPrompt send via a ref or state
-                  // For now, dispatch a custom event
-                  window.dispatchEvent(new CustomEvent('smart-prompt-send'));
-                }}
-                disabled={loading}
-                className={`flex items-center justify-center w-10 h-10 lg:w-8 lg:h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 touch-manipulation transition-colors`}
-              >
-                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </button>
-            </div>
           </div>
         </div>
       </div>
