@@ -3,6 +3,8 @@
 import { useEffect, useState, useCallback, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { useTranslation } from "react-i18next"
+import dynamic from "next/dynamic"
+import { assembleECharts } from "flint-chart"
 import { getApiBaseUrl } from "@/lib/api-client"
 import {
   History, Loader2, Search, RefreshCw, Trash2,
@@ -10,10 +12,12 @@ import {
   XCircle, Bot, Terminal, Smartphone, Timer,
   Link, Monitor, Wrench, Users, Star, Filter, X,
   Download, FileJson, FileText, Tag, Plus,
-  PanelLeft,
+  PanelLeft, TrendingUp, BarChart3, PieChart as PieChartIcon, Activity,
 } from "lucide-react"
 import { useIsMobile } from "@/hooks/use-mobile"
 import { PageLayout } from '@/components/page-layout';
+
+const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
 
 interface Session {
   session_id: string
@@ -62,6 +66,167 @@ const SOURCE_LABELS: Record<string, string> = {
 }
 
 const ALL_SOURCES = ["cli", "weixin", "cron", "acp", "tui", "tool", "subagent"]
+
+// ── Session Dashboard Charts ──────────────────────────────
+
+function SessionTrendChart({ sessions }: { sessions: Session[] }) {
+  const option = useMemo(() => {
+    const dateMap = new Map<string, number>();
+    sessions.forEach(s => {
+      if (!s.created_at) return;
+      const key = new Date(s.created_at).toISOString().slice(0, 10);
+      dateMap.set(key, (dateMap.get(key) ?? 0) + 1);
+    });
+    const dates: string[] = [];
+    const daily: number[] = [];
+    const cumulative: number[] = [];
+    let total = 0;
+    const today = new Date();
+    for (let i = 29; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(d.getDate() - i);
+      const key = d.toISOString().slice(0, 10);
+      dates.push(key.slice(5));
+      const count = dateMap.get(key) ?? 0;
+      daily.push(count);
+      total += count;
+      cumulative.push(total);
+    }
+    return assembleECharts({
+      data: { values: dates.map((d, i) => ({ date: d, cumulative: cumulative[i], daily: daily[i] })) },
+      semantic_types: { date: 'Temporal', cumulative: 'Quantity', daily: 'Quantity' },
+      chart_spec: {
+        chartType: 'Area Chart',
+        encodings: { x: { field: 'date' }, y: { field: 'cumulative' } },
+        canvasSize: { width: 500, height: 200 },
+      },
+    });
+  }, [sessions]);
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <TrendingUp size={14} className="text-cyan-400" />
+        <h4 className="text-xs font-medium">Session Trend (30 days)</h4>
+      </div>
+      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+    </div>
+  );
+}
+
+function TokenUsageChart({ sessions }: { sessions: Session[] }) {
+  const option = useMemo(() => {
+    const sorted = [...sessions]
+      .filter(s => (s.message_count ?? 0) > 0)
+      .sort((a, b) => (b.message_count ?? 0) - (a.message_count ?? 0))
+      .slice(0, 10);
+    const values = sorted.map(s => ({
+      session: (s.title || s.session_id).slice(0, 12) + ((s.title || s.session_id).length > 12 ? '…' : ''),
+      messages: s.message_count ?? 0,
+    }));
+    return assembleECharts({
+      data: { values },
+      semantic_types: { session: 'Nominal', messages: 'Quantity' },
+      chart_spec: {
+        chartType: 'Bar Chart',
+        encodings: { x: { field: 'session' }, y: { field: 'messages' } },
+        canvasSize: { width: 500, height: 200 },
+      },
+    });
+  }, [sessions]);
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <BarChart3 size={14} className="text-blue-400" />
+        <h4 className="text-xs font-medium">Top Sessions by Messages</h4>
+      </div>
+      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+    </div>
+  );
+}
+
+function ResponseTimeChart({ sessions }: { sessions: Session[] }) {
+  const option = useMemo(() => {
+    const buckets = new Map<string, number>();
+    const labels = ['<1 min', '1-5 min', '5-30 min', '30 min-2h', '2-12h', '>12h'];
+    labels.forEach(l => buckets.set(l, 0));
+    sessions.forEach(s => {
+      if (!s.created_at || !s.updated_at) return;
+      const diffMin = (new Date(s.updated_at).getTime() - new Date(s.created_at).getTime()) / 60000;
+      if (diffMin < 1) buckets.set('<1 min', (buckets.get('<1 min') ?? 0) + 1);
+      else if (diffMin < 5) buckets.set('1-5 min', (buckets.get('1-5 min') ?? 0) + 1);
+      else if (diffMin < 30) buckets.set('5-30 min', (buckets.get('5-30 min') ?? 0) + 1);
+      else if (diffMin < 120) buckets.set('30 min-2h', (buckets.get('30 min-2h') ?? 0) + 1);
+      else if (diffMin < 720) buckets.set('2-12h', (buckets.get('2-12h') ?? 0) + 1);
+      else buckets.set('>12h', (buckets.get('>12h') ?? 0) + 1);
+    });
+    const values = labels.map(l => ({ bucket: l, count: buckets.get(l) ?? 0 }));
+    return assembleECharts({
+      data: { values },
+      semantic_types: { bucket: 'Ordinal', count: 'Quantity' },
+      chart_spec: {
+        chartType: 'Bar Chart',
+        encodings: { x: { field: 'bucket' }, y: { field: 'count' } },
+        canvasSize: { width: 500, height: 200 },
+      },
+    });
+  }, [sessions]);
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <Activity size={14} className="text-green-400" />
+        <h4 className="text-xs font-medium">Session Duration Distribution</h4>
+      </div>
+      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+    </div>
+  );
+}
+
+function StatusPieChart({ sessions }: { sessions: Session[] }) {
+  const option = useMemo(() => {
+    const statusMap = new Map<string, number>();
+    sessions.forEach(s => {
+      const label = s.status || 'unknown';
+      statusMap.set(label, (statusMap.get(label) ?? 0) + 1);
+    });
+    const values = Array.from(statusMap.entries()).map(([status, count]) => ({ status, count }));
+    return assembleECharts({
+      data: { values },
+      semantic_types: { status: 'Nominal', count: 'Quantity' },
+      chart_spec: {
+        chartType: 'Pie Chart',
+        encodings: { x: { field: 'status' }, y: { field: 'count' } },
+        chartProperties: { innerRadius: 35 },
+        canvasSize: { width: 300, height: 200 },
+      },
+    });
+  }, [sessions]);
+  return (
+    <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+      <div className="flex items-center gap-2 mb-3">
+        <PieChartIcon size={14} className="text-amber-400" />
+        <h4 className="text-xs font-medium">Status Distribution</h4>
+      </div>
+      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+    </div>
+  );
+}
+
+function SessionDashboardCharts({ sessions }: { sessions: Session[] }) {
+  if (sessions.length === 0) return null;
+  return (
+    <div className="space-y-3 lg:space-y-4">
+      <h3 className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+        Session Analytics
+      </h3>
+      <div className="grid gap-3 lg:gap-4 lg:grid-cols-2">
+        <SessionTrendChart sessions={sessions} />
+        <TokenUsageChart sessions={sessions} />
+        <ResponseTimeChart sessions={sessions} />
+        <StatusPieChart sessions={sessions} />
+      </div>
+    </div>
+  );
+}
 
 // localStorage helpers for favorites
 function loadFavorites(): Set<string> {
@@ -1105,11 +1270,16 @@ export function SessionsClient() {
               </div>
             </div>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-muted-foreground">
-              <div className="text-center">
-                <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
-                <p className="text-sm">{t("sessions.selectSession", "Select a session to view")}</p>
-              </div>
+            <div className="flex-1 overflow-y-auto p-3 lg:p-6">
+              <SessionDashboardCharts sessions={sessions} />
+              {sessions.length === 0 && (
+                <div className="flex-1 flex items-center justify-center text-muted-foreground py-16">
+                  <div className="text-center">
+                    <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                    <p className="text-sm">{t("sessions.selectSession", "Select a session to view")}</p>
+                  </div>
+                </div>
+              )}
             </div>
           )
         )}
