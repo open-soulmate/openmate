@@ -6,19 +6,19 @@ import { cn } from '@opensoulmate/openface/lib/utils';
 
 // ── Types ────────────────────────────────────────────────────────
 
-export interface DetailItem {
+export interface RightPanelItem {
   label: string;
   value: ReactNode;
   icon?: ReactNode;
 }
 
-export interface DetailSection {
+export interface RightPanelSection {
   title: string;
-  items: DetailItem[];
+  items: RightPanelItem[];
   actions?: ReactNode;
 }
 
-export interface DetailPanelProps {
+export interface RightPanelProps {
   /** Title displayed at top */
   title: string;
   /** Subtitle/description */
@@ -28,7 +28,7 @@ export interface DetailPanelProps {
   /** Badge/label */
   badge?: string;
   /** Sections to display */
-  sections?: DetailSection[];
+  sections?: RightPanelSection[];
   /** Custom content (overrides sections) */
   children?: ReactNode;
   /** Close handler */
@@ -41,7 +41,7 @@ export interface DetailPanelProps {
 
 // ── Main Component ───────────────────────────────────────────────
 
-export function DetailPanel({
+export function RightPanel({
   title,
   subtitle,
   icon,
@@ -51,7 +51,7 @@ export function DetailPanel({
   onClose,
   headerActions,
   className,
-}: DetailPanelProps) {
+}: RightPanelProps) {
   return (
     <div className={cn("flex flex-col h-full bg-background", className)}>
       {/* Header */}
@@ -125,19 +125,19 @@ export function DetailPanel({
 
 // ── Hook for managing detail panel state ─────────────────────────
 
-export function useDetailPanel() {
-  const [detailItem, setDetailItem] = useState<{
+export function useRightPanel() {
+  const [detailItem, setRightPanelItem] = useState<{
     id: string;
     type: string;
     data: any;
   } | null>(null);
 
   const openDetail = (id: string, type: string, data: any) => {
-    setDetailItem({ id, type, data });
+    setRightPanelItem({ id, type, data });
   };
 
   const closeDetail = () => {
-    setDetailItem(null);
+    setRightPanelItem(null);
   };
 
   return {

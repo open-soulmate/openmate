@@ -1,11 +1,11 @@
 // @opensoulmate/openface — Soulmate Design System
 
 // Components
-export { PageLayout } from './components/page-layout';
-export type { PageLayoutProps } from './components/page-layout';
+export { Main } from './components/main';
+export type { MainProps } from './components/main';
 export { LeftPanel } from './components/left-panel';
-export { DetailPanel, useDetailPanel } from './components/detail-panel';
-export type { DetailPanelProps, DetailSection, DetailItem } from './components/detail-panel';
+export { RightPanel, useRightPanel } from './components/right-panel';
+export type { RightPanelProps, RightPanelSection, RightPanelItem } from './components/right-panel';
 
 export { TopBar } from './components/top-bar';
 export type { TopBarProps } from './components/top-bar';
@@ -40,3 +40,6 @@ export { useAppStore } from './store/app-store';
 
 // Utils
 export { cn } from './lib/utils';
+
+export { MainHeader } from './components/main-header';
+export type { MainHeaderProps } from './components/main-header';

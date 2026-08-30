@@ -1,18 +1,18 @@
 'use client';
 
 import { useSidebar } from '@/components/ui/sidebar';
-import { PageLayout as OpenFacePageLayout, type PageLayoutProps } from '@opensoulmate/openface';
+import { Main, type MainProps } from '@opensoulmate/openface';
 
 /**
- * OpenMate's PageLayout wrapper.
- * Bridges shadcn/ui sidebar state into @opensoulmate/openface's PageLayout.
- * All pages should import from '@/components/page-layout' — this file is the single bridge.
+ * OpenMate's PageLayout wrapper (bridges to openface Main).
+ * Bridges shadcn/ui sidebar state into @opensoulmate/openface's Main component.
+ * All pages should import PageLayout from '@/components/page-layout'.
  */
-export function PageLayout(props: PageLayoutProps) {
+export function PageLayout(props: MainProps) {
   const { open: sidebarOpen, toggleSidebar } = useSidebar();
 
   return (
-    <OpenFacePageLayout
+    <Main
       {...props}
       sidebarOpen={sidebarOpen}
       onToggleSidebar={toggleSidebar}
@@ -20,4 +20,4 @@ export function PageLayout(props: PageLayoutProps) {
   );
 }
 
-export type { PageLayoutProps };
+export type { MainProps as PageLayoutProps };
