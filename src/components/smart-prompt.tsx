@@ -9,6 +9,8 @@ import {
   RotateCcw,
   ChevronUp,
   ChevronDown,
+  Mic,
+  AudioLines,
 } from 'lucide-react';
 import { RichInput } from '@/components/rich-input';
 
@@ -190,18 +192,8 @@ export function SmartPrompt({
       )}
     >
       {/* Task input — always visible */}
-      <div className="flex items-end gap-2 p-3">
-        <div className="flex-1 relative min-h-[48px]">
-          {/* Clear — top-left */}
-          {(fields.task || generated) && (
-            <button
-              onClick={handleClear}
-              className="absolute top-0 left-0 p-1 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors z-10"
-              title="清空所有字段"
-            >
-              <RotateCcw className="w-3 h-3" />
-            </button>
-          )}
+      <div className="p-3">
+        <div className="relative min-h-[48px]">
           <RichInput
             value={fields.task}
             onChange={(val) => updateField('task', val)}
@@ -219,31 +211,6 @@ export function SmartPrompt({
               <span>分析中...</span>
             </div>
           )}
-        </div>
-
-        <div className="flex items-center gap-1 shrink-0">
-          {/* Expand with AI — top-right */}
-          <button
-            onClick={() => {
-              if (!expanded) {
-                setExpanded(true);
-                if (fields.task.trim().length >= 5) {
-                  autoGenerate(fields.task);
-                }
-              } else {
-                setExpanded(false);
-              }
-            }}
-            className={cn(
-              "p-1.5 rounded transition-colors",
-              expanded
-                ? "bg-primary/10 text-primary hover:bg-primary/20"
-                : "hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground"
-            )}
-            title={expanded ? '折叠字段' : '展开AI字段'}
-          >
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-          </button>
         </div>
       </div>
 
@@ -272,6 +239,53 @@ export function SmartPrompt({
 
         </div>
       )}
+
+      {/* Action bar — WeChat style */}
+      <div className="flex items-center gap-0.5 px-2 py-1">
+        {(fields.task || generated) && (
+          <button
+            onClick={handleClear}
+            className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+            title="清空所有字段"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        )}
+        <div className="flex-1" />
+        <button
+          className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+          title="语音输入"
+        >
+          <Mic className="w-4 h-4" />
+        </button>
+        <button
+          className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+          title="发送语音"
+        >
+          <AudioLines className="w-4 h-4" />
+        </button>
+        <button
+          onClick={() => {
+            if (!expanded) {
+              setExpanded(true);
+              if (fields.task.trim().length >= 5) {
+                autoGenerate(fields.task);
+              }
+            } else {
+              setExpanded(false);
+            }
+          }}
+          className={cn(
+            "p-1.5 rounded transition-colors",
+            expanded
+              ? "bg-primary/10 text-primary hover:bg-primary/20"
+              : "hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground"
+          )}
+          title={expanded ? '折叠字段' : '展开AI字段'}
+        >
+          {expanded ? <ChevronUp className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
+        </button>
+      </div>
 
       {/* Footer — action buttons inside the border */}
       {footer}
