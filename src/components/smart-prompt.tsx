@@ -38,10 +38,10 @@ interface SmartPromptProps {
 // ── Field Definitions ────────────────────────────────────────────
 
 const FIELD_DEFS = [
-  { key: 'role' as const, icon: '👤', label: '角色', placeholder: '例如：性能优化工程师' },
   { key: 'background' as const, icon: '📋', label: '背景', placeholder: '例如：Node.js后端服务' },
-  { key: 'constraints' as const, icon: '📏', label: '约束', placeholder: '例如：不能改数据库结构' },
+  { key: 'role' as const, icon: '👤', label: '角色', placeholder: '例如：性能优化工程师' },
   { key: 'format' as const, icon: '📐', label: '格式', placeholder: '例如：给出代码示例' },
+  { key: 'constraints' as const, icon: '📏', label: '约束', placeholder: '例如：不能改数据库结构' },
 ];
 
 // ── Prompt Assembly ──────────────────────────────────────────────
