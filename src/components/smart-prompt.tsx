@@ -41,6 +41,8 @@ interface SmartPromptProps {
   footer?: React.ReactNode;
   /** Called when file attach button is clicked */
   onFileClick?: () => void;
+  /** Paste handler for clipboard images */
+  onPaste?: (e: React.ClipboardEvent) => void;
 }
 
 // ── Field Definitions ────────────────────────────────────────────
@@ -86,6 +88,7 @@ export function SmartPrompt({
   className,
   footer,
   onFileClick,
+  onPaste,
 }: SmartPromptProps) {
   const [fields, setFields] = useState<SmartPromptFields>({
     task: '',
@@ -195,6 +198,7 @@ export function SmartPrompt({
         'border border-border rounded-xl bg-background space-y-2 transition-all',
         className,
       )}
+      onPaste={onPaste}
     >
       {/* Task input — always visible */}
       <div className="p-3">

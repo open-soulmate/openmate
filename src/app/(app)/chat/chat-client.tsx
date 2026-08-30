@@ -883,6 +883,7 @@ export function ChatClient() {
               isLoading={loading}
               placeholder={t("chat.inputPlaceholder", "输入任务，点 ✨ 展开字段（Enter 发送，Shift+Enter 换行）")}
               onFileClick={() => fileRef.current?.click()}
+              onPaste={handlePaste}
               footer={<>
                   <button
                     onClick={() => setAgentMode(prev => prev === 'plan' ? 'act' : 'plan')}
