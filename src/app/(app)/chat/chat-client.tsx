@@ -903,6 +903,18 @@ export function ChatClient() {
                 {checkpoints.length > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">{checkpoints.length}</span>}
               </button>
               <ContextRing />
+              <div className="flex-1" />
+              <button
+                onClick={() => {
+                  // Trigger SmartPrompt send via a ref or state
+                  // For now, dispatch a custom event
+                  window.dispatchEvent(new CustomEvent('smart-prompt-send'));
+                }}
+                disabled={loading}
+                className={`flex items-center justify-center w-10 h-10 lg:w-8 lg:h-8 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 touch-manipulation transition-colors`}
+              >
+                {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              </button>
             </div>
           </div>
         </div>
