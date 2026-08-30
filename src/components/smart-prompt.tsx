@@ -1,15 +1,14 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 import {
   Send,
-  ChevronDown,
-  ChevronUp,
   Sparkles,
   Loader2,
   RotateCcw,
 } from 'lucide-react';
+import { RichInput } from '@/components/rich-input';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -83,11 +82,11 @@ export function SmartPrompt({
     constraints: '',
     format: '',
   });
-  const [expanded, setExpanded] = useState(false);
+
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
-  const taskRef = useRef<HTMLTextAreaElement>(null);
-  const generateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const expanded = true; // Always show all fields
+  let generateTimerRef: ReturnType<typeof setTimeout> | null = null;
 
   // Auto-generate other fields when task changes (debounced)
   const autoGenerate = useCallback(
@@ -112,8 +111,6 @@ export function SmartPrompt({
             format: data.format || prev.format,
           }));
           setGenerated(true);
-          // Auto-expand to show generated fields
-          setExpanded(true);
         }
       } catch {
         // Silent fail — user can still use task-only mode
@@ -126,16 +123,16 @@ export function SmartPrompt({
 
   // Debounced auto-generate on task change
   useEffect(() => {
-    if (generateTimerRef.current) {
-      clearTimeout(generateTimerRef.current);
+    if (generateTimerRef) {
+      clearTimeout(generateTimerRef);
     }
     if (fields.task.trim().length >= 10) {
-      generateTimerRef.current = setTimeout(() => {
+      generateTimerRef = setTimeout(() => {
         autoGenerate(fields.task);
       }, 1500); // 1.5s debounce
     }
     return () => {
-      if (generateTimerRef.current) clearTimeout(generateTimerRef.current);
+      if (generateTimerRef) clearTimeout(generateTimerRef);
     };
   }, [fields.task, autoGenerate]);
 
@@ -150,7 +147,7 @@ export function SmartPrompt({
     // Reset after send
     setFields({ task: '', role: '', background: '', constraints: '', format: '' });
     setGenerated(false);
-    setExpanded(false);
+
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -165,35 +162,24 @@ export function SmartPrompt({
     setGenerated(false);
   };
 
-  // Auto-resize textarea
-  const autoResize = (el: HTMLTextAreaElement) => {
-    el.style.height = 'auto';
-    el.style.height = Math.min(el.scrollHeight, 120) + 'px';
-  };
-
   return (
     <div
       className={cn(
-        'border border-border rounded-xl bg-background shadow-sm transition-all',
-        expanded ? 'space-y-2' : '',
+        'border border-border rounded-xl bg-background shadow-sm space-y-2 transition-all',
         className,
       )}
     >
       {/* Task input — always visible */}
       <div className="flex items-end gap-2 p-3">
         <div className="flex-1 relative">
-          <textarea
-            ref={taskRef}
+          <RichInput
             value={fields.task}
-            onChange={(e) => {
-              updateField('task', e.target.value);
-              autoResize(e.target);
-            }}
+            onChange={(val) => updateField('task', val)}
             onKeyDown={handleKeyDown}
             placeholder={placeholder}
-            rows={1}
-            className="w-full resize-none bg-transparent text-sm outline-none placeholder:text-muted-foreground min-h-[24px] max-h-[120px]"
             disabled={isLoading}
+            minRows={1}
+            maxRows={8}
           />
           {/* Generating indicator */}
           {generating && (
@@ -205,14 +191,7 @@ export function SmartPrompt({
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          {/* Expand/collapse toggle */}
-          <button
-            onClick={() => setExpanded(!expanded)}
-            className="p-1.5 rounded-md hover:bg-muted/50 text-muted-foreground transition-colors"
-            title={expanded ? '折叠' : '展开'}
-          >
-            {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
-          </button>
+
 
           {/* Clear */}
           {(fields.task || generated) && (
@@ -246,8 +225,8 @@ export function SmartPrompt({
         </div>
       </div>
 
-      {/* Expanded fields */}
-      {expanded && (
+      {/* Fields — always visible */}
+      {(
         <div className="px-3 pb-3 space-y-2 border-t border-border pt-2">
           {FIELD_DEFS.map((def) => (
             <div key={def.key} className="flex items-center gap-2">
