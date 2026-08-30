@@ -135,7 +135,7 @@
   },
   "chat": {
     "newChat": "新建对话",
-    "inputPlaceholder": "输入消息... (Enter 发送，Shift+Enter 换行)",
+    "inputPlaceholder": "输入任务，点 ✨ 展开字段（Enter 发送，Shift+Enter 换行）",
     "send": "发送",
     "thinking": "思考中...",
     "noMessages": "暂无消息",
