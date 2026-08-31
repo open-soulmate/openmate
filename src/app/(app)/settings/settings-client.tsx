@@ -223,14 +223,7 @@ export function SettingsClient() {
         placeholder={t("settings.searchPlaceholder") || "Search settings..."}
         header={
           <>
-            <div className="mb-4 px-2 pt-2">
-              <div className="flex items-center gap-2 mb-1">
-                <Settings size={14} className="text-muted-foreground" />
-                <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider group-data-[collapsible=icon]:hidden">
-                  {t("settings.title")}
-                </span>
-              </div>
-            </div>
+
 
 
           </>
@@ -477,12 +470,7 @@ export function SettingsClient() {
   // Mobile sidebar navigation (PC sidebar is registered via setPageSidebar into the app shell)
   const MobileSidebarNav = () => (
     <>
-      <div className="mb-4">
-        <div className="flex items-center gap-2 mb-1">
-          <Settings size={14} className="text-muted-foreground" />
-          <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("settings.title")}</span>
-        </div>
-      </div>
+
       <nav className="flex-1 space-y-0.5">
         {sections.map((s) => {
           const Icon = s.icon;
