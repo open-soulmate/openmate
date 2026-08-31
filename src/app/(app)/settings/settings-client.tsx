@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { useRouter } from "next/navigation";
 import {
   Moon, Sun, Palette, Monitor, Save, Bot, Cpu, Globe, Key,
-  HardDrive, Info, Wrench, Sliders, Eye, EyeOff, Check, X,
+  HardDrive, Info, Wrench, Sliders, Check, X,
   RefreshCw, Download, Upload, Trash2, ExternalLink, Terminal,
   Wifi, FolderOpen, Gauge, RotateCcw, Zap, ChevronRight,
   CheckCircle2, AlertCircle, LogOut, User, Settings, Menu,
@@ -17,6 +17,7 @@ import i18n, { detectLanguage } from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PageLayout } from '@/components/page-layout';
+import { SettingCard, Toggle, SelectInput, ButtonGroup, Slider, TextInput } from "@opensoulmate/openface";
 import { LeftPanel } from '@/components/left-panel';
 
 type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "organs" | "account" | "about";
@@ -40,75 +41,6 @@ const llmProviders = [
   { value: "ollama", label: "Ollama (Local)", models: ["llama3.1", "qwen2.5", "deepseek-r1"] },
   { value: "custom", label: "Custom", models: [] },
 ];
-
-// ─── Reusable Components ─────────────────────────────────────────────
-
-function SettingCard({ title, description, children }: { title: string; description?: string; children: React.ReactNode }) {
-  return (
-    <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-      <div>
-        <h3 className="text-xs lg:text-sm font-medium">{title}</h3>
-        {description && <p className="text-xs text-muted-foreground mt-0.5">{description}</p>}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
-  return (
-    <div className="flex items-center justify-between">
-      {label && <span className="text-xs lg:text-sm">{label}</span>}
-      <button onClick={() => onChange(!checked)} className={cn("relative inline-flex h-5 w-9 items-center rounded-full transition-colors", checked ? "bg-primary" : "bg-muted-foreground/30")}>
-        <span className={cn("inline-block h-3.5 w-3.5 rounded-full bg-white transition-transform shadow-sm", checked ? "translate-x-[18px]" : "translate-x-[3px]")} />
-      </button>
-    </div>
-  );
-}
-
-function SelectInput({ value, onChange, options }: { value: string; onChange: (v: string) => void; options: { value: string; label: string }[] }) {
-  return (
-    <select value={value} onChange={(e) => onChange(e.target.value)} className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30">
-      {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
-    </select>
-  );
-}
-
-function ButtonGroup<T extends string>({ value, onChange, options }: { value: T; onChange: (v: T) => void; options: { value: T; label: string; icon?: React.ElementType }[] }) {
-  return (
-    <div className="flex gap-1 rounded-lg border border-border p-0.5 bg-muted/50">
-      {options.map((o) => (
-        <button key={o.value} onClick={() => onChange(o.value)} className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all", value === o.value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
-          {o.icon && <o.icon size={12} />}{o.label}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function Slider({ value, onChange, min, max, step, unit }: { value: number; onChange: (v: number) => void; min: number; max: number; step: number; unit?: string }) {
-  return (
-    <div className="flex items-center gap-3">
-      <input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} className="flex-1 accent-primary" />
-      <span className="text-xs lg:text-sm font-mono text-muted-foreground min-w-16 text-right">{value}{unit}</span>
-    </div>
-  );
-}
-
-function TextInput({ value, onChange, placeholder, type = "text" }: { value: string; onChange: (v: string) => void; placeholder?: string; type?: string }) {
-  const [showPassword, setShowPassword] = useState(false);
-  return (
-    <div className="relative">
-      <input type={type === "password" && !showPassword ? "password" : "text"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full rounded-lg border border-border bg-muted px-3 py-2 text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30 pr-8" />
-      {type === "password" && (
-        <button onClick={() => setShowPassword(!showPassword)} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
-          {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-        </button>
-      )}
-    </div>
-  );
-}
 
 // ─── Main Component ──────────────────────────────────────────────────
 

@@ -55,3 +55,4 @@ export type { FileViewerProps, FileCategory } from './components/file-viewer';
 export { CanvasAnnotation } from './components/file-viewer';
 export type { CanvasAnnotationProps } from './components/file-viewer';
 export { BrowserAIControl } from "./components/file-viewer/renderers/browser-ai-control";
+export * from './components/settings';
