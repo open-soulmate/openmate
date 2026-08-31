@@ -232,12 +232,7 @@ export function SettingsClient() {
               </div>
             </div>
 
-            <div className="px-2 pb-2 border-b border-border">
-              <div className="text-[10px] text-muted-foreground px-3 space-y-0.5 group-data-[collapsible=icon]:hidden">
-                <div>OpenMate v0.1.0</div>
-                {backendVersion && <div>OpenSoul v{backendVersion}</div>}
-              </div>
-            </div>
+
           </>
         }
       />
@@ -499,12 +494,7 @@ export function SettingsClient() {
           );
         })}
       </nav>
-      <div className="mt-auto pt-4 border-t border-border">
-        <div className="text-[10px] text-muted-foreground px-3 space-y-0.5">
-          <div>OpenMate v0.1.0</div>
-          {backendVersion && <div>OpenSoul v{backendVersion}</div>}
-        </div>
-      </div>
+
     </>
   );
 
