@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAppStore, type FileNode, type TerminalLine } from "@/stores/app-store";
 import { listDir, readFile, executeCommand } from "@/lib/tauri-bridge";
+import { FileViewer as OpenFaceFileViewer } from "@opensoulmate/openface";
 import { SCMPanel } from "@/components/scm-panel";
 import { useIsMobile } from "@/hooks/use-mobile";
 import {
@@ -130,105 +131,34 @@ function HighlightedCode({ content, language }: { content: string; language: str
 
 // ─── File Content Viewer ────────────────────────────────────────────────────
 
-function FileViewer({
+function FileViewerWrapper({
   path,
   content,
 }: {
   path: string;
   content: string;
 }) {
-  const lines = content.split("\n");
-  const ext = path.split(".").pop()?.toLowerCase() ?? "";
   const fileName = path.split("/").pop() ?? path;
 
-  // Map file extensions to syntax highlighter language names
-  const extToLang: Record<string, string> = {
-    js: "javascript", jsx: "jsx", ts: "typescript", tsx: "tsx",
-    py: "python", rb: "ruby", go: "go", rs: "rust", java: "java",
-    c: "c", cpp: "cpp", h: "c", hpp: "cpp", cs: "csharp",
-    html: "html", htm: "html", css: "css", scss: "scss", less: "less",
-    json: "json", yaml: "yaml", yml: "yaml", toml: "toml", xml: "xml",
-    md: "markdown", sh: "bash", bash: "bash", zsh: "bash", fish: "bash",
-    sql: "sql", graphql: "graphql", dockerfile: "dockerfile",
-    makefile: "makefile", ini: "ini", conf: "nginx", nginx: "nginx",
-    php: "php", swift: "swift", kt: "kotlin", scala: "scala",
-    lua: "lua", r: "r", dart: "dart", vue: "vue", svelte: "svelte",
-  };
-  const lang = extToLang[ext] || "";
+  // Convert plain text to data URL for openface FileViewer
+  const fileUrl = useMemo(() => {
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(content);
+    const base64 = btoa(String.fromCharCode(...bytes));
+    return `data:application/octet-stream;base64,${base64}`;
+  }, [content]);
 
-  // Check if file is binary/image
-  const isImage = ["png", "jpg", "jpeg", "gif", "svg", "webp", "ico", "bmp"].includes(ext);
-  const isBinary = ["exe", "dll", "so", "dylib", "bin", "zip", "tar", "gz", "7z", "rar", "pdf", "woff", "woff2", "ttf", "eot"].includes(ext);
-
-  if (isBinary) {
-    return (
-      <div className="flex h-full flex-col">
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
-          <Code size={14} className="text-muted-foreground" />
-          <span className="text-xs font-medium text-foreground">{fileName}</span>
-        </div>
-        <div className="flex flex-1 items-center justify-center text-muted-foreground">
-          <div className="text-center">
-            <File size={32} className="mx-auto mb-2" />
-            <p className="text-sm">Binary file — cannot preview</p>
-            <p className="text-xs mt-1">{(content.length / 1024).toFixed(1)} KB</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  // Use syntax highlighter for known languages
-  if (lang && typeof window !== "undefined") {
-    // Use lazy-loaded SyntaxHighlighter component
-    return (
-      <div className="flex h-full flex-col">
-        <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
-          <Code size={14} className="text-muted-foreground" />
-          <span className="text-xs font-medium text-foreground">{fileName}</span>
-          <span className="text-[10px] text-muted-foreground">{lines.length} lines</span>
-          <span className="ml-auto text-[10px] px-1.5 py-0.5 rounded bg-muted/50 text-muted-foreground font-mono">{lang}</span>
-        </div>
-        <div className="flex-1 overflow-auto text-xs">
-          <HighlightedCode content={content} language={lang} />
-        </div>
-      </div>
-    );
-  }
-
-  // Plain text fallback with line numbers
   return (
     <div className="flex h-full flex-col">
-      <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-2">
-        <Code size={14} className="text-muted-foreground" />
-        <span className="text-xs font-medium text-foreground">{fileName}</span>
-        <span className="text-[10px] text-muted-foreground">
-          {lines.length} lines
-        </span>
-      </div>
-      <div className="flex-1 overflow-auto">
-        <div className="flex font-mono text-xs leading-6">
-          {/* Line numbers */}
-          <div className="shrink-0 select-none border-r border-border bg-muted/50 pr-3 text-right text-muted-foreground">
-            {lines.map((_, i) => (
-              <div key={i} className="px-2">
-                {i + 1}
-              </div>
-            ))}
-          </div>
-          {/* Code */}
-          <div className="flex-1 overflow-x-auto px-4">
-            {lines.map((line, i) => (
-              <div key={i} className="whitespace-pre text-foreground">
-                {line || "\u00A0"}
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+      <OpenFaceFileViewer
+        fileName={fileName}
+        fileUrl={fileUrl}
+        className="flex-1"
+      />
     </div>
   );
 }
+
 
 // ─── Terminal ───────────────────────────────────────────────────────────────
 
@@ -576,7 +506,7 @@ export function WorkspaceDetailClient() {
         {/* Editor area */}
         <div className="flex-1 overflow-hidden">
           {selectedFile ? (
-            <FileViewer path={selectedFile} content={fileContent} />
+            <FileViewerWrapper path={selectedFile} content={fileContent} />
           ) : (
             <div className="flex h-full flex-col items-center justify-center">
               <Code size={32} className="mb-3 text-muted-foreground" />
