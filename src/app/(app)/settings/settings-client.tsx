@@ -257,18 +257,8 @@ export function SettingsClient() {
   }, [active, groups, sections, backendVersion, setPageSidebar, t]);
 
   const update = useCallback(<K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
-    setSettings((s) => {
-      const next = { ...s, [key]: value };
-      // Instant save for appearance settings (Paperclip pattern)
-      if (["theme", "fontSize", "language", "animationEnabled"].includes(key as string)) {
-        persistTheme(next.theme);
-        setStoreTheme(next.theme);
-        i18n.changeLanguage(next.language);
-        localStorage.setItem("openmate-language", next.language);
-      }
-      return next;
-    });
-  }, [setStoreTheme]);
+    setSettings((s) => ({ ...s, [key]: value }));
+  }, []);
 
   async function handleSave() {
     const apiBase = getApiBaseUrl();
