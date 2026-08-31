@@ -1,3 +1,4 @@
+type AgentInfo = { id: string; name: string; icon: string; description: string; available: boolean; category?: string; path?: string; version?: string; };
 import { create } from "zustand";
 import { type ThemeId, getStoredTheme, applyTheme } from "@/lib/theme";
 

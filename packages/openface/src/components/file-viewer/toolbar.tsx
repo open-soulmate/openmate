@@ -27,6 +27,9 @@ const categoryLabels: Record<FileCategory, string> = {
   json: 'JSON',
   html: 'HTML',
   unknown: '文件',
+  svg: 'SVG',
+  log: '日志',
+  archive: '压缩包',
 };
 
 export function FileViewerToolbar({

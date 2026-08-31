@@ -232,7 +232,7 @@ export function McpClient() {
     setPageSidebar(
       <LeftPanel
         items={servers}
-        filter={(item, q) => item.name.toLowerCase().includes(q) || item.tools.some(t => t.toLowerCase().includes(q))}
+        filter={(item, q) => item.name.toLowerCase().includes(q) || item.tools.some(t => (typeof t === "string" ? t : t.name).toLowerCase().includes(q))}
         placeholder={t("mcp.searchPlaceholder") || "搜索服务器..."}
         header={
           <div className="flex items-center gap-2 px-2 pb-2 shrink-0">
