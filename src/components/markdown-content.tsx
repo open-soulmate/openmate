@@ -39,7 +39,7 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
   return (
     <div className="relative group my-2 rounded-lg overflow-hidden border border-border/50">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#1e1e2e] text-xs text-muted-foreground">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-[var(--color-secondary)] text-xs text-muted-foreground">
         <span>{language || 'text'}</span>
         <div className="flex items-center gap-1">
           {!isEditing && (
@@ -66,7 +66,7 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
         <div className="border-t border-border/30">
           <Suspense
             fallback={
-              <div className="flex items-center justify-center h-[200px] bg-[#0d0d14] text-muted-foreground text-xs">
+              <div className="flex items-center justify-center h-[200px] bg-[var(--color-card)] text-muted-foreground text-xs">
                 {t('markdown.loading')}
               </div>
             }
@@ -99,7 +99,7 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
             />
           </Suspense>
           {/* Action bar */}
-          <div className="flex items-center justify-end gap-2 px-3 py-2 bg-[#1e1e2e] border-t border-border/30">
+          <div className="flex items-center justify-end gap-2 px-3 py-2 bg-[var(--color-secondary)] border-t border-border/30">
             <button
               onClick={handleCancel}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"

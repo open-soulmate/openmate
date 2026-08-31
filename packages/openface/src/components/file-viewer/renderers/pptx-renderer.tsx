@@ -80,7 +80,7 @@ export function PptxRenderer({ fileUrl, fileBuffer, fileName, onError }: Rendere
       <div className="flex flex-1 min-h-0 overflow-hidden">
         {/* Slide thumbnails */}
         {totalSlides > 1 && (
-          <div className="w-20 shrink-0 border-r border-border/30 overflow-y-auto bg-[#12122a] p-2 flex flex-col gap-1">
+          <div className="w-20 shrink-0 border-r border-border/30 overflow-y-auto bg-[var(--color-secondary)] p-2 flex flex-col gap-1">
             {Array.from({ length: totalSlides }, (_, i) => (
               <button key={i} onClick={() => goToSlide(i + 1)}
                 className={`text-xs text-center py-1.5 rounded transition-colors ${currentSlide === i + 1 ? 'bg-primary/20 text-primary' : 'hover:bg-muted/30 text-muted-foreground'}`}>

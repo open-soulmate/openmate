@@ -177,7 +177,7 @@ export function ZipArchiveRenderer({ fileUrl, fileBuffer, fileName, onError }: R
       </RendererToolbar>
 
       <div className="flex flex-1 min-h-0 overflow-hidden">
-        <div className="w-64 shrink-0 border-r border-border/30 overflow-y-auto bg-[#12122a] p-2">
+        <div className="w-64 shrink-0 border-r border-border/30 overflow-y-auto bg-[var(--color-secondary)] p-2">
           {tree.map(node => (
             <TreeNodeComponent key={node.path} node={node} depth={0}
               selectedFile={selectedFile}
@@ -188,7 +188,7 @@ export function ZipArchiveRenderer({ fileUrl, fileBuffer, fileName, onError }: R
 
         <div className="flex-1 overflow-auto">
           {previewType === 'text' ? (
-            <pre className="p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap text-green-300 bg-[#0d1117] h-full">{previewContent}</pre>
+            <pre className="p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap text-green-400 bg-[var(--color-background)] h-full">{previewContent}</pre>
           ) : previewType === 'image' ? (
             <div className="flex items-center justify-center h-full bg-white p-4">
               <img src={previewContent} alt={selectedFile} className="max-w-full max-h-full" />

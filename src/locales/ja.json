@@ -602,7 +602,8 @@
     "shellWhitelistPlaceholder": "ls, cat, grep",
     "knowledgePathPlaceholder": "~/.openmate/knowledge",
     "baseUrl": "Base URL",
-    "baseUrlDesc": "API endpoint base URL"
+    "baseUrlDesc": "API endpoint base URL",
+    "followSystem": "システムに従う"
   },
   "search": {
     "title": "すべてを検索",

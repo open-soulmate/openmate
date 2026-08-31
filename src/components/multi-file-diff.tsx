@@ -94,9 +94,9 @@ export function MultiFileDiff({ files, onAccept, onReject, onAcceptAll, onReject
   };
 
   return (
-    <div className="my-3 rounded-lg border border-border/50 overflow-hidden bg-[#0d0d14]">
+    <div className="my-3 rounded-lg border border-border/50 overflow-hidden bg-[var(--color-card)]">
       {/* Header with file count and actions */}
-      <div className="flex items-center justify-between px-3 py-2 bg-[#1e1e2e] border-b border-border/30">
+      <div className="flex items-center justify-between px-3 py-2 bg-[var(--color-secondary)] border-b border-border/30">
         <div className="flex items-center gap-2">
           <button
             onClick={() => setExpanded(!expanded)}
@@ -132,7 +132,7 @@ export function MultiFileDiff({ files, onAccept, onReject, onAcceptAll, onReject
       {expanded && (
         <>
           {/* File tabs */}
-          <div className="flex overflow-x-auto border-b border-border/30 bg-[#111118]">
+          <div className="flex overflow-x-auto border-b border-border/30 bg-[var(--color-card)]">
             {files.map((file, index) => {
               const fileName = file.path.split('/').pop() || file.path;
               const isActive = index === activeTab;
@@ -144,8 +144,8 @@ export function MultiFileDiff({ files, onAccept, onReject, onAcceptAll, onReject
                   className={cn(
                     'flex items-center gap-1.5 px-3 py-2 text-xs border-r border-border/30 transition-colors min-w-0',
                     isActive
-                      ? 'bg-[#0d0d14] text-foreground'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-[#0d0d14]/50'
+                      ? 'bg-[var(--color-card)] text-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-[var(--color-card)]/50'
                   )}
                 >
                   <FileText className={cn('w-3 h-3 shrink-0', getFileStatusColor(file.status))} />
@@ -159,7 +159,7 @@ export function MultiFileDiff({ files, onAccept, onReject, onAcceptAll, onReject
           {/* Diff editor */}
           {currentFile && (
             <div>
-              <div className="flex items-center justify-between px-3 py-1.5 bg-[#1e1e2e] border-b border-border/30">
+              <div className="flex items-center justify-between px-3 py-1.5 bg-[var(--color-secondary)] border-b border-border/30">
                 <div className="flex items-center gap-2 text-xs text-muted-foreground">
                   <span className={getFileStatusColor(currentFile.status)}>
                     {statusLabel(currentFile.status)}

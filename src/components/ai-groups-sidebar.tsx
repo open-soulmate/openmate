@@ -73,7 +73,7 @@ export function AIGroupsSidebar() {
       }
       renderItem={(group) => (
         <div key={group.id}
-          className={`group px-3 py-2.5 cursor-pointer hover:bg-muted/80 transition-colors border-b border-border/30 ${selectedGroup?.id === group.id ? 'bg-[rgba(124,58,237,0.12)] text-[#7c3aed]' : ''}`}
+          className={`group px-3 py-2.5 cursor-pointer hover:bg-muted/80 transition-colors border-b border-border/30 ${selectedGroup?.id === group.id ? 'bg-primary/12 text-primary' : ''}`}
           onClick={() => selectGroup(group)}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 flex-1 min-w-0">

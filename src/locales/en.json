@@ -605,7 +605,8 @@
     "shellWhitelistPlaceholder": "ls, cat, grep",
     "knowledgePathPlaceholder": "~/.openmate/knowledge",
     "baseUrl": "Base URL",
-    "baseUrlDesc": "The API endpoint for your AI service. Change this if using a self-hosted service or proxy. Format: https://api.example.com/v1"
+    "baseUrlDesc": "The API endpoint for your AI service. Change this if using a self-hosted service or proxy. Format: https://api.example.com/v1",
+    "followSystem": "Follow System"
   },
   "search": {
     "title": "Search Everything",

@@ -37,9 +37,9 @@ export function InlineEditor({ code, language, fileName, readOnly = false, onApp
   }, [code]);
 
   return (
-    <div className="relative group my-2 rounded-lg overflow-hidden border border-border/50 bg-[#0d0d14]">
+    <div className="relative group my-2 rounded-lg overflow-hidden border border-border/50 bg-[var(--color-card)]">
       {/* Header bar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-[#1e1e2e] text-xs text-muted-foreground">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-[var(--color-secondary)] text-xs text-muted-foreground">
         <div className="flex items-center gap-2">
           <span>{language || 'text'}</span>
           {fileName && (
@@ -98,7 +98,7 @@ export function InlineEditor({ code, language, fileName, readOnly = false, onApp
             }}
           />
           {/* Action bar */}
-          <div className="flex items-center justify-end gap-2 px-3 py-2 bg-[#1e1e2e] border-t border-border/30">
+          <div className="flex items-center justify-end gap-2 px-3 py-2 bg-[var(--color-secondary)] border-t border-border/30">
             <button
               onClick={handleCancel}
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"

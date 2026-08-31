@@ -106,9 +106,9 @@ body {
   --color-border: #e4e4e7;
   --color-input: #e4e4e7;
   --color-ring: #6366f1;
-  --color-sidebar: #111118;
-  --color-sidebar-foreground: #a1a1aa;
-  --color-sidebar-accent: #1a1a20;
+  --color-sidebar: #f8f9fa;
+  --color-sidebar-foreground: #374151;
+  --color-sidebar-accent: #e5e7eb;
 }
 
 .light * {

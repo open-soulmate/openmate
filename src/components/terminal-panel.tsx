@@ -79,7 +79,7 @@ export function TerminalPanel({ apiBase, token }: TerminalPanelProps) {
       {/* Terminal panel */}
       {open && (
         <div className={`fixed z-40 bg-[#0a0a0f] border border-border rounded-t-xl shadow-2xl transition-all ${maximized ? 'inset-0' : 'bottom-0 right-2 lg:right-14 w-[calc(100%-1rem)] lg:w-[700px] h-[50vh] lg:h-[400px]'}`}>
-          <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-[#111118] rounded-t-xl">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-[var(--color-card)] rounded-t-xl">
             <div className="flex items-center gap-2">
               <TerminalIcon className="w-4 h-4 text-muted-foreground" />
               <span className="text-xs text-muted-foreground">{t('terminal.title')}</span>

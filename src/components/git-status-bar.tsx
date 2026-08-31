@@ -92,7 +92,7 @@ export function GitStatusBar({ apiBase, token, onRunCommand }: GitStatusBarProps
   }, [apiBase, token, commitMessage, fetchStatus]);
 
   return (
-    <div className="border-b border-border bg-[#111118]">
+    <div className="border-b border-border bg-[var(--color-card)]">
       {/* Main status bar */}
       <div className="flex items-center gap-2 px-3 py-1.5 text-xs">
         {/* Branch name */}
@@ -205,7 +205,7 @@ export function GitStatusBar({ apiBase, token, onRunCommand }: GitStatusBarProps
 
       {/* Commit message input */}
       {showCommitInput && (
-        <div className="flex items-center gap-2 px-3 py-2 border-t border-border/50 bg-[#0d0d14]">
+        <div className="flex items-center gap-2 px-3 py-2 border-t border-border/50 bg-[var(--color-card)]">
           <input
             type="text"
             value={commitMessage}

@@ -95,11 +95,11 @@ ${selectedText}
           <div className="p-6 prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: simpleMarkdownToHtml(content) }} />
         )}
         {mode === 'source' && (
-          <pre className="p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap text-green-300 bg-[#0d1117] h-full">{content}</pre>
+          <pre className="p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap text-green-400 bg-[var(--color-background)] h-full">{content}</pre>
         )}
         {mode === 'edit' && (
           <textarea value={content} onChange={handleChange}
-            className="w-full h-full resize-none bg-[#0d1117] text-green-300 font-mono text-xs p-4 outline-none leading-relaxed"
+            className="w-full h-full resize-none bg-[var(--color-background)] text-green-400 font-mono text-xs p-4 outline-none leading-relaxed"
             spellCheck={false} />
         )}
       </div>

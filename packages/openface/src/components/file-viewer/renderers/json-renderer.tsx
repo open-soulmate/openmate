@@ -144,11 +144,11 @@ ${selectedText}
         )}
       </RendererToolbar>
 
-      <div ref={containerRef} className="flex-1 overflow-auto bg-[#0d1117] relative">
+      <div ref={containerRef} className="flex-1 overflow-auto bg-[var(--color-background)] relative">
         {onSendToAgent && <SelectionAIBar containerRef={containerRef} onAIEdit={handleSelectionAI} />}
         {editMode ? (
           <textarea value={rawContent} onChange={e => { setRawContent(e.target.value); setDirty(true); }}
-            className="w-full h-full resize-none bg-transparent text-green-300 font-mono text-xs p-4 outline-none leading-relaxed"
+            className="w-full h-full resize-none bg-transparent text-green-400 font-mono text-xs p-4 outline-none leading-relaxed"
             spellCheck={false} />
         ) : error ? (
           <div className="p-4 text-red-400 text-xs font-mono">JSON解析错误: {error}</div>
@@ -180,7 +180,7 @@ ${selectedText}
             </tbody>
           </table>
         ) : (
-          <pre className="p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap text-green-300">{formatted}</pre>
+          <pre className="p-4 text-xs font-mono leading-relaxed whitespace-pre-wrap text-green-400">{formatted}</pre>
         )}
       </div>
     </div>

@@ -260,7 +260,7 @@ export function BrowserAIControl({ initialUrl, onAIAction }: BrowserAIControlPro
           <Home className="w-3.5 h-3.5" />
         </button>
 
-        <div className="flex-1 flex items-center bg-[#0d1117] border border-border rounded px-2 py-1 gap-1.5">
+        <div className="flex-1 flex items-center bg-[var(--color-background)] border border-border rounded px-2 py-1 gap-1.5">
           <Globe className="w-3 h-3 text-muted-foreground shrink-0" />
           <input
             value={inputUrl}
@@ -306,7 +306,7 @@ export function BrowserAIControl({ initialUrl, onAIAction }: BrowserAIControlPro
 
       {/* ── Action log ── */}
       {showLog && actionLog.length > 0 && (
-        <div className="border-b border-border bg-[#1e1e2e] max-h-[120px] overflow-auto">
+        <div className="border-b border-border bg-[var(--color-secondary)] max-h-[120px] overflow-auto">
           <div className="flex items-center justify-between px-2 py-1 border-b border-border/30">
             <span className="text-[10px] text-muted-foreground font-medium">AI操作日志</span>
             <button onClick={() => setShowLog(false)} className="p-0.5 rounded hover:bg-muted/30">

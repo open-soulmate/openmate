@@ -81,7 +81,7 @@ export function LogRenderer({ fileUrl, fileBuffer, fileName, onError }: Renderer
 
       {/* Search bar */}
       {showSearch && (
-        <div className="flex items-center gap-2 px-2 py-1 border-b border-border/30 bg-[#1a1a2e]">
+        <div className="flex items-center gap-2 px-2 py-1 border-b border-border/30 bg-[var(--color-secondary)]">
           <Search className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
           <input value={searchTerm} onChange={e => setSearchTerm(e.target.value)} placeholder="搜索日志..."
             className="flex-1 bg-transparent text-xs outline-none text-foreground" autoFocus />
@@ -93,7 +93,7 @@ export function LogRenderer({ fileUrl, fileBuffer, fileName, onError }: Renderer
         </div>
       )}
 
-      <div ref={containerRef} className="flex-1 overflow-auto bg-[#0d1117] p-4 font-mono text-xs leading-relaxed">
+      <div ref={containerRef} className="flex-1 overflow-auto bg-[var(--color-background)] p-4 font-mono text-xs leading-relaxed">
         {filteredLines.map((line, i) => {
           const level = getLogLevel(line);
           const highlighted = searchTerm

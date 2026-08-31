@@ -13,7 +13,7 @@ import { type ThemeId, getThemes, getStoredTheme, persistTheme } from "@/lib/the
 import { useAppStore } from "@/stores/app-store";
 import { getApiBaseUrl, getToken, getUserId, getUserName } from "@/lib/api-client";
 import { useToast } from "@/components/toast-provider";
-import i18n from "@/lib/i18n";
+import i18n, { detectLanguage } from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { PageLayout } from '@/components/page-layout';
@@ -211,7 +211,7 @@ export function SettingsClient() {
             className={cn(
               "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:gap-0",
               active === s.id
-                ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium"
+                ? "bg-primary/12 text-primary font-medium"
                 : "text-muted-foreground hover:bg-accent/50 hover:text-foreground"
             )}
             title={s.label}
@@ -488,7 +488,7 @@ export function SettingsClient() {
           const Icon = s.icon;
           return (
             <button key={s.id} onClick={() => { setActive(s.id); setShowSidebar(false); }}
-              className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors", active === s.id ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground")}>
+              className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors", active === s.id ? "bg-primary/12 text-primary font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground")}>
               <Icon size={15} />{s.label}
             </button>
           );
@@ -559,7 +559,7 @@ export function SettingsClient() {
 
               <SettingCard title={t("settings.language")} description={t("settings.languageDesc")}>
                 <SelectInput value={settings.language} onChange={(v) => update("language", v)}
-                  options={[{ value: "zh", label: "中文" }, { value: "en", label: "English" }, { value: "ja", label: "日本語" }]} />
+                  options={[{ value: "system", label: "跟随系统" }, { value: "zh", label: "中文" }, { value: "en", label: "English" }, { value: "ja", label: "日本語" }]} />
               </SettingCard>
 
               <SettingCard title={t("settings.animationEffects")} description={t("settings.animationDesc")}>

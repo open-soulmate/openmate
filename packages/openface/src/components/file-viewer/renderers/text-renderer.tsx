@@ -83,7 +83,7 @@ ${selectedText}
         )}
         {editMode ? (
           <textarea value={content} onChange={e => { setContent(e.target.value); setDirty(true); }}
-            className="w-full h-full resize-none bg-[#0d1117] text-foreground font-mono text-xs p-4 outline-none leading-relaxed"
+            className="w-full h-full resize-none bg-[var(--color-background)] text-foreground font-mono text-xs p-4 outline-none leading-relaxed"
             spellCheck={false} />
         ) : (
           <pre className="p-4 text-xs font-mono whitespace-pre-wrap leading-relaxed text-foreground">{content}</pre>

@@ -65,7 +65,7 @@ export function RendererToolbar({ fileName, fileUrl, category, children, onCopy,
   };
 
   return (
-    <div className="shrink-0 bg-[#1a1a2e]">
+    <div className="shrink-0 bg-[var(--color-secondary)]">
       <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/30">
         {category && (
           <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${badgeColors[category] || 'bg-muted/30 text-muted-foreground'}`}>

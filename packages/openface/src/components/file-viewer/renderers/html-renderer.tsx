@@ -108,15 +108,15 @@ export function HtmlRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAg
         </div>
       )}
       {mode === 'code' && (
-        <div className="flex-1 min-h-0 overflow-auto bg-[#0d1117]">
-          <pre className="p-4 text-xs leading-relaxed font-mono text-green-300 whitespace-pre-wrap break-all">{source || '（空文件）'}</pre>
+        <div className="flex-1 min-h-0 overflow-auto bg-[var(--color-background)]">
+          <pre className="p-4 text-xs leading-relaxed font-mono text-green-400 whitespace-pre-wrap break-all">{source || '（空文件）'}</pre>
         </div>
       )}
       {mode === 'edit' && (
         <div className="flex flex-1 min-h-0">
           <div className="flex-1 min-w-0 border-r border-border/30">
             <textarea value={source} onChange={handleChange}
-              className="w-full h-full resize-none bg-[#0d1117] text-green-300 font-mono text-xs p-4 outline-none leading-relaxed"
+              className="w-full h-full resize-none bg-[var(--color-background)] text-green-400 font-mono text-xs p-4 outline-none leading-relaxed"
               spellCheck={false} placeholder="在此编辑HTML代码..." />
           </div>
           <div className="flex-1 min-w-0">

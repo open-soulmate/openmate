@@ -134,7 +134,7 @@ export function CsvRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAge
             {encoding}
           </button>
           {showEncodingMenu && (
-            <div className="absolute top-full left-0 mt-1 bg-[#1a1a2e] border border-border/30 rounded shadow-lg z-50">
+            <div className="absolute top-full left-0 mt-1 bg-[var(--color-secondary)] border border-border/30 rounded shadow-lg z-50">
               {ENCODINGS.map(enc => (
                 <button key={enc} onClick={() => { setEncoding(enc); setShowEncodingMenu(false); }}
                   className={`block w-full text-left px-3 py-1 text-xs hover:bg-muted/30 ${enc === encoding ? 'text-primary' : 'text-muted-foreground'}`}>
@@ -164,7 +164,7 @@ export function CsvRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAge
       <div className="flex-1 overflow-auto">
         {editMode ? (
           <textarea value={rawContent} onChange={e => { setRawContent(e.target.value); setDirty(true); parseCSV(e.target.value, isTsv ? '\t' : delimiter); }}
-            className="w-full h-full resize-none bg-[#0d1117] text-green-300 font-mono text-xs p-4 outline-none leading-relaxed"
+            className="w-full h-full resize-none bg-[var(--color-background)] text-green-400 font-mono text-xs p-4 outline-none leading-relaxed"
             spellCheck={false} />
         ) : (
           <table className="w-full text-xs border-collapse">

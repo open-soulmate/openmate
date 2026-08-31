@@ -196,7 +196,7 @@ export function SelectionAIBar({ containerRef, onAIEdit, disabled }: SelectionAI
     >
       {result ? (
         /* ── Result preview with diff ── */
-        <div className="bg-[#1e1e2e] border border-border rounded-lg shadow-2xl w-[360px] overflow-hidden">
+        <div className="bg-[var(--color-secondary)] border border-border rounded-lg shadow-2xl w-[360px] overflow-hidden">
           <div className="flex items-center gap-2 px-3 py-2 border-b border-border/50">
             <Sparkles className="w-3.5 h-3.5 text-primary" />
             <span className="text-xs font-medium text-foreground">AI修改结果</span>
@@ -215,7 +215,7 @@ export function SelectionAIBar({ containerRef, onAIEdit, disabled }: SelectionAI
             )}
             <div className="px-3 py-1.5 bg-green-500/5 border-l-2 border-green-500/40">
               <span className="text-[10px] text-green-400/60 font-medium">修改</span>
-              <div className="text-xs text-green-300 whitespace-pre-wrap mt-0.5">{result}</div>
+              <div className="text-xs text-green-400 whitespace-pre-wrap mt-0.5">{result}</div>
             </div>
           </div>
 
@@ -227,7 +227,7 @@ export function SelectionAIBar({ containerRef, onAIEdit, disabled }: SelectionAI
                 onChange={e => setInstruction(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && handleContinueEdit()}
                 placeholder="继续修改（可选）..."
-                className="flex-1 bg-[#0d1117] border border-border rounded px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary/50"
+                className="flex-1 bg-[var(--color-background)] border border-border rounded px-2 py-1 text-[11px] text-foreground outline-none focus:border-primary/50"
                 disabled={loading}
               />
               <button onClick={handleContinueEdit} disabled={loading || !instruction.trim()}
@@ -251,7 +251,7 @@ export function SelectionAIBar({ containerRef, onAIEdit, disabled }: SelectionAI
         </div>
       ) : showInput ? (
         /* ── Custom instruction input ── */
-        <div className="bg-[#1e1e2e] border border-border rounded-lg shadow-2xl p-2 w-[300px]">
+        <div className="bg-[var(--color-secondary)] border border-border rounded-lg shadow-2xl p-2 w-[300px]">
           <div className="flex gap-1.5">
             <input
               ref={inputRef}
@@ -259,7 +259,7 @@ export function SelectionAIBar({ containerRef, onAIEdit, disabled }: SelectionAI
               onChange={e => setInstruction(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleCustomInstruction()}
               placeholder="输入修改指令..."
-              className="flex-1 bg-[#0d1117] border border-border rounded px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
+              className="flex-1 bg-[var(--color-background)] border border-border rounded px-2 py-1.5 text-xs text-foreground outline-none focus:border-primary/50"
               disabled={loading}
             />
             <button onClick={handleCustomInstruction} disabled={loading || !instruction.trim()}
@@ -278,7 +278,7 @@ export function SelectionAIBar({ containerRef, onAIEdit, disabled }: SelectionAI
         </div>
       ) : (
         /* ── Quick action buttons ── */
-        <div className="bg-[#1e1e2e] border border-border rounded-lg shadow-2xl">
+        <div className="bg-[var(--color-secondary)] border border-border rounded-lg shadow-2xl">
           <div className="flex items-center gap-0.5 p-1">
             {primaryActions.map(action => (
               <button key={action.id} onClick={() => handleQuickAction(action.id)} disabled={loading}
@@ -294,7 +294,7 @@ export function SelectionAIBar({ containerRef, onAIEdit, disabled }: SelectionAI
                 ···
               </button>
               {showMore && (
-                <div className="absolute top-full right-0 mt-1 bg-[#1e1e2e] border border-border rounded-lg shadow-2xl p-1 min-w-[120px] z-10">
+                <div className="absolute top-full right-0 mt-1 bg-[var(--color-secondary)] border border-border rounded-lg shadow-2xl p-1 min-w-[120px] z-10">
                   {moreActions.map(action => (
                     <button key={action.id} onClick={() => { setShowMore(false); handleQuickAction(action.id); }}
                       className="flex items-center gap-2 w-full px-2 py-1.5 rounded text-xs text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors">

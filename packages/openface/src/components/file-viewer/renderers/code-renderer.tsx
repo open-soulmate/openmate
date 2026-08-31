@@ -110,20 +110,20 @@ ${selectedText}
           <WrapText className="w-3.5 h-3.5" />
         </button>
       </RendererToolbar>
-      <div ref={containerRef} className="flex-1 overflow-auto flex bg-[#0d1117]">
+      <div ref={containerRef} className="flex-1 overflow-auto flex bg-[var(--color-background)]">
         {onSendToAgent && (
           <SelectionAIBar containerRef={containerRef} onAIEdit={handleSelectionAI} />
         )}
         {editMode ? (
           <textarea value={content} onChange={handleChange} spellCheck={false}
-            className={`flex-1 resize-none bg-transparent text-green-300 font-mono text-xs p-4 outline-none leading-relaxed ${wordWrap ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'}`} />
+            className={`flex-1 resize-none bg-transparent text-green-400 font-mono text-xs p-4 outline-none leading-relaxed ${wordWrap ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'}`} />
         ) : (
           <>
             <div className="flex flex-col py-4 px-2 text-right select-none border-r border-border/30 bg-muted/10 shrink-0">
               {lines.map((_, i) => <span key={i} className="text-[11px] text-muted-foreground/40 leading-relaxed font-mono">{i + 1}</span>)}
             </div>
             <pre className={`flex-1 p-4 text-xs font-mono leading-relaxed ${wordWrap ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'}`}>
-              <code className="text-green-300">{content}</code>
+              <code className="text-green-400">{content}</code>
             </pre>
           </>
         )}

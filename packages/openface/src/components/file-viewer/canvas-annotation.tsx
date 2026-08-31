@@ -367,7 +367,7 @@ export function CanvasAnnotation({ imageSrc, pdfBuffer, onExport, className }: C
   return (
     <div className={`flex flex-col h-full ${className || ""}`}>
       {/* Toolbar */}
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/30 shrink-0 bg-[#1a1a2e] flex-wrap">
+      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border/30 shrink-0 bg-[var(--color-secondary)] flex-wrap">
         {/* Tools */}
         {tools.map(t => <ToolBtn key={t.id} id={t.id} label={t.label} Icon={t.Icon} />)}
 
@@ -412,7 +412,7 @@ export function CanvasAnnotation({ imageSrc, pdfBuffer, onExport, className }: C
 
       {/* PDF page nav */}
       {pdfPageCanvases.length > 1 && (
-        <div className="flex items-center gap-2 px-3 py-1 border-b border-border/30 text-xs text-muted-foreground shrink-0 bg-[#1a1a2e]">
+        <div className="flex items-center gap-2 px-3 py-1 border-b border-border/30 text-xs text-muted-foreground shrink-0 bg-[var(--color-secondary)]">
           <button onClick={() => goToPage(currentPage - 1)} disabled={currentPage === 0} className="p-1 rounded hover:bg-muted/30 disabled:opacity-30">
             <ChevronLeft className="w-3.5 h-3.5" />
           </button>

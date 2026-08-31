@@ -187,11 +187,11 @@ export function ConversationTree({
                         onClick={() => onSelectSession(session, agent)}
                         className={cn(
                           "group w-full text-left pl-8 lg:pl-12 pr-3 py-2.5 lg:py-2 hover:bg-muted/80 active:bg-muted transition-colors cursor-pointer touch-manipulation",
-                          isActive && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
+                          isActive && "bg-primary/12 text-primary"
                         )}>
                         <div className="flex items-center gap-1.5">
-                          <MessageSquare className={cn("w-3 h-3 shrink-0", isActive ? "text-[#7c3aed]" : "text-muted-foreground")} />
-                          <span className={cn("text-xs truncate flex-1", unread > 0 ? "font-bold" : "", isActive && "text-[#7c3aed]")}>{session.name || session.title || "Untitled"}</span>
+                          <MessageSquare className={cn("w-3 h-3 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
+                          <span className={cn("text-xs truncate flex-1", unread > 0 ? "font-bold" : "", isActive && "text-primary")}>{session.name || session.title || "Untitled"}</span>
                           <UnreadBadge count={unread} />
                         </div>
                         {isMobile && session.last_message ? (
@@ -217,11 +217,11 @@ export function ConversationTree({
                     onClick={() => onSelectSession(session, agent)}
                     className={cn(
                       "group w-full text-left pl-8 pr-3 py-2.5 lg:py-2 hover:bg-muted/80 active:bg-muted transition-colors cursor-pointer touch-manipulation",
-                      isActive && "bg-[rgba(124,58,237,0.12)] text-[#7c3aed]"
+                      isActive && "bg-primary/12 text-primary"
                     )}>
                     <div className="flex items-center gap-1.5">
-                      <MessageSquare className={cn("w-3 h-3 shrink-0", isActive ? "text-[#7c3aed]" : "text-muted-foreground")} />
-                      <span className={cn("text-xs truncate flex-1", unread > 0 ? "font-bold" : "", isActive && "text-[#7c3aed]")}>{session.name || session.title || "Untitled"}</span>
+                      <MessageSquare className={cn("w-3 h-3 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
+                      <span className={cn("text-xs truncate flex-1", unread > 0 ? "font-bold" : "", isActive && "text-primary")}>{session.name || session.title || "Untitled"}</span>
                       <UnreadBadge count={unread} />
                     </div>
                     {isMobile && session.last_message ? (
