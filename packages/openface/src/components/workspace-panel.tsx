@@ -5,14 +5,12 @@ import {
   Globe,
   FileText,
   Terminal as TerminalIcon,
-  ChevronLeft,
-  ChevronRight,
-  RotateCw,
   Info,
   Maximize2,
   Minimize2,
 } from 'lucide-react';
 import { SkirtTabs, type SkirtTab } from './skirt-tabs';
+import { BrowserAIControl } from './file-viewer/renderers/browser-ai-control';
 import { FileViewer } from './file-viewer';
 import { cn } from '../lib/utils';
 import { useIsMobile } from '../hooks/use-mobile';
@@ -131,58 +129,6 @@ function NewTabView({ onOpenBrowser, onOpenFile, onOpenTerminal, onOpenDetails, 
   );
 }
 
-// ── Web Browser View ───────────────────────────────────────────────
-
-function WebBrowserView({ tab, onNavigate, onBack, onForward, onRefresh }: {
-  tab: WorkspaceTab;
-  onNavigate: (url: string) => void;
-  onBack: () => void;
-  onForward: () => void;
-  onRefresh: () => void;
-}) {
-  const [inputUrl, setInputUrl] = useState(tab.url || '');
-  const iframeRef = useRef<HTMLIFrameElement>(null);
-
-  useEffect(() => { setInputUrl(tab.url || ''); }, [tab.url]);
-
-  const handleSubmit = (e: FormEvent) => {
-    e.preventDefault();
-    const trimmed = inputUrl.trim();
-    if (trimmed) onNavigate(ensureProtocol(trimmed));
-  };
-
-  const canBack = tab.historyIndex > 0;
-  const canForward = tab.historyIndex < tab.history.length - 1;
-
-  return (
-    <div className="flex flex-col h-full min-w-0">
-      <div className="flex items-center gap-1 px-2 py-1.5 border-b border-border bg-muted/30 shrink-0">
-        <button onClick={onBack} disabled={!canBack} className="p-1 rounded hover:bg-muted disabled:opacity-30 transition-all" title="Back">
-          <ChevronLeft className="w-3.5 h-3.5" />
-        </button>
-        <button onClick={onForward} disabled={!canForward} className="p-1 rounded hover:bg-muted disabled:opacity-30 transition-all" title="Forward">
-          <ChevronRight className="w-3.5 h-3.5" />
-        </button>
-        <button onClick={onRefresh} className="p-1 rounded hover:bg-muted transition-colors" title="Refresh">
-          <RotateCw className="w-3.5 h-3.5" />
-        </button>
-        <form onSubmit={handleSubmit} className="flex-1 flex">
-          <input
-            value={inputUrl}
-            onChange={(e) => setInputUrl(e.target.value)}
-            placeholder="https://example.com"
-            className="h-7 text-xs flex-1 px-2 rounded border border-border bg-background outline-none focus:border-primary/50 transition-colors"
-          />
-        </form>
-      </div>
-      {tab.url ? (
-        <iframe ref={iframeRef} src={tab.url} className="flex-1 min-w-0 border-0 bg-white" style={{ width: '100%', height: '100%' }} title="Web Browser" />
-      ) : (
-        <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">Enter a URL above to browse</div>
-      )}
-    </div>
-  );
-}
 
 // ── Terminal Placeholder ───────────────────────────────────────────
 
@@ -245,6 +191,7 @@ export interface WorkspacePanelProps {
     fileCount?: number;
   } | null;
   executeCommand?: (cmd: string, cwd?: string) => Promise<{ output: string; exit_code: number }>;
+  onBrowserAIAction?: (context: any, instruction: string) => Promise<any[] | null>;
   className?: string;
 }
 
@@ -255,6 +202,7 @@ export function WorkspacePanel({
   workspaceTitle = 'Workspace',
   pageWorkspace,
   sessionDetails,
+  onBrowserAIAction,
   className,
 }: WorkspacePanelProps) {
   const isMobile = useIsMobile();
@@ -335,57 +283,9 @@ export function WorkspacePanel({
     updateWs(() => ({ activeTabId: id }));
   }, [updateWs]);
 
-  const navigateTab = useCallback((tabId: string, url: string) => {
-    updateWs(prev => {
-      const tab = prev.tabs.find(t => t.id === tabId);
-      if (!tab) return {};
-      const newHistory = [...tab.history.slice(0, tab.historyIndex + 1), url];
-      return {
-        tabs: prev.tabs.map(t => t.id === tabId ? { ...t, url, history: newHistory, historyIndex: newHistory.length - 1 } : t),
-      };
-    });
-  }, [updateWs]);
 
-  const goBack = useCallback((tabId: string) => {
-    updateWs(prev => {
-      const tab = prev.tabs.find(t => t.id === tabId);
-      if (!tab || tab.historyIndex <= 0) return {};
-      const newIndex = tab.historyIndex - 1;
-      return {
-        tabs: prev.tabs.map(t => t.id === tabId ? { ...t, url: t.history[newIndex], historyIndex: newIndex } : t),
-      };
-    });
-  }, [updateWs]);
 
-  const goForward = useCallback((tabId: string) => {
-    updateWs(prev => {
-      const tab = prev.tabs.find(t => t.id === tabId);
-      if (!tab || tab.historyIndex >= tab.history.length - 1) return {};
-      const newIndex = tab.historyIndex + 1;
-      return {
-        tabs: prev.tabs.map(t => t.id === tabId ? { ...t, url: t.history[newIndex], historyIndex: newIndex } : t),
-      };
-    });
-  }, [updateWs]);
 
-  const refreshTab = useCallback((tabId: string) => {
-    updateWs(prev => {
-      const tab = prev.tabs.find(t => t.id === tabId);
-      if (!tab) return {};
-      return {
-        tabs: prev.tabs.map(t => t.id === tabId ? { ...t, url: '' } : t),
-      };
-    });
-    setTimeout(() => {
-      setWorkspaceMap(prev => {
-        const ws = prev[sessionId];
-        if (!ws) return prev;
-        const tab = ws.tabs.find(t => t.id === tabId);
-        if (!tab) return prev;
-        return { ...prev, [sessionId]: { ...ws, tabs: ws.tabs.map(t => t.id === tabId ? { ...t, url: t.history[t.historyIndex] || '' } : t) } };
-      });
-    }, 50);
-  }, [sessionId, updateWs]);
 
   // ── Active tab ──────────────────────────────────────────────────
 
@@ -427,12 +327,9 @@ export function WorkspacePanel({
 
       case 'web-browser':
         return (
-          <WebBrowserView
-            tab={activeTab}
-            onNavigate={(url) => navigateTab(activeTab.id, url)}
-            onBack={() => goBack(activeTab.id)}
-            onForward={() => goForward(activeTab.id)}
-            onRefresh={() => refreshTab(activeTab.id)}
+          <BrowserAIControl
+            initialUrl={activeTab.url}
+            onAIAction={onBrowserAIAction || (async () => null)}
           />
         );
 
