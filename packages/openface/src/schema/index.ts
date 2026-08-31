@@ -3,3 +3,6 @@ export type { UISchema, Component, SchemaContext, EventAction, Option, Condition
 export { SchemaRenderer } from './schema-renderer';
 export type { SchemaRendererProps } from './schema-renderer';
 export { resolveValue, resolveBody, evaluateCondition, isDataRef } from './resolver';
+export { bindToolToSchema, bindToolsToSchemas, generateToolMenu } from './auto-bind';
+export type { BindingOptions, ToolMenuItem } from './auto-bind';
+export type { MCPToolDefinition, MCPToolUI, MCPToolResult, MCPContent, InputHint, OutputHint, RiskLevel, ToolCategory } from './mcp-types';
