@@ -18,7 +18,7 @@ const PANEL_ROUTES = [
   "/graph",
   "/graph-builder",
   "/search",
-  "/kb-sharing",
+  "/knowledge-requests",
 
   "/cron",
   "/workflow",
