@@ -1,8 +1,10 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import type { RendererProps } from "./base";
 import { RendererToolbar } from "./renderer-toolbar";
 import { ChevronRight, ChevronDown, Pencil, Eye, Table, Code } from "lucide-react";
 import { decodeWithEncoding, decodeDataUrl } from "./encoding-utils";
+import { SelectionAIBar } from "./selection-ai-bar";
+import { buildDiffPrompt } from "./diff-utils";
 
 const PAGE_SIZE = 100;
 
@@ -11,6 +13,7 @@ export function JsonRenderer({ fileUrl, fileBuffer, fileName, onSave, onError }:
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const [viewMode, setViewMode] = useState<'tree' | 'source' | 'table'>('tree');
   const [parsed, setParsed] = useState<any>(null);
   const [jsonlRows, setJsonlRows] = useState<any[]>([]);
@@ -18,6 +21,31 @@ export function JsonRenderer({ fileUrl, fileBuffer, fileName, onSave, onError }:
   const [error, setError] = useState<string>('');
 
   const isJsonl = fileName.toLowerCase().endsWith('.jsonl');
+
+  const handleSendToAI = useCallback(async (instruction: string) => {
+    if (!onSendToAgent) return;
+    const prompt = buildDiffPrompt(rawContent, rawContent, fileName, instruction, "JSON");
+    const result = await onSendToAgent(rawContent, prompt, fileName);
+    if (result) { setRawContent(result); setDirty(true); setEditMode(true); }
+  }, [onSendToAgent, rawContent, fileName]);
+
+  const handleSelectionAI = useCallback(async (selectedText: string, instruction: string): Promise<string | null> => {
+    if (!onSendToAgent) return null;
+    const prompt = `你正在帮助用户编辑 JSON 文件 "${fileName}"。
+
+用户选中了以下内容：
+\`\`\`json
+${selectedText}
+\`\`\`
+
+用户的修改指令：${instruction}
+
+请直接返回修改后的内容（不要加任何解释、不要加代码块标记），保持JSON格式正确。`;
+    const result = await onSendToAgent(selectedText, prompt, fileName);
+    if (result) { setDirty(true); setEditMode(true); }
+    return result;
+  }, [onSendToAgent, fileName]);
+
 
   useEffect(() => {
     let cancelled = false;
@@ -116,7 +144,8 @@ export function JsonRenderer({ fileUrl, fileBuffer, fileName, onSave, onError }:
         )}
       </RendererToolbar>
 
-      <div className="flex-1 overflow-auto bg-[#0d1117]">
+      <div ref={containerRef} className="flex-1 overflow-auto bg-[#0d1117] relative">
+        {onSendToAgent && <SelectionAIBar containerRef={containerRef} onAIEdit={handleSelectionAI} />}
         {editMode ? (
           <textarea value={rawContent} onChange={e => { setRawContent(e.target.value); setDirty(true); }}
             className="w-full h-full resize-none bg-transparent text-green-300 font-mono text-xs p-4 outline-none leading-relaxed"

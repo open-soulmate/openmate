@@ -4,6 +4,8 @@ import { RendererToolbar } from "./renderer-toolbar";
 import { Eye, Code, Pencil } from "lucide-react";
 import { buildDiffPrompt } from "./diff-utils";
 import { decodeWithEncoding, decodeDataUrl } from "./encoding-utils";
+import { SelectionAIBar } from "./selection-ai-bar";
+import { buildDiffPrompt } from "./diff-utils";
 
 type ViewMode = 'preview' | 'code' | 'edit';
 
@@ -14,6 +16,7 @@ export function HtmlRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAg
   const [mode, setMode] = useState<ViewMode>('preview');
   const [copied, setCopied] = useState(false);
   const [dirty, setDirty] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let text = '';

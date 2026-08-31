@@ -3,6 +3,8 @@ import type { RendererProps } from "./base";
 import { RendererToolbar } from "./renderer-toolbar";
 import { Eye, Code, Pencil } from "lucide-react";
 import { decodeWithEncoding, decodeDataUrl } from "./encoding-utils";
+import { SelectionAIBar } from "./selection-ai-bar";
+import { buildDiffPrompt } from "./diff-utils";
 import { buildDiffPrompt } from "./diff-utils";
 
 export function SvgRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAgent, onError }: RendererProps) {
@@ -11,6 +13,7 @@ export function SvgRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAge
   const [mode, setMode] = useState<'preview' | 'source' | 'edit'>('preview');
   const [originalSource, setOriginalSource] = useState("");
   const [dirty, setDirty] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
