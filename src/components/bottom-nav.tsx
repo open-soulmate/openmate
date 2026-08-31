@@ -37,7 +37,6 @@ const navItems: BottomNavItem[] = [
   { href: "/workflow", label: "nav.workflow", icon: Workflow },
 
   { href: "/pipeline", label: "nav.pipeline", icon: Zap },
-  { href: "/will", label: "nav.will", icon: Sparkles },
   { href: "/skills", label: "nav.skills", icon: Puzzle },
   { href: "/mcp", label: "nav.mcp", icon: Plug },
   { href: "/workspace", label: "nav.workspace", icon: FolderKanban },

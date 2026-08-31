@@ -55,7 +55,7 @@ const ORGAN_LAYOUT: Array<{
 
   // Arms (Nerve/Will)
   { key: "nerve", label: "Nerve", emoji: "⚡", category: "service", x: 20, y: 32, href: "/nerve", system: "nervous" },
-  { key: "will", label: "Will", emoji: "✨", category: "core", x: 80, y: 32, href: "/will", system: "nervous" },
+  { key: "will", label: "Will", emoji: "✨", category: "core", x: 80, y: 32, href: "/workflow", system: "nervous" },
 
   // Core (torso center)
   { key: "gland", label: "Gland", emoji: "🧪", category: "service", x: 50, y: 40, href: "/gland", system: "endocrine" },
@@ -82,7 +82,7 @@ const ORGAN_LAYOUT: Array<{
 
   // Feet (Infrastructure)
   { key: "learn", label: "Learn", emoji: "📚", category: "system", x: 45, y: 80, href: "/learn", system: "foundation" },
-  { key: "diagnostics", label: "Diagnostics", emoji: "🩺", category: "system", x: 55, y: 80, href: "/diagnostics", system: "foundation" },
+  { key: "diagnostics", label: "Diagnostics", emoji: "🩺", category: "system", x: 55, y: 80, href: "/monitoring", system: "foundation" },
 ];
 
 const SYSTEM_COLORS: Record<string, { fill: string; stroke: string; glow: string }> = {

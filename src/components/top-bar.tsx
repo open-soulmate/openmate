@@ -35,10 +35,7 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
   }, []);
 
   const statusItems = [
-    { id: "activity", icon: Activity, label: t("nav.activity", "动态"), href: "/activity" },
-    { id: "diagnostics", icon: Stethoscope, label: t("nav.diagnostics", "诊断"), href: "/diagnostics" },
     { id: "metrics", icon: BarChart3, label: t("nav.metrics", "指标"), href: "/metrics" },
-    { id: "benchmark", icon: Gauge, label: t("nav.benchmark", "基准"), href: "/benchmark" },
   ];
 
   const navItems = [
