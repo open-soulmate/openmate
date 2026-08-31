@@ -72,7 +72,7 @@ function NotificationTimeline({ notifications }: { notifications: Notification[]
   const option = useMemo(() => {
     const dateMap = new Map<string, number>();
     notifications.forEach(n => {
-      const key = new Date(n.created_at).toISOString().slice(0, 10);
+      const d = new Date(n.created_at); const key = isNaN(d.getTime()) ? 'unknown' : d.toISOString().slice(0, 10);
       dateMap.set(key, (dateMap.get(key) ?? 0) + 1);
     });
 
