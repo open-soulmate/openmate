@@ -118,23 +118,18 @@ export function SettingsClient() {
   const isMobile = useIsMobile();
   const [showSidebar, setShowSidebar] = useState(false);
 
-  const sections: { id: SectionId; label: string; icon: React.ElementType; group: string }[] = [
-    { id: "appearance", label: t("settings.appearance"), icon: Monitor, group: t("settings.uiSettings") },
-    { id: "model", label: t("settings.modelConfig"), icon: Cpu, group: t("settings.uiSettings") },
-    { id: "agent", label: "Agent", icon: Bot, group: t("settings.runtime") },
-    { id: "tools", label: t("settings.toolPermissions"), icon: Wrench, group: t("settings.runtime") },
-    { id: "storage", label: t("settings.storage"), icon: HardDrive, group: t("settings.runtime") },
-    { id: "organs", label: t("settings.organManagement"), icon: Zap, group: t("settings.runtime") },
-    { id: "account", label: t("settings.account"), icon: User, group: t("settings.account") },
-    { id: "about", label: t("settings.about"), icon: Info, group: t("settings.account") },
+  const sections: { id: SectionId; label: string; icon: React.ElementType }[] = [
+    { id: "appearance", label: t("settings.appearance"), icon: Monitor },
+    { id: "model", label: t("settings.modelConfig"), icon: Cpu },
+    { id: "agent", label: "Agent", icon: Bot },
+    { id: "tools", label: t("settings.toolPermissions"), icon: Wrench },
+    { id: "storage", label: t("settings.storage"), icon: HardDrive },
+    { id: "organs", label: t("settings.organManagement"), icon: Zap },
+    { id: "account", label: t("settings.account"), icon: User },
+    { id: "about", label: t("settings.about"), icon: Info },
   ];
 
-  // Group sections
-  const groups = sections.reduce<Record<string, typeof sections>>((acc, s) => {
-    if (!acc[s.group]) acc[s.group] = [];
-    acc[s.group].push(s);
-    return acc;
-  }, {});
+
 
   const storeTheme = useAppStore((s) => s.theme);
   const setStoreTheme = useAppStore((s) => s.setTheme);
@@ -236,13 +231,7 @@ export function SettingsClient() {
                 </span>
               </div>
             </div>
-            <nav className="space-y-4 px-2 mb-2">
-              {Object.entries(groups).map(([group]) => (
-                <div key={group} className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-3 group-data-[collapsible=icon]:hidden">
-                  {group}
-                </div>
-              ))}
-            </nav>
+
             <div className="px-2 pb-2 border-b border-border">
               <div className="text-[10px] text-muted-foreground px-3 space-y-0.5 group-data-[collapsible=icon]:hidden">
                 <div>OpenMate v0.1.0</div>
@@ -254,7 +243,7 @@ export function SettingsClient() {
       />
     );
     return () => setPageSidebar(null);
-  }, [active, groups, sections, backendVersion, setPageSidebar, t]);
+  }, [active, sections, backendVersion, setPageSidebar, t]);
 
   const update = useCallback(<K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
     setSettings((s) => ({ ...s, [key]: value }));
@@ -499,18 +488,16 @@ export function SettingsClient() {
           <span className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("settings.title")}</span>
         </div>
       </div>
-      <nav className="flex-1 space-y-4">
-        {Object.entries(groups).map(([group, items]) => (
-          <div key={group}>
-            <div className="text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-3 mb-1.5">{group}</div>
-            {items.map((s) => (
-              <button key={s.id} onClick={() => { setActive(s.id); setShowSidebar(false); }}
-                className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors", active === s.id ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground")}>
-                <s.icon size={15} />{s.label}
-              </button>
-            ))}
-          </div>
-        ))}
+      <nav className="flex-1 space-y-0.5">
+        {sections.map((s) => {
+          const Icon = s.icon;
+          return (
+            <button key={s.id} onClick={() => { setActive(s.id); setShowSidebar(false); }}
+              className={cn("flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-xs transition-colors", active === s.id ? "bg-[rgba(124,58,237,0.12)] text-[#7c3aed] font-medium" : "text-muted-foreground hover:bg-accent/50 hover:text-foreground")}>
+              <Icon size={15} />{s.label}
+            </button>
+          );
+        })}
       </nav>
       <div className="mt-auto pt-4 border-t border-border">
         <div className="text-[10px] text-muted-foreground px-3 space-y-0.5">
@@ -532,7 +519,7 @@ export function SettingsClient() {
             <Menu size={18} />
           </button>
           <div className="flex items-center gap-1.5 text-xs lg:text-sm">
-            <span className="text-muted-foreground">{sections.find(s => s.id === active)?.group}</span>
+            <span className="text-muted-foreground">{sections.find(s => s.id === active)?.label}</span>
             <ChevronRight size={12} className="text-muted-foreground" />
             <span className="font-medium">{sections.find(s => s.id === active)?.label}</span>
           </div>
@@ -558,7 +545,7 @@ export function SettingsClient() {
           {/* Breadcrumb - hidden on mobile (shown in top bar) */}
           <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>{t("settings.title")}</span><ChevronRight size={10} />
-            <span>{sections.find(s => s.id === active)?.group}</span><ChevronRight size={10} />
+            
             <span className="text-foreground">{sections.find(s => s.id === active)?.label}</span>
           </div>
 
