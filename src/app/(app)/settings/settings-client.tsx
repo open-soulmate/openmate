@@ -185,6 +185,7 @@ export function SettingsClient() {
               ...s,
               ...(llmData.model ? { model: llmData.model } : {}),
               ...(llmData.base_url ? { url: llmData.base_url } : {}),
+              ...(llmData.api_key ? { apiKey: llmData.api_key } : {}),
             }));
           }
         } catch {}
