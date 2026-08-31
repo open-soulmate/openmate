@@ -204,7 +204,7 @@ export function WorkspacePanel({
   pageWorkspace,
   sessionDetails,
   onBrowserAIAction,
-  onSelectionAIEdit: _onSelectionAIEdit,
+  onSelectionAIEdit,
   className,
 }: WorkspacePanelProps) {
   const isMobile = useIsMobile();
@@ -293,6 +293,31 @@ export function WorkspacePanel({
 
   const activeTab = tabs.find((t) => t.id === activeTabId) || tabs[0];
 
+  // Wrap onSelectionAIEdit as onSendToAgent for FileViewer
+  const handleSendToAgent = useCallback(async (
+    content: string, instruction: string, _fileName: string,
+  ): Promise<string> => {
+    if (!onSelectionAIEdit) return content;
+    const result = await onSelectionAIEdit(content, instruction);
+    return result || content;
+  }, [onSelectionAIEdit]);
+
+  // Handle file save (write back via API)
+  const handleFileSave = useCallback(async (
+    newContent: string, _fileName: string,
+  ) => {
+    if (!activeTab?.filePath) return;
+    try {
+      await fetch('/api/file', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: activeTab.filePath, content: newContent }),
+      });
+    } catch (e) {
+      console.error('Save failed:', e);
+    }
+  }, [activeTab?.filePath]);
+
   // ── Render content ──────────────────────────────────────────────
 
   const renderContent = () => {
@@ -336,7 +361,7 @@ export function WorkspacePanel({
         );
 
       case 'file-preview':
-        return <FileViewer fileName={activeTab.title} fileUrl={activeTab.filePath} mimeType={activeTab.fileMimeType} />;
+        return <FileViewer fileName={activeTab.title} fileUrl={activeTab.filePath} mimeType={activeTab.fileMimeType} onSave={handleFileSave} onSendToAgent={handleSendToAgent} />;
 
       case 'terminal':
         return <TerminalPlaceholder />;
