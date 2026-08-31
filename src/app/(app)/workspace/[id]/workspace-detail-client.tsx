@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useAppStore, type FileNode, type TerminalLine } from "@/stores/app-store";
-import { listDir, readFile, executeCommand } from "@/lib/tauri-bridge";
+import { listDir, readFile, writeFile, executeCommand } from "@/lib/tauri-bridge";
 import { FileViewer as OpenFaceFileViewer } from "@opensoulmate/openface";
 import { SCMPanel } from "@/components/scm-panel";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -148,11 +148,40 @@ function FileViewerWrapper({
     return `data:application/octet-stream;base64,${base64}`;
   }, [content]);
 
+  // Save file to disk
+  const handleSave = useCallback(async (newContent: string, name: string) => {
+    try {
+      await writeFile(path, newContent);
+    } catch (e) {
+      console.error('Save failed:', e);
+    }
+  }, [path]);
+
+  // Send to AI for collaborative editing
+  const handleSendToAgent = useCallback(async (
+    contentToSend: string, instruction: string, fname: string,
+  ): Promise<string> => {
+    try {
+      const res = await fetch('/api/ai-edit', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: contentToSend, instruction }),
+      });
+      if (!res.ok) return contentToSend;
+      const data = await res.json();
+      return data.result || contentToSend;
+    } catch {
+      return contentToSend;
+    }
+  }, []);
+
   return (
     <div className="flex h-full flex-col">
       <OpenFaceFileViewer
         fileName={fileName}
         fileUrl={fileUrl}
+        onSave={handleSave}
+        onSendToAgent={handleSendToAgent}
         className="flex-1"
       />
     </div>

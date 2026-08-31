@@ -1,4 +1,4 @@
-import { Download, Copy, Check, Printer, Save, Sparkles, X, Loader2, Undo2, Redo2 } from "lucide-react";
+import { Download, Copy, Check, Printer, Save, Sparkles, X, Loader2 } from "lucide-react";
 import type { ReactNode } from "react";
 import { useCallback, useState } from "react";
 
@@ -77,12 +77,7 @@ export function RendererToolbar({ fileName, fileUrl, category, children, onCopy,
         <div className="flex-1" />
         <span className="text-[10px] text-muted-foreground/50 truncate max-w-[200px] mx-2">{fileName}</span>
         <div className="w-px h-4 bg-border/30 mx-0.5" />
-        <button onClick={() => document.execCommand('undo')} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground transition-colors" title="撤销 (Ctrl+Z)">
-          <Undo2 className="w-3.5 h-3.5" />
-        </button>
-        <button onClick={() => document.execCommand('redo')} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground transition-colors" title="重做 (Ctrl+Y)">
-          <Redo2 className="w-3.5 h-3.5" />
-        </button>
+
         {onCopy && (
           <button onClick={onCopy} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground transition-colors" title="复制">
             {copied ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5" />}
