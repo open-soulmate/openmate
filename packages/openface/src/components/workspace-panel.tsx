@@ -192,6 +192,7 @@ export interface WorkspacePanelProps {
   } | null;
   executeCommand?: (cmd: string, cwd?: string) => Promise<{ output: string; exit_code: number }>;
   onBrowserAIAction?: (context: any, instruction: string) => Promise<any[] | null>;
+  onSelectionAIEdit?: (selectedText: string, instruction: string) => Promise<string | null>;
   className?: string;
 }
 
@@ -203,6 +204,7 @@ export function WorkspacePanel({
   pageWorkspace,
   sessionDetails,
   onBrowserAIAction,
+  onSelectionAIEdit: _onSelectionAIEdit,
   className,
 }: WorkspacePanelProps) {
   const isMobile = useIsMobile();

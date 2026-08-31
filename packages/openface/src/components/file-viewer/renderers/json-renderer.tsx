@@ -8,7 +8,7 @@ import { buildDiffPrompt } from "./diff-utils";
 
 const PAGE_SIZE = 100;
 
-export function JsonRenderer({ fileUrl, fileBuffer, fileName, onSave, onError }: RendererProps) {
+export function JsonRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAgent, onError }: RendererProps) {
   const [rawContent, setRawContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [editMode, setEditMode] = useState(false);

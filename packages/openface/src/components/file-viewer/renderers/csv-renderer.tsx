@@ -5,7 +5,6 @@ import { Pencil, Eye, ChevronLeft, ChevronRight } from "lucide-react";
 import { decodeWithEncoding, decodeDataUrl } from "./encoding-utils";
 import { SelectionAIBar } from "./selection-ai-bar";
 import { buildDiffPrompt } from "./diff-utils";
-import { buildDiffPrompt } from "./diff-utils";
 
 const PAGE_SIZE = 100;
 const ENCODINGS = ['utf-8', 'gbk', 'gb2312', 'big5', 'shift_jis', 'euc-kr', 'iso-8859-1'];

@@ -1,10 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { RendererProps } from "./base";
 import { RendererToolbar } from "./renderer-toolbar";
 import { Eye, Code, Pencil } from "lucide-react";
 import { decodeWithEncoding, decodeDataUrl } from "./encoding-utils";
 import { SelectionAIBar } from "./selection-ai-bar";
-import { buildDiffPrompt } from "./diff-utils";
 import { buildDiffPrompt } from "./diff-utils";
 
 export function SvgRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAgent, onError }: RendererProps) {
