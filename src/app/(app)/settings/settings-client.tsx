@@ -234,8 +234,14 @@ export function SettingsClient() {
   }, [active, sections, backendVersion, setPageSidebar, t]);
 
   const update = useCallback(<K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
-    setSettings((s) => ({ ...s, [key]: value }));
-  }, []);
+    setSettings((s) => {
+      const next = { ...s, [key]: value };
+      // Instant preview — no save needed
+      if (key === "language") i18n.changeLanguage(value as string);
+      if (key === "theme") { persistTheme(next.theme); setStoreTheme(next.theme); }
+      return next;
+    });
+  }, [setStoreTheme]);
 
   async function handleSave() {
     const apiBase = getApiBaseUrl();
@@ -243,9 +249,6 @@ export function SettingsClient() {
     // Only save settings for the current tab
     switch (active) {
       case "appearance":
-        persistTheme(settings.theme);
-        setStoreTheme(settings.theme);
-        i18n.changeLanguage(settings.language);
         localStorage.setItem("openmate-language", settings.language);
         break;
 
