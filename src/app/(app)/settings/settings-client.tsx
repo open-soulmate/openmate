@@ -236,9 +236,16 @@ export function SettingsClient() {
   const update = useCallback(<K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
     setSettings((s) => {
       const next = { ...s, [key]: value };
-      // Instant preview — no save needed
+      // Instant preview for all appearance settings
       if (key === "language") i18n.changeLanguage(value as string);
       if (key === "theme") { persistTheme(next.theme); setStoreTheme(next.theme); }
+      if (key === "fontSize") {
+        const sizes: Record<string, string> = { small: "13px", medium: "14px", large: "16px" };
+        document.documentElement.style.fontSize = sizes[value as string] || "14px";
+      }
+      if (key === "animationEnabled") {
+        document.documentElement.classList.toggle("no-animations", !value);
+      }
       return next;
     });
   }, [setStoreTheme]);
@@ -250,6 +257,8 @@ export function SettingsClient() {
     switch (active) {
       case "appearance":
         localStorage.setItem("openmate-language", settings.language);
+        localStorage.setItem("openmate-fontSize", settings.fontSize);
+        localStorage.setItem("openmate-animation", String(settings.animationEnabled));
         break;
 
       case "model":
