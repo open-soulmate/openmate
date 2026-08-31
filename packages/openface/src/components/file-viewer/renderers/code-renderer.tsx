@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { RendererProps } from "./base";
 import type { FileCategory } from "../types";
 import { RendererToolbar } from "./renderer-toolbar";
+import { SelectionAIBar } from "./selection-ai-bar";
 import { WrapText, Pencil, Eye } from "lucide-react";
 import { decodeWithEncoding, decodeDataUrl } from "./encoding-utils";
 import { buildDiffPrompt } from "./diff-utils";
@@ -30,6 +31,7 @@ export function CodeRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAg
   const [editMode, setEditMode] = useState(false);
   const [originalContent, setOriginalContent] = useState("");
   const [dirty, setDirty] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   const ext = fileName.split(".").pop()?.toLowerCase() || "";
   const lang = extToLang[ext] || "text";
@@ -54,6 +56,23 @@ export function CodeRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAg
     const result = await onSendToAgent(content, prompt, fileName);
     if (result) { setContent(result); setDirty(true); setEditMode(true); }
   }, [onSendToAgent, content, originalContent, fileName]);
+
+  const handleSelectionAI = useCallback(async (selectedText: string, instruction: string): Promise<string | null> => {
+    if (!onSendToAgent) return null;
+    const prompt = `你正在帮助用户编辑代码文件 "${fileName}"（语言: ${lang}）。
+
+用户选中了以下代码：
+\`\`\`${lang}
+${selectedText}
+\`\`\`
+
+用户的修改指令：${instruction}
+
+请直接返回修改后的代码（不要加任何解释、不要加代码块标记），保持原有的缩进和代码风格。`;
+    const result = await onSendToAgent(selectedText, prompt, fileName);
+    if (result) { setDirty(true); setEditMode(true); }
+    return result;
+  }, [onSendToAgent, fileName, lang]);
 
   const handleCopy = useCallback(async () => {
     try { await navigator.clipboard.writeText(content); } catch {
@@ -91,7 +110,10 @@ export function CodeRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAg
           <WrapText className="w-3.5 h-3.5" />
         </button>
       </RendererToolbar>
-      <div className="flex-1 overflow-auto flex bg-[#0d1117]">
+      <div ref={containerRef} className="flex-1 overflow-auto flex bg-[#0d1117]">
+        {onSendToAgent && (
+          <SelectionAIBar containerRef={containerRef} onAIEdit={handleSelectionAI} />
+        )}
         {editMode ? (
           <textarea value={content} onChange={handleChange} spellCheck={false}
             className={`flex-1 resize-none bg-transparent text-green-300 font-mono text-xs p-4 outline-none leading-relaxed ${wordWrap ? 'whitespace-pre-wrap break-all' : 'whitespace-pre'}`} />

@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { RendererProps } from "./base";
 import { RendererToolbar } from "./renderer-toolbar";
+import { SelectionAIBar } from "./selection-ai-bar";
 import { Pencil, Eye } from "lucide-react";
 import { decodeWithEncoding, decodeDataUrl } from "./encoding-utils";
 import { buildDiffPrompt } from "./diff-utils";
@@ -11,6 +12,7 @@ export function TextRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAg
   const [editMode, setEditMode] = useState(false);
   const [originalContent, setOriginalContent] = useState("");
   const [dirty, setDirty] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +34,24 @@ export function TextRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAg
     const result = await onSendToAgent(content, prompt, fileName);
     if (result) { setContent(result); setDirty(true); setEditMode(true); }
   }, [onSendToAgent, content, originalContent, fileName]);
+
+  // Selection AI: send only selected text to AI
+  const handleSelectionAI = useCallback(async (selectedText: string, instruction: string): Promise<string | null> => {
+    if (!onSendToAgent) return null;
+    const prompt = `你正在帮助用户编辑文件 "${fileName}"。
+
+用户选中了以下文字：
+\`\`\`
+${selectedText}
+\`\`\`
+
+用户的修改指令：${instruction}
+
+请直接返回修改后的文字（不要加任何解释、不要加代码块标记），保持与原文相同的格式和风格。`;
+    const result = await onSendToAgent(selectedText, prompt, fileName);
+    if (result) setDirty(true);
+    return result;
+  }, [onSendToAgent, fileName]);
 
   const handleCopy = useCallback(async () => {
     try { await navigator.clipboard.writeText(content); } catch {
@@ -57,7 +77,10 @@ export function TextRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAg
           <span className="hidden sm:inline">{editMode ? '查看' : '编辑'}</span>
         </button>
       </RendererToolbar>
-      <div className="flex-1 overflow-auto">
+      <div ref={containerRef} className="flex-1 overflow-auto relative">
+        {onSendToAgent && (
+          <SelectionAIBar containerRef={containerRef} onAIEdit={handleSelectionAI} />
+        )}
         {editMode ? (
           <textarea value={content} onChange={e => { setContent(e.target.value); setDirty(true); }}
             className="w-full h-full resize-none bg-[#0d1117] text-foreground font-mono text-xs p-4 outline-none leading-relaxed"

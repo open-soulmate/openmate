@@ -1,6 +1,7 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import type { RendererProps } from "./base";
 import { RendererToolbar } from "./renderer-toolbar";
+import { SelectionAIBar } from "./selection-ai-bar";
 import { Eye, Code, Pencil } from "lucide-react";
 import { decodeWithEncoding, decodeDataUrl } from "./encoding-utils";
 import { buildDiffPrompt } from "./diff-utils";
@@ -11,6 +12,7 @@ export function MarkdownRenderer({ fileUrl, fileBuffer, fileName, onSave, onSend
   const [mode, setMode] = useState<'preview' | 'source' | 'edit'>('preview');
   const [originalSource, setOriginalSource] = useState("");
   const [dirty, setDirty] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -32,6 +34,23 @@ export function MarkdownRenderer({ fileUrl, fileBuffer, fileName, onSave, onSend
     const result = await onSendToAgent(content, prompt, fileName);
     if (result) { setContent(result); setDirty(true); setMode("edit"); }
   }, [onSendToAgent, content, originalSource, fileName]);
+
+  const handleSelectionAI = useCallback(async (selectedText: string, instruction: string): Promise<string | null> => {
+    if (!onSendToAgent) return null;
+    const prompt = `你正在帮助用户编辑 Markdown 文件 "${fileName}"。
+
+用户选中了以下文字：
+\`\`\`
+${selectedText}
+\`\`\`
+
+用户的修改指令：${instruction}
+
+请直接返回修改后的文字（不要加任何解释、不要加代码块标记），保持 Markdown 格式。`;
+    const result = await onSendToAgent(selectedText, prompt, fileName);
+    if (result) { setDirty(true); setMode("edit"); }
+    return result;
+  }, [onSendToAgent, fileName]);
 
   const handleCopy = useCallback(async () => {
     try { await navigator.clipboard.writeText(content); } catch {
@@ -68,7 +87,10 @@ export function MarkdownRenderer({ fileUrl, fileBuffer, fileName, onSave, onSend
           <Pencil className="w-3.5 h-3.5" /><span className="hidden sm:inline">编辑</span>
         </button>
       </RendererToolbar>
-      <div className="flex-1 overflow-auto">
+      <div ref={containerRef} className="flex-1 overflow-auto relative">
+        {onSendToAgent && (
+          <SelectionAIBar containerRef={containerRef} onAIEdit={handleSelectionAI} />
+        )}
         {mode === 'preview' && (
           <div className="p-6 prose prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: simpleMarkdownToHtml(content) }} />
         )}
