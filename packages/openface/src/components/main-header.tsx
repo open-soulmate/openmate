@@ -59,7 +59,7 @@ export function MainHeader({
         {showLeftToggle && (
           <button
             onClick={onToggleLeft}
-            className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation"
+            className="shrink-0 p-2 rounded-md hover:bg-zinc-800 active:bg-zinc-700 transition-colors text-zinc-400 hover:text-zinc-200 touch-manipulation cursor-pointer"
             aria-label="Toggle Left Panel"
           >
             <PanelLeft className="w-4 h-4" />
@@ -82,7 +82,7 @@ export function MainHeader({
         {showRightToggle && (
           <button
             onClick={onToggleRight}
-            className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation"
+            className="shrink-0 p-2 rounded-md hover:bg-zinc-800 active:bg-zinc-700 transition-colors text-zinc-400 hover:text-zinc-200 touch-manipulation cursor-pointer"
             aria-label="Toggle Right Panel"
           >
             <PanelLeft className="w-4 h-4 scale-x-[-1]" />
