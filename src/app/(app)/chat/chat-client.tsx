@@ -392,7 +392,7 @@ export function ChatClient() {
       const src = s.platform || s.source || '';
       if (src === 'cron') continue;
       // hermes sub-sources (cli/weixin/acp/tui/tool/subagent) all belong to hermes agent
-      const PLATFORM_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui']);
+      const PLATFORM_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui', 'hermes']);
       const agentKey = PLATFORM_SOURCES.has(src) ? 'soulmate' : (s.platform || s.source || 'unknown');
       if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
       agentSessionMap[agentKey].push(s);
@@ -437,7 +437,7 @@ export function ChatClient() {
 
     // 2. Add agents that have sessions (user has interacted with them)
     for (const [key, sessions] of Object.entries(agentSessionMap)) {
-      if (SKIP_IDS.has(key) || agentMap.has(key)) continue;
+      if (SKIP_IDS.has(key) || agentMap.has(key) || key === 'hermes') continue;
       const detected = detectedAgents.find(a => a.id === key);
       agentMap.set(key, {
         id: key,
