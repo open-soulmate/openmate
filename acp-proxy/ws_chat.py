@@ -414,13 +414,24 @@ async def acp_send_file(data: dict):
 
 @router.websocket("/ws/chat")
 async def chat_websocket(websocket: WebSocket):
-    """WebSocket endpoint for real-time chat.
+    """[已废弃] WebSocket endpoint for real-time chat.
+
+    ⚠️ 此端点已废弃，请迁移到 /ws/acp（ACP JSON-RPC 2.0纯透传）。
+    旧协议继续可用，但不再维护新功能。
 
     Protocol:
     - Client: {"type":"message","text":"...","mode":"hermes|acp|agent_proxy","session_id":"...","agent_id":"...","attachments":[...]}
     - Server: {"type":"thinking"} / {"type":"chunk","text":"..."} / {"type":"done","text":"...","source":"..."} / {"type":"error","message":"..."}
     """
     await websocket.accept()
+
+    # 发送废弃警告 — 客户端应迁移到 /ws/acp
+    await _safe_send_ws(websocket, {
+        "type": "deprecation_warning",
+        "message": "/ws/chat 已废弃，请迁移到 /ws/acp (ACP JSON-RPC 2.0)",
+        "new_endpoint": "/ws/acp",
+        "docs": "https://github.com/anthropics/agent-client-protocol",
+    })
 
     token = websocket.query_params.get("token", "")
     if not token:

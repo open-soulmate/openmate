@@ -181,7 +181,7 @@ const simulateTokenUsage = (content: string): TokenUsage => {
   return { input: inputTokens, output: outputTokens };
 };
 
-// ── useAcpWebSocket hook ────────────────────────────────────────
+// ── useAcpWebSocket hook（ACP JSON-RPC 2.0 协议）────────────────
 function useAcpWebSocket(params: {
   selectedAgent: AgentInfo | null;
   selectedSession: Session | null;
@@ -199,6 +199,66 @@ function useAcpWebSocket(params: {
   const wsRef = useRef<WebSocket | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const streamingSessionIdRef = useRef<string | null>(null);
+  // ACP 会话 ID（由 session/new 返回）
+  const acpSessionIdRef = useRef<string | null>(null);
+  // JSON-RPC 请求 ID 计数器
+  const rpcIdRef = useRef(0);
+  // 等待响应的请求回调（id → resolve）
+  const pendingRequestsRef = useRef<Map<number, (result: unknown) => void>>(new Map());
+
+  // 发送 JSON-RPC 2.0 请求并返回 Promise
+  const sendRpcRequest = useCallback((method: string, params: Record<string, unknown> = {}): Promise<unknown> => {
+    return new Promise((resolve, reject) => {
+      const ws = wsRef.current;
+      if (!ws || ws.readyState !== WebSocket.OPEN) {
+        reject(new Error('WebSocket 未连接'));
+        return;
+      }
+      const id = ++rpcIdRef.current;
+      pendingRequestsRef.current.set(id, resolve);
+      ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
+      // 超时清理（30秒）
+      setTimeout(() => {
+        if (pendingRequestsRef.current.has(id)) {
+          pendingRequestsRef.current.delete(id);
+          reject(new Error(`RPC 请求 ${method} 超时`));
+        }
+      }, 30000);
+    });
+  }, []);
+
+  // ACP 握手：initialize → session/new
+  const performAcpHandshake = useCallback(async () => {
+    try {
+      // 第一步：initialize 握手
+      await sendRpcRequest('initialize', {});
+      // 第二步：创建会话
+      const result = await sendRpcRequest('session/new', { clientId: 'openmate-web' }) as { sessionId?: string };
+      if (result?.sessionId) {
+        acpSessionIdRef.current = result.sessionId;
+      }
+    } catch (e) {
+      console.error('[ACP] 握手失败:', e);
+    }
+  }, [sendRpcRequest]);
+
+  // 发送用户消息到 ACP 会话
+  const sendAcpPrompt = useCallback((text: string) => {
+    const sid = acpSessionIdRef.current;
+    const ws = wsRef.current;
+    if (!sid || !ws || ws.readyState !== WebSocket.OPEN) return;
+    const id = ++rpcIdRef.current;
+    // session/prompt 的 ack 响应不需要处理，注册一个空回调避免 pendingRequests 泄漏
+    pendingRequestsRef.current.set(id, () => {});
+    ws.send(JSON.stringify({
+      jsonrpc: '2.0',
+      id,
+      method: 'session/prompt',
+      params: { sessionId: sid, prompt: text },
+    }));
+    // 10秒后清理 ack 回调
+    setTimeout(() => { pendingRequestsRef.current.delete(id); }, 10000);
+  }, []);
 
   useEffect(() => {
     const token = getToken();
@@ -210,15 +270,19 @@ function useAcpWebSocket(params: {
 
     const connect = () => {
       if (unmounted) return;
-      const wsUrl = `${getAcpWsUrl()}/ws/chat?token=${token}`;
+      // 连接 ACP WebSocket 端点
+      const wsUrl = `${getAcpWsUrl()}/ws/acp?token=${token}`;
       ws = new WebSocket(wsUrl);
       wsRef.current = ws;
       ws.onopen = () => {
         setWsConnected(true);
         retryDelay = 1000;
+        // 连接建立后自动执行 ACP 握手
+        performAcpHandshake();
       };
       ws.onclose = () => {
         setWsConnected(false);
+        acpSessionIdRef.current = null;
         if (!unmounted) reconnectTimer = setTimeout(connect, retryDelay);
         retryDelay = Math.min(retryDelay * 2, 30000);
       };
@@ -227,26 +291,59 @@ function useAcpWebSocket(params: {
         try {
           const data = JSON.parse(e.data);
 
-          // ── Legacy JSON protocol ──
+          // ── ACP JSON-RPC 2.0 协议 ──
           const currentSessionId = selectedSessionRef.current?.id;
-          if (data.type === 'done') {
+
+          // 处理请求的响应（initialize、session/new 的 ack 等）
+          if (data.id != null && (data.result !== undefined || data.error !== undefined)) {
+            const resolver = pendingRequestsRef.current.get(data.id);
+            if (resolver) {
+              pendingRequestsRef.current.delete(data.id);
+              if (data.error) {
+                console.error('[ACP] RPC 错误:', data.error);
+              } else {
+                resolver(data.result);
+              }
+            }
+            return;
+          }
+
+          // 处理服务端推送事件
+          if (data.method === 'session/update') {
+            // 流式增量内容
+            const p = data.params || {};
+            if (streamingSessionIdRef.current && currentSessionId && streamingSessionIdRef.current !== currentSessionId) return;
+            const delta = p.contentDelta as string | undefined;
+            if (delta) {
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'agent' && last?.source === 'streaming') {
+                  return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + delta }] }];
+                }
+                return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: delta }], timestamp: new Date(), source: 'streaming' }];
+              });
+            }
+          }
+          else if (data.method === 'session/completed') {
+            // 流式完成
+            const p = data.params || {};
             setLoading(false);
             streamingSessionIdRef.current = null;
-            if (data.session_id && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
-              const updated = { id: data.session_id, name: '', platform: 'hermes' } as Session;
+            if (p.sessionId && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
+              const updated = { id: p.sessionId, name: '', platform: 'hermes' } as Session;
               setSelectedSession(updated);
               selectedSessionRef.current = updated;
-              useAppStore.getState().setActiveSession(data.session_id, null, { sessionName: '' });
+              useAppStore.getState().setActiveSession(p.sessionId, null, { sessionName: '' });
               useAppStore.getState().refreshSidebar();
-              tagSessionAgent(data.session_id, selectedAgentRef.current?.id || 'soulmate');
+              tagSessionAgent(p.sessionId, selectedAgentRef.current?.id || 'soulmate');
             }
-            if (data.session_id && currentSessionId && data.session_id !== currentSessionId) return;
+            if (p.sessionId && currentSessionId && p.sessionId !== currentSessionId) return;
             setMessages(prev => {
               const last = prev[prev.length - 1];
               if (last?.role === 'agent' && last?.source === 'streaming') {
                 const content = last.parts[0]?.text || '';
                 const fileChanges = parseFileChanges(content);
-                const tokenUsage = data.tokenUsage || simulateTokenUsage(content);
+                const tokenUsage = simulateTokenUsage(content);
                 if (tokenUsage) {
                   useAppStore.getState().addSessionSpending(
                     currentSessionId || 'default',
@@ -258,20 +355,12 @@ function useAcpWebSocket(params: {
               return prev;
             });
           }
-          else if (data.type === 'chunk') {
-            if (streamingSessionIdRef.current && currentSessionId && streamingSessionIdRef.current !== currentSessionId) return;
-            setMessages(prev => {
-              const last = prev[prev.length - 1];
-              if (last?.role === 'agent' && last?.source === 'streaming') {
-                return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + data.text }] }];
-              }
-              return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: data.text }], timestamp: new Date(), source: 'streaming' }];
-            });
-          }
-          else if (data.type === 'error') {
+          else if (data.method === 'session/failed') {
+            // 会话错误
+            const p = data.params || {};
             setLoading(false);
             streamingSessionIdRef.current = null;
-            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${data.message}` }], timestamp: new Date() }]);
+            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${p.error || '未知错误'}` }], timestamp: new Date() }]);
           }
         } catch {}
       };
@@ -282,9 +371,9 @@ function useAcpWebSocket(params: {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ws) ws.close();
     };
-  }, [selectedAgent?.id ?? activeAgentIdFromStore]);
+  }, [selectedAgent?.id ?? activeAgentIdFromStore, performAcpHandshake, t, setLoading, setSelectedSession, selectedAgentRef, selectedSessionRef]);
 
-  return { wsRef, wsConnected, streamingSessionIdRef };
+  return { wsRef, wsConnected, streamingSessionIdRef, sendAcpPrompt };
 }
 
 export function ChatClient() {
@@ -322,7 +411,7 @@ export function ChatClient() {
   const selectedSessionRef = useRef<Session | null>(null);
   const selectedAgentRef = useRef<AgentInfo | null>(null);
   const activeAgentIdFromStore = useAppStore((s) => s.activeAgentId);
-  const { wsRef, wsConnected, streamingSessionIdRef } = useAcpWebSocket({
+  const { wsRef, wsConnected, streamingSessionIdRef, sendAcpPrompt } = useAcpWebSocket({
     selectedAgent, selectedSession, selectedAgentRef, selectedSessionRef,
     t, setMessages, setLoading, setSelectedSession, activeAgentIdFromStore,
   });
@@ -440,19 +529,12 @@ export function ChatClient() {
     if (!userMsg) return;
     // Remove the agent message
     setMessages(prev => prev.filter(m => m.id !== agentMsgId));
-    // Re-send via websocket
+    // 通过 ACP 重新发送
     const text = getMessageText(userMsg);
     setLoading(true);
-    const wsPayload = {
-      type: 'message', text,
-      mode: 'agent_proxy',
-      session_id: selectedSession?.id,
-      agent_id: selectedAgent?.id || 'soulmate',
-    };
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(wsPayload));
-    }
-  }, [messages, selectedSession, selectedAgent, getMessageText]);
+    streamingSessionIdRef.current = selectedSession?.id || null;
+    sendAcpPrompt(text);
+  }, [messages, selectedSession, selectedAgent, getMessageText, sendAcpPrompt]);
 
   // Edit user message — put text back into input
   const handleEditMessage = useCallback((msg: Message) => {
@@ -630,39 +712,27 @@ export function ChatClient() {
     // Reset textarea height
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
-    // Add mode prefix for plan mode
+    // 计划模式添加前缀
     const messageText = agentMode === 'plan' ? `[PLAN MODE] ${text}` : text;
 
-    const wsPayload = {
-      type: 'message', text: messageText,
-      mode: 'agent_proxy',
-      session_id: selectedSession?.id,
-      agent_id: selectedAgent?.id || 'soulmate',
-      attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
-    };
     streamingSessionIdRef.current = selectedSession?.id || null;
     if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify(wsPayload));
+      sendAcpPrompt(messageText);
       return;
     }
-    // Wait for WS reconnection instead of falling through to broken HTTP fallback
-    if (wsRef.current?.readyState !== WebSocket.OPEN) {
-      let waited = 0;
-      const waitConnect = setInterval(() => {
-        waited += 500;
-        if (wsRef.current?.readyState === WebSocket.OPEN) {
-          clearInterval(waitConnect);
-          wsRef.current.send(JSON.stringify({ type: 'message', text: messageText, mode: 'agent_proxy', session_id: selectedSession?.id, agent_id: selectedAgent?.id || 'soulmate', attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })) }));
-        } else if (waited >= 10000) {
-          clearInterval(waitConnect);
-          setLoading(false);
-          setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: t('chat.connectionLost') }], timestamp: new Date() }]);
-        }
-      }, 500);
-      return;
-    }
-    // All paths above return — WS send or WS-wait handles everything.
-    // No HTTP fallback needed.
+    // 等待 WS 重连
+    let waited = 0;
+    const waitConnect = setInterval(() => {
+      waited += 500;
+      if (wsRef.current?.readyState === WebSocket.OPEN) {
+        clearInterval(waitConnect);
+        sendAcpPrompt(messageText);
+      } else if (waited >= 10000) {
+        clearInterval(waitConnect);
+        setLoading(false);
+        setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: t('chat.connectionLost') }], timestamp: new Date() }]);
+      }
+    }, 500);
   };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -1006,18 +1076,10 @@ export function ChatClient() {
                 const userMsg: Message = { id: Date.now().toString(), role: 'user', parts: [{ type: 'text', text }, ...attachments], timestamp: new Date() };
                 setMessages(prev => [...prev, userMsg]);
                 setAttachments([]); setLoading(true);
+                // 计划模式添加前缀
                 const messageText = agentMode === 'plan' ? `[PLAN MODE] ${text}` : text;
-                const wsPayload = {
-                  type: 'message', text: messageText,
-                  mode: 'agent_proxy',
-                  session_id: selectedSession?.id,
-                  agent_id: selectedAgent?.id || 'soulmate',
-                  attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
-                };
                 streamingSessionIdRef.current = selectedSession?.id || null;
-                if (wsRef.current?.readyState === WebSocket.OPEN) {
-                  wsRef.current.send(JSON.stringify(wsPayload));
-                }
+                sendAcpPrompt(messageText);
               }}
               isLoading={loading}
               placeholder={t("chat.inputPlaceholder", "输入任务，点 ✨ 展开字段（Enter 发送，Shift+Enter 换行）")}
