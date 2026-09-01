@@ -276,7 +276,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (isChatRoute) {
       fetchSessions();
     }
-  }, [isChatRoute, fetchSessions]);
+  }, [isChatRoute, fetchSessions, activeSessionId]);
 
   // Toggle agent expand
   const toggleAgent = useCallback((agentId: string) => {
