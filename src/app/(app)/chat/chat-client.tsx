@@ -177,6 +177,204 @@ function parseFileChanges(content: string): FileChange[] {
   return files;
 }
 
+// Cost calculation (approximate pricing per 1K tokens)
+const calculateCost = (usage: TokenUsage): number => {
+  const inputCost = (usage.input / 1000) * 0.01;
+  const outputCost = (usage.output / 1000) * 0.03;
+  return inputCost + outputCost;
+};
+
+// Simulate token usage for demo purposes
+const simulateTokenUsage = (content: string): TokenUsage => {
+  const words = content.split(/\s+/).length;
+  const inputTokens = Math.floor(words * 1.3);
+  const outputTokens = Math.floor(words * 1.5);
+  return { input: inputTokens, output: outputTokens };
+};
+
+// ── useAcpWebSocket hook ────────────────────────────────────────
+function useAcpWebSocket(params: {
+  selectedAgent: AgentInfo | null;
+  selectedSession: Session | null;
+  selectedAgentRef: React.MutableRefObject<AgentInfo | null>;
+  selectedSessionRef: React.MutableRefObject<Session | null>;
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+  t: Function;
+  setMessages: React.Dispatch<React.SetStateAction<Message[]>>;
+  setLoading: React.Dispatch<React.SetStateAction<boolean>>;
+  setSelectedSession: React.Dispatch<React.SetStateAction<Session | null>>;
+  activeAgentIdFromStore: string | null;
+}) {
+  const { selectedAgent, selectedSession, selectedAgentRef, selectedSessionRef, t, setMessages, setLoading, setSelectedSession, activeAgentIdFromStore } = params;
+
+  const wsRef = useRef<WebSocket | null>(null);
+  const [wsConnected, setWsConnected] = useState(false);
+  const streamingSessionIdRef = useRef<string | null>(null);
+  const acpSessionIdRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    const token = getToken();
+    if (!token) return;
+    let ws: WebSocket | null = null;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+    let unmounted = false;
+    let retryDelay = 1000;
+
+    const connect = () => {
+      if (unmounted) return;
+      const wsBase = getWsUrlForAgent(selectedAgent?.id || null);
+      ws = new WebSocket(`${wsBase}/ws/chat?token=${token}`);
+      wsRef.current = ws;
+      ws.onopen = () => {
+        setWsConnected(true);
+        retryDelay = 1000;
+        const isAcp = !selectedAgent?.id || selectedAgent.id === 'soulmate';
+        if (isAcp) {
+          acpSessionIdRef.current = null;
+          ws!.send(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }));
+        }
+      };
+      ws.onclose = () => {
+        setWsConnected(false);
+        if (!unmounted) reconnectTimer = setTimeout(connect, retryDelay);
+        retryDelay = Math.min(retryDelay * 2, 30000);
+      };
+      ws.onerror = () => { setWsConnected(false); };
+      ws.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+
+          // ── ACP JSON-RPC 2.0 ──
+          if (data.jsonrpc === "2.0") {
+            if (data.id === 1 && data.result?.protocolVersion) {
+              console.log("[ACP] 初始化成功:", data.result);
+              ws!.send(JSON.stringify({ jsonrpc: "2.0", id: 2, method: "session/new", params: { cwd: "/home/climbing" } }));
+              return;
+            }
+            if (data.id === 2 && data.result?.sessionId) {
+              acpSessionIdRef.current = data.result.sessionId;
+              console.log("[ACP] 会话已创建:", data.result.sessionId);
+              return;
+            }
+            if (data.id && !data.method) return;
+
+            // session/update — 流式文本增量
+            if (data.method === "session/update") {
+              const delta = data.params?.contentDelta || data.params?.content || "";
+              if (!delta) return;
+              const currentSessionId = selectedSessionRef.current?.id;
+              if (streamingSessionIdRef.current && currentSessionId && streamingSessionIdRef.current !== currentSessionId) return;
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'agent' && last?.source === 'streaming') {
+                  return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + delta }] }];
+                }
+                return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: delta }], timestamp: new Date(), source: 'streaming' }];
+              });
+              return;
+            }
+            // session/completed
+            if (data.method === "session/completed") {
+              const currentSessionId = selectedSessionRef.current?.id;
+              const completedSessionId = data.params?.sessionId;
+              setLoading(false);
+              streamingSessionIdRef.current = null;
+              if (completedSessionId && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
+                const updated = { id: completedSessionId, name: '', platform: 'soulmate' } as Session;
+                setSelectedSession(updated);
+                selectedSessionRef.current = updated;
+                useAppStore.getState().setActiveSession(completedSessionId, null, { sessionName: '' });
+                useAppStore.getState().refreshSidebar();
+                tagSessionAgent(completedSessionId, selectedAgentRef.current?.id || 'soulmate');
+              }
+              if (completedSessionId && currentSessionId && completedSessionId !== currentSessionId) return;
+              setMessages(prev => {
+                const last = prev[prev.length - 1];
+                if (last?.role === 'agent' && last?.source === 'streaming') {
+                  const content = last.parts[0]?.text || '';
+                  const fileChanges = parseFileChanges(content);
+                  const tokenUsage = simulateTokenUsage(content);
+                  return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
+                }
+                return prev;
+              });
+              return;
+            }
+            // session/failed
+            if (data.method === "session/failed") {
+              setLoading(false);
+              streamingSessionIdRef.current = null;
+              setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${data.params?.error || "Unknown error"}` }], timestamp: new Date() }]);
+              return;
+            }
+            // session/request_permission
+            if (data.method === "session/request_permission") {
+              console.warn("[ACP] 权限请求:", data.params);
+              return;
+            }
+            return;
+          }
+
+          // ── Legacy JSON protocol ──
+          const currentSessionId = selectedSessionRef.current?.id;
+          if (data.type === 'done') {
+            setLoading(false);
+            streamingSessionIdRef.current = null;
+            if (data.session_id && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
+              const updated = { id: data.session_id, name: '', platform: 'hermes' } as Session;
+              setSelectedSession(updated);
+              selectedSessionRef.current = updated;
+              useAppStore.getState().setActiveSession(data.session_id, null, { sessionName: '' });
+              useAppStore.getState().refreshSidebar();
+              tagSessionAgent(data.session_id, selectedAgentRef.current?.id || 'soulmate');
+            }
+            if (data.session_id && currentSessionId && data.session_id !== currentSessionId) return;
+            setMessages(prev => {
+              const last = prev[prev.length - 1];
+              if (last?.role === 'agent' && last?.source === 'streaming') {
+                const content = last.parts[0]?.text || '';
+                const fileChanges = parseFileChanges(content);
+                const tokenUsage = data.tokenUsage || simulateTokenUsage(content);
+                if (tokenUsage) {
+                  useAppStore.getState().addSessionSpending(
+                    currentSessionId || 'default',
+                    { input: tokenUsage.input, output: tokenUsage.output, cost: calculateCost(tokenUsage) }
+                  );
+                }
+                return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
+              }
+              return prev;
+            });
+          }
+          else if (data.type === 'chunk') {
+            if (streamingSessionIdRef.current && currentSessionId && streamingSessionIdRef.current !== currentSessionId) return;
+            setMessages(prev => {
+              const last = prev[prev.length - 1];
+              if (last?.role === 'agent' && last?.source === 'streaming') {
+                return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + data.text }] }];
+              }
+              return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: data.text }], timestamp: new Date(), source: 'streaming' }];
+            });
+          }
+          else if (data.type === 'error') {
+            setLoading(false);
+            streamingSessionIdRef.current = null;
+            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${data.message}` }], timestamp: new Date() }]);
+          }
+        } catch {}
+      };
+    };
+    connect();
+    return () => {
+      unmounted = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
+      if (ws) ws.close();
+    };
+  }, [selectedAgent?.id ?? activeAgentIdFromStore]);
+
+  return { wsRef, wsConnected, acpSessionIdRef, streamingSessionIdRef };
+}
+
 export function ChatClient() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
@@ -187,7 +385,6 @@ export function ChatClient() {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
   const [attachments, setAttachments] = useState<MessagePart[]>([]);
-  const [wsConnected, setWsConnected] = useState(false);
   const [smartPromptTask, setSmartPromptTask] = useState<string>('');
   const [agentMode, setAgentMode] = useState<AgentMode>('act');
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
@@ -207,16 +404,16 @@ export function ChatClient() {
   const storeAgentIcon = useAppStore((s) => s.activeAgentIcon);
   const storeAgentName = useAppStore((s) => s.activeAgentName);
   const storeSessionName = useAppStore((s) => s.activeSessionName);
-  const wsRef = useRef<WebSocket | null>(null);
-  const streamingSessionIdRef = useRef<string | null>(null);
-  // ACP会话ID (用于内置Agent Engine, port 8787)
-  const acpSessionIdRef = useRef<string | null>(null);
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const selectedSessionRef = useRef<Session | null>(null);
   const selectedAgentRef = useRef<AgentInfo | null>(null);
+  const activeAgentIdFromStore = useAppStore((s) => s.activeAgentId);
+  const { wsRef, wsConnected, acpSessionIdRef, streamingSessionIdRef } = useAcpWebSocket({
+    selectedAgent, selectedSession, selectedAgentRef, selectedSessionRef,
+    t, setMessages, setLoading, setSelectedSession, activeAgentIdFromStore,
+  });
 
   // Auto-resize textarea on input
   const autoResizeTextarea = useCallback(() => {
@@ -234,21 +431,6 @@ export function ChatClient() {
       setShowCheckpoints(false);
     }
   }, [sidebarOpen, rightPanelOpen, isMobile, showCheckpoints]);
-
-  // Cost calculation (approximate pricing per 1K tokens)
-  const calculateCost = (usage: TokenUsage): number => {
-    const inputCost = (usage.input / 1000) * 0.01;  // $0.01 per 1K input tokens
-    const outputCost = (usage.output / 1000) * 0.03; // $0.03 per 1K output tokens
-    return inputCost + outputCost;
-  };
-
-  // Simulate token usage for demo purposes
-  const simulateTokenUsage = (content: string): TokenUsage => {
-    const words = content.split(/\s+/).length;
-    const inputTokens = Math.floor(words * 1.3); // rough estimate
-    const outputTokens = Math.floor(words * 1.5);
-    return { input: inputTokens, output: outputTokens };
-  };
 
   // Checkpoint management
   const saveCheckpoint = useCallback((messageId: string) => {
@@ -467,184 +649,6 @@ export function ChatClient() {
       }
     } catch {}
   }, []);
-
-  const activeAgentIdFromStore = useAppStore((s) => s.activeAgentId);
-
-  // WebSocket
-  useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-    let ws: WebSocket | null = null;
-    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
-    let unmounted = false;
-    let retryDelay = 1000;
-
-    const connect = () => {
-      if (unmounted) return;
-      const wsBase = getWsUrlForAgent(selectedAgent?.id || null);
-      ws = new WebSocket(`${wsBase}/ws/chat?token=${token}`);
-      wsRef.current = ws;
-      ws.onopen = () => {
-        setWsConnected(true);
-        retryDelay = 1000;
-        // ACP模式: 连接内置Agent Engine时发送initialize握手
-        const isAcp = !selectedAgent?.id || selectedAgent.id === 'soulmate';
-        if (isAcp) {
-          acpSessionIdRef.current = null; // 重置ACP会话ID
-          ws!.send(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }));
-        }
-      };
-      ws.onclose = () => {
-        setWsConnected(false);
-        if (!unmounted) reconnectTimer = setTimeout(connect, retryDelay);
-        retryDelay = Math.min(retryDelay * 2, 30000);
-      };
-      ws.onerror = () => { setWsConnected(false); };
-      ws.onmessage = (e) => {
-        try {
-          const data = JSON.parse(e.data);
-
-          // ── ACP JSON-RPC 2.0 协议处理 (内置Agent Engine, port 8787) ──
-          if (data.jsonrpc === "2.0") {
-            // 处理initialize响应 (id=1)
-            if (data.id === 1 && data.result?.protocolVersion) {
-              console.log("[ACP] 初始化成功:", data.result);
-              // 初始化完成后发送session/new创建会话
-              ws!.send(JSON.stringify({ jsonrpc: "2.0", id: 2, method: "session/new", params: { cwd: "/home/climbing" } }));
-              return;
-            }
-            // 处理session/new响应 (id=2) — 保存ACP会话ID
-            if (data.id === 2 && data.result?.sessionId) {
-              acpSessionIdRef.current = data.result.sessionId;
-              console.log("[ACP] 会话已创建:", data.result.sessionId);
-              return;
-            }
-            // 跳过其他请求响应 (有id但没有method的都是对我们请求的响应)
-            if (data.id && !data.method) return;
-
-            // 处理通知: session/update — 流式文本增量
-            if (data.method === "session/update") {
-              const delta = data.params?.contentDelta || data.params?.content || "";
-              if (!delta) return;
-              const currentSessionId = selectedSessionRef.current?.id;
-              // 忽略不属于当前会话的消息
-              if (streamingSessionIdRef.current && currentSessionId && streamingSessionIdRef.current !== currentSessionId) return;
-              setMessages(prev => {
-                const last = prev[prev.length - 1];
-                if (last?.role === 'agent' && last?.source === 'streaming') {
-                  return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + delta }] }];
-                }
-                return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: delta }], timestamp: new Date(), source: 'streaming' }];
-              });
-              return;
-            }
-            // 处理通知: session/completed — 会话完成
-            if (data.method === "session/completed") {
-              const currentSessionId = selectedSessionRef.current?.id;
-              const completedSessionId = data.params?.sessionId;
-              setLoading(false);
-              streamingSessionIdRef.current = null;
-              // 更新会话信息
-              if (completedSessionId && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
-                const updated = { id: completedSessionId, name: '', platform: 'soulmate' } as Session;
-                setSelectedSession(updated);
-                selectedSessionRef.current = updated;
-                useAppStore.getState().setActiveSession(completedSessionId, null, { sessionName: '' });
-                useAppStore.getState().refreshSidebar();
-                tagSessionAgent(completedSessionId, selectedAgentRef.current?.id || 'soulmate');
-              }
-              // 忽略不属于当前会话的完成通知
-              if (completedSessionId && currentSessionId && completedSessionId !== currentSessionId) return;
-              // 最终化流式消息
-              setMessages(prev => {
-                const last = prev[prev.length - 1];
-                if (last?.role === 'agent' && last?.source === 'streaming') {
-                  const content = last.parts[0]?.text || '';
-                  const fileChanges = parseFileChanges(content);
-                  const tokenUsage = simulateTokenUsage(content);
-                  return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
-                }
-                return prev;
-              });
-              return;
-            }
-            // 处理通知: session/failed — 会话失败
-            if (data.method === "session/failed") {
-              setLoading(false);
-              streamingSessionIdRef.current = null;
-              setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${data.params?.error || "Unknown error"}` }], timestamp: new Date() }]);
-              return;
-            }
-            // 处理通知: session/request_permission — 权限请求
-            if (data.method === "session/request_permission") {
-              console.warn("[ACP] 权限请求:", data.params);
-              // TODO: 显示权限确认UI
-              return;
-            }
-            return;
-          }
-
-          // ── 原有简单JSON协议处理 (hermes/ACP proxy, port 8092) ──
-          // Only process response messages if they belong to the current streaming session
-          const currentSessionId = selectedSessionRef.current?.id;
-          if (data.type === 'done') {
-            setLoading(false);
-            streamingSessionIdRef.current = null;
-            // Update selectedSession with new session_id and refresh list
-            if (data.session_id && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
-              const updated = { id: data.session_id, name: '', platform: 'hermes' } as Session;
-              setSelectedSession(updated);
-              selectedSessionRef.current = updated;
-              // Also update store so activeSessionId is in sync
-              useAppStore.getState().setActiveSession(data.session_id, null, { sessionName: '' });
-              useAppStore.getState().refreshSidebar();
-              // Tag session ownership for frontend grouping
-              tagSessionAgent(data.session_id, selectedAgentRef.current?.id || 'soulmate');
-            }
-            // Only update messages if we're still in the same session
-            if (data.session_id && currentSessionId && data.session_id !== currentSessionId) return;
-            setMessages(prev => {
-              const last = prev[prev.length - 1];
-              if (last?.role === 'agent' && last?.source === 'streaming') {
-                const content = last.parts[0]?.text || '';
-                const fileChanges = parseFileChanges(content);
-                const tokenUsage = data.tokenUsage || simulateTokenUsage(content);
-                // Persist spending to store
-                if (tokenUsage) {
-                  useAppStore.getState().addSessionSpending(
-                    currentSessionId || 'default',
-                    { input: tokenUsage.input, output: tokenUsage.output, cost: calculateCost(tokenUsage) }
-                  );
-                }
-                return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
-              }
-              return prev;
-            });
-          }
-          else if (data.type === 'chunk') {
-            // Ignore chunks if user switched to a different session
-            if (streamingSessionIdRef.current && currentSessionId && streamingSessionIdRef.current !== currentSessionId) return;
-            setMessages(prev => {
-              const last = prev[prev.length - 1];
-              if (last?.role === 'agent' && last?.source === 'streaming') {
-                return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + data.text }] }];
-              }
-              return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: data.text }], timestamp: new Date(), source: 'streaming' }];
-            });
-          }
-          else if (data.type === 'error') { setLoading(false); streamingSessionIdRef.current = null; setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${data.message}` }], timestamp: new Date() }]); }
-        } catch {}
-      };
-    };
-    connect();
-    return () => {
-      unmounted = true;
-      if (reconnectTimer) clearTimeout(reconnectTimer);
-      if (ws) ws.close();
-    };
-  // Reconnect WS when agent changes (SoulMate→8787, hermes→8092)
-  }, [selectedAgent?.id ?? activeAgentIdFromStore]);
-
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
