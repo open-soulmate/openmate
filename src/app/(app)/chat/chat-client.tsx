@@ -458,6 +458,8 @@ export function ChatClient() {
               const updated = { id: data.session_id, name: '', platform: 'hermes' } as Session;
               setSelectedSession(updated);
               selectedSessionRef.current = updated;
+              // Also update store so activeSessionId is in sync
+              useAppStore.getState().setActiveSession(data.session_id, null, { sessionName: '' });
               useAppStore.getState().refreshSidebar();
             }
             // Only update messages if we're still in the same session
