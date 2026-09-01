@@ -657,24 +657,22 @@ export function ChatClient() {
     }
   }, [agents]);
 
-  // Auto-select agent from URL param ?agent=AGENT_ID (for "new session for agent")
+  // When store agentId changes (e.g. clicking + on a different agent in sidebar),
+  // switch selectedAgent and clear session/messages for a fresh start
+  const prevAgentIdRef = useRef<string | null>(null);
   useEffect(() => {
-    const checkAgent = () => {
-      const agentId = new URLSearchParams(window.location.search).get('agent');
-      if (!agentId || !agents.length) return;
-      const agent = agents.find(a => a.id === agentId);
-      if (agent && selectedAgent?.id !== agentId) {
-        // Switch to this agent: clear session/messages for fresh start
-        setSelectedAgent(agent);
-        setSelectedSession(null);
-        setMessages([]);
-      }
-    };
-    checkAgent();
-    // Listen for popstate (browser back/forward) 
-    window.addEventListener('popstate', checkAgent);
-    return () => window.removeEventListener('popstate', checkAgent);
-  }, [agents, selectedAgent]);
+    if (!activeAgentIdFromStore || !agents.length) return;
+    if (activeAgentIdFromStore === prevAgentIdRef.current) return;
+    prevAgentIdRef.current = activeAgentIdFromStore;
+    // Only switch if it's actually a different agent
+    if (selectedAgent?.id === activeAgentIdFromStore) return;
+    const agent = agents.find(a => a.id === activeAgentIdFromStore);
+    if (agent) {
+      setSelectedAgent(agent);
+      setSelectedSession(null);
+      setMessages([]);
+    }
+  }, [activeAgentIdFromStore, agents]);
 
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || loading) return;
