@@ -468,6 +468,8 @@ export function ChatClient() {
     } catch {}
   }, []);
 
+  const activeAgentIdFromStore = useAppStore((s) => s.activeAgentId);
+
   // WebSocket
   useEffect(() => {
     const token = getToken();
@@ -641,7 +643,7 @@ export function ChatClient() {
       if (ws) ws.close();
     };
   // Reconnect WS when agent changes (SoulMate→8787, hermes→8092)
-  }, [selectedAgent?.id]);
+  }, [selectedAgent?.id ?? activeAgentIdFromStore]);
 
 
   useEffect(() => {
@@ -651,7 +653,6 @@ export function ChatClient() {
 
   // Listen for session selection from global sidebar (via store)
   const activeSessionIdFromStore = useAppStore((s) => s.activeSessionId);
-  const activeAgentIdFromStore = useAppStore((s) => s.activeAgentId);
 
   useEffect(() => {
     if (!activeSessionIdFromStore) {
