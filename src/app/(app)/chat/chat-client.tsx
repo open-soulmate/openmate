@@ -636,7 +636,13 @@ export function ChatClient() {
   const activeAgentIdFromStore = useAppStore((s) => s.activeAgentId);
 
   useEffect(() => {
-    if (!activeSessionIdFromStore) return;
+    if (!activeSessionIdFromStore) {
+      // New session (e.g. SoulMate +) — clear everything
+      setSelectedSession(null);
+      selectedSessionRef.current = null;
+      setMessages([]);
+      return;
+    }
     if (selectedSession?.id === activeSessionIdFromStore) return;
     // Try to find session in local agents list
     for (const agent of agents) {
