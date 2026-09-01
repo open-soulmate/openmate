@@ -439,7 +439,9 @@ export function ChatClient() {
       });
 
     // Add unknown platform sessions (agents not in detect API)
+    const SKIP_AGENTS = new Set(['cron', 'unknown', 'tool', 'subagent']);
     for (const [key, val] of Object.entries(agentSessionMap)) {
+      if (SKIP_AGENTS.has(key)) continue;
       if (!agentList.find(a => a.id === key) && val.length > 0) {
         const sourceGroups = buildSourceGroups(val, key);
         agentList.push({
