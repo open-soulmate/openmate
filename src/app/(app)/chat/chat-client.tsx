@@ -211,9 +211,7 @@ function useAcpWebSocket(params: {
   const acpSessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
-    window.__wsHookRan = true;
     const token = getToken();
-    window.__wsHookToken = token ? 'has token' : 'NO TOKEN';
     if (!token) return;
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -224,11 +222,9 @@ function useAcpWebSocket(params: {
       if (unmounted) return;
       const wsBase = getWsUrlForAgent(selectedAgent?.id || null);
       const wsUrl = `${wsBase}/ws/chat?token=${token}`;
-      window.__wsHookUrl = wsUrl;
       ws = new WebSocket(wsUrl);
       wsRef.current = ws;
       ws.onopen = () => {
-        window.__wsHookConnected = true;
         setWsConnected(true);
         retryDelay = 1000;
         const isAcp = !selectedAgent?.id || selectedAgent.id === 'soulmate';
