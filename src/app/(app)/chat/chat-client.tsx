@@ -659,15 +659,10 @@ export function ChatClient() {
 
   // When store agentId changes (e.g. clicking + on a different agent in sidebar),
   // switch selectedAgent and clear session/messages for a fresh start
-  const prevAgentIdRef = useRef<string | null>(null);
   useEffect(() => {
     if (!activeAgentIdFromStore || !agents.length) return;
-    if (activeAgentIdFromStore === prevAgentIdRef.current) return;
-    prevAgentIdRef.current = activeAgentIdFromStore;
-    // Only switch if it's actually a different agent
-    if (selectedAgent?.id === activeAgentIdFromStore) return;
     const agent = agents.find(a => a.id === activeAgentIdFromStore);
-    if (agent) {
+    if (agent && selectedAgent?.id !== activeAgentIdFromStore) {
       setSelectedAgent(agent);
       setSelectedSession(null);
       setMessages([]);
