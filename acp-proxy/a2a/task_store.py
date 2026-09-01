@@ -1,18 +1,17 @@
-"""A2A Task持久化存储（SQLite）。
+"""A2A Task持久化存储（SQLite + aiosqlite）。
 
-提供基于SQLite的Task CRUD操作，支持异步访问。
+提供基于SQLite的Task CRUD操作，原生异步访问。
 数据结构遵循A2A v0.2.2 Task模型。
 """
 
 from __future__ import annotations
 
 import json
-import sqlite3
 import uuid
 from pathlib import Path
 from typing import Optional
 
-import asyncio
+import aiosqlite
 
 from a2a.models import (
     Artifact,
@@ -38,8 +37,9 @@ CREATE TABLE IF NOT EXISTS tasks (
     status_message  TEXT,          -- JSON序列化的Message
     status_timestamp TEXT NOT NULL,
     metadata    TEXT,              -- JSON dict
-    created_at  TEXT NOT NULL,
-    updated_at  TEXT NOT NULL
+    task_data   TEXT,              -- JSON序列化的完整Task对象
+    created_at  REAL NOT NULL,
+    updated_at  REAL NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS task_history (
@@ -65,81 +65,47 @@ CREATE TABLE IF NOT EXISTS task_artifacts (
 """
 
 
-def _ensure_db_dir(path: Path) -> None:
-    """确保数据库所在目录存在。"""
-    path.parent.mkdir(parents=True, exist_ok=True)
-
-
-def _dict_factory(cursor: sqlite3.Cursor, row: tuple) -> dict:
-    """将sqlite3查询结果转换为字典。"""
-    return {col[0]: row[i] for i, col in enumerate(cursor.description)}
-
-
 class TaskStore:
-    """A2A Task的SQLite持久化存储。
-
-    支持Task的完整CRUD操作和状态机校验。
-    使用asyncio.to_thread包装同步sqlite3调用实现异步访问。
-    """
+    """A2A Task的SQLite持久化存储（aiosqlite原生异步）。"""
 
     def __init__(self, db_path: Optional[str | Path] = None) -> None:
-        """初始化TaskStore。
+        self._db_path = str(db_path or _DEFAULT_DB_PATH)
+        Path(self._db_path).parent.mkdir(parents=True, exist_ok=True)
+        self._db: Optional[aiosqlite.Connection] = None
 
-        Args:
-            db_path: SQLite数据库文件路径，默认为 data/a2a_tasks.db
-        """
-        self._db_path = Path(db_path) if db_path else _DEFAULT_DB_PATH
-        _ensure_db_dir(self._db_path)
-        self._init_db()
+    async def _get_db(self) -> aiosqlite.Connection:
+        if self._db is None:
+            self._db = await aiosqlite.connect(self._db_path)
+            self._db.row_factory = aiosqlite.Row
+            await self._db.execute("PRAGMA journal_mode=WAL")
+            await self._db.execute("PRAGMA foreign_keys=ON")
+            await self._db.executescript(_CREATE_TABLES_SQL)
+            await self._db.commit()
+        return self._db
 
-    def _get_conn(self) -> sqlite3.Connection:
-        """获取一个SQLite连接（每调用一次新建连接，线程安全）。"""
-        conn = sqlite3.connect(str(self._db_path), timeout=10)
-        conn.row_factory = _dict_factory
-        conn.execute("PRAGMA journal_mode=WAL")
-        conn.execute("PRAGMA foreign_keys=ON")
-        return conn
-
-    def _init_db(self) -> None:
-        """初始化数据库表结构。"""
-        conn = self._get_conn()
-        try:
-            conn.executescript(_CREATE_TABLES_SQL)
-            conn.commit()
-        finally:
-            conn.close()
-
-    # ------------------------------------------------------------------
-    # 同步内部方法（供 asyncio.to_thread 调用）
-    # ------------------------------------------------------------------
-
-    def _create_task(self, task_id: Optional[str], session_id: Optional[str],
-                     initial_message: Optional[Message], metadata: Optional[dict]) -> Task:
-        """同步创建新Task。"""
+    async def create_task(self, task_id: Optional[str] = None,
+                          session_id: Optional[str] = None,
+                          initial_message: Optional[Message] = None,
+                          metadata: Optional[dict] = None) -> Task:
+        db = await self._get_db()
         tid = task_id or str(uuid.uuid4())
         ts = now_iso()
-        conn = self._get_conn()
-        try:
-            conn.execute(
-                "INSERT INTO tasks (id, session_id, state, status_timestamp, metadata, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (tid, session_id, TaskState.SUBMITTED.value, ts,
-                 json.dumps(metadata) if metadata else None, ts, ts),
+        await db.execute(
+            "INSERT INTO tasks (id, session_id, state, status_timestamp, metadata, created_at, updated_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (tid, session_id, TaskState.SUBMITTED.value, ts,
+             json.dumps(metadata) if metadata else None, ts, ts),
+        )
+        if initial_message:
+            await db.execute(
+                "INSERT INTO task_history (task_id, role, parts, metadata, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (tid, initial_message.role,
+                 json.dumps([p.model_dump() for p in initial_message.parts]),
+                 json.dumps(initial_message.metadata) if initial_message.metadata else None,
+                 ts),
             )
-            # 如果有初始消息，写入history
-            if initial_message:
-                conn.execute(
-                    "INSERT INTO task_history (task_id, role, parts, metadata, created_at) "
-                    "VALUES (?, ?, ?, ?, ?)",
-                    (tid, initial_message.role,
-                     json.dumps([p.model_dump() for p in initial_message.parts]),
-                     json.dumps(initial_message.metadata) if initial_message.metadata else None,
-                     ts),
-                )
-            conn.commit()
-        finally:
-            conn.close()
-
+        await db.commit()
         return Task(
             id=tid,
             sessionId=session_id,
@@ -148,239 +114,135 @@ class TaskStore:
             metadata=metadata,
         )
 
-    def _get_task(self, task_id: str) -> Optional[Task]:
-        """同步获取Task（含history和artifacts）。"""
-        conn = self._get_conn()
-        try:
-            row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
-            if not row:
-                return None
-
-            # 加载history
-            hist_rows = conn.execute(
-                "SELECT * FROM task_history WHERE task_id = ? ORDER BY id", (task_id,)
-            ).fetchall()
-            history = [
-                Message(
-                    role=r["role"],
-                    parts=[p for p in json.loads(r["parts"])],
-                    metadata=json.loads(r["metadata"]) if r["metadata"] else None,
-                )
-                for r in hist_rows
-            ]
-
-            # 加载artifacts
-            art_rows = conn.execute(
-                "SELECT * FROM task_artifacts WHERE task_id = ? ORDER BY id", (task_id,)
-            ).fetchall()
-            artifacts = [
-                Artifact(
-                    artifactId=r["artifact_id"],
-                    name=r["name"],
-                    description=r["description"],
-                    parts=[p for p in json.loads(r["parts"])],
-                    metadata=json.loads(r["metadata"]) if r["metadata"] else None,
-                )
-                for r in art_rows
-            ]
-
-            status_msg = None
-            if row["status_message"]:
-                sm = json.loads(row["status_message"])
-                status_msg = Message(**sm)
-
-            metadata = json.loads(row["metadata"]) if row["metadata"] else None
-
-            return Task(
-                id=row["id"],
-                sessionId=row["session_id"],
-                status=TaskStatus(
-                    state=TaskState(row["state"]),
-                    message=status_msg,
-                    timestamp=row["status_timestamp"],
-                ),
-                history=history,
-                artifacts=artifacts,
-                metadata=metadata,
-            )
-        finally:
-            conn.close()
-
-    def _update_task_status(self, task_id: str, new_state: TaskState,
-                            status_message: Optional[Message]) -> Task:
-        """同步更新Task状态（含状态机校验）。"""
-        conn = self._get_conn()
-        try:
-            row = conn.execute("SELECT state FROM tasks WHERE id = ?", (task_id,)).fetchone()
-            if not row:
-                raise ValueError(f"Task不存在: {task_id}")
-
-            current = TaskState(row["state"])
-            validate_transition(current, new_state)
-
-            ts = now_iso()
-            msg_json = None
-            if status_message:
-                msg_json = json.dumps(status_message.model_dump())
-
-            conn.execute(
-                "UPDATE tasks SET state = ?, status_message = ?, status_timestamp = ?, updated_at = ? WHERE id = ?",
-                (new_state.value, msg_json, ts, ts, task_id),
-            )
-
-            # 如果有附加消息，也写入history
-            if status_message:
-                conn.execute(
-                    "INSERT INTO task_history (task_id, role, parts, metadata, created_at) "
-                    "VALUES (?, ?, ?, ?, ?)",
-                    (task_id, status_message.role,
-                     json.dumps([p.model_dump() for p in status_message.parts]),
-                     json.dumps(status_message.metadata) if status_message.metadata else None,
-                     ts),
-                )
-
-            conn.commit()
-        finally:
-            conn.close()
-
-        return self._get_task(task_id)  # type: ignore[return-value]
-
-    def _add_message(self, task_id: str, message: Message) -> None:
-        """同步向Task追加一条history消息。"""
-        ts = now_iso()
-        conn = self._get_conn()
-        try:
-            conn.execute(
-                "INSERT INTO task_history (task_id, role, parts, metadata, created_at) "
-                "VALUES (?, ?, ?, ?, ?)",
-                (task_id, message.role,
-                 json.dumps([p.model_dump() for p in message.parts]),
-                 json.dumps(message.metadata) if message.metadata else None,
-                 ts),
-            )
-            conn.execute("UPDATE tasks SET updated_at = ? WHERE id = ?", (ts, task_id))
-            conn.commit()
-        finally:
-            conn.close()
-
-    def _add_artifact(self, task_id: str, artifact: Artifact) -> None:
-        """同步向Task追加工件。"""
-        ts = now_iso()
-        conn = self._get_conn()
-        try:
-            conn.execute(
-                "INSERT INTO task_artifacts (task_id, artifact_id, name, description, parts, metadata, created_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, ?)",
-                (task_id, artifact.artifactId, artifact.name, artifact.description,
-                 json.dumps([p.model_dump() for p in artifact.parts]),
-                 json.dumps(artifact.metadata) if artifact.metadata else None,
-                 ts),
-            )
-            conn.execute("UPDATE tasks SET updated_at = ? WHERE id = ?", (ts, task_id))
-            conn.commit()
-        finally:
-            conn.close()
-
-    def _list_tasks(self, session_id: Optional[str] = None,
-                    state: Optional[TaskState] = None) -> list[Task]:
-        """同步列出Task（可按session或state过滤）。"""
-        conn = self._get_conn()
-        try:
-            sql = "SELECT id FROM tasks WHERE 1=1"
-            params: list = []
-            if session_id:
-                sql += " AND session_id = ?"
-                params.append(session_id)
-            if state:
-                sql += " AND state = ?"
-                params.append(state.value)
-            sql += " ORDER BY created_at DESC"
-
-            rows = conn.execute(sql, params).fetchall()
-            return [r["id"] for r in rows]
-        finally:
-            conn.close()
-
-    # ------------------------------------------------------------------
-    # 异步公共API
-    # ------------------------------------------------------------------
-
-    async def create_task(self, task_id: Optional[str] = None,
-                          session_id: Optional[str] = None,
-                          initial_message: Optional[Message] = None,
-                          metadata: Optional[dict] = None) -> Task:
-        """异步创建新Task。
-
-        Args:
-            task_id: 可选的Task ID，不提供则自动生成UUID
-            session_id: 可选的会话ID
-            initial_message: 可选的初始消息
-            metadata: 可选的元数据
-
-        Returns:
-            创建的Task对象
-        """
-        return await asyncio.to_thread(
-            self._create_task, task_id, session_id, initial_message, metadata
-        )
-
     async def get_task(self, task_id: str) -> Optional[Task]:
-        """异步获取Task。
+        db = await self._get_db()
+        cursor = await db.execute("SELECT * FROM tasks WHERE id = ?", (task_id,))
+        row = await cursor.fetchone()
+        if not row:
+            return None
 
-        Args:
-            task_id: Task唯一标识
+        # history
+        cursor = await db.execute(
+            "SELECT * FROM task_history WHERE task_id = ? ORDER BY id", (task_id,)
+        )
+        hist_rows = await cursor.fetchall()
+        history = [
+            Message(
+                role=r["role"],
+                parts=json.loads(r["parts"]),
+                metadata=json.loads(r["metadata"]) if r["metadata"] else None,
+            )
+            for r in hist_rows
+        ]
 
-        Returns:
-            Task对象，不存在则返回None
-        """
-        return await asyncio.to_thread(self._get_task, task_id)
+        # artifacts
+        cursor = await db.execute(
+            "SELECT * FROM task_artifacts WHERE task_id = ? ORDER BY id", (task_id,)
+        )
+        art_rows = await cursor.fetchall()
+        artifacts = [
+            Artifact(
+                artifactId=r["artifact_id"],
+                name=r["name"],
+                description=r["description"],
+                parts=json.loads(r["parts"]),
+                metadata=json.loads(r["metadata"]) if r["metadata"] else None,
+            )
+            for r in art_rows
+        ]
+
+        status_msg = None
+        if row["status_message"]:
+            status_msg = Message(**json.loads(row["status_message"]))
+
+        return Task(
+            id=row["id"],
+            sessionId=row["session_id"],
+            status=TaskStatus(
+                state=TaskState(row["state"]),
+                message=status_msg,
+                timestamp=row["status_timestamp"],
+            ),
+            history=history,
+            artifacts=artifacts,
+            metadata=json.loads(row["metadata"]) if row["metadata"] else None,
+        )
 
     async def update_task_status(self, task_id: str, new_state: TaskState,
                                  status_message: Optional[Message] = None) -> Task:
-        """异步更新Task状态。
+        db = await self._get_db()
+        cursor = await db.execute("SELECT state FROM tasks WHERE id = ?", (task_id,))
+        row = await cursor.fetchone()
+        if not row:
+            raise ValueError(f"Task不存在: {task_id}")
 
-        Args:
-            task_id: Task唯一标识
-            new_state: 目标状态
-            status_message: 状态变更时的附加消息
+        current = TaskState(row["state"])
+        validate_transition(current, new_state)
 
-        Returns:
-            更新后的Task对象
+        ts = now_iso()
+        msg_json = json.dumps(status_message.model_dump()) if status_message else None
 
-        Raises:
-            ValueError: Task不存在或状态跳转非法
-        """
-        return await asyncio.to_thread(
-            self._update_task_status, task_id, new_state, status_message
+        await db.execute(
+            "UPDATE tasks SET state = ?, status_message = ?, status_timestamp = ?, updated_at = ? WHERE id = ?",
+            (new_state.value, msg_json, ts, ts, task_id),
         )
+        if status_message:
+            await db.execute(
+                "INSERT INTO task_history (task_id, role, parts, metadata, created_at) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (task_id, status_message.role,
+                 json.dumps([p.model_dump() for p in status_message.parts]),
+                 json.dumps(status_message.metadata) if status_message.metadata else None,
+                 ts),
+            )
+        await db.commit()
+        return await self.get_task(task_id)  # type: ignore[return-value]
 
     async def add_message(self, task_id: str, message: Message) -> None:
-        """异步向Task追加消息到history。
-
-        Args:
-            task_id: Task唯一标识
-            message: 要追加的消息
-        """
-        await asyncio.to_thread(self._add_message, task_id, message)
+        db = await self._get_db()
+        ts = now_iso()
+        await db.execute(
+            "INSERT INTO task_history (task_id, role, parts, metadata, created_at) "
+            "VALUES (?, ?, ?, ?, ?)",
+            (task_id, message.role,
+             json.dumps([p.model_dump() for p in message.parts]),
+             json.dumps(message.metadata) if message.metadata else None,
+             ts),
+        )
+        await db.execute("UPDATE tasks SET updated_at = ? WHERE id = ?", (ts, task_id))
+        await db.commit()
 
     async def add_artifact(self, task_id: str, artifact: Artifact) -> None:
-        """异步向Task追加工件。
-
-        Args:
-            task_id: Task唯一标识
-            artifact: 要追加的工件
-        """
-        await asyncio.to_thread(self._add_artifact, task_id, artifact)
+        db = await self._get_db()
+        ts = now_iso()
+        await db.execute(
+            "INSERT INTO task_artifacts (task_id, artifact_id, name, description, parts, metadata, created_at) "
+            "VALUES (?, ?, ?, ?, ?, ?, ?)",
+            (task_id, artifact.artifactId, artifact.name, artifact.description,
+             json.dumps([p.model_dump() for p in artifact.parts]),
+             json.dumps(artifact.metadata) if artifact.metadata else None,
+             ts),
+        )
+        await db.execute("UPDATE tasks SET updated_at = ? WHERE id = ?", (ts, task_id))
+        await db.commit()
 
     async def list_tasks(self, session_id: Optional[str] = None,
                          state: Optional[TaskState] = None) -> list[str]:
-        """异步列出Task ID列表。
+        db = await self._get_db()
+        sql = "SELECT id FROM tasks WHERE 1=1"
+        params: list = []
+        if session_id:
+            sql += " AND session_id = ?"
+            params.append(session_id)
+        if state:
+            sql += " AND state = ?"
+            params.append(state.value)
+        sql += " ORDER BY created_at DESC"
+        cursor = await db.execute(sql, params)
+        rows = await cursor.fetchall()
+        return [r["id"] for r in rows]
 
-        Args:
-            session_id: 可选的会话ID过滤
-            state: 可选的状态过滤
-
-        Returns:
-            Task ID列表
-        """
-        return await asyncio.to_thread(self._list_tasks, session_id, state)
+    async def close(self) -> None:
+        if self._db:
+            await self._db.close()
+            self._db = None
