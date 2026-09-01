@@ -190,6 +190,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     for (const s of sessions) {
       if (!s.platform && s.source) s.platform = s.source;
       const src = s.platform || s.source || '';
+      if (src === 'cron') continue; // filter cron sessions
       const agentKey = s.platform || s.source || 'unknown';
       if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
       agentSessionMap[agentKey].push(s);
