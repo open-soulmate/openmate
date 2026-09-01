@@ -419,56 +419,42 @@ export function ChatClient() {
 
     // Build agent list from detect API data — only available (installed) agents
     const SKIP_IDS = new Set(['cron', 'unknown', 'tool', 'subagent']);
-    const agentList: AgentInfo[] = detectedAgents
-      .filter(a => a.available && !SKIP_IDS.has(a.id))
-      .map(a => {
-        const agentSessions = agentSessionMap[a.id] || [];
-        const sourceGroups = buildSourceGroups(agentSessions, a.id);
-        return {
-          id: a.id,
-          name: a.name,
-          icon: a.icon || AGENT_ICONS[a.id] || '🤖',
-          description: a.description,
-          installed: a.available,
-          available: a.available,
-          category: a.category,
-          path: a.path,
-          sessions: agentSessions,
-          expanded: false,
-          sourceGroups,
-        };
-      });
+    const agentMap = new Map<string, AgentInfo>();
 
-    // Add unknown platform sessions (agents not in detect API)
-    const SKIP_AGENTS = new Set(['cron', 'unknown', 'tool', 'subagent', 'hermes']);
-    for (const [key, val] of Object.entries(agentSessionMap)) {
-      if (SKIP_AGENTS.has(key)) continue;
-      if (!agentList.find(a => a.id === key) && val.length > 0) {
-        const sourceGroups = buildSourceGroups(val, key);
-        agentList.push({
-          id: key, name: key, icon: '💬', description: key,
-          installed: false, sessions: val, expanded: false,
-          sourceGroups,
-        });
-      }
-    }
+    // 1. SoulMate (hermes) always first — no detection needed
+    const hermesSessions = agentSessionMap['hermes'] || [];
+    agentMap.set('hermes', {
+      id: 'hermes',
+      name: 'SoulMate',
+      icon: '🏛️',
+      description: 'OpenMate AI Assistant',
+      installed: true,
+      available: true,
+      sessions: hermesSessions,
+      expanded: false,
+      sourceGroups: buildSourceGroups(hermesSessions, 'hermes'),
+    });
 
-    // Ensure hermes (OpenMate) is always in the list — it's the default agent
-    if (!agentList.find(a => a.id === 'hermes')) {
-      const hermesSessions = agentSessionMap['hermes'] || [];
-      const sourceGroups = buildSourceGroups(hermesSessions, 'hermes');
-      agentList.push({
-        id: 'hermes',
-        name: 'SoulMate',
-        icon: '🏛️',
-        description: 'OpenMate AI Assistant',
-        installed: true,
-        available: true,
-        sessions: hermesSessions,
+    // 2. Add agents that have sessions (user has interacted with them)
+    for (const [key, sessions] of Object.entries(agentSessionMap)) {
+      if (SKIP_IDS.has(key) || agentMap.has(key)) continue;
+      const detected = detectedAgents.find(a => a.id === key);
+      agentMap.set(key, {
+        id: key,
+        name: detected?.name || key,
+        icon: detected?.icon || AGENT_ICONS[key] || '🤖',
+        description: detected?.description || key,
+        installed: detected?.available || false,
+        available: detected?.available || false,
+        category: detected?.category,
+        path: detected?.path,
+        sessions,
         expanded: false,
-        sourceGroups,
+        sourceGroups: buildSourceGroups(sessions, key),
       });
     }
+
+    const agentList = Array.from(agentMap.values());
 
     // Sort: hermes (OpenMate) always first, then others by session count
     agentList.sort((a, b) => {
