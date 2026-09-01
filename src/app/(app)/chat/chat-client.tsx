@@ -581,12 +581,14 @@ export function ChatClient() {
     }
   }, [agents]);
 
-  // When store agentId changes (e.g. clicking + on a different agent in sidebar),
-  // switch selectedAgent and clear session/messages for a fresh start
+  // When store agentId changes, switch selectedAgent and clear session/messages
   useEffect(() => {
-    if (!activeAgentIdFromStore || !agents.length) return;
-    const agent = agents.find(a => a.id === activeAgentIdFromStore);
-    if (agent && selectedAgent?.id !== activeAgentIdFromStore) {
+    if (!agents.length) return;
+    // SoulMate: activeAgentId is null, find by name 'SoulMate' or use first agent
+    const agent = activeAgentIdFromStore
+      ? agents.find(a => a.id === activeAgentIdFromStore)
+      : agents.find(a => a.id === 'soulmate') || agents[0];
+    if (agent && selectedAgent?.id !== agent.id) {
       setSelectedAgent(agent);
       selectedAgentRef.current = agent;
       setSelectedSession(null);
