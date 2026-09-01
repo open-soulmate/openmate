@@ -50,7 +50,7 @@ class LLMEngine:
         """初始化LLM引擎，从参数或环境变量读取配置"""
         self.api_key = api_key or os.environ.get("LLM_API_KEY", os.environ.get("OPENAI_API_KEY", ""))
         self.base_url = base_url or os.environ.get("LLM_BASE_URL", os.environ.get("OPENAI_BASE_URL", "http://localhost:11434/v1"))
-        self.model = model or os.environ.get("LLM_MODEL", os.environ.get("OPENAI_MODEL", "qwen3:8b"))
+        self.model = model or os.environ.get("LLM_MODEL", os.environ.get("OPENAI_MODEL", "deepseek-r1:latest"))
         self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
         self._client: Optional[httpx.AsyncClient] = None
         logger.info(f"LLM Engine init: base_url={self.base_url}, model={self.model}")
