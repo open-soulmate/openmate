@@ -44,6 +44,14 @@ from a2a.sse_events import (
 from a2a.stream_manager import get_stream_manager
 from a2a.task_store import TaskStore
 from a2a.agent_card import get_agent_card, list_agent_cards
+from a2a.security import verify_auth
+from a2a.push_notify import (
+    get_push_config,
+    push_task_event,
+    register_push_config,
+    remove_push_config,
+)
+from a2a.logger import log_error, log_request, log_response, log_task_event
 
 logger = logging.getLogger("a2a.server")
 
@@ -200,13 +208,18 @@ async def _agent_task_worker(task_id: str, message: Message | None) -> None:
     stream = get_stream_manager()
 
     try:
+        log_task_event(task_id, "worker_start")
+
         # 状态变更: SUBMITTED → WORKING
         task = await store.update_task_status(task_id, TaskState.WORKING)
-        await stream.broadcast(task_id, TaskStatusChangedEvent(
+        status_event = TaskStatusChangedEvent(
             taskId=task_id,
             state=TaskState.WORKING,
             timestamp=task.status.timestamp,
-        ))
+        )
+        await stream.broadcast(task_id, status_event)
+        await push_task_event(task_id, "statusChanged", status_event.model_dump())
+        log_task_event(task_id, "status_changed", "WORKING")
 
         # 模拟Agent处理（实际项目中替换为真实Agent调用）
         # 追加Agent回复消息
@@ -215,10 +228,12 @@ async def _agent_task_worker(task_id: str, message: Message | None) -> None:
             parts=[TextPart(text=f"已收到您的消息，正在处理中...")],
         )
         await store.add_message(task_id, reply)
-        await stream.broadcast(task_id, MessageAppendedEvent(
+        msg_event = MessageAppendedEvent(
             taskId=task_id,
             message=reply,
-        ))
+        )
+        await stream.broadcast(task_id, msg_event)
+        await push_task_event(task_id, "messageAppended", msg_event.model_dump())
 
         # 模拟产出Artifact
         artifact = Artifact(
@@ -228,30 +243,38 @@ async def _agent_task_worker(task_id: str, message: Message | None) -> None:
             parts=[TextPart(text="处理完成")],
         )
         await store.add_artifact(task_id, artifact)
-        await stream.broadcast(task_id, NewArtifactEvent(
+        art_event = NewArtifactEvent(
             taskId=task_id,
             artifact=artifact,
-        ))
+        )
+        await stream.broadcast(task_id, art_event)
+        await push_task_event(task_id, "newArtifact", art_event.model_dump())
 
         # 状态变更: WORKING → COMPLETED
         task = await store.update_task_status(task_id, TaskState.COMPLETED)
-        await stream.broadcast(task_id, A2ACompletedEvent(
+        completed_event = A2ACompletedEvent(
             taskId=task_id,
             task=task,
-        ))
+        )
+        await stream.broadcast(task_id, completed_event)
+        await push_task_event(task_id, "completed", completed_event.model_dump())
+        log_task_event(task_id, "completed")
 
     except Exception as e:
-        logger.exception(f"Agent任务执行异常: task_id={task_id}")
+        log_error("Agent任务执行异常", e, task_id=task_id)
         try:
             await store.update_task_status(task_id, TaskState.FAILED)
         except Exception:
             pass
-        await stream.broadcast(task_id, A2AErrorEvent(
+        error_event = A2AErrorEvent(
             taskId=task_id,
             code=-32603,
             message=str(e),
-        ))
+        )
+        await stream.broadcast(task_id, error_event)
+        await push_task_event(task_id, "error", error_event.model_dump())
     finally:
+        remove_push_config(task_id)
         await stream.close(task_id)
 
 
@@ -351,6 +374,57 @@ async def _handle_tasks_transition(params: dict[str, Any], request_id: Any) -> J
     return _success_response(request_id, task.model_dump(exclude_none=True))
 
 
+async def _handle_push_notification_set(params: dict[str, Any], request_id: Any) -> JSONResponse:
+    """处理 tasks/pushNotification/set 方法：注册推送通知配置。
+
+    params:
+        taskId: str - Task ID
+        url: str - 回调URL
+        token: str (可选) - 回调鉴权Token
+    """
+    task_id = params.get("taskId")
+    url = params.get("url")
+
+    if not task_id:
+        return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 taskId 参数")
+    if not url:
+        return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 url 参数")
+
+    store = get_task_store()
+    task = await store.get_task(task_id)
+    if not task:
+        return _error_response(request_id, A2A_TASK_NOT_FOUND, f"Task不存在: {task_id}")
+
+    config: dict[str, Any] = {"url": url}
+    if params.get("token"):
+        config["token"] = params["token"]
+    register_push_config(task_id, config)
+
+    return _success_response(request_id, {"taskId": task_id, "url": url, "registered": True})
+
+
+async def _handle_push_notification_get(params: dict[str, Any], request_id: Any) -> JSONResponse:
+    """处理 tasks/pushNotification/get 方法：查询推送通知配置。
+
+    params:
+        taskId: str - Task ID
+    """
+    task_id = params.get("taskId")
+    if not task_id:
+        return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 taskId 参数")
+
+    config = get_push_config(task_id)
+    if not config:
+        return _success_response(request_id, {"taskId": task_id, "registered": False})
+
+    # 返回时隐藏token
+    return _success_response(request_id, {
+        "taskId": task_id,
+        "url": config.get("url"),
+        "registered": True,
+    })
+
+
 # ---------------------------------------------------------------------------
 # 方法分发表
 # ---------------------------------------------------------------------------
@@ -362,6 +436,8 @@ _METHOD_HANDLERS: dict[str, Any] = {
     "tasks/create": _handle_tasks_create,
     "tasks/transition": _handle_tasks_transition,
     "tasks/sendSubscribe": _handle_tasks_send_subscribe,
+    "tasks/pushNotification/set": _handle_push_notification_set,
+    "tasks/pushNotification/get": _handle_push_notification_get,
 }
 
 
@@ -377,6 +453,11 @@ async def jsonrpc_endpoint(request: Request):
     所有A2A方法通过 method 字段区分。
     tasks/sendSubscribe 返回 EventSourceResponse（SSE流），其余返回 JSONResponse。
     """
+    # 鉴权（默认跳过，A2A_SKIP_AUTH=true）
+    auth_err = await verify_auth(request)
+    if auth_err:
+        return auth_err
+
     try:
         body = await request.json()
     except Exception:
@@ -403,13 +484,17 @@ async def jsonrpc_endpoint(request: Request):
             f"未知方法: {method}。支持的方法: {list(_METHOD_HANDLERS.keys())}",
         )
 
-    logger.info(f"A2A JSON-RPC: method={method}, id={rpc_req.id}")
+    # 全链路日志：请求入口 + 计时
+    client_ip = request.client.host if request.client else ""
+    timer = log_request(method, rpc_req.id, client_ip)
 
     try:
         result = await handler(params, rpc_req.id)
+        log_response(method, rpc_req.id, timer, status="ok")
         return result
     except Exception as e:
-        logger.exception(f"A2A方法执行异常: {method}")
+        log_error(f"A2A方法执行异常: {method}", e)
+        log_response(method, rpc_req.id, timer, status="error", error_code=-32603)
         return _error_response(rpc_req.id, -32603, f"内部错误: {e}")
 
 
