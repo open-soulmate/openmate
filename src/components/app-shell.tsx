@@ -118,7 +118,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   // ── Conversation list state ──────────────────────────────────────
-  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const agents = useAppStore((s) => s.sidebarAgents) as AgentInfo[];
+  const setSidebarAgents = useAppStore((s) => s.setSidebarAgents);
   const [clearedUnreads, setClearedUnreads] = useState<Set<string>>(new Set());
 
   // Clear unread for a session (called on click)
@@ -250,7 +251,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
 
     // 7. Update state preserving expanded
-    setAgents(prev => {
+    setSidebarAgents((prev: AgentInfo[]) => {
       const expandedIds = new Set(prev.filter(a => a.expanded).map(a => a.id));
       const expandedSrcs = new Map<string, Set<string>>();
       prev.forEach(a => a.sourceGroups?.forEach(g => {
@@ -276,18 +277,18 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     if (isChatRoute) {
       fetchSessions();
     }
-  }, [isChatRoute, fetchSessions, activeSessionId]);
+  }, [isChatRoute, fetchSessions, activeSessionId, useAppStore((s) => s.sidebarRefreshKey)]);
 
   // Toggle agent expand
   const toggleAgent = useCallback((agentId: string) => {
-    setAgents(prev => prev.map(a =>
+    setSidebarAgents((prev: AgentInfo[]) => prev.map(a =>
       a.id === agentId ? { ...a, expanded: !a.expanded } : a
     ));
   }, []);
 
   // Toggle source group expand
   const toggleSourceGroup = useCallback((agentId: string, source: string) => {
-    setAgents(prev => prev.map(a =>
+    setSidebarAgents((prev: AgentInfo[]) => prev.map(a =>
       a.id === agentId ? {
         ...a,
         sourceGroups: a.sourceGroups?.map(g =>
@@ -438,7 +439,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             try {
                               const r = await fetch(`${getApiBaseUrl()}/api/sessions/${sessionId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${getToken()}` } });
                               if (r.ok) {
-                                setAgents(prev => prev.map(a => ({
+                                setSidebarAgents((prev: AgentInfo[]) => prev.map(a => ({
                                   ...a,
                                   sessions: a.sessions.filter(s => s.id !== sessionId),
                                   sourceGroups: a.sourceGroups?.map(g => ({ ...g, sessions: g.sessions.filter(s => s.id !== sessionId) })).filter(g => g.sessions.length > 0),

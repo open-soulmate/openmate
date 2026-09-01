@@ -157,7 +157,8 @@ export function ChatClient() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
-  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const agents = useAppStore((s) => s.sidebarAgents) as AgentInfo[];
+  const setSidebarAgents = useAppStore((s) => s.setSidebarAgents);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
   const [attachments, setAttachments] = useState<MessagePart[]>([]);
@@ -362,127 +363,6 @@ export function ChatClient() {
     setMessages(prev => prev.filter(m => m.id !== msgId));
   }, []);
 
-  // Detect installed agents and load sessions
-  const initAgents = useCallback(async () => {
-    // Use cached agents from store if available (set by app-shell)
-    const cached = useAppStore.getState().cachedAgents;
-    let detectedAgents: Array<{id: string; name: string; icon: string; description: string; available: boolean; category?: string; path?: string; version?: string}> = [];
-    if (cached && cached.length > 0) {
-      detectedAgents = cached;
-    } else {
-      try {
-        const r = await fetch(`${getApiUrl()}/api/agents/detect`, { headers: { Authorization: `Bearer ${getToken()}` } });
-        if (r.ok) { const d = await r.json(); detectedAgents = d.agents || []; }
-        useAppStore.getState().setCachedAgents(detectedAgents);
-      } catch {}
-    }
-
-    // Load all sessions
-    let sessions: Session[] = [];
-    try {
-      const r = await fetch(`${getApiUrl()}/api/sessions?limit=500`, { headers: { Authorization: `Bearer ${getToken()}` } });
-      if (r.ok) { const d = await r.json(); sessions = d.sessions || []; }
-    } catch {}
-
-    // Group sessions by agent id, then by source within each agent
-    const agentSessionMap: Record<string, Session[]> = {};
-    for (const s of sessions) {
-      if (!s.platform && s.source) s.platform = s.source;
-      // Filter out cron sessions — they're automated background tasks, not user conversations
-      const src = s.platform || s.source || '';
-      if (src === 'cron') continue;
-      // hermes sub-sources (cli/weixin/acp/tui/tool/subagent) all belong to hermes agent
-      const PLATFORM_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui']);
-      const agentKey = PLATFORM_SOURCES.has(src) ? 'hermes' : (s.platform || s.source || 'unknown');
-      if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
-      agentSessionMap[agentKey].push(s);
-    }
-
-    // Build source groups for any agent that has multiple sources
-    const buildSourceGroups = (agentSessions: Session[], agentId: string): SourceGroup[] | undefined => {
-      const sourceMap: Record<string, Session[]> = {};
-      for (const s of agentSessions) {
-        const src = (s.platform || s.source || agentId) as string;
-        if (!sourceMap[src]) sourceMap[src] = [];
-        sourceMap[src].push(s);
-      }
-      const sources = Object.keys(sourceMap);
-      if (sources.length <= 1) return undefined; // no need for tree if only one source
-      return sources.map(src => {
-        const meta = SOURCE_META[src] || { labelKey: src, icon: '💬' };
-        return {
-          source: src, label: t(meta.labelKey), icon: meta.icon,
-          sessions: sourceMap[src], expanded: false,
-        };
-      });
-    };
-
-    // Build agent list from detect API data — only available (installed) agents
-    const SKIP_IDS = new Set(['cron', 'unknown', 'tool', 'subagent', 'soulmate']);
-    const agentMap = new Map<string, AgentInfo>();
-
-    // 1. SoulMate (OpenMate platform) ALWAYS shows first — no detection, no sessions required
-    agentMap.set('soulmate', {
-      id: 'soulmate',
-      name: 'SoulMate',
-      icon: '🏛️',
-      description: 'OpenMate Platform',
-      installed: true,
-      available: true,
-      sessions: [],
-      expanded: false,
-      sourceGroups: [],
-    });
-
-    // 2. Add agents that have sessions (user has interacted with them)
-    for (const [key, sessions] of Object.entries(agentSessionMap)) {
-      if (SKIP_IDS.has(key) || agentMap.has(key)) continue;
-      const detected = detectedAgents.find(a => a.id === key);
-      agentMap.set(key, {
-        id: key,
-        name: detected?.name || key,
-        icon: detected?.icon || AGENT_ICONS[key] || '🤖',
-        description: detected?.description || key,
-        installed: detected?.available || false,
-        available: detected?.available || false,
-        category: detected?.category,
-        path: detected?.path,
-        sessions,
-        expanded: false,
-        sourceGroups: buildSourceGroups(sessions, key),
-      });
-    }
-
-    const agentList = Array.from(agentMap.values());
-
-    // Sort: hermes (OpenMate) always first, then others by session count
-    agentList.sort((a, b) => {
-      if (a.id === 'soulmate') return -1;
-      if (b.id === 'soulmate') return 1;
-      return b.sessions.length - a.sessions.length;
-    });
-
-    setAgents(prev => {
-      const expandedIds = new Set(prev.filter(a => a.expanded).map(a => a.id));
-      const expandedSrcs = new Map();
-      prev.forEach(a => a.sourceGroups?.forEach(g => {
-        if (g.expanded) {
-          if (!expandedSrcs.has(a.id)) expandedSrcs.set(a.id, new Set());
-          expandedSrcs.get(a.id).add(g.source);
-        }
-      }));
-      return agentList.map(a => ({
-        ...a,
-        expanded: expandedIds.has(a.id),
-        sourceGroups: a.sourceGroups?.map(g => ({
-          ...g,
-          expanded: expandedSrcs.get(a.id)?.has(g.source) ?? false,
-        })),
-      }));
-    });
-
-  }, []);
-
   // Load history for a session
   // Delete session
   const deleteSession = useCallback(async (sessionId: string) => {
@@ -493,7 +373,7 @@ export function ChatClient() {
       });
       if (res.ok) {
         // Remove from local state (both flat sessions and sourceGroups)
-        setAgents(prev => prev.map(a => ({
+        setSidebarAgents((prev: AgentInfo[]) => prev.map(a => ({
           ...a,
           sessions: a.sessions.filter(s => s.id !== sessionId),
           sourceGroups: a.sourceGroups?.map(g => ({
@@ -578,7 +458,7 @@ export function ChatClient() {
               const updated = { id: data.session_id, name: '', platform: 'hermes' } as Session;
               setSelectedSession(updated);
               selectedSessionRef.current = updated;
-              initAgents();
+              useAppStore.getState().refreshSidebar();
             }
             // Only update messages if we're still in the same session
             if (data.session_id && currentSessionId && data.session_id !== currentSessionId) return;
@@ -621,9 +501,9 @@ export function ChatClient() {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ws) ws.close();
     };
-  }, [initAgents]);
+  }, []);
 
-  useEffect(() => { initAgents(); }, [initAgents]);
+
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
     setShowScrollDown(false);
@@ -812,7 +692,7 @@ export function ChatClient() {
       });
       if (res.ok) {
         setSelectedSession(prev => prev ? { ...prev, name: newTitle, title: newTitle } : prev);
-        initAgents(); // refresh sidebar list
+        useAppStore.getState().refreshSidebar(); // refresh sidebar list
       }
     } catch (e) { console.error('Rename failed:', e); }
   };

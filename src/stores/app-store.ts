@@ -386,6 +386,12 @@ interface AppState {
   // Cached agents (avoid re-fetching /api/agents/detect on every mount)
   cachedAgents: AgentInfo[] | null;
   setCachedAgents: (agents: AgentInfo[]) => void;
+
+  // Sidebar agent list (single source of truth, built by app-shell)
+  sidebarAgents: any[];
+  setSidebarAgents: (agents: any[] | ((prev: any[]) => any[])) => void;
+  sidebarRefreshKey: number;
+  refreshSidebar: () => void;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -954,6 +960,15 @@ export const useAppStore = create<AppState>((set, get) => ({
   // Cached agents
   cachedAgents: null,
   setCachedAgents: (agents) => set({ cachedAgents: agents }),
+
+  // Sidebar agent list
+  sidebarAgents: [],
+  setSidebarAgents: (agentsOrFn) =>
+    set((s) => ({
+      sidebarAgents: typeof agentsOrFn === 'function' ? agentsOrFn(s.sidebarAgents) : agentsOrFn,
+    })),
+  sidebarRefreshKey: 0,
+  refreshSidebar: () => set((s) => ({ sidebarRefreshKey: s.sidebarRefreshKey + 1 })),
 }));
 
 // ─── localStorage persistence for conversations ────────────────────────────
