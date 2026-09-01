@@ -562,7 +562,7 @@ export function ChatClient() {
 
     const connect = () => {
       if (unmounted) return;
-      const wsBase = selectedAgent ? getAcpWsUrl() : getApiBaseUrl().replace('http', 'ws');
+      const wsBase = getAcpWsUrl();
       ws = new WebSocket(`${wsBase}/ws/chat?token=${token}`);
       wsRef.current = ws;
       ws.onopen = () => { setWsConnected(true); retryDelay = 1000; };
