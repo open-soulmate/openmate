@@ -312,6 +312,9 @@ async def chat_websocket(websocket: WebSocket):
             if msg_type == "message":
                 text = data.get("text", "").strip()
                 mode = data.get("mode", "hermes")
+                # openmate mode = hermes mode (no agent), just different label
+                if mode == "openmate":
+                    mode = "hermes"
                 session_id = data.get("session_id")
                 agent_id = data.get("agent_id")
                 attachments = data.get("attachments", [])
