@@ -13,6 +13,21 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { useTranslation } from 'react-i18next';
 import { SmartPrompt } from '@/components/smart-prompt';
 
+// Session ownership tracking — maps session_id to agent_id in localStorage
+// SoulMate and hermes agent share the same backend, so we track ownership client-side
+const SESSION_OWNER_KEY = 'openmate_session_owners';
+function getSessionOwners(): Record<string, string> {
+  try { return JSON.parse(localStorage.getItem(SESSION_OWNER_KEY) || '{}'); } catch { return {}; }
+}
+function setSessionOwner(sessionId: string, agentId: string): void {
+  const owners = getSessionOwners();
+  owners[sessionId] = agentId;
+  localStorage.setItem(SESSION_OWNER_KEY, JSON.stringify(owners));
+}
+function getSessionOwner(sessionId: string): string | null {
+  return getSessionOwners()[sessionId] || null;
+}
+
 const getApiUrl = () => getApiBaseUrl();
 const getWsUrl = () => getApiUrl().replace('http', 'ws');
 const getAcpProxyUrl = () => {
@@ -20,14 +35,8 @@ const getAcpProxyUrl = () => {
   // ACP Proxy runs on port 8092, same hostname as OpenSoul
   return base.replace(/:\d+$/, ':8092');
 };
-// SoulMate = OpenMate platform → direct to OpenSoul (8090)
-const getSoulmateWsUrl = () => getWsUrl();
-// hermes agent → ACP Proxy (8092)
-const getAgentWsUrl = () => getAcpProxyUrl().replace('http', 'ws');
-// Dynamic: pick WS URL based on selected agent
-const getWsUrlForAgent = (agentId: string | null) => {
-  return agentId === 'soulmate' || !agentId ? getSoulmateWsUrl() : getAgentWsUrl();
-};
+// All agents (SoulMate included) go through ACP Proxy (8092)
+const getAcpWsUrl = () => getAcpProxyUrl().replace('http', 'ws');
 
 interface MessagePart { type: string; text?: string; data?: string; name?: string; mime_type?: string; url?: string; }
 interface TokenUsage { input: number; output: number; }
@@ -196,6 +205,7 @@ export function ChatClient() {
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const selectedSessionRef = useRef<Session | null>(null);
+  const selectedAgentRef = useRef<AgentInfo | null>(null);
 
   // Auto-resize textarea on input
   const autoResizeTextarea = useCallback(() => {
@@ -442,7 +452,7 @@ export function ChatClient() {
 
     const connect = () => {
       if (unmounted) return;
-      const wsBase = getWsUrlForAgent(selectedAgent?.id || null);
+      const wsBase = getAcpWsUrl();
       ws = new WebSocket(`${wsBase}/ws/chat?token=${token}`);
       wsRef.current = ws;
       ws.onopen = () => { setWsConnected(true); retryDelay = 1000; };
@@ -468,6 +478,8 @@ export function ChatClient() {
               // Also update store so activeSessionId is in sync
               useAppStore.getState().setActiveSession(data.session_id, null, { sessionName: '' });
               useAppStore.getState().refreshSidebar();
+              // Tag session ownership for frontend grouping
+              setSessionOwner(data.session_id, selectedAgentRef.current?.id || 'soulmate');
             }
             // Only update messages if we're still in the same session
             if (data.session_id && currentSessionId && data.session_id !== currentSessionId) return;
@@ -510,8 +522,7 @@ export function ChatClient() {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ws) ws.close();
     };
-  // Reconnect WS when selected agent changes (different port: SoulMate=8090, agent=8092)
-  }, [selectedAgent?.id]);
+  }, []);
 
 
   useEffect(() => {
@@ -577,6 +588,7 @@ export function ChatClient() {
     const agent = agents.find(a => a.id === activeAgentIdFromStore);
     if (agent && selectedAgent?.id !== activeAgentIdFromStore) {
       setSelectedAgent(agent);
+      selectedAgentRef.current = agent;
       setSelectedSession(null);
       setMessages([]);
     }
@@ -664,6 +676,7 @@ export function ChatClient() {
     setSelectedSession(session);
     selectedSessionRef.current = session;
     setSelectedAgent(agent);
+    selectedAgentRef.current = agent;
     setDeleteConfirm(null);
     setEditingTitle(false);
     setShowCheckpoints(false); // close checkpoints when switching sessions
