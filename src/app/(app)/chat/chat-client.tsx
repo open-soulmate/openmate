@@ -31,9 +31,8 @@ async function tagSessionAgent(sessionId: string, agentId: string): Promise<void
 }
 
 const getAcpProxyUrl = () => {
-  const base = getApiUrl();
-  // ACP Proxy runs on port 8092, same hostname as OpenSoul
-  return base.replace(/:\\d+$/, ':8092');
+  // ACP Proxy runs on port 8092, same hostname
+  return `http://${window.location.hostname}:8092`;
 };
 // SoulMate → OpenMate内置Agent Engine (port 8787)
 const getBuiltInAgentWsUrl = () => {
