@@ -418,8 +418,9 @@ export function ChatClient() {
     };
 
     // Build agent list from detect API data — only available (installed) agents
+    const SKIP_IDS = new Set(['cron', 'unknown', 'tool', 'subagent']);
     const agentList: AgentInfo[] = detectedAgents
-      .filter(a => a.available)
+      .filter(a => a.available && !SKIP_IDS.has(a.id))
       .map(a => {
         const agentSessions = agentSessionMap[a.id] || [];
         const sourceGroups = buildSourceGroups(agentSessions, a.id);
