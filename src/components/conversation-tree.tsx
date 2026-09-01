@@ -196,8 +196,10 @@ export function ConversationTree({
                     const unread = getUnread(session);
                     const isActive = activeSessionId === session.id;
                     return (
-                      <button key={session.id}
+                      <div key={session.id}
+                        role="button" tabIndex={0}
                         onClick={() => onSelectSession(session, agent)}
+                        onKeyDown={(e) => { if (e.key === 'Enter') onSelectSession(session, agent); }}
                         className={cn(
                           "group w-full text-left pl-8 lg:pl-12 pr-3 py-2.5 lg:py-2 hover:bg-muted/80 active:bg-muted transition-colors cursor-pointer touch-manipulation",
                           isActive && "bg-primary/12 text-primary"
@@ -225,7 +227,7 @@ export function ConversationTree({
                             {session.last_active || session.updated_at}
                           </div>
                         ) : null}
-                      </button>
+                      </div>
                     );
                   })}
                 </div>
@@ -236,8 +238,10 @@ export function ConversationTree({
                 const unread = getUnread(session);
                 const isActive = activeSessionId === session.id;
                 return (
-                  <button key={session.id}
+                  <div key={session.id}
+                    role="button" tabIndex={0}
                     onClick={() => onSelectSession(session, agent)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') onSelectSession(session, agent); }}
                     className={cn(
                       "group w-full text-left pl-8 pr-3 py-2.5 lg:py-2 hover:bg-muted/80 active:bg-muted transition-colors cursor-pointer touch-manipulation",
                       isActive && "bg-primary/12 text-primary"
@@ -265,7 +269,7 @@ export function ConversationTree({
                         {session.last_active || session.updated_at}
                       </div>
                     ) : null}
-                  </button>
+                  </div>
                 );
               })}
               </>
