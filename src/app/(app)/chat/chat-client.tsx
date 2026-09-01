@@ -458,7 +458,7 @@ export function ChatClient() {
       const sourceGroups = buildSourceGroups(hermesSessions, 'hermes');
       agentList.push({
         id: 'hermes',
-        name: 'OpenMate',
+        name: 'SoulMate',
         icon: '🏛️',
         description: 'OpenMate AI Assistant',
         installed: true,
