@@ -20,7 +20,14 @@ const getAcpProxyUrl = () => {
   // ACP Proxy runs on port 8092, same hostname as OpenSoul
   return base.replace(/:\d+$/, ':8092');
 };
-const getAcpWsUrl = () => getAcpProxyUrl().replace('http', 'ws');
+// SoulMate = OpenMate platform → direct to OpenSoul (8090)
+const getSoulmateWsUrl = () => getWsUrl();
+// hermes agent → ACP Proxy (8092)
+const getAgentWsUrl = () => getAcpProxyUrl().replace('http', 'ws');
+// Dynamic: pick WS URL based on selected agent
+const getWsUrlForAgent = (agentId: string | null) => {
+  return agentId === 'soulmate' || !agentId ? getSoulmateWsUrl() : getAgentWsUrl();
+};
 
 interface MessagePart { type: string; text?: string; data?: string; name?: string; mime_type?: string; url?: string; }
 interface TokenUsage { input: number; output: number; }
@@ -323,7 +330,7 @@ export function ChatClient() {
     setLoading(true);
     const wsPayload = {
       type: 'message', text,
-      mode: selectedAgent && selectedAgent.id !== 'soulmate' ? 'agent_proxy' : 'openmate',
+      ...(selectedAgent && selectedAgent.id !== 'soulmate' ? { mode: 'agent_proxy' } : {}),
       session_id: selectedSession?.id,
       ...((selectedAgent && selectedAgent.id !== 'soulmate') ? { agent_id: selectedAgent.id } : {}),
     };
@@ -435,7 +442,7 @@ export function ChatClient() {
 
     const connect = () => {
       if (unmounted) return;
-      const wsBase = getAcpWsUrl();
+      const wsBase = getWsUrlForAgent(selectedAgent?.id || null);
       ws = new WebSocket(`${wsBase}/ws/chat?token=${token}`);
       wsRef.current = ws;
       ws.onopen = () => { setWsConnected(true); retryDelay = 1000; };
@@ -503,7 +510,8 @@ export function ChatClient() {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ws) ws.close();
     };
-  }, []);
+  // Reconnect WS when selected agent changes (different port: SoulMate=8090, agent=8092)
+  }, [selectedAgent?.id]);
 
 
   useEffect(() => {
@@ -588,7 +596,7 @@ export function ChatClient() {
 
     const wsPayload = {
       type: 'message', text: messageText,
-      mode: selectedAgent && selectedAgent.id !== 'soulmate' ? 'agent_proxy' : 'openmate',
+      ...(selectedAgent && selectedAgent.id !== 'soulmate' ? { mode: 'agent_proxy' } : {}),
       session_id: selectedSession?.id,
       ...((selectedAgent && selectedAgent.id !== 'soulmate') ? { agent_id: selectedAgent.id } : {}),
       attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
@@ -962,7 +970,7 @@ export function ChatClient() {
                 const messageText = agentMode === 'plan' ? `[PLAN MODE] ${text}` : text;
                 const wsPayload = {
                   type: 'message', text: messageText,
-                  mode: selectedAgent && selectedAgent.id !== 'soulmate' ? 'agent_proxy' : 'openmate',
+                  ...(selectedAgent && selectedAgent.id !== 'soulmate' ? { mode: 'agent_proxy' } : {}),
                   session_id: selectedSession?.id,
                   ...((selectedAgent && selectedAgent.id !== 'soulmate') ? { agent_id: selectedAgent.id } : {}),
                   attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
