@@ -559,8 +559,10 @@ export function ChatClient() {
             setLoading(false);
             streamingSessionIdRef.current = null;
             // Update selectedSession with new session_id and refresh list
-            if (selectedSessionRef.current && !selectedSessionRef.current.id && data.session_id) {
-              setSelectedSession(prev => prev ? { ...prev, id: data.session_id } : prev);
+            if (data.session_id && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
+              const updated = { id: data.session_id, name: '', platform: 'hermes' } as Session;
+              setSelectedSession(updated);
+              selectedSessionRef.current = updated;
               initAgents();
             }
             // Only update messages if we're still in the same session
