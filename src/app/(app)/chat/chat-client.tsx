@@ -657,6 +657,18 @@ export function ChatClient() {
     }
   }, [agents]);
 
+  // Auto-select agent from URL param ?agent=AGENT_ID (for "new session for agent")
+  useEffect(() => {
+    const agentId = new URLSearchParams(window.location.search).get('agent');
+    if (!agentId || !agents.length) return;
+    // If already have a selected session for this agent, don't override
+    if (selectedSession?.id) return;
+    const agent = agents.find(a => a.id === agentId);
+    if (agent && selectedAgent?.id !== agentId) {
+      setSelectedAgent(agent);
+    }
+  }, [agents, selectedSession]);
+
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || loading) return;
     const text = input.trim();

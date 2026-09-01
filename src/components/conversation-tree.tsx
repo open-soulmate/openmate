@@ -67,7 +67,7 @@ interface ConversationTreeProps {
   onToggleAgent: (agentId: string) => void;
   onToggleSourceGroup: (agentId: string, source: string) => void;
   onSelectSession: (session: Session, agent: AgentInfo) => void;
-  onNewSession?: () => void;
+  onNewSession?: (agentId: string) => void;
   onDeleteSession?: (sessionId: string) => void;
   /** Optional search query — filters agents/sessions when non-empty */
   search?: string;
@@ -131,16 +131,7 @@ export function ConversationTree({
 
   return (
     <div className={cn("flex-1 overflow-y-auto", className)}>
-      {/* New session button */}
-      <div className="px-2 py-1.5">
-        <button
-          onClick={() => onNewSession?.()}
-          className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
-        >
-          <Plus size={13} />
-          {t("sidebar.newChat", "新建会话")}
-        </button>
-      </div>
+
 
       {displayAgents.length === 0 ? (
         <div className="px-4 py-8 text-center">
@@ -169,9 +160,16 @@ export function ConversationTree({
                 return agentUnread > 0 ? (
                   <UnreadBadge count={agentUnread} />
                 ) : (
-                  <span className="text-[10px] text-muted-foreground ml-auto shrink-0">{agent.sessions.length}</span>
+                  <span className="text-[10px] text-muted-foreground shrink-0">{agent.sessions.length}</span>
                 );
               })()}
+              <button
+                onClick={(e) => { e.stopPropagation(); onNewSession?.(agent.id); }}
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-primary/10 text-muted-foreground hover:text-primary transition-all shrink-0"
+                title={t("sidebar.newChat", "新建会话")}
+              >
+                <Plus size={13} />
+              </button>
             </div>
 
             {/* Source groups or flat sessions — mobile: always flat (2-level), desktop: 3-level tree */}
@@ -233,7 +231,8 @@ export function ConversationTree({
                 </div>
               ))
             ) : (
-              agent.expanded && sortSessions(agent.sessions).map(session => {
+              agent.expanded && <>
+              {sortSessions(agent.sessions).map(session => {
                 const unread = getUnread(session);
                 const isActive = activeSessionId === session.id;
                 return (
@@ -268,12 +267,16 @@ export function ConversationTree({
                     ) : null}
                   </button>
                 );
-              })
+              })}
+              </>
             )}
 
             {agent.expanded && agent.sessions.length === 0 && (
-              <div className="pl-8 pr-3 py-2 text-xs text-muted-foreground italic">
-                {t("chat.noSessions")}
+              <div className="pl-8 pr-3 py-1">
+                <div className="py-1 text-xs text-muted-foreground italic">
+                  {t("chat.noSessions")}
+                </div>
+
               </div>
             )}
           </div>
