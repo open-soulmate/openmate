@@ -64,3 +64,39 @@
 | `public/icons/` | PWA图标 |
 | `https-proxy.py` | HTTPS反代脚本 |
 | `certs/` | 自签证书 |
+
+---
+
+## 2026-09-01 — Multi-Agent Session管理架构升级
+
+### 架构决策
+
+**问题**：SoulMate和hermes agent共享同一个后端（ACP Proxy8092），session无法区分归属。
+
+**研究**：分析了AionUi和OpenClaw的多agent架构：
+- AionUi：Built-in Agent + 外部CLI Agent共存，通过ACP协议统一管理
+- OpenClaw：Gateway中心化架构，所有消息通过一个Gateway路由
+
+**方案演进**：
+1. ~~SoulMate直连8090~~ — OpenSoul没有WS chat端点，不可行
+2. ~~localStorage标记归属~~ — 换设备丢失，不是正确方案
+3. **OpenSoul Session标签系统** — 后端存储，跨设备同步，正确方案
+
+### 最终架构
+
+| Agent | 端口 | session标识 | 路由方式 |
+|-------|------|------------|---------|
+| SoulMate | 8092（ACP Proxy） | tag: `agent:soulmate` | OpenSoul内置LLM |
+| hermes | 8092（ACP Proxy） | tag: `agent:hermes` | hermes CLI进程 |
+| hugo/mimo等 | 8092（ACP Proxy） | tag: `agent:{id}` | ACP agent_proxy |
+
+### 技术实现
+
+- Session创建时调用`POST /api/sessions/{id}/tags`打标签
+- Sidebar构建时调用`GET /api/sessions/tags/all`获取所有标签做分组
+- 不需要localStorage，一切后端驱动
+
+### 参考资料
+
+- [AionUi Multi-Agent Mode](https://github.com/iOfficeAI/AionUi/wiki/ACP-Setup)
+- [OpenClaw Gateway Architecture](https://openclaw.ai/docs/latest/concepts/gateway/)
