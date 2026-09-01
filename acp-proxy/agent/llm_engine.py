@@ -83,29 +83,36 @@ class LLMEngine:
             "max_tokens": 4096,
         }
         try:
-            async with client.stream(
-                "POST", "/chat/completions", json=payload
-            ) as response:
+            req = client.build_request("POST", "/chat/completions", json=payload)
+            response = await client.send(req, stream=True)
+            try:
                 if response.status_code != 200:
                     body = await response.aread()
                     raise RuntimeError(f"LLM API error {response.status_code}: {body.decode()[:200]}")
-                async for line in response.aiter_lines():
+                buffer = ""
+                async for chunk in response.aiter_bytes():
                     if cancel_event and cancel_event.is_set():
                         logger.info("LLM stream cancelled by event")
                         return
-                    if not line.startswith("data: "):
-                        continue
-                    data_str = line[6:].strip()
-                    if data_str == "[DONE]":
-                        return
-                    try:
-                        chunk = json.loads(data_str)
-                        delta = chunk.get("choices", [{}])[0].get("delta", {})
-                        content = delta.get("content", "")
-                        if content:
-                            yield content
-                    except json.JSONDecodeError:
-                        continue
+                    buffer += chunk.decode("utf-8", errors="replace")
+                    while "\n" in buffer:
+                        line, buffer = buffer.split("\n", 1)
+                        line = line.strip()
+                        if not line.startswith("data: "):
+                            continue
+                        data_str = line[6:].strip()
+                        if data_str == "[DONE]":
+                            return
+                        try:
+                            obj = json.loads(data_str)
+                            delta = obj.get("choices", [{}])[0].get("delta", {})
+                            content = delta.get("content", "")
+                            if content:
+                                yield content
+                        except json.JSONDecodeError:
+                            continue
+            finally:
+                await response.aclose()
         except httpx.ReadTimeout:
             logger.warning("LLM stream read timeout")
             yield "\n[LLM响应超时]"

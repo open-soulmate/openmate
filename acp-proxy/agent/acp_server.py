@@ -41,6 +41,7 @@ class Session:
         self.created_at = time.time()         # 创建时间
         self.last_active = time.time()        # 最后活跃时间
         self.ws: Optional[Any] = None         # 绑定的WebSocket连接
+        self.ws_lock = asyncio.Lock()         # WS写入锁（防止并发send冲突）
         self.client_id: str = ""              # 客户端标识
 
     def touch(self):
@@ -215,6 +216,7 @@ class ACPServer:
 
     async def _run_with_timeout(self, session: Session, prompt: str):
         """带超时的Agent任务执行 — 30分钟最大执行时间"""
+        logger.info(f"[{session.id}] Starting agent task")
         try:
             await asyncio.wait_for(
                 self._engine_task(session, prompt),
@@ -226,21 +228,21 @@ class ACPServer:
             await self._notify(session.ws, "session/failed", {
                 "sessionId": session.id,
                 "error": "Task execution timed out (30 min limit)",
-            })
+            }, session=session)
         except asyncio.CancelledError:
             logger.info(f"Task cancelled for session {session.id}")
             session.state = SessionState.COMPLETED
             await self._notify(session.ws, "session/completed", {
                 "sessionId": session.id,
                 "summary": "Task was cancelled by user",
-            })
+            }, session=session)
         except Exception as e:
             logger.error(f"Task error for session {session.id}: {e}", exc_info=True)
             session.state = SessionState.FAILED
             await self._notify(session.ws, "session/failed", {
                 "sessionId": session.id,
                 "error": str(e),
-            })
+            }, session=session)
 
     async def _echo_response(self, session: Session, prompt: str):
         """无引擎时的echo回显 — 用于阶段1测试"""
@@ -304,13 +306,17 @@ class ACPServer:
         except Exception:
             logger.warning(f"Failed to send error to client: {message}")
 
-    async def _notify(self, ws, method: str, params: dict):
+    async def _notify(self, ws, method: str, params: dict, session: Optional[Session] = None):
         """发送ACP通知（无id字段，Agent→Client方向）"""
         if not ws:
             return
         notify = {"jsonrpc": "2.0", "method": method, "params": params}
         try:
-            await ws.send(json.dumps(notify, ensure_ascii=False) + "\n")
+            if session and hasattr(session, 'ws_lock'):
+                async with session.ws_lock:
+                    await ws.send(json.dumps(notify, ensure_ascii=False) + "\n")
+            else:
+                await ws.send(json.dumps(notify, ensure_ascii=False) + "\n")
         except Exception:
             logger.warning(f"Failed to send notification: {method}")
 

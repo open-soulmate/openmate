@@ -56,11 +56,8 @@ class AgentEngine:
         start_time = time.time()
 
         try:
-            # 上下文压缩检查
-            await ctx.compress_if_needed(self.llm_engine)
-
             # 构建LLM消息（注入工作目录信息）
-            workspace_info = f"\n\n当前工作目录: {session.workspace}\n目录文件树:\n{ctx.get_workspace_files()}"
+            workspace_info = f"\n\n当前工作目录: {session.workspace}"
             messages = ctx.get_messages()
             # 给最后一条用户消息追加工作目录信息
             if messages and messages[-1].get("role") == "user":
@@ -70,6 +67,7 @@ class AgentEngine:
                 }]
 
             # 流式调用LLM并转发到客户端
+            logger.info(f"[{session.id}] Starting LLM stream")
             full_response = await self._stream_to_client(session, messages)
 
             # 记录assistant回复
@@ -112,11 +110,11 @@ class AgentEngine:
         async for delta in self.llm_engine.chat_stream(messages, session.cancel_event):
             full_response += delta
             chunk_count += 1
-            # 每个chunk都推送给客户端
+            # 每个chunk都推送给客户端（用session锁防止并发写入）
             await self.acp_server._notify(session.ws, "session/update", {
                 "sessionId": session.id,
                 "contentDelta": delta,
-            })
+            }, session=session)
         logger.debug(f"[{session.id}] Streamed {chunk_count} chunks, {len(full_response)} chars")
         return full_response
 
