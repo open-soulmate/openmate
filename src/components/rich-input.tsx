@@ -45,9 +45,15 @@ export function RichInput({
   useEffect(() => {
     const el = editorRef.current;
     if (!el) return;
+    // When value is cleared (e.g. after send), always update DOM
+    if (!value) {
+      el.innerHTML = '';
+      setIsEmpty(true);
+      return;
+    }
     // Only update if not focused (avoid cursor jump)
     if (document.activeElement !== el) {
-      el.innerHTML = value || '';
+      el.innerHTML = value;
       setIsEmpty(!value);
     }
   }, [value]);
