@@ -24,12 +24,11 @@ from typing import Any
 
 import websockets
 
-from a2a.models import Artifact, Message, TaskState, TextPart
+from a2a.models import Message, TaskState, TextPart
 from a2a.sse_events import (
     A2ACompletedEvent,
     A2AErrorEvent,
     MessageAppendedEvent,
-    NewArtifactEvent,
     TaskStatusChangedEvent,
 )
 from a2a.stream_manager import StreamManager
@@ -38,6 +37,17 @@ from a2a.push_notify import push_task_event, remove_push_config
 from a2a.logger import log_error, log_task_event
 
 logger = logging.getLogger("a2a.bridge")
+
+
+def _ensure_str(value: Any) -> str:
+    """将任意类型安全转换为str，防止list/dict拼接str时TypeError。"""
+    if isinstance(value, str):
+        return value
+    if isinstance(value, list):
+        return "".join(str(item) for item in value)
+    if value is None:
+        return ""
+    return str(value)
 
 # Agent Engine WebSocket地址
 AGENT_ENGINE_WS_URL = "ws://127.0.0.1:8787"
@@ -237,7 +247,7 @@ class AgentEngineBridge:
             "id": msg_id,
             "method": "session/prompt",
             "params": {
-                "prompt": [{"type": "text", "text": user_text}],
+                "prompt": user_text,
                 "sessionId": session_id,
             },
         }
@@ -247,7 +257,6 @@ class AgentEngineBridge:
         # 流式接收并处理事件
         accumulated_text = ""
         chunk_count = 0
-        artifact_index = 0
 
         async for raw_msg in ws:
             try:
@@ -268,83 +277,36 @@ class AgentEngineBridge:
                 err = msg["error"]
                 raise RuntimeError(f"session/prompt错误: {err}")
 
-            # 处理通知事件（无id字段或id=0）
+            # 处理通知事件（无id字段）
             if method == "session/update":
-                update = msg.get("params", {}).get("update", {})
-                session_update = update.get("sessionUpdate", "")
+                # engine发送: params = {sessionId, contentDelta: str}
+                params = msg.get("params", {})
+                delta = params.get("contentDelta", "")
+                if delta:
+                    accumulated_text += delta
+                    chunk_count += 1
 
-                if session_update == "agent_message_chunk":
-                    # 流式文本增量
-                    content = update.get("content", {})
-                    if isinstance(content, dict) and content.get("type") == "text":
-                        delta = content.get("text", "")
-                        if delta:
-                            accumulated_text += delta
-                            chunk_count += 1
-
-                            # 每收到一个chunk就广播MessageAppendedEvent
-                            reply = Message(
-                                role="agent",
-                                parts=[TextPart(text=delta)],
-                            )
-                            msg_event = MessageAppendedEvent(
-                                taskId=task_id,
-                                message=reply,
-                            )
-                            await stream.broadcast(task_id, msg_event)
-                            await push_task_event(
-                                task_id, "messageAppended", msg_event.model_dump()
-                            )
-
-                elif session_update == "agent_message":
-                    # 完整消息（非流式场景）
-                    content = update.get("content", {})
-                    if isinstance(content, dict) and content.get("type") == "text":
-                        text = content.get("text", "")
-                        if text and text != accumulated_text:
-                            delta = text[len(accumulated_text):]
-                            if delta:
-                                accumulated_text = text
-                                reply = Message(
-                                    role="agent",
-                                    parts=[TextPart(text=delta)],
-                                )
-                                msg_event = MessageAppendedEvent(
-                                    taskId=task_id,
-                                    message=reply,
-                                )
-                                await stream.broadcast(task_id, msg_event)
-
-                elif session_update == "artifact":
-                    # Artifact产出
-                    artifact_data = update.get("artifact", {})
-                    parts = []
-                    art_content = artifact_data.get("content", "")
-                    if art_content:
-                        parts.append(TextPart(text=str(art_content)))
-
-                    artifact = Artifact(
-                        artifactId=f"{task_id}-art-{artifact_index}",
-                        name=artifact_data.get("name", f"artifact-{artifact_index}"),
-                        description=artifact_data.get("description", "Agent产出"),
-                        parts=parts or [TextPart(text="(空)")],
+                    reply = Message(
+                        role="agent",
+                        parts=[TextPart(text=delta)],
                     )
-                    await store.add_artifact(task_id, artifact)
-                    art_event = NewArtifactEvent(
+                    msg_event = MessageAppendedEvent(
                         taskId=task_id,
-                        artifact=artifact,
+                        message=reply,
                     )
-                    await stream.broadcast(task_id, art_event)
-                    await push_task_event(task_id, "newArtifact", art_event.model_dump())
-                    artifact_index += 1
+                    await stream.broadcast(task_id, msg_event)
+                    await push_task_event(
+                        task_id, "messageAppended", msg_event.model_dump()
+                    )
 
             elif method == "session/completed":
-                # 任务完成
+                # engine发送: params = {sessionId, summary, elapsedSeconds}
+                params = msg.get("params", {})
+                summary = params.get("summary", "")
                 logger.info(
                     f"[{task_id}] Agent Engine任务完成, "
                     f"chunks={chunk_count}, text_len={len(accumulated_text)}"
                 )
-                # 将完整回复存入store
                 if accumulated_text:
                     full_reply = Message(
                         role="agent",
@@ -354,9 +316,9 @@ class AgentEngineBridge:
                 return
 
             elif method == "session/failed":
-                # 任务失败
-                error_params = msg.get("params", {})
-                error_msg = error_params.get("error", "Agent Engine任务失败")
+                # engine发送: params = {sessionId, error: str}
+                params = msg.get("params", {})
+                error_msg = params.get("error", "Agent Engine任务失败")
                 logger.error(f"[{task_id}] Agent Engine任务失败: {error_msg}")
                 await store.update_task_status(task_id, TaskState.FAILED)
                 error_event = A2AErrorEvent(

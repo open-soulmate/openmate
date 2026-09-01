@@ -96,32 +96,31 @@ def _success_response(request_id: Any, result: Any) -> JSONResponse:
 # ---------------------------------------------------------------------------
 
 async def _handle_tasks_send(params: dict[str, Any], request_id: Any) -> JSONResponse:
-    """处理 tasks/send 方法：发送消息给Task。
+    """处理 tasks/send 方法：创建新Task并启动Agent任务。
 
     params:
-        taskId: str - Task ID
-        message: Message - 要发送的消息
+        sessionId: str (可选)
+        message: Message - 初始消息
         metadata: dict (可选)
     """
-    task_id = params.get("taskId")
     message_data = params.get("message")
-
-    if not task_id:
-        return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 taskId 参数")
     if not message_data:
         return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 message 参数")
 
-    store = get_task_store()
-    task = await store.get_task(task_id)
-    if not task:
-        return _error_response(request_id, A2A_TASK_NOT_FOUND, f"Task不存在: {task_id}")
-
-    # 追加消息到history
+    session_id = params.get("sessionId")
+    metadata = params.get("metadata")
     msg = Message(**message_data)
-    await store.add_message(task_id, msg)
 
-    # 重新获取完整Task
-    task = await store.get_task(task_id)
+    store = get_task_store()
+    task = await store.create_task(
+        session_id=session_id,
+        initial_message=msg,
+        metadata=metadata,
+    )
+
+    # 启动后台Agent任务
+    asyncio.create_task(_agent_task_worker(task.id, msg))
+
     return _success_response(request_id, task.model_dump(exclude_none=True))
 
 
