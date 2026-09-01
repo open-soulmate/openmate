@@ -427,7 +427,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           onNewSession={(agentId) => {
                             // Clear current session so chat creates a new one, set agent context
                             useAppStore.getState().setActiveSession(null, agentId);
-                            router.push(`/chat?agent=${agentId}`);
+                            // Hard nav so chat-client re-mounts and picks up new agent param
+                            window.location.href = `/chat?agent=${agentId}`;
                           }}
                           onDeleteSession={async (sessionId) => {
                             if (!confirm(t('chat.deleteSessionConfirm', '确定删除此会话？'))) return;

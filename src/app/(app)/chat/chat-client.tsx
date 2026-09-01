@@ -659,15 +659,22 @@ export function ChatClient() {
 
   // Auto-select agent from URL param ?agent=AGENT_ID (for "new session for agent")
   useEffect(() => {
-    const agentId = new URLSearchParams(window.location.search).get('agent');
-    if (!agentId || !agents.length) return;
-    // If already have a selected session for this agent, don't override
-    if (selectedSession?.id) return;
-    const agent = agents.find(a => a.id === agentId);
-    if (agent && selectedAgent?.id !== agentId) {
-      setSelectedAgent(agent);
-    }
-  }, [agents, selectedSession]);
+    const checkAgent = () => {
+      const agentId = new URLSearchParams(window.location.search).get('agent');
+      if (!agentId || !agents.length) return;
+      const agent = agents.find(a => a.id === agentId);
+      if (agent && selectedAgent?.id !== agentId) {
+        // Switch to this agent: clear session/messages for fresh start
+        setSelectedAgent(agent);
+        setSelectedSession(null);
+        setMessages([]);
+      }
+    };
+    checkAgent();
+    // Listen for popstate (browser back/forward) 
+    window.addEventListener('popstate', checkAgent);
+    return () => window.removeEventListener('popstate', checkAgent);
+  }, [agents, selectedAgent]);
 
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || loading) return;
