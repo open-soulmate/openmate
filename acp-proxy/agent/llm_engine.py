@@ -107,10 +107,17 @@ class LLMEngine:
                                 return
                             try:
                                 obj = json.loads(data_str)
-                                delta = obj.get("choices", [{}])[0].get("delta", {})
-                                content = delta.get("content", "")
+                                choices = obj.get("choices", [])
+                                if not choices:
+                                    continue
+                                delta = choices[0].get("delta", {})
+                                if delta.get("reasoning_content"):
+                                    continue
+                                content = delta.get("content")
                                 if content:
                                     yield content
+                                if choices[0].get("finish_reason") == "stop":
+                                    return
                             except json.JSONDecodeError:
                                 continue
                 finally:
@@ -187,17 +194,20 @@ class LLMEngine:
                                 return
                             try:
                                 obj = json.loads(data_str)
-                                delta = obj.get("choices", [{}])[0].get("delta", {})
-                                # 提取文本delta
-                                content = delta.get("content", "")
+                                choices = obj.get("choices", [])
+                                if not choices:
+                                    continue
+                                choice = choices[0]
+                                delta = choice.get("delta", {})
+                                if delta.get("reasoning_content"):
+                                    continue
+                                content = delta.get("content")
                                 if content:
                                     yield content
-                                # 提取tool_calls增量
-                                tool_calls_delta = delta.get("tool_calls", [])
+                                tool_calls_delta = delta.get("tool_calls") or []
                                 for tc_delta in tool_calls_delta:
                                     idx = tc_delta.get("index", 0)
                                     if idx not in accumulated_tool_calls:
-                                        # 初始化新的tool_call槽位
                                         accumulated_tool_calls[idx] = {
                                             "id": tc_delta.get("id", ""),
                                             "type": tc_delta.get("type", "function"),
@@ -206,16 +216,20 @@ class LLMEngine:
                                                 "arguments": "",
                                             },
                                         }
-                                    # 累积id（首个chunk才有）
                                     if tc_delta.get("id"):
                                         accumulated_tool_calls[idx]["id"] = tc_delta["id"]
-                                    # 累积function name（首个chunk才有）
                                     func_delta = tc_delta.get("function", {})
                                     if func_delta.get("name"):
                                         accumulated_tool_calls[idx]["function"]["name"] += func_delta["name"]
-                                    # 累积arguments增量（跨多个chunk拼接）
                                     if func_delta.get("arguments"):
                                         accumulated_tool_calls[idx]["function"]["arguments"] += func_delta["arguments"]
+                                if choice.get("finish_reason") == "stop":
+                                    if accumulated_tool_calls:
+                                        yield {"tool_calls": [
+                                            accumulated_tool_calls[i]
+                                            for i in sorted(accumulated_tool_calls.keys())
+                                        ]}
+                                    return
                             except json.JSONDecodeError:
                                 continue
                 finally:
