@@ -439,7 +439,7 @@ export function ChatClient() {
       });
 
     // Add unknown platform sessions (agents not in detect API)
-    const SKIP_AGENTS = new Set(['cron', 'unknown', 'tool', 'subagent']);
+    const SKIP_AGENTS = new Set(['cron', 'unknown', 'tool', 'subagent', 'hermes']);
     for (const [key, val] of Object.entries(agentSessionMap)) {
       if (SKIP_AGENTS.has(key)) continue;
       if (!agentList.find(a => a.id === key) && val.length > 0) {
@@ -450,6 +450,23 @@ export function ChatClient() {
           sourceGroups,
         });
       }
+    }
+
+    // Ensure hermes (OpenMate) is always in the list — it's the default agent
+    if (!agentList.find(a => a.id === 'hermes')) {
+      const hermesSessions = agentSessionMap['hermes'] || [];
+      const sourceGroups = buildSourceGroups(hermesSessions, 'hermes');
+      agentList.push({
+        id: 'hermes',
+        name: 'OpenMate',
+        icon: '🏛️',
+        description: 'OpenMate AI Assistant',
+        installed: true,
+        available: true,
+        sessions: hermesSessions,
+        expanded: false,
+        sourceGroups,
+      });
     }
 
     // Sort: hermes (OpenMate) always first, then others by session count
