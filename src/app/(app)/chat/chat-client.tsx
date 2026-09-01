@@ -392,8 +392,8 @@ export function ChatClient() {
       const src = s.platform || s.source || '';
       if (src === 'cron') continue;
       // hermes sub-sources (cli/weixin/acp/tui/tool/subagent) all belong to hermes agent
-      const HERMES_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui', 'tool', 'subagent']);
-      const agentKey = HERMES_SOURCES.has(src) ? 'hermes' : (s.platform || 'hermes');
+      const PLATFORM_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui']);
+      const agentKey = PLATFORM_SOURCES.has(src) ? 'soulmate' : (s.platform || s.source || 'unknown');
       if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
       agentSessionMap[agentKey].push(s);
     }
@@ -418,21 +418,23 @@ export function ChatClient() {
     };
 
     // Build agent list from detect API data — only available (installed) agents
-    const SKIP_IDS = new Set(['cron', 'unknown', 'tool', 'subagent']);
+    const SKIP_IDS = new Set(['cron', 'unknown', 'tool', 'subagent', 'soulmate']);
     const agentMap = new Map<string, AgentInfo>();
 
     // 1. SoulMate (hermes) always first — no detection needed
-    const hermesSessions = agentSessionMap['hermes'] || [];
-    agentMap.set('hermes', {
-      id: 'hermes',
+    const soulmateSessions = agentSessionMap['soulmate'] || [];
+    console.log('[soulmate] hermes sessions count:', hermesSessions.length);
+    console.log('[soulmate] all session sources:', sessions.map(s => s.platform || s.source).slice(0, 5));
+    agentMap.set('soulmate', {
+      id: 'soulmate',
       name: 'SoulMate',
       icon: '🏛️',
-      description: 'OpenMate AI Assistant',
+      description: 'OpenMate Platform',
       installed: true,
       available: true,
-      sessions: hermesSessions,
+      sessions: soulmateSessions,
       expanded: false,
-      sourceGroups: buildSourceGroups(hermesSessions, 'hermes'),
+      sourceGroups: buildSourceGroups(soulmateSessions, 'soulmate'),
     });
 
     // 2. Add agents that have sessions (user has interacted with them)
@@ -458,8 +460,8 @@ export function ChatClient() {
 
     // Sort: hermes (OpenMate) always first, then others by session count
     agentList.sort((a, b) => {
-      if (a.id === 'hermes') return -1;
-      if (b.id === 'hermes') return 1;
+      if (a.id === 'soulmate') return -1;
+      if (b.id === 'soulmate') return 1;
       return b.sessions.length - a.sessions.length;
     });
 
@@ -484,7 +486,7 @@ export function ChatClient() {
 
     // Default: auto-select hermes as active agent on first load
     if (!selectedAgent) {
-      const hermes = agentList.find(a => a.id === 'hermes');
+      const hermes = agentList.find(a => a.id === 'soulmate');
       if (hermes) setSelectedAgent(hermes);
     }
   }, []);
