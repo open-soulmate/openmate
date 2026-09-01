@@ -36,6 +36,15 @@ from a2a.models import (
 from a2a.task_store import TaskStore
 from a2a.agent_card import get_agent_card, list_agent_cards, AGENT_CARD_REGISTRY
 from a2a.client import A2AClient
+from a2a.sse_events import (
+    TaskStatusChangedEvent,
+    MessageAppendedEvent,
+    NewArtifactEvent,
+    A2ACompletedEvent,
+    A2AErrorEvent,
+    SSEEvent,
+)
+from a2a.stream_manager import StreamManager, get_stream_manager
 
 __all__ = [
     # 状态枚举

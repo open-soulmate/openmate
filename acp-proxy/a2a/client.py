@@ -6,8 +6,9 @@
 
 from __future__ import annotations
 
+import json
 import logging
-from typing import Any, Optional
+from typing import Any, AsyncGenerator, Optional
 
 import httpx
 
@@ -18,6 +19,7 @@ from a2a.models import (
     Message,
     Task,
 )
+from a2a.sse_events import SSEEvent
 
 logger = logging.getLogger("a2a.client")
 
@@ -167,6 +169,60 @@ class A2AClient:
 
         result = await self._call("tasks/transition", params)
         return Task(**result)
+
+    async def tasks_send_subscribe(
+        self,
+        task_id: Optional[str] = None,
+        message: Optional[Message] = None,
+        session_id: Optional[str] = None,
+        metadata: Optional[dict] = None,
+    ) -> AsyncGenerator[dict[str, Any], None]:
+        """tasks/sendSubscribe 流式订阅。
+
+        发送消息并订阅SSE事件流，逐步接收状态变更、消息追加、Artifact等事件。
+
+        Args:
+            task_id: 可选的Task ID（不传则创建新Task）
+            message: 要发送的消息
+            session_id: 可选的会话ID
+            metadata: 可选的元数据
+
+        Yields:
+            dict: SSE事件数据（JSON解析后的字典）
+        """
+        params: dict[str, Any] = {}
+        if task_id:
+            params["taskId"] = task_id
+        if message:
+            params["message"] = message.model_dump(exclude_none=True)
+        if session_id:
+            params["sessionId"] = session_id
+        if metadata:
+            params["metadata"] = metadata
+
+        req = JSONRPCRequest(
+            id=self._next_id(),
+            method="tasks/sendSubscribe",
+            params=params,
+        )
+
+        async with httpx.AsyncClient(timeout=None) as client:
+            async with client.stream(
+                "POST",
+                self._base_url,
+                json=req.model_dump(exclude_none=True),
+                headers={"Content-Type": "application/json", "Accept": "text/event-stream"},
+            ) as resp:
+                resp.raise_for_status()
+                async for line in resp.aiter_lines():
+                    line = line.strip()
+                    if line.startswith("data:"):
+                        data_str = line[len("data:"):].strip()
+                        if data_str:
+                            try:
+                                yield json.loads(data_str)
+                            except json.JSONDecodeError:
+                                logger.warning(f"SSE data解析失败: {data_str}")
 
 
 class A2ARPCError(Exception):

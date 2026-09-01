@@ -8,17 +8,21 @@
 
 from __future__ import annotations
 
+import asyncio
+import json
 import logging
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
+from sse_starlette.sse import EventSourceResponse
 
 from a2a.models import (
     A2A_INVALID_TASK_STATE,
     A2A_TASK_NOT_CANCELABLE,
     A2A_TASK_NOT_FOUND,
     A2A_UNSUPPORTED_OPERATION,
+    Artifact,
     JSONRPC_INVALID_PARAMS,
     JSONRPC_INVALID_REQUEST,
     JSONRPC_METHOD_NOT_FOUND,
@@ -30,6 +34,14 @@ from a2a.models import (
     TaskState,
     TextPart,
 )
+from a2a.sse_events import (
+    A2ACompletedEvent,
+    A2AErrorEvent,
+    MessageAppendedEvent,
+    NewArtifactEvent,
+    TaskStatusChangedEvent,
+)
+from a2a.stream_manager import get_stream_manager
 from a2a.task_store import TaskStore
 from a2a.agent_card import get_agent_card, list_agent_cards
 
@@ -178,6 +190,136 @@ async def _handle_tasks_create(params: dict[str, Any], request_id: Any) -> JSONR
     return _success_response(request_id, task.model_dump(exclude_none=True))
 
 
+async def _agent_task_worker(task_id: str, message: Message | None) -> None:
+    """后台Agent任务执行worker。
+
+    模拟Agent处理流程，通过stream_manager广播SSE事件。
+    实际项目中应替换为真正的Agent调用逻辑。
+    """
+    store = get_task_store()
+    stream = get_stream_manager()
+
+    try:
+        # 状态变更: SUBMITTED → WORKING
+        task = await store.update_task_status(task_id, TaskState.WORKING)
+        await stream.broadcast(task_id, TaskStatusChangedEvent(
+            taskId=task_id,
+            state=TaskState.WORKING,
+            timestamp=task.status.timestamp,
+        ))
+
+        # 模拟Agent处理（实际项目中替换为真实Agent调用）
+        # 追加Agent回复消息
+        reply = Message(
+            role="agent",
+            parts=[TextPart(text=f"已收到您的消息，正在处理中...")],
+        )
+        await store.add_message(task_id, reply)
+        await stream.broadcast(task_id, MessageAppendedEvent(
+            taskId=task_id,
+            message=reply,
+        ))
+
+        # 模拟产出Artifact
+        artifact = Artifact(
+            artifactId=f"{task_id}-art-0",
+            name="response",
+            description="Agent响应结果",
+            parts=[TextPart(text="处理完成")],
+        )
+        await store.add_artifact(task_id, artifact)
+        await stream.broadcast(task_id, NewArtifactEvent(
+            taskId=task_id,
+            artifact=artifact,
+        ))
+
+        # 状态变更: WORKING → COMPLETED
+        task = await store.update_task_status(task_id, TaskState.COMPLETED)
+        await stream.broadcast(task_id, A2ACompletedEvent(
+            taskId=task_id,
+            task=task,
+        ))
+
+    except Exception as e:
+        logger.exception(f"Agent任务执行异常: task_id={task_id}")
+        try:
+            await store.update_task_status(task_id, TaskState.FAILED)
+        except Exception:
+            pass
+        await stream.broadcast(task_id, A2AErrorEvent(
+            taskId=task_id,
+            code=-32603,
+            message=str(e),
+        ))
+    finally:
+        await stream.close(task_id)
+
+
+async def _handle_tasks_send_subscribe(params: dict[str, Any], request_id: Any) -> EventSourceResponse:
+    """处理 tasks/sendSubscribe 方法：SSE流式订阅。
+
+    创建Task后启动后台Agent任务，返回SSE事件流。
+    客户端通过SSE接收状态变更、消息追加、Artifact产出等事件。
+    """
+    task_id = params.get("taskId")
+    message_data = params.get("message")
+    session_id = params.get("sessionId")
+    metadata = params.get("metadata")
+
+    store = get_task_store()
+    stream = get_stream_manager()
+
+    # 创建或获取Task
+    if task_id:
+        task = await store.get_task(task_id)
+        if not task:
+            # Task不存在，创建新的
+            initial_msg = Message(**message_data) if message_data else None
+            task = await store.create_task(
+                session_id=session_id,
+                initial_message=initial_msg,
+                metadata=metadata,
+            )
+            task_id = task.id
+        else:
+            # Task存在，追加消息
+            if message_data:
+                msg = Message(**message_data)
+                await store.add_message(task_id, msg)
+    else:
+        # 创建新Task
+        initial_msg = Message(**message_data) if message_data else None
+        task = await store.create_task(
+            session_id=session_id,
+            initial_message=initial_msg,
+            metadata=metadata,
+        )
+        task_id = task.id
+
+    # 订阅SSE事件流
+    queue = stream.subscribe(task_id)
+
+    # 启动后台Agent任务
+    msg = Message(**message_data) if message_data else None
+    asyncio.create_task(_agent_task_worker(task_id, msg))
+
+    async def event_generator() -> AsyncGenerator:
+        """SSE事件生成器。"""
+        try:
+            while True:
+                event = await queue.get()
+                if event is None:
+                    break
+                yield {
+                    "event": event.type,
+                    "data": json.dumps(event.model_dump(), ensure_ascii=False),
+                }
+        finally:
+            stream.unsubscribe(task_id, queue)
+
+    return EventSourceResponse(event_generator())
+
+
 async def _handle_tasks_transition(params: dict[str, Any], request_id: Any) -> JSONResponse:
     """处理 tasks/transition 方法：转换Task状态。
 
@@ -219,6 +361,7 @@ _METHOD_HANDLERS: dict[str, Any] = {
     "tasks/cancel": _handle_tasks_cancel,
     "tasks/create": _handle_tasks_create,
     "tasks/transition": _handle_tasks_transition,
+    "tasks/sendSubscribe": _handle_tasks_send_subscribe,
 }
 
 
@@ -227,11 +370,12 @@ _METHOD_HANDLERS: dict[str, Any] = {
 # ---------------------------------------------------------------------------
 
 @router.post("")
-async def jsonrpc_endpoint(request: Request) -> JSONResponse:
+async def jsonrpc_endpoint(request: Request):
     """A2A JSON-RPC 2.0 统一入口。
 
     接收JSON-RPC请求，分发到对应的处理器。
     所有A2A方法通过 method 字段区分。
+    tasks/sendSubscribe 返回 EventSourceResponse（SSE流），其余返回 JSONResponse。
     """
     try:
         body = await request.json()
@@ -262,7 +406,8 @@ async def jsonrpc_endpoint(request: Request) -> JSONResponse:
     logger.info(f"A2A JSON-RPC: method={method}, id={rpc_req.id}")
 
     try:
-        return await handler(params, rpc_req.id)
+        result = await handler(params, rpc_req.id)
+        return result
     except Exception as e:
         logger.exception(f"A2A方法执行异常: {method}")
         return _error_response(rpc_req.id, -32603, f"内部错误: {e}")
