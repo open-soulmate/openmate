@@ -423,8 +423,6 @@ export function ChatClient() {
 
     // 1. SoulMate (hermes) always first — no detection needed
     const soulmateSessions = agentSessionMap['soulmate'] || [];
-    console.log('[soulmate] hermes sessions count:', hermesSessions.length);
-    console.log('[soulmate] all session sources:', sessions.map(s => s.platform || s.source).slice(0, 5));
     agentMap.set('soulmate', {
       id: 'soulmate',
       name: 'SoulMate',
