@@ -449,6 +449,13 @@ export function ChatClient() {
       }
     }
 
+    // Sort: hermes (OpenMate) always first, then others by session count
+    agentList.sort((a, b) => {
+      if (a.id === 'hermes') return -1;
+      if (b.id === 'hermes') return 1;
+      return b.sessions.length - a.sessions.length;
+    });
+
     setAgents(prev => {
       const expandedIds = new Set(prev.filter(a => a.expanded).map(a => a.id));
       const expandedSrcs = new Map();
