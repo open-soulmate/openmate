@@ -393,7 +393,7 @@ export function ChatClient() {
       if (src === 'cron') continue;
       // hermes sub-sources (cli/weixin/acp/tui/tool/subagent) all belong to hermes agent
       const PLATFORM_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui']);
-      const agentKey = PLATFORM_SOURCES.has(src) ? 'soulmate' : (s.platform || s.source || 'unknown');
+      const agentKey = PLATFORM_SOURCES.has(src) ? 'hermes' : (s.platform || s.source || 'unknown');
       if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
       agentSessionMap[agentKey].push(s);
     }
@@ -422,8 +422,6 @@ export function ChatClient() {
     const agentMap = new Map<string, AgentInfo>();
 
     // 1. SoulMate (OpenMate platform) ALWAYS shows first — no detection, no sessions required
-    const soulmateSessions = agentSessionMap['soulmate'] || [];
-    console.log('[debug] soulmateSessions:', soulmateSessions.length, 'agentSessionMap keys:', Object.keys(agentSessionMap));
     agentMap.set('soulmate', {
       id: 'soulmate',
       name: 'SoulMate',
@@ -431,9 +429,9 @@ export function ChatClient() {
       description: 'OpenMate Platform',
       installed: true,
       available: true,
-      sessions: soulmateSessions,
+      sessions: [],
       expanded: false,
-      sourceGroups: buildSourceGroups(soulmateSessions, 'soulmate'),
+      sourceGroups: [],
     });
 
     // 2. Add agents that have sessions (user has interacted with them)
