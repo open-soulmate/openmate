@@ -37,8 +37,7 @@ const getAcpProxyUrl = () => {
 };
 // SoulMate → OpenMate内置Agent Engine (port 8787)
 const getBuiltInAgentWsUrl = () => {
-  const base = getApiUrl();
-  return base.replace(/:\\d+$/, ':8787').replace('http', 'ws');
+  return `ws://${window.location.hostname}:8787`;
 };
 // hermes/其他agent → ACP Proxy (port 8092)
 const getAcpWsUrl = () => getAcpProxyUrl().replace('http', 'ws');
@@ -213,7 +212,9 @@ function useAcpWebSocket(params: {
   const acpSessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
+    window.__wsHookRan = true;
     const token = getToken();
+    window.__wsHookToken = token ? 'has token' : 'NO TOKEN';
     if (!token) return;
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -223,9 +224,12 @@ function useAcpWebSocket(params: {
     const connect = () => {
       if (unmounted) return;
       const wsBase = getWsUrlForAgent(selectedAgent?.id || null);
-      ws = new WebSocket(`${wsBase}/ws/chat?token=${token}`);
+      const wsUrl = `${wsBase}/ws/chat?token=${token}`;
+      window.__wsHookUrl = wsUrl;
+      ws = new WebSocket(wsUrl);
       wsRef.current = ws;
       ws.onopen = () => {
+        window.__wsHookConnected = true;
         setWsConnected(true);
         retryDelay = 1000;
         const isAcp = !selectedAgent?.id || selectedAgent.id === 'soulmate';
