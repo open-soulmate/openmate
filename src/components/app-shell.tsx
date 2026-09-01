@@ -431,7 +431,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           }}
                           onNewSession={(agentId) => {
                             useAppStore.getState().setActiveSession(null, agentId === 'soulmate' ? null : agentId);
-                            router.push('/chat');
+                            router.push('/chat?new=' + Date.now());
                           }}
                           onDeleteSession={async (sessionId) => {
                             if (!confirm(t('chat.deleteSessionConfirm', '确定删除此会话？'))) return;
