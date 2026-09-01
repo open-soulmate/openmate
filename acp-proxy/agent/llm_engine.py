@@ -122,6 +122,111 @@ class LLMEngine:
             logger.error(f"LLM stream error: {e}", exc_info=True)
             yield f"\n[LLM错误: {e}]"
 
+    async def chat_stream_with_tools(
+        self,
+        messages: list[dict],
+        tools: Optional[list[dict]] = None,
+        cancel_event: Optional[asyncio.Event] = None,
+    ) -> AsyncGenerator[str | dict, None]:
+        """流式输出LLM响应 — 支持function calling工具调用
+
+        与chat_stream的区别：解析SSE中的tool_calls增量数据，
+        按index累积arguments字符串，最终yield完整的tool_calls列表。
+
+        Args:
+            messages: 对话历史（不含system提示词，会自动注入）
+            tools: OpenAI function calling格式的工具定义列表
+            cancel_event: 取消信号，设置后停止流式输出
+
+        Yields:
+            str: 普通文本delta片段
+            dict: {"tool_calls": [...]} 完整的工具调用列表（仅在LLM请求调用工具时）
+        """
+        client = self._make_client()
+        payload = {
+            "model": self.model,
+            "messages": self._build_messages(messages),
+            "stream": True,
+            "temperature": 0.7,
+            "max_tokens": 4096,
+        }
+        # 如果提供了工具定义，加入payload
+        if tools:
+            payload["tools"] = tools
+
+        # 按index累积tool_calls的arguments（SSE中arguments是增量拼接的）
+        accumulated_tool_calls: dict[int, dict] = {}  # index → {id, type, function: {name, arguments}}
+
+        try:
+            async with client:
+                req = client.build_request("POST", "/chat/completions", json=payload)
+                response = await client.send(req, stream=True)
+                try:
+                    if response.status_code != 200:
+                        body = await response.aread()
+                        raise RuntimeError(f"LLM API error {response.status_code}: {body.decode()[:200]}")
+                    buffer = ""
+                    async for chunk in response.aiter_bytes():
+                        if cancel_event and cancel_event.is_set():
+                            logger.info("LLM stream cancelled by event")
+                            return
+                        buffer += chunk.decode("utf-8", errors="replace")
+                        while "\n" in buffer:
+                            line, buffer = buffer.split("\n", 1)
+                            line = line.strip()
+                            if not line.startswith("data: "):
+                                continue
+                            data_str = line[6:].strip()
+                            if data_str == "[DONE]":
+                                # 流结束，如果有累积的tool_calls则yield
+                                if accumulated_tool_calls:
+                                    yield {"tool_calls": [
+                                        accumulated_tool_calls[i]
+                                        for i in sorted(accumulated_tool_calls.keys())
+                                    ]}
+                                return
+                            try:
+                                obj = json.loads(data_str)
+                                delta = obj.get("choices", [{}])[0].get("delta", {})
+                                # 提取文本delta
+                                content = delta.get("content", "")
+                                if content:
+                                    yield content
+                                # 提取tool_calls增量
+                                tool_calls_delta = delta.get("tool_calls", [])
+                                for tc_delta in tool_calls_delta:
+                                    idx = tc_delta.get("index", 0)
+                                    if idx not in accumulated_tool_calls:
+                                        # 初始化新的tool_call槽位
+                                        accumulated_tool_calls[idx] = {
+                                            "id": tc_delta.get("id", ""),
+                                            "type": tc_delta.get("type", "function"),
+                                            "function": {
+                                                "name": "",
+                                                "arguments": "",
+                                            },
+                                        }
+                                    # 累积id（首个chunk才有）
+                                    if tc_delta.get("id"):
+                                        accumulated_tool_calls[idx]["id"] = tc_delta["id"]
+                                    # 累积function name（首个chunk才有）
+                                    func_delta = tc_delta.get("function", {})
+                                    if func_delta.get("name"):
+                                        accumulated_tool_calls[idx]["function"]["name"] += func_delta["name"]
+                                    # 累积arguments增量（跨多个chunk拼接）
+                                    if func_delta.get("arguments"):
+                                        accumulated_tool_calls[idx]["function"]["arguments"] += func_delta["arguments"]
+                            except json.JSONDecodeError:
+                                continue
+                finally:
+                    await response.aclose()
+        except httpx.ReadTimeout:
+            logger.warning("LLM stream read timeout")
+            yield "\n[LLM响应超时]"
+        except Exception as e:
+            logger.error(f"LLM stream error: {e}", exc_info=True)
+            yield f"\n[LLM错误: {e}]"
+
     async def chat(self, messages: list[dict]) -> str:
         """非流式完整输出 — 等待完整响应后返回"""
         client = self._make_client()

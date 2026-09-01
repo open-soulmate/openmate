@@ -39,6 +39,19 @@ class SessionContext:
         self.messages.append(msg)
         logger.debug(f"[{self.session_id}] Added {role} message ({len(content)} chars)")
 
+    def add_message_raw(self, msg: dict):
+        """直接添加原始消息字典到历史记录
+
+        用于tool_calls等需要精确控制消息结构的场景，
+        避免add_message的content必填限制。
+
+        Args:
+            msg: 完整的消息字典（role, content, tool_calls等）
+        """
+        self.messages.append(msg)
+        role = msg.get("role", "unknown")
+        logger.debug(f"[{self.session_id}] Added raw {role} message")
+
     def get_messages(self) -> list[dict]:
         """获取完整消息历史"""
         return list(self.messages)
