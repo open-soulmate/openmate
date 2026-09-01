@@ -95,10 +95,14 @@ def decode_token(token: str) -> UUID | None:
     try:
         payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
         user_id = payload.get("sub")
+        logger.info(f"[AUTH] decoded sub={user_id!r} type={type(user_id).__name__}")
         if user_id:
-            return UUID(user_id)
-    except Exception:
-        pass
+            try:
+                return UUID(str(user_id))
+            except ValueError:
+                return UUID(int=int(user_id))
+    except Exception as e:
+        logger.warning(f"[AUTH] decode failed: {e}")
     return None
 
 
