@@ -655,11 +655,16 @@ export function ChatClient() {
 
   useEffect(() => {
     if (!activeSessionIdFromStore) {
-      // New session (e.g. SoulMate +) — clear everything
+      // SoulMate new session: clear session but keep WS alive (don't return early)
+      const isSoulMate = !activeAgentIdFromStore || activeAgentIdFromStore === 'soulmate';
       setSelectedSession(null);
       selectedSessionRef.current = null;
-      setMessages([]);
-      return;
+      if (!isSoulMate) {
+        // Non-SoulMate agent: clear messages and stop here
+        setMessages([]);
+        return;
+      }
+      // SoulMate: don't clear messages, let WS useEffect handle connection
     }
     if (selectedSession?.id === activeSessionIdFromStore) return;
     // Try to find session in local agents list
