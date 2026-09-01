@@ -421,8 +421,9 @@ export function ChatClient() {
     const SKIP_IDS = new Set(['cron', 'unknown', 'tool', 'subagent', 'soulmate']);
     const agentMap = new Map<string, AgentInfo>();
 
-    // 1. SoulMate (hermes) always first — no detection needed
+    // 1. SoulMate (OpenMate platform) ALWAYS shows first — no detection, no sessions required
     const soulmateSessions = agentSessionMap['soulmate'] || [];
+    console.log('[debug] soulmateSessions:', soulmateSessions.length, 'agentSessionMap keys:', Object.keys(agentSessionMap));
     agentMap.set('soulmate', {
       id: 'soulmate',
       name: 'SoulMate',
