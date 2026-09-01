@@ -63,9 +63,16 @@ class AgentEngine:
             messages = ctx.get_messages()
             # 给最后一条用户消息追加工作目录信息
             if messages and messages[-1].get("role") == "user":
+                last_content = messages[-1]["content"]
+                # 兼容str和list两种content格式
+                if isinstance(last_content, list):
+                    # list格式: [{"type":"text","text":"..."}]
+                    last_content = "".join(
+                        p.get("text", "") for p in last_content if isinstance(p, dict)
+                    )
                 messages = messages[:-1] + [{
                     "role": "user",
-                    "content": messages[-1]["content"] + workspace_info,
+                    "content": last_content + workspace_info,
                 }]
 
             # 进入Agent工具调用循环（支持多轮function calling）
