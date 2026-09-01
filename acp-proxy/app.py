@@ -3,7 +3,7 @@
 import logging
 import os
 from contextlib import asynccontextmanager
-from fastapi import FastAPI
+from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from proxy import get_acp_process
 from ws_chat import router as ws_router
@@ -45,7 +45,7 @@ app.include_router(well_known_router)
 
 # ACP JSON-RPC 2.0纯透传端点 — 所有agent统一走此端点
 @app.websocket("/ws/acp")
-async def ws_acp_route(websocket):
+async def ws_acp_route(websocket: WebSocket):
     await ws_acp_endpoint(websocket)
 
 
