@@ -7,6 +7,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from proxy import get_acp_process
 from ws_chat import router as ws_router
+from a2a.server import router as a2a_router, well_known_router
 
 logger = logging.getLogger("acp-proxy.app")
 
@@ -37,6 +38,8 @@ app.add_middleware(
 )
 
 app.include_router(ws_router)
+app.include_router(a2a_router)
+app.include_router(well_known_router)
 
 
 @app.get("/health")
