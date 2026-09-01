@@ -34,16 +34,7 @@ const getAcpProxyUrl = () => {
   // ACP Proxy runs on port 8092, same hostname
   return `http://${window.location.hostname}:8092`;
 };
-// SoulMate → OpenMate内置Agent Engine (port 8787)
-const getBuiltInAgentWsUrl = () => {
-  return `ws://${window.location.hostname}:8787`;
-};
-// hermes/其他agent → ACP Proxy (port 8092)
 const getAcpWsUrl = () => getAcpProxyUrl().replace('http', 'ws');
-// 根据agent选择WS端口
-const getWsUrlForAgent = (agentId: string | null) => {
-  return agentId === 'soulmate' || !agentId ? getBuiltInAgentWsUrl() : getAcpWsUrl();
-};
 
 interface MessagePart { type: string; text?: string; data?: string; name?: string; mime_type?: string; url?: string; }
 interface TokenUsage { input: number; output: number; }
@@ -208,7 +199,6 @@ function useAcpWebSocket(params: {
   const wsRef = useRef<WebSocket | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const streamingSessionIdRef = useRef<string | null>(null);
-  const acpSessionIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     const token = getToken();
@@ -220,18 +210,12 @@ function useAcpWebSocket(params: {
 
     const connect = () => {
       if (unmounted) return;
-      const wsBase = getWsUrlForAgent(selectedAgent?.id || null);
-      const wsUrl = `${wsBase}/ws/chat?token=${token}`;
+      const wsUrl = `${getAcpWsUrl()}/ws/chat?token=${token}`;
       ws = new WebSocket(wsUrl);
       wsRef.current = ws;
       ws.onopen = () => {
         setWsConnected(true);
         retryDelay = 1000;
-        const isAcp = !selectedAgent?.id || selectedAgent.id === 'soulmate';
-        if (isAcp) {
-          acpSessionIdRef.current = null;
-          ws!.send(JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: {} }));
-        }
       };
       ws.onclose = () => {
         setWsConnected(false);
@@ -242,77 +226,6 @@ function useAcpWebSocket(params: {
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
-
-          // ── ACP JSON-RPC 2.0 ──
-          if (data.jsonrpc === "2.0") {
-            if (data.id === 1 && data.result?.protocolVersion) {
-              console.log("[ACP] 初始化成功:", data.result);
-              ws!.send(JSON.stringify({ jsonrpc: "2.0", id: 2, method: "session/new", params: { cwd: "/home/climbing" } }));
-              return;
-            }
-            if (data.id === 2 && data.result?.sessionId) {
-              acpSessionIdRef.current = data.result.sessionId;
-              console.log("[ACP] 会话已创建:", data.result.sessionId);
-              return;
-            }
-            if (data.id && !data.method) return;
-
-            // session/update — 流式文本增量
-            if (data.method === "session/update") {
-              const delta = data.params?.contentDelta || data.params?.content || "";
-              if (!delta) return;
-              const currentSessionId = selectedSessionRef.current?.id;
-              if (streamingSessionIdRef.current && currentSessionId && streamingSessionIdRef.current !== currentSessionId) return;
-              setMessages(prev => {
-                const last = prev[prev.length - 1];
-                if (last?.role === 'agent' && last?.source === 'streaming') {
-                  return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + delta }] }];
-                }
-                return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: delta }], timestamp: new Date(), source: 'streaming' }];
-              });
-              return;
-            }
-            // session/completed
-            if (data.method === "session/completed") {
-              const currentSessionId = selectedSessionRef.current?.id;
-              const completedSessionId = data.params?.sessionId;
-              setLoading(false);
-              streamingSessionIdRef.current = null;
-              if (completedSessionId && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
-                const updated = { id: completedSessionId, name: '', platform: 'soulmate' } as Session;
-                setSelectedSession(updated);
-                selectedSessionRef.current = updated;
-                useAppStore.getState().setActiveSession(completedSessionId, null, { sessionName: '' });
-                useAppStore.getState().refreshSidebar();
-                tagSessionAgent(completedSessionId, selectedAgentRef.current?.id || 'soulmate');
-              }
-              if (completedSessionId && currentSessionId && completedSessionId !== currentSessionId) return;
-              setMessages(prev => {
-                const last = prev[prev.length - 1];
-                if (last?.role === 'agent' && last?.source === 'streaming') {
-                  const content = last.parts[0]?.text || '';
-                  const fileChanges = parseFileChanges(content);
-                  const tokenUsage = simulateTokenUsage(content);
-                  return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
-                }
-                return prev;
-              });
-              return;
-            }
-            // session/failed
-            if (data.method === "session/failed") {
-              setLoading(false);
-              streamingSessionIdRef.current = null;
-              setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${data.params?.error || "Unknown error"}` }], timestamp: new Date() }]);
-              return;
-            }
-            // session/request_permission
-            if (data.method === "session/request_permission") {
-              console.warn("[ACP] 权限请求:", data.params);
-              return;
-            }
-            return;
-          }
 
           // ── Legacy JSON protocol ──
           const currentSessionId = selectedSessionRef.current?.id;
@@ -371,7 +284,7 @@ function useAcpWebSocket(params: {
     };
   }, [selectedAgent?.id ?? activeAgentIdFromStore]);
 
-  return { wsRef, wsConnected, acpSessionIdRef, streamingSessionIdRef };
+  return { wsRef, wsConnected, streamingSessionIdRef };
 }
 
 export function ChatClient() {
@@ -409,7 +322,7 @@ export function ChatClient() {
   const selectedSessionRef = useRef<Session | null>(null);
   const selectedAgentRef = useRef<AgentInfo | null>(null);
   const activeAgentIdFromStore = useAppStore((s) => s.activeAgentId);
-  const { wsRef, wsConnected, acpSessionIdRef, streamingSessionIdRef } = useAcpWebSocket({
+  const { wsRef, wsConnected, streamingSessionIdRef } = useAcpWebSocket({
     selectedAgent, selectedSession, selectedAgentRef, selectedSessionRef,
     t, setMessages, setLoading, setSelectedSession, activeAgentIdFromStore,
   });
@@ -530,30 +443,14 @@ export function ChatClient() {
     // Re-send via websocket
     const text = getMessageText(userMsg);
     setLoading(true);
-    // 判断是否为ACP模式 (内置Agent Engine)
-    const isAcp = !selectedAgent?.id || selectedAgent.id === 'soulmate';
-    if (isAcp) {
-      // ACP模式: 使用JSON-RPC 2.0协议重新发送
-      const acpPayload = {
-        jsonrpc: "2.0",
-        id: Date.now(),
-        method: "session/prompt",
-        params: { sessionId: acpSessionIdRef.current || "", prompt: text }
-      };
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify(acpPayload));
-      }
-    } else {
-      // 原有简单JSON协议 (hermes/ACP proxy)
-      const wsPayload = {
-        type: 'message', text,
-        mode: 'agent_proxy',
-        session_id: selectedSession?.id,
-        agent_id: selectedAgent!.id,
-      };
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify(wsPayload));
-      }
+    const wsPayload = {
+      type: 'message', text,
+      mode: 'agent_proxy',
+      session_id: selectedSession?.id,
+      agent_id: selectedAgent?.id || 'soulmate',
+    };
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(wsPayload));
     }
   }, [messages, selectedSession, selectedAgent, getMessageText]);
 
@@ -736,35 +633,17 @@ export function ChatClient() {
     // Add mode prefix for plan mode
     const messageText = agentMode === 'plan' ? `[PLAN MODE] ${text}` : text;
 
-    // 判断是否为ACP模式 (内置Agent Engine)
-    const isAcp = !selectedAgent?.id || selectedAgent.id === 'soulmate';
-
-    if (isAcp) {
-      // ACP模式: 使用JSON-RPC 2.0协议发送
-      const acpPayload = {
-        jsonrpc: "2.0",
-        id: Date.now(),
-        method: "session/prompt",
-        params: { sessionId: acpSessionIdRef.current || "", prompt: messageText }
-      };
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify(acpPayload));
-        return;
-      }
-    } else {
-      // 原有简单JSON协议 (hermes/ACP proxy)
-      const wsPayload = {
-        type: 'message', text: messageText,
-        mode: 'agent_proxy',
-        session_id: selectedSession?.id,
-        agent_id: selectedAgent.id,
-        attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
-      };
-      streamingSessionIdRef.current = selectedSession?.id || null;
-      if (wsRef.current?.readyState === WebSocket.OPEN) {
-        wsRef.current.send(JSON.stringify(wsPayload));
-        return;
-      }
+    const wsPayload = {
+      type: 'message', text: messageText,
+      mode: 'agent_proxy',
+      session_id: selectedSession?.id,
+      agent_id: selectedAgent?.id || 'soulmate',
+      attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
+    };
+    streamingSessionIdRef.current = selectedSession?.id || null;
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify(wsPayload));
+      return;
     }
     // Wait for WS reconnection instead of falling through to broken HTTP fallback
     if (wsRef.current?.readyState !== WebSocket.OPEN) {
@@ -773,12 +652,7 @@ export function ChatClient() {
         waited += 500;
         if (wsRef.current?.readyState === WebSocket.OPEN) {
           clearInterval(waitConnect);
-          // 重连后根据模式重新发送
-          if (isAcp) {
-            wsRef.current.send(JSON.stringify({ jsonrpc: "2.0", id: Date.now(), method: "session/prompt", params: { sessionId: acpSessionIdRef.current || "", prompt: messageText } }));
-          } else {
-            wsRef.current.send(JSON.stringify({ type: 'message', text: messageText, mode: 'agent_proxy', session_id: selectedSession?.id, agent_id: selectedAgent?.id, attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })) }));
-          }
+          wsRef.current.send(JSON.stringify({ type: 'message', text: messageText, mode: 'agent_proxy', session_id: selectedSession?.id, agent_id: selectedAgent?.id || 'soulmate', attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })) }));
         } else if (waited >= 10000) {
           clearInterval(waitConnect);
           setLoading(false);
@@ -1133,32 +1007,16 @@ export function ChatClient() {
                 setMessages(prev => [...prev, userMsg]);
                 setAttachments([]); setLoading(true);
                 const messageText = agentMode === 'plan' ? `[PLAN MODE] ${text}` : text;
-                // 判断是否为ACP模式 (内置Agent Engine)
-                const isAcp = !selectedAgent?.id || selectedAgent.id === 'soulmate';
-                if (isAcp) {
-                  // ACP模式: 使用JSON-RPC 2.0协议发送
-                  const acpPayload = {
-                    jsonrpc: "2.0",
-                    id: Date.now(),
-                    method: "session/prompt",
-                    params: { sessionId: acpSessionIdRef.current || "", prompt: messageText }
-                  };
-                  if (wsRef.current?.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(JSON.stringify(acpPayload));
-                  }
-                } else {
-                  // 原有简单JSON协议 (hermes/ACP proxy)
-                  const wsPayload = {
-                    type: 'message', text: messageText,
-                    mode: 'agent_proxy',
-                    session_id: selectedSession?.id,
-                    agent_id: selectedAgent!.id,
-                    attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
-                  };
-                  streamingSessionIdRef.current = selectedSession?.id || null;
-                  if (wsRef.current?.readyState === WebSocket.OPEN) {
-                    wsRef.current.send(JSON.stringify(wsPayload));
-                  }
+                const wsPayload = {
+                  type: 'message', text: messageText,
+                  mode: 'agent_proxy',
+                  session_id: selectedSession?.id,
+                  agent_id: selectedAgent?.id || 'soulmate',
+                  attachments: attachments.map(a => ({ type: a.type, data: a.data, name: a.name, mime_type: a.mime_type })),
+                };
+                streamingSessionIdRef.current = selectedSession?.id || null;
+                if (wsRef.current?.readyState === WebSocket.OPEN) {
+                  wsRef.current.send(JSON.stringify(wsPayload));
                 }
               }}
               isLoading={loading}

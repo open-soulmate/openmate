@@ -8,6 +8,7 @@ Key improvements:
 """
 
 import asyncio
+import json
 import logging
 import os
 import shutil
@@ -17,6 +18,7 @@ from uuid import UUID
 
 import jwt
 import httpx
+import websockets
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from proxy import get_acp_process
@@ -204,6 +206,133 @@ async def run_agent_proxy(agent_id: str, text: str) -> tuple[str, str, bool]:
         return f"Agent执行出错: {type(e).__name__}", "error", False
 
 
+async def forward_to_agent_engine(
+    client_ws: WebSocket,
+    text: str,
+    session_id: str | None = None,
+    attachments: list[dict] | None = None,
+) -> tuple[str, str, bool]:
+    """通过WebSocket连接Agent Engine(8787)做协议桥接，用于soulmate模式。
+
+    ACP JSON-RPC 2.0 over NDJSON协议流程：
+    1. initialize握手
+    2. session/new (或复用已有session)
+    3. session/prompt提交用户消息
+    4. 流式接收session/update(contentDelta) → 转发chunk给前端
+    5. session/completed / session/failed → 发送done/error
+
+    Returns:
+        (accumulated_text, source, success)
+    """
+    engine_url = "ws://127.0.0.1:8787"
+    accumulated_text = ""
+    msg_id = 0
+
+    def next_id() -> str:
+        nonlocal msg_id
+        msg_id += 1
+        return str(msg_id)
+
+    async def rpc(ws, method: str, params: dict) -> dict:
+        rid = next_id()
+        req = {"jsonrpc": "2.0", "id": rid, "method": method, "params": params}
+        await ws.send(json.dumps(req, ensure_ascii=False) + "\n")
+        async for raw in ws:
+            resp = json.loads(raw.strip())
+            if str(resp.get("id", "")) == rid:
+                if "error" in resp:
+                    raise RuntimeError(f"ACP error({method}): {resp['error']}")
+                return resp.get("result", {})
+        raise RuntimeError(f"WebSocket closed, RPC({method}) no response")
+
+    try:
+        async with websockets.connect(engine_url) as engine_ws:
+            logger.info(f"soulmate: connected to Agent Engine at {engine_url}")
+
+            # Step 1: initialize
+            await rpc(engine_ws, "initialize", {
+                "protocolVersion": 1,
+                "clientInfo": {"name": "soulmate-proxy", "version": "1.0.0"},
+            })
+
+            # Step 2: session/new
+            result = await rpc(engine_ws, "session/new", {
+                "cwd": "/home/climbing",
+                "mcpServers": [],
+            })
+            engine_session_id = result.get("sessionId") or result.get("session_id", "")
+            if not engine_session_id:
+                raise RuntimeError("session/new did not return sessionId")
+            logger.info(f"soulmate: session created: {engine_session_id}")
+
+            # Step 3: session/prompt (fire, then stream notifications)
+            prompt_text = text
+            if attachments:
+                file_parts = [a for a in attachments if a.get("type") == "file"]
+                for f in file_parts:
+                    prompt_text += f"\n[附件: {f.get('name', 'file')}]"
+
+            rid = next_id()
+            req = {
+                "jsonrpc": "2.0",
+                "id": rid,
+                "method": "session/prompt",
+                "params": {"prompt": prompt_text, "sessionId": engine_session_id},
+            }
+            await engine_ws.send(json.dumps(req, ensure_ascii=False) + "\n")
+
+            # Step 4: stream response
+            async for raw in engine_ws:
+                try:
+                    msg = json.loads(raw.strip())
+                except json.JSONDecodeError:
+                    continue
+
+                method = msg.get("method", "")
+                msg_id_field = str(msg.get("id", ""))
+
+                # ack for our prompt request
+                if msg_id_field == rid and "result" in msg:
+                    continue
+                if msg_id_field == rid and "error" in msg:
+                    err = msg["error"]
+                    error_text = err.get("message", str(err)) if isinstance(err, dict) else str(err)
+                    await _safe_send_ws(client_ws, {"type": "error", "message": f"Agent Engine错误: {error_text}"})
+                    return accumulated_text, "soulmate", False
+
+                if method == "session/update":
+                    delta = msg.get("params", {}).get("contentDelta", "")
+                    if delta:
+                        accumulated_text += delta
+                        if not await _safe_send_ws(client_ws, {"type": "chunk", "text": delta}):
+                            break
+
+                elif method == "session/completed":
+                    logger.info(f"soulmate: completed, {len(accumulated_text)} chars")
+                    return accumulated_text, "soulmate", True
+
+                elif method == "session/failed":
+                    error_msg = msg.get("params", {}).get("error", "任务失败")
+                    logger.error(f"soulmate: failed: {error_msg}")
+                    await _safe_send_ws(client_ws, {"type": "error", "message": str(error_msg)})
+                    return accumulated_text, "soulmate", False
+
+            # WebSocket closed without completed/failed
+            if accumulated_text:
+                logger.warning(f"soulmate: WS closed with {len(accumulated_text)} chars accumulated")
+                return accumulated_text, "soulmate", True
+            return accumulated_text, "soulmate", False
+
+    except OSError as e:
+        logger.error(f"soulmate: cannot connect to Agent Engine: {e}")
+        await _safe_send_ws(client_ws, {"type": "error", "message": "无法连接到SoulMate引擎，请检查服务是否运行"})
+        return "", "error", False
+    except Exception as e:
+        logger.error(f"soulmate bridge error: {type(e).__name__}: {e}", exc_info=True)
+        await _safe_send_ws(client_ws, {"type": "error", "message": f"SoulMate处理出错: {type(e).__name__}"})
+        return "", "error", False
+
+
 async def _safe_send_ws(websocket: WebSocket, data: dict) -> bool:
     """Send JSON to WebSocket, return False if send fails."""
     try:
@@ -356,7 +485,29 @@ async def chat_websocket(websocket: WebSocket):
                                 logger.info(f"File saved for agent_proxy: {tmp_path} ({f.get('name', 'file')})")
                             text = text + "\n\n" + "\n".join(f"[文件已保存到: {p}]" for p in file_paths)
                         _store_agent_message(agent_session_id, "user", text)
-                        response_text, source, success = await run_agent_proxy(agent_id, text)
+
+                        if agent_id == "soulmate":
+                            # Soulmate模式：通过WebSocket桥接Agent Engine(8787)
+                            # forward_to_agent_engine直接流式发送chunks/done，跳过后续处理
+                            response_text, source, success = await forward_to_agent_engine(
+                                websocket, text, session_id, attachments,
+                            )
+                            if response_text:
+                                _store_agent_message(agent_session_id, "assistant", response_text)
+                            if not session_id:
+                                db = _get_agent_db()
+                                try:
+                                    db.execute(
+                                        "UPDATE agent_sessions SET title = ? WHERE id = ? AND title = 'New Chat'",
+                                        (text[:50], agent_session_id),
+                                    )
+                                    db.commit()
+                                finally:
+                                    db.close()
+                            continue
+                        else:
+                            response_text, source, success = await run_agent_proxy(agent_id, text)
+
                         if response_text:
                             _store_agent_message(agent_session_id, "assistant", response_text)
                         # Update title from first user message
