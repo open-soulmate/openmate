@@ -206,43 +206,7 @@ function useAcpWebSocket(params: {
   // 等待响应的请求回调（id → resolve）
   const pendingRequestsRef = useRef<Map<number, (result: unknown) => void>>(new Map());
 
-  // 发送 JSON-RPC 2.0 请求并返回 Promise
-  const sendRpcRequest = useCallback((method: string, params: Record<string, unknown> = {}): Promise<unknown> => {
-    return new Promise((resolve, reject) => {
-      const ws = wsRef.current;
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        reject(new Error('WebSocket 未连接'));
-        return;
-      }
-      const id = ++rpcIdRef.current;
-      pendingRequestsRef.current.set(id, resolve);
-      ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
-      // 超时清理（30秒）
-      setTimeout(() => {
-        if (pendingRequestsRef.current.has(id)) {
-          pendingRequestsRef.current.delete(id);
-          reject(new Error(`RPC 请求 ${method} 超时`));
-        }
-      }, 30000);
-    });
-  }, []);
-
-  // ACP 握手：initialize → session/new
-  const performAcpHandshake = useCallback(async () => {
-    try {
-      // 第一步：initialize 握手
-      await sendRpcRequest('initialize', {});
-      // 第二步：创建会话
-      const result = await sendRpcRequest('session/new', { clientId: 'openmate-web' }) as { sessionId?: string };
-      if (result?.sessionId) {
-        acpSessionIdRef.current = result.sessionId;
-      }
-    } catch (e) {
-      console.error('[ACP] 握手失败:', e);
-    }
-  }, [sendRpcRequest]);
-
-  // 发送用户消息到 ACP 会话
+  // 发送用户消息到 ACP 会话（通过 ref 访问 ws，不依赖 useEffect 闭包）
   const sendAcpPrompt = useCallback((text: string) => {
     const sid = acpSessionIdRef.current;
     const ws = wsRef.current;
@@ -267,6 +231,41 @@ function useAcpWebSocket(params: {
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let unmounted = false;
     let retryDelay = 1000;
+
+    // 发送 JSON-RPC 2.0 请求（普通函数，避免作为 useEffect 依赖）
+    const sendRpcRequest = (method: string, params: Record<string, unknown> = {}): Promise<unknown> => {
+      return new Promise((resolve, reject) => {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+          reject(new Error('WebSocket 未连接'));
+          return;
+        }
+        const id = ++rpcIdRef.current;
+        pendingRequestsRef.current.set(id, resolve);
+        ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
+        // 超时清理（30秒）
+        setTimeout(() => {
+          if (pendingRequestsRef.current.has(id)) {
+            pendingRequestsRef.current.delete(id);
+            reject(new Error(`RPC 请求 ${method} 超时`));
+          }
+        }, 30000);
+      });
+    };
+
+    // ACP 握手：initialize → session/new（普通函数，避免作为 useEffect 依赖）
+    const performAcpHandshake = async () => {
+      try {
+        // 第一步：initialize 握手
+        await sendRpcRequest('initialize', {});
+        // 第二步：创建会话
+        const result = await sendRpcRequest('session/new', { clientId: 'openmate-web' }) as { sessionId?: string };
+        if (result?.sessionId) {
+          acpSessionIdRef.current = result.sessionId;
+        }
+      } catch (e) {
+        console.error('[ACP] 握手失败:', e);
+      }
+    };
 
     const connect = () => {
       if (unmounted) return;
@@ -371,7 +370,7 @@ function useAcpWebSocket(params: {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ws) ws.close();
     };
-  }, [selectedAgent?.id ?? activeAgentIdFromStore, performAcpHandshake, t, setLoading, setSelectedSession, selectedAgentRef, selectedSessionRef]);
+  }, [selectedAgent?.id ?? activeAgentIdFromStore]);
 
   return { wsRef, wsConnected, streamingSessionIdRef, sendAcpPrompt };
 }
