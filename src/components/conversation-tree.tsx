@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { MessageSquare, ChevronDown, ChevronRight } from "lucide-react";
+import { MessageSquare, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -67,6 +67,8 @@ interface ConversationTreeProps {
   onToggleAgent: (agentId: string) => void;
   onToggleSourceGroup: (agentId: string, source: string) => void;
   onSelectSession: (session: Session, agent: AgentInfo) => void;
+  onNewSession?: () => void;
+  onDeleteSession?: (sessionId: string) => void;
   /** Optional search query — filters agents/sessions when non-empty */
   search?: string;
   /** Optional class for the root container */
@@ -82,6 +84,8 @@ export function ConversationTree({
   onToggleAgent,
   onToggleSourceGroup,
   onSelectSession,
+  onNewSession,
+  onDeleteSession,
   search,
   className,
 }: ConversationTreeProps) {
@@ -127,6 +131,17 @@ export function ConversationTree({
 
   return (
     <div className={cn("flex-1 overflow-y-auto", className)}>
+      {/* New session button */}
+      <div className="px-2 py-1.5">
+        <button
+          onClick={() => onNewSession?.()}
+          className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg border border-dashed border-border text-muted-foreground hover:text-foreground hover:border-primary/50 hover:bg-primary/5 transition-colors"
+        >
+          <Plus size={13} />
+          {t("sidebar.newChat", "新建会话")}
+        </button>
+      </div>
+
       {displayAgents.length === 0 ? (
         <div className="px-4 py-8 text-center">
           <MessageSquare size={24} className="mx-auto mb-2 text-muted-foreground/50" />
@@ -193,6 +208,15 @@ export function ConversationTree({
                           <MessageSquare className={cn("w-3 h-3 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
                           <span className={cn("text-xs truncate flex-1", unread > 0 ? "font-bold" : "", isActive && "text-primary")}>{session.name || session.title || "Untitled"}</span>
                           <UnreadBadge count={unread} />
+                          {onDeleteSession && (
+                            <button
+                              onClick={(e) => { e.stopPropagation(); onDeleteSession(session.id); }}
+                              className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-all"
+                              title="删除会话"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          )}
                         </div>
                         {isMobile && session.last_message ? (
                           <div className="text-[10px] text-muted-foreground/70 truncate ml-4.5 mt-0.5">
@@ -223,6 +247,15 @@ export function ConversationTree({
                       <MessageSquare className={cn("w-3 h-3 shrink-0", isActive ? "text-primary" : "text-muted-foreground")} />
                       <span className={cn("text-xs truncate flex-1", unread > 0 ? "font-bold" : "", isActive && "text-primary")}>{session.name || session.title || "Untitled"}</span>
                       <UnreadBadge count={unread} />
+                      {onDeleteSession && (
+                        <button
+                          onClick={(e) => { e.stopPropagation(); onDeleteSession(session.id); }}
+                          className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-red-500/10 text-muted-foreground hover:text-red-500 transition-all"
+                          title="删除会话"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      )}
                     </div>
                     {isMobile && session.last_message ? (
                       <div className="text-[10px] text-muted-foreground/70 truncate ml-4.5 mt-0.5">

@@ -1,4 +1,5 @@
 "use client";
+import { Plus, Trash2 } from "lucide-react";
 
 import { TerminalPanel } from "@/components/terminal-panel";
 import { BottomNav } from "@/components/bottom-nav";
@@ -405,6 +406,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     {agents.length === 0 && <div className="px-3 py-1 text-[10px] text-muted-foreground">Loading...</div>}
                     <LeftPanel
                       placeholder={t("sidebar.searchPlaceholder", "搜索会话...")}
+
                       renderContent={(query) => (
                         <ConversationTree
                           agents={agents}
@@ -421,6 +423,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               sessionName: session.name || session.title || '',
                             });
                             router.push('/chat');
+                          }}
+                          onNewSession={() => router.push('/chat')}
+                          onDeleteSession={async (sessionId) => {
+                            if (!confirm(t('chat.deleteSessionConfirm', '确定删除此会话？'))) return;
+                            try {
+                              const token = typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : '';
+                              const r = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
+                              if (r.ok) { agents.forEach(a => { const idx = a.sessions.findIndex((s) => s.id === sessionId); if (idx >= 0) a.sessions.splice(idx, 1); }); }
+                            } catch {}
                           }}
                           search={query}
                           className="group-data-[collapsible=icon]:hidden"
