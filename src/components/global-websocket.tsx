@@ -21,7 +21,7 @@ export function GlobalWebSocket() {
     if (!token) return;
 
     const apiBase = getApiBaseUrl();
-    const wsUrl = apiBase.replace(/^http/, 'ws').replace(/:\d+$/, ':8092') + `/ws/chat?token=${token}`;
+    const wsUrl = apiBase.replace(/^http/, 'ws') + `/ws/chat?token=${token}`;
 
     const connect = () => {
       if (unmountedRef.current) return;
