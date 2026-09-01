@@ -74,7 +74,8 @@ const SOURCE_META: Record<string, { labelKey: string; icon: string }> = {
   subagent: { labelKey: 'sessions.sourceSubagent', icon: '🤖' },
 };
 
-const HERMES_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui', 'tool', 'subagent']);
+const PLATFORM_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui']);
+const SKIP_AGENT_IDS = new Set(['cron', 'unknown', 'tool', 'subagent']);
 
 const AGENT_ICONS: Record<string, string> = {
   hermes: '🏛️', claude: '🟣', codex: '🟢', gemini: '🔵', mimo: '📱',
@@ -189,7 +190,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     for (const s of sessions) {
       if (!s.platform && s.source) s.platform = s.source;
       const src = s.platform || s.source || '';
-      const agentKey = HERMES_SOURCES.has(src) ? 'hermes' : (s.platform || 'hermes');
+      const agentKey = PLATFORM_SOURCES.has(src) ? 'soulmate' : (s.platform || s.source || 'unknown');
       if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
       agentSessionMap[agentKey].push(s);
     }
@@ -214,35 +215,35 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
 
     // 5. Build agent list
-    const agentList: AgentInfo[] = detectedAgents
-      .filter(a => a.available)
-      .map(a => {
-        const agentSessions = agentSessionMap[a.id] || [];
-        const sourceGroups = buildSourceGroups(agentSessions, a.id);
-        return {
-          id: a.id,
-          name: a.name,
-          icon: a.icon || AGENT_ICONS[a.id] || '🤖',
-          logo: a.logo,
-          description: a.description,
-          installed: a.available,
-          available: a.available,
-          sessions: agentSessions,
-          expanded: false,
-          sourceGroups,
-        };
-      });
+    const agentMap = new Map<string, AgentInfo>();
 
-    // 6. Add unknown agents
-    for (const [key, val] of Object.entries(agentSessionMap)) {
-      if (!agentList.find(a => a.id === key) && val.length > 0) {
-        const sourceGroups = buildSourceGroups(val, key);
-        agentList.push({
-          id: key, name: key, icon: AGENT_ICONS[key] || '🤖', description: key,
-          installed: false, sessions: val, expanded: false, sourceGroups,
-        });
-      }
+    // SoulMate (OpenMate platform) ALWAYS shows first
+    const soulmateSessions = agentSessionMap['soulmate'] || [];
+    agentMap.set('soulmate', {
+      id: 'soulmate', name: 'SoulMate', icon: '🏛️', description: 'OpenMate Platform',
+      installed: true, available: true, sessions: soulmateSessions,
+      expanded: false, sourceGroups: buildSourceGroups(soulmateSessions, 'soulmate'),
+    });
+
+    // Only add agents that have sessions (user interacted with them), skip system agents
+    for (const [key, sessions] of Object.entries(agentSessionMap)) {
+      if (SKIP_AGENT_IDS.has(key) || agentMap.has(key)) continue;
+      const detected = detectedAgents.find(a => a.id === key);
+      agentMap.set(key, {
+        id: key, name: detected?.name || key,
+        icon: detected?.icon || AGENT_ICONS[key] || '🤖',
+        logo: detected?.logo, description: detected?.description || key,
+        installed: detected?.available || false, available: detected?.available || false,
+        sessions, expanded: false, sourceGroups: buildSourceGroups(sessions, key),
+      });
     }
+
+    const agentList = Array.from(agentMap.values());
+    agentList.sort((a, b) => {
+      if (a.id === 'soulmate') return -1;
+      if (b.id === 'soulmate') return 1;
+      return b.sessions.length - a.sessions.length;
+    });
 
     // 7. Update state preserving expanded
     setAgents(prev => {
