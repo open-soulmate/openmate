@@ -191,10 +191,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (!s.platform && s.source) s.platform = s.source;
       const src = s.platform || s.source || '';
       if (src === 'cron') continue; // filter cron sessions
-      const agentKey = s.platform || s.source || 'unknown';
+      const HERMES_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui']);
+      const agentKey = HERMES_SOURCES.has(src) ? 'hermes' : (s.platform || src || 'unknown');
       if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
       agentSessionMap[agentKey].push(s);
     }
+
+    console.log('[app-shell-debug] agentSessionMap keys:', Object.keys(agentSessionMap), 'cron sessions filtered:', sessions.filter(s => (s.platform || s.source) === 'cron').length);
 
     // 4. Build source groups
     const buildSourceGroups = (agentSessions: Session[], agentId: string): SourceGroup[] | undefined => {
@@ -427,8 +430,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             router.push('/chat');
                           }}
                           onNewSession={(agentId) => {
-                            // Clear current session so chat creates a new one, set agent context
-                            useAppStore.getState().setActiveSession(null, agentId);
+                            // SoulMate is virtual - create a plain hermes session instead
+                            const realAgentId = agentId === 'soulmate' ? undefined : agentId;
+                            useAppStore.getState().setActiveSession(null, realAgentId);
                             router.push('/chat');
                           }}
                           onDeleteSession={async (sessionId) => {
