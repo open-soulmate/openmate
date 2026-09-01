@@ -43,6 +43,8 @@ interface SmartPromptProps {
   onFileClick?: () => void;
   /** Paste handler for clipboard images */
   onPaste?: (e: React.ClipboardEvent) => void;
+  /** Initial task value — auto-expands and triggers generate */
+  initialTask?: string;
 }
 
 // ── Field Definitions ────────────────────────────────────────────
@@ -89,6 +91,7 @@ export function SmartPrompt({
   footer,
   onFileClick,
   onPaste,
+  initialTask,
 }: SmartPromptProps) {
   const [fields, setFields] = useState<SmartPromptFields>({
     task: '',
@@ -97,6 +100,14 @@ export function SmartPrompt({
     constraints: '',
     format: '',
   });
+
+  // Apply initialTask when set externally (e.g. quick cards)
+  useEffect(() => {
+    if (initialTask && initialTask !== fields.task) {
+      setFields(prev => ({ ...prev, task: initialTask }));
+      setExpanded(true);
+    }
+  }, [initialTask]);
 
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);

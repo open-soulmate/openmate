@@ -162,6 +162,7 @@ export function ChatClient() {
   const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
   const [attachments, setAttachments] = useState<MessagePart[]>([]);
   const [wsConnected, setWsConnected] = useState(false);
+  const [smartPromptTask, setSmartPromptTask] = useState<string>('');
   const [agentMode, setAgentMode] = useState<AgentMode>('act');
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
   const [showCheckpoints, setShowCheckpoints] = useState(false);
@@ -689,7 +690,7 @@ export function ChatClient() {
     const text = input.trim();
     const userMsg: Message = { id: Date.now().toString(), role: 'user', parts: [{ type: 'text', text }, ...attachments], timestamp: new Date() };
     setMessages(prev => [...prev, userMsg]);
-    setInput(''); setAttachments([]); setLoading(true);
+    setInput(''); setAttachments([]); setLoading(true); setSmartPromptTask('');
     // Reset textarea height
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
@@ -910,7 +911,7 @@ export function ChatClient() {
                   { icon: '📄', label: t('chat.quickSolution'), desc: t('chat.quickSolutionDesc') },
                   { icon: '🔍', label: t('chat.quickKnowledgeSearch'), desc: t('chat.quickKnowledgeSearchDesc') },
                 ].map(item => (
-                  <button key={item.label} onClick={() => setInput(item.desc)}
+                  <button key={item.label} onClick={() => setSmartPromptTask(item.desc)}
                     className="flex flex-col items-center gap-1.5 lg:gap-2 p-3 lg:p-4 rounded-xl border bg-card hover:bg-muted/80 hover:border-primary/30 active:bg-muted transition-all group touch-manipulation">
                     <span className="text-xl lg:text-2xl">{item.icon}</span>
                     <span className="text-xs lg:text-sm font-medium">{item.label}</span>
@@ -1062,6 +1063,7 @@ export function ChatClient() {
           <div className="space-y-2">
             <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
             <SmartPrompt
+              initialTask={smartPromptTask}
               onSend={(assembled) => {
                 if ((!assembled.trim() && attachments.length === 0) || loading) return;
                 const text = assembled.trim();
