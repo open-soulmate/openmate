@@ -14,6 +14,11 @@ export const metadata: Metadata = {
   manifest: "/manifest.json",
   title: "OpenMate — Your Knowledge Companion",
   description: "An open AI companion platform with pluggable skill extensions",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "OpenMate",
+  },
 };
 
 // Inline script to prevent FOUC on theme load
