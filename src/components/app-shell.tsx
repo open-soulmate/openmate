@@ -190,7 +190,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     for (const s of sessions) {
       if (!s.platform && s.source) s.platform = s.source;
       const src = s.platform || s.source || '';
-      const agentKey = PLATFORM_SOURCES.has(src) ? 'soulmate' : (s.platform || s.source || 'unknown');
+      const agentKey = s.platform || s.source || 'unknown';
       if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
       agentSessionMap[agentKey].push(s);
     }
