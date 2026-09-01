@@ -42,6 +42,7 @@ from a2a.sse_events import (
     TaskStatusChangedEvent,
 )
 from a2a.stream_manager import get_stream_manager
+from a2a.bridge import get_bridge
 from a2a.task_store import TaskStore
 from a2a.agent_card import get_agent_card, list_agent_cards
 from a2a.security import verify_auth
@@ -199,83 +200,16 @@ async def _handle_tasks_create(params: dict[str, Any], request_id: Any) -> JSONR
 
 
 async def _agent_task_worker(task_id: str, message: Message | None) -> None:
-    """后台Agent任务执行worker。
+    """后台Agent任务执行worker — 通过bridge调用Agent Engine。
 
-    模拟Agent处理流程，通过stream_manager广播SSE事件。
-    实际项目中应替换为真正的Agent调用逻辑。
+    连接Agent Engine(端口8787)的ACP WebSocket，将A2A任务转发给内置Agent，
+    流式接收结果并通过stream_manager广播A2A SSE事件。
     """
     store = get_task_store()
     stream = get_stream_manager()
+    bridge = get_bridge()
 
-    try:
-        log_task_event(task_id, "worker_start")
-
-        # 状态变更: SUBMITTED → WORKING
-        task = await store.update_task_status(task_id, TaskState.WORKING)
-        status_event = TaskStatusChangedEvent(
-            taskId=task_id,
-            state=TaskState.WORKING,
-            timestamp=task.status.timestamp,
-        )
-        await stream.broadcast(task_id, status_event)
-        await push_task_event(task_id, "statusChanged", status_event.model_dump())
-        log_task_event(task_id, "status_changed", "WORKING")
-
-        # 模拟Agent处理（实际项目中替换为真实Agent调用）
-        # 追加Agent回复消息
-        reply = Message(
-            role="agent",
-            parts=[TextPart(text=f"已收到您的消息，正在处理中...")],
-        )
-        await store.add_message(task_id, reply)
-        msg_event = MessageAppendedEvent(
-            taskId=task_id,
-            message=reply,
-        )
-        await stream.broadcast(task_id, msg_event)
-        await push_task_event(task_id, "messageAppended", msg_event.model_dump())
-
-        # 模拟产出Artifact
-        artifact = Artifact(
-            artifactId=f"{task_id}-art-0",
-            name="response",
-            description="Agent响应结果",
-            parts=[TextPart(text="处理完成")],
-        )
-        await store.add_artifact(task_id, artifact)
-        art_event = NewArtifactEvent(
-            taskId=task_id,
-            artifact=artifact,
-        )
-        await stream.broadcast(task_id, art_event)
-        await push_task_event(task_id, "newArtifact", art_event.model_dump())
-
-        # 状态变更: WORKING → COMPLETED
-        task = await store.update_task_status(task_id, TaskState.COMPLETED)
-        completed_event = A2ACompletedEvent(
-            taskId=task_id,
-            task=task,
-        )
-        await stream.broadcast(task_id, completed_event)
-        await push_task_event(task_id, "completed", completed_event.model_dump())
-        log_task_event(task_id, "completed")
-
-    except Exception as e:
-        log_error("Agent任务执行异常", e, task_id=task_id)
-        try:
-            await store.update_task_status(task_id, TaskState.FAILED)
-        except Exception:
-            pass
-        error_event = A2AErrorEvent(
-            taskId=task_id,
-            code=-32603,
-            message=str(e),
-        )
-        await stream.broadcast(task_id, error_event)
-        await push_task_event(task_id, "error", error_event.model_dump())
-    finally:
-        remove_push_config(task_id)
-        await stream.close(task_id)
+    await bridge.run_task(task_id, message, store, stream)
 
 
 async def _handle_tasks_send_subscribe(params: dict[str, Any], request_id: Any) -> EventSourceResponse:
