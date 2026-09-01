@@ -483,11 +483,6 @@ export function ChatClient() {
       }));
     });
 
-    // Default: auto-select hermes as active agent on first load
-    if (!selectedAgent) {
-      const hermes = agentList.find(a => a.id === 'soulmate');
-      if (hermes) setSelectedAgent(hermes);
-    }
   }, []);
 
   // Load history for a session
