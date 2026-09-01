@@ -57,6 +57,7 @@ class ACPProcess:
         self._initialized: bool = False
         self._default_session_id: str | None = None
         self._reader_task: asyncio.Task | None = None
+        self._stderr_task: asyncio.Task | None = None
         self._health_task: asyncio.Task | None = None
         self._restart_count: int = 0
         self._last_restart: float = 0
@@ -97,6 +98,7 @@ class ACPProcess:
             raise
 
         self._reader_task = asyncio.create_task(self._read_loop())
+        self._stderr_task = asyncio.create_task(self._drain_stderr())
         self._health_task = asyncio.create_task(self._health_loop())
 
         try:
@@ -122,6 +124,22 @@ class ACPProcess:
         self._restart_count = 0
         return self._get_agent_info()
 
+    async def _drain_stderr(self):
+        """Drain stderr to prevent buffer deadlock."""
+        try:
+            while self._proc and self._proc.returncode is None:
+                try:
+                    raw = await asyncio.wait_for(self._proc.stderr.readline(), timeout=1.0)
+                except (asyncio.TimeoutError, OSError):
+                    continue
+                if not raw:
+                    break
+                line = raw.decode(errors='replace').rstrip()
+                if line:
+                    logger.debug(f"ACP stderr: {line}")
+        except Exception:
+            pass
+
     async def stop(self):
         logger.info("ACP stopping...")
         if self._health_task:
@@ -138,6 +156,13 @@ class ACPProcess:
             except (asyncio.CancelledError, Exception):
                 pass
             self._reader_task = None
+        if self._stderr_task:
+            self._stderr_task.cancel()
+            try:
+                await self._stderr_task
+            except (asyncio.CancelledError, Exception):
+                pass
+            self._stderr_task = None
         # Cancel all pending RPC futures
         for fut in self._rpc_pending.values():
             if not fut.done():
