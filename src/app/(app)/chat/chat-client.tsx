@@ -205,9 +205,14 @@ function useAcpWebSocket(params: {
   const rpcIdRef = useRef(0);
   // 等待响应的请求回调（id → resolve）
   const pendingRequestsRef = useRef<Map<number, (result: unknown) => void>>(new Map());
+  // ACP 握手完成的 Promise，sendAcpPrompt 等待此 Promise 确保 session/new 已返回
+  const acpReadyRef = useRef<Promise<void> | null>(null);
+  const resolveAcpReadyRef = useRef<(() => void) | null>(null);
 
   // 发送用户消息到 ACP 会话（通过 ref 访问 ws，不依赖 useEffect 闭包）
-  const sendAcpPrompt = useCallback((text: string) => {
+  const sendAcpPrompt = useCallback(async (text: string) => {
+    // 等待 ACP 握手完成，避免 session/new 未返回时消息丢失
+    if (acpReadyRef.current) await acpReadyRef.current;
     const sid = acpSessionIdRef.current;
     const ws = wsRef.current;
     if (!sid || !ws || ws.readyState !== WebSocket.OPEN) return;
@@ -262,8 +267,12 @@ function useAcpWebSocket(params: {
         if (result?.sessionId) {
           acpSessionIdRef.current = result.sessionId;
         }
+        // session/new 完成，通知等待中的 sendAcpPrompt
+        resolveAcpReadyRef.current?.();
       } catch (e) {
         console.error('[ACP] 握手失败:', e);
+        // 握手失败也要 resolve，避免 sendAcpPrompt 永久阻塞
+        resolveAcpReadyRef.current?.();
       }
     };
 
@@ -276,12 +285,16 @@ function useAcpWebSocket(params: {
       ws.onopen = () => {
         setWsConnected(true);
         retryDelay = 1000;
-        // 连接建立后自动执行 ACP 握手
+        // 连接建立后创建就绪 Promise 并执行 ACP 握手
+        acpReadyRef.current = new Promise<void>(resolve => { resolveAcpReadyRef.current = resolve; });
         performAcpHandshake();
       };
       ws.onclose = () => {
         setWsConnected(false);
         acpSessionIdRef.current = null;
+        // 连接断开时 resolve 当前就绪 Promise，避免 sendAcpPrompt 永久等待
+        resolveAcpReadyRef.current?.();
+        acpReadyRef.current = null;
         if (!unmounted) reconnectTimer = setTimeout(connect, retryDelay);
         retryDelay = Math.min(retryDelay * 2, 30000);
       };
@@ -659,7 +672,7 @@ export function ChatClient() {
     }
     // Fallback: if agents list hasn't loaded yet, create minimal objects from store data
     if (storeAgentName && !selectedSession) {
-      const minimalSession: Session = { id: activeSessionIdFromStore, name: storeSessionName || '', platform: 'hermes' };
+      const minimalSession: Session = { id: activeSessionIdFromStore || '', name: storeSessionName || '', platform: 'hermes' };
       const minimalAgent: AgentInfo = {
         id: activeAgentIdFromStore || 'unknown',
         name: storeAgentName,
