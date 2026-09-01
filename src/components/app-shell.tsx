@@ -428,10 +428,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           onDeleteSession={async (sessionId) => {
                             if (!confirm(t('chat.deleteSessionConfirm', '确定删除此会话？'))) return;
                             try {
-                              const token = typeof window !== 'undefined' ? localStorage.getItem('openmate-token') || '' : '';
-                              const r = await fetch(`/api/sessions/${sessionId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${token}` } });
-                              if (r.ok) { agents.forEach(a => { const idx = a.sessions.findIndex((s) => s.id === sessionId); if (idx >= 0) a.sessions.splice(idx, 1); }); }
-                            } catch {}
+                              const r = await fetch(`${getApiBaseUrl()}/api/sessions/${sessionId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${getToken()}` } });
+                              if (r.ok) {
+                                setAgents(prev => prev.map(a => ({
+                                  ...a,
+                                  sessions: a.sessions.filter(s => s.id !== sessionId),
+                                  sourceGroups: a.sourceGroups?.map(g => ({ ...g, sessions: g.sessions.filter(s => s.id !== sessionId) })).filter(g => g.sessions.length > 0),
+                                })));
+                              }
+                            } catch (e) { console.error('Delete session failed:', e); }
                           }}
                           search={query}
                           className="group-data-[collapsible=icon]:hidden"
