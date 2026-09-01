@@ -41,17 +41,19 @@ export function RichInput({
   const [isEmpty, setIsEmpty] = useState(true);
   const isComposing = useRef(false);
 
-  // Sync value → DOM (only when value changes externally)
+  // Sync value → DOM
+  // BUG FIX (2026-09-01): contentEditable blocks DOM updates when focused.
+  // After send, value='' but el still has old text. Force-clear when value is empty.
   useEffect(() => {
     const el = editorRef.current;
     if (!el) return;
-    // When value is cleared (e.g. after send), always update DOM
+    // When value is cleared (e.g. after send), always update DOM regardless of focus
     if (!value) {
       el.innerHTML = '';
       setIsEmpty(true);
       return;
     }
-    // Only update if not focused (avoid cursor jump)
+    // Only update if not focused (avoid cursor jump during typing)
     if (document.activeElement !== el) {
       el.innerHTML = value;
       setIsEmpty(!value);

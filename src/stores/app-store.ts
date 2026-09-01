@@ -387,10 +387,13 @@ interface AppState {
   cachedAgents: AgentInfo[] | null;
   setCachedAgents: (agents: AgentInfo[]) => void;
 
-  // Sidebar agent list (single source of truth, built by app-shell)
+  // ─── Sidebar Agent List (single source of truth) ────────────────
+  // Built by app-shell's fetchSessions(), read by chat-client and conversation-tree.
+  // DO NOT maintain separate agent lists in components — use this store.
+  // SoulMate is always first (empty group), hermes agent has cli/weixin/acp/tui sessions.
   sidebarAgents: any[];
   setSidebarAgents: (agents: any[] | ((prev: any[]) => any[])) => void;
-  sidebarRefreshKey: number;
+  sidebarRefreshKey: number;  // Increment to trigger app-shell re-fetch
   refreshSidebar: () => void;
 }
 
