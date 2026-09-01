@@ -13,23 +13,23 @@ import { useSidebar } from '@/components/ui/sidebar';
 import { useTranslation } from 'react-i18next';
 import { SmartPrompt } from '@/components/smart-prompt';
 
-// Session ownership tracking — maps session_id to agent_id in localStorage
-// SoulMate and hermes agent share the same backend, so we track ownership client-side
-const SESSION_OWNER_KEY = 'openmate_session_owners';
-function getSessionOwners(): Record<string, string> {
-  try { return JSON.parse(localStorage.getItem(SESSION_OWNER_KEY) || '{}'); } catch { return {}; }
-}
-function setSessionOwner(sessionId: string, agentId: string): void {
-  const owners = getSessionOwners();
-  owners[sessionId] = agentId;
-  localStorage.setItem(SESSION_OWNER_KEY, JSON.stringify(owners));
-}
-function getSessionOwner(sessionId: string): string | null {
-  return getSessionOwners()[sessionId] || null;
-}
-
 const getApiUrl = () => getApiBaseUrl();
 const getWsUrl = () => getApiUrl().replace('http', 'ws');
+
+// Tag a session with its owning agent via OpenSoul API
+// This persists server-side, works across devices/browsers
+async function tagSessionAgent(sessionId: string, agentId: string): Promise<void> {
+  try {
+    await fetch(`${getApiUrl()}/api/sessions/${sessionId}/tags`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tag_name: `agent:${agentId}` }),
+    });
+  } catch (e) {
+    console.warn('[session-tag] Failed to tag session:', e);
+  }
+}
+
 const getAcpProxyUrl = () => {
   const base = getApiUrl();
   // ACP Proxy runs on port 8092, same hostname as OpenSoul
@@ -479,7 +479,7 @@ export function ChatClient() {
               useAppStore.getState().setActiveSession(data.session_id, null, { sessionName: '' });
               useAppStore.getState().refreshSidebar();
               // Tag session ownership for frontend grouping
-              setSessionOwner(data.session_id, selectedAgentRef.current?.id || 'soulmate');
+              tagSessionAgent(data.session_id, selectedAgentRef.current?.id || 'soulmate');
             }
             // Only update messages if we're still in the same session
             if (data.session_id && currentSessionId && data.session_id !== currentSessionId) return;
