@@ -429,22 +429,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             });
                             router.push('/chat');
                           }}
-                          onNewSession={async (agentId) => {
-                            try {
-                              const r = await fetch(`${getApiBaseUrl()}/api/sessions`, {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-                                body: JSON.stringify({ name: '新会话', agent_id: agentId === 'soulmate' ? undefined : agentId }),
-                              });
-                              if (r.ok) {
-                                const newSession = await r.json();
-                                const s = newSession.session || newSession;
-                                // Add to agent's session list
-                                setAgents(prev => prev.map(a => a.id === agentId ? { ...a, sessions: [...a.sessions, { id: s.id, name: s.name || '新会话', platform: s.platform, source: s.source, updated_at: s.created_at }] } : a));
-                                useAppStore.getState().setActiveSession(s.id, agentId === 'soulmate' ? null : agentId);
-                                router.push('/chat');
-                              }
-                            } catch (e) { console.error('create session failed', e); }
+                          onNewSession={(agentId) => {
+                            useAppStore.getState().setActiveSession(null, agentId === 'soulmate' ? null : agentId);
+                            router.push('/chat');
                           }}
                           onDeleteSession={async (sessionId) => {
                             if (!confirm(t('chat.deleteSessionConfirm', '确定删除此会话？'))) return;
