@@ -430,8 +430,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             router.push('/chat');
                           }}
                           onNewSession={(agentId) => {
-                            // SoulMate is virtual - create a plain hermes session instead
-                            const realAgentId = agentId === 'soulmate' ? undefined : agentId;
+                            // SoulMate = OpenMate itself, default hermes mode (no agent proxy)
+                            const realAgentId = agentId === 'soulmate' ? null : agentId;
                             useAppStore.getState().setActiveSession(null, realAgentId);
                             router.push('/chat');
                           }}
