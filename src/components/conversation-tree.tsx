@@ -22,6 +22,7 @@ interface Session {
   created_at?: string;
   message_count?: number;
   source?: string;
+  tags?: string[];
 }
 
 interface SourceGroup {

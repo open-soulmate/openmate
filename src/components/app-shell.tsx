@@ -186,26 +186,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       if (r.ok) { const d = await r.json(); sessions = d.sessions || []; } else { console.error("sessions failed:", r.status); }
     } catch (e) { console.error("sessions error:", e); }
 
-    // 3. Group sessions by agent (check server-side tags first)
-    let sessionAgentMap: Record<string, string> = {};
-    try {
-      const tagsRes = await fetch(`${apiBase}/api/sessions/tags/all`, { headers });
-      if (tagsRes.ok) {
-        const tagsData = await tagsRes.json();
-        for (const t of (tagsData.tags || [])) {
-          if (t.tag && t.tag.startsWith('agent:')) {
-            sessionAgentMap[t.session_id] = t.tag.replace('agent:', '');
-          }
-        }
-      }
-    } catch {}
+    // 3. Group sessions by agent (check session tags first, then fallback to platform)
     const agentSessionMap: Record<string, Session[]> = {};
     for (const s of sessions) {
       if (!s.platform && s.source) s.platform = s.source;
       const src = s.platform || s.source || '';
       if (src === 'cron') continue; // filter cron sessions
       const HERMES_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui']);
-      const agentKey = sessionAgentMap[s.id] || (HERMES_SOURCES.has(src) ? 'hermes' : (s.platform || src || 'unknown'));
+      // Check server-side tags first (e.g. "agent:soulmate"), then platform detection
+      const agentTag = (s.tags || []).find((t: string) => t.startsWith('agent:'));
+      const agentKey = agentTag ? agentTag.replace('agent:', '') : (HERMES_SOURCES.has(src) ? 'hermes' : (s.platform || src || 'unknown'));
       if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
       agentSessionMap[agentKey].push(s);
     }
