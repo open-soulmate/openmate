@@ -81,6 +81,7 @@ const navItems: BottomNavItem[] = [
   { href: "/trajectory", label: "nav.trajectory", icon: Activity },
   { href: "/timeline", label: "nav.timeline", icon: History },
   { href: "/changelog", label: "nav.changelog", icon: ScrollText },
+  { href: "/dev-specs", label: "开发规范", icon: FileText },
   { href: "/marketplace", label: "nav.marketplace", icon: Store },
 ];
 
