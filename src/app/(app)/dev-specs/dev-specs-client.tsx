@@ -12,7 +12,7 @@ import {
 } from "lucide-react";
 import { LeftPanel } from "@/components/left-panel";
 import { DetailPanel } from "@/components/detail-panel";
-import { MainPanel } from "@opensoulmate/openface";
+import { PageLayout } from "@/components/page-layout";
 
 /* ── 数据模型 ────────────────────────────────────────── */
 
@@ -208,7 +208,7 @@ export function DevSpecsClient() {
 
   /* ── MainPanel: 中间主内容区（对齐UI规范3.2） ── */
   return (
-    <MainPanel
+    <PageLayout
       title="开发规范"
       icon={<FileText className="w-5 h-5" />}
       badge={`${done}/${specs.length}`}
@@ -291,6 +291,6 @@ export function DevSpecsClient() {
           })}
         </div>
       )}
-    </MainPanel>
+    </PageLayout>
   );
 }
