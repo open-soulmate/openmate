@@ -192,7 +192,7 @@ export function DevSpecsClient() {
 
     /* markdown内容转data URL供FileViewer渲染 */
     const fileUrl = specContent
-      ? `data:text/markdown;base64,${btoa(unescape(encodeURIComponent(specContent)))}`
+      ? `data:application/octet-stream;base64,${btoa(unescape(encodeURIComponent(specContent)))}`
       : "";
 
     setPageWorkspace(
