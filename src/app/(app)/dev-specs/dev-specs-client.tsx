@@ -57,6 +57,7 @@ const specs: SpecItem[] = [
   { id: "22", name: "LogAndTrace", desc: "日志链路追踪规范", layer: "底座可观测层", status: "todo", priority: "P1", fileName: "22-LogAndTrace-v1.0-日志链路追踪规范.md" },
   { id: "23", name: "ErrorCode", desc: "全局错误码规范", layer: "底座可观测层", status: "wip", priority: "P3", fileName: "23-ErrorCode-v1.0-全局错误码规范.md", changes: ["ACP基础错误码已有", "需对齐规范"] },
   { id: "26", name: "Storage", desc: "存储缓存与持久化规范", layer: "底座可观测层", status: "todo", priority: "P2", fileName: "26-Storage-v1.0-存储缓存与持久化规范.md" },
+  { id: "28", name: "UI", desc: "前端UI设计规范", layer: "前端UI设计规范", status: "wip", priority: "P2", fileName: "28-UI-v1.0-前端UI设计规范.md", changes: ["openface标准三栏布局已对齐", "dev-specs页面已改用标准UI", "待所有页面逐一审查对齐"] },
 ];
 
 const STATUS_STYLE: Record<string, string> = {
