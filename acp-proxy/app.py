@@ -8,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from proxy import get_acp_process
 from ws_chat import router as ws_router
 from ws_acp import ws_acp_endpoint  # ACP JSON-RPC 2.0纯透传端点
-from a2a.server import router as a2a_router, well_known_router
+from a2a.server import router as a2a_router, rpc_router as a2a_rpc_router, well_known_router
 
 logger = logging.getLogger("acp-proxy.app")
 
@@ -33,6 +33,7 @@ app.add_middleware(
 
 app.include_router(ws_router)
 app.include_router(a2a_router)
+app.include_router(a2a_rpc_router)  # /rpc/a2a 规范路径
 app.include_router(well_known_router)
 
 
@@ -40,6 +41,14 @@ app.include_router(well_known_router)
 @app.websocket("/ws/acp")
 async def ws_acp_route(websocket: WebSocket):
     await ws_acp_endpoint(websocket)
+
+
+# A2A JSON-RPC 2.0 WebSocket长连接端点
+@app.websocket("/ws/a2a")
+async def ws_a2a_route(websocket: WebSocket):
+    """A2A WebSocket长连接 — Agent间双向通信。"""
+    from ws_a2a import ws_a2a_endpoint
+    await ws_a2a_endpoint(websocket)
 
 
 @app.get("/health")

@@ -1,9 +1,11 @@
-"""A2A HTTP Server 路由模块。
+"""A2A JSON-RPC 2.0 路由模块 — 对齐 A2A v1.0 规范。
 
-在FastAPI app上挂载 /a2a 路由前缀，提供：
-- JSON-RPC 2.0 端点（tasks/send, tasks/get, tasks/cancel, tasks/sendSubscribe等）
-- AgentCard well-known 端点（/.well-known/agent.json）
-- AgentCard 查询端点（/a2a/agents）
+在FastAPI app上挂载路由，提供：
+- POST /a2a (旧路径兼容) + POST /rpc/a2a (规范路径)
+- ws://8092/ws/a2a WebSocket长连接
+- a2a/task/delegate, a2a/task/result, a2a/task/cancel, a2a/artifact/sync, a2a/agent/heartbeat
+- a2a/event 统一事件广播
+- AgentCard well-known 端点
 """
 
 from __future__ import annotations
@@ -73,6 +75,8 @@ def get_task_store() -> TaskStore:
 # ---------------------------------------------------------------------------
 
 router = APIRouter(prefix="/a2a", tags=["A2A"])
+# 规范路径 /rpc/a2a 的别名路由器
+rpc_router = APIRouter(prefix="/rpc/a2a", tags=["A2A-RPC"])
 
 
 def _error_response(request_id: Any, code: int, message: str,
@@ -95,21 +99,28 @@ def _success_response(request_id: Any, result: Any) -> JSONResponse:
 # JSON-RPC 方法处理器
 # ---------------------------------------------------------------------------
 
-async def _handle_tasks_send(params: dict[str, Any], request_id: Any) -> JSONResponse:
-    """处理 tasks/send 方法：创建新Task并启动Agent任务。
+async def _handle_task_delegate(params: dict[str, Any], request_id: Any) -> JSONResponse:
+    """处理 a2a/task/delegate 方法：任务委派（A2A v1.0核心方法）。
 
-    params:
-        sessionId: str (可选)
-        message: Message - 初始消息
-        metadata: dict (可选)
+    主Agent向子Agent下发可追溯子任务，支持父任务依赖、超时控制、上下文传递。
+    向后兼容旧方法名 tasks/send。
     """
     message_data = params.get("message")
     if not message_data:
         return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 message 参数")
 
     session_id = params.get("sessionId")
-    metadata = params.get("metadata")
+    metadata = params.get("metadata") or {}
     msg = Message(**message_data)
+
+    # 注入A2A v1.0规范字段到metadata
+    metadata["task_id"] = params.get("task_id", metadata.get("task_id"))
+    metadata["parent_task_id"] = params.get("parent_task_id")
+    metadata["target_agent"] = params.get("target_agent")
+    metadata["task_type"] = params.get("task_type", "execute")
+    metadata["timeout"] = params.get("timeout", 30000)
+    metadata["require_result"] = params.get("require_result", True)
+    metadata["trace_id"] = params.get("trace_id")
 
     store = get_task_store()
     task = await store.create_task(
@@ -121,26 +132,58 @@ async def _handle_tasks_send(params: dict[str, Any], request_id: Any) -> JSONRes
     # 启动后台Agent任务
     asyncio.create_task(_agent_task_worker(task.id, msg))
 
-    return _success_response(request_id, task.model_dump(exclude_none=True))
+    return _success_response(request_id, {
+        "task_id": task.id,
+        "status": "pending",
+        "accepted_at": int(asyncio.get_event_loop().time()),
+    })
 
 
-async def _handle_tasks_get(params: dict[str, Any], request_id: Any) -> JSONResponse:
-    """处理 tasks/get 方法：查询Task状态。
+async def _handle_task_result(params: dict[str, Any], request_id: Any) -> JSONResponse:
+    """处理 a2a/task/result 方法：子任务结果回传（A2A v1.0）。
 
-    params:
-        taskId: str - Task ID
-        historyLength: int (可选) - 返回的history消息数量上限
+    子Agent执行完成后回传结果、产物、日志、异常信息。
+    向后兼容旧方法名 tasks/get（查询模式）。
     """
-    task_id = params.get("taskId")
+    # 如果有result_data，是结果回传模式
+    if "result_data" in params or "status" in params:
+        task_id = params.get("task_id")
+        if not task_id:
+            return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 task_id 参数")
+
+        store = get_task_store()
+        task = await store.get_task(task_id)
+        if not task:
+            return _error_response(request_id, A2A_TASK_NOT_FOUND, f"Task不存在: {task_id}")
+
+        # 更新任务状态和结果
+        status_str = params.get("status", "success")
+        result_data = params.get("result_data", {})
+        artifact_list = params.get("artifact_list", [])
+        error_msg = params.get("error_msg", "")
+        cost_time = params.get("cost_time", 0)
+
+        new_state = TaskState.COMPLETED if status_str == "success" else TaskState.FAILED
+        task = await store.update_task_status(task_id, new_state)
+
+        return _success_response(request_id, {
+            "task_id": task_id,
+            "status": status_str,
+            "result_data": result_data,
+            "artifact_list": artifact_list,
+            "cost_time": cost_time,
+        })
+
+    # 查询模式（兼容 tasks/get）
+    task_id = params.get("task_id") or params.get("taskId")
     if not task_id:
-        return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 taskId 参数")
+        return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 task_id 参数")
 
     store = get_task_store()
     task = await store.get_task(task_id)
     if not task:
         return _error_response(request_id, A2A_TASK_NOT_FOUND, f"Task不存在: {task_id}")
 
-    # 可选截断history
     history_length = params.get("historyLength")
     if history_length is not None and isinstance(history_length, int) and history_length >= 0:
         task.history = task.history[-history_length:]
@@ -148,15 +191,14 @@ async def _handle_tasks_get(params: dict[str, Any], request_id: Any) -> JSONResp
     return _success_response(request_id, task.model_dump(exclude_none=True))
 
 
-async def _handle_tasks_cancel(params: dict[str, Any], request_id: Any) -> JSONResponse:
-    """处理 tasks/cancel 方法：取消Task。
+async def _handle_task_cancel(params: dict[str, Any], request_id: Any) -> JSONResponse:
+    """处理 a2a/task/cancel 方法：任务取消（A2A v1.0）。
 
-    params:
-        taskId: str - Task ID
+    向后兼容旧方法名 tasks/cancel。
     """
-    task_id = params.get("taskId")
+    task_id = params.get("task_id") or params.get("taskId")
     if not task_id:
-        return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 taskId 参数")
+        return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 task_id 参数")
 
     store = get_task_store()
     task = await store.get_task(task_id)
@@ -172,30 +214,67 @@ async def _handle_tasks_cancel(params: dict[str, Any], request_id: Any) -> JSONR
     except ValueError as e:
         return _error_response(request_id, A2A_INVALID_TASK_STATE, str(e))
 
-    return _success_response(request_id, task.model_dump(exclude_none=True))
+    return _success_response(request_id, {"task_id": task_id, "status": "canceled"})
 
 
-async def _handle_tasks_create(params: dict[str, Any], request_id: Any) -> JSONResponse:
-    """处理 tasks/create 方法：创建新Task。
+async def _handle_artifact_sync(params: dict[str, Any], request_id: Any) -> JSONResponse:
+    """处理 a2a/artifact/sync 方法：跨Agent工件同步（A2A v1.0）。
 
-    params:
-        sessionId: str (可选)
-        message: Message (可选) - 初始消息
-        metadata: dict (可选)
+    文档、代码、报表、结构化产物跨Agent共享。
     """
-    store = get_task_store()
-    session_id = params.get("sessionId")
-    message_data = params.get("message")
-    metadata = params.get("metadata")
+    artifact_id = params.get("artifact_id")
+    if not artifact_id:
+        return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 artifact_id 参数")
 
-    initial_message = Message(**message_data) if message_data else None
+    artifact_type = params.get("artifact_type", "document")
+    content = params.get("content", "")
+    meta = params.get("meta", {})
+    target_agents = params.get("target_agent_list", [])
 
-    task = await store.create_task(
-        session_id=session_id,
-        initial_message=initial_message,
-        metadata=metadata,
-    )
-    return _success_response(request_id, task.model_dump(exclude_none=True))
+    # 广播工件更新事件
+    stream = get_stream_manager()
+    event_data = {
+        "artifact_id": artifact_id,
+        "artifact_type": artifact_type,
+        "meta": meta,
+        "target_agents": target_agents,
+    }
+    await stream.broadcast_event("artifact.update", event_data)
+
+    return _success_response(request_id, {
+        "artifact_id": artifact_id,
+        "synced": True,
+        "targets": target_agents,
+    })
+
+
+async def _handle_agent_heartbeat(params: dict[str, Any], request_id: Any) -> JSONResponse:
+    """处理 a2a/agent/heartbeat 方法：节点心跳保活（A2A v1.0）。
+
+    集群在线感知、负载探测、异常节点剔除。
+    """
+    agent_id = params.get("agent_id")
+    if not agent_id:
+        return _error_response(request_id, JSONRPC_INVALID_PARAMS, "缺少 agent_id 参数")
+
+    status = params.get("status", "online")
+    load = params.get("load", 0.0)
+    support_methods = params.get("support_methods", [])
+
+    # 广播agent状态事件
+    stream = get_stream_manager()
+    await stream.broadcast_event("agent.status", {
+        "agent_id": agent_id,
+        "status": status,
+        "load": load,
+        "support_methods": support_methods,
+    })
+
+    return _success_response(request_id, {
+        "agent_id": agent_id,
+        "status": status,
+        "acknowledged": True,
+    })
 
 
 async def _agent_task_worker(task_id: str, message: Message | None) -> None:
@@ -363,10 +442,16 @@ async def _handle_push_notification_get(params: dict[str, Any], request_id: Any)
 # ---------------------------------------------------------------------------
 
 _METHOD_HANDLERS: dict[str, Any] = {
-    "tasks/send": _handle_tasks_send,
-    "tasks/get": _handle_tasks_get,
-    "tasks/cancel": _handle_tasks_cancel,
-    "tasks/create": _handle_tasks_create,
+    # A2A v1.0 规范方法名
+    "a2a/task/delegate": _handle_task_delegate,
+    "a2a/task/result": _handle_task_result,
+    "a2a/task/cancel": _handle_task_cancel,
+    "a2a/artifact/sync": _handle_artifact_sync,
+    "a2a/agent/heartbeat": _handle_agent_heartbeat,
+    # 向后兼容旧方法名
+    "tasks/send": _handle_task_delegate,
+    "tasks/get": _handle_task_result,
+    "tasks/cancel": _handle_task_cancel,
     "tasks/transition": _handle_tasks_transition,
     "tasks/sendSubscribe": _handle_tasks_send_subscribe,
     "tasks/pushNotification/set": _handle_push_notification_set,
@@ -455,7 +540,16 @@ async def get_agent(name: str) -> JSONResponse:
 
 
 # ---------------------------------------------------------------------------
-# well-known AgentCard 路由（需挂载到根路径）
+# /rpc/a2a 规范路径端点（复用同一个处理器）
+# ---------------------------------------------------------------------------
+
+@rpc_router.post("")
+async def rpc_jsonrpc_endpoint(request: Request):
+    """A2A JSON-RPC 2.0 规范路径入口 (/rpc/a2a)。
+
+    与 /a2a 共用同一套方法处理器，只是路由前缀不同。
+    """
+    return await jsonrpc_endpoint(request)
 # ---------------------------------------------------------------------------
 
 well_known_router = APIRouter(tags=["A2A-WellKnown"])
