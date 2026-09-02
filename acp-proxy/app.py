@@ -15,16 +15,9 @@ logger = logging.getLogger("acp-proxy.app")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Start ACP process on startup, stop on shutdown."""
-    acp = get_acp_process()
-    try:
-        await acp.start()
-        logger.info(f"ACP Proxy started (pid={acp._proc.pid if acp._proc else 'unknown'})")
-    except Exception as e:
-        logger.error(f"ACP Proxy startup failed: {e}")
-        raise
+    """ACP Proxy生命周期 — 只启动FastAPI服务，Agent Engine独立运行"""
+    logger.info("ACP Proxy starting (Agent Engine managed separately)")
     yield
-    await acp.stop()
     logger.info("ACP Proxy stopped")
 
 

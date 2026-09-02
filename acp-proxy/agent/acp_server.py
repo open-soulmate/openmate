@@ -345,13 +345,12 @@ class ACPServer:
         Args:
             session: 目标会话
             event_type: 事件类型（EventType枚举值）
-            data: 事件负载数据
+            data: 事件负载数据（放入payload字段）
         """
         params = {
             "session_id": session.id,
             "event_type": event_type.value,
-            "timestamp": time.time(),
-            **data,
+            "payload": data,
         }
         await self._notify(session.ws, "session.event", params, session=session)
 
@@ -363,10 +362,11 @@ class ACPServer:
 
         供Agent引擎回调使用，替代原来的 session/update。
         content: 完整内容（累积），content_delta: 本次增量（流式场景）
+        ACP v1.0 payload格式：chunk=增量文本，content=累积文本
         """
         data: dict[str, Any] = {"content": content}
         if content_delta is not None:
-            data["content_delta"] = content_delta
+            data["chunk"] = content_delta
         await self._emit_event(session, EventType.MESSAGE, data)
 
     async def emit_completed(self, session: Session, summary: str = "",
