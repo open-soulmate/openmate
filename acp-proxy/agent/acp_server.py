@@ -1,7 +1,10 @@
 """ACP WebSocket Server — JSON-RPC 2.0 over NDJSON协议层
 
 实现Agent Client Protocol v1.0 (ACP-1.0)的WebSocket服务端，管理客户端连接和会话生命周期。
-状态机：idle → running → input-required → completed / failed
+
+Session v1.0 六态状态机：
+    init → active ↔ frozen
+    active/frozen → destroy_pending → destroyed (终态不可逆)
 
 协议版本：ACP-1.0
 所有事件统一走 session.event，通过 event_type 字段区分类型。
@@ -28,12 +31,53 @@ if not logger.handlers:
 
 
 class SessionState(str, Enum):
-    """会话状态枚举 — 严格对齐ACP定义"""
-    IDLE = "idle"
-    RUNNING = "running"
-    INPUT_REQUIRED = "input-required"  # 等待人工审批
-    COMPLETED = "completed"
-    FAILED = "failed"
+    """Session v1.0 六态状态机枚举
+
+    生命周期流转：
+        init → active ↔ frozen
+        active/frozen → destroy_pending → destroyed
+        destroyed 是终态，不可逆
+    """
+    INIT = "init"                      # 初始化中，未就绪
+    ACTIVE = "active"                  # 活跃，可接收消息和执行任务
+    FROZEN = "frozen"                  # 冻结，暂停新任务，快照落地
+    RESUMING = "resuming"              # 恢复中，从快照加载
+    DESTROY_PENDING = "destroy_pending"  # 待销毁，拒绝新请求
+    DESTROYED = "destroyed"            # 已销毁，不可恢复
+
+
+# ── 合法状态流转映射表 ──────────────────────────────────────────────
+_VALID_TRANSITIONS: dict[SessionState, set[SessionState]] = {
+    SessionState.INIT: {SessionState.ACTIVE},
+    SessionState.ACTIVE: {SessionState.FROZEN, SessionState.DESTROY_PENDING},
+    SessionState.FROZEN: {SessionState.ACTIVE, SessionState.RESUMING, SessionState.DESTROY_PENDING},
+    SessionState.RESUMING: {SessionState.ACTIVE},
+    SessionState.DESTROY_PENDING: {SessionState.DESTROYED},
+    SessionState.DESTROYED: set(),  # 终态，不可逆
+}
+
+
+class InvalidStateTransition(Exception):
+    """非法状态流转异常 — 当尝试不允许的状态转换时抛出"""
+    pass
+
+
+def validate_transition(from_state: SessionState, to_state: SessionState) -> None:
+    """验证状态流转是否合法，非法流转抛出 InvalidStateTransition
+
+    Args:
+        from_state: 当前状态
+        to_state: 目标状态
+
+    Raises:
+        InvalidStateTransition: 当流转不合法时
+    """
+    allowed = _VALID_TRANSITIONS.get(from_state, set())
+    if to_state not in allowed:
+        raise InvalidStateTransition(
+            f"非法状态流转: {from_state.value} → {to_state.value}，"
+            f"允许的目标状态: {[s.value for s in allowed]}"
+        )
 
 
 # ACP v1.0 事件类型常量
@@ -48,13 +92,25 @@ class EventType(str, Enum):
 
 
 class Session:
-    """一个独立的Agent会话，包含状态、消息历史、工作目录"""
+    """一个独立的Agent会话 — Session v1.0 六态生命周期管理
 
-    def __init__(self, session_id: str, workspace: str, agent_id: str = "openmate-agent"):
-        """初始化会话，创建独立上下文和取消事件"""
+    状态流转：init → active ↔ frozen → destroy_pending → destroyed
+    支持超时自动冻结、快照保存/恢复、资源清理。
+    """
+
+    def __init__(self, session_id: str, workspace: str, agent_id: str = "openmate-agent",
+                 idle_timeout_seconds: float = 1800.0):
+        """初始化会话 — 初始状态为 init，需立即通过 session/create 转为 active
+
+        Args:
+            session_id: 会话唯一ID
+            workspace: 工作目录
+            agent_id: Agent标识
+            idle_timeout_seconds: 空闲超时自动冻结秒数，默认1800秒(30分钟)
+        """
         self.id = session_id                  # 会话唯一ID
         self.agent_id = agent_id              # Agent标识
-        self.state = SessionState.IDLE        # 当前状态
+        self.state = SessionState.INIT        # 初始状态：init
         self.messages: list[dict] = []        # 消息历史
         self.workspace = workspace            # 工作目录
         self.task: Optional[asyncio.Task] = None           # 正在运行的Agent任务
@@ -65,6 +121,8 @@ class Session:
         self.ws: Optional[Any] = None         # 绑定的WebSocket连接
         self.ws_lock = asyncio.Lock()         # WS写入锁（防止并发send冲突）
         self.client_id: str = ""              # 客户端标识
+        self.idle_timeout_seconds = idle_timeout_seconds  # 空闲超时阈值
+        self.snapshot: Optional[dict] = None  # 冻结快照数据（freeze时保存）
 
     def touch(self):
         """更新最后活跃时间"""
@@ -73,6 +131,82 @@ class Session:
     def is_alive(self, timeout: float = 300) -> bool:
         """检查会话是否还活着（默认5分钟空闲超时）"""
         return (time.time() - self.last_active) < timeout
+
+    def is_idle_expired(self) -> bool:
+        """检查会话是否超过空闲超时阈值，应被自动冻结"""
+        if self.state != SessionState.ACTIVE:
+            return False
+        return (time.time() - self.last_active) > self.idle_timeout_seconds
+
+    def freeze(self) -> dict:
+        """冻结会话 — 状态→frozen，保存快照到内存
+
+        快照包含会话元数据，用于后续恢复。
+        仅在 active 状态下可调用。
+
+        Returns:
+            dict: 快照数据（包含session_id、state、messages、workspace等）
+
+        Raises:
+            InvalidStateTransition: 当前状态不允许冻结
+        """
+        validate_transition(self.state, SessionState.FROZEN)
+        self.snapshot = {
+            "session_id": self.id,
+            "agent_id": self.agent_id,
+            "workspace": self.workspace,
+            "client_id": self.client_id,
+            "messages": list(self.messages),  # 消息历史副本
+            "created_at": self.created_at,
+            "frozen_at": time.time(),
+        }
+        self.state = SessionState.FROZEN
+        logger.info(f"[{self.id}] Session frozen, snapshot saved")
+        return self.snapshot
+
+    def resume(self) -> None:
+        """恢复会话 — 状态→resuming→active，从快照加载数据
+
+        仅在 frozen 状态下可调用。恢复后快照保留（可再次冻结）。
+
+        Raises:
+            InvalidStateTransition: 当前状态不允许恢复
+        """
+        validate_transition(self.state, SessionState.RESUMING)
+        self.state = SessionState.RESUMING
+        logger.info(f"[{self.id}] Session resuming from snapshot")
+        # 从快照恢复（如果有）
+        if self.snapshot:
+            self.messages = list(self.snapshot.get("messages", []))
+        # 直接转为 active
+        self.state = SessionState.ACTIVE
+        self.touch()
+        logger.info(f"[{self.id}] Session resumed to active")
+
+    def destroy(self) -> None:
+        """销毁会话 — 状态→destroy_pending→destroyed，清理所有资源
+
+        仅在 active 或 frozen 状态下可调用。
+        destroyed 是终态，不可逆。
+
+        Raises:
+            InvalidStateTransition: 当前状态不允许销毁
+        """
+        validate_transition(self.state, SessionState.DESTROY_PENDING)
+        self.state = SessionState.DESTROY_PENDING
+        # 取消正在运行的任务
+        self.cancel_event.set()
+        if self.task and not self.task.done():
+            self.task.cancel()
+        # 清理审批Future
+        for future in self.permission_futures.values():
+            if not future.done():
+                future.cancel()
+        self.permission_futures.clear()
+        # 转为终态
+        self.state = SessionState.DESTROYED
+        self.snapshot = None  # 释放快照
+        logger.info(f"[{self.id}] Session destroyed")
 
 
 # ACP v1.0 标准错误码
@@ -150,12 +284,13 @@ class ACPServer:
             logger.info(f"Client disconnected: {client_addr}")
         finally:
             self._clients.discard(ws)
-            # 清理该连接绑定的所有会话
+            # 清理该连接绑定的所有会话（走destroy流程）
             for sid, session in list(self.sessions.items()):
                 if session.ws is ws:
-                    session.cancel_event.set()
-                    if session.task and not session.task.done():
-                        session.task.cancel()
+                    try:
+                        session.destroy()
+                    except InvalidStateTransition:
+                        pass  # 已销毁的跳过
                     del self.sessions[sid]
                     logger.info(f"Cleaned up session {sid} from disconnected client")
 
@@ -200,39 +335,50 @@ class ACPServer:
         logger.info("ACP initialize handshake completed (ACP-1.0)")
 
     async def _handle_session_create(self, msg_id: str, params: dict, ws):
-        """创建新会话 — 分配sessionId，初始化工作目录
+        """创建新会话 — init→active，分配sessionId，初始化工作目录
 
         ACP v1.0要求响应包含 session_id、agent_id、created_at
+        Session v1.0: 创建后立即从 init 转为 active 状态
         """
         sid = f"om-{uuid.uuid4().hex[:12]}"
         workspace = params.get("cwd", params.get("workspace", "/home/climbing"))
         agent_id = params.get("agentId", "openmate-agent")
-        session = Session(sid, workspace, agent_id)
+        idle_timeout = params.get("idleTimeoutSeconds", 1800.0)
+        session = Session(sid, workspace, agent_id, idle_timeout_seconds=idle_timeout)
         session.ws = ws
         session.client_id = params.get("clientId", "")
+        # init → active：创建后立即激活
+        validate_transition(session.state, SessionState.ACTIVE)
+        session.state = SessionState.ACTIVE
+        session.touch()
         self.sessions[sid] = session
         result = {
             "session_id": sid,
             "agent_id": agent_id,
             "created_at": session.created_at,
             "cwd": workspace,
+            "state": session.state.value,
         }
         await self._send_result(ws, msg_id, result)
-        logger.info(f"Session created: {sid} agent={agent_id} workspace={workspace}")
+        logger.info(f"Session created: {sid} agent={agent_id} workspace={workspace} state=active")
 
     async def _handle_session_prompt(self, msg_id: str, params: dict, ws):
-        """接收用户任务指令 — 启动Agent异步任务"""
+        """接收用户任务指令 — 仅active状态可接收，启动Agent异步任务
+
+        Session v1.0: 状态必须为 active 才能接收新消息
+        """
         sid = params.get("session_id", params.get("sessionId", ""))
         session = self.sessions.get(sid)
         if not session:
             await self._send_error(ws, msg_id, ERR_SESSION_NOT_FOUND, f"Session not found: {sid}")
             return
-        if session.state == SessionState.RUNNING:
-            await self._send_error(ws, msg_id, ERR_INVALID_PARAMS, "Session already running")
+        # Session v1.0: 必须是 active 状态才能接收消息
+        if session.state != SessionState.ACTIVE:
+            await self._send_error(ws, msg_id, ERR_INVALID_PARAMS,
+                                   f"Session not active (current state: {session.state.value})")
             return
 
         prompt = params.get("prompt", "")
-        session.state = SessionState.RUNNING
         session.cancel_event.clear()
         session.touch()
         session.messages.append({"role": "user", "content": prompt})
@@ -250,63 +396,85 @@ class ACPServer:
             await self._echo_response(session, prompt)
 
     async def _run_with_timeout(self, session: Session, prompt: str):
-        """带超时的Agent任务执行 — 30分钟最大执行时间"""
+        """带超时的Agent任务执行 — 30分钟最大执行时间
+
+        Session v1.0: 任务完成/失败后，session保持active状态，可接受新任务
+        """
         logger.info(f"[{session.id}] Starting agent task")
         try:
             await asyncio.wait_for(
                 self._engine_task(session, prompt),
                 timeout=1800,  # 30分钟任务超时
             )
+            # 任务完成后保持 active 状态，等待下一个 prompt
+            session.touch()
         except asyncio.TimeoutError:
             logger.error(f"Task timeout for session {session.id}")
-            session.state = SessionState.FAILED
+            # 超时后保持 active，报告错误但不改变生命周期状态
+            session.touch()
             await self._emit_event(session, EventType.FAILED, {
                 "error": "Task execution timed out (30 min limit)",
                 "error_code": ERR_TASK_TIMEOUT,
             })
         except asyncio.CancelledError:
             logger.info(f"Task cancelled for session {session.id}")
-            session.state = SessionState.COMPLETED
+            session.touch()
             await self._emit_event(session, EventType.COMPLETED, {
                 "summary": "Task was cancelled by user",
             })
         except Exception as e:
             logger.error(f"Task error for session {session.id}: {e}", exc_info=True)
-            session.state = SessionState.FAILED
+            # 异常后保持 active，报告错误但不改变生命周期状态
+            session.touch()
             await self._emit_event(session, EventType.FAILED, {
                 "error": str(e),
                 "error_code": ERR_AGENT_EXCEPTION,
             })
 
     async def _echo_response(self, session: Session, prompt: str):
-        """无引擎时的echo回显 — 用于阶段1测试"""
+        """无引擎时的echo回显 — 用于阶段1测试
+
+        Session v1.0: 回显完成后保持 active 状态
+        """
         reply = f"Echo: {prompt}"
         # 发送消息事件（流式内容）
         await self._emit_event(session, EventType.MESSAGE, {
             "content": reply,
         })
-        session.state = SessionState.COMPLETED
         session.messages.append({"role": "assistant", "content": reply})
+        session.touch()
         # 发送完成事件
         await self._emit_event(session, EventType.COMPLETED, {
             "summary": reply,
         })
 
     async def _handle_session_close(self, msg_id: str, params: dict, ws):
-        """关闭会话 — 关闭会话、清理资源、销毁实例（ACP v1.0 session.close）"""
+        """关闭会话 — 走destroy流程：active/frozen→destroy_pending→destroyed
+
+        Session v1.0: 使用 Session.destroy() 方法进行规范的状态流转和资源清理
+        """
         sid = params.get("session_id", params.get("sessionId", ""))
         session = self.sessions.get(sid)
         if not session:
             await self._send_error(ws, msg_id, ERR_SESSION_NOT_FOUND, f"Session not found: {sid}")
             return
-        session.cancel_event.set()
-        if session.task and not session.task.done():
-            session.task.cancel()
-        session.state = SessionState.COMPLETED
+        # 已经是终态，直接返回
+        if session.state == SessionState.DESTROYED:
+            await self._send_result(ws, msg_id, {"session_id": sid, "status": "already_destroyed"})
+            return
+        # 已经在销毁中，等待完成
+        if session.state == SessionState.DESTROY_PENDING:
+            await self._send_result(ws, msg_id, {"session_id": sid, "status": "destroy_pending"})
+            return
+        try:
+            session.destroy()  # active/frozen → destroy_pending → destroyed
+        except InvalidStateTransition as e:
+            await self._send_error(ws, msg_id, ERR_INVALID_PARAMS, str(e))
+            return
         # 从会话池中移除
         del self.sessions[sid]
         await self._send_result(ws, msg_id, {"session_id": sid, "status": "destroyed"})
-        logger.info(f"Session destroyed: {sid}")
+        logger.info(f"Session destroyed via close: {sid}")
 
     async def _handle_session_approval(self, msg_id: str, params: dict, ws):
         """处理审批决议 — ACP v1.0 session.approval
@@ -433,8 +601,8 @@ class ACPServer:
         # 生成唯一审批请求ID
         request_id = f"apr-{uuid.uuid4().hex[:12]}"
 
-        # 将会话状态切换为等待人工审批
-        session.state = SessionState.INPUT_REQUIRED
+        # Session v1.0: 审批期间保持 active 状态，不切换到 INPUT_REQUIRED
+        # （INPUT_REQUIRED 已从状态机中移除，审批是业务流程而非生命周期状态）
 
         # 创建Future，等待前端session/approval回传
         loop = asyncio.get_event_loop()
@@ -461,9 +629,8 @@ class ACPServer:
         finally:
             # 清理Future引用
             session.permission_futures.pop(request_id, None)
-            # 恢复会话运行状态
-            if session.state == SessionState.INPUT_REQUIRED:
-                session.state = SessionState.RUNNING
+            # Session v1.0: 审批期间保持 active，无需恢复状态
+            session.touch()
 
     async def emit_tool_call(self, session: Session, tool_name: str,
                              arguments: Optional[dict] = None,
@@ -522,13 +689,33 @@ class ACPServer:
     # ── 生命周期管理 ──────────────────────────────────────────────
 
     async def _gc_loop(self):
-        """定时GC — 每60秒清理死会话和断开的连接"""
+        """定时GC — 每60秒检查：自动冻结空闲会话、清理死会话
+
+        Session v1.0 增强：
+        - 空闲超时的 active 会话自动冻结（freeze）
+        - 超过10分钟无活动的 destroyed/frozen 会话从池中移除
+        """
         while self._running:
             await asyncio.sleep(60)
             dead_sids = []
+            freeze_sids = []
             for sid, session in self.sessions.items():
-                if not session.is_alive(timeout=600):  # 10分钟无活动
+                # 空闲超时的 active 会话自动冻结
+                if session.is_idle_expired():
+                    freeze_sids.append(sid)
+                # 超过10分钟无活动的非active会话清理
+                elif not session.is_alive(timeout=600) and session.state != SessionState.ACTIVE:
                     dead_sids.append(sid)
+            # 自动冻结空闲会话
+            for sid in freeze_sids:
+                session = self.sessions.get(sid)
+                if session and session.state == SessionState.ACTIVE:
+                    try:
+                        session.freeze()
+                        logger.info(f"GC: auto-froze idle session {sid}")
+                    except InvalidStateTransition:
+                        pass  # 状态已变化，跳过
+            # 清理死会话
             for sid in dead_sids:
                 session = self.sessions.pop(sid)
                 if session.task and not session.task.done():
@@ -540,12 +727,13 @@ class ACPServer:
         return self.sessions.get(session_id)
 
     async def shutdown(self):
-        """优雅关闭 — 取消所有任务，清理资源"""
+        """优雅关闭 — 遍历所有会话走destroy流程，取消GC任务"""
         self._running = False
         if self._gc_task:
             self._gc_task.cancel()
         for sid, session in self.sessions.items():
-            session.cancel_event.set()
-            if session.task and not session.task.done():
-                session.task.cancel()
+            try:
+                session.destroy()
+            except InvalidStateTransition:
+                pass  # 已销毁的跳过
         logger.info("ACP Server shutdown complete")

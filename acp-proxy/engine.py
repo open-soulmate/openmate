@@ -13,7 +13,7 @@ import os
 import time
 from typing import Optional
 
-from agent.acp_server import ACPServer, Session, SessionState
+from agent.acp_server import ACPServer, Session
 from agent.llm_engine import LLMEngine
 from agent.context import SessionContext
 from agent.artifact import ArtifactEngine
@@ -84,17 +84,17 @@ class AgentEngine:
             # 发送完成通知
             elapsed = time.time() - start_time
             summary = await self._generate_review(session, full_response, elapsed)
-            session.state = SessionState.COMPLETED
+            # Session v1.0: 不再设置session.state，由_run_with_timeout统一管理
             await self.acp_server.emit_completed(session, summary=summary)
             logger.info(f"[{session.id}] Task completed in {elapsed:.1f}s")
 
         except asyncio.CancelledError:
-            session.state = SessionState.COMPLETED
+            # Session v1.0: 取消后由_run_with_timeout管理状态
             await self.acp_server.emit_completed(session, summary="任务已取消")
             raise
         except Exception as e:
             logger.error(f"[{session.id}] Task failed: {e}", exc_info=True)
-            session.state = SessionState.FAILED
+            # Session v1.0: 异常后由_run_with_timeout管理状态
             await self.acp_server.emit_failed(session, error=str(e))
 
     async def _stream_to_client(self, session: Session, messages: list[dict]) -> str:
