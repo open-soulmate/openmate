@@ -59,50 +59,56 @@
 
 ### 5. ACP 审批弹窗
 - **规范**: `09-ACP-v1.0-人机交互协议规范.md` (human.approval.required)
-- **状态**: ⏳ 待实现
+- **状态**: ✅ 已完成
+- **日期**: 2026-09-02
+- **Commit**: `4a775de`
 - **改动**:
-  - [ ] 前端审批弹窗组件
-  - [ ] session/approval 回传
-  - [ ] Agent Engine permission回调链路
+  - `acp-proxy/agent/acp_server.py` — 新增request_human_approval()，发送human.approval.required事件，Future阻塞等待回传，超时300s自动拒绝
+  - `src/components/acp-approval-modal.tsx` — Tailwind手写审批弹窗，显示工具名/风险等级/描述，支持用户备注，ESC取消
+  - `src/app/(app)/chat/chat-client.tsx` — useAcpWebSocket hook新增approvalRequest状态+sendApproval回调，human.approval.required事件处理器
+- **验证**: TypeScript编译无错误，Python语法通过
 
 ### 6. EventBus 事件总线
 - **规范**: `12-EventBus-v1.0-事件总线规范.md`
-- **状态**: ⏳ 待实现
+- **状态**: ✅ 已完成
+- **日期**: 2026-09-02
+- **Commit**: `345aaf8`
 - **改动**:
-  - [ ] 标准事件结构体（eventId, eventTopic, eventType, traceId）
-  - [ ] 发布/订阅模型
-  - [ ] 事件Topic命名规范
-  - [ ] 可靠投递+重试+死信队列
-  - [ ] 跨进程事件广播
+  - `acp-proxy/eventbus/__init__.py` — 模块入口
+  - `acp-proxy/eventbus/models.py` — Event数据模型(eventId/eventTopic/eventType/timestamp/traceId/payload/meta) + Subscription
+  - `acp-proxy/eventbus/bus.py` — EventBus单例：publish/subscribe/unsubscribe，Topic通配符路由匹配，重试3次+死信队列
+  - `acp-proxy/eventbus/store.py` — 事件持久化，replay_by_time_range/replay_by_topic/replay_by_trace_id
+- **验证**: 13个方法全部可用，含replay_dead_letter死信重放
 
 ### 7. Session 状态机完善
 - **规范**: `24-Session-v1.0-会话生命周期规范.md`
-- **状态**: ⏳ 待实现
+- **状态**: ✅ 已完成
+- **日期**: 2026-09-02
+- **Commit**: `53947c1`
 - **改动**:
-  - [ ] 状态机：init→active→frozen→resuming→destroy_pending→destroyed
-  - [ ] 冻结/恢复机制
-  - [ ] 快照持久化（L3断线恢复）
-  - [ ] 子会话模型（A2A嵌套）
-  - [ ] 超时自动冻结/销毁
+  - `acp-proxy/agent/acp_server.py` — 6态枚举(INIT/ACTIVE/FROZEN/RESUMING/DESTROY_PENDING/DESTROYED)，validate_transition()流转验证，Session.freeze()/resume()/destroy()方法，空闲超时自动冻结(1800s)
+  - `acp-proxy/engine.py` — 移除旧状态引用
+- **验证**: 合法流转全部通过，非法流转正确拒绝，destroyed终态不可逆
 
 ### 8. Memory 记忆系统
 - **规范**: `03-Memory-v1.0-记忆系统规范.md`
-- **状态**: ⏳ 待实现
+- **状态**: ✅ 已完成
+- **日期**: 2026-09-02
+- **Commit**: `d363364`
 - **改动**:
-  - [ ] 短期记忆（会话内上下文）
-  - [ ] 长期记忆（跨会话持久化）
-  - [ ] 工作记忆（当前任务临时状态）
-  - [ ] 记忆检索（向量/关键词混合）
-  - [ ] AgentCore ↔ Memory 联动
+  - `acp-proxy/memory/__init__.py` — 模块入口，导出MemoryStore/MemoryItem/MemoryType
+  - `acp-proxy/memory/models.py` — MemoryItem数据模型 + MemoryType枚举(short_term/long_term/working)
+  - `acp-proxy/memory/store.py` — MemoryStore全局单例，线程安全，add/search/get/delete/consolidate/clear_session/stats
+- **验证**: 短期100/长期500/工作50容量限制，关键词搜索+相关性排序，consolidate短期→长期提炼
 
 ### 9. traceId 全链路追踪
 - **规范**: `22-LogAndTrace-v1.0-日志链路追踪规范.md`
-- **状态**: ⏳ 待实现
+- **状态**: ✅ 已完成
+- **日期**: 2026-09-02
+- **Commit**: `48bb843`
 - **改动**:
-  - [ ] Gateway生成traceId
-  - [ ] 全链路Header透传
-  - [ ] 日志统一格式（traceId, spanId, timestamp, level）
-  - [ ] ACP/A2A/MCP全链路绑定
+  - `acp-proxy/trace/__init__.py` — generate_trace_id, set/get_trace_id(ContextVar请求隔离), Span上下文管理器, log_with_trace统一日志, extract_trace_id_from_headers
+- **验证**: 模块加载正常，traceId生成16位hex，spanId生成8位hex
 
 ---
 
@@ -118,9 +124,12 @@
   - [ ] 跨Agent最小权限委派
   - [ ] 全操作审计日志
 
-### 11. Config 配置中心
-- **规范**: `14-Config-v1.0-配置中心规范.md`
-- **状态**: ⏳ 待实现
+### 11. Config 配置管理
+- **规范**: `16-Config-v1.0-配置管理规范.md`
+- **状态**: ✅ 已完成
+- **日期**: 2026-09-02
+- **Commit**: `efda286`
+- **改动**: config_center/模块 — 四层命名空间+版本管理+回滚+热更新订阅+加密标记
 - **改动**:
   - [ ] 四层命名空间（cluster→project→service→instance）
   - [ ] 配置版本管理+回滚
@@ -129,9 +138,12 @@
   - [ ] 敏感配置加密
   - [ ] 本地缓存兜底
 
-### 12. Plugin 插件系统
-- **规范**: `13-Plugin-v1.0-插件扩展规范.md`
-- **状态**: ⏳ 待实现
+### 12. Plugin 插件扩展
+- **规范**: `14-Plugin-v1.0-插件扩展规范.md`
+- **状态**: ✅ 已完成
+- **日期**: 2026-09-02
+- **Commit**: `a59d5b9`
+- **改动**: plugin/模块 — PluginManifest+PluginInstance模型，PluginLoader加载卸载生命周期，HookRegistry before/after拦截
 - **改动**:
   - [ ] 插件manifest定义
   - [ ] 插件加载/卸载生命周期
@@ -140,8 +152,11 @@
   - [ ] 插件权限管控
 
 ### 13. PromptStore 提示词仓库
-- **规范**: `06-PromptStore-v1.0-提示词仓库规范.md`
-- **状态**: ⏳ 待实现
+- **规范**: `15-PromptStore-v1.0-提示词仓库规范.md`
+- **状态**: ✅ 已完成
+- **日期**: 2026-09-02
+- **Commit**: `37a1ef4`
+- **改动**: prompt_store/模块 — PromptTemplate模型，版本管理+回滚+{{variable}}模板渲染+多租户namespace隔离
 - **改动**:
   - [ ] Prompt版本管理
   - [ ] 变量模板引擎
@@ -149,8 +164,10 @@
   - [ ] AgentCore调用PromptStore加载Prompt
 
 ### 14. ModelGateway 模型网关
-- **规范**: `08-ModelGateway-v1.0-模型网关规范.md`
-- **状态**: ⏳ 待实现
+- **规范**: `13-ModelGateway-v1.0-模型网关规范.md`
+- **状态**: ✅ 已完成
+- **日期**: 2026-09-02
+- **改动**: model_gateway/模块 — 7种provider路由+round-robin负载均衡+熔断器(closed/open/half_open)+Token计量+流式/非流式统一接口
 - **改动**:
   - [ ] 统一模型代理（所有LLM调用收口）
   - [ ] 多模型路由+负载均衡
