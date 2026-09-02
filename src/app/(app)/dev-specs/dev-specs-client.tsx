@@ -3,7 +3,7 @@
  * 开发规范页面 — 对齐28-UI-v1.0前端UI设计规范
  * 使用openface标准三栏布局：setPageSidebar(LeftPanel) + MainPanel(MainHeader) + setPageWorkspace(DetailPanel)
  */
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import {
@@ -13,6 +13,7 @@ import {
 import { LeftPanel } from "@/components/left-panel";
 import { DetailPanel } from "@/components/detail-panel";
 import { PageLayout } from "@/components/page-layout";
+import { FileViewer } from "@opensoulmate/openface";
 
 /* ── 数据模型 ────────────────────────────────────────── */
 
