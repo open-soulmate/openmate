@@ -9,6 +9,7 @@ from proxy import get_acp_process
 from ws_chat import router as ws_router
 from ws_acp import ws_acp_endpoint  # ACP JSON-RPC 2.0纯透传端点
 from a2a.server import router as a2a_router, rpc_router as a2a_rpc_router, well_known_router
+from mcp.server import router as mcp_router
 
 logger = logging.getLogger("acp-proxy.app")
 
@@ -35,6 +36,7 @@ app.include_router(ws_router)
 app.include_router(a2a_router)
 app.include_router(a2a_rpc_router)  # /rpc/a2a 规范路径
 app.include_router(well_known_router)
+app.include_router(mcp_router)  # /admin/mcp 管控端点
 
 
 # ACP JSON-RPC 2.0纯透传端点 — 所有agent统一走此端点
@@ -49,6 +51,14 @@ async def ws_a2a_route(websocket: WebSocket):
     """A2A WebSocket长连接 — Agent间双向通信。"""
     from ws_a2a import ws_a2a_endpoint
     await ws_a2a_endpoint(websocket)
+
+
+# MCP WebSocket长连接端点
+@app.websocket("/ws/mcp")
+async def ws_mcp_route(websocket: WebSocket):
+    """MCP WebSocket长连接 — 底层管控通道。"""
+    from ws_mcp import ws_mcp_endpoint
+    await ws_mcp_endpoint(websocket)
 
 
 @app.get("/health")
