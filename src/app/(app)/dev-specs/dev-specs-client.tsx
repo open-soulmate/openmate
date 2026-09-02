@@ -227,7 +227,7 @@ export function DevSpecsClient() {
       </DetailPanel>
     );
     return () => setPageWorkspace(null);
-  }, [selected, specContent, loadingContent, setPageWorkspace, loadSpecContent]);
+  }, [selected, specContent, setPageWorkspace, loadSpecContent]);
 
   /* ── MainPanel: 中间主内容区（对齐UI规范3.2） ── */
   return (
