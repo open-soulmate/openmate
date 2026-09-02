@@ -3,7 +3,7 @@ import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import {
-  FileText, CheckCircle, Clock, AlertCircle,
+  FileText, CheckCircle, Clock, AlertCircle, Search,
   Layers, Shield, Radio, Database, Eye,
 } from "lucide-react";
 import { LeftPanel } from "@/components/left-panel";
@@ -75,12 +75,23 @@ const PRIORITY_STYLE: Record<string, string> = {
 
 export function DevSpecsClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const [specContent, setSpecContent] = useState<string>("");
   const [loadingContent, setLoadingContent] = useState(false);
   const setPageSidebar = useAppStore((s) => s.setPageSidebar);
   const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
 
   const selected = specs.find((s) => s.id === selectedId) || null;
+
+  const filtered = specs.filter(s => {
+    if (!query) return true;
+    return s.name.toLowerCase().includes(query.toLowerCase()) || s.desc.includes(query) || s.id.includes(query);
+  });
+
+  const done = specs.filter(s => s.status === "done").length;
+  const wip = specs.filter(s => s.status === "wip").length;
+  const todo = specs.filter(s => s.status === "todo").length;
+  const pct = Math.round((done / specs.length) * 100);
 
   const loadSpecContent = useCallback(async (fileName: string) => {
     setLoadingContent(true);
@@ -92,12 +103,8 @@ export function DevSpecsClient() {
     finally { setLoadingContent(false); }
   }, []);
 
-  // Register sidebar: spec list
+  // Register sidebar: spec list with search
   useEffect(() => {
-    const done = specs.filter(s => s.status === "done").length;
-    const wip = specs.filter(s => s.status === "wip").length;
-    const todo = specs.filter(s => s.status === "todo").length;
-
     setPageSidebar(
       <LeftPanel
         items={specs}
@@ -149,25 +156,25 @@ export function DevSpecsClient() {
       />
     );
     return () => setPageSidebar(null);
-  }, [selectedId, setPageSidebar]);
+  }, [selectedId, done, wip, todo, setPageSidebar]);
 
-  // Register workspace: detail panel
+  // Register workspace: detail panel when selected
   useEffect(() => {
     if (!selected) { setPageWorkspace(null); return; }
     loadSpecContent(selected.fileName);
 
-    const sections = [];
-    // 开发记录
-    if (selected.date || selected.commits?.length || selected.changes?.length) {
-      sections.push({
-        title: "开发记录",
-        items: [
-          ...(selected.date ? [{ label: "完成日期", value: selected.date }] : []),
-          ...(selected.commits || []).map(c => ({ label: "Commit", value: c })),
-          ...(selected.changes || []).map(c => ({ label: "改动", value: c })),
-        ],
-      });
-    }
+    const detailItems = [
+      { label: "编号", value: selected.id },
+      { label: "层级", value: selected.layer, icon: (() => { const I = LAYER_ICONS[selected.layer]; return I ? <I className="w-3.5 h-3.5" /> : undefined; })() },
+      { label: "优先级", value: selected.priority },
+      { label: "状态", value: STATUS_LABEL[selected.status], icon: (() => { const I = STATUS_ICON[selected.status]; return <I className="w-3.5 h-3.5" />; })() },
+      { label: "文件", value: selected.fileName },
+    ];
+
+    const devItems = [];
+    if (selected.date) devItems.push({ label: "完成日期", value: selected.date });
+    if (selected.commits) selected.commits.forEach(c => devItems.push({ label: "Commit", value: c }));
+    if (selected.changes) selected.changes.forEach(c => devItems.push({ label: "改动", value: c }));
 
     setPageWorkspace(
       <DetailPanel
@@ -177,26 +184,96 @@ export function DevSpecsClient() {
         badge={STATUS_LABEL[selected.status]}
         onClose={() => setSelectedId(null)}
         sections={[
-          {
-            title: "基本信息",
-            items: [
-              { label: "编号", value: selected.id },
-              { label: "层级", value: selected.layer, icon: (() => { const I = LAYER_ICONS[selected.layer]; return I ? <I className="w-3.5 h-3.5" /> : undefined; })() },
-              { label: "优先级", value: selected.priority },
-              { label: "状态", value: STATUS_LABEL[selected.status], icon: (() => { const I = STATUS_ICON[selected.status]; return <I className="w-3.5 h-3.5" />; })() },
-              { label: "文件", value: selected.fileName },
-            ],
-          },
-          ...sections,
-          {
-            title: "规范正文",
-            items: [{ label: "", value: loadingContent ? "加载中..." : specContent }],
-          },
+          { title: "基本信息", items: detailItems },
+          ...(devItems.length > 0 ? [{ title: "开发记录", items: devItems }] : []),
+          { title: "规范正文", items: [{ label: "", value: loadingContent ? "加载中..." : specContent }] },
         ]}
       />
     );
     return () => setPageWorkspace(null);
   }, [selected, specContent, loadingContent, setPageWorkspace, loadSpecContent]);
 
-  return null;
+  // ── MainPanel: 中间区域统计+卡片网格 ──
+  return (
+    <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-3 lg:mb-6">
+        <div>
+          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2"><FileText className="w-6 h-6" /> OpenSoulMate v1.0 开发规范</h1>
+          <p className="text-xs lg:text-sm text-muted-foreground mt-1">{specs.length} 项规范 · 完成度 {pct}%</p>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 lg:gap-4 mb-3 lg:mb-6">
+        <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold">{specs.length}</p><p className="text-[10px] lg:text-sm text-muted-foreground">总规范数</p></div>
+        <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold text-emerald-500">{done}</p><p className="text-[10px] lg:text-sm text-muted-foreground">已完成</p></div>
+        <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold text-amber-500">{wip}</p><p className="text-[10px] lg:text-sm text-muted-foreground">进行中</p></div>
+        <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold text-muted-foreground">{todo}</p><p className="text-[10px] lg:text-sm text-muted-foreground">待实现</p></div>
+        <div className="p-3 lg:p-4 rounded-xl border bg-card">
+          <p className="text-lg lg:text-2xl font-bold">{pct}%</p>
+          <p className="text-[10px] lg:text-sm text-muted-foreground">完成度</p>
+          <div className="mt-1 h-1.5 rounded-full bg-muted overflow-hidden"><div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} /></div>
+        </div>
+      </div>
+
+      {/* Search */}
+      <div className="relative max-w-sm mb-4">
+        <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+        <input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索规范..."
+          className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-muted text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30" />
+      </div>
+
+      {/* Specs Grid */}
+      {filtered.length === 0 ? (
+        <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
+          <FileText size={48} className="mb-4 opacity-30" />
+          <p className="text-xs lg:text-sm">未找到规范</p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
+          {filtered.map(spec => {
+            const StIcon = STATUS_ICON[spec.status];
+            const LayerIcon = LAYER_ICONS[spec.layer] || FileText;
+            return (
+              <div
+                key={spec.id}
+                onClick={() => setSelectedId(spec.id)}
+                className={cn(
+                  "rounded-xl border bg-card p-3 lg:p-4 transition-all hover:border-primary/30 cursor-pointer",
+                  selectedId === spec.id ? "border-primary ring-1 ring-primary/30" : ""
+                )}
+              >
+                <div className="flex items-start justify-between mb-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10">
+                      <LayerIcon size={18} className="text-primary" />
+                    </div>
+                    <div>
+                      <h3 className="text-xs lg:text-sm font-medium">{spec.name}</h3>
+                      <span className="text-[10px] text-muted-foreground">{spec.id} · {spec.layer}</span>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <span className={cn("text-[10px] px-1.5 py-0.5 rounded-full font-medium", PRIORITY_STYLE[spec.priority])}>{spec.priority}</span>
+                    <span className={cn("flex items-center gap-0.5 text-[10px] px-1.5 py-0.5 rounded-full", STATUS_STYLE[spec.status])}>
+                      <StIcon size={10} /> {STATUS_LABEL[spec.status]}
+                    </span>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground line-clamp-2 mb-3 min-h-[2rem]">{spec.desc}</p>
+                {spec.changes && spec.changes.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {spec.changes.slice(0, 2).map((c, i) => (
+                      <span key={i} className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground truncate max-w-[120px]">{c}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
 }
