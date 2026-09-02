@@ -1,17 +1,17 @@
 """A2A ↔ Agent Engine 桥接层。
 
-通过WebSocket连接内置Agent Engine(端口8787)，使用ACP JSON-RPC 2.0 over NDJSON协议，
-将A2A tasks/sendSubscribe请求转换为ACP session/prompt调用，
-并将ACP session/update事件转换为A2A SSE事件广播给订阅者。
+通过WebSocket连接内置Agent Engine(端口8787)，使用ACP v1.0 JSON-RPC 2.0 over NDJSON协议，
+将A2A tasks/sendSubscribe请求转换为ACP session.prompt调用，
+并将ACP session.event事件转换为A2A SSE事件广播给订阅者。
 
-协议流程：
+协议流程（ACP v1.0）：
   A2A Client → bridge → Agent Engine (ACP WebSocket)
   1. initialize握手
-  2. session/new创建会话
-  3. session/prompt提交任务
-  4. 接收session/update(contentDelta) → MessageAppendedEvent
-  5. 接收session/completed → A2ACompletedEvent
-  6. 接收session/failed → A2AErrorEvent
+  2. session.create创建会话
+  3. session.prompt提交任务
+  4. 接收session.event(event_type=message, content_delta) → MessageAppendedEvent
+  5. 接收session.event(event_type=completed) → A2ACompletedEvent
+  6. 接收session.event(event_type=failed) → A2AErrorEvent
 """
 
 from __future__ import annotations
@@ -81,7 +81,7 @@ class AgentEngineBridge:
     ) -> None:
         """执行A2A任务 — 通过Agent Engine处理并流式广播结果。
 
-        完整流程：连接WS → initialize → session/new → session/prompt →
+        完整流程：连接WS → initialize → session.create → session.prompt →
         接收事件 → 转换为A2A SSE事件 → 广播 → 标记完成。
 
         Args:
@@ -168,11 +168,11 @@ class AgentEngineBridge:
                 # Step 1: initialize握手
                 await self._acp_initialize(ws)
 
-                # Step 2: session/new创建会话
-                session_id = await self._acp_session_new(ws)
+                # Step 2: session.create创建会话
+                session_id = await self._acp_session_create(ws)
                 logger.info(f"[{task_id}] ACP会话已创建: {session_id}")
 
-                # Step 3: session/prompt提交任务并接收流式响应
+                # Step 3: session.prompt提交任务并接收流式响应
                 await self._acp_session_prompt(
                     ws, session_id, user_text, task_id, store, stream
                 )
@@ -197,22 +197,21 @@ class AgentEngineBridge:
         agent_name = result.get("agent", {}).get("name", "unknown")
         logger.info(f"ACP握手成功: agent={agent_name}")
 
-    async def _acp_session_new(self, ws) -> str:
-        """发送session/new创建新会话。
+    async def _acp_session_create(self, ws) -> str:
+        """发送session.create创建新会话。
 
         Args:
             ws: WebSocket连接
 
         Returns:
-            新创建的sessionId
+            新创建的session_id
         """
-        result = await self._rpc(ws, "session/new", {
+        result = await self._rpc(ws, "session.create", {
             "cwd": "/home/climbing",
-            "mcpServers": [],
         })
-        session_id = result.get("sessionId") or result.get("session_id", "")
+        session_id = result.get("session_id") or result.get("sessionId", "")
         if not session_id:
-            raise RuntimeError("session/new未返回sessionId")
+            raise RuntimeError("session.create未返回session_id")
         return session_id
 
     async def _acp_session_prompt(
@@ -227,9 +226,9 @@ class AgentEngineBridge:
         """发送session/prompt并流式处理响应事件。
 
         发送prompt后，持续读取WebSocket消息：
-        - session/update(contentDelta) → 累积文本 → 广播MessageAppendedEvent
-        - session/completed → 任务完成
-        - session/failed → 任务失败
+        - session.event(event_type=message, content_delta) → 累积文本 → 广播MessageAppendedEvent
+        - session.event(event_type=completed) → 任务完成
+        - session.event(event_type=failed) → 任务失败
 
         Args:
             ws: WebSocket连接

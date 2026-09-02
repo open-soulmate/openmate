@@ -1,7 +1,9 @@
 """Agent引擎总入口 — 串联LLM、MCP、Artifact、权限审批
 
-当ACP Server收到session/prompt时，由本模块驱动完整的Agent任务流程：
+当ACP Server收到session.prompt时，由本模块驱动完整的Agent任务流程：
 构建上下文 → 流式调用LLM → 实时推送 → 检测工具调用 → 审批 → 应用变更 → 复盘
+
+ACP v1.0: 所有事件统一走 session.event，通过 event_type 区分类型。
 """
 
 import asyncio
@@ -44,9 +46,9 @@ class AgentEngine:
 
         1. 构建上下文（系统提示词 + 会话历史 + 工作目录文件树）
         2. 流式调用LLM
-        3. 实时推送session/update (contentDelta)
-        4. LLM完成后推送session/completed
-        5. 出错推送session/failed
+        3. 实时推送session.event(event_type=message, content_delta)
+        4. LLM完成后推送session.event(event_type=completed)
+        5. 出错推送session.event(event_type=failed)
 
         Args:
             session: ACP会话对象
@@ -83,27 +85,17 @@ class AgentEngine:
             elapsed = time.time() - start_time
             summary = await self._generate_review(session, full_response, elapsed)
             session.state = SessionState.COMPLETED
-            await self.acp_server._notify(ws, "session/completed", {
-                "sessionId": session.id,
-                "summary": summary,
-                "elapsedSeconds": round(elapsed, 1),
-            })
+            await self.acp_server.emit_completed(session, summary=summary)
             logger.info(f"[{session.id}] Task completed in {elapsed:.1f}s")
 
         except asyncio.CancelledError:
             session.state = SessionState.COMPLETED
-            await self.acp_server._notify(ws, "session/completed", {
-                "sessionId": session.id,
-                "summary": "任务已取消",
-            })
+            await self.acp_server.emit_completed(session, summary="任务已取消")
             raise
         except Exception as e:
             logger.error(f"[{session.id}] Task failed: {e}", exc_info=True)
             session.state = SessionState.FAILED
-            await self.acp_server._notify(ws, "session/failed", {
-                "sessionId": session.id,
-                "error": str(e),
-            })
+            await self.acp_server.emit_failed(session, error=str(e))
 
     async def _stream_to_client(self, session: Session, messages: list[dict]) -> str:
         """将LLM流式输出转发给ACP客户端 — 实时推送contentDelta
@@ -117,10 +109,7 @@ class AgentEngine:
             full_response += delta
             chunk_count += 1
             # 每个chunk都推送给客户端（用session锁防止并发写入）
-            await self.acp_server._notify(session.ws, "session/update", {
-                "sessionId": session.id,
-                "contentDelta": delta,
-            }, session=session)
+            await self.acp_server.emit_message(session, content=full_response, content_delta=delta)
         logger.debug(f"[{session.id}] Streamed {chunk_count} chunks, {len(full_response)} chars")
         return full_response
 
@@ -163,10 +152,7 @@ class AgentEngine:
                 if isinstance(item, str):
                     # 普通文本delta — 实时推送给客户端
                     text_parts.append(item)
-                    await self.acp_server._notify(ws, "session/update", {
-                        "sessionId": session.id,
-                        "contentDelta": item,
-                    }, session=session)
+                    await self.acp_server.emit_message(session, content="".join(text_parts), content_delta=item)
                 elif isinstance(item, dict) and "tool_calls" in item:
                     # 完整的tool_calls列表
                     tool_calls = item["tool_calls"]
@@ -201,10 +187,7 @@ class AgentEngine:
                 logger.info(f"[{session.id}] Executing tool: {func_name}({func_args})")
 
                 # 通知客户端正在执行工具
-                await self.acp_server._notify(ws, "session/update", {
-                    "sessionId": session.id,
-                    "contentDelta": f"\n\n[调用工具: {func_name}({json.dumps(func_args, ensure_ascii=False)})]\n",
-                }, session=session)
+                await self.acp_server.emit_tool_call(session, tool_name=func_name, arguments=func_args, call_id=tc_id)
 
                 # 执行工具并获取结果
                 tool_result = await self._execute_tool(
@@ -219,10 +202,8 @@ class AgentEngine:
                 })
 
                 # 将工具结果推送给客户端
-                await self.acp_server._notify(ws, "session/update", {
-                    "sessionId": session.id,
-                    "contentDelta": f"[工具结果]: {tool_result[:500]}{'...' if len(tool_result) > 500 else ''}\n",
-                }, session=session)
+                tool_summary = f"[工具结果]: {tool_result[:500]}{'...' if len(tool_result) > 500 else ''}\n"
+                await self.acp_server.emit_message(session, content=tool_summary)
         else:
             # 循环达到上限
             logger.warning(f"[{session.id}] Agent loop reached max rounds ({MAX_TOOL_ROUNDS})")

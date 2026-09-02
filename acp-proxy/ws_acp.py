@@ -2,7 +2,7 @@
 
 所有agent统一走/ws/acp，ACP Proxy只做：
 1. JWT鉴权
-2. agent_id路由（从session/new的params中提取）
+2. agent_id路由（从session.create的params中提取）
 3. 双向消息透传（不做任何协议转换）
 """
 
@@ -182,8 +182,10 @@ async def _forward_bidirectional(client_ws: WebSocket, engine_ws, user_id):
                     msg = json.loads(raw_msg.strip())
                     method = msg.get("method", "")
                     # 只记录关键事件
-                    if method in ("session/completed", "session/failed"):
-                        logger.info(f"[{user_id}] engine event: {method}")
+                    if method == "session.event":
+                        event_type = msg.get("params", {}).get("event_type", "")
+                        if event_type in ("completed", "failed"):
+                            logger.info(f"[{user_id}] engine event: session.event({event_type})")
                     await _send_acp(client_ws, msg)
                 except json.JSONDecodeError:
                     logger.warning(f"[{user_id}] engine sent invalid JSON")

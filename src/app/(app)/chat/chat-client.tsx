@@ -199,19 +199,19 @@ function useAcpWebSocket(params: {
   const wsRef = useRef<WebSocket | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const streamingSessionIdRef = useRef<string | null>(null);
-  // ACP 会话 ID（由 session/new 返回）
+  // ACP 会话 ID（由 session.create 返回）
   const acpSessionIdRef = useRef<string | null>(null);
   // JSON-RPC 请求 ID 计数器
   const rpcIdRef = useRef(0);
   // 等待响应的请求回调（id → resolve）
   const pendingRequestsRef = useRef<Map<number, (result: unknown) => void>>(new Map());
-  // ACP 握手完成的 Promise，sendAcpPrompt 等待此 Promise 确保 session/new 已返回
+  // ACP 握手完成的 Promise，sendAcpPrompt 等待此 Promise 确保 session.create 已返回
   const acpReadyRef = useRef<Promise<void> | null>(null);
   const resolveAcpReadyRef = useRef<(() => void) | null>(null);
 
   // 发送用户消息到 ACP 会话（通过 ref 访问 ws，不依赖 useEffect 闭包）
   const sendAcpPrompt = useCallback(async (text: string) => {
-    // 等待 ACP 握手完成，避免 session/new 未返回时消息丢失
+    // 等待 ACP 握手完成，避免 session.create 未返回时消息丢失
     if (acpReadyRef.current) await acpReadyRef.current;
     const sid = acpSessionIdRef.current;
     const ws = wsRef.current;
@@ -257,17 +257,19 @@ function useAcpWebSocket(params: {
       });
     };
 
-    // ACP 握手：initialize → session/new（普通函数，避免作为 useEffect 依赖）
+    // ACP 握手：initialize → session.create（普通函数，避免作为 useEffect 依赖）
     const performAcpHandshake = async () => {
       try {
         // 第一步：initialize 握手
         await sendRpcRequest('initialize', {});
         // 第二步：创建会话
-        const result = await sendRpcRequest('session/new', { clientId: 'openmate-web' }) as { sessionId?: string };
-        if (result?.sessionId) {
-          acpSessionIdRef.current = result.sessionId;
+        const result = await sendRpcRequest('session.create', { clientId: 'openmate-web' }) as { session_id?: string; sessionId?: string };
+        // ACP v1.0返回session_id，兼容旧sessionId
+        const sessionId = result?.session_id || result?.sessionId;
+        if (sessionId) {
+          acpSessionIdRef.current = sessionId;
         }
-        // session/new 完成，通知等待中的 sendAcpPrompt
+        // session.create 完成，通知等待中的 sendAcpPrompt
         resolveAcpReadyRef.current?.();
       } catch (e) {
         console.error('[ACP] 握手失败:', e);
@@ -306,7 +308,7 @@ function useAcpWebSocket(params: {
           // ── ACP JSON-RPC 2.0 协议 ──
           const currentSessionId = selectedSessionRef.current?.id;
 
-          // 处理请求的响应（initialize、session/new 的 ack 等）
+          // 处理请求的响应（initialize、session.create 的 ack 等）
           if (data.id != null && (data.result !== undefined || data.error !== undefined)) {
             const resolver = pendingRequestsRef.current.get(data.id);
             if (resolver) {
@@ -320,59 +322,71 @@ function useAcpWebSocket(params: {
             return;
           }
 
-          // 处理服务端推送事件
-          if (data.method === 'session/update') {
-            // 流式增量内容
+          // 处理服务端推送事件（ACP v1.0：统一走session/event + event_type）
+          if (data.method === 'session/event') {
             const p = data.params || {};
-            if (streamingSessionIdRef.current && currentSessionId && streamingSessionIdRef.current !== currentSessionId) return;
-            const delta = p.contentDelta as string | undefined;
-            if (delta) {
+            const eventType = p.event_type as string;
+
+            if (eventType === 'agent.message') {
+              // 流式增量内容
+              if (streamingSessionIdRef.current && currentSessionId && streamingSessionIdRef.current !== currentSessionId) return;
+              const delta = (p.payload?.chunk || p.payload?.content_delta) as string | undefined;
+              if (delta) {
+                setMessages(prev => {
+                  const last = prev[prev.length - 1];
+                  if (last?.role === 'agent' && last?.source === 'streaming') {
+                    return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + delta }] }];
+                  }
+                  return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: delta }], timestamp: new Date(), source: 'streaming' }];
+                });
+              }
+            }
+            else if (eventType === 'session.completed') {
+              // 流式完成
+              setLoading(false);
+              streamingSessionIdRef.current = null;
+              const sessionId = p.session_id;
+              if (sessionId && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
+                const updated = { id: sessionId, name: '', platform: 'hermes' } as Session;
+                setSelectedSession(updated);
+                selectedSessionRef.current = updated;
+                useAppStore.getState().setActiveSession(sessionId, null, { sessionName: '' });
+                useAppStore.getState().refreshSidebar();
+                tagSessionAgent(sessionId, selectedAgentRef.current?.id || 'soulmate');
+              }
+              if (sessionId && currentSessionId && sessionId !== currentSessionId) return;
               setMessages(prev => {
                 const last = prev[prev.length - 1];
                 if (last?.role === 'agent' && last?.source === 'streaming') {
-                  return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + delta }] }];
+                  const content = last.parts[0]?.text || '';
+                  const fileChanges = parseFileChanges(content);
+                  const tokenUsage = simulateTokenUsage(content);
+                  if (tokenUsage) {
+                    useAppStore.getState().addSessionSpending(
+                      currentSessionId || 'default',
+                      { input: tokenUsage.input, output: tokenUsage.output, cost: calculateCost(tokenUsage) }
+                    );
+                  }
+                  return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
                 }
-                return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: delta }], timestamp: new Date(), source: 'streaming' }];
+                return prev;
               });
             }
-          }
-          else if (data.method === 'session/completed') {
-            // 流式完成
-            const p = data.params || {};
-            setLoading(false);
-            streamingSessionIdRef.current = null;
-            if (p.sessionId && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
-              const updated = { id: p.sessionId, name: '', platform: 'hermes' } as Session;
-              setSelectedSession(updated);
-              selectedSessionRef.current = updated;
-              useAppStore.getState().setActiveSession(p.sessionId, null, { sessionName: '' });
-              useAppStore.getState().refreshSidebar();
-              tagSessionAgent(p.sessionId, selectedAgentRef.current?.id || 'soulmate');
+            else if (eventType === 'session.error') {
+              // 会话错误
+              setLoading(false);
+              streamingSessionIdRef.current = null;
+              const errorMsg = p.payload?.msg || p.payload?.error || '未知错误';
+              setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${errorMsg}` }], timestamp: new Date() }]);
             }
-            if (p.sessionId && currentSessionId && p.sessionId !== currentSessionId) return;
-            setMessages(prev => {
-              const last = prev[prev.length - 1];
-              if (last?.role === 'agent' && last?.source === 'streaming') {
-                const content = last.parts[0]?.text || '';
-                const fileChanges = parseFileChanges(content);
-                const tokenUsage = simulateTokenUsage(content);
-                if (tokenUsage) {
-                  useAppStore.getState().addSessionSpending(
-                    currentSessionId || 'default',
-                    { input: tokenUsage.input, output: tokenUsage.output, cost: calculateCost(tokenUsage) }
-                  );
-                }
-                return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
-              }
-              return prev;
-            });
-          }
-          else if (data.method === 'session/failed') {
-            // 会话错误
-            const p = data.params || {};
-            setLoading(false);
-            streamingSessionIdRef.current = null;
-            setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${p.error || '未知错误'}` }], timestamp: new Date() }]);
+            else if (eventType === 'human.approval.required') {
+              // TODO: ACP审批弹窗 — 显示审批UI，用户确认后发送session/approval
+              console.log('[ACP] approval required:', p.payload);
+            }
+            else if (eventType === 'agent.tool_call') {
+              // 工具调用事件 — 可选显示
+              console.log('[ACP] tool call:', p.payload);
+            }
           }
         } catch {}
       };

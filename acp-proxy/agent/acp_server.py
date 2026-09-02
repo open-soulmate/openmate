@@ -1,12 +1,16 @@
 """ACP WebSocket Server — JSON-RPC 2.0 over NDJSON协议层
 
-实现Agent Client Protocol(ACP)的WebSocket服务端，管理客户端连接和会话生命周期。
+实现Agent Client Protocol v1.0 (ACP-1.0)的WebSocket服务端，管理客户端连接和会话生命周期。
 状态机：idle → running → input-required → completed / failed
+
+协议版本：ACP-1.0
+所有事件统一走 session.event，通过 event_type 字段区分类型。
 """
 
 import asyncio
 import json
 import logging
+import sys
 import time
 import uuid
 from enum import Enum
@@ -14,7 +18,13 @@ from typing import Any, Callable, Coroutine, Optional
 
 import websockets
 
+# 确保日志输出到stderr，不污染stdout的JSON-RPC协议流
 logger = logging.getLogger("acp-agent.server")
+if not logger.handlers:
+    _handler = logging.StreamHandler(sys.stderr)
+    _handler.setFormatter(logging.Formatter("[%(asctime)s] %(levelname)s %(name)s: %(message)s"))
+    logger.addHandler(_handler)
+    logger.setLevel(logging.INFO)
 
 
 class SessionState(str, Enum):
@@ -26,12 +36,24 @@ class SessionState(str, Enum):
     FAILED = "failed"
 
 
+# ACP v1.0 事件类型常量
+class EventType(str, Enum):
+    """ACP v1.0 统一事件类型 — 所有事件通过 session.event 分发"""
+    MESSAGE = "agent.message"              # 流式文本输出
+    COMPLETED = "session.completed"        # 任务正常结束
+    FAILED = "session.error"              # 会话异常
+    PERMISSION_REQUEST = "human.approval.required"  # 人工审批请求
+    TOOL_CALL = "agent.tool_call"        # 工具调用触发
+    SKILL_STATE = "agent.state.update"   # SKILL.state状态同步
+
+
 class Session:
     """一个独立的Agent会话，包含状态、消息历史、工作目录"""
 
-    def __init__(self, session_id: str, workspace: str):
+    def __init__(self, session_id: str, workspace: str, agent_id: str = "openmate-agent"):
         """初始化会话，创建独立上下文和取消事件"""
         self.id = session_id                  # 会话唯一ID
+        self.agent_id = agent_id              # Agent标识
         self.state = SessionState.IDLE        # 当前状态
         self.messages: list[dict] = []        # 消息历史
         self.workspace = workspace            # 工作目录
@@ -53,19 +75,24 @@ class Session:
         return (time.time() - self.last_active) < timeout
 
 
-# JSON-RPC 2.0 错误码
-ERR_PARSE = -32700       # JSON解析错误
-ERR_INVALID_REQ = -32600  # 无效请求
-ERR_METHOD_NOT_FOUND = -32601  # 方法不存在
-ERR_INVALID_PARAMS = -32602    # 参数错误
-ERR_INTERNAL = -32603    # 内部错误
-ERR_TASK_TIMEOUT = -32001  # 任务超时
+# ACP v1.0 标准错误码
+ERR_PARSE = -32700              # JSON解析错误
+ERR_INVALID_REQ = -32600        # 无效请求
+ERR_METHOD_NOT_FOUND = -32601   # 方法不存在
+ERR_INVALID_PARAMS = -32602     # 参数非法
+ERR_INTERNAL = -32603           # 内部错误
+ERR_AUTH_FAILED = -32001        # 鉴权失败
+ERR_SESSION_NOT_FOUND = -32002  # Session不存在
+ERR_AGENT_EXCEPTION = -32003    # Agent进程异常
+ERR_APPROVAL_REJECTED = -32004  # 审批被拒绝
+ERR_TASK_TIMEOUT = -32005       # 任务超时
 
 
 class ACPServer:
     """ACP WebSocket Server — 管理所有客户端连接和会话
 
-    实现完整的ACP协议：initialize握手、session生命周期、权限审批、心跳保活。
+    实现ACP-1.0协议：initialize握手、session生命周期、权限审批、心跳保活。
+    所有事件统一走 session.event，通过 event_type 区分类型。
     """
 
     def __init__(self, host: str = "0.0.0.0", port: int = 8787):
@@ -138,14 +165,13 @@ class ACPServer:
         msg_id = msg.get("id")
         params = msg.get("params", {})
 
-        # ACP方法路由表
+        # ACP v1.0 方法路由表
         handlers = {
             "initialize": self._handle_initialize,
-            "session/new": self._handle_session_new,
-            "session/prompt": self._handle_session_prompt,
-            "session/cancel": self._handle_session_cancel,
-            "permission/approve": self._handle_permission_approve,
-            "permission/deny": self._handle_permission_deny,
+            "session.create": self._handle_session_create,
+            "session.prompt": self._handle_session_prompt,
+            "session.close": self._handle_session_close,
+            "session.approval": self._handle_session_approval,
         }
 
         handler = handlers.get(method)
@@ -157,7 +183,7 @@ class ACPServer:
     async def _handle_initialize(self, msg_id: str, params: dict, ws):
         """处理ACP initialize握手 — 协议版本协商，上报capabilities"""
         result = {
-            "protocolVersion": "2025-07-28",
+            "protocolVersion": "ACP-1.0",
             "agent": {
                 "name": "OpenMate Agent",
                 "version": "0.1.0",
@@ -171,26 +197,35 @@ class ACPServer:
             },
         }
         await self._send_result(ws, msg_id, result)
-        logger.info("ACP initialize handshake completed")
+        logger.info("ACP initialize handshake completed (ACP-1.0)")
 
-    async def _handle_session_new(self, msg_id: str, params: dict, ws):
-        """创建新会话 — 分配sessionId，初始化工作目录"""
+    async def _handle_session_create(self, msg_id: str, params: dict, ws):
+        """创建新会话 — 分配sessionId，初始化工作目录
+
+        ACP v1.0要求响应包含 session_id、agent_id、created_at
+        """
         sid = f"om-{uuid.uuid4().hex[:12]}"
         workspace = params.get("cwd", params.get("workspace", "/home/climbing"))
-        session = Session(sid, workspace)
+        agent_id = params.get("agentId", "openmate-agent")
+        session = Session(sid, workspace, agent_id)
         session.ws = ws
         session.client_id = params.get("clientId", "")
         self.sessions[sid] = session
-        result = {"sessionId": sid, "cwd": workspace}
+        result = {
+            "session_id": sid,
+            "agent_id": agent_id,
+            "created_at": session.created_at,
+            "cwd": workspace,
+        }
         await self._send_result(ws, msg_id, result)
-        logger.info(f"Session created: {sid} workspace={workspace}")
+        logger.info(f"Session created: {sid} agent={agent_id} workspace={workspace}")
 
     async def _handle_session_prompt(self, msg_id: str, params: dict, ws):
         """接收用户任务指令 — 启动Agent异步任务"""
-        sid = params.get("sessionId", "")
+        sid = params.get("session_id", params.get("sessionId", ""))
         session = self.sessions.get(sid)
         if not session:
-            await self._send_error(ws, msg_id, ERR_INVALID_PARAMS, f"Session not found: {sid}")
+            await self._send_error(ws, msg_id, ERR_SESSION_NOT_FOUND, f"Session not found: {sid}")
             return
         if session.state == SessionState.RUNNING:
             await self._send_error(ws, msg_id, ERR_INVALID_PARAMS, "Session already running")
@@ -203,7 +238,7 @@ class ACPServer:
         session.messages.append({"role": "user", "content": prompt})
 
         # 先返回ack，再异步执行Agent任务
-        await self._send_result(ws, msg_id, {"sessionId": sid, "status": "accepted"})
+        await self._send_result(ws, msg_id, {"session_id": sid, "status": "accepted"})
 
         # 启动Agent引擎任务
         if self._engine_task:
@@ -225,70 +260,175 @@ class ACPServer:
         except asyncio.TimeoutError:
             logger.error(f"Task timeout for session {session.id}")
             session.state = SessionState.FAILED
-            await self._notify(session.ws, "session/failed", {
-                "sessionId": session.id,
+            await self._emit_event(session, EventType.FAILED, {
                 "error": "Task execution timed out (30 min limit)",
-            }, session=session)
+                "error_code": ERR_TASK_TIMEOUT,
+            })
         except asyncio.CancelledError:
             logger.info(f"Task cancelled for session {session.id}")
             session.state = SessionState.COMPLETED
-            await self._notify(session.ws, "session/completed", {
-                "sessionId": session.id,
+            await self._emit_event(session, EventType.COMPLETED, {
                 "summary": "Task was cancelled by user",
-            }, session=session)
+            })
         except Exception as e:
             logger.error(f"Task error for session {session.id}: {e}", exc_info=True)
             session.state = SessionState.FAILED
-            await self._notify(session.ws, "session/failed", {
-                "sessionId": session.id,
+            await self._emit_event(session, EventType.FAILED, {
                 "error": str(e),
-            }, session=session)
+                "error_code": ERR_AGENT_EXCEPTION,
+            })
 
     async def _echo_response(self, session: Session, prompt: str):
         """无引擎时的echo回显 — 用于阶段1测试"""
         reply = f"Echo: {prompt}"
-        await self._notify(session.ws, "session/update", {
-            "sessionId": session.id,
+        # 发送消息事件（流式内容）
+        await self._emit_event(session, EventType.MESSAGE, {
             "content": reply,
         })
         session.state = SessionState.COMPLETED
         session.messages.append({"role": "assistant", "content": reply})
-        await self._notify(session.ws, "session/completed", {
-            "sessionId": session.id,
+        # 发送完成事件
+        await self._emit_event(session, EventType.COMPLETED, {
             "summary": reply,
         })
 
-    async def _handle_session_cancel(self, msg_id: str, params: dict, ws):
-        """取消正在运行的会话任务"""
-        sid = params.get("sessionId", "")
+    async def _handle_session_close(self, msg_id: str, params: dict, ws):
+        """关闭会话 — 关闭会话、清理资源、销毁实例（ACP v1.0 session.close）"""
+        sid = params.get("session_id", params.get("sessionId", ""))
         session = self.sessions.get(sid)
         if not session:
-            await self._send_error(ws, msg_id, ERR_INVALID_PARAMS, f"Session not found: {sid}")
+            await self._send_error(ws, msg_id, ERR_SESSION_NOT_FOUND, f"Session not found: {sid}")
             return
         session.cancel_event.set()
         if session.task and not session.task.done():
             session.task.cancel()
         session.state = SessionState.COMPLETED
-        await self._send_result(ws, msg_id, {"sessionId": sid, "status": "cancelled"})
-        logger.info(f"Session cancelled: {sid}")
+        # 从会话池中移除
+        del self.sessions[sid]
+        await self._send_result(ws, msg_id, {"session_id": sid, "status": "destroyed"})
+        logger.info(f"Session destroyed: {sid}")
 
-    async def _handle_permission_approve(self, msg_id: str, params: dict, ws):
-        """处理审批通过响应"""
-        request_id = params.get("requestId", "")
-        sid = params.get("sessionId", "")
-        session = self.sessions.get(sid)
-        if session and request_id in session.permission_futures:
-            session.permission_futures[request_id].set_result(True)
-        await self._send_result(ws, msg_id, {"requestId": request_id, "approved": True})
+    async def _handle_session_approval(self, msg_id: str, params: dict, ws):
+        """处理审批决议 — ACP v1.0 session.approval
 
-    async def _handle_permission_deny(self, msg_id: str, params: dict, ws):
-        """处理审批拒绝响应"""
-        request_id = params.get("requestId", "")
-        sid = params.get("sessionId", "")
+        params: { session_id, request_id, action: "approve" | "reject", comment: "" }
+        """
+        request_id = params.get("request_id", params.get("requestId", ""))
+        sid = params.get("session_id", params.get("sessionId", ""))
+        action = params.get("action", "")
+
+        if action not in ("approve", "reject"):
+            await self._send_error(ws, msg_id, ERR_INVALID_PARAMS,
+                                   f"Invalid action: {action}, must be 'approve' or 'reject'")
+            return
+
         session = self.sessions.get(sid)
-        if session and request_id in session.permission_futures:
-            session.permission_futures[request_id].set_result(False)
-        await self._send_result(ws, msg_id, {"requestId": request_id, "approved": False})
+        if not session:
+            await self._send_error(ws, msg_id, ERR_SESSION_NOT_FOUND, f"Session not found: {sid}")
+            return
+
+        approved = (action == "approve")
+        if request_id in session.permission_futures:
+            session.permission_futures[request_id].set_result(approved)
+
+        await self._send_result(ws, msg_id, {
+            "request_id": request_id,
+            "action": action,
+            "resolved": True,
+        })
+
+    # ── 事件发送（ACP v1.0 统一 session.event） ──────────────────────
+
+    async def _emit_event(self, session: Session, event_type: EventType, data: dict):
+        """发送ACP v1.0统一事件 — 所有事件走 session.event，通过event_type区分
+
+        Args:
+            session: 目标会话
+            event_type: 事件类型（EventType枚举值）
+            data: 事件负载数据
+        """
+        params = {
+            "session_id": session.id,
+            "event_type": event_type.value,
+            "timestamp": time.time(),
+            **data,
+        }
+        await self._notify(session.ws, "session.event", params, session=session)
+
+    # ── 以下为供外部引擎调用的公共事件接口 ──────────────────────────
+
+    async def emit_message(self, session: Session, content: str,
+                           content_delta: Optional[str] = None):
+        """发送消息事件 — 流式或完整内容
+
+        供Agent引擎回调使用，替代原来的 session/update。
+        content: 完整内容（累积），content_delta: 本次增量（流式场景）
+        """
+        data: dict[str, Any] = {"content": content}
+        if content_delta is not None:
+            data["content_delta"] = content_delta
+        await self._emit_event(session, EventType.MESSAGE, data)
+
+    async def emit_completed(self, session: Session, summary: str = "",
+                             artifacts: Optional[list] = None):
+        """发送任务完成事件 — 替代原来的 session/completed"""
+        data: dict[str, Any] = {"summary": summary}
+        if artifacts:
+            data["artifacts"] = artifacts
+        await self._emit_event(session, EventType.COMPLETED, data)
+
+    async def emit_failed(self, session: Session, error: str,
+                          error_code: int = ERR_AGENT_EXCEPTION):
+        """发送任务失败事件 — 替代原来的 session/failed"""
+        await self._emit_event(session, EventType.FAILED, {
+            "error": error,
+            "error_code": error_code,
+        })
+
+    async def emit_permission_request(self, session: Session, request_id: str,
+                                      action: str, description: str = "",
+                                      details: Optional[dict] = None):
+        """发送权限审批请求事件 — 替代原来的 permission/request
+
+        Args:
+            session: 目标会话
+            request_id: 审批请求唯一ID
+            action: 请求审批的操作（如 "file_write", "shell_exec"）
+            description: 人类可读的审批描述
+            details: 操作详情（如文件路径、命令内容等）
+        """
+        data: dict[str, Any] = {
+            "request_id": request_id,
+            "action": action,
+            "description": description,
+        }
+        if details:
+            data["details"] = details
+        await self._emit_event(session, EventType.PERMISSION_REQUEST, data)
+
+    async def emit_tool_call(self, session: Session, tool_name: str,
+                             arguments: Optional[dict] = None,
+                             call_id: Optional[str] = None):
+        """发送工具调用事件（预留接口）— 工具调用触发时发"""
+        data: dict[str, Any] = {"tool_name": tool_name}
+        if arguments:
+            data["arguments"] = arguments
+        if call_id:
+            data["call_id"] = call_id
+        await self._emit_event(session, EventType.TOOL_CALL, data)
+
+    async def emit_skill_state(self, session: Session, skill_name: str,
+                               state: str, details: Optional[dict] = None):
+        """发送技能状态同步事件（预留接口）— SKILL.state状态同步"""
+        data: dict[str, Any] = {
+            "skill_name": skill_name,
+            "state": state,
+        }
+        if details:
+            data["details"] = details
+        await self._emit_event(session, EventType.SKILL_STATE, data)
+
+    # ── JSON-RPC 底层发送 ──────────────────────────────────────────
 
     async def _send_result(self, ws, msg_id: str, result: Any):
         """发送JSON-RPC 2.0成功响应"""
@@ -319,6 +459,8 @@ class ACPServer:
                 await ws.send(json.dumps(notify, ensure_ascii=False) + "\n")
         except Exception:
             logger.warning(f"Failed to send notification: {method}")
+
+    # ── 生命周期管理 ──────────────────────────────────────────────
 
     async def _gc_loop(self):
         """定时GC — 每60秒清理死会话和断开的连接"""

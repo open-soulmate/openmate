@@ -218,12 +218,12 @@ async def forward_to_agent_engine(
 ) -> tuple[str, str, bool]:
     """通过WebSocket连接Agent Engine(8787)做协议桥接，用于soulmate模式。
 
-    ACP JSON-RPC 2.0 over NDJSON协议流程：
+    ACP v1.0 JSON-RPC 2.0 over NDJSON协议流程：
     1. initialize握手
-    2. session/new (或复用已有session)
-    3. session/prompt提交用户消息
-    4. 流式接收session/update(contentDelta) → 转发chunk给前端
-    5. session/completed / session/failed → 发送done/error
+    2. session.create (或复用已有session)
+    3. session.prompt提交用户消息
+    4. 流式接收session.event(event_type=message, content_delta) → 转发chunk给前端
+    5. session.event(event_type=completed/failed) → 发送done/error
 
     Returns:
         (accumulated_text, source, success)
@@ -259,17 +259,16 @@ async def forward_to_agent_engine(
                 "clientInfo": {"name": "soulmate-proxy", "version": "1.0.0"},
             })
 
-            # Step 2: session/new
-            result = await rpc(engine_ws, "session/new", {
+            # Step 2: session.create
+            result = await rpc(engine_ws, "session.create", {
                 "cwd": "/home/climbing",
-                "mcpServers": [],
             })
-            engine_session_id = result.get("sessionId") or result.get("session_id", "")
+            engine_session_id = result.get("session_id") or result.get("sessionId", "")
             if not engine_session_id:
-                raise RuntimeError("session/new did not return sessionId")
+                raise RuntimeError("session.create did not return session_id")
             logger.info(f"soulmate: session created: {engine_session_id}")
 
-            # Step 3: session/prompt (fire, then stream notifications)
+            # Step 3: session.prompt (fire, then stream notifications)
             prompt_text = text
             if attachments:
                 file_parts = [a for a in attachments if a.get("type") == "file"]
@@ -280,8 +279,8 @@ async def forward_to_agent_engine(
             req = {
                 "jsonrpc": "2.0",
                 "id": rid,
-                "method": "session/prompt",
-                "params": {"prompt": prompt_text, "sessionId": engine_session_id},
+                "method": "session.prompt",
+                "params": {"prompt": prompt_text, "session_id": engine_session_id},
             }
             await engine_ws.send(json.dumps(req, ensure_ascii=False) + "\n")
 
@@ -304,22 +303,22 @@ async def forward_to_agent_engine(
                     await _safe_send_ws(client_ws, {"type": "error", "message": f"Agent Engine错误: {error_text}"})
                     return accumulated_text, "soulmate", False
 
-                if method == "session/update":
-                    delta = msg.get("params", {}).get("contentDelta", "")
-                    if delta:
-                        accumulated_text += delta
-                        if not await _safe_send_ws(client_ws, {"type": "chunk", "text": delta}):
-                            break
-
-                elif method == "session/completed":
-                    logger.info(f"soulmate: completed, {len(accumulated_text)} chars")
-                    return accumulated_text, "soulmate", True
-
-                elif method == "session/failed":
-                    error_msg = msg.get("params", {}).get("error", "任务失败")
-                    logger.error(f"soulmate: failed: {error_msg}")
-                    await _safe_send_ws(client_ws, {"type": "error", "message": str(error_msg)})
-                    return accumulated_text, "soulmate", False
+                if method == "session.event":
+                    event_type = msg.get("params", {}).get("event_type", "")
+                    if event_type == "message":
+                        delta = msg.get("params", {}).get("content_delta", "")
+                        if delta:
+                            accumulated_text += delta
+                            if not await _safe_send_ws(client_ws, {"type": "chunk", "text": delta}):
+                                break
+                    elif event_type == "completed":
+                        logger.info(f"soulmate: completed, {len(accumulated_text)} chars")
+                        return accumulated_text, "soulmate", True
+                    elif event_type == "failed":
+                        error_msg = msg.get("params", {}).get("error", "任务失败")
+                        logger.error(f"soulmate: failed: {error_msg}")
+                        await _safe_send_ws(client_ws, {"type": "error", "message": str(error_msg)})
+                        return accumulated_text, "soulmate", False
 
             # WebSocket closed without completed/failed
             if accumulated_text:
