@@ -383,8 +383,15 @@ function useAcpWebSocket(params: {
               setMessages(prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${errorMsg}` }], timestamp: new Date() }]);
             }
             else if (eventType === 'human.approval.required') {
-              // TODO: ACP审批弹窗 — 显示审批UI，用户确认后发送session/approval
-              console.log('[ACP] approval required:', p.payload);
+              // ACP审批弹窗 — 收到审批请求，弹出审批UI
+              const payload = p.payload || {};
+              console.log('[ACP] 审批请求:', payload);
+              setApprovalRequest({
+                request_id: payload.request_id || '',
+                tool_name: payload.tool_name || 'unknown',
+                risk_level: payload.risk_level || 'medium',
+                description: payload.description || '',
+              });
             }
             else if (eventType === 'agent.tool_call') {
               // 工具调用事件 — 可选显示
@@ -402,7 +409,36 @@ function useAcpWebSocket(params: {
     };
   }, [selectedAgent?.id ?? activeAgentIdFromStore]);
 
-  return { wsRef, wsConnected, streamingSessionIdRef, sendAcpPrompt };
+  // 发送ACP审批决议 — session/approval（批准或拒绝）
+  const sendApproval = useCallback((requestId: string, action: 'approve' | 'reject', comment: string) => {
+    const ws = wsRef.current;
+    const sid = acpSessionIdRef.current;
+    if (!ws || ws.readyState !== WebSocket.OPEN || !sid) {
+      console.error('[ACP] 无法发送审批决议：WebSocket未连接或无会话');
+      return;
+    }
+    const id = ++rpcIdRef.current;
+    // 审批响应只需确认收到，注册空回调
+    pendingRequestsRef.current.set(id, () => {});
+    ws.send(JSON.stringify({
+      jsonrpc: '2.0',
+      id,
+      method: 'session/approval',
+      params: {
+        session_id: sid,
+        request_id: requestId,
+        action,
+        comment,
+      },
+    }));
+    console.log(`[ACP] 审批决议已发送: ${action} request_id=${requestId}`);
+    // 清理审批弹窗状态
+    setApprovalRequest(null);
+    // 5秒后清理ack回调
+    setTimeout(() => { pendingRequestsRef.current.delete(id); }, 5000);
+  }, []);
+
+  return { wsRef, wsConnected, streamingSessionIdRef, sendAcpPrompt, approvalRequest, sendApproval };
 }
 
 export function ChatClient() {
@@ -440,7 +476,7 @@ export function ChatClient() {
   const selectedSessionRef = useRef<Session | null>(null);
   const selectedAgentRef = useRef<AgentInfo | null>(null);
   const activeAgentIdFromStore = useAppStore((s) => s.activeAgentId);
-  const { wsRef, wsConnected, streamingSessionIdRef, sendAcpPrompt } = useAcpWebSocket({
+  const { wsRef, wsConnected, streamingSessionIdRef, sendAcpPrompt, approvalRequest, sendApproval } = useAcpWebSocket({
     selectedAgent, selectedSession, selectedAgentRef, selectedSessionRef,
     t, setMessages, setLoading, setSelectedSession, activeAgentIdFromStore,
   });
@@ -1204,6 +1240,14 @@ export function ChatClient() {
             </button>
           </>
         }
+      />
+
+      {/* ACP审批弹窗 — human.approval.required事件触发 */}
+      <AcpApprovalModal
+        request={approvalRequest}
+        onApprove={(requestId, comment) => sendApproval(requestId, 'approve', comment)}
+        onReject={(requestId, comment) => sendApproval(requestId, 'reject', comment)}
+        onClose={() => {/* 弹窗内部已通过sendApproval清理状态 */}}
       />
     </div>
   );
