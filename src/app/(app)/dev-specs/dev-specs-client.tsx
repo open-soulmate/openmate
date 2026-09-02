@@ -190,6 +190,11 @@ export function DevSpecsClient() {
     if (selected.commits) selected.commits.forEach(c => devItems.push({ label: "Commit", value: c }));
     if (selected.changes) selected.changes.forEach(c => devItems.push({ label: "改动", value: c }));
 
+    /* markdown内容转data URL供FileViewer渲染 */
+    const fileUrl = specContent
+      ? `data:text/markdown;base64,${btoa(unescape(encodeURIComponent(specContent)))}`
+      : "";
+
     setPageWorkspace(
       <DetailPanel
         title={selected.name}
@@ -197,12 +202,29 @@ export function DevSpecsClient() {
         icon={<FileText className="w-5 h-5 text-primary" />}
         badge={STATUS_LABEL[selected.status]}
         onClose={() => setSelectedId(null)}
-        sections={[
-          { title: "基本信息", items: detailItems },
-          ...(devItems.length > 0 ? [{ title: "开发记录", items: devItems }] : []),
-          { title: "规范正文", items: [{ label: "", value: loadingContent ? "加载中..." : specContent }] },
-        ]}
-      />
+      >
+        {/* 基本信息 */}
+        <div className="space-y-2 p-3 border-b border-border">
+          {detailItems.map((item, i) => (
+            <div key={i} className="flex items-center justify-between text-xs">
+              <span className="text-muted-foreground flex items-center gap-1.5">{item.icon}{item.label}</span>
+              <span className="font-medium">{item.value}</span>
+            </div>
+          ))}
+          {selected.date && <div className="flex items-center justify-between text-xs"><span className="text-muted-foreground">完成日期</span><span className="font-medium">{selected.date}</span></div>}
+          {selected.commits?.map((c, i) => <div key={i} className="flex items-center justify-between text-xs"><span className="text-muted-foreground">Commit</span><code className="text-[10px] bg-muted px-1 rounded">{c}</code></div>)}
+        </div>
+        {/* FileViewer渲染规范正文markdown */}
+        <div className="h-[50vh]">
+          {loadingContent ? (
+            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">加载中...</div>
+          ) : fileUrl ? (
+            <FileViewer fileName={selected.fileName} fileUrl={fileUrl} className="h-full" />
+          ) : (
+            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">无法加载规范文件</div>
+          )}
+        </div>
+      </DetailPanel>
     );
     return () => setPageWorkspace(null);
   }, [selected, specContent, loadingContent, setPageWorkspace, loadSpecContent]);
