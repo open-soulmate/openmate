@@ -406,6 +406,65 @@ class ACPServer:
             data["details"] = details
         await self._emit_event(session, EventType.PERMISSION_REQUEST, data)
 
+    async def request_human_approval(self, session: Session,
+                                      tool_name: str,
+                                      risk_level: str = "medium",
+                                      description: str = "",
+                                      timeout: float = 300) -> bool:
+        """ACP v1.0 人工审批流程 — 发送human.approval.required事件并等待用户响应
+
+        Agent引擎在执行高危操作前调用此方法，阻塞等待前端用户审批。
+        用户点击"批准"返回True，点击"拒绝"返回False，超时返回False。
+
+        Args:
+            session: 目标会话
+            tool_name: 工具名称（browser | shell | write_file | delete_file）
+            risk_level: 风险等级（low | medium | high）
+            description: 即将执行的操作说明
+            timeout: 审批超时秒数，默认300秒（5分钟）
+
+        Returns:
+            bool: True=批准, False=拒绝或超时
+
+        ACP v1.0事件格式:
+            event_type: human.approval.required
+            payload: { request_id, tool_name, risk_level, description }
+        """
+        # 生成唯一审批请求ID
+        request_id = f"apr-{uuid.uuid4().hex[:12]}"
+
+        # 将会话状态切换为等待人工审批
+        session.state = SessionState.INPUT_REQUIRED
+
+        # 创建Future，等待前端session/approval回传
+        loop = asyncio.get_event_loop()
+        future: asyncio.Future[bool] = loop.create_future()
+        session.permission_futures[request_id] = future
+
+        # 发送human.approval.required事件给前端
+        await self._emit_event(session, EventType.PERMISSION_REQUEST, {
+            "request_id": request_id,
+            "tool_name": tool_name,
+            "risk_level": risk_level,
+            "description": description,
+        })
+        logger.info(f"[{session.id}] 审批请求已发送: request_id={request_id} tool={tool_name} risk={risk_level}")
+
+        try:
+            # 阻塞等待用户审批，超时返回False
+            approved = await asyncio.wait_for(future, timeout=timeout)
+            logger.info(f"[{session.id}] 审批结果: request_id={request_id} approved={approved}")
+            return approved
+        except asyncio.TimeoutError:
+            logger.warning(f"[{session.id}] 审批超时: request_id={request_id} ({timeout}s)")
+            return False
+        finally:
+            # 清理Future引用
+            session.permission_futures.pop(request_id, None)
+            # 恢复会话运行状态
+            if session.state == SessionState.INPUT_REQUIRED:
+                session.state = SessionState.RUNNING
+
     async def emit_tool_call(self, session: Session, tool_name: str,
                              arguments: Optional[dict] = None,
                              call_id: Optional[str] = None):

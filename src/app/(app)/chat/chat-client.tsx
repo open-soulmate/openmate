@@ -12,6 +12,7 @@ import { useIsMobile } from '@/hooks/use-mobile';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useTranslation } from 'react-i18next';
 import { SmartPrompt } from '@/components/smart-prompt';
+import { AcpApprovalModal, type AcpApprovalRequest } from '@/components/acp-approval-modal';
 
 const getApiUrl = () => getApiBaseUrl();
 const getWsUrl = () => getApiUrl().replace('http', 'ws');
@@ -208,6 +209,8 @@ function useAcpWebSocket(params: {
   // ACP 握手完成的 Promise，sendAcpPrompt 等待此 Promise 确保 session.create 已返回
   const acpReadyRef = useRef<Promise<void> | null>(null);
   const resolveAcpReadyRef = useRef<(() => void) | null>(null);
+  // ACP审批弹窗状态 — 当前待审批的请求
+  const [approvalRequest, setApprovalRequest] = useState<AcpApprovalRequest | null>(null);
 
   // 发送用户消息到 ACP 会话（通过 ref 访问 ws，不依赖 useEffect 闭包）
   const sendAcpPrompt = useCallback(async (text: string) => {

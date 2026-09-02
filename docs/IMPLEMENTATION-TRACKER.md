@@ -44,13 +44,14 @@
 
 ### 4. Gateway 统一路由
 - **规范**: `07-Gateway-v1.0-网关路由规范.md`
-- **状态**: ⏳ 待实现
+- **状态**: ✅ 已完成
+- **日期**: 2026-09-02
+- **Commit**: (同上)
 - **改动**:
-  - [ ] POST /rpc 统一入口，method前缀路由（acp→ACP, a2a→A2A, mcp→MCP）
-  - [ ] X-Trace-Id 生成与透传
-  - [ ] 限流（四维）
-  - [ ] 熔断降级
-  - [ ] 超时控制
+  - `acp-proxy/gateway/router.py` — POST /rpc统一入口，method前缀路由(acp/a2a/mcp/artifact/vector/scheduler)，X-Trace-Id生成透传，四维限流，熔断降级，网关内转发
+  - `acp-proxy/gateway/__init__.py` — 模块初始化
+  - `acp-proxy/app.py` — 注册gateway_router(/rpc)
+- **验证**: 6个路由前缀全部注册
 
 ---
 
