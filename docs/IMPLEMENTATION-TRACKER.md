@@ -22,17 +22,14 @@
 
 ### 2. A2A v1.0 协议对齐
 - **规范**: `10-A2A-v1.0-Agent对等协同协议规范.md`
-- **状态**: ⏳ 待实现
+- **状态**: ✅ 已完成
+- **日期**: 2026-09-02
+- **Commit**: `705047c`
 - **改动**:
-  - [ ] tasks/send → a2a/task/delegate
-  - [ ] tasks/get → a2a/task/result
-  - [ ] tasks/cancel → a2a/task/cancel
-  - [ ] SSE TaskStatusUpdateEvent → a2a/event + event_type
-  - [ ] 新增 a2a/artifact/sync
-  - [ ] 新增 a2a/agent/heartbeat
-  - [ ] 新增 ws://8092/ws/a2a WebSocket端点
-  - [ ] HTTP /rpc/a2a 端点
-  - [ ] trace_id全链路透传
+  - `acp-proxy/a2a/server.py` — tasks/send→a2a/task/delegate, tasks/get→a2a/task/result, tasks/cancel→a2a/task/cancel, 新增a2a/artifact/sync, a2a/agent/heartbeat, 旧方法名保留兼容
+  - `acp-proxy/ws_a2a.py` — 新增，ws://8092/ws/a2a WebSocket长连接端点
+  - `acp-proxy/app.py` — 注册rpc_router(/rpc/a2a)和ws_a2a(/ws/a2a)
+- **验证**: 方法分发表12个方法，5个规范方法+7个兼容方法
 
 ### 3. MCP v1.0 协议实现
 - **规范**: `11-MCP-v1.0-底层管控协议规范.md`
