@@ -10,6 +10,7 @@ from ws_chat import router as ws_router
 from ws_acp import ws_acp_endpoint  # ACP JSON-RPC 2.0纯透传端点
 from a2a.server import router as a2a_router, rpc_router as a2a_rpc_router, well_known_router
 from mcp.server import router as mcp_router
+from gateway.router import router as gateway_router
 
 logger = logging.getLogger("acp-proxy.app")
 
@@ -37,6 +38,7 @@ app.include_router(a2a_router)
 app.include_router(a2a_rpc_router)  # /rpc/a2a 规范路径
 app.include_router(well_known_router)
 app.include_router(mcp_router)  # /admin/mcp 管控端点
+app.include_router(gateway_router)  # /rpc 统一入口
 
 
 # ACP JSON-RPC 2.0纯透传端点 — 所有agent统一走此端点

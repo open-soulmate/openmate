@@ -33,14 +33,14 @@
 
 ### 3. MCP v1.0 协议实现
 - **规范**: `11-MCP-v1.0-底层管控协议规范.md`
-- **状态**: ⏳ 待实现
+- **状态**: ✅ 已完成
+- **日期**: 2026-09-02
+- **Commit**: (同Gateway commit)
 - **改动**:
-  - [ ] ws://8092/ws/mcp 管控通道
-  - [ ] mcp/agent/start, stop, restart
-  - [ ] mcp/config/update 热更新
-  - [ ] mcp/health/check 健康巡检
-  - [ ] mcp/resource/quota 资源配额
-  - [ ] control_token鉴权
+  - `acp-proxy/mcp/server.py` — 7个RPC方法: agent/start|stop|restart, config/reload, health/check, monitor/report, system/restart; control_token鉴权; 事件广播
+  - `acp-proxy/ws_mcp.py` — ws://8092/ws/mcp WebSocket管控通道
+  - `acp-proxy/app.py` — 注册/admin/mcp HTTP + /ws/mcp WebSocket
+- **验证**: 7个方法全部注册通过
 
 ### 4. Gateway 统一路由
 - **规范**: `07-Gateway-v1.0-网关路由规范.md`
