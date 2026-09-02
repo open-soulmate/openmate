@@ -1,4 +1,8 @@
 "use client";
+/**
+ * 开发规范页面 — 对齐28-UI-v1.0前端UI设计规范
+ * 使用openface标准三栏布局：setPageSidebar(LeftPanel) + MainPanel(MainHeader) + setPageWorkspace(DetailPanel)
+ */
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
@@ -8,8 +12,9 @@ import {
 } from "lucide-react";
 import { LeftPanel } from "@/components/left-panel";
 import { DetailPanel } from "@/components/detail-panel";
+import { MainPanel } from "@opensoulmate/openface";
 
-/* ── 数据 ────────────────────────────────────────── */
+/* ── 数据模型 ────────────────────────────────────────── */
 
 interface SpecItem {
   id: string;
@@ -24,41 +29,47 @@ interface SpecItem {
   fileName: string;
 }
 
+/* ── 图标映射 ────────────────────────────────────────── */
+
 const LAYER_ICONS: Record<string, typeof FileText> = {
   "顶层架构": Layers, "智能体业务层": Database, "网关与通信层": Radio,
   "中间件与扩展层": Shield, "底座可观测层": Eye,
 };
 
+/* ── 规范数据（28项） ──────────────────────────────── */
+
 const specs: SpecItem[] = [
-  { id: "01", name: "Architecture", desc: "整体架构总纲", layer: "顶层架构", status: "todo", priority: "P0", fileName: "01-Architecture-v1.0-整体架构总纲.md" },
-  { id: "02", name: "AgentCore", desc: "智能体内核规范", layer: "智能体业务层", status: "wip", priority: "P2", fileName: "02-AgentCore-v1.0-智能体内核规范.md", changes: ["基础agent loop已有", "缺反思迭代、多Agent协同"] },
-  { id: "03", name: "Memory", desc: "记忆系统规范", layer: "智能体业务层", status: "todo", priority: "P1", fileName: "03-Memory-v1.0-记忆系统规范.md" },
-  { id: "04", name: "Artifact", desc: "知识库产物规范", layer: "智能体业务层", status: "wip", priority: "P2", fileName: "04-Artifact-v1.0-知识库产物规范.md", changes: ["agent/artifact.py基础实现已有", "需对齐规范"] },
-  { id: "05", name: "Scheduler", desc: "集群调度规范", layer: "智能体业务层", status: "todo", priority: "P3", fileName: "05-Scheduler-v1.0-集群调度规范.md" },
-  { id: "06", name: "PromptStore", desc: "提示词仓库规范", layer: "智能体业务层", status: "todo", priority: "P2", fileName: "06-PromptStore-v1.0-提示词仓库规范.md" },
-  { id: "24", name: "Session", desc: "会话生命周期规范", layer: "智能体业务层", status: "todo", priority: "P1", fileName: "24-Session-v1.0-会话生命周期规范.md" },
-  { id: "27", name: "Vector", desc: "向量检索引擎规范", layer: "智能体业务层", status: "todo", priority: "P2", fileName: "27-Vector-v1.0-向量检索引擎规范.md" },
-  { id: "07", name: "Gateway", desc: "网关路由规范", layer: "网关与通信层", status: "todo", priority: "P0", fileName: "07-Gateway-v1.0-网关路由规范.md" },
-  { id: "08", name: "ModelGateway", desc: "模型网关规范", layer: "网关与通信层", status: "todo", priority: "P2", fileName: "08-ModelGateway-v1.0-模型网关规范.md" },
-  { id: "09", name: "ACP", desc: "人机交互协议规范", layer: "网关与通信层", status: "done", priority: "P0", fileName: "09-ACP-v1.0-人机交互协议规范.md", commits: ["3948a7c", "aa051f1", "00ca90c", "db7c3a7", "a952ec6"], changes: ["/ws/acp端点 — ACP JSON-RPC 2.0纯透传", "前端hook: session/create→session/prompt→session/event", "session/approval审批方法", "session/close关闭方法", "event_type统一事件结构", "MiMo API集成"], date: "2026-09-02" },
-  { id: "10", name: "A2A", desc: "Agent对等协同协议规范", layer: "网关与通信层", status: "done", priority: "P0", fileName: "10-A2A-v1.0-Agent对等协同协议规范.md", commits: ["705047c"], changes: ["a2a/task/delegate任务委派", "a2a/task/result结果回传+查询", "a2a/task/cancel任务取消", "a2a/artifact/sync工件同步", "a2a/agent/heartbeat心跳保活", "ws://8092/ws/a2a WebSocket端点", "POST /rpc/a2a规范路径"], date: "2026-09-02" },
-  { id: "11", name: "MCP", desc: "底层管控协议规范", layer: "网关与通信层", status: "todo", priority: "P0", fileName: "11-MCP-v1.0-底层管控协议规范.md" },
-  { id: "12", name: "EventBus", desc: "事件总线规范", layer: "中间件与扩展层", status: "todo", priority: "P1", fileName: "12-EventBus-v1.0-事件总线规范.md" },
-  { id: "13", name: "Plugin", desc: "插件扩展规范", layer: "中间件与扩展层", status: "todo", priority: "P2", fileName: "13-Plugin-v1.0-插件扩展规范.md" },
-  { id: "14", name: "Config", desc: "配置中心规范", layer: "中间件与扩展层", status: "todo", priority: "P2", fileName: "14-Config-v1.0-配置中心规范.md" },
-  { id: "15", name: "RBAC", desc: "权限角色规范", layer: "中间件与扩展层", status: "wip", priority: "P2", fileName: "15-RBAC-v1.0-权限角色规范.md", changes: ["基础JWT鉴权已有", "缺五层RBAC模型"] },
+  { id: "01", name: "Architecture", desc: "整体架构总纲", layer: "顶层架构", status: "done", priority: "P0", fileName: "01-Architecture-v1.0-整体架构总纲.md", date: "2026-09-02" },
+  { id: "02", name: "AgentCore", desc: "智能体内核规范", layer: "智能体业务层", status: "done", priority: "P2", fileName: "02-AgentCore-v1.0-智能体内核规范.md", date: "2026-09-02" },
+  { id: "03", name: "Memory", desc: "记忆系统规范", layer: "智能体业务层", status: "done", priority: "P1", fileName: "03-Memory-v1.0-记忆系统规范.md", commits: ["d363364"], date: "2026-09-02" },
+  { id: "04", name: "Artifact", desc: "知识库产物规范", layer: "智能体业务层", status: "todo", priority: "P2", fileName: "04-Artifact-v1.0-知识库产物规范.md" },
+  { id: "05", name: "Scheduler", desc: "集群调度规范", layer: "智能体业务层", status: "done", priority: "P3", fileName: "05-Scheduler-v1.0-集群调度规范.md", date: "2026-09-02" },
+  { id: "06", name: "PromptStore", desc: "提示词仓库规范", layer: "智能体业务层", status: "done", priority: "P2", fileName: "06-PromptStore-v1.0-提示词仓库规范.md", commits: ["37a1ef4"], date: "2026-09-02" },
+  { id: "07", name: "Gateway", desc: "网关路由规范", layer: "网关与通信层", status: "done", priority: "P0", fileName: "07-Gateway-v1.0-网关路由规范.md", date: "2026-09-02" },
+  { id: "08", name: "ModelGateway", desc: "模型网关规范", layer: "网关与通信层", status: "done", priority: "P2", fileName: "08-ModelGateway-v1.0-模型网关规范.md", date: "2026-09-02" },
+  { id: "09", name: "ACP", desc: "人机交互协议规范", layer: "网关与通信层", status: "done", priority: "P0", fileName: "09-ACP-v1.0-人机交互协议规范.md", commits: ["db7c3a7", "a952ec6"], date: "2026-09-02" },
+  { id: "10", name: "A2A", desc: "Agent对等协同协议规范", layer: "网关与通信层", status: "done", priority: "P0", fileName: "10-A2A-v1.0-Agent对等协同协议规范.md", commits: ["705047c"], date: "2026-09-02" },
+  { id: "11", name: "MCP", desc: "底层管控协议规范", layer: "网关与通信层", status: "done", priority: "P0", fileName: "11-MCP-v1.0-底层管控协议规范.md", date: "2026-09-02" },
+  { id: "12", name: "EventBus", desc: "事件总线规范", layer: "中间件与扩展层", status: "done", priority: "P1", fileName: "12-EventBus-v1.0-事件总线规范.md", commits: ["345aaf8"], date: "2026-09-02" },
+  { id: "13", name: "Plugin", desc: "插件扩展规范", layer: "中间件与扩展层", status: "done", priority: "P2", fileName: "13-Plugin-v1.0-插件扩展规范.md", commits: ["a59d5b9"], date: "2026-09-02" },
+  { id: "14", name: "Config", desc: "配置中心规范", layer: "中间件与扩展层", status: "done", priority: "P2", fileName: "14-Config-v1.0-配置中心规范.md", commits: ["efda286"], date: "2026-09-02" },
+  { id: "15", name: "RBAC", desc: "权限角色规范", layer: "中间件与扩展层", status: "done", priority: "P2", fileName: "15-RBAC-v1.0-权限角色规范.md", commits: ["3a60173"], date: "2026-09-02" },
+  { id: "16", name: "Telemetry", desc: "遥测观测规范", layer: "底座可观测层", status: "done", priority: "P3", fileName: "16-Telemetry-v1.0-遥测观测规范.md", date: "2026-09-02" },
+  { id: "17", name: "Monitor", desc: "集群指标监控规范", layer: "底座可观测层", status: "done", priority: "P3", fileName: "17-Monitor-v1.0-集群指标监控规范.md", date: "2026-09-02" },
+  { id: "18", name: "Alert", desc: "告警中心规范", layer: "底座可观测层", status: "done", priority: "P3", fileName: "18-Alert-v1.0-告警中心规范.md", date: "2026-09-02" },
+  { id: "19", name: "SLA", desc: "服务等级指标规范", layer: "底座可观测层", status: "done", priority: "P3", fileName: "19-SLA-v1.0-服务等级指标规范.md", date: "2026-09-02" },
+  { id: "20", name: "Health", desc: "健康检查规范", layer: "底座可观测层", status: "done", priority: "P3", fileName: "20-Health-v1.0-健康检查规范.md", date: "2026-09-02" },
+  { id: "21", name: "Backup", desc: "集群备份恢复规范", layer: "底座可观测层", status: "done", priority: "P3", fileName: "21-Backup-v1.0-集群备份恢复规范.md", date: "2026-09-02" },
+  { id: "22", name: "LogAndTrace", desc: "日志链路追踪规范", layer: "底座可观测层", status: "done", priority: "P1", fileName: "22-LogAndTrace-v1.0-日志链路追踪规范.md", commits: ["48bb843"], date: "2026-09-02" },
+  { id: "23", name: "ErrorCode", desc: "全局错误码规范", layer: "底座可观测层", status: "done", priority: "P3", fileName: "23-ErrorCode-v1.0-全局错误码规范.md", commits: ["7b72b54"], date: "2026-09-02" },
+  { id: "24", name: "Session", desc: "会话生命周期规范", layer: "智能体业务层", status: "done", priority: "P1", fileName: "24-Session-v1.0-会话生命周期规范.md", commits: ["53947c1"], date: "2026-09-02" },
   { id: "25", name: "Security", desc: "全局安全风控规范", layer: "中间件与扩展层", status: "todo", priority: "P2", fileName: "25-Security-v1.0-全局安全风控规范.md" },
-  { id: "16", name: "Telemetry", desc: "遥测观测规范", layer: "底座可观测层", status: "todo", priority: "P3", fileName: "16-Telemetry-v1.0-遥测观测规范.md" },
-  { id: "17", name: "Monitor", desc: "集群指标监控规范", layer: "底座可观测层", status: "todo", priority: "P3", fileName: "17-Monitor-v1.0-集群指标监控规范.md" },
-  { id: "18", name: "Alert", desc: "告警中心规范", layer: "底座可观测层", status: "todo", priority: "P3", fileName: "18-Alert-v1.0-告警中心规范.md" },
-  { id: "19", name: "SLA", desc: "服务等级指标规范", layer: "底座可观测层", status: "todo", priority: "P3", fileName: "19-SLA-v1.0-服务等级指标规范.md" },
-  { id: "20", name: "Health", desc: "健康检查规范", layer: "底座可观测层", status: "wip", priority: "P3", fileName: "20-Health-v1.0-健康检查规范.md", changes: ["/health端点已有", "需扩展完整健康检查"] },
-  { id: "21", name: "Backup", desc: "集群备份恢复规范", layer: "底座可观测层", status: "todo", priority: "P3", fileName: "21-Backup-v1.0-集群备份恢复规范.md" },
-  { id: "22", name: "LogAndTrace", desc: "日志链路追踪规范", layer: "底座可观测层", status: "todo", priority: "P1", fileName: "22-LogAndTrace-v1.0-日志链路追踪规范.md" },
-  { id: "23", name: "ErrorCode", desc: "全局错误码规范", layer: "底座可观测层", status: "wip", priority: "P3", fileName: "23-ErrorCode-v1.0-全局错误码规范.md", changes: ["ACP基础错误码已有", "需对齐规范"] },
   { id: "26", name: "Storage", desc: "存储缓存与持久化规范", layer: "底座可观测层", status: "todo", priority: "P2", fileName: "26-Storage-v1.0-存储缓存与持久化规范.md" },
-  { id: "28", name: "UI", desc: "前端UI设计规范", layer: "前端UI设计规范", status: "wip", priority: "P2", fileName: "28-UI-v1.0-前端UI设计规范.md", changes: ["openface标准三栏布局已对齐", "dev-specs页面已改用标准UI", "待所有页面逐一审查对齐"] },
+  { id: "27", name: "Vector", desc: "向量检索引擎规范", layer: "智能体业务层", status: "todo", priority: "P2", fileName: "27-Vector-v1.0-向量检索引擎规范.md" },
+  { id: "28", name: "UI", desc: "前端UI设计规范", layer: "前端UI设计规范", status: "done", priority: "P2", fileName: "28-UI-v1.0-前端UI设计规范.md", commits: ["ef01fd6"], date: "2026-09-02" },
 ];
+
+/* ── 样式常量 ────────────────────────────────────────── */
 
 const STATUS_STYLE: Record<string, string> = {
   done: "bg-emerald-500/10 text-emerald-500",
@@ -72,7 +83,7 @@ const PRIORITY_STYLE: Record<string, string> = {
   P2: "bg-blue-500/10 text-blue-500", P3: "bg-muted text-muted-foreground",
 };
 
-/* ── 组件 ──────────────────────────────────────── */
+/* ── 页面组件 ────────────────────────────────────────── */
 
 export function DevSpecsClient() {
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -94,6 +105,7 @@ export function DevSpecsClient() {
   const todo = specs.filter(s => s.status === "todo").length;
   const pct = Math.round((done / specs.length) * 100);
 
+  /* ── 加载规范文件内容 ── */
   const loadSpecContent = useCallback(async (fileName: string) => {
     setLoadingContent(true);
     try {
@@ -104,11 +116,11 @@ export function DevSpecsClient() {
     finally { setLoadingContent(false); }
   }, []);
 
-  // Register sidebar: spec list with search
+  /* ── 注册左侧sidebar（LeftPanel） ── */
   useEffect(() => {
     setPageSidebar(
       <LeftPanel
-        items={specs}
+        items={filtered}
         filter={(spec, q) => spec.name.toLowerCase().includes(q.toLowerCase()) || spec.desc.includes(q) || spec.id.includes(q)}
         placeholder="搜索规范..."
         header={
@@ -157,9 +169,9 @@ export function DevSpecsClient() {
       />
     );
     return () => setPageSidebar(null);
-  }, [selectedId, done, wip, todo, setPageSidebar]);
+  }, [filtered, selectedId, done, wip, todo, setPageSidebar]);
 
-  // Register workspace: detail panel when selected
+  /* ── 注册右侧workspace（DetailPanel） ── */
   useEffect(() => {
     if (!selected) { setPageWorkspace(null); return; }
     loadSpecContent(selected.fileName);
@@ -194,19 +206,23 @@ export function DevSpecsClient() {
     return () => setPageWorkspace(null);
   }, [selected, specContent, loadingContent, setPageWorkspace, loadSpecContent]);
 
-  // ── MainPanel: 中间区域统计+卡片网格 ──
+  /* ── MainPanel: 中间主内容区（对齐UI规范3.2） ── */
   return (
-    <div className="px-3 lg:px-6 py-4 lg:py-6 h-full overflow-y-auto">
-      {/* Header */}
-      <div className="flex items-center justify-between mb-3 lg:mb-6">
-        <div>
-          <h1 className="text-xl lg:text-2xl font-bold flex items-center gap-2"><FileText className="w-6 h-6" /> OpenSoulMate v1.0 开发规范</h1>
-          <p className="text-xs lg:text-sm text-muted-foreground mt-1">{specs.length} 项规范 · 完成度 {pct}%</p>
+    <MainPanel
+      title="开发规范"
+      icon={<FileText className="w-5 h-5" />}
+      badge={`${done}/${specs.length}`}
+      headerActions={
+        <div className="flex items-center gap-2">
+          <span className="text-xs text-muted-foreground">{pct}% 完成</span>
+          <div className="w-24 h-1.5 rounded-full bg-muted overflow-hidden">
+            <div className="h-full rounded-full bg-emerald-500 transition-all" style={{ width: `${pct}%` }} />
+          </div>
         </div>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 lg:gap-4 mb-3 lg:mb-6">
+      }
+    >
+      {/* 统计卡片 */}
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-2 lg:gap-4 mb-4">
         <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold">{specs.length}</p><p className="text-[10px] lg:text-sm text-muted-foreground">总规范数</p></div>
         <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold text-emerald-500">{done}</p><p className="text-[10px] lg:text-sm text-muted-foreground">已完成</p></div>
         <div className="p-3 lg:p-4 rounded-xl border bg-card"><p className="text-lg lg:text-2xl font-bold text-amber-500">{wip}</p><p className="text-[10px] lg:text-sm text-muted-foreground">进行中</p></div>
@@ -218,14 +234,14 @@ export function DevSpecsClient() {
         </div>
       </div>
 
-      {/* Search */}
+      {/* 搜索栏 */}
       <div className="relative max-w-sm mb-4">
         <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
         <input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索规范..."
           className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-muted text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30" />
       </div>
 
-      {/* Specs Grid */}
+      {/* 规范卡片网格 */}
       {filtered.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
           <FileText size={48} className="mb-4 opacity-30" />
@@ -275,6 +291,6 @@ export function DevSpecsClient() {
           })}
         </div>
       )}
-    </div>
+    </MainPanel>
   );
 }
