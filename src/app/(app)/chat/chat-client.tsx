@@ -294,12 +294,20 @@ function useAcpWebSocket(params: {
         acpReadyRef.current = new Promise<void>(resolve => { resolveAcpReadyRef.current = resolve; });
         performAcpHandshake();
       };
-      ws.onclose = () => {
+      ws.onclose = (event) => {
         setWsConnected(false);
         acpSessionIdRef.current = null;
-        // 连接断开时 resolve 当前就绪 Promise，避免 sendAcpPrompt 永久等待
         resolveAcpReadyRef.current?.();
         acpReadyRef.current = null;
+        // 服务端主动关闭(1000)且token无效 → 跳转登录
+        if (event.code === 1000 && !unmounted) {
+          const storedToken = localStorage.getItem('openmate-token');
+          if (!storedToken || storedToken === token) {
+            // token可能已过期，检查是否还能用
+            console.warn('[ACP] 连接被服务端关闭，可能是token过期');
+            // 不立即跳转，给onmessage机会处理错误
+          }
+        }
         if (!unmounted) reconnectTimer = setTimeout(connect, retryDelay);
         retryDelay = Math.min(retryDelay * 2, 30000);
       };
@@ -307,6 +315,18 @@ function useAcpWebSocket(params: {
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
+
+          // ── 检测token无效错误（id为null，服务器在握手前拒绝）──
+          if (data.id === null && data.error) {
+            const errMsg = (data.error as { message?: string })?.message || '';
+            if (errMsg.includes('token') || errMsg.includes('Token') || errMsg.includes('expired') || errMsg.includes('Invalid')) {
+              console.warn('[ACP] Token无效，跳转登录页');
+              localStorage.removeItem('openmate-token');
+              unmounted = true;
+              window.location.href = '/login';
+              return;
+            }
+          }
 
           // ── ACP JSON-RPC 2.0 协议 ──
           const currentSessionId = selectedSessionRef.current?.id;
@@ -318,6 +338,15 @@ function useAcpWebSocket(params: {
               pendingRequestsRef.current.delete(data.id);
               if (data.error) {
                 console.error('[ACP] RPC 错误:', data.error);
+                // 检测token过期/无效，停止重连并跳转登录
+                const errMsg = (data.error as { message?: string })?.message || '';
+                if (errMsg.includes('token') || errMsg.includes('Token') || errMsg.includes('expired')) {
+                  console.warn('[ACP] Token无效，跳转登录页');
+                  localStorage.removeItem('openmate-token');
+                  unmounted = true; // 阻止重连
+                  window.location.href = '/login';
+                  return;
+                }
               } else {
                 resolver(data.result);
               }
