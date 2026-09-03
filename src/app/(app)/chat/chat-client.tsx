@@ -282,7 +282,7 @@ function useAcpWebSocket(params: {
                 id: sessionId,
                 name: 'SoulMate 会话',
                 agent_id: selectedAgentRef.current?.id || 'soulmate',
-                tags: ['soulmate', 'acp'],
+                tags: ['agent:soulmate'],
               }),
             });
           } catch (saveErr) {
