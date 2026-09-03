@@ -503,7 +503,7 @@ function useAcpWebSocket(params: {
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ws) ws.close();
     };
-  }, [selectedAgent?.id ?? activeAgentIdFromStore]);
+  }, [selectedAgent?.id ?? activeAgentIdFromStore, activeSessionIdFromStore]);
 
   // 发送ACP审批决议 — session.approval（批准或拒绝）
   const sendApproval = useCallback((requestId: string, action: 'approve' | 'reject', comment: string) => {
