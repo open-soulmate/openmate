@@ -199,19 +199,53 @@ async def ws_acp_endpoint(client_ws: WebSocket):
         await client_ws.close()
         return
 
-    # 暂不连接Agent Engine，先等session.create获取agent_id
-    # 但需要先转发initialize给默认Agent Engine获取响应
-    # 这里先缓存initialize消息，等session.create后再决定路由
+    # 第一步：连到默认Agent Engine转发initialize，拿到响应
+    # （initialize不需要知道agent_id，任何Agent Engine都能处理）
+    default_route = DEFAULT_ROUTE
+    engine_ws = None
+    cleanup_fn = None
+    try:
+        engine_ws, cleanup_fn = await _connect_agent(default_route)
+    except Exception as e:
+        logger.error(f"[ACP] Failed to connect to default Agent Engine: {e}")
+        await _send_acp(client_ws, {"jsonrpc": "2.0", "id": init_msg.get("id"), "error": {"code": -32603, "message": f"Agent Engine unavailable: {e}"}})
+        await client_ws.close()
+        return
 
-    # 等待session.create消息
+    # 转发initialize并返回响应
+    try:
+        await _send_engine(engine_ws, init_msg)
+        raw_resp = await asyncio.wait_for(engine_ws.recv(), timeout=10)
+        init_resp = json.loads(raw_resp.strip())
+        await _send_acp(client_ws, init_resp)
+        logger.info(f"[ACP] initialize handshake OK for user {user_id}")
+    except Exception as e:
+        logger.error(f"[ACP] initialize failed: {e}")
+        await _send_acp(client_ws, {"jsonrpc": "2.0", "id": init_msg.get("id"), "error": {"code": -32603, "message": f"initialize failed: {e}"}})
+        if cleanup_fn:
+            await cleanup_fn()
+        else:
+            await engine_ws.close()
+        await client_ws.close()
+        return
+
+    # 第二步：等session.create，提取agent_id
     try:
         session_create_msg = await asyncio.wait_for(client_ws.receive_json(), timeout=30)
     except asyncio.TimeoutError:
-        await _send_acp(client_ws, {"jsonrpc": "2.0", "id": None, "error": {"code": -32600, "message": "Timeout waiting for session.create"}})
+        logger.warning(f"[ACP] user {user_id} timeout waiting for session.create")
+        if cleanup_fn:
+            await cleanup_fn()
+        else:
+            await engine_ws.close()
         await client_ws.close()
         return
     except WebSocketDisconnect:
         logger.info(f"[ACP] user {user_id} disconnected before session.create")
+        if cleanup_fn:
+            await cleanup_fn()
+        else:
+            await engine_ws.close()
         return
 
     # 提取agent_id
@@ -219,45 +253,47 @@ async def ws_acp_endpoint(client_ws: WebSocket):
     agent_id = params.get("agent_id") or params.get("agentId", "soulmate")
     logger.info(f"[ACP] user {user_id} requested agent: {agent_id}")
 
-    # 获取路由配置
-    route = AGENT_ROUTES.get(agent_id, DEFAULT_ROUTE)
-    logger.info(f"[ACP] Routing {agent_id} → {route}")
+    # 第三步：如果agent不是soulmate（默认），需要切换到对应agent
+    target_route = AGENT_ROUTES.get(agent_id, DEFAULT_ROUTE)
+    if agent_id != "soulmate":
+        # 关闭默认连接，连接到目标agent
+        logger.info(f"[ACP] Switching from default to {agent_id} → {target_route}")
+        try:
+            if cleanup_fn:
+                await cleanup_fn()
+            else:
+                await engine_ws.close()
+        except Exception:
+            pass
 
-    # 连接到对应Agent
-    engine_ws = None
-    cleanup_fn = None
-    try:
-        engine_ws, cleanup_fn = await _connect_agent(route)
-    except Exception as e:
-        logger.error(f"[ACP] Failed to connect to agent {agent_id}: {e}")
-        await _send_acp(client_ws, {"jsonrpc": "2.0", "id": init_msg.get("id"), "error": {"code": -32603, "message": f"Agent {agent_id} unavailable: {e}"}})
-        await client_ws.close()
-        return
+        try:
+            engine_ws, cleanup_fn = await _connect_agent(target_route)
+        except Exception as e:
+            logger.error(f"[ACP] Failed to connect to agent {agent_id}: {e}")
+            await _send_acp(client_ws, {"jsonrpc": "2.0", "id": session_create_msg.get("id"), "error": {"code": -32603, "message": f"Agent {agent_id} unavailable: {e}"}})
+            await client_ws.close()
+            return
+
+        # 对新agent做initialize握手
+        try:
+            await _send_engine(engine_ws, init_msg)
+            raw_resp = await asyncio.wait_for(engine_ws.recv(), timeout=10)
+            # 不需要转发initialize响应给client（已经发过了）
+        except Exception as e:
+            logger.error(f"[ACP] initialize for {agent_id} failed: {e}")
+            await _send_acp(client_ws, {"jsonrpc": "2.0", "id": session_create_msg.get("id"), "error": {"code": -32603, "message": f"Agent {agent_id} init failed: {e}"}})
+            if cleanup_fn:
+                await cleanup_fn()
+            else:
+                await engine_ws.close()
+            await client_ws.close()
+            return
 
     logger.info(f"[ACP] user {user_id} → agent {agent_id}")
 
     try:
-        # 转发initialize到agent
-        if route["type"] == "websocket":
-            await _send_engine(engine_ws, init_msg)
-            raw_resp = await asyncio.wait_for(engine_ws.recv(), timeout=10)
-            init_resp = json.loads(raw_resp.strip())
-        else:
-            # subprocess模式：直接发送
-            await engine_ws.send(json.dumps(init_msg))
-            raw_resp = await asyncio.wait_for(engine_ws.recv(), timeout=10)
-            init_resp = json.loads(raw_resp)
-
-        await _send_acp(client_ws, init_resp)
-        logger.info(f"[ACP] initialize handshake forwarded for user {user_id} → {agent_id}")
-
-        # 转发session.create到agent
-        if route["type"] == "websocket":
-            await _send_engine(engine_ws, session_create_msg)
-        else:
-            await engine_ws.send(json.dumps(session_create_msg))
-
-        # 读取session.create响应并转发给client
+        # 转发session.create到目标agent
+        await _send_engine(engine_ws, session_create_msg)
         raw_resp = await asyncio.wait_for(engine_ws.recv(), timeout=10)
         session_resp = json.loads(raw_resp.strip())
         await _send_acp(client_ws, session_resp)
