@@ -206,7 +206,7 @@ function useAcpWebSocket(params: {
   // JSON-RPC 请求 ID 计数器
   const rpcIdRef = useRef(0);
   // 等待响应的请求回调（id → resolve）
-  const pendingRequestsRef = useRef<Map<number, (result: unknown) => void>>(new Map());
+  const pendingRequestsRef = useRef<Map<number, { resolve: (result: unknown) => void; reject: (err: Error) => void }>>(new Map());
   // ACP 握手完成的 Promise，sendAcpPrompt 等待此 Promise 确保 session.create 已返回
   const acpReadyRef = useRef<Promise<void> | null>(null);
   // 追踪当前连接使用的 token，用于检测 token 变化
@@ -339,6 +339,11 @@ function useAcpWebSocket(params: {
         acpSessionIdRef.current = null;
         resolveAcpReadyRef.current?.();
         acpReadyRef.current = null;
+        // WebSocket关闭时，立即reject所有pending的RPC请求，避免等30秒超时
+        for (const [id, { reject }] of pendingRequestsRef.current) {
+          reject(new Error('WebSocket连接已断开'));
+        }
+        pendingRequestsRef.current.clear();
         // 服务端主动关闭(1000)且token无效 → 跳转登录
         if (event.code === 1000 && !unmounted) {
           const storedToken = localStorage.getItem('openmate-token');
