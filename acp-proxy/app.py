@@ -146,7 +146,7 @@ async def health():
 
 @app.get("/plugins")
 async def list_plugins():
-    """列出所有已加载的插件"""
+    """列出所有已加载的插件（包含完整manifest）"""
     plugins = []
     if PLUGINS_DIR.exists():
         for plugin_dir in sorted(PLUGINS_DIR.iterdir()):
@@ -159,6 +159,7 @@ async def list_plugins():
                     "name": manifest.get("name", plugin_dir.name),
                     "version": manifest.get("version", "0.0.0"),
                     "description": manifest.get("description", ""),
-                    "status": "loaded"
+                    "status": "loaded",
+                    "manifest": manifest  # 返回完整manifest供前端读取nav配置
                 })
     return {"plugins": plugins, "count": len(plugins)}
