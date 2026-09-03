@@ -82,7 +82,7 @@ const navItems: BottomNavItem[] = [
   { href: "/timeline", label: "nav.timeline", icon: History },
   { href: "/changelog", label: "nav.changelog", icon: ScrollText },
   { href: "/dev-specs", label: "开发规范", icon: FileText },
-  { href: "/bidding", label: "智能投标", icon: FileText },
+  { href: "/plugins/bidding", label: "智能投标", icon: FileText },
   { href: "/marketplace", label: "nav.marketplace", icon: Store },
 ];
 
