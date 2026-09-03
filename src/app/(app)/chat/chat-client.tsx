@@ -281,8 +281,23 @@ function useAcpWebSocket(params: {
       }
     };
 
+    // 客户端检查token是否过期（JWT payload的exp字段）
+    const isTokenExpired = (t: string): boolean => {
+      try {
+        const payload = JSON.parse(atob(t.split('.')[1]));
+        return payload.exp ? payload.exp * 1000 < Date.now() : false;
+      } catch { return true; } // 解析失败视为过期
+    };
+
     const connect = () => {
       if (unmounted) return;
+      // 连接前检查token是否过期
+      if (isTokenExpired(token)) {
+        console.warn('[ACP] Token已过期，跳转登录页');
+        localStorage.removeItem('openmate-token');
+        window.location.href = '/login';
+        return;
+      }
       // 连接 ACP WebSocket 端点
       const wsUrl = `${getAcpWsUrl()}/ws/acp?token=${token}`;
       ws = new WebSocket(wsUrl);
