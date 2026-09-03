@@ -10,6 +10,7 @@ import { useAIGroupsStore } from "@/stores/ai-groups-store";
 
 import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
 import { GlobalWebSocket } from "@/components/global-websocket";
+import { EChartsThemeProvider } from "@/components/echarts-theme-provider";
 
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
@@ -378,6 +379,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex flex-col h-svh overflow-hidden">
       <GlobalWebSocket />
+      <EChartsThemeProvider>
       {/* Top utility bar — full screen width */}
       <div className="flex items-center">
         <div className="flex-1 min-w-0">
@@ -508,6 +510,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Bottom navigation bar — full screen width */}
       <BottomNav totalUnread={totalUnread} onOpenConversations={() => { if (isMobile) { setMobileSidebarOpen(true); } else { toggle(); } setRightPanelOpen(false); }} />
+      </EChartsThemeProvider>
     </div>
   );
 }

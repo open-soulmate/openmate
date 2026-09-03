@@ -15,6 +15,7 @@ import { PageLayout } from '@/components/page-layout';
 import { LeftPanel } from '@/components/left-panel';
 import { DetailPanel } from '@/components/detail-panel';
 import dynamic from 'next/dynamic';
+import { COLORS, LINE_THEME, PIE_THEME, GAUGE_THEME, COLOR_PALETTE, BASE_CHART } from '@/lib/echarts-theme';
 
 const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
 
@@ -335,7 +336,7 @@ export function DashboardClient() {
 
   // ── ECharts options ──────────────────────────────────────────
 
-  // 1. Token Usage Trend (line chart - grouped by hour)
+  // 1. Token Usage Trend — 渐变面积折线图
   const tokenTrendOption = useMemo(() => {
     const hourly: Record<string, number> = {};
     recentRecords.forEach((r) => {
@@ -345,33 +346,75 @@ export function DashboardClient() {
     });
     const hours = Object.keys(hourly).sort();
     return {
-      tooltip: { trigger: "axis" as const },
-      grid: { top: 20, right: 16, bottom: 24, left: 48 },
-      xAxis: { type: "category" as const, data: hours, axisLabel: { fontSize: 10 } },
-      yAxis: { type: "value" as const, axisLabel: { fontSize: 10 } },
+      ...LINE_THEME,
+      tooltip: { ...LINE_THEME.tooltip, trigger: "axis" as const },
+      grid: { top: 20, right: 16, bottom: 28, left: 50, containLabel: true },
+      xAxis: { ...LINE_THEME.xAxis, type: "category" as const, data: hours },
+      yAxis: { ...LINE_THEME.yAxis, type: "value" as const },
       series: [{
         type: "line",
         data: hours.map((h) => hourly[h]),
-        smooth: true,
-        areaStyle: { opacity: 0.15 },
-        itemStyle: { color: "#3b82f6" },
+        smooth: 0.4,
+        symbol: 'circle',
+        symbolSize: 6,
+        showSymbol: hours.length <= 12,
+        lineStyle: { width: 2.5, color: COLORS.primary },
+        itemStyle: { color: COLORS.primary, borderColor: '#0f172a', borderWidth: 2 },
+        areaStyle: {
+          color: {
+            type: 'linear' as const, x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(59, 130, 246, 0.3)' },
+              { offset: 1, color: 'rgba(59, 130, 246, 0.02)' },
+            ],
+          },
+        },
       }],
     };
   }, [recentRecords]);
 
-  // 2. Model Breakdown (pie chart)
+  // 2. Model Breakdown — 渐变环形图
   const modelPieOption = useMemo(() => ({
-    tooltip: { trigger: "item" as const, formatter: "{b}: {c} tokens ({d}%)" },
+    ...PIE_THEME,
+    tooltip: {
+      ...PIE_THEME.tooltip,
+      trigger: "item" as const,
+      formatter: "{b}: {c} tokens ({d}%)",
+    },
+    legend: {
+      ...PIE_THEME.legend,
+      show: modelBreakdown.length <= 6,
+    },
     series: [{
       type: "pie",
-      radius: ["35%", "65%"],
-      data: modelBreakdown.map((m) => ({ name: m.model, value: m.tokens })),
-      label: { fontSize: 10 },
-      itemStyle: { borderRadius: 4 },
+      radius: ["40%", "70%"],
+      center: ["40%", "50%"],
+      avoidLabelOverlap: true,
+      padAngle: 2,
+      data: modelBreakdown.map((m, i) => ({
+        name: m.model,
+        value: m.tokens,
+        itemStyle: {
+          color: COLOR_PALETTE[i % COLOR_PALETTE.length],
+          borderRadius: 6,
+        },
+      })),
+      label: {
+        show: modelBreakdown.length <= 4,
+        fontSize: 10,
+        color: '#94a3b8',
+        formatter: '{b}\n{d}%',
+      },
+      emphasis: {
+        scaleSize: 8,
+        label: { fontSize: 12, fontWeight: 'bold' as const },
+        itemStyle: { shadowBlur: 20, shadowColor: 'rgba(0,0,0,0.4)' },
+      },
+      labelLine: { lineStyle: { color: '#475569' } },
     }],
   }), [modelBreakdown]);
 
-  // 3. Cost Trend (area chart - grouped by day)
+  // 3. Cost Trend — 渐变面积图（橙色系）
   const costTrendOption = useMemo(() => {
     const daily: Record<string, number> = {};
     recentRecords.forEach((r) => {
@@ -381,46 +424,128 @@ export function DashboardClient() {
     });
     const days = Object.keys(daily).sort();
     return {
-      tooltip: { trigger: "axis" as const, formatter: (params: any) => `${params[0]?.axisValue}<br/>$${params[0]?.value?.toFixed(4)}` },
-      grid: { top: 20, right: 16, bottom: 24, left: 48 },
-      xAxis: { type: "category" as const, data: days, axisLabel: { fontSize: 10 } },
-      yAxis: { type: "value" as const, axisLabel: { fontSize: 10, formatter: "${value}" } },
+      ...LINE_THEME,
+      tooltip: {
+        ...LINE_THEME.tooltip,
+        trigger: "axis" as const,
+        formatter: (params: any) => `${params[0]?.axisValue}<br/>$${params[0]?.value?.toFixed(4)}`,
+      },
+      grid: { top: 20, right: 16, bottom: 28, left: 50, containLabel: true },
+      xAxis: { ...LINE_THEME.xAxis, type: "category" as const, data: days },
+      yAxis: {
+        ...LINE_THEME.yAxis,
+        type: "value" as const,
+        axisLabel: { ...LINE_THEME.yAxis.axisLabel, formatter: "${value}" },
+      },
       series: [{
         type: "line",
         data: days.map((d) => +daily[d].toFixed(4)),
-        smooth: true,
-        areaStyle: { opacity: 0.2, color: "#f59e0b" },
-        itemStyle: { color: "#f59e0b" },
+        smooth: 0.4,
+        symbol: 'circle',
+        symbolSize: 6,
+        showSymbol: days.length <= 12,
+        lineStyle: { width: 2.5, color: COLORS.warning },
+        itemStyle: { color: COLORS.warning, borderColor: '#0f172a', borderWidth: 2 },
+        areaStyle: {
+          color: {
+            type: 'linear' as const, x: 0, y: 0, x2: 0, y2: 1,
+            colorStops: [
+              { offset: 0, color: 'rgba(245, 158, 11, 0.3)' },
+              { offset: 1, color: 'rgba(245, 158, 11, 0.02)' },
+            ],
+          },
+        },
       }],
     };
   }, [recentRecords]);
 
-  // 4. System Health (gauge)
+  // 4. System Health — 半圆仪表盘（参考远山风格）
   const sysGaugeOption = useMemo(() => {
     if (!sysMetrics) return {};
     return {
+      ...BASE_CHART,
       series: [
         {
           type: "gauge",
           center: ["25%", "55%"],
-          radius: "70%",
-          title: { fontSize: 10 },
-          detail: { fontSize: 12, formatter: "{value}%", offsetCenter: [0, "70%"] },
-          data: [{ value: +sysMetrics.system.cpu_percent.toFixed(1), name: "CPU" }],
-          axisLabel: { fontSize: 8 },
+          radius: "75%",
+          startAngle: 200,
+          endAngle: -20,
           min: 0,
           max: 100,
+          pointer: {
+            show: true,
+            length: '55%',
+            width: 4,
+            itemStyle: { color: '#e2e8f0' },
+          },
+          axisLine: {
+            lineStyle: {
+              width: 10,
+              color: [
+                [0.6, '#10b981'],
+                [0.8, '#f59e0b'],
+                [1, '#ef4444'],
+              ],
+            },
+          },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: false },
+          title: {
+            fontSize: 11,
+            color: '#94a3b8',
+            offsetCenter: [0, '70%'],
+          },
+          detail: {
+            fontSize: 18,
+            fontWeight: 'bold' as const,
+            color: '#e2e8f0',
+            formatter: '{value}%',
+            offsetCenter: [0, '35%'],
+          },
+          data: [{ value: +sysMetrics.system.cpu_percent.toFixed(1), name: "CPU" }],
         },
         {
           type: "gauge",
           center: ["75%", "55%"],
-          radius: "70%",
-          title: { fontSize: 10 },
-          detail: { fontSize: 12, formatter: "{value}%", offsetCenter: [0, "70%"] },
-          data: [{ value: +sysMetrics.system.memory_percent.toFixed(1), name: "MEM" }],
-          axisLabel: { fontSize: 8 },
+          radius: "75%",
+          startAngle: 200,
+          endAngle: -20,
           min: 0,
           max: 100,
+          pointer: {
+            show: true,
+            length: '55%',
+            width: 4,
+            itemStyle: { color: '#e2e8f0' },
+          },
+          axisLine: {
+            lineStyle: {
+              width: 10,
+              color: [
+                [0.6, '#10b981'],
+                [0.8, '#f59e0b'],
+                [1, '#ef4444'],
+              ],
+            },
+          },
+          axisTick: { show: false },
+          splitLine: { show: false },
+          axisLabel: { show: false },
+          title: {
+            fontSize: 11,
+            color: '#94a3b8',
+            offsetCenter: [0, '70%'],
+          },
+          detail: {
+            fontSize: 18,
+            fontWeight: 'bold' as const,
+            color: '#e2e8f0',
+            formatter: '{value}%',
+            offsetCenter: [0, '35%'],
+          },
+          data: [{ value: +sysMetrics.system.memory_percent.toFixed(1), name: "MEM" }],
         },
       ],
     };
