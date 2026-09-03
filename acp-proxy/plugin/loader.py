@@ -23,6 +23,7 @@ from plugin.models import (
     PluginState,
 )
 from plugin.hooks import hook_registry
+from plugin.routes import invoke_register_routes, invoke_unregister_routes
 
 logger = logging.getLogger("plugin.loader")
 
@@ -148,7 +149,7 @@ class PluginLoader:
 
     async def load(self, module_path: str) -> PluginInstance:
         """
-        加载插件
+        加载插件（不注册路由）
 
         流程: 导入模块 → 解析manifest → 校验权限 → 注册Hook → 创建实例
 
@@ -198,6 +199,31 @@ class PluginLoader:
             len(manifest.hooks),
             manifest.permissions,
         )
+        return instance
+
+    async def load_with_app(self, module_path: str, app: Any) -> PluginInstance:
+        """
+        加载插件并注册路由
+
+        流程: 导入模块 → 解析manifest → 校验权限 → 注册Hook → 注册路由 → 创建实例
+
+        参数:
+            module_path: 插件Python模块路径（如 "plugins.my_plugin"）
+            app: FastAPI应用实例
+
+        返回:
+            已创建的PluginInstance（状态为ENABLED）
+        """
+        instance = await self.load(module_path)
+
+        # 导入模块并注册路由
+        module = importlib.import_module(module_path)
+        await invoke_register_routes(module, app, instance.name)
+
+        # 自动启用
+        instance.transition(PluginState.ENABLED)
+
+        logger.info("插件已加载并启用: %s", instance.name)
         return instance
 
     async def enable(self, plugin_name: str) -> PluginInstance:

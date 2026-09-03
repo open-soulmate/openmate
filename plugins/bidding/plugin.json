@@ -1,0 +1,61 @@
+{
+  "id": "bidding",
+  "name": "智能投标",
+  "version": "1.0.0",
+  "description": "AI智能招投标系统 — 招标文件解析、标书生成、合规检查、Word导出。Use when用户要求分析招标文件、生成投标文件、检查合规性、导出标书。",
+  "author": "OpenMate",
+  "entry": "__init__.py",
+  "dependencies": [],
+  "tools": [
+    {
+      "name": "parse_bid_document",
+      "description": "解析招标文件，提取评分标准、技术参数、废标条款",
+      "parameters": {
+        "file_path": "招标文件路径（PDF/Word）"
+      }
+    },
+    {
+      "name": "generate_outline",
+      "description": "根据解析结果生成标书三级提纲",
+      "parameters": {
+        "project_id": "项目ID"
+      }
+    },
+    {
+      "name": "generate_chapter",
+      "description": "生成指定章节的标书内容",
+      "parameters": {
+        "project_id": "项目ID",
+        "chapter_id": "章节ID"
+      }
+    },
+    {
+      "name": "check_compliance",
+      "description": "合规风控检查，检测废标风险、评分覆盖、格式规范",
+      "parameters": {
+        "project_id": "项目ID"
+      }
+    },
+    {
+      "name": "export_to_word",
+      "description": "将标书导出为Word文档",
+      "parameters": {
+        "project_id": "项目ID"
+      }
+    }
+  ],
+  "frontend": {
+    "enable": true,
+    "entry": "frontend/page.tsx"
+  },
+  "permissions": [
+    "file:read",
+    "file:write",
+    "storage:read",
+    "storage:write",
+    "network:http",
+    "log:write"
+  ],
+  "hot_reload": true,
+  "protected": false
+}
