@@ -1,4 +1,5 @@
 'use client';
+import { copyToClipboard } from "@/lib/clipboard";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, Pencil } from 'lucide-react';
@@ -21,7 +22,7 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
   const [editedCode, setEditedCode] = useState(code);
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(isEditing ? editedCode : code);
+    copyToClipboard(isEditing ? editedCode : code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [code, editedCode, isEditing]);

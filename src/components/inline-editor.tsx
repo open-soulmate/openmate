@@ -1,4 +1,5 @@
 'use client';
+import { copyToClipboard } from '@/lib/clipboard';
 import { useState, useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { Copy, Check, X, Save, Pencil } from 'lucide-react';
@@ -21,7 +22,7 @@ export function InlineEditor({ code, language, fileName, readOnly = false, onApp
   const [copied, setCopied] = useState(false);
 
   const handleCopy = useCallback(() => {
-    navigator.clipboard.writeText(isEditing ? editedCode : code);
+    copyToClipboard(isEditing ? editedCode : code);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [code, editedCode, isEditing]);
