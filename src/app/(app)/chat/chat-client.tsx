@@ -419,11 +419,16 @@ function useAcpWebSocket(params: {
                   const content = last.parts[0]?.text || '';
                   const fileChanges = parseFileChanges(content);
                   const tokenUsage = simulateTokenUsage(content);
+                  // 使用setTimeout避免在setState回调中触发另一个setState
                   if (tokenUsage) {
-                    useAppStore.getState().addSessionSpending(
-                      currentSessionId || 'default',
-                      { input: tokenUsage.input, output: tokenUsage.output, cost: calculateCost(tokenUsage) }
-                    );
+                    const sid = currentSessionId || 'default';
+                    setTimeout(() => {
+                      useAppStore.getState().addSessionSpending(sid, {
+                        input: tokenUsage.input,
+                        output: tokenUsage.output,
+                        cost: calculateCost(tokenUsage),
+                      });
+                    }, 0);
                   }
                   return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
                 }
