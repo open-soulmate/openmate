@@ -272,6 +272,22 @@ function useAcpWebSocket(params: {
         const sessionId = result?.session_id || result?.sessionId;
         if (sessionId) {
           acpSessionIdRef.current = sessionId;
+          // 将ACP session同步保存到OpenSoul，确保刷新后可见
+          try {
+            const apiBase = getApiBaseUrl();
+            await fetch(`${apiBase}/api/sessions`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+              body: JSON.stringify({
+                id: sessionId,
+                name: 'SoulMate 会话',
+                agent_id: selectedAgentRef.current?.id || 'soulmate',
+                tags: ['soulmate', 'acp'],
+              }),
+            });
+          } catch (saveErr) {
+            console.warn('[ACP] 保存session到OpenSoul失败:', saveErr);
+          }
         }
         // session.create 完成，通知等待中的 sendAcpPrompt
         resolveAcpReadyRef.current?.();
