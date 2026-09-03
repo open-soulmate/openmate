@@ -15,6 +15,7 @@ import {
   Stethoscope, Cpu, Bolt, Heart, Gauge, BarChart3, Package, ScrollText,
   History, Store, Pill, LogOut, Moon, Sun, DollarSign,
 } from "lucide-react";
+import { fetchPluginNavItems, getCachedPluginNavItems, mergePluginNavItems, PluginNavItem } from "@/lib/plugin-nav";
 
 interface BottomNavItem {
   href: string;
@@ -22,8 +23,22 @@ interface BottomNavItem {
   icon: React.ElementType;
 }
 
+// 图标映射表 — 将字符串映射到lucide-react组件
+const ICON_MAP: Record<string, React.ElementType> = {
+  MessageSquare, Users, BookOpen, Workflow, Settings, Brain, Activity,
+  LayoutDashboard, Bell, Server, GraduationCap, Network, Share2, Search,
+  FileText, Clock, GitBranch, Zap, Sparkles, Puzzle, Plug, FolderKanban,
+  Camera, Download, Tag, User, Bot, Droplets, Dna, Eye, Shield, Bone,
+  Volume2, Layers, Link2, Home, MousePointer, Mic, ImageIcon, Smile,
+  Stethoscope, Cpu, Bolt, Heart, Gauge, BarChart3, Package, ScrollText,
+  History, Store, Pill, LogOut, Moon, Sun, DollarSign,
+};
+
+// 默认图标（当插件指定的图标不存在时使用）
+const DEFAULT_ICON = FileText;
+
 // Settings is NOT in scrollable items — it's fixed on the right
-const navItems: BottomNavItem[] = [
+const baseNavItems: BottomNavItem[] = [
   { href: "/chat", label: "nav.chat", icon: MessageSquare },
   { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
   { href: "/ai-groups", label: "nav.aiGroups", icon: Users },
@@ -82,7 +97,6 @@ const navItems: BottomNavItem[] = [
   { href: "/timeline", label: "nav.timeline", icon: History },
   { href: "/changelog", label: "nav.changelog", icon: ScrollText },
   { href: "/dev-specs", label: "开发规范", icon: FileText },
-  { href: "/plugins/bidding", label: "智能投标", icon: FileText },
   { href: "/marketplace", label: "nav.marketplace", icon: Store },
 ];
 
@@ -101,8 +115,31 @@ export function BottomNav({ totalUnread = 0, onOpenConversations }: BottomNavPro
   const isLongPress = useRef(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
+  
+  // 插件导航项状态
+  const [pluginNavItems, setPluginNavItems] = useState<PluginNavItem[]>([]);
 
   const userId = getUserName() || getUserId() || "User";
+
+  // 获取插件导航项
+  useEffect(() => {
+    fetchPluginNavItems().then(items => {
+      setPluginNavItems(items);
+    }).catch(() => {
+      // 静默失败，使用缓存
+      setPluginNavItems(getCachedPluginNavItems());
+    });
+  }, []);
+
+  // 合并基础导航项和插件导航项
+  const navItems: BottomNavItem[] = [
+    ...baseNavItems,
+    ...pluginNavItems.map(item => ({
+      href: item.href,
+      label: item.label,
+      icon: ICON_MAP[item.icon] || DEFAULT_ICON,
+    })),
+  ];
 
   useEffect(() => {
     const el = scrollRef.current;

@@ -13,44 +13,26 @@ import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { Loader2 } from "lucide-react";
 
-// 插件页面组件缓存
-const pluginPageCache: Record<string, React.ComponentType> = {};
+// 直接导入插件页面组件（避免动态导入问题）
+import BiddingPage from "@/plugins/bidding/frontend/page";
+
+// 插件页面映射表
+const PLUGIN_PAGES: Record<string, React.ComponentType> = {
+  "bidding": BiddingPage,
+};
 
 export default function PluginPage() {
   const params = useParams();
   const pluginName = params.plugin as string;
-  const [PluginComponent, setPluginComponent] = useState<React.ComponentType | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    async function loadPluginPage() {
-      // 检查缓存
-      if (pluginPageCache[pluginName]) {
-        setPluginComponent(() => pluginPageCache[pluginName]);
-        setLoading(false);
-        return;
-      }
+    // 模拟加载延迟
+    const timer = setTimeout(() => setLoading(false), 100);
+    return () => clearTimeout(timer);
+  }, []);
 
-      try {
-        // 动态导入插件页面
-        // 插件页面位于 plugins/{name}/frontend/page.tsx
-        const module = await import(`@/plugins/${pluginName}/frontend/page`);
-        const Component = module.default || module;
-        pluginPageCache[pluginName] = Component;
-        setPluginComponent(() => Component);
-      } catch (err) {
-        console.error(`Failed to load plugin page: ${pluginName}`, err);
-        setError(`插件 "${pluginName}" 的前端页面加载失败`);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    if (pluginName) {
-      loadPluginPage();
-    }
-  }, [pluginName]);
+  const PluginComponent = PLUGIN_PAGES[pluginName];
 
   if (loading) {
     return (
@@ -61,23 +43,10 @@ export default function PluginPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center h-full text-center p-8">
-        <div className="text-6xl mb-4">🔌</div>
-        <h2 className="text-lg font-semibold mb-2">插件加载失败</h2>
-        <p className="text-muted-foreground mb-4">{error}</p>
-        <p className="text-sm text-muted-foreground">
-          请检查插件是否已安装，或联系管理员
-        </p>
-      </div>
-    );
-  }
-
   if (!PluginComponent) {
     return (
       <div className="flex flex-col items-center justify-center h-full text-center p-8">
-        <div className="text-6xl mb-4">🔍</div>
+        <div className="text-6xl mb-4">🔌</div>
         <h2 className="text-lg font-semibold mb-2">插件未找到</h2>
         <p className="text-muted-foreground">
           插件 "{pluginName}" 不存在或未启用

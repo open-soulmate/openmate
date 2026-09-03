@@ -46,7 +46,12 @@
   ],
   "frontend": {
     "enable": true,
-    "entry": "frontend/page.tsx"
+    "entry": "frontend/page.tsx",
+    "nav": {
+      "label": "智能投标",
+      "icon": "FileText",
+      "position": "after:dev-specs"
+    }
   },
   "permissions": [
     "file:read",
