@@ -759,6 +759,12 @@ export function ChatClient() {
   }, [selectedSession]);
 
   const loadHistory = useCallback(async (sessionId: string) => {
+    // ACP sessions (soulmate) store messages in Agent Engine memory, not OpenSoul DB
+    // For ACP sessions, just clear messages - the WS will deliver new ones
+    if (selectedAgentRef.current?.id === 'soulmate' || !selectedAgentRef.current) {
+      setMessages([]);
+      return;
+    }
     try {
       const r = await fetch(`${getApiUrl()}/api/sessions/${sessionId}/messages`, { headers: { Authorization: `Bearer ${getToken()}` } });
       if (r.ok) {
@@ -818,8 +824,8 @@ export function ChatClient() {
         return;
       }
     }
-    // Fallback: if agents list hasn't loaded yet, create minimal objects from store data
-    if (storeAgentName && !selectedSession) {
+    // Fallback: create minimal objects from store data (always, not just when no session selected)
+    if (storeAgentName) {
       const minimalSession: Session = { id: activeSessionIdFromStore || '', name: storeSessionName || '', platform: 'hermes' };
       const minimalAgent: AgentInfo = {
         id: activeAgentIdFromStore || 'unknown',
