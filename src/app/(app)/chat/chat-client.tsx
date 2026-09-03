@@ -249,7 +249,7 @@ function useAcpWebSocket(params: {
           return;
         }
         const id = ++rpcIdRef.current;
-        pendingRequestsRef.current.set(id, resolve);
+        pendingRequestsRef.current.set(id, { resolve, reject });
         ws.send(JSON.stringify({ jsonrpc: '2.0', id, method, params }));
         // 超时清理（30秒）
         setTimeout(() => {
@@ -381,10 +381,11 @@ function useAcpWebSocket(params: {
 
           // 处理请求的响应（initialize、session.create 的 ack 等）
           if (data.id != null && (data.result !== undefined || data.error !== undefined)) {
-            const resolver = pendingRequestsRef.current.get(data.id);
-            if (resolver) {
+            const pending = pendingRequestsRef.current.get(data.id);
+            if (pending) {
               pendingRequestsRef.current.delete(data.id);
               if (data.error) {
+                pending.reject(new Error(data.error.message || 'RPC error'));
                 console.error('[ACP] RPC 错误:', data.error);
                 // 检测token过期/无效，停止重连并跳转登录
                 const errMsg = (data.error as { message?: string })?.message || '';
@@ -396,7 +397,7 @@ function useAcpWebSocket(params: {
                   return;
                 }
               } else {
-                resolver(data.result);
+                pending.resolve(data.result);
               }
             }
             return;
@@ -513,7 +514,7 @@ function useAcpWebSocket(params: {
     }
     const id = ++rpcIdRef.current;
     // 审批响应只需确认收到，注册空回调
-    pendingRequestsRef.current.set(id, () => {});
+    pendingRequestsRef.current.set(id, { resolve: () => {}, reject: () => {} });
     ws.send(JSON.stringify({
       jsonrpc: '2.0',
       id,
