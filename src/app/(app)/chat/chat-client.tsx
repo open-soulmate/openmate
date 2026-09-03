@@ -267,7 +267,8 @@ function useAcpWebSocket(params: {
         // 第一步：initialize 握手
         await sendRpcRequest('initialize', {});
         // 第二步：创建会话
-        const result = await sendRpcRequest('session.create', { clientId: 'openmate-web' }) as { session_id?: string; sessionId?: string };
+        const currentAgentId = selectedAgentRef.current?.id || 'soulmate';
+        const result = await sendRpcRequest('session.create', { clientId: 'openmate-web', agent_id: currentAgentId }) as { session_id?: string; sessionId?: string };
         // ACP v1.0返回session_id，兼容旧sessionId
         const sessionId = result?.session_id || result?.sessionId;
         if (sessionId) {
@@ -280,9 +281,9 @@ function useAcpWebSocket(params: {
               headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
               body: JSON.stringify({
                 id: sessionId,
-                name: 'SoulMate 会话',
-                agent_id: 'soulmate',
-                tags: ['agent:soulmate'],
+                name: `${currentAgentId} 会话`,
+                agent_id: currentAgentId,
+                tags: [`agent:${currentAgentId}`],
               }),
             });
           } catch (saveErr) {

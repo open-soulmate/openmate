@@ -67,18 +67,20 @@ class LLMEngine:
         )
 
     async def chat_stream(
-        self, messages: list[dict], cancel_event: Optional[asyncio.Event] = None
+        self, messages: list[dict], cancel_event: Optional[asyncio.Event] = None,
+        system_prompt: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
         """流式输出LLM响应 — 每个yield是一个纯文本delta片段
 
         Args:
             messages: 对话历史（不含system提示词，会自动注入）
             cancel_event: 取消信号，设置后停止流式输出
+            system_prompt: 自定义system prompt，None时使用默认
         """
         client = self._make_client()
         payload = {
             "model": self.model,
-            "messages": self._build_messages(messages),
+            "messages": self._build_messages(messages, system_prompt),
             "stream": True,
             "temperature": 0.7,
             "max_tokens": 4096,
@@ -134,6 +136,7 @@ class LLMEngine:
         messages: list[dict],
         tools: Optional[list[dict]] = None,
         cancel_event: Optional[asyncio.Event] = None,
+        system_prompt: Optional[str] = None,
     ) -> AsyncGenerator[str | dict, None]:
         """流式输出LLM响应 — 支持function calling工具调用
 
@@ -152,7 +155,7 @@ class LLMEngine:
         client = self._make_client()
         payload = {
             "model": self.model,
-            "messages": self._build_messages(messages),
+            "messages": self._build_messages(messages, system_prompt),
             "stream": True,
             "temperature": 0.7,
             "max_tokens": 4096,
@@ -262,9 +265,14 @@ class LLMEngine:
             logger.error(f"LLM chat error: {e}", exc_info=True)
             return f"[LLM错误: {e}]"
 
-    def _build_messages(self, history: list[dict]) -> list[dict]:
-        """构建OpenAI格式消息数组 — 注入system提示词"""
-        result = [{"role": "system", "content": self.system_prompt}]
+    def _build_messages(self, history: list[dict], system_prompt: str = None) -> list[dict]:
+        """构建OpenAI格式消息数组 — 注入system提示词
+
+        Args:
+            history: 会话历史消息
+            system_prompt: 自定义system prompt，None时使用默认
+        """
+        result = [{"role": "system", "content": system_prompt or self.system_prompt}]
         result.extend(history)
         return result
 

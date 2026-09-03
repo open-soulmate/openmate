@@ -11,6 +11,7 @@ import json
 import logging
 import os
 import time
+from pathlib import Path
 from typing import Optional
 
 from agent.acp_server import ACPServer, Session
@@ -34,6 +35,23 @@ class AgentEngine:
         self.llm_engine = llm_engine         # LLM引擎实例
         self.contexts: dict[str, SessionContext] = {}  # sessionId → 上下文
         self.permission_mgr = PermissionManager()      # 权限审批管理器
+        self.agent_profiles = self._load_agent_profiles()  # 多Agent配置
+
+    def _load_agent_profiles(self) -> dict:
+        """加载agent_profiles.json配置文件"""
+        profile_path = Path(__file__).parent / "agent" / "agent_profiles.json"
+        if not profile_path.exists():
+            logger.warning(f"Agent profiles not found: {profile_path}")
+            return {}
+        with open(profile_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        logger.info(f"Loaded agent profiles: {list(data.get('agents', {}).keys())}")
+        return data.get("agents", {})
+
+    def _get_system_prompt(self, agent_id: str) -> str:
+        """根据agent_id获取对应的system prompt"""
+        profile = self.agent_profiles.get(agent_id, {})
+        return profile.get("system_prompt", self.llm_engine.system_prompt)
 
     def _get_context(self, session: Session) -> SessionContext:
         """获取或创建会话上下文"""
@@ -60,6 +78,10 @@ class AgentEngine:
         start_time = time.time()
 
         try:
+            # 根据agent_id加载对应的system prompt
+            system_prompt = self._get_system_prompt(session.agent_id)
+            logger.info(f"[{session.id}] Using agent profile: {session.agent_id}")
+
             # 构建LLM消息（注入工作目录信息）
             workspace_info = f"\n\n当前工作目录: {session.workspace}"
             messages = ctx.get_messages()
@@ -79,7 +101,7 @@ class AgentEngine:
 
             # 进入Agent工具调用循环（支持多轮function calling）
             logger.info(f"[{session.id}] Starting agent loop with function calling")
-            full_response = await self._agent_loop(session, messages, ctx)
+            full_response = await self._agent_loop(session, messages, ctx, system_prompt=system_prompt)
 
             # 发送完成通知
             elapsed = time.time() - start_time
@@ -114,7 +136,8 @@ class AgentEngine:
         return full_response
 
     async def _agent_loop(
-        self, session: Session, messages: list[dict], ctx: SessionContext
+        self, session: Session, messages: list[dict], ctx: SessionContext,
+        system_prompt: str = None
     ) -> str:
         """Agent工具调用循环 — LLM流式调用 + 自动执行tool_calls
 
@@ -147,7 +170,8 @@ class AgentEngine:
             tool_calls: list[dict] | None = None
 
             async for item in self.llm_engine.chat_stream_with_tools(
-                messages, tools=tools, cancel_event=session.cancel_event
+                messages, tools=tools, cancel_event=session.cancel_event,
+                system_prompt=system_prompt
             ):
                 if isinstance(item, str):
                     # 普通文本delta — 实时推送给客户端

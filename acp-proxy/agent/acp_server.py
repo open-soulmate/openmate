@@ -342,7 +342,7 @@ class ACPServer:
         """
         sid = f"om-{uuid.uuid4().hex[:12]}"
         workspace = params.get("cwd", params.get("workspace", "/home/climbing"))
-        agent_id = params.get("agentId", "openmate-agent")
+        agent_id = params.get("agent_id") or params.get("agentId", "openmate-agent")  # 兼容两种命名
         idle_timeout = params.get("idleTimeoutSeconds", 1800.0)
         session = Session(sid, workspace, agent_id, idle_timeout_seconds=idle_timeout)
         session.ws = ws
