@@ -6,6 +6,7 @@ import { useAppStore } from '@/stores/app-store';
 import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, Copy, ThumbsUp, ThumbsDown, Share2, RefreshCw, MoreHorizontal, Volume2 } from "lucide-react";
 import { ContextRing } from "@/components/context-ring";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
+import { copyToClipboard } from '@/lib/clipboard';
 import { Dialog } from '@/components/ui/dialog';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import { useIsMobile } from '@/hooks/use-mobile';
@@ -613,7 +614,7 @@ export function ChatClient() {
 
   // Copy message text to clipboard
   const handleCopy = useCallback((msg: Message) => {
-    navigator.clipboard.writeText(getMessageText(msg));
+    copyToClipboard(getMessageText(msg));
   }, [getMessageText]);
 
   // Read aloud using Web Speech API
@@ -650,7 +651,7 @@ export function ChatClient() {
     if (navigator.share) {
       try { await navigator.share({ text }); } catch { /* user cancelled */ }
     } else {
-      navigator.clipboard.writeText(text);
+      copyToClipboard(text);
     }
   }, [getMessageText]);
 
@@ -680,7 +681,7 @@ export function ChatClient() {
     setMessages(prev => prev.filter(m => m.id !== msg.id));
     // TODO: set the SmartPrompt content — for now just focus the input
     // The user can paste back
-    navigator.clipboard.writeText(text);
+    copyToClipboard(text);
   }, [getMessageText]);
 
   // Favorite message — save to store
@@ -1075,18 +1076,7 @@ export function ChatClient() {
                   <div key={i}>
                     {p.type === 'text' && <MarkdownContent content={p.text || ''} onCodeApply={(code, lang) => {
                       // Handle code apply - 复制到剪贴板，HTTP环境下用fallback
-                      if (navigator.clipboard) {
-                        navigator.clipboard.writeText(code);
-                      } else {
-                        const ta = document.createElement('textarea');
-                        ta.value = code;
-                        ta.style.position = 'fixed';
-                        ta.style.left = '-9999px';
-                        document.body.appendChild(ta);
-                        ta.select();
-                        document.execCommand('copy');
-                        document.body.removeChild(ta);
-                      }
+                      copyToClipboard(code);
                     }} />}
                     {p.type === 'image' && p.data && <img src={`data:${p.mime_type || 'image/png'};base64,${p.data}`} alt={p.name || 'image'} className="max-w-xs w-auto max-h-64 rounded-lg mt-1 object-contain" />}
                     {p.type === 'file' && <button onClick={() => {
@@ -1111,7 +1101,7 @@ export function ChatClient() {
                     files={msg.fileChanges}
                     onAccept={(path, content) => {
                       // Handle accept - copy to clipboard
-                      navigator.clipboard.writeText(content);
+                      copyToClipboard(content);
                     }}
                     onReject={(path) => {
                       console.log('Rejected:', path);
