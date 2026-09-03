@@ -44,7 +44,7 @@ def register_routes(app: Any) -> None:
     - 每次调用自动记录日志
     """
     from .router import router
-    app.include_router(router, prefix="/bidding", tags=["plugin:bidding"])
+    app.include_router(router, tags=["plugin:bidding"])
     logger.info("[plugin:bidding] 路由已注册: /bidding/*")
 
 

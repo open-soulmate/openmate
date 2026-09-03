@@ -276,22 +276,31 @@ export default function BiddingClient() {
             </div>
             {/* 新建项目 */}
             {showNewProject ? (
-              <div className="flex gap-1 px-2">
+              <div className="flex gap-2 px-2 items-center">
                 <input
                   value={newProjectName}
                   onChange={e => setNewProjectName(e.target.value)}
                   onKeyDown={e => e.key === "Enter" && createProject()}
                   placeholder="项目名称..."
-                  className="flex-1 px-2 py-1 text-xs rounded border border-border bg-muted outline-none focus:ring-1 focus:ring-primary/30"
+                  className="flex-1 min-w-0 px-2 py-1.5 text-xs rounded border border-border bg-muted outline-none focus:ring-1 focus:ring-primary/30"
                   autoFocus
                 />
-                <button onClick={createProject} className="px-2 py-1 text-xs bg-primary text-primary-foreground rounded">确定</button>
-                <button onClick={() => setShowNewProject(false)} className="px-2 py-1 text-xs text-muted-foreground">取消</button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); createProject(); }}
+                  className="shrink-0 px-3 py-1.5 text-xs bg-primary text-primary-foreground rounded hover:bg-primary/80 active:scale-95 transition-all cursor-pointer"
+                >确定</button>
+                <button
+                  type="button"
+                  onClick={(e) => { e.stopPropagation(); setShowNewProject(false); }}
+                  className="shrink-0 px-3 py-1.5 text-xs text-muted-foreground hover:text-foreground rounded hover:bg-accent transition-colors cursor-pointer"
+                >取消</button>
               </div>
             ) : (
               <button
-                onClick={() => setShowNewProject(true)}
-                className="flex items-center gap-1.5 w-full px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors mx-2"
+                type="button"
+                onClick={(e) => { e.stopPropagation(); setShowNewProject(true); }}
+                className="flex items-center gap-1.5 w-full px-3 py-2 text-xs text-muted-foreground hover:text-foreground hover:bg-accent rounded transition-colors cursor-pointer"
               >
                 <Plus size={14} /> 新建项目
               </button>
