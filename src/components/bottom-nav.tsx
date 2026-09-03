@@ -5,7 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
 import { useRef, useEffect, useCallback, useState } from "react";
-import { getUserName, getUserId } from "@/lib/api-client";
+import { getUserName, getUserId, clearUser } from "@/lib/api-client";
 import {
   MessageSquare, Users, BookOpen, Workflow, Settings, Brain, Activity,
   LayoutDashboard, Bell, Server, GraduationCap, Network, Share2, Search,
@@ -196,7 +196,7 @@ export function BottomNav({ totalUnread = 0, onOpenConversations }: BottomNavPro
   }, []);
 
   function handleLogout() {
-    localStorage.removeItem("openmate-token");
+    clearUser();
     localStorage.removeItem("openmate-api-url");
     window.location.href = "/login";
   }

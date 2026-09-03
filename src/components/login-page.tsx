@@ -66,7 +66,8 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
         if (res.user_id) { setUserId(res.user_id); setToken(res.access_token); setUserName(res.username || username); }
         else throw new Error(t('login.loginFailed'));
       }
-      onLogin();
+      // 强制页面刷新，确保所有 WebSocket 连接用新 token 重建
+      window.location.href = '/chat';
     } catch (e) {
       const msg = (e as Error).message;
       if (mode === 'login' && msg.includes('401')) setError(t('login.invalidCredentials'));

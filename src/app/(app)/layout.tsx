@@ -20,7 +20,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (checking) return null;
 
   if (!loggedIn) {
-    return <LoginPage onLogin={() => setLoggedIn(true)} />;
+    return <LoginPage onLogin={() => { window.location.href = '/chat'; }} />;
   }
 
   return (

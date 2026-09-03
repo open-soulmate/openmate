@@ -15,19 +15,21 @@ export function GlobalWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef(1000);
   const unmountedRef = useRef(false);
+  const connectedTokenRef = useRef<string | null>(null);
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) return;
-
-    const apiBase = getApiBaseUrl();
-    const wsUrl = apiBase.replace(/^http/, 'ws').replace(/:\d+$/, ':8092') + `/ws/chat?token=${token}`;
-
     const connect = () => {
       if (unmountedRef.current) return;
+      // 每次连接都从 localStorage 读取最新 token，避免闭包捕获旧值
+      const token = getToken();
+      if (!token) return;
+
+      const apiBase = getApiBaseUrl();
+      const wsUrl = apiBase.replace(/^http/, 'ws').replace(/:\d+$/, ':8092') + `/ws/chat?token=${token}`;
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+      connectedTokenRef.current = token;
 
       ws.onopen = () => {
         useAppStore.getState().setGlobalWsConnected(true);
@@ -74,8 +76,20 @@ export function GlobalWebSocket() {
 
     connect();
 
+    // 监听 storage 事件，当 token 变化时强制重连
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'openmate-token' && e.newValue !== connectedTokenRef.current) {
+        console.log('[GlobalWS] 检测到 token 变化，断开旧连接并重连');
+        wsRef.current?.close();
+        retryRef.current = 1000;
+        setTimeout(connect, 100);
+      }
+    };
+    window.addEventListener('storage', onStorage);
+
     return () => {
       unmountedRef.current = true;
+      window.removeEventListener('storage', onStorage);
       wsRef.current?.close();
     };
   }, []);

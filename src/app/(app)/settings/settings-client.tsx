@@ -11,7 +11,7 @@ import {
 import { cn } from "@/lib/utils";
 import { type ThemeId, getThemes, getStoredTheme, persistTheme } from "@/lib/theme";
 import { useAppStore } from "@/stores/app-store";
-import { getApiBaseUrl, getToken, getUserId, getUserName } from "@/lib/api-client";
+import { getApiBaseUrl, getToken, getUserId, getUserName, clearUser } from "@/lib/api-client";
 import { useToast } from "@/components/toast-provider";
 import i18n, { detectLanguage } from "@/lib/i18n";
 import { useTranslation } from "react-i18next";
@@ -273,7 +273,7 @@ export function SettingsClient() {
   }
 
   function handleLogout() {
-    localStorage.removeItem("openmate-token");
+    clearUser();
     localStorage.removeItem("openmate-api-url");
     window.location.href = "/login";
   }

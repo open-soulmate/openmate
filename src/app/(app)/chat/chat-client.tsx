@@ -208,6 +208,8 @@ function useAcpWebSocket(params: {
   const pendingRequestsRef = useRef<Map<number, (result: unknown) => void>>(new Map());
   // ACP 握手完成的 Promise，sendAcpPrompt 等待此 Promise 确保 session.create 已返回
   const acpReadyRef = useRef<Promise<void> | null>(null);
+  // 追踪当前连接使用的 token，用于检测 token 变化
+  const connectedTokenRef = useRef<string | null>(null);
   const resolveAcpReadyRef = useRef<(() => void) | null>(null);
   // ACP审批弹窗状态 — 当前待审批的请求
   const [approvalRequest, setApprovalRequest] = useState<AcpApprovalRequest | null>(null);
@@ -225,7 +227,7 @@ function useAcpWebSocket(params: {
     ws.send(JSON.stringify({
       jsonrpc: '2.0',
       id,
-      method: 'session/prompt',
+      method: 'session.prompt',
       params: { sessionId: sid, prompt: text },
     }));
     // 10秒后清理 ack 回调
@@ -233,8 +235,6 @@ function useAcpWebSocket(params: {
   }, []);
 
   useEffect(() => {
-    const token = getToken();
-    if (!token) return;
     let ws: WebSocket | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let unmounted = false;
@@ -291,17 +291,25 @@ function useAcpWebSocket(params: {
 
     const connect = () => {
       if (unmounted) return;
+      // 每次连接都从 localStorage 读取最新 token，避免闭包捕获旧值
+      const currentToken = getToken();
+      if (!currentToken) {
+        console.warn('[ACP] 无token，跳转登录页');
+        window.location.href = '/login';
+        return;
+      }
       // 连接前检查token是否过期
-      if (isTokenExpired(token)) {
+      if (isTokenExpired(currentToken)) {
         console.warn('[ACP] Token已过期，跳转登录页');
         localStorage.removeItem('openmate-token');
         window.location.href = '/login';
         return;
       }
       // 连接 ACP WebSocket 端点
-      const wsUrl = `${getAcpWsUrl()}/ws/acp?token=${token}`;
+      const wsUrl = `${getAcpWsUrl()}/ws/acp?token=${currentToken}`;
       ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+      connectedTokenRef.current = currentToken;
       ws.onopen = () => {
         setWsConnected(true);
         retryDelay = 1000;
@@ -317,11 +325,14 @@ function useAcpWebSocket(params: {
         // 服务端主动关闭(1000)且token无效 → 跳转登录
         if (event.code === 1000 && !unmounted) {
           const storedToken = localStorage.getItem('openmate-token');
-          if (!storedToken || storedToken === token) {
-            // token可能已过期，检查是否还能用
-            console.warn('[ACP] 连接被服务端关闭，可能是token过期');
-            // 不立即跳转，给onmessage机会处理错误
+          if (!storedToken) {
+            console.warn('[ACP] 连接被服务端关闭，无token，跳转登录');
+            window.location.href = '/login';
+            return;
           }
+          // token可能已过期，检查是否还能用
+          console.warn('[ACP] 连接被服务端关闭，可能是token过期');
+          // 不立即跳转，给onmessage机会处理错误
         }
         if (!unmounted) reconnectTimer = setTimeout(connect, retryDelay);
         retryDelay = Math.min(retryDelay * 2, 30000);
@@ -369,8 +380,8 @@ function useAcpWebSocket(params: {
             return;
           }
 
-          // 处理服务端推送事件（ACP v1.0：统一走session/event + event_type）
-          if (data.method === 'session/event') {
+          // 处理服务端推送事件（ACP v1.0：统一走session.event + event_type）
+          if (data.method === 'session.event') {
             const p = data.params || {};
             const eventType = p.event_type as string;
 
@@ -446,14 +457,26 @@ function useAcpWebSocket(params: {
       };
     };
     connect();
+    // 监听 storage 事件，当 token 变化时（如其他标签页登录/登出）强制重连
+    const onStorage = (e: StorageEvent) => {
+      if (e.key === 'openmate-token' && e.newValue !== connectedTokenRef.current) {
+        console.log('[ACP] 检测到 token 变化，断开旧连接并重连');
+        if (ws) ws.close();
+        if (reconnectTimer) clearTimeout(reconnectTimer);
+        // 立即重连，使用新 token
+        setTimeout(connect, 100);
+      }
+    };
+    window.addEventListener('storage', onStorage);
     return () => {
       unmounted = true;
+      window.removeEventListener('storage', onStorage);
       if (reconnectTimer) clearTimeout(reconnectTimer);
       if (ws) ws.close();
     };
   }, [selectedAgent?.id ?? activeAgentIdFromStore]);
 
-  // 发送ACP审批决议 — session/approval（批准或拒绝）
+  // 发送ACP审批决议 — session.approval（批准或拒绝）
   const sendApproval = useCallback((requestId: string, action: 'approve' | 'reject', comment: string) => {
     const ws = wsRef.current;
     const sid = acpSessionIdRef.current;
@@ -467,7 +490,7 @@ function useAcpWebSocket(params: {
     ws.send(JSON.stringify({
       jsonrpc: '2.0',
       id,
-      method: 'session/approval',
+      method: 'session.approval',
       params: {
         session_id: sid,
         request_id: requestId,
