@@ -224,7 +224,7 @@ function useAcpWebSocket(params: {
     if (!sid || !ws || ws.readyState !== WebSocket.OPEN) return;
     const id = ++rpcIdRef.current;
     // session/prompt 的 ack 响应不需要处理，注册一个空回调避免 pendingRequests 泄漏
-    pendingRequestsRef.current.set(id, () => {});
+    pendingRequestsRef.current.set(id, { resolve: () => {}, reject: () => {} });
     ws.send(JSON.stringify({
       jsonrpc: '2.0',
       id,
