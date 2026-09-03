@@ -246,9 +246,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       });
     }
 
-    // Add detected agents that have no sessions yet (so users can click to create new sessions)
+    // Add detected agents that are installed and have no sessions yet
     for (const detected of detectedAgents) {
       if (SKIP_AGENT_IDS.has(detected.id) || agentMap.has(detected.id)) continue;
+      if (!detected.available) continue; // only show actually installed agents
       agentMap.set(detected.id, {
         id: detected.id, name: detected.name || detected.id,
         icon: detected.icon || AGENT_ICONS[detected.id] || '🤖',
