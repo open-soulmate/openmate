@@ -281,7 +281,7 @@ function useAcpWebSocket(params: {
               body: JSON.stringify({
                 id: sessionId,
                 name: 'SoulMate 会话',
-                agent_id: selectedAgentRef.current?.id || 'soulmate',
+                agent_id: 'soulmate',
                 tags: ['agent:soulmate'],
               }),
             });
