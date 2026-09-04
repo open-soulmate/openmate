@@ -202,7 +202,12 @@ async def ws_acp_endpoint(client_ws: WebSocket):
                 pass
 
     async def stdout_to_ws():
-        """subprocess stdout → WebSocket"""
+        """subprocess stdout → WebSocket（过滤掉 subprocess 的 initialize 响应）"""
+        # 跟踪 initialize 的 request id，过滤 subprocess 的重复回复
+        init_ids = set()
+        for m in buffered_msgs:
+            if m.get("method") == "initialize":
+                init_ids.add(m.get("id"))
         try:
             while True:
                 line = await proc.stdout.readline()
@@ -213,9 +218,14 @@ async def ws_acp_endpoint(client_ws: WebSocket):
                     continue
                 # 跳过非 JSON 行（某些 agent 的 banner/版本信息，如 openclaw）
                 try:
-                    json.loads(msg)
+                    parsed = json.loads(msg)
                 except (json.JSONDecodeError, ValueError):
                     logger.debug(f"[{agent_id}] skip non-JSON: {msg[:100]}")
+                    continue
+                # 过滤 subprocess 的 initialize 响应（Proxy 已经回复过）
+                if parsed.get("id") in init_ids and "result" in parsed:
+                    logger.debug(f"[{agent_id}] skip subprocess initialize response (id={parsed['id']})")
+                    init_ids.discard(parsed["id"])
                     continue
                 await client_ws.send_text(msg)
         except (WebSocketDisconnect, ConnectionError):
