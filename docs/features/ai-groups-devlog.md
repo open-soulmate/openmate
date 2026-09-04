@@ -72,6 +72,23 @@
 - [x] POST /{group_id}/agents — 添加成员 ✅
 - [x] DELETE /{group_id}/agents/{agent_id} — 删除成员 ✅
 - [x] PATCH /{group_id}/agents/{agent_id} — 更新成员 ✅
-- [ ] 前端 store 修复 — 待实现
+- [x] 前端 store 修复 — 已修复 3 个函数 ✅
+
+### 修复内容
+- `addAgent`: `PATCH /{id}` + agents → `POST /{id}/agents`（单个agent）
+- `removeAgent`: `PATCH /{id}` + 过滤agents → `DELETE /{id}/agents/{agent_id}`
+- `saveEditAgent`: `PATCH /{id}` + 替换agents → `PATCH /{id}/agents/{agent_id}`（model/temperature/role）
+
+### 提交
+- `fix: AI群组成员管理API修复 — addAgent/removeAgent/saveEditAgent改用正确的独立端点`
 
 ---
+
+## Step 3: 实现群消息 WebSocket
+
+### 状态：待开始
+
+### 目标
+- 创建 `/ws/group` WebSocket 端点
+- 支持群消息实时推送
+- 前端接入 WS 消息流

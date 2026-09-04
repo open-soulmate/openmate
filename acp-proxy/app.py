@@ -12,6 +12,7 @@ from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from proxy import get_acp_process
 from ws_chat import router as ws_router
+from ws_group import router as ws_group_router  # 群组讨论 WebSocket 端点
 from ws_acp import ws_acp_endpoint  # ACP JSON-RPC 2.0纯透传端点
 from a2a.server import router as a2a_router, rpc_router as a2a_rpc_router, well_known_router
 from mcp.server import router as mcp_router
@@ -112,6 +113,7 @@ app.add_middleware(
 
 # 核心路由（OpenMate内置）
 app.include_router(ws_router)
+app.include_router(ws_group_router)  # 群组讨论 WebSocket 路由
 app.include_router(a2a_router)
 app.include_router(a2a_rpc_router)  # /rpc/a2a 规范路径
 app.include_router(well_known_router)
