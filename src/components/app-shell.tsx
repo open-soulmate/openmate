@@ -454,13 +454,16 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                               agentDescription: agent.description || '',
                               sessionName: session.name || session.title || '',
                             });
-                            router.push('/chat');
+                            // 用 replaceState 不触发页面重载
+                            window.history.replaceState(null, '', '/chat');
                           }}
                           onNewSession={(agentId) => {
                             const agent = agents.find((a: AgentInfo) => a.id === agentId);
                             const tempSessionId = `temp-${Date.now()}`;
+                            // 设 store 触发 useEffect 创建 session，不导航（避免 router.push 导致 WS 断开）
                             useAppStore.getState().setActiveSession(tempSessionId, agentId === 'soulmate' ? null : agentId, { agentName: agent?.name || agentId });
-                            router.push('/chat?new=' + Date.now());
+                            // 用 replaceState 更新 URL 不触发页面重载
+                            window.history.replaceState(null, '', '/chat?new=' + Date.now());
                           }}
                           onDeleteSession={async (sessionId) => {
                             setDeleteTargetId(sessionId);
