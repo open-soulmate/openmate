@@ -203,11 +203,12 @@ async def ws_acp_endpoint(client_ws: WebSocket):
 
     async def stdout_to_ws():
         """subprocess stdout → WebSocket（过滤掉 subprocess 的 initialize 响应）"""
-        # 跟踪 initialize 的 request id，过滤 subprocess 的重复回复
-        init_ids = set()
+        # 只跟踪 initialize 的 request id（不包括 session/new 等其他 buffered 消息）
+        init_ids: set = set()
         for m in buffered_msgs:
             if m.get("method") == "initialize":
                 init_ids.add(m.get("id"))
+        logger.info(f"[{agent_id}] initialize request ids to filter: {init_ids}")
         try:
             while True:
                 line = await proc.stdout.readline()
@@ -227,6 +228,8 @@ async def ws_acp_endpoint(client_ws: WebSocket):
                     logger.debug(f"[{agent_id}] skip subprocess initialize response (id={parsed['id']})")
                     init_ids.discard(parsed["id"])
                     continue
+                # 记录转发给客户端的每条消息
+                logger.info(f"[{agent_id}] → client: id={parsed.get('id')} method={parsed.get('method')} has_result={'result' in parsed}")
                 await client_ws.send_text(msg)
         except (WebSocketDisconnect, ConnectionError):
             pass
@@ -262,4 +265,4 @@ async def ws_acp_endpoint(client_ws: WebSocket):
             await asyncio.wait_for(proc.wait(), timeout=5)
         except Exception:
             proc.kill()
-        logger.info(f"[ACP] user {user_id} session with {agent_id} ended")
+        logger.info(f"[ACP] user {user_id} session with {agent_id} ended (exit={proc.returncode})")

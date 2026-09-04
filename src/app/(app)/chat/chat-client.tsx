@@ -1059,7 +1059,7 @@ export function ChatClient() {
     if (storeAgentName && activeSessionIdFromStore) {
       const minimalSession: Session = { id: activeSessionIdFromStore, name: storeSessionName || '', platform: 'hermes' } as Session;
       const minimalAgent: AgentInfo = {
-        id: activeAgentIdFromStore || 'unknown',
+        id: activeAgentIdFromStore || 'soulmate', // SoulMate 的 activeAgentId 为 null，fallback 到 'soulmate'
         name: storeAgentName,
         icon: storeAgentIcon || '🤖',
         description: '',
