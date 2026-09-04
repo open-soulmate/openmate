@@ -1484,10 +1484,18 @@ export function ChatClient() {
                 let currentSessionId = activeSessionId || selectedSession?.id;
                 // 没有活跃 session 时，自动创建新会话并跳转
                 if (!currentSessionId) {
-                  const spAgentId = selectedAgentRef.current?.id || 'soulmate';
+                  // 直接从 store 取 agentId，不依赖 ref（ref 可能还没更新）
+                  const storeAgentId = useAppStore.getState().activeAgentId;
+                  const spAgentId = storeAgentId || 'soulmate';
                   const agent = agents.find((a: AgentInfo) => a.id === spAgentId);
                   const newId = `temp-${Date.now()}`;
+                  const newSession = { id: newId, name: text.slice(0, 30) || '新会话', platform: 'hermes', agentId: spAgentId, createdAt: new Date().toISOString() } as Session;
+                  // 更新 store：设 activeSessionId + activeAgentId
                   useAppStore.getState().setActiveSession(newId, spAgentId === 'soulmate' ? null : spAgentId, { agentName: agent?.name || spAgentId });
+                  // 把新 session 加到侧边栏的 agent sessions 列表里
+                  useAppStore.getState().setSidebarAgents((prev: AgentInfo[]) => prev.map(a =>
+                    a.id === spAgentId ? { ...a, sessions: [newSession, ...a.sessions] } : a
+                  ));
                   currentSessionId = newId;
                 }
                 updateSessionMessages(currentSessionId, prev => [...prev, userMsg]);
@@ -1500,8 +1508,8 @@ export function ChatClient() {
                   sendAcpPrompt(currentSessionId, messageText);
                 } else {
                   // No WS exists — create ACP connection now
-                  const spAgentId = selectedAgentRef.current?.id || 'soulmate';
-                  connectSession(currentSessionId, spAgentId);
+                  const spAgentId2 = useAppStore.getState().activeAgentId || 'soulmate';
+                  connectSession(currentSessionId, spAgentId2);
                   let spWaited = 0;
                   const spWaitConnect = setInterval(() => {
                     spWaited += 500;
