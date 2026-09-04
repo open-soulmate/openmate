@@ -618,7 +618,18 @@
     "knowledgePathPlaceholder": "~/.openmate/knowledge",
     "baseUrl": "Base URL",
     "baseUrlDesc": "The API endpoint for your AI service. Change this if using a self-hosted service or proxy. Format: https://api.example.com/v1",
-    "followSystem": "Follow System"
+    "followSystem": "Follow System",
+    "modelRouter": "Model Router",
+    "modelRouterDesc": "Intelligently select the optimal AI model",
+    "routerCost": "Cost",
+    "routerCostDesc": "Prioritize low-cost models",
+    "routerBalance": "Balance",
+    "routerBalanceDesc": "Best value for money",
+    "routerIntelligence": "Intelligence",
+    "routerIntelligenceDesc": "Prioritize the strongest models",
+    "routerAuto": "Auto",
+    "routerAutoDesc": "Auto-switch based on complexity",
+    "routerModels": "Models in current mode"
   },
   "search": {
     "title": "Search Everything",

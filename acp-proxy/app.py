@@ -1,4 +1,7 @@
-"""FastAPI app for ACP Proxy service — 支持插件动态加载"""
+"""FastAPI app for ACP Proxy service — 支持插件动态加载
+
+集成ModelRouter智能路由REST API，提供模型选择、模式切换、统计查询等端点。
+"""
 
 import logging
 import os
@@ -13,6 +16,7 @@ from ws_acp import ws_acp_endpoint  # ACP JSON-RPC 2.0纯透传端点
 from a2a.server import router as a2a_router, rpc_router as a2a_rpc_router, well_known_router
 from mcp.server import router as mcp_router
 from gateway.router import router as gateway_router
+from model_router import get_model_router  # 智能模型路由
 
 logger = logging.getLogger("acp-proxy.app")
 
@@ -163,3 +167,42 @@ async def list_plugins():
                     "manifest": manifest  # 返回完整manifest供前端读取nav配置
                 })
     return {"plugins": plugins, "count": len(plugins)}
+
+
+# ============================================================
+# ModelRouter 智能路由 REST API 端点
+# ============================================================
+
+from pydantic import BaseModel as PydanticBaseModel  # 请求体校验
+
+
+class SetModeRequest(PydanticBaseModel):
+    """设置路由模式的请求体"""
+    mode: str  # auto / cost / balance / intelligence
+
+
+@app.get("/api/model-router/config")
+async def model_router_config():
+    """获取当前路由配置 — 包含所有tier的模型列表和连接信息"""
+    router = get_model_router()
+    return router.get_config()
+
+
+@app.post("/api/model-router/mode")
+async def model_router_set_mode(req: SetModeRequest):
+    """设置路由模式 — 支持热切换，无需重启服务
+
+    请求体: {"mode": "auto"} / {"mode": "cost"} / {"mode": "balance"} / {"mode": "intelligence"}
+    """
+    router = get_model_router()
+    success = router.set_mode(req.mode)
+    if not success:
+        return {"success": False, "error": f"未知模式: {req.mode}，可选: auto/cost/balance/intelligence"}
+    return {"success": True, "mode": req.mode, "status": router.get_status()}
+
+
+@app.get("/api/model-router/status")
+async def model_router_status():
+    """获取路由状态和统计 — 包含请求计数、模型使用分布、平均复杂度等"""
+    router = get_model_router()
+    return router.get_status()

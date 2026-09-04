@@ -615,7 +615,18 @@
     "knowledgePathPlaceholder": "~/.openmate/knowledge",
     "baseUrl": "Base URL",
     "baseUrlDesc": "API endpoint base URL",
-    "followSystem": "システムに従う"
+    "followSystem": "システムに従う",
+    "modelRouter": "モデルルーター",
+    "modelRouterDesc": "最適なAIモデルをインテリジェントに選択",
+    "routerCost": "コスト",
+    "routerCostDesc": "低コストモデルを優先",
+    "routerBalance": "バランス",
+    "routerBalanceDesc": "コストパフォーマンス最優先",
+    "routerIntelligence": "インテリジェンス",
+    "routerIntelligenceDesc": "最強モデルを優先",
+    "routerAuto": "自動",
+    "routerAutoDesc": "複雑度に応じて自動切替",
+    "routerModels": "現在のモードのモデル一覧"
   },
   "search": {
     "title": "すべてを検索",

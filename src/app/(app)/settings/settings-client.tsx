@@ -133,7 +133,12 @@ export function SettingsClient() {
     knowledgePath: "~/.openmate/knowledge", cacheLimit: 512,
   });
 
-  // Load backend config on mount
+  // ─── 模型路由器状态 ─────────────────────────────────────────────
+  const [routerMode, setRouterMode] = useState<string>("balance"); // 当前路由模式，默认balance
+  const [routerModels, setRouterModels] = useState<string[]>([]);  // 当前模式的模型列表
+  const [routerLoading, setRouterLoading] = useState(false);       // 路由配置加载状态
+
+  // ─── 加载后端配置 ───────────────────────────────────────────────
   useEffect(() => {
     const apiBase = getApiBaseUrl();
     const loadBackendConfig = async () => {
@@ -167,6 +172,18 @@ export function SettingsClient() {
       } catch {} finally {
         setLoadingConfig(false);
       }
+
+      // ─── 加载模型路由器配置 ─────────────────────────────────────
+      try {
+        const routerRes = await fetch(`${apiBase}/api/model-router/config`);
+        if (routerRes.ok) {
+          const routerData = await routerRes.json();
+          setRouterMode(routerData.mode || "balance");
+          // 根据当前模式获取对应的模型列表
+          const modeModels = routerData.models?.[routerData.mode] || routerData.models?.balance || [];
+          setRouterModels(modeModels);
+        }
+      } catch {}
     };
     loadBackendConfig();
   }, []);
@@ -477,6 +494,28 @@ export function SettingsClient() {
     setTimeout(() => setTestStatus("idle"), 3000);
   }
 
+  // ─── 切换模型路由模式 ─────────────────────────────────────────
+  const handleRouterModeChange = useCallback(async (mode: string) => {
+    setRouterLoading(true);
+    try {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/api/model-router/mode`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mode }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setRouterMode(mode);
+        // 更新当前模式的模型列表
+        const modeModels = data.models?.[mode] || [];
+        setRouterModels(modeModels);
+      }
+    } catch {} finally {
+      setRouterLoading(false);
+    }
+  }, []);
+
   const currentProvider = llmProviders.find((p) => p.value === settings.llmProvider);
   const modelOptions = currentProvider?.models.length ? currentProvider.models.map((m) => ({ value: m, label: m })) : [{ value: settings.model, label: settings.model || t("settings.inputModelName") }];
 
@@ -651,6 +690,51 @@ export function SettingsClient() {
 
               <SettingCard title="Max Tokens" description={t("settings.maxTokensDesc")}>
                 <Slider value={settings.maxTokens} onChange={(v) => update("maxTokens", v)} min={256} max={16384} step={256} />
+              </SettingCard>
+
+              {/* ─── 模型路由器配置 ─────────────────────────────────── */}
+              <SettingCard
+                title={t("settings.modelRouter")}
+                description={t("settings.modelRouterDesc")}
+              >
+                {/* 路由模式选择器 — 4个选项按钮 */}
+                <ButtonGroup
+                  value={routerMode}
+                  onChange={handleRouterModeChange}
+                  options={[
+                    { value: "cost", label: t("settings.routerCost") },
+                    { value: "balance", label: t("settings.routerBalance") },
+                    { value: "intelligence", label: t("settings.routerIntelligence") },
+                    { value: "auto", label: t("settings.routerAuto") },
+                  ]}
+                />
+                {/* 当前选中模式的描述文字 */}
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {t(`settings.router${routerMode.charAt(0).toUpperCase() + routerMode.slice(1)}Desc`)}
+                </p>
+                {/* 当前模式的模型列表 — 小标签展示 */}
+                {routerModels.length > 0 && (
+                  <div className="mt-3">
+                    <p className="text-[10px] text-muted-foreground mb-1.5">{t("settings.routerModels")}</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {routerModels.map((model) => (
+                        <span
+                          key={model}
+                          className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-mono text-primary"
+                        >
+                          {model}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                {/* 加载状态指示器 */}
+                {routerLoading && (
+                  <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <RefreshCw size={10} className="animate-spin" />
+                    <span>...</span>
+                  </div>
+                )}
               </SettingCard>
             </>
           )}

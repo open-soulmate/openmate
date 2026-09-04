@@ -617,7 +617,18 @@
     "shellWhitelistPlaceholder": "ls, cat, grep",
     "knowledgePathPlaceholder": "~/.openmate/knowledge",
     "baseUrl": "Base URL 地址",
-    "baseUrlDesc": "AI服务的API地址。如果使用自建服务或代理，需要修改此项。格式：https://api.example.com/v1"
+    "baseUrlDesc": "AI服务的API地址。如果使用自建服务或代理，需要修改此项。格式：https://api.example.com/v1",
+    "modelRouter": "模型路由",
+    "modelRouterDesc": "智能选择最优AI模型",
+    "routerCost": "成本优先",
+    "routerCostDesc": "优先低成本模型",
+    "routerBalance": "平衡",
+    "routerBalanceDesc": "性价比最优",
+    "routerIntelligence": "智能优先",
+    "routerIntelligenceDesc": "优先最强模型",
+    "routerAuto": "自动",
+    "routerAutoDesc": "根据复杂度自动切换",
+    "routerModels": "当前模式模型列表"
   },
   "search": {
     "title": "搜索一切",

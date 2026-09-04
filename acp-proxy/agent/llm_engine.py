@@ -2,15 +2,20 @@
 
 支持Ollama、通义千问、OpenAI等兼容接口的流式和非流式调用。
 自动注入系统提示词（SOUL规则），管理上下文窗口裁剪。
+集成ModelRouter智能路由，根据任务复杂度自动选择最优模型。
 """
 
 import asyncio
 import json
 import logging
 import os
-from typing import AsyncGenerator, Optional
+from typing import AsyncGenerator, Optional, TYPE_CHECKING
 
 import httpx
+
+# 避免循环导入: TYPE_CHECKING下导入类型，运行时用字符串
+if TYPE_CHECKING:
+    from model_router import ModelRouter
 
 logger = logging.getLogger("acp-agent.llm")
 
@@ -38,7 +43,11 @@ DEFAULT_SYSTEM_PROMPT = """你是OpenMate内置Vibe Coding Agent，一个专业�
 
 
 class LLMEngine:
-    """LLM推理层 — 流式SSE调用OpenAI兼容API"""
+    """LLM推理层 — 流式SSE调用OpenAI兼容API
+
+    支持ModelRouter智能路由: 如果传入router，会根据每次请求的prompt
+    动态选择最优模型（如auto模式下简单任务用便宜模型，复杂任务用强模型）。
+    """
 
     def __init__(
         self,
@@ -46,13 +55,33 @@ class LLMEngine:
         base_url: str = "",
         model: str = "",
         system_prompt: str = "",
+        model_router: Optional["ModelRouter"] = None,
+        agent_id: str = "",
     ):
-        """初始化LLM引擎，从参数或环境变量读取配置"""
+        """初始化LLM引擎，从参数或环境变量读取配置
+
+        Args:
+            api_key: API密钥（可选，优先级最高）
+            base_url: API基础URL（可选，优先级最高）
+            model: 模型名称（可选，优先级最高）
+            system_prompt: 系统提示词（可选）
+            model_router: ModelRouter实例（可选），启用后每次chat根据prompt选择模型
+            agent_id: agent标识符（可选），配合router做agent级模型覆盖
+        """
+        # 原有逻辑: 从参数或环境变量读取固定配置
         self.api_key = api_key or os.environ.get("LLM_API_KEY", os.environ.get("OPENAI_API_KEY", ""))
         self.base_url = base_url or os.environ.get("LLM_BASE_URL", os.environ.get("OPENAI_BASE_URL", "http://localhost:11434/v1"))
         self.model = model or os.environ.get("LLM_MODEL", os.environ.get("OPENAI_MODEL", "deepseek-r1:latest"))
         self.system_prompt = system_prompt or DEFAULT_SYSTEM_PROMPT
-        logger.info(f"LLM Engine init: base_url={self.base_url}, model={self.model}")
+
+        # ModelRouter智能路由（可选）
+        self.model_router = model_router
+        self.agent_id = agent_id
+
+        # 路由模式: 默认auto，可通过环境变量覆盖
+        self.route_mode = os.environ.get("MODEL_ROUTER_MODE", "auto")
+
+        logger.info(f"LLM Engine init: base_url={self.base_url}, model={self.model}, router={'enabled' if model_router else 'disabled'}")
 
     def _make_client(self) -> httpx.AsyncClient:
         """创建新的HTTP客户端实例
@@ -66,20 +95,64 @@ class LLMEngine:
             timeout=httpx.Timeout(connect=10, read=120, write=10, pool=10),
         )
 
+    def _resolve_model(self, messages: list[dict]) -> tuple[str, str, str]:
+        """通过ModelRouter解析模型 — 返回 (model_name, base_url, api_key)
+
+        如果没有router或router选择失败，回退到原有固定配置。
+        从messages中提取最后一条用户消息作为prompt用于复杂度评估。
+
+        Args:
+            messages: 对话历史消息
+
+        Returns:
+            (model_name, base_url, api_key) 三元组
+        """
+        if not self.model_router:
+            # 没有router，使用原有固定配置
+            return self.model, self.base_url, self.api_key
+
+        # 提取最后一条用户消息作为prompt（用于复杂度评估）
+        prompt = ""
+        for msg in reversed(messages):
+            if msg.get("role") == "user":
+                prompt = msg.get("content", "")
+                break
+
+        try:
+            selection = self.model_router.select_model(
+                prompt=prompt,
+                mode=self.route_mode,
+                agent_id=self.agent_id,
+            )
+            return selection.model, selection.base_url, selection.api_key
+        except Exception as e:
+            logger.warning("ModelRouter选择失败，回退到固定配置: %s", e)
+            return self.model, self.base_url, self.api_key
+
     async def chat_stream(
         self, messages: list[dict], cancel_event: Optional[asyncio.Event] = None,
         system_prompt: Optional[str] = None
     ) -> AsyncGenerator[str, None]:
         """流式输出LLM响应 — 每个yield是一个纯文本delta片段
 
+        如果启用了ModelRouter，每次请求会根据prompt动态选择最优模型。
+
         Args:
             messages: 对话历史（不含system提示词，会自动注入）
             cancel_event: 取消信号，设置后停止流式输出
             system_prompt: 自定义system prompt，None时使用默认
         """
-        client = self._make_client()
+        # 通过router解析模型（无router时返回固定配置）
+        resolved_model, resolved_base_url, resolved_api_key = self._resolve_model(messages)
+
+        # 使用解析后的配置创建客户端
+        client = httpx.AsyncClient(
+            base_url=resolved_base_url,
+            headers={"Authorization": f"Bearer {resolved_api_key}"} if resolved_api_key else {},
+            timeout=httpx.Timeout(connect=10, read=120, write=10, pool=10),
+        )
         payload = {
-            "model": self.model,
+            "model": resolved_model,
             "messages": self._build_messages(messages, system_prompt),
             "stream": True,
             "temperature": 0.7,
@@ -140,6 +213,8 @@ class LLMEngine:
     ) -> AsyncGenerator[str | dict, None]:
         """流式输出LLM响应 — 支持function calling工具调用
 
+        如果启用了ModelRouter，每次请求会根据prompt动态选择最优模型。
+
         与chat_stream的区别：解析SSE中的tool_calls增量数据，
         按index累积arguments字符串，最终yield完整的tool_calls列表。
 
@@ -152,9 +227,17 @@ class LLMEngine:
             str: 普通文本delta片段
             dict: {"tool_calls": [...]} 完整的工具调用列表（仅在LLM请求调用工具时）
         """
-        client = self._make_client()
+        # 通过router解析模型（无router时返回固定配置）
+        resolved_model, resolved_base_url, resolved_api_key = self._resolve_model(messages)
+
+        # 使用解析后的配置创建客户端
+        client = httpx.AsyncClient(
+            base_url=resolved_base_url,
+            headers={"Authorization": f"Bearer {resolved_api_key}"} if resolved_api_key else {},
+            timeout=httpx.Timeout(connect=10, read=120, write=10, pool=10),
+        )
         payload = {
-            "model": self.model,
+            "model": resolved_model,
             "messages": self._build_messages(messages, system_prompt),
             "stream": True,
             "temperature": 0.7,
@@ -245,10 +328,20 @@ class LLMEngine:
             yield f"\n[LLM错误: {e}]"
 
     async def chat(self, messages: list[dict]) -> str:
-        """非流式完整输出 — 等待完整响应后返回"""
-        client = self._make_client()
+        """非流式完整输出 — 等待完整响应后返回
+
+        如果启用了ModelRouter，会根据prompt动态选择最优模型。
+        """
+        # 通过router解析模型（无router时返回固定配置）
+        resolved_model, resolved_base_url, resolved_api_key = self._resolve_model(messages)
+
+        client = httpx.AsyncClient(
+            base_url=resolved_base_url,
+            headers={"Authorization": f"Bearer {resolved_api_key}"} if resolved_api_key else {},
+            timeout=httpx.Timeout(connect=10, read=120, write=10, pool=10),
+        )
         payload = {
-            "model": self.model,
+            "model": resolved_model,
             "messages": self._build_messages(messages),
             "stream": False,
             "temperature": 0.7,

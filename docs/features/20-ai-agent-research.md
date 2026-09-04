@@ -43,7 +43,7 @@
 | **Next.js + shadcn/ui** | 7/20 | AutoGPT, Dify, AgentGPT, SuperAGI | ✅ 已用 |
 | **WebSocket 实时通信** | 12/20 | 几乎所有 | ✅ 已用 |
 | **Graph/DAG 执行引擎** | 5/20 | LangGraph, AutoGen, MetaGPT, ChatDev | ❌ 缺失 |
-| **MCP 协议集成** | 5/20 | AutoGPT, Open Interpreter, Cursor | ❌ 缺失 |
+| **MCP 协议集成** | 5/20 | AutoGPT, Open Interpreter, Cursor | ✅ 已实现 |
 | **模型路由（智能选模型）** | 4/20 | Cursor, Continue, Bolt.new | ❌ 缺失 |
 | **一键部署 API/Widget** | 3/20 | Dify, Flowise, Bolt.new | ❌ 缺失 |
 | **角色Agent + 记忆分层** | 3/20 | CrewAI, ChatDev, MetaGPT | ⚠️ 部分（有人物设定） |
