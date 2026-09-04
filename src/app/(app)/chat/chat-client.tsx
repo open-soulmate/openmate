@@ -220,6 +220,7 @@ function useAcpWebSocket(params: {
     unmounted: boolean;
     retryDelay: number;
     ws: WebSocket | null;
+    promptRpcId: number | null; // 记录 session/prompt 的 RPC id，响应回来时触发完成
   }>>(new Map());
   const [wsConnected, setWsConnected] = useState(false);
   const streamingSessionIdRef = useRef<string | null>(null);
@@ -241,6 +242,7 @@ function useAcpWebSocket(params: {
         unmounted: false,
         retryDelay: 1000,
         ws: null as WebSocket | null,
+        promptRpcId: null, // 记录 session/prompt 的 RPC id
       };
       sessionStateMapRef.current.set(sessionId, state);
     }
@@ -257,6 +259,8 @@ function useAcpWebSocket(params: {
     if (!sid || !ws || ws.readyState !== WebSocket.OPEN) return;
     const id = ++state.rpcId;
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+    // 记录 prompt RPC id，响应回来时知道是 prompt 完成
+    state.promptRpcId = id;
     state.pendingRequests.set(id, { resolve: () => {}, reject: () => {} });
     ws.send(JSON.stringify({
       jsonrpc: '2.0',
@@ -264,7 +268,7 @@ function useAcpWebSocket(params: {
       method: 'session/prompt',
       params: { sessionId: sid, messageId, prompt: [{ type: 'text', text }] },
     }));
-    setTimeout(() => { state.pendingRequests.delete(id); }, 10000);
+    // 不再用 setTimeout 删除 pending——等响应回来再处理
   }, [getSessionState]);
 
   // ── Common message handlers (shared by session.event and session/update) ──
@@ -507,6 +511,12 @@ function useAcpWebSocket(params: {
                 pending.resolve(data.result);
               }
             }
+            // session/prompt 的 RPC 响应 = agent 处理完成（SoulMate 不发 last:true）
+            if (data.id === state.promptRpcId) {
+              state.promptRpcId = null;
+              // 用 acpSessionId（om-xxx），因为 sessionDataMap 已迁移到这个 key
+              handleSessionComplete(state.acpSessionId || sessionId);
+            }
             return;
           }
 
@@ -564,6 +574,7 @@ function useAcpWebSocket(params: {
                 // Track unread for non-active sessions
                 incrementUnread(updateSessionId, text);
               }
+              // last 标志必须在 if(text) 外面检查，否则无 text 的最后一包会被跳过
               if (update.last === true) {
                 // Migrate temp session if needed, then finalize
                 handleTempSessionMigration(updateSessionId, currentAgentId2);
