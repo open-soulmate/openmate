@@ -194,7 +194,6 @@ const simulateTokenUsage = (content: string): TokenUsage => {
 function useAcpWebSocket(params: {
   selectedAgent: AgentInfo | null;
   selectedSession: Session | null;
-  selectedAgentRef: React.MutableRefObject<AgentInfo | null>;
   selectedSessionRef: React.MutableRefObject<Session | null>;
   // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
   t: Function;
@@ -203,11 +202,9 @@ function useAcpWebSocket(params: {
   setLoading: React.Dispatch<React.SetStateAction<boolean>>;
   setSelectedSession: React.Dispatch<React.SetStateAction<Session | null>>;
   activeAgentIdFromStore: string | null;
-  activeSessionId: string | null;
-  setActiveSessionId: React.Dispatch<React.SetStateAction<string | null>>;
   migrateSessionId: (oldId: string, newId: string) => void;
 }) {
-  const { selectedAgent, selectedSession, selectedAgentRef, selectedSessionRef, t, updateSessionMessages, incrementUnread, setLoading, setSelectedSession, activeAgentIdFromStore, activeSessionId, setActiveSessionId, migrateSessionId } = params;
+  const { selectedAgent, selectedSession, selectedSessionRef, t, updateSessionMessages, incrementUnread, setLoading, setSelectedSession, activeAgentIdFromStore, migrateSessionId } = params;
 
   // Multi-session: Map<sessionId, WebSocket> for concurrent connections
   const wsMapRef = useRef<Map<string, WebSocket>>(new Map());
@@ -269,6 +266,70 @@ function useAcpWebSocket(params: {
     }));
     setTimeout(() => { state.pendingRequests.delete(id); }, 10000);
   }, [getSessionState]);
+
+  // ── Common message handlers (shared by session.event and session/update) ──
+  // Handle incremental agent message chunk: append to streaming message or create new one
+  const handleAgentChunk = useCallback((targetSessionId: string, text: string) => {
+    updateSessionMessages(targetSessionId, prev => {
+      const last = prev[prev.length - 1];
+      if (last?.role === 'agent' && last?.source === 'streaming') {
+        // Append to existing streaming message
+        return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + text }] }];
+      }
+      // Create new streaming message
+      return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text }], timestamp: new Date(), source: 'streaming' }];
+    });
+  }, [updateSessionMessages]);
+
+  // Finalize a completed session: clear streaming flag, parse file changes, record spending
+  const handleSessionComplete = useCallback((completedSessionId: string) => {
+    setLoading(false);
+    streamingSessionIdRef.current = null;
+    updateSessionMessages(completedSessionId, prev => {
+      const last = prev[prev.length - 1];
+      if (last?.role === 'agent' && last?.source === 'streaming') {
+        const content = last.parts[0]?.text || '';
+        const fileChanges = parseFileChanges(content);
+        const tokenUsage = simulateTokenUsage(content);
+        if (tokenUsage) {
+          const sid = completedSessionId || 'default';
+          setTimeout(() => {
+            useAppStore.getState().addSessionSpending(sid, {
+              input: tokenUsage.input,
+              output: tokenUsage.output,
+              cost: calculateCost(tokenUsage),
+            });
+          }, 0);
+        }
+        return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
+      }
+      return prev;
+    });
+  }, [updateSessionMessages, setLoading]);
+
+  // Migrate a temp session to a real session ID (update store + sidebar + tag agent)
+  const handleTempSessionMigration = useCallback((newSessionId: string, currentSelectedAgentId: string) => {
+    if (!selectedSessionRef.current || !selectedSessionRef.current.id) {
+      const updated = { id: newSessionId, name: '', platform: 'hermes' } as Session;
+      setSelectedSession(updated);
+      selectedSessionRef.current = updated;
+      useAppStore.getState().setActiveSession(newSessionId, null, { sessionName: updated.name || updated.title || '' });
+      useAppStore.getState().refreshSidebar();
+      tagSessionAgent(newSessionId, currentSelectedAgentId);
+      updateSessionMessages(newSessionId, prev => {
+        const firstUserMsg = prev.find(m => m.role === 'user');
+        const autoName = firstUserMsg?.parts.find((p: { type: string; text?: string }) => p.type === 'text')?.text?.slice(0, 20) || '';
+        if (autoName) {
+          fetch(`${getApiBaseUrl()}/api/sessions/${newSessionId}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ title: autoName }),
+          }).then(() => useAppStore.getState().refreshSidebar()).catch(() => {});
+        }
+        return prev;
+      });
+    }
+  }, [updateSessionMessages, setSelectedSession]);
 
   // Connect a single session with its own WebSocket
   const connectSession = useCallback((sessionId: string, agentId: string) => {
@@ -453,63 +514,18 @@ function useAcpWebSocket(params: {
           if (data.method === 'session.event') {
             const p = data.params || {};
             const eventType = p.event_type as string;
+            const currentAgentId = activeAgentIdFromStore || 'soulmate';
 
             if (eventType === 'agent.message') {
+              // Use common handler for incremental chunks
               const delta = (p.payload?.chunk || p.payload?.content_delta) as string | undefined;
-              if (delta) {
-                updateSessionMessages(sessionId, prev => {
-                  const last = prev[prev.length - 1];
-                  if (last?.role === 'agent' && last?.source === 'streaming') {
-                    return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + delta }] }];
-                  }
-                  return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: delta }], timestamp: new Date(), source: 'streaming' }];
-                });
-              }
+              if (delta) handleAgentChunk(sessionId, delta);
             }
             else if (eventType === 'session.completed') {
-              setLoading(false);
-              streamingSessionIdRef.current = null;
-              const completedSessionId = p.session_id;
-              if (completedSessionId && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
-                const updated = { id: completedSessionId, name: '', platform: 'hermes' } as Session;
-                setSelectedSession(updated);
-                selectedSessionRef.current = updated;
-                useAppStore.getState().setActiveSession(completedSessionId, null, { sessionName: selectedSessionRef.current?.name || selectedSessionRef.current?.title || '' });
-                useAppStore.getState().refreshSidebar();
-                tagSessionAgent(completedSessionId, selectedAgentRef.current?.id || 'soulmate');
-                updateSessionMessages(sessionId, prev => {
-                  const firstUserMsg = prev.find(m => m.role === 'user');
-                  const autoName = firstUserMsg?.parts.find((p: { type: string; text?: string }) => p.type === 'text')?.text?.slice(0, 20) || '';
-                  if (autoName) {
-                    fetch(`${getApiBaseUrl()}/api/sessions/${completedSessionId}`, {
-                      method: 'PATCH',
-                      headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ title: autoName }),
-                    }).then(() => useAppStore.getState().refreshSidebar()).catch(() => {});
-                  }
-                  return prev;
-                });
-              }
-              updateSessionMessages(sessionId, prev => {
-                const last = prev[prev.length - 1];
-                if (last?.role === 'agent' && last?.source === 'streaming') {
-                  const content = last.parts[0]?.text || '';
-                  const fileChanges = parseFileChanges(content);
-                  const tokenUsage = simulateTokenUsage(content);
-                  if (tokenUsage) {
-                    const sid = sessionId || 'default';
-                    setTimeout(() => {
-                      useAppStore.getState().addSessionSpending(sid, {
-                        input: tokenUsage.input,
-                        output: tokenUsage.output,
-                        cost: calculateCost(tokenUsage),
-                      });
-                    }, 0);
-                  }
-                  return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
-                }
-                return prev;
-              });
+              const completedSessionId = p.session_id || sessionId;
+              // Migrate temp session if needed, then finalize
+              handleTempSessionMigration(completedSessionId, currentAgentId);
+              handleSessionComplete(completedSessionId);
             }
             else if (eventType === 'session.error') {
               setLoading(false);
@@ -538,63 +554,20 @@ function useAcpWebSocket(params: {
             const updateSessionId = p.sessionId as string || sessionId;
             const update = p.update || {};
             const sessionUpdate = update.sessionUpdate as string;
+            const currentAgentId2 = activeAgentIdFromStore || 'soulmate';
 
             if (sessionUpdate === 'agent_message_chunk') {
               const text = update.content?.text as string | undefined;
               if (text) {
-                updateSessionMessages(updateSessionId, prev => {
-                  const last = prev[prev.length - 1];
-                  if (last?.role === 'agent' && last?.source === 'streaming') {
-                    return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + text }] }];
-                  }
-                  return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text }], timestamp: new Date(), source: 'streaming' }];
-                });
+                // Use common handler for incremental chunks
+                handleAgentChunk(updateSessionId, text);
                 // Track unread for non-active sessions
                 incrementUnread(updateSessionId, text);
               }
               if (update.last === true) {
-                setLoading(false);
-                streamingSessionIdRef.current = null;
-                if (updateSessionId && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
-                  const updated = { id: updateSessionId, name: '', platform: 'hermes' } as Session;
-                  setSelectedSession(updated);
-                  selectedSessionRef.current = updated;
-                  useAppStore.getState().setActiveSession(updateSessionId, null, { sessionName: selectedSessionRef.current?.name || selectedSessionRef.current?.title || '' });
-                  useAppStore.getState().refreshSidebar();
-                  tagSessionAgent(updateSessionId, selectedAgentRef.current?.id || 'soulmate');
-                  updateSessionMessages(updateSessionId, prev => {
-                    const firstUserMsg = prev.find(m => m.role === 'user');
-                    const autoName = firstUserMsg?.parts.find((p: { type: string; text?: string }) => p.type === 'text')?.text?.slice(0, 20) || '';
-                    if (autoName) {
-                      fetch(`${getApiBaseUrl()}/api/sessions/${updateSessionId}`, {
-                        method: 'PATCH',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ title: autoName }),
-                      }).then(() => useAppStore.getState().refreshSidebar()).catch(() => {});
-                    }
-                    return prev;
-                  });
-                }
-                updateSessionMessages(updateSessionId, prev => {
-                  const last = prev[prev.length - 1];
-                  if (last?.role === 'agent' && last?.source === 'streaming') {
-                    const content = last.parts[0]?.text || '';
-                    const fileChanges = parseFileChanges(content);
-                    const tokenUsage = simulateTokenUsage(content);
-                    if (tokenUsage) {
-                      const sid = updateSessionId || 'default';
-                      setTimeout(() => {
-                        useAppStore.getState().addSessionSpending(sid, {
-                          input: tokenUsage.input,
-                          output: tokenUsage.output,
-                          cost: calculateCost(tokenUsage),
-                        });
-                      }, 0);
-                    }
-                    return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
-                  }
-                  return prev;
-                });
+                // Migrate temp session if needed, then finalize
+                handleTempSessionMigration(updateSessionId, currentAgentId2);
+                handleSessionComplete(updateSessionId);
               }
             }
             else if (sessionUpdate === 'agent_message') {
@@ -638,7 +611,7 @@ function useAcpWebSocket(params: {
       if (oldWs) oldWs.close();
       wsMapRef.current.delete(sessionId);
     };
-  }, [getSessionState, updateSessionMessages, incrementUnread, activeSessionId]);
+  }, [getSessionState, updateSessionMessages, incrementUnread]);
 
   // Disconnect a single session
   const disconnectSession = useCallback((sessionId: string) => {
@@ -666,14 +639,14 @@ function useAcpWebSocket(params: {
 
   // 发送ACP审批决议
   const sendApproval = useCallback((requestId: string, action: 'approve' | 'reject', comment: string) => {
-    // Use the active session's WebSocket for approval
-    const sessionId = activeSessionId;
-    if (!sessionId) {
+    // Use the active session's WebSocket for approval — read from store (single source of truth)
+    const currentActiveSessionId = useAppStore.getState().activeSessionId;
+    if (!currentActiveSessionId) {
       console.error('[ACP] 无法发送审批决议：无活跃会话');
       return;
     }
-    const ws = wsMapRef.current.get(sessionId);
-    const state = getSessionState(sessionId);
+    const ws = wsMapRef.current.get(currentActiveSessionId);
+    const state = getSessionState(currentActiveSessionId);
     const sid = state.acpSessionId;
     if (!ws || ws.readyState !== WebSocket.OPEN || !sid) {
       console.error('[ACP] 无法发送审批决议：WebSocket未连接或无会话');
@@ -695,14 +668,13 @@ function useAcpWebSocket(params: {
     console.log(`[ACP] 审批决议已发送: ${action} request_id=${requestId}`);
     setApprovalRequest(null);
     setTimeout(() => { state.pendingRequests.delete(id); }, 5000);
-  }, [activeSessionId, getSessionState]);
+  }, [getSessionState]);
 
   return { wsMapRef, wsConnected, streamingSessionIdRef, sendAcpPrompt, connectSession, disconnectSession, approvalRequest, sendApproval };
 }
 
 export function ChatClient() {
   const [sessionDataMap, setSessionDataMap] = useState<Map<string, SessionData>>(new Map());
-  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [showScrollDown, setShowScrollDown] = useState(false);
@@ -734,7 +706,6 @@ export function ChatClient() {
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const selectedSessionRef = useRef<Session | null>(null);
-  const selectedAgentRef = useRef<AgentInfo | null>(null);
   const activeAgentIdFromStore = useAppStore((s) => s.activeAgentId);
 
   // Multi-session helpers
@@ -747,7 +718,8 @@ export function ChatClient() {
   }, []);
 
   const incrementUnread = useCallback((sessionId: string, lastMsg: string) => {
-    if (sessionId === activeSessionId) return;
+    const currentActiveSessionId = useAppStore.getState().activeSessionId;
+    if (sessionId === currentActiveSessionId) return;
     setSessionDataMap(prev => {
       const data = prev.get(sessionId) || { messages: [], unreadCount: 0 };
       return new Map(prev).set(sessionId, {
@@ -756,7 +728,7 @@ export function ChatClient() {
         lastMessage: lastMsg,
       });
     });
-  }, [activeSessionId]);
+  }, []);
 
   const clearUnread = useCallback((sessionId: string) => {
     setSessionDataMap(prev => {
@@ -767,18 +739,24 @@ export function ChatClient() {
   }, []);
 
   const updateCurrentSessionMessages = useCallback((updater: (prev: Message[]) => Message[]) => {
-    const sessionId = activeSessionId || selectedSessionRef.current?.id || 'default';
+    const sessionId = useAppStore.getState().activeSessionId || selectedSessionRef.current?.id;
+    if (!sessionId) return; // No active session, skip update
     updateSessionMessages(sessionId, updater);
-  }, [activeSessionId, updateSessionMessages]);
+  }, [updateSessionMessages]);
 
   const clearCurrentSessionMessages = useCallback(() => {
-    const sessionId = activeSessionId || selectedSessionRef.current?.id || 'default';
+    const sessionId = useAppStore.getState().activeSessionId || selectedSessionRef.current?.id;
+    if (!sessionId) return; // No active session, skip clear
     updateSessionMessages(sessionId, () => []);
-  }, [activeSessionId, updateSessionMessages]);
+  }, [updateSessionMessages]);
 
   // Migrate session data from a temp ID to a real session ID
   const migrateSessionId = useCallback((oldId: string, newId: string) => {
-    setActiveSessionId(prev => prev === oldId ? newId : prev);
+    // Update store's activeSessionId if it matches the old temp ID
+    const currentActive = useAppStore.getState().activeSessionId;
+    if (currentActive === oldId) {
+      useAppStore.getState().setActiveSession(newId, null, {});
+    }
     setSessionDataMap(prev => {
       const data = prev.get(oldId);
       if (!data) return prev;
@@ -790,8 +768,9 @@ export function ChatClient() {
     // Note: sessionStateMapRef and wsMapRef migration happens in hook's performHandshake
   }, []);
 
-  // Derived messages for active session
-  const messages = activeSessionId ? (sessionDataMap.get(activeSessionId)?.messages || []) : [];
+  // Derived messages for active session (read from store — single source of truth)
+  const activeSessionIdFromStore = useAppStore((s) => s.activeSessionId);
+  const messages = activeSessionIdFromStore ? (sessionDataMap.get(activeSessionIdFromStore)?.messages || []) : [];
   // Total unread count across all sessions
   const totalUnread = useMemo(() => {
     let count = 0;
@@ -801,8 +780,8 @@ export function ChatClient() {
     return count;
   }, [sessionDataMap]);
   const { wsMapRef, wsConnected, streamingSessionIdRef, sendAcpPrompt, connectSession, disconnectSession, approvalRequest, sendApproval } = useAcpWebSocket({
-    selectedAgent, selectedSession, selectedAgentRef, selectedSessionRef,
-    t, updateSessionMessages, incrementUnread, setLoading, setSelectedSession, activeAgentIdFromStore, activeSessionId, setActiveSessionId, migrateSessionId,
+    selectedAgent, selectedSession, selectedSessionRef,
+    t, updateSessionMessages, incrementUnread, setLoading, setSelectedSession, activeAgentIdFromStore, migrateSessionId,
   });
 
   // Auto-resize textarea on input
@@ -920,7 +899,8 @@ export function ChatClient() {
     updateCurrentSessionMessages(prev => prev.filter(m => m.id !== agentMsgId));
     // 通过 ACP 重新发送
     const text = getMessageText(userMsg);
-    const regenSessionId = selectedSession?.id || activeSessionId || 'default';
+    const regenSessionId = selectedSession?.id || activeSessionIdFromStore;
+    if (!regenSessionId) return; // No session to regenerate into
     setLoading(true);
     streamingSessionIdRef.current = regenSessionId;
     sendAcpPrompt(regenSessionId, text);
@@ -991,7 +971,8 @@ export function ChatClient() {
   const loadHistory = useCallback(async (sessionId: string) => {
     // ACP sessions (soulmate) store messages in Agent Engine memory, not OpenSoul DB
     // For ACP sessions, just clear messages - the WS will deliver new ones
-    if (selectedAgentRef.current?.id === 'soulmate' || !selectedAgentRef.current) {
+    const currentAgentId = useAppStore.getState().activeAgentId;
+    if (currentAgentId === 'soulmate' || !currentAgentId) {
       clearCurrentSessionMessages();
       return;
     }
@@ -1030,7 +1011,7 @@ export function ChatClient() {
   }, [messages]);
 
   // Listen for session selection from global sidebar (via store)
-  const activeSessionIdFromStore = useAppStore((s) => s.activeSessionId);
+  // activeSessionIdFromStore is already declared above near line 770
 
   useEffect(() => {
     if (!activeSessionIdFromStore) {
@@ -1094,50 +1075,10 @@ export function ChatClient() {
       : agents.find(a => a.id === 'soulmate') || agents[0];
     if (agent && selectedAgent?.id !== agent.id) {
       setSelectedAgent(agent);
-      selectedAgentRef.current = agent;
       setSelectedSession(null);
       clearCurrentSessionMessages();
     }
   }, [activeAgentIdFromStore, agents]);
-
-  const handleSend = async () => {
-    if ((!input.trim() && attachments.length === 0) || loading) return;
-    const text = input.trim();
-    const userMsg: Message = { id: Date.now().toString(), role: 'user', parts: [{ type: 'text', text }, ...attachments], timestamp: new Date() };
-    const currentSessionId = activeSessionId || selectedSession?.id || 'default';
-    updateSessionMessages(currentSessionId, prev => [...prev, userMsg]);
-    setInput(''); setAttachments([]); setLoading(true); setSmartPromptTask('');
-    // Reset textarea height
-    if (textareaRef.current) textareaRef.current.style.height = 'auto';
-
-    // 计划模式添加前缀
-    const messageText = agentMode === 'plan' ? `[PLAN MODE] ${text}` : text;
-
-    streamingSessionIdRef.current = selectedSession?.id || null;
-    const ws = wsMapRef.current.get(currentSessionId);
-    if (ws?.readyState === WebSocket.OPEN) {
-      sendAcpPrompt(currentSessionId, messageText);
-      return;
-    }
-    // No WS exists — create ACP connection now
-    const agentId = selectedAgentRef.current?.id || 'soulmate';
-    connectSession(currentSessionId, agentId);
-    // 等待 WS 连接就绪（WS 可能被迁移到新 sessionId）
-    let waited = 0;
-    const waitConnect = setInterval(() => {
-      waited += 500;
-      const ws2 = wsMapRef.current.get(currentSessionId) || wsMapRef.current.get(activeSessionId || '');
-      if (ws2?.readyState === WebSocket.OPEN) {
-        clearInterval(waitConnect);
-        const sendId = activeSessionId && wsMapRef.current.has(activeSessionId) ? activeSessionId : currentSessionId;
-        sendAcpPrompt(sendId, messageText);
-      } else if (waited >= 15000) {
-        clearInterval(waitConnect);
-        setLoading(false);
-        updateSessionMessages(currentSessionId, prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: t('chat.connectionLost') }], timestamp: new Date() }]);
-      }
-    }, 500);
-  };
 
   const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -1172,12 +1113,37 @@ export function ChatClient() {
     }
   };
 
+  // 公共 WS 等待函数：连接建立后自动发送消息
+  const waitForConnection = useCallback((sessionId: string, messageText: string) => {
+    let spWaited = 0; // 已等待毫秒数
+    const spWaitConnect = setInterval(() => {
+      spWaited += 500; // 每500ms检查一次
+      // WS 可能被迁移到新 sessionId（temp→real），两个都检查
+      const ws2 = wsMapRef.current.get(sessionId) || wsMapRef.current.get(useAppStore.getState().activeSessionId || '');
+      if (ws2?.readyState === WebSocket.OPEN) {
+        clearInterval(spWaitConnect);
+        // 用迁移后的 sessionId 发送
+        const activeSid = useAppStore.getState().activeSessionId;
+        const sendId = activeSid && wsMapRef.current.has(activeSid) ? activeSid : sessionId;
+        sendAcpPrompt(sendId, messageText);
+      } else if (spWaited >= 15000) {
+        // 超时15秒，放弃并提示用户
+        clearInterval(spWaitConnect);
+        setLoading(false);
+        updateSessionMessages(sessionId, prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: t('chat.connectionLost') }], timestamp: new Date() }]);
+      }
+    }, 500);
+  }, [sendAcpPrompt, updateSessionMessages, t]);
+
   const selectSession = (session: Session, agent: AgentInfo) => {
-    setActiveSessionId(session.id);
+    // Update store (single source of truth for activeSessionId)
+    useAppStore.getState().setActiveSession(session.id, agent.id === 'soulmate' ? null : agent.id, {
+      agentName: agent.name,
+      sessionName: session.name || session.title || '',
+    });
     setSelectedSession(session);
     selectedSessionRef.current = session;
     setSelectedAgent(agent);
-    selectedAgentRef.current = agent;
     setDeleteConfirm(null);
     setEditingTitle(false);
     setShowCheckpoints(false); // close checkpoints when switching sessions
@@ -1481,7 +1447,7 @@ export function ChatClient() {
                 if ((!assembled.trim() && attachments.length === 0) || loading) return;
                 const text = assembled.trim();
                 const userMsg: Message = { id: Date.now().toString(), role: 'user', parts: [{ type: 'text', text }, ...attachments], timestamp: new Date() };
-                let currentSessionId = activeSessionId || selectedSession?.id;
+                let currentSessionId = activeSessionIdFromStore || selectedSession?.id;
                 // 没有活跃 session 时，自动创建新会话并跳转
                 if (!currentSessionId) {
                   // 直接从 store 取 agentId，不依赖 ref（ref 可能还没更新）
@@ -1490,10 +1456,8 @@ export function ChatClient() {
                   const agent = agents.find((a: AgentInfo) => a.id === spAgentId);
                   const newId = `temp-${Date.now()}`;
                   const newSession = { id: newId, name: text.slice(0, 30) || '新会话', platform: 'hermes', agentId: spAgentId, createdAt: new Date().toISOString() } as Session;
-                  // 更新 store：设 activeSessionId + activeAgentId
-                  // 更新 store 和本地 state（messages 依赖本地 activeSessionId）
+                  // 更新 store：setActiveSession 是唯一的 activeSessionId 来源
                   useAppStore.getState().setActiveSession(newId, spAgentId === 'soulmate' ? null : spAgentId, { agentName: agent?.name || spAgentId });
-                  setActiveSessionId(newId);
                   // 把新 session 加到侧边栏的 agent sessions 列表里
                   useAppStore.getState().setSidebarAgents((prev: AgentInfo[]) => prev.map(a =>
                     a.id === spAgentId ? { ...a, sessions: [newSession, ...a.sessions] } : a
@@ -1512,22 +1476,8 @@ export function ChatClient() {
                   // No WS exists — create ACP connection now
                   const spAgentId2 = useAppStore.getState().activeAgentId || 'soulmate';
                   connectSession(currentSessionId, spAgentId2);
-                  let spWaited = 0;
-                  const spWaitConnect = setInterval(() => {
-                    spWaited += 500;
-                    // WS may have been migrated to a new sessionId (temp→real), check both
-                    const ws2 = wsMapRef.current.get(currentSessionId) || wsMapRef.current.get(activeSessionId || '');
-                    if (ws2?.readyState === WebSocket.OPEN) {
-                      clearInterval(spWaitConnect);
-                      // Use the migrated sessionId for sending
-                      const sendId = activeSessionId && wsMapRef.current.has(activeSessionId) ? activeSessionId : currentSessionId;
-                      sendAcpPrompt(sendId, messageText);
-                    } else if (spWaited >= 15000) {
-                      clearInterval(spWaitConnect);
-                      setLoading(false);
-                      updateSessionMessages(currentSessionId, prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: t('chat.connectionLost') }], timestamp: new Date() }]);
-                    }
-                  }, 500);
+                  // 等待 WS 连接就绪，使用公共等待函数
+                  waitForConnection(currentSessionId, messageText);
                 }
               }}
               isLoading={loading}
