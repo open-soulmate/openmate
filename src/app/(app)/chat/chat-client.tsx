@@ -1473,7 +1473,15 @@ export function ChatClient() {
                 if ((!assembled.trim() && attachments.length === 0) || loading) return;
                 const text = assembled.trim();
                 const userMsg: Message = { id: Date.now().toString(), role: 'user', parts: [{ type: 'text', text }, ...attachments], timestamp: new Date() };
-                const currentSessionId = activeSessionId || selectedSession?.id || 'default';
+                let currentSessionId = activeSessionId || selectedSession?.id;
+                // 没有活跃 session 时，自动创建新会话并跳转
+                if (!currentSessionId) {
+                  const spAgentId = selectedAgentRef.current?.id || 'soulmate';
+                  const agent = agents.find((a: AgentInfo) => a.id === spAgentId);
+                  const newId = `temp-${Date.now()}`;
+                  useAppStore.getState().setActiveSession(newId, spAgentId === 'soulmate' ? null : spAgentId, { agentName: agent?.name || spAgentId });
+                  currentSessionId = newId;
+                }
                 updateSessionMessages(currentSessionId, prev => [...prev, userMsg]);
                 setAttachments([]); setLoading(true);
                 // 计划模式添加前缀
