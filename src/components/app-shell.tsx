@@ -449,7 +449,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                           }}
                           onNewSession={(agentId) => {
                             const agent = agents.find((a: AgentInfo) => a.id === agentId);
-                            useAppStore.getState().setActiveSession(null, agentId === 'soulmate' ? null : agentId, { agentName: agent?.name || agentId });
+                            const tempSessionId = `temp-${Date.now()}`;
+                            useAppStore.getState().setActiveSession(tempSessionId, agentId === 'soulmate' ? null : agentId, { agentName: agent?.name || agentId });
                             router.push('/chat?new=' + Date.now());
                           }}
                           onDeleteSession={async (sessionId) => {

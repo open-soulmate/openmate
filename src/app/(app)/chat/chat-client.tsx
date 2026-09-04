@@ -204,8 +204,10 @@ function useAcpWebSocket(params: {
   setSelectedSession: React.Dispatch<React.SetStateAction<Session | null>>;
   activeAgentIdFromStore: string | null;
   activeSessionId: string | null;
+  setActiveSessionId: React.Dispatch<React.SetStateAction<string | null>>;
+  migrateSessionId: (oldId: string, newId: string) => void;
 }) {
-  const { selectedAgent, selectedSession, selectedAgentRef, selectedSessionRef, t, updateSessionMessages, incrementUnread, setLoading, setSelectedSession, activeAgentIdFromStore, activeSessionId } = params;
+  const { selectedAgent, selectedSession, selectedAgentRef, selectedSessionRef, t, updateSessionMessages, incrementUnread, setLoading, setSelectedSession, activeAgentIdFromStore, activeSessionId, setActiveSessionId, migrateSessionId } = params;
 
   // Multi-session: Map<sessionId, WebSocket> for concurrent connections
   const wsMapRef = useRef<Map<string, WebSocket>>(new Map());
@@ -220,6 +222,7 @@ function useAcpWebSocket(params: {
     reconnectTimer: ReturnType<typeof setTimeout> | null;
     unmounted: boolean;
     retryDelay: number;
+    ws: WebSocket | null;
   }>>(new Map());
   const [wsConnected, setWsConnected] = useState(false);
   const streamingSessionIdRef = useRef<string | null>(null);
@@ -240,6 +243,7 @@ function useAcpWebSocket(params: {
         reconnectTimer: null,
         unmounted: false,
         retryDelay: 1000,
+        ws: null as WebSocket | null,
       };
       sessionStateMapRef.current.set(sessionId, state);
     }
@@ -252,7 +256,7 @@ function useAcpWebSocket(params: {
     // 等待 ACP 握手完成
     if (state.acpReady) await state.acpReady;
     const sid = state.acpSessionId;
-    const ws = wsMapRef.current.get(sessionId);
+    const ws = wsMapRef.current.get(sessionId) || state.ws;
     if (!sid || !ws || ws.readyState !== WebSocket.OPEN) return;
     const id = ++state.rpcId;
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
@@ -305,6 +309,14 @@ function useAcpWebSocket(params: {
         const acpSid = result?.session_id || result?.sessionId;
         if (acpSid) {
           state.acpSessionId = acpSid;
+          // Migrate temp session ID to real session ID
+          if (sessionId.startsWith('temp-')) {
+            migrateSessionId(sessionId, acpSid);
+            // Update selectedSession with real ID
+            const updated = { id: acpSid, name: '', platform: 'hermes' } as Session;
+            setSelectedSession(updated);
+            selectedSessionRef.current = updated;
+          }
           try {
             const apiBase = getApiBaseUrl();
             await fetch(`${apiBase}/api/sessions`, {
@@ -341,6 +353,7 @@ function useAcpWebSocket(params: {
       const wsUrl = `${getAcpWsUrl()}/ws/acp?token=${currentToken}&sessionId=${sessionId}`;
       const ws = new WebSocket(wsUrl);
       wsMapRef.current.set(sessionId, ws);
+      state.ws = ws;
       state.connectedToken = currentToken;
 
       ws.onopen = () => {
@@ -745,6 +758,31 @@ export function ChatClient() {
     updateSessionMessages(sessionId, () => []);
   }, [activeSessionId, updateSessionMessages]);
 
+  // Migrate session data from a temp ID to a real session ID
+  const migrateSessionId = useCallback((oldId: string, newId: string) => {
+    setActiveSessionId(prev => prev === oldId ? newId : prev);
+    setSessionDataMap(prev => {
+      const data = prev.get(oldId);
+      if (!data) return prev;
+      const next = new Map(prev);
+      next.delete(oldId);
+      next.set(newId, data);
+      return next;
+    });
+    // 迁移 ACP 状态 (sessionStateMapRef)
+    const acpState = sessionStateMapRef.current.get(oldId);
+    if (acpState) {
+      sessionStateMapRef.current.set(newId, acpState);
+      sessionStateMapRef.current.delete(oldId);
+    }
+    // 迁移 WebSocket (wsMapRef)
+    const ws = wsMapRef.current.get(oldId);
+    if (ws) {
+      wsMapRef.current.set(newId, ws);
+      wsMapRef.current.delete(oldId);
+    }
+  }, []);
+
   // Derived messages for active session
   const messages = activeSessionId ? (sessionDataMap.get(activeSessionId)?.messages || []) : [];
   // Total unread count across all sessions
@@ -757,7 +795,7 @@ export function ChatClient() {
   }, [sessionDataMap]);
   const { wsMapRef, wsConnected, streamingSessionIdRef, sendAcpPrompt, connectSession, disconnectSession, approvalRequest, sendApproval } = useAcpWebSocket({
     selectedAgent, selectedSession, selectedAgentRef, selectedSessionRef,
-    t, updateSessionMessages, incrementUnread, setLoading, setSelectedSession, activeAgentIdFromStore, activeSessionId,
+    t, updateSessionMessages, incrementUnread, setLoading, setSelectedSession, activeAgentIdFromStore, activeSessionId, setActiveSessionId, migrateSessionId,
   });
 
   // Auto-resize textarea on input
