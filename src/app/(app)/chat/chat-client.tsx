@@ -436,9 +436,22 @@ function useAcpWebSocket(params: {
                 const updated = { id: sessionId, name: '', platform: 'hermes' } as Session;
                 setSelectedSession(updated);
                 selectedSessionRef.current = updated;
-                useAppStore.getState().setActiveSession(sessionId, null, { sessionName: '' });
+                useAppStore.getState().setActiveSession(sessionId, null, { sessionName: selectedSessionRef.current?.name || selectedSessionRef.current?.title || '' });
                 useAppStore.getState().refreshSidebar();
                 tagSessionAgent(sessionId, selectedAgentRef.current?.id || 'soulmate');
+                // Auto-name new session with first 20 chars of first user message
+                setMessages(prev => {
+                  const firstUserMsg = prev.find(m => m.role === 'user');
+                  const autoName = firstUserMsg?.parts.find((p: { type: string; text?: string }) => p.type === 'text')?.text?.slice(0, 20) || '';
+                  if (autoName) {
+                    fetch(`${getApiBaseUrl()}/api/sessions/${sessionId}`, {
+                      method: 'PATCH',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ title: autoName }),
+                    }).then(() => useAppStore.getState().refreshSidebar()).catch(() => {});
+                  }
+                  return prev; // no state change
+                });
               }
               if (sessionId && currentSessionId && sessionId !== currentSessionId) return;
               setMessages(prev => {
@@ -516,9 +529,22 @@ function useAcpWebSocket(params: {
                   const updated = { id: sessionId, name: '', platform: 'hermes' } as Session;
                   setSelectedSession(updated);
                   selectedSessionRef.current = updated;
-                  useAppStore.getState().setActiveSession(sessionId, null, { sessionName: '' });
+                  useAppStore.getState().setActiveSession(sessionId, null, { sessionName: selectedSessionRef.current?.name || selectedSessionRef.current?.title || '' });
                   useAppStore.getState().refreshSidebar();
                   tagSessionAgent(sessionId, selectedAgentRef.current?.id || 'soulmate');
+                  // Auto-name new session with first 20 chars of first user message
+                  setMessages(prev => {
+                    const firstUserMsg = prev.find(m => m.role === 'user');
+                    const autoName = firstUserMsg?.parts.find((p: { type: string; text?: string }) => p.type === 'text')?.text?.slice(0, 20) || '';
+                    if (autoName) {
+                      fetch(`${getApiBaseUrl()}/api/sessions/${sessionId}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ title: autoName }),
+                      }).then(() => useAppStore.getState().refreshSidebar()).catch(() => {});
+                    }
+                    return prev; // no state change
+                  });
                 }
                 setMessages(prev => {
                   const last = prev[prev.length - 1];

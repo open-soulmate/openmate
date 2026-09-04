@@ -114,8 +114,37 @@ async def ws_acp_endpoint(client_ws: WebSocket):
         await client_ws.close()
         return
 
-    # 先等newSession确定agent_id，再启动子进程
-    # 初始化消息暂存，等newSession到了一起发
+    # 立即回复 initialize（代理响应，不含具体 agent 信息）
+    await _send_acp(client_ws, {
+        "jsonrpc": "2.0",
+        "id": init_msg.get("id"),
+        "result": {
+            "protocolVersion": 1,
+            "agentInfo": {"name": "openmate-proxy", "version": "0.1.0"},
+            "agentCapabilities": {
+                "promptCapabilities": {},
+                "sessionCapabilities": {"fork": {}, "list": {}, "resume": {}}
+            },
+        }
+    })
+    logger.info(f"[ACP] initialize handshake OK for user {user_id}")
+
+    # 立即回复 initialize（代理响应，让前端继续发 session/new）
+    await _send_acp(client_ws, {
+        "jsonrpc": "2.0",
+        "id": init_msg.get("id"),
+        "result": {
+            "protocolVersion": 1,
+            "agentInfo": {"name": "openmate-proxy", "version": "0.1.0"},
+            "agentCapabilities": {
+                "promptCapabilities": {},
+                "sessionCapabilities": {"fork": {}, "list": {}, "resume": {}}
+            },
+        }
+    })
+    logger.info(f"[ACP] initialize handshake OK for user {user_id}")
+
+    # 初始化消息暂存，等session/new到了一起发
     buffered_msgs = [init_msg]
     
     # 等session/new（或newSession兼容旧前端）
