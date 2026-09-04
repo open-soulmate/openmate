@@ -175,7 +175,7 @@ export function SwipeablePanels({ children, isHomePage }: SwipeablePanelsProps) 
       {/* Content area with swipe gesture */}
       <div
         className={cn(
-          "flex-1 min-h-0 overflow-auto",
+          "flex-1 min-h-0 overflow-hidden flex flex-col",
           swipeDir === "left" && "animate-swipe-left",
           swipeDir === "right" && "animate-swipe-right",
         )}

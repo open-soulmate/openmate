@@ -12,6 +12,7 @@ import asyncio
 import json
 import logging
 import os
+import re
 from uuid import UUID
 
 import jwt
@@ -148,19 +149,36 @@ async def ws_acp_endpoint(client_ws: WebSocket):
     route = AGENT_ROUTES.get(agent_id, DEFAULT_ROUTE)
     logger.info(f"[ACP] user {user_id} → agent {agent_id} → {route['cmd']}")
 
-    # 启动Agent子进程
+    # 启动Agent子进程（Hermes需要用pty模式，因为hermes acp的asyncio不支持非TTY stdin）
     proc = None
+    use_pty = agent_id == "hermes"
     try:
-        proc = await asyncio.create_subprocess_exec(
-            *route["cmd"],
-            stdin=asyncio.subprocess.PIPE,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-            cwd=route.get("cwd"),
-        )
-        # 增大 readline 限制（某些 agent 输出超长单行，如 opencode）
-        proc.stdout._limit = 1024 * 1024  # 1MB
-        logger.info(f"[ACP] Started {agent_id} subprocess (pid={proc.pid})")
+        if use_pty:
+            import pty, termios, tty as tty_mod
+            master_fd, slave_fd = pty.openpty()
+            # 禁用 echo 和行缓冲，防止输入被回显到 stdout
+            attrs = termios.tcgetattr(slave_fd)
+            attrs[3] &= ~termios.ECHO & ~termios.ICANON  # lflag: 关闭 ECHO 和 CANONICAL
+            termios.tcsetattr(slave_fd, termios.TCSANOW, attrs)
+            proc = await asyncio.create_subprocess_exec(
+                *route["cmd"],
+                stdin=slave_fd,
+                stdout=slave_fd,
+                stderr=slave_fd,
+                cwd=route.get("cwd"),
+            )
+            os.close(slave_fd)  # 子进程已fork，关闭slave端
+        else:
+            proc = await asyncio.create_subprocess_exec(
+                *route["cmd"],
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                cwd=route.get("cwd"),
+            )
+            # 增大 readline 限制（某些 agent 输出超长单行，如 opencode）
+            proc.stdout._limit = 1024 * 1024  # 1MB
+        logger.info(f"[ACP] Started {agent_id} subprocess (pid={proc.pid}, pty={use_pty})")
     except Exception as e:
         logger.error(f"[ACP] Failed to start {agent_id}: {e}")
         await _send_acp(client_ws, {"jsonrpc": "2.0", "id": session_msg.get("id"), "error": {"code": -32603, "message": f"Agent {agent_id} unavailable: {e}"}})
@@ -171,12 +189,14 @@ async def ws_acp_endpoint(client_ws: WebSocket):
     # 注意：子进程（ACP SDK）期望 initialize params 里有 protocolVersion
     try:
         for msg in buffered_msgs:
-            # 注入 protocolVersion 到 initialize 的 params
             if msg.get("method") == "initialize":
                 msg.setdefault("params", {})["protocolVersion"] = 1
             _msg = json.dumps(msg, ensure_ascii=False)
-            proc.stdin.write((_msg + "\n").encode())
-            await proc.stdin.drain()
+            if use_pty:
+                os.write(master_fd, (_msg + "\n").encode())
+            else:
+                proc.stdin.write((_msg + "\n").encode())
+                await proc.stdin.drain()
     except Exception as e:
         logger.error(f"[ACP] Failed to forward initial messages: {e}")
         proc.terminate()
@@ -189,48 +209,77 @@ async def ws_acp_endpoint(client_ws: WebSocket):
         try:
             while True:
                 raw = await client_ws.receive_text()
-                proc.stdin.write((raw + "\n").encode())
-                await proc.stdin.drain()
+                if use_pty:
+                    os.write(master_fd, (raw + "\n").encode())
+                else:
+                    proc.stdin.write((raw + "\n").encode())
+                    await proc.stdin.drain()
         except (WebSocketDisconnect, ConnectionError):
             pass
         except Exception as e:
             logger.debug(f"[{user_id}] ws_to_stdin: {e}")
         finally:
             try:
-                proc.stdin.close()
+                if use_pty:
+                    os.close(master_fd)
+                else:
+                    proc.stdin.close()
             except Exception:
                 pass
+
+    # ANSI 转义码清理正则
+    ansi_escape = re.compile(r'\x1b\[[0-9;]*[a-zA-Z]|\x1b\].*?\x07|\r')
+
+    async def _process_line(msg: str, init_ids: set, agent_id: str, ws: WebSocket):
+        """解析单行 JSON-RPC 消息并转发给客户端"""
+        # 跳过非 JSON 行（某些 agent 的 banner/版本信息）
+        try:
+            parsed = json.loads(msg)
+        except (json.JSONDecodeError, ValueError):
+            logger.debug(f"[{agent_id}] skip non-JSON: {msg[:100]}")
+            return
+        # 过滤 subprocess 的 initialize 响应（Proxy 已经回复过）
+        if parsed.get("id") in init_ids and "result" in parsed:
+            logger.debug(f"[{agent_id}] skip subprocess initialize response (id={parsed['id']})")
+            init_ids.discard(parsed["id"])
+            return
+        # 记录并转发给客户端
+        logger.info(f"[{agent_id}] → client: id={parsed.get('id')} method={parsed.get('method')} has_result={'result' in parsed}")
+        await ws.send_text(msg)
 
     async def stdout_to_ws():
         """subprocess stdout → WebSocket（过滤掉 subprocess 的 initialize 响应）"""
         # 只跟踪 initialize 的 request id（不包括 session/new 等其他 buffered 消息）
-        init_ids: set = set()
+        init_ids: set = set()  # type: ignore
         for m in buffered_msgs:
             if m.get("method") == "initialize":
                 init_ids.add(m.get("id"))
         logger.info(f"[{agent_id}] initialize request ids to filter: {init_ids}")
+        loop = asyncio.get_event_loop()
+        line_buf = ""  # pty 模式下的行缓冲
         try:
             while True:
-                line = await proc.stdout.readline()
-                if not line:
-                    break
-                msg = line.decode().strip()
-                if not msg:
-                    continue
-                # 跳过非 JSON 行（某些 agent 的 banner/版本信息，如 openclaw）
-                try:
-                    parsed = json.loads(msg)
-                except (json.JSONDecodeError, ValueError):
-                    logger.debug(f"[{agent_id}] skip non-JSON: {msg[:100]}")
-                    continue
-                # 过滤 subprocess 的 initialize 响应（Proxy 已经回复过）
-                if parsed.get("id") in init_ids and "result" in parsed:
-                    logger.debug(f"[{agent_id}] skip subprocess initialize response (id={parsed['id']})")
-                    init_ids.discard(parsed["id"])
-                    continue
-                # 记录转发给客户端的每条消息
-                logger.info(f"[{agent_id}] → client: id={parsed.get('id')} method={parsed.get('method')} has_result={'result' in parsed}")
-                await client_ws.send_text(msg)
+                if use_pty:
+                    # pty模式：用run_in_executor避免阻塞
+                    raw = await loop.run_in_executor(None, os.read, master_fd, 65536)
+                    if not raw:
+                        break
+                    # 清理 ANSI 转义码和 \r
+                    decoded = ansi_escape.sub("", raw.decode(errors="replace"))
+                    line_buf += decoded
+                    # 按行分割，最后一段可能不完整，保留在 buffer 里
+                    while "\n" in line_buf:
+                        line, line_buf = line_buf.split("\n", 1)
+                        msg = line.strip()
+                        if msg:
+                            await _process_line(msg, init_ids, agent_id, client_ws)
+                else:
+                    line = await proc.stdout.readline()
+                    if not line:
+                        break
+                    msg = line.decode().strip()
+                    if msg:
+                        await _process_line(msg, init_ids, agent_id, client_ws)
         except (WebSocketDisconnect, ConnectionError):
             pass
         except Exception as e:

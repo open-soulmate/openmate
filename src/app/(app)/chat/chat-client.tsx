@@ -249,8 +249,8 @@ function useAcpWebSocket(params: {
     return state;
   }, []);
 
-  // 发送用户消息到指定会话的 ACP 连接
-  const sendAcpPrompt = useCallback(async (sessionId: string, text: string) => {
+  // 发送用户消息到指定会话的 ACP 连接（支持多模态：文本+图片+文件）
+  const sendAcpPrompt = useCallback(async (sessionId: string, text: string, attachments?: MessagePart[]) => {
     const state = getSessionState(sessionId);
     // 等待 ACP 握手完成
     if (state.acpReady) await state.acpReady;
@@ -262,11 +262,20 @@ function useAcpWebSocket(params: {
     // 记录 prompt RPC id，响应回来时知道是 prompt 完成
     state.promptRpcId = id;
     state.pendingRequests.set(id, { resolve: () => {}, reject: () => {} });
+    // 构建多模态 prompt 内容（文本 + 图片 + 文件）
+    const promptParts: Array<Record<string, unknown>> = [{ type: 'text', text }];
+    if (attachments && attachments.length > 0) {
+      for (const att of attachments) {
+        if (att.type === 'image' && att.data) {
+          promptParts.push({ type: 'image', data: att.data, mimeType: att.mime_type || 'image/png' });
+        }
+      }
+    }
     ws.send(JSON.stringify({
       jsonrpc: '2.0',
       id,
       method: 'session/prompt',
-      params: { sessionId: sid, messageId, prompt: [{ type: 'text', text }] },
+      params: { sessionId: sid, messageId, prompt: promptParts },
     }));
     // 不再用 setTimeout 删除 pending——等响应回来再处理
   }, [getSessionState]);
@@ -1133,7 +1142,7 @@ export function ChatClient() {
   };
 
   // 公共 WS 等待函数：连接建立后自动发送消息
-  const waitForConnection = useCallback((sessionId: string, messageText: string) => {
+  const waitForConnection = useCallback((sessionId: string, messageText: string, attachments?: MessagePart[]) => {
     let spWaited = 0; // 已等待毫秒数
     const spWaitConnect = setInterval(() => {
       spWaited += 500; // 每500ms检查一次
@@ -1144,7 +1153,7 @@ export function ChatClient() {
         // 用迁移后的 sessionId 发送
         const activeSid = useAppStore.getState().activeSessionId;
         const sendId = activeSid && wsMapRef.current.has(activeSid) ? activeSid : sessionId;
-        sendAcpPrompt(sendId, messageText);
+        sendAcpPrompt(sendId, messageText, attachments);
       } else if (spWaited >= 15000) {
         // 超时15秒，放弃并提示用户
         clearInterval(spWaitConnect);
@@ -1476,12 +1485,15 @@ export function ChatClient() {
                   const newId = `temp-${Date.now()}`;
                   const newSession = { id: newId, name: text.slice(0, 30) || '新会话', platform: 'hermes', agentId: spAgentId, createdAt: new Date().toISOString() } as Session;
                   // 更新 store：setActiveSession 是唯一的 activeSessionId 来源
-                  useAppStore.getState().setActiveSession(newId, spAgentId === 'soulmate' ? null : spAgentId, { agentName: agent?.name || spAgentId });
+                  useAppStore.getState().setActiveSession(newId, spAgentId === 'soulmate' ? null : spAgentId, { agentName: agent?.name || spAgentId, sessionName: text.slice(0, 30) || '新会话' });
                   // 把新 session 加到侧边栏的 agent sessions 列表里
                   useAppStore.getState().setSidebarAgents((prev: AgentInfo[]) => prev.map(a =>
                     a.id === spAgentId ? { ...a, sessions: [newSession, ...a.sessions] } : a
                   ));
                   currentSessionId = newId;
+                  // 同步设置 selectedSession，让 header 标题立即更新
+                  setSelectedSession(newSession);
+                  selectedSessionRef.current = newSession;
                   // 同步更新 ref，让 messages 计算在当前渲染就能拿到新 sessionId
                   pendingSessionIdRef.current = newId;
                 }
@@ -1492,13 +1504,13 @@ export function ChatClient() {
                 streamingSessionIdRef.current = selectedSession?.id || null;
                 const spWs = wsMapRef.current.get(currentSessionId);
                 if (spWs?.readyState === WebSocket.OPEN) {
-                  sendAcpPrompt(currentSessionId, messageText);
+                  sendAcpPrompt(currentSessionId, messageText, attachments);
                 } else {
                   // No WS exists — create ACP connection now
                   const spAgentId2 = useAppStore.getState().activeAgentId || 'soulmate';
                   connectSession(currentSessionId, spAgentId2);
                   // 等待 WS 连接就绪，使用公共等待函数
-                  waitForConnection(currentSessionId, messageText);
+                  waitForConnection(currentSessionId, messageText, attachments);
                 }
               }}
               isLoading={loading}
