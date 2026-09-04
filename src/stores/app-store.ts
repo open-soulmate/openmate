@@ -264,6 +264,8 @@ interface AppState {
   activeAgentDescription: string | null;
   activeSessionName: string | null;
   setActiveSession: (sessionId: string | null, agentId: string | null, meta?: { agentIcon?: string; agentName?: string; agentDescription?: string; sessionName?: string }) => void;
+  // 只设置 activeAgentId，不影响 activeSessionId（用于 toggleAgent 展开/折叠侧边栏）
+  setActiveAgentId: (agentId: string | null) => void;
 
   // Session details (shared between chat and right panel workspace)
   sessionDetails: {
@@ -445,6 +447,9 @@ export const useAppStore = create<AppState>((set, get) => ({
       activeAgentDescription: meta?.agentDescription ?? null,
       activeSessionName: meta?.sessionName ?? null,
     }),
+  // 只设置 activeAgentId，不触碰 activeSessionId（toggleAgent 专用）
+  setActiveAgentId: (agentId) =>
+    set({ activeAgentId: agentId }),
 
   // Session details
   sessionDetails: null,

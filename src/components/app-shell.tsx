@@ -305,8 +305,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSidebarAgents((prev: AgentInfo[]) => prev.map(a =>
       a.id === agentId ? { ...a, expanded: !a.expanded } : a
     ));
-    // 点击 agent 标题时，同时设置 activeAgentId（让 selectedAgentRef 更新）
-    useAppStore.getState().setActiveSession(null, agentId === 'soulmate' ? null : agentId, {});
+    // 点击 agent 标题时，只设置 activeAgentId，不设置 activeSessionId
+    // 避免触发 chat-client 的 useEffect 自动创建 WebSocket 连接
+    const effectiveAgentId = agentId === 'soulmate' ? null : agentId;
+    useAppStore.getState().setActiveAgentId(effectiveAgentId);
   }, []);
 
   // Toggle source group expand

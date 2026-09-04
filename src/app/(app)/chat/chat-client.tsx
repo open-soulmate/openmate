@@ -272,6 +272,13 @@ function useAcpWebSocket(params: {
 
   // Connect a single session with its own WebSocket
   const connectSession = useCallback((sessionId: string, agentId: string) => {
+    // 调试日志：追踪谁在调用 connectSession
+    console.log(`[ACP] connectSession called: sessionId=${sessionId}, agentId=${agentId}`);
+    // 防止无效 sessionId 创建无用 WebSocket 连接
+    if (!sessionId || sessionId === 'unknown') {
+      console.warn(`[ACP] connectSession 拒绝: 无效 sessionId="${sessionId}"`);
+      return;
+    }
     if (wsMapRef.current.has(sessionId)) return; // Already connected
 
     const state = getSessionState(sessionId);
@@ -1047,9 +1054,10 @@ export function ChatClient() {
         return;
       }
     }
-    // Fallback: create minimal objects from store data (always, not just when no session selected)
-    if (storeAgentName) {
-      const minimalSession: Session = { id: activeSessionIdFromStore || '', name: storeSessionName || '', platform: 'hermes' };
+    // Fallback: create minimal objects from store data (only when we have a valid sessionId)
+    // 不要在 activeSessionId 为空时创建连接——这会导致 agent_id="unknown" 的无效 WebSocket
+    if (storeAgentName && activeSessionIdFromStore) {
+      const minimalSession: Session = { id: activeSessionIdFromStore, name: storeSessionName || '', platform: 'hermes' } as Session;
       const minimalAgent: AgentInfo = {
         id: activeAgentIdFromStore || 'unknown',
         name: storeAgentName,
