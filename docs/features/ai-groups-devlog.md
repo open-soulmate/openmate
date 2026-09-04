@@ -84,11 +84,32 @@
 
 ---
 
-## Step 3: 实现群消息 WebSocket
+## Step 3: 实现群消息 WebSocket ✅ 完成
+
+### 实现内容
+- 创建 `acp-proxy/ws_group.py` (447行)
+- WebSocket 路由: `/ws/group/{group_id}?token=xxx`
+- JWT 认证（复用 ws_chat.py 的密钥）
+- 房间管理：每个 group_id 一个房间，连接自动加入/离开
+- 消息广播：同群组所有客户端实时收到消息
+- 消息持久化：存入 OpenSoul discussion_messages 表
+- 消息类型：user_message, agent_message, system_message, discussion_round, task_update, typing
+
+### 测试结果
+- [x] WS 连接 + JWT 认证 ✅
+- [x] 消息广播（两个客户端都收到） ✅
+- [x] 消息持久化 ✅
+
+### 提交
+- `feat: 群组WebSocket — ws_group.py消息广播+JWT认证+消息持久化+房间管理`
+
+---
+
+## Step 4: 前端群聊 UI 接入 WebSocket
 
 ### 状态：待开始
 
 ### 目标
-- 创建 `/ws/group` WebSocket 端点
-- 支持群消息实时推送
-- 前端接入 WS 消息流
+- 前端 store 接入 ws_group WebSocket
+- 群聊消息实时显示
+- 用户发送消息通过 WS

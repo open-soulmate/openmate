@@ -97,6 +97,11 @@ interface AIGroupsState {
   loading: boolean;
   sendingMessage: boolean;
 
+  // WebSocket 连接管理
+  wsGroup: WebSocket | null;        // 当前群组的 WebSocket 连接实例
+  wsConnected: boolean;             // WebSocket 连接状态
+  wsTypingUsers: string[];          // 正在输入的用户列表
+
   // Create group
   showCreate: boolean;
   newName: string;
@@ -171,6 +176,12 @@ interface AIGroupsState {
   setScoreCapability: (capability: string) => void;
   setScorerAgentId: (id: string) => void;
 
+  // WebSocket 连接管理 actions
+  connectGroupWS: (groupId: string) => void;         // 建立群组 WS 连接
+  disconnectGroupWS: () => void;                      // 断开群组 WS 连接
+  sendGroupMessage: (content: string, intent?: string) => void; // 通过 WS 发送消息
+  addMessage: (msg: GroupMessage) => void;            // 添加单条消息到列表
+
   // API actions
   fetchGroups: () => Promise<void>;
   selectGroup: (group: AIGroup) => Promise<void>;
@@ -192,6 +203,9 @@ export const useAIGroupsStore = create<AIGroupsState>((set, get) => ({
   messages: [],
   loading: false,
   sendingMessage: false,
+  wsGroup: null,              // 初始无 WebSocket 连接
+  wsConnected: false,         // 初始未连接
+  wsTypingUsers: [],          // 初始无输入用户
   showCreate: false,
   newName: '',
   newDesc: '',
@@ -248,6 +262,209 @@ export const useAIGroupsStore = create<AIGroupsState>((set, get) => ({
   setScoreCapability: (capability) => set({ scoreCapability: capability }),
   setScorerAgentId: (id) => set({ scorerAgentId: id }),
 
+  // ── WebSocket 连接管理 ──────────────────────────────────────────
+  
+  /**
+   * 建立群组 WebSocket 连接
+   * @param groupId 要连接的群组 ID
+   */
+  connectGroupWS: (groupId: string) => {
+    const { disconnectGroupWS } = get();
+    
+    // 先断开已有连接（切换群组时）
+    disconnectGroupWS();
+
+    // 构建 WebSocket URL：从 API base URL 替换协议和端口
+    const apiBase = getApiBaseUrl();                    // e.g. http://localhost:8090
+    const wsBase = apiBase
+      .replace(/^http/, 'ws')                          // http → ws，https → wss
+      .replace(/:8090/, ':8092');                      // 8090 → 8092（ACP Proxy 端口）
+    const token = getToken() || '';
+    const wsUrl = `${wsBase}/ws/group/${groupId}?token=${token}`;
+
+    console.log('[WS] 正在连接群组 WebSocket:', wsUrl);
+    const ws = new WebSocket(wsUrl);
+
+    // 连接建立成功
+    ws.onopen = () => {
+      console.log('[WS] 群组 WebSocket 已连接，群组:', groupId);
+      set({ wsConnected: true });
+    };
+
+    // 接收服务端消息
+    ws.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        const { type, data } = msg;
+        console.log('[WS] 收到消息:', type, data);
+
+        switch (type) {
+          // 用户消息（其他用户或自己发送后回显）
+          case 'user_message': {
+            const newMsg: GroupMessage = {
+              id: data.id || `ws-user-${Date.now()}`,
+              role: 'user',
+              content: data.content || '',
+              timestamp: new Date(data.timestamp || Date.now()),
+              agent_id: data.agent_id,
+              agent_name: data.agent_name || data.agent_id,
+              target: data.target || 'all',
+              intent: data.intent as GroupMessage['intent'],
+            };
+            get().addMessage(newMsg);
+            break;
+          }
+
+          // Agent 回复消息
+          case 'agent_message': {
+            const agentMsg: GroupMessage = {
+              id: data.id || `ws-agent-${Date.now()}`,
+              role: 'agent',
+              agent_id: data.agent_id,
+              agent_name: data.agent_name || data.agent_id,
+              agent_role: data.agent_role || 'executor',
+              content: data.content || '',
+              timestamp: new Date(data.timestamp || Date.now()),
+              intent: data.intent as GroupMessage['intent'],
+            };
+            get().addMessage(agentMsg);
+            break;
+          }
+
+          // 系统消息（任务状态变更、讨论轮次等）
+          case 'system_message': {
+            const sysMsg: GroupMessage = {
+              id: data.id || `ws-sys-${Date.now()}`,
+              role: 'system' as any,
+              content: data.content || data.message || '',
+              timestamp: new Date(data.timestamp || Date.now()),
+            };
+            get().addMessage(sysMsg);
+            break;
+          }
+
+          // 讨论轮次更新
+          case 'discussion_round': {
+            const roundMsg: GroupMessage = {
+              id: data.id || `ws-round-${Date.now()}`,
+              role: 'system' as any,
+              content: `🔄 讨论第 ${data.round_num || '?'} 轮 — ${data.summary || ''}`,
+              timestamp: new Date(data.timestamp || Date.now()),
+            };
+            get().addMessage(roundMsg);
+            break;
+          }
+
+          // 任务状态更新
+          case 'task_update': {
+            const taskMsg: GroupMessage = {
+              id: data.id || `ws-task-${Date.now()}`,
+              role: 'system' as any,
+              content: `📋 任务更新: ${data.status || ''} — ${data.message || ''}`,
+              timestamp: new Date(data.timestamp || Date.now()),
+            };
+            get().addMessage(taskMsg);
+            break;
+          }
+
+          // 正在输入指示器
+          case 'typing': {
+            const userId = data.agent_id || data.user_id || '';
+            if (userId) {
+              set((s) => {
+                // 防止重复添加
+                if (s.wsTypingUsers.includes(userId)) return s;
+                return { wsTypingUsers: [...s.wsTypingUsers, userId] };
+              });
+              // 3 秒后自动移除输入状态
+              setTimeout(() => {
+                set((s) => ({
+                  wsTypingUsers: s.wsTypingUsers.filter((u) => u !== userId),
+                }));
+              }, 3000);
+            }
+            break;
+          }
+
+          // 连接确认
+          case 'connected': {
+            console.log('[WS] 服务端确认连接:', data);
+            set({ wsConnected: true });
+            break;
+          }
+
+          // 消息确认回执（可忽略或用于更新消息状态）
+          case 'message_ack': {
+            console.log('[WS] 消息已确认:', data);
+            break;
+          }
+
+          default:
+            console.log('[WS] 未知消息类型:', type, data);
+        }
+      } catch (e) {
+        console.error('[WS] 解析消息失败:', e, event.data);
+      }
+    };
+
+    // 连接关闭
+    ws.onclose = (event) => {
+      console.log('[WS] WebSocket 已关闭:', event.code, event.reason);
+      set({ wsGroup: null, wsConnected: false });
+    };
+
+    // 连接错误
+    ws.onerror = (event) => {
+      console.error('[WS] WebSocket 错误:', event);
+      set({ wsGroup: null, wsConnected: false });
+    };
+
+    // 保存连接实例
+    set({ wsGroup: ws });
+  },
+
+  /**
+   * 断开群组 WebSocket 连接
+   */
+  disconnectGroupWS: () => {
+    const { wsGroup } = get();
+    if (wsGroup) {
+      console.log('[WS] 正在断开 WebSocket 连接');
+      wsGroup.close(1000, '用户切换群组或离开页面');
+    }
+    set({ wsGroup: null, wsConnected: false, wsTypingUsers: [] });
+  },
+
+  /**
+   * 通过 WebSocket 发送群组消息
+   * @param content 消息内容
+   * @param intent 消息意图（可选，如 claim/suggest/refer 等）
+   */
+  sendGroupMessage: (content: string, intent?: string) => {
+    const { wsGroup, wsConnected } = get();
+    if (!wsGroup || !wsConnected) {
+      console.error('[WS] 无法发送消息：WebSocket 未连接');
+      return;
+    }
+    // 构建发送消息体
+    const payload = {
+      type: 'message',
+      content,
+      intent: intent || 'comment',
+      agent_id: 'user',      // 标识消息来自人类用户
+    };
+    console.log('[WS] 发送消息:', payload);
+    wsGroup.send(JSON.stringify(payload));
+  },
+
+  /**
+   * 添加单条消息到消息列表（供 WebSocket 回调使用）
+   * @param msg 要添加的消息对象
+   */
+  addMessage: (msg: GroupMessage) => {
+    set((s) => ({ messages: [...s.messages, msg] }));
+  },
+
   // API actions
   fetchGroups: async () => {
     const { selectedGroup } = get();
@@ -293,6 +510,9 @@ export const useAIGroupsStore = create<AIGroupsState>((set, get) => ({
         });
       });
       set({ messages: msgs });
+
+      // 建立该群组的 WebSocket 实时连接
+      get().connectGroupWS(group.id);
     } catch (e) { console.error(e); }
   },
 
@@ -313,8 +533,10 @@ export const useAIGroupsStore = create<AIGroupsState>((set, get) => ({
 
   deleteGroup: async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    await fetch(`${getApiBaseUrl()}/api/ai-groups/${id}`, { method: 'DELETE', headers: authHeaders() });
+    // 删除当前选中群组时断开 WebSocket
     const { selectedGroup } = get();
+    if (selectedGroup?.id === id) get().disconnectGroupWS();
+    await fetch(`${getApiBaseUrl()}/api/ai-groups/${id}`, { method: 'DELETE', headers: authHeaders() });
     if (selectedGroup?.id === id) set({ selectedGroup: null, messages: [] });
     get().fetchGroups();
   },
