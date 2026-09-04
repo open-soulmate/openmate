@@ -1,5 +1,9 @@
 "use client";
 import { Plus, Trash2 } from "lucide-react";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 import { TerminalPanel } from "@/components/terminal-panel";
 import { BottomNav } from "@/components/bottom-nav";
@@ -122,6 +126,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const agents = useAppStore((s) => s.sidebarAgents) as AgentInfo[];
   const setSidebarAgents = useAppStore((s) => s.setSidebarAgents);
   const [clearedUnreads, setClearedUnreads] = useState<Set<string>>(new Set());
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null); // 删除确认弹框目标
 
   // Clear unread for a session (called on click)
   const clearSessionUnread = useCallback((sessionId: string) => {
@@ -456,17 +461,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             router.push('/chat?new=' + Date.now());
                           }}
                           onDeleteSession={async (sessionId) => {
-                            if (!confirm(t('chat.deleteSessionConfirm', '确定删除此会话？'))) return;
-                            try {
-                              const r = await fetch(`${getApiBaseUrl()}/api/sessions/${sessionId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${getToken()}` } });
-                              if (r.ok) {
-                                setSidebarAgents((prev: AgentInfo[]) => prev.map(a => ({
-                                  ...a,
-                                  sessions: a.sessions.filter(s => s.id !== sessionId),
-                                  sourceGroups: a.sourceGroups?.map(g => ({ ...g, sessions: g.sessions.filter(s => s.id !== sessionId) })).filter(g => g.sessions.length > 0),
-                                })));
-                              }
-                            } catch (e) { console.error('Delete session failed:', e); }
+                            setDeleteTargetId(sessionId);
                           }}
                           search={query}
                           className="group-data-[collapsible=icon]:hidden"
@@ -527,6 +522,33 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* Bottom navigation bar — full screen width */}
       <BottomNav totalUnread={totalUnread} onOpenConversations={() => { if (isMobile) { setMobileSidebarOpen(true); } else { toggle(); } setRightPanelOpen(false); }} />
       </EChartsThemeProvider>
+
+      {/* 删除会话确认弹框 */}
+      <AlertDialog open={!!deleteTargetId} onOpenChange={(open) => { if (!open) setDeleteTargetId(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{t('chat.deleteSessionConfirm', '确定删除此会话？')}</AlertDialogTitle>
+            <AlertDialogDescription>删除后不可恢复</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>取消</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (!deleteTargetId) return;
+              try {
+                const r = await fetch(`${getApiBaseUrl()}/api/sessions/${deleteTargetId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${getToken()}` } });
+                if (r.ok) {
+                  setSidebarAgents((prev: AgentInfo[]) => prev.map(a => ({
+                    ...a,
+                    sessions: a.sessions.filter(s => s.id !== deleteTargetId),
+                    sourceGroups: a.sourceGroups?.map(g => ({ ...g, sessions: g.sessions.filter(s => s.id !== deleteTargetId) })).filter(g => g.sessions.length > 0),
+                  })));
+                }
+              } catch (e) { console.error('Delete session failed:', e); }
+              setDeleteTargetId(null);
+            }}>删除</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
