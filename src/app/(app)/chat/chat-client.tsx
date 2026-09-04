@@ -706,6 +706,8 @@ export function ChatClient() {
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const selectedSessionRef = useRef<Session | null>(null);
+  // 同步追踪当前活跃 sessionId（store 更新要下次渲染才生效，ref 立即生效）
+  const pendingSessionIdRef = useRef<string | null>(null);
   const activeAgentIdFromStore = useAppStore((s) => s.activeAgentId);
 
   // Multi-session helpers
@@ -772,7 +774,9 @@ export function ChatClient() {
 
   // Derived messages for active session (read from store — single source of truth)
   const activeSessionIdFromStore = useAppStore((s) => s.activeSessionId);
-  const messages = activeSessionIdFromStore ? (sessionDataMap.get(activeSessionIdFromStore)?.messages || []) : [];
+  // 优先用 store 值，store 未更新时用 ref 兜底（onSend 里同步设置）
+  const effectiveSessionId = activeSessionIdFromStore || pendingSessionIdRef.current;
+  const messages = effectiveSessionId ? (sessionDataMap.get(effectiveSessionId)?.messages || []) : [];
   // Total unread count across all sessions
   const totalUnread = useMemo(() => {
     let count = 0;
@@ -971,6 +975,8 @@ export function ChatClient() {
   }, [selectedSession]);
 
   const loadHistory = useCallback(async (sessionId: string) => {
+    // 新建的 temp session 不需要加载历史，也不要清空（消息已经在 onSend 里写入了）
+    if (sessionId.startsWith('temp-')) return;
     // ACP sessions (soulmate) store messages in Agent Engine memory, not OpenSoul DB
     // For ACP sessions, just clear messages - the WS will deliver new ones
     const currentAgentId = useAppStore.getState().activeAgentId;
@@ -1465,6 +1471,8 @@ export function ChatClient() {
                     a.id === spAgentId ? { ...a, sessions: [newSession, ...a.sessions] } : a
                   ));
                   currentSessionId = newId;
+                  // 同步更新 ref，让 messages 计算在当前渲染就能拿到新 sessionId
+                  pendingSessionIdRef.current = newId;
                 }
                 updateSessionMessages(currentSessionId, prev => [...prev, userMsg]);
                 setAttachments([]); setLoading(true);
