@@ -105,11 +105,26 @@
 
 ---
 
-## Step 4: 前端群聊 UI 接入 WebSocket
+## Step 4: 前端群聊 UI 接入 WebSocket ✅ 完成
 
-### 状态：待开始
+### 实现内容
+- store 新增：`wsGroup`, `wsConnected`, `wsTypingUsers`
+- 新增 actions：`connectGroupWS`, `disconnectGroupWS`, `sendGroupMessage`, `addMessage`
+- `selectGroup` 自动连接 WS
+- `deleteGroup` 自动断开 WS
+- 消息接收处理：user_message/agent_message/system_message/typing/connected/message_ack
+
+### 提交
+- `feat: 前端群组WebSocket接入 — connectGroupWS/sendGroupMessage/selectGroup自动连接`
+
+---
+
+## Step 5: 群聊 UI 完善
+
+### 状态：进行中
 
 ### 目标
-- 前端 store 接入 ws_group WebSocket
-- 群聊消息实时显示
-- 用户发送消息通过 WS
+- 群聊消息列表使用 WS 实时消息（而非从 tasks 拼接）
+- 用户输入框绑定 sendGroupMessage
+- 连接状态指示器
+- Agent 成员管理 UI 面板

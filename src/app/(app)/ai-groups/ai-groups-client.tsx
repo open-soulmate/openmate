@@ -1,26 +1,29 @@
 'use client';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getApiBaseUrl, getToken } from '@/lib/api-client';
 import { useSidebar } from '@/components/ui/sidebar';
 import { useAppStore } from '@/stores/app-store';
 import { AIGroupsWorkspace } from '@/components/ai-groups-workspace';
 import {
-  Users, Send, Bot, Shield, Zap, User, Loader2, Search,
+  Users, Send, Bot, Shield, Zap, User, Loader2,
   MessageSquare, AtSign,
   Star,
   MessageCircle, Hand, FileText, Lightbulb,
-  Target, ArrowUp, ArrowRight, ArrowDown,
+  Target,
   PanelLeft, Settings, X,
+  Plus, Trash2, Edit3, Check, XIcon,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { useAIGroupsStore, type AgentRole, type GroupMessage, type AIGroup, type DiscussionMessage, type TaskReview } from '@/stores/ai-groups-store';
+import { useAIGroupsStore, type AgentRole, type GroupMessage } from '@/stores/ai-groups-store';
 
+/* ========== 角色配置 ========== */
 const ROLE_ICONS: Record<string, any> = { advisor: Shield, executor: Zap, verifier: Bot, human: User };
 const ROLE_COLORS: Record<string, string> = { advisor: 'text-yellow-400', executor: 'text-blue-400', verifier: 'text-green-400', human: 'text-purple-400' };
 const ROLE_BG_COLORS: Record<string, string> = { advisor: 'bg-yellow-500/20', executor: 'bg-blue-500/20', verifier: 'bg-green-500/20', human: 'bg-purple-500/20' };
 
+/* ========== 意图配置 ========== */
 const INTENT_CONFIG: Record<string, { label: string; color: string; bg: string; icon: any }> = {
   claim: { label: '认领', color: 'text-emerald-400', bg: 'bg-emerald-500/20', icon: Hand },
   suggest: { label: '建议', color: 'text-sky-400', bg: 'bg-sky-500/20', icon: Lightbulb },
@@ -29,12 +32,15 @@ const INTENT_CONFIG: Record<string, { label: string; color: string; bg: string; 
   result: { label: '结果', color: 'text-violet-400', bg: 'bg-violet-500/20', icon: FileText },
   score: { label: '评分', color: 'text-orange-400', bg: 'bg-orange-500/20', icon: Star },
 };
+
+/* ========== Agent 头像颜色池 ========== */
 const AGENT_AVATAR_COLORS = [
   'bg-rose-500/20 text-rose-400', 'bg-sky-500/20 text-sky-400', 'bg-emerald-500/20 text-emerald-400',
   'bg-amber-500/20 text-amber-400', 'bg-violet-500/20 text-violet-400', 'bg-pink-500/20 text-pink-400',
   'bg-teal-500/20 text-teal-400', 'bg-orange-500/20 text-orange-400',
 ];
 
+/** 根据索引获取 Agent 头像背景色 */
 function getAgentAvatarColor(index: number) {
   return AGENT_AVATAR_COLORS[index % AGENT_AVATAR_COLORS.length];
 }
@@ -47,12 +53,7 @@ export default function AIGroupsPage() {
   const rightPanelOpen = useAppStore((s) => s.rightPanelOpen);
   const isMobile = useIsMobile();
 
-  const authHeaders = (): Record<string, string> => {
-    const token = getToken();
-    return token ? { Authorization: `Bearer ${token}` } : {};
-  };
-
-  // Read state from store
+  /* ========== 从 Store 读取状态 ========== */
   const groups = useAIGroupsStore((s) => s.groups);
   const selectedGroup = useAIGroupsStore((s) => s.selectedGroup);
   const messages = useAIGroupsStore((s) => s.messages);
@@ -62,432 +63,88 @@ export default function AIGroupsPage() {
   const setMessages = useAIGroupsStore((s) => s.setMessages);
   const setSendingMessage = useAIGroupsStore((s) => s.setSendingMessage);
   const selectGroup = useAIGroupsStore((s) => s.selectGroup);
-  const activeTaskReview = useAIGroupsStore((s) => s.activeTaskReview);
-  const setActiveTaskReview = useAIGroupsStore((s) => s.setActiveTaskReview);
-  const discussionLoading = useAIGroupsStore((s) => s.discussionLoading);
-  const setDiscussionLoading = useAIGroupsStore((s) => s.setDiscussionLoading);
-  const currentDiscussionId = useAIGroupsStore((s) => s.currentDiscussionId);
-  const setCurrentDiscussionId = useAIGroupsStore((s) => s.setCurrentDiscussionId);
-  const scoringTaskId = useAIGroupsStore((s) => s.scoringTaskId);
-  const setScoringTaskId = useAIGroupsStore((s) => s.setScoringTaskId);
-  const scoreValue = useAIGroupsStore((s) => s.scoreValue);
-  const setScoreValue = useAIGroupsStore((s) => s.setScoreValue);
-  const scoreReason = useAIGroupsStore((s) => s.scoreReason);
-  const setScoreReason = useAIGroupsStore((s) => s.setScoreReason);
-  const scoreCapability = useAIGroupsStore((s) => s.scoreCapability);
-  const setScoreCapability = useAIGroupsStore((s) => s.setScoreCapability);
-  const scorerAgentId = useAIGroupsStore((s) => s.scorerAgentId);
-  const setScorerAgentId = useAIGroupsStore((s) => s.setScorerAgentId);
+  // WS 相关状态
+  const wsConnected = useAIGroupsStore((s) => s.wsConnected);
+  const wsTypingUsers = useAIGroupsStore((s) => s.wsTypingUsers);
+  const sendGroupMessage = useAIGroupsStore((s) => s.sendGroupMessage);
+  // Agent 管理状态
+  const showAddAgent = useAIGroupsStore((s) => s.showAddAgent);
+  const setShowAddAgent = useAIGroupsStore((s) => s.setShowAddAgent);
+  const editingAgent = useAIGroupsStore((s) => s.editingAgent);
+  const setEditingAgent = useAIGroupsStore((s) => s.setEditingAgent);
+  const newAgent = useAIGroupsStore((s) => s.newAgent);
+  const setNewAgent = useAIGroupsStore((s) => s.setNewAgent);
+  const addAgent = useAIGroupsStore((s) => s.addAgent);
 
-  // Local UI state
+  /* ========== 本地 UI 状态 ========== */
   const [showGroupPanel, setShowGroupPanel] = useState(false);
   const [input, setInput] = useState('');
   const [showMention, setShowMention] = useState(false);
   const [mentionFilter, setMentionFilter] = useState('');
   const [mentionIndex, setMentionIndex] = useState(0);
+  // 编辑 Agent 的临时状态
+  const [editName, setEditName] = useState('');
+  const [editRole, setEditRole] = useState('');
+  const [editModel, setEditModel] = useState('');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Close group panel when sidebar or right panel opens on mobile (handles external triggers like bottom nav)
+  /* ========== 副作用：移动端面板互斥 ========== */
   useEffect(() => {
     if (isMobile && showGroupPanel && (sidebarOpen || rightPanelOpen)) {
       setShowGroupPanel(false);
     }
   }, [sidebarOpen, rightPanelOpen, isMobile, showGroupPanel]);
 
+  /* ========== 副作用：消息列表自动滚动到底部 ========== */
   useEffect(() => { scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight }); }, [messages]);
 
+  /* ========== 副作用：自动选择第一个群组 ========== */
+  useEffect(() => {
+    if (!selectedGroup && groups.length > 0) {
+      selectGroup(groups[0]);
+    }
+  }, [selectedGroup, groups, selectGroup]);
+
+  /* ========== 工具函数 ========== */
   const getAgentById = (id?: string) => (selectedGroup?.agents || []).find(a => a.agent_id === id);
 
-  // Discussion API helpers
-  const startDiscussion = async (goal: string) => {
-    if (!selectedGroup) return null;
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/discuss`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ goal, constraints: [], completion_criteria: [] }),
-      });
-      const data = await res.json();
-      return data.task_id as string;
-    } catch (e) {
-      console.error('Failed to start discussion:', e);
-      return null;
-    }
-  };
-
-  const fetchDiscussionMessages = async (taskId: string): Promise<DiscussionMessage[]> => {
-    if (!selectedGroup) return [];
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/discuss/${taskId}/messages`, { headers: authHeaders() });
-      return await res.json();
-    } catch (e) {
-      console.error('Failed to fetch discussion messages:', e);
-      return [];
-    }
-  };
-
-  const submitDiscussionResponse = async (taskId: string, agentId: string, agentName: string, intent: string, content: string) => {
-    if (!selectedGroup) return;
-    try {
-      await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/discuss/${taskId}/respond`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ agent_id: agentId, agent_name: agentName, intent, content }),
-      });
-    } catch (e) {
-      console.error('Failed to submit discussion response:', e);
-    }
-  };
-
-  const finalizeDiscussion = async (taskId: string, assignments: { agent_id: string; subgoal: string }[]) => {
-    if (!selectedGroup) return;
-    try {
-      await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/discuss/${taskId}/decide`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ assignments }),
-      });
-    } catch (e) {
-      console.error('Failed to finalize discussion:', e);
-    }
-  };
-
-  const executeAgentTask = async (taskId: string, agentId: string, goal: string) => {
-    if (!selectedGroup) return null;
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/tasks/${taskId}/execute`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ agent_id: agentId, goal }),
-      });
-      if (!res.ok) return null;
-      return await res.json();
-    } catch (e) {
-      console.error('Failed to execute agent task:', e);
-      return null;
-    }
-  };
-
-  const submitTaskResult = async (taskId: string, result: string) => {
-    if (!selectedGroup) return;
-    try {
-      await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/tasks/${taskId}/review`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ result }),
-      });
-    } catch (e) {
-      console.error('Failed to submit task result:', e);
-    }
-  };
-
-  const submitScore = async (taskId: string, scorerAgentId: string, score: number, reason: string, capability: string) => {
-    if (!selectedGroup) return null;
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/tasks/${taskId}/score`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ scorer_agent_id: scorerAgentId, score, reason, capability }),
-      });
-      return await res.json();
-    } catch (e) {
-      console.error('Failed to submit score:', e);
-      return null;
-    }
-  };
-
-  const isTaskLikeMessage = (text: string): boolean => {
-    const taskPatterns = [
-      /^(请|帮我|帮忙|实现|编写|创建|设计|分析|优化|修复|检查|部署|开发|构建|写一个|做一个)/,
-      /^(please|help|implement|create|design|analyze|optimize|fix|check|deploy|develop|build|write|make)/i,
-      /任务|需求|功能|task|requirement|feature/i,
-    ];
-    return taskPatterns.some(p => p.test(text.trim()));
-  };
-
-  const runDiscussionFlow = async (goal: string) => {
-    if (!selectedGroup) return;
-    setDiscussionLoading(true);
-
-    const taskId = await startDiscussion(goal);
-    if (!taskId) {
-      setDiscussionLoading(false);
-      return;
-    }
-    setCurrentDiscussionId(taskId);
-
-    setMessages(prev => [...prev, {
-      id: `discuss-start-${Date.now()}`, role: 'agent',
-      agent_name: 'System', agent_role: 'executor',
-      content: `📋 讨论已启动 (Task: ${taskId.slice(0, 8)})`,
-      timestamp: new Date(),
-      intent: 'comment' as const,
-    }]);
-
-    const agents = selectedGroup.agents || [];
-    const discussAgents = agents.filter(a => a.role !== 'executor');
-    const executors = agents.filter(a => a.role === 'executor');
-    const discussPool = discussAgents.length > 0 ? discussAgents : agents;
-
-    for (const agent of discussPool) {
-      const discussPrompt = `你是AI群组中的${agent.role}角色"${agent.name}"。群组正在讨论以下任务目标：\n\n"${goal}"\n\n请从你的角色角度给出简短建议（100字以内），说明你认为应该如何完成这个任务。`;
-      const result = await executeAgentTask(taskId, agent.agent_id, discussPrompt);
-      const content = result?.response || `${agent.name}(${agent.role}): 建议按标准流程执行此任务。`;
-      const intent = agent.role === 'advisor' ? 'suggest' as const : 'comment' as const;
-
-      await submitDiscussionResponse(taskId, agent.agent_id, agent.name, intent, content);
-
-      setMessages(prev => [...prev, {
-        id: `discuss-${agent.agent_id}-${Date.now()}`, role: 'agent',
-        agent_id: agent.agent_id, agent_name: agent.name, agent_role: agent.role,
-        content, timestamp: new Date(),
-        intent,
-      }]);
-    }
-
-    let assignments: { agent_id: string; subgoal: string }[] = [];
-    let assignReasoning: string[] = [];
-    try {
-      const smartRes = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/smart-assign`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ goal, constraints: [] }),
-      });
-      if (smartRes.ok) {
-        const smartData = await smartRes.json();
-        assignments = (smartData.assignments || []).map((a: any) => ({
-          agent_id: a.agent_id,
-          subgoal: a.subgoal,
-        }));
-        assignReasoning = smartData.reasoning || [];
-
-        if (smartData.task_tags?.length) {
-          setMessages(prev => [...prev, {
-            id: `smart-tags-${Date.now()}`, role: 'agent',
-            agent_name: 'System', agent_role: 'executor',
-            content: `🏷️ 任务标签: ${smartData.task_tags.join(', ')} | 智能分配: ${assignReasoning.join(' → ')}`,
-            timestamp: new Date(),
-            intent: 'comment' as const,
-          }]);
-        }
-      }
-    } catch (e) {
-      console.warn('Smart assign failed, falling back to all executors:', e);
-    }
-
-    if (assignments.length === 0) {
-      const execAgents = executors.length > 0 ? executors : agents;
-      assignments = execAgents.map(a => ({
-        agent_id: a.agent_id,
-        subgoal: `完成任务中与${a.name}(${a.role})相关的部分`,
-      }));
-    }
-
-    await finalizeDiscussion(taskId, assignments);
-
-    setMessages(prev => [...prev, {
-      id: `assign-${Date.now()}`, role: 'agent',
-      agent_name: 'System', agent_role: 'executor',
-      content: `✅ 讨论结束，${assignments.length}个Agent开始执行任务...`,
-      timestamp: new Date(),
-      intent: 'comment' as const,
-    }]);
-
-    const results: string[] = [];
-    const agentScores: { agent_id: string; name: string; score: number; capability: string; success: boolean }[] = [];
-    for (const assignment of assignments) {
-      const agentInfo = getAgentById(assignment.agent_id);
-      setMessages(prev => [...prev, {
-        id: `executing-${assignment.agent_id}-${Date.now()}`, role: 'agent',
-        agent_id: assignment.agent_id, agent_name: agentInfo?.name || assignment.agent_id,
-        agent_role: agentInfo?.role || 'executor',
-        content: `⏳ 正在执行: ${assignment.subgoal}...`,
-        timestamp: new Date(),
-        intent: 'comment' as const,
-      }]);
-
-      const execResult = await executeAgentTask(taskId, assignment.agent_id, goal);
-      const responseText = execResult?.response || '(无响应)';
-      const execSuccess = execResult?.success ?? false;
-      results.push(`${agentInfo?.name || assignment.agent_id}: ${responseText}`);
-
-      if (execResult?.auto_score != null) {
-        agentScores.push({
-          agent_id: assignment.agent_id,
-          name: agentInfo?.name || assignment.agent_id,
-          score: execResult.auto_score,
-          capability: execResult.capability || '',
-          success: execSuccess,
-        });
-      }
-
-      const scoreBadge = execResult?.auto_score != null ? ` [${execResult.auto_score}/10]` : '';
-      setMessages(prev => {
-        const updated = [...prev];
-        const idx = updated.findIndex(m => m.id === `executing-${assignment.agent_id}-${Date.now()}`);
-        if (idx >= 0) {
-          updated[idx] = { ...updated[idx], content: responseText + scoreBadge, intent: 'result' as const };
-        } else {
-          updated.push({
-            id: `result-${assignment.agent_id}-${Date.now()}`, role: 'agent',
-            agent_id: assignment.agent_id, agent_name: agentInfo?.name || assignment.agent_id,
-            agent_role: agentInfo?.role || 'executor',
-            content: responseText + scoreBadge, timestamp: new Date(),
-            intent: 'result' as const,
-          });
-        }
-        return updated;
-      });
-    }
-
-    const resultContent = results.join('\n\n---\n\n');
-    await submitTaskResult(taskId, resultContent);
-
-    if (agentScores.length > 0) {
-      const avgScore = Math.round(agentScores.reduce((s, a) => s + a.score, 0) / agentScores.length);
-      const scoreLines = agentScores.map(a => `${a.name}: ${a.score}/10 (${a.capability})`).join('\n');
-
-      setMessages(prev => [...prev, {
-        id: `auto-eval-${Date.now()}`, role: 'agent',
-        agent_name: 'Auto-Evaluator', agent_role: 'verifier',
-        content: `📊 自动评分 (平均 ${avgScore}/10)\n${scoreLines}\n能力画像已自动更新`,
-        timestamp: new Date(),
-        intent: 'score' as const,
-      }]);
-
-      setActiveTaskReview({
-        task_id: taskId,
-        result: resultContent,
-        status: 'scored',
-        round: 1,
-        assignments,
-        scores: agentScores.map(a => ({
-          scorer_agent_id: 'auto-scorer',
-          scorer_name: a.name,
-          score: a.score,
-          reason: `自动评分: ${a.success ? '执行成功' : '执行失败'}`,
-          capability: a.capability,
-        })),
-        avg_score: avgScore,
-        discussion_messages: await fetchDiscussionMessages(taskId),
-      });
-    } else {
-      setActiveTaskReview({
-        task_id: taskId,
-        result: resultContent,
-        status: 'reviewing',
-        round: 1,
-        assignments,
-        scores: [],
-        avg_score: 0,
-        discussion_messages: await fetchDiscussionMessages(taskId),
-      });
-    }
-
-    setDiscussionLoading(false);
-    setScoringTaskId(taskId);
-  };
-
-  const handleSubmitScore = async () => {
-    if (!scoringTaskId || !scorerAgentId || !selectedGroup) return;
-
-    const scorer = getAgentById(scorerAgentId);
-    const result = await submitScore(scoringTaskId, scorerAgentId, scoreValue, scoreReason, scoreCapability);
-
-    if (result) {
-      setMessages(prev => [...prev, {
-        id: `score-${scorerAgentId}-${Date.now()}`, role: 'agent',
-        agent_id: scorerAgentId, agent_name: scorer?.name || scorerAgentId,
-        agent_role: scorer?.role || 'verifier',
-        content: `评分: ${scoreValue}/10\n能力维度: ${scoreCapability}\n理由: ${scoreReason}`,
-        timestamp: new Date(),
-        intent: 'score' as const,
-      }]);
-
-      if (activeTaskReview) {
-        const newScores = [...activeTaskReview.scores, {
-          scorer_agent_id: scorerAgentId,
-          scorer_name: scorer?.name || scorerAgentId,
-          score: scoreValue,
-          reason: scoreReason,
-          capability: scoreCapability,
-        }];
-        setActiveTaskReview({
-          ...activeTaskReview,
-          scores: newScores,
-          avg_score: result.avg_score || (newScores.reduce((s, e) => s + e.score, 0) / newScores.length),
-          status: newScores.length >= (selectedGroup.agents?.length || 0) ? 'scored' : 'reviewing',
-        });
-      }
-
-      setScoreReason('');
-      setScoreCapability('');
-      setScorerAgentId('');
-
-      if (activeTaskReview && activeTaskReview.scores.length + 1 >= (selectedGroup.agents?.length || 0)) {
-        setScoringTaskId(null);
-      }
-    }
-  };
-
-  const handleSend = async () => {
-    if (!input.trim() || !selectedGroup || sendingMessage || discussionLoading) return;
+  /* ========== 发送消息（通过 WS） ========== */
+  const handleSend = () => {
     const text = input.trim();
+    if (!text || !selectedGroup || !wsConnected) return;
 
+    // 解析 @mention 目标
     let target = selectedTarget;
     const mentionMatch = text.match(/^@(\S+)\s/);
     if (mentionMatch) {
       const mention = mentionMatch[1];
       if (mention === 'all') target = 'all';
       else {
-        const agent = (selectedGroup.agents || []).find(a => a.name.toLowerCase().includes(mention.toLowerCase()) || a.agent_id === mention);
+        const agent = (selectedGroup.agents || []).find(
+          a => a.name.toLowerCase().includes(mention.toLowerCase()) || a.agent_id === mention
+        );
         if (agent) target = agent.agent_id;
       }
     }
 
+    // 本地添加用户消息到列表
     const userMsg: GroupMessage = {
       id: `msg-${Date.now()}`, role: 'user', content: text,
       timestamp: new Date(), target,
     };
     setMessages(prev => [...prev, userMsg]);
-    setInput(''); setSelectedTarget('all');
 
-    if (target === 'all' && isTaskLikeMessage(text)) {
-      await runDiscussionFlow(text);
-      return;
-    }
+    // 通过 WS 发送给后端
+    sendGroupMessage(text, 'comment');
 
-    setSendingMessage(true);
-    try {
-      const res = await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/tasks`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
-        body: JSON.stringify({ goal: text, target_agent: target }),
-      });
-      const data = await res.json();
-
-      if (data.response) {
-        const targetAgent = target === 'all'
-          ? (selectedGroup.agents || [])[0]
-          : (selectedGroup.agents || []).find(a => a.agent_id === target);
-        setMessages(prev => [...prev, {
-          id: `resp-${Date.now()}`, role: 'agent',
-          agent_id: targetAgent?.agent_id, agent_name: targetAgent?.name || 'Agent',
-          agent_role: targetAgent?.role || 'executor',
-          content: data.response, timestamp: new Date(),
-        }]);
-      }
-      selectGroup(selectedGroup);
-    } catch (e) {
-      setMessages(prev => [...prev, {
-        id: `err-${Date.now()}`, role: 'agent', agent_name: 'System',
-        agent_role: 'executor', content: t('aiGroups.sendFailed'), timestamp: new Date(),
-      }]);
-    }
-    setSendingMessage(false);
+    // 清空输入框
+    setInput('');
+    setSelectedTarget('all');
   };
 
+  /* ========== 输入框 @mention 逻辑 ========== */
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value;
     setInput(val);
@@ -519,7 +176,9 @@ export default function AIGroupsPage() {
     inputRef.current?.focus();
   };
 
+  /* ========== 键盘事件：Enter 发送 / Shift+Enter 换行 / @mention 导航 ========== */
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    // @mention 下拉导航
     if (showMention) {
       const items = [{ name: 'all', agent_id: 'all' }, ...filteredAgentsForMention];
       if (e.key === 'ArrowDown') { e.preventDefault(); setMentionIndex(i => (i + 1) % items.length); }
@@ -528,57 +187,135 @@ export default function AIGroupsPage() {
       else if (e.key === 'Escape') { setShowMention(false); }
       return;
     }
+    // Enter 发送，Shift+Enter 换行
     if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
   };
 
-  // Auto-select first group if none selected
-  useEffect(() => {
-    if (!selectedGroup && groups.length > 0) {
-      selectGroup(groups[0]);
-    }
-  }, [selectedGroup, groups, selectGroup]);
+  /* ========== Agent 编辑操作 ========== */
+  const startEditAgent = (agent: AgentRole) => {
+    setEditingAgent(agent.agent_id);
+    setEditName(agent.name);
+    setEditRole(agent.role);
+    setEditModel(agent.model || '');
+  };
 
+  const cancelEditAgent = () => {
+    setEditingAgent(null);
+    setEditName('');
+    setEditRole('');
+    setEditModel('');
+  };
+
+  const saveEditAgent = async () => {
+    if (!editingAgent || !selectedGroup) return;
+    try {
+      const token = getToken();
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/agents/${editingAgent}`, {
+        method: 'PUT',
+        headers,
+        body: JSON.stringify({ name: editName, role: editRole, model: editModel }),
+      });
+      // 重新加载群组数据
+      selectGroup(selectedGroup);
+      cancelEditAgent();
+    } catch (e) {
+      console.error('更新 Agent 失败:', e);
+    }
+  };
+
+  /* ========== Agent 删除操作 ========== */
+  const deleteAgent = async (agentId: string) => {
+    if (!selectedGroup) return;
+    try {
+      const token = getToken();
+      const headers: Record<string, string> = {};
+      if (token) headers['Authorization'] = `Bearer ${token}`;
+      await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/agents/${agentId}`, {
+        method: 'DELETE',
+        headers,
+      });
+      // 重新加载群组数据
+      selectGroup(selectedGroup);
+    } catch (e) {
+      console.error('删除 Agent 失败:', e);
+    }
+  };
+
+  /* ========== 渲染 ========== */
   return (
     <div className="flex flex-1 flex-col min-h-0 relative">
-      {/* Chat header */}
+      {/* ===== 聊天头部：群组名称 + WS 连接状态 ===== */}
       <div className="h-12 border-b border-border flex items-center px-2 lg:px-4 justify-between shrink-0">
         <div className="flex items-center gap-2">
-          <button onClick={(e) => { e.stopPropagation(); toggleSidebar(); if (isMobile) { setRightPanelOpen(false); setShowGroupPanel(false); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Sidebar">
+          {/* 侧边栏切换按钮 */}
+          <button onClick={(e) => { e.stopPropagation(); toggleSidebar(); if (isMobile) { setRightPanelOpen(false); setShowGroupPanel(false); } }}
+            className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation"
+            aria-label="Toggle Sidebar">
             <PanelLeft className="w-4 h-4" />
           </button>
+          {/* 群组图标和名称 */}
           <Users className="w-4 h-4 text-primary" />
           <span className="font-medium text-xs lg:text-sm">{selectedGroup?.name || t('aiGroups.selectGroup')}</span>
+          {/* Agent 数量徽章 */}
           {selectedGroup && (
             <span className="text-xs text-muted-foreground px-1.5 py-0.5 rounded bg-muted">
               {selectedGroup.agents?.length || 0} Agent
             </span>
           )}
+          {/* @目标指示器 */}
           {selectedTarget !== 'all' && selectedGroup && (
             <span className="text-xs text-primary px-1.5 py-0.5 rounded bg-primary/10">
               @{getAgentById(selectedTarget)?.name || selectedTarget}
             </span>
           )}
+          {/* ===== WS 连接状态指示器 ===== */}
+          <div className="flex items-center gap-1.5 ml-2">
+            {wsConnected ? (
+              <>
+                <span className="relative flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500"></span>
+                </span>
+                <span className="text-[10px] text-green-500 hidden lg:inline">已连接</span>
+              </>
+            ) : (
+              <>
+                <span className="flex h-2.5 w-2.5 rounded-full bg-red-500"></span>
+                <span className="text-[10px] text-red-500 hidden lg:inline">未连接</span>
+              </>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          {/* 群组管理按钮 */}
           {selectedGroup && (
-            <button onClick={(e) => { e.stopPropagation(); setShowGroupPanel(true); if (isMobile) setRightPanelOpen(false); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Group Settings">
+            <button onClick={(e) => { e.stopPropagation(); setShowGroupPanel(true); if (isMobile) setRightPanelOpen(false); }}
+              className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation"
+              aria-label="Group Settings">
               <Settings className="w-4 h-4" />
             </button>
           )}
-          <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); if (isMobile) setShowGroupPanel(false); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
+          {/* 工作区面板切换 */}
+          <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); if (isMobile) setShowGroupPanel(false); }}
+            className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation"
+            aria-label="Toggle Workspace">
             <PanelLeft className="w-4 h-4 scale-x-[-1]" />
           </button>
         </div>
       </div>
 
-      {/* Messages */}
+      {/* ===== 消息列表区域 ===== */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto px-3 lg:px-6 py-4 space-y-4">
+        {/* 未选择群组时的空状态 */}
         {!selectedGroup && (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <MessageSquare className="w-12 h-12 mb-4 opacity-40" />
             <p className="text-xs lg:text-sm">{t("aiGroups.selectOrCreateGroup")}</p>
           </div>
         )}
+        {/* 群组已选但无消息时的欢迎状态 */}
         {selectedGroup && messages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full max-w-md mx-auto text-center">
             <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mb-4">
@@ -586,6 +323,7 @@ export default function AIGroupsPage() {
             </div>
             <h3 className="text-lg font-semibold mb-2">{selectedGroup.name}</h3>
             <p className="text-xs lg:text-sm text-muted-foreground mb-4">{selectedGroup.description || t('aiGroups.multiAgentGroup')}</p>
+            {/* 显示群组中的 Agent 成员 */}
             <div className="flex flex-wrap gap-2 justify-center">
               {(selectedGroup.agents || []).map((a, i) => {
                 const Icon = ROLE_ICONS[a.role] || Bot;
@@ -600,81 +338,109 @@ export default function AIGroupsPage() {
             <p className="text-xs text-muted-foreground mt-6">{t("aiGroups.inputHint")}</p>
           </div>
         )}
+
+        {/* ===== 消息列表渲染 ===== */}
         {messages.map(msg => {
           const agent = msg.role === 'agent' ? getAgentById(msg.agent_id) : null;
           const agentIndex = (selectedGroup?.agents || []).findIndex(a => a.agent_id === msg.agent_id);
-          return (
-            <div key={msg.id} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-              {msg.role === 'agent' && (
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${getAgentAvatarColor(agentIndex >= 0 ? agentIndex : 0)}`}>
-                  {(() => { const Icon = ROLE_ICONS[msg.agent_role || 'executor'] || Bot; return <Icon className="w-4 h-4" />; })()}
-                </div>
-              )}
-              <div className={`max-w-[85%] lg:max-w-[70%] ${msg.role === 'user' ? 'order-first' : ''}`}>
-                {msg.role === 'agent' && (
-                  <div className="flex items-center gap-1.5 mb-1">
-                    <span className="text-xs font-medium">{msg.agent_name || 'Agent'}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${ROLE_BG_COLORS[msg.agent_role || 'executor']} ${ROLE_COLORS[msg.agent_role || 'executor']}`}>
-                      {msg.agent_role || 'executor'}
-                    </span>
-                    {msg.intent && INTENT_CONFIG[msg.intent] && (() => {
-                      const ic = INTENT_CONFIG[msg.intent];
-                      const IntentIcon = ic.icon;
-                      return (
-                        <span className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 ${ic.bg} ${ic.color}`}>
-                          <IntentIcon className="w-2.5 h-2.5" />
-                          {ic.label}
-                        </span>
-                      );
-                    })()}
-                    {msg.target && msg.target !== 'all' && (
-                      <span className="text-[10px] text-muted-foreground">{t("aiGroups.replyTo")} @{msg.target}</span>
-                    )}
-                  </div>
-                )}
-                <div className={`rounded-xl px-2 lg:px-4 py-2.5 text-xs lg:text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-muted rounded-tl-sm'}`}>
-                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
-                  <div className="text-[10px] mt-1.5 opacity-60">
-                    {msg.timestamp.toLocaleTimeString()}
-                    {msg.role === 'user' && msg.target && msg.target !== 'all' && (
-                      <span className="ml-1.5">@{getAgentById(msg.target)?.name || msg.target}</span>
-                    )}
-                  </div>
+
+          /* --- 系统消息：居中显示，灰色小字 --- */
+          if (msg.role === 'system') {
+            return (
+              <div key={msg.id} className="flex justify-center">
+                <div className="bg-muted/50 rounded-full px-3 py-1">
+                  <p className="text-[11px] text-muted-foreground text-center">{msg.content}</p>
                 </div>
               </div>
-              {msg.role === 'user' && (
+            );
+          }
+
+          /* --- 用户消息：靠右 + 背景色 --- */
+          if (msg.role === 'user') {
+            return (
+              <div key={msg.id} className="flex gap-3 justify-end">
+                <div className="max-w-[85%] lg:max-w-[70%]">
+                  <div className="rounded-xl px-2 lg:px-4 py-2.5 text-xs lg:text-sm bg-primary text-primary-foreground rounded-tr-sm">
+                    <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                    <div className="text-[10px] mt-1.5 opacity-60">
+                      {msg.timestamp.toLocaleTimeString()}
+                      {msg.target && msg.target !== 'all' && (
+                        <span className="ml-1.5">@{getAgentById(msg.target)?.name || msg.target}</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                {/* 用户头像 */}
                 <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0">
                   <User className="w-4 h-4 text-primary-foreground" />
                 </div>
-              )}
+              </div>
+            );
+          }
+
+          /* --- Agent 消息：靠左 + 角色头像 --- */
+          return (
+            <div key={msg.id} className="flex gap-3">
+              {/* Agent 头像（角色颜色） */}
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 ${getAgentAvatarColor(agentIndex >= 0 ? agentIndex : 0)}`}>
+                {(() => { const Icon = ROLE_ICONS[msg.agent_role || 'executor'] || Bot; return <Icon className="w-4 h-4" />; })()}
+              </div>
+              <div className="max-w-[85%] lg:max-w-[70%]">
+                {/* Agent 名称 + 角色标签 + 意图标签 */}
+                <div className="flex items-center gap-1.5 mb-1 flex-wrap">
+                  <span className="text-xs font-medium">{msg.agent_name || 'Agent'}</span>
+                  <span className={`text-[10px] px-1.5 py-0.5 rounded ${ROLE_BG_COLORS[msg.agent_role || 'executor']} ${ROLE_COLORS[msg.agent_role || 'executor']}`}>
+                    {msg.agent_role || 'executor'}
+                  </span>
+                  {msg.intent && INTENT_CONFIG[msg.intent] && (() => {
+                    const ic = INTENT_CONFIG[msg.intent];
+                    const IntentIcon = ic.icon;
+                    return (
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-0.5 ${ic.bg} ${ic.color}`}>
+                        <IntentIcon className="w-2.5 h-2.5" />
+                        {ic.label}
+                      </span>
+                    );
+                  })()}
+                  {msg.target && msg.target !== 'all' && (
+                    <span className="text-[10px] text-muted-foreground">{t("aiGroups.replyTo")} @{msg.target}</span>
+                  )}
+                </div>
+                {/* Agent 消息气泡 */}
+                <div className="rounded-xl px-2 lg:px-4 py-2.5 text-xs lg:text-sm bg-muted rounded-tl-sm">
+                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                  <div className="text-[10px] mt-1.5 opacity-60">
+                    {msg.timestamp.toLocaleTimeString()}
+                  </div>
+                </div>
+              </div>
             </div>
           );
         })}
+
+        {/* 正在发送指示器 */}
         {sendingMessage && (
-          <div className="flex flex-col lg:flex-row gap-3">
+          <div className="flex gap-3">
             <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"><Bot className="w-4 h-4 text-primary" /></div>
             <div className="bg-muted rounded-xl px-2 lg:px-4 py-2.5"><Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /></div>
           </div>
         )}
-        {discussionLoading && (
-          <div className="flex flex-col lg:flex-row gap-3">
-            <div className="w-8 h-8 rounded-full bg-violet-500/10 flex items-center justify-center"><MessageCircle className="w-4 h-4 text-violet-400" /></div>
-            <div className="bg-violet-500/10 border border-violet-500/20 rounded-xl px-2 lg:px-4 py-2.5">
-              <div className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin text-violet-400" />
-                <span className="text-xs lg:text-sm text-violet-400">讨论中...</span>
-              </div>
+
+        {/* 正在输入指示器（来自其他用户） */}
+        {wsTypingUsers.length > 0 && (
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center"><Bot className="w-4 h-4 text-primary" /></div>
+            <div className="bg-muted/50 rounded-xl px-3 py-2">
+              <p className="text-xs text-muted-foreground">{wsTypingUsers.join(', ')} 正在输入...</p>
             </div>
           </div>
         )}
-
-        {/* Scoring UI — rendered as modal below (avoids duplicate rendering) */}
       </div>
 
-      {/* Input area */}
+      {/* ===== 输入框区域 ===== */}
       {selectedGroup && (
         <div className="border-t border-border p-3 lg:p-4 shrink-0">
-          {/* Target selector */}
+          {/* @目标选择器 */}
           <div className="flex items-center gap-2 mb-2 flex-wrap">
             <span className="text-[11px] text-muted-foreground">{t("aiGroups.sendTo")}:</span>
             <button onClick={() => setSelectedTarget('all')}
@@ -692,14 +458,22 @@ export default function AIGroupsPage() {
             })}
           </div>
 
+          {/* 输入框 + 发送按钮 */}
           <div className="flex gap-2 items-end relative">
             <div className="flex-1 relative">
               <textarea ref={inputRef} value={input} onChange={handleInputChange} onKeyDown={handleKeyDown}
-                placeholder={selectedTarget === 'all' ? t('aiGroups.inputPlaceholder') : `@${getAgentById(selectedTarget)?.name || 'Agent'} ...`}
+                placeholder={
+                  !wsConnected
+                    ? '请等待 WebSocket 连接...'
+                    : selectedTarget === 'all'
+                      ? t('aiGroups.inputPlaceholder')
+                      : `@${getAgentById(selectedTarget)?.name || 'Agent'} ...`
+                }
                 rows={1}
-                className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-xs lg:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20" />
+                disabled={!wsConnected}
+                className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-xs lg:text-sm focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:opacity-50" />
 
-              {/* @mention dropdown */}
+              {/* @mention 下拉菜单 */}
               {showMention && (
                 <div className="absolute bottom-full left-0 mb-1 w-56 bg-popover border border-border rounded-lg shadow-lg overflow-hidden z-50">
                   <div className="p-1">
@@ -724,7 +498,8 @@ export default function AIGroupsPage() {
               )}
             </div>
 
-            <button onClick={handleSend} disabled={sendingMessage || !input.trim()}
+            {/* 发送按钮 */}
+            <button onClick={handleSend} disabled={sendingMessage || !input.trim() || !wsConnected}
               className="px-3 lg:px-4 py-2.5 lg:py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 touch-manipulation">
               <Send className="w-4 h-4" />
             </button>
@@ -732,84 +507,9 @@ export default function AIGroupsPage() {
         </div>
       )}
 
-      {/* Scoring Modal */}
-      {scoringTaskId && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-md mx-4 p-5 space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-xs lg:text-sm font-semibold flex items-center gap-2">
-                <Star className="w-4 h-4 text-amber-400" /> 任务评分
-              </h3>
-              <button onClick={() => setScoringTaskId(null)} className="p-1 rounded hover:bg-muted">
-                <span className="text-muted-foreground">✕</span>
-              </button>
-            </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">评分Agent</label>
-              <select value={scorerAgentId} onChange={e => setScorerAgentId(e.target.value)}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs lg:text-sm focus:outline-none focus:ring-1 focus:ring-primary">
-                <option value="">选择评分者...</option>
-                {(selectedGroup?.agents || []).map(a => (
-                  <option key={a.agent_id} value={a.agent_id}>{a.name} ({a.role})</option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">
-                分数: <span className="font-bold text-primary">{scoreValue}/10</span>
-              </label>
-              <input type="range" min="1" max="10" step="1" value={scoreValue}
-                onChange={e => setScoreValue(parseInt(e.target.value))}
-                className="w-full accent-primary" />
-              <div className="flex justify-between text-[10px] text-muted-foreground mt-0.5">
-                <span>1 - 差</span><span>5 - 中</span><span>10 - 优</span>
-              </div>
-            </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">能力维度</label>
-              <input value={scoreCapability} onChange={e => setScoreCapability(e.target.value)}
-                placeholder="e.g. coding, reasoning, collaboration"
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs lg:text-sm focus:outline-none focus:ring-1 focus:ring-primary" />
-            </div>
-
-            <div>
-              <label className="text-xs text-muted-foreground mb-1 block">评分理由</label>
-              <textarea value={scoreReason} onChange={e => setScoreReason(e.target.value)}
-                placeholder="说明评分依据..."
-                rows={2}
-                className="w-full px-3 py-2 bg-background border border-border rounded-lg text-xs lg:text-sm focus:outline-none focus:ring-1 focus:ring-primary resize-none" />
-            </div>
-
-            {activeTaskReview && activeTaskReview.scores.length > 0 && (
-              <div className="space-y-1.5">
-                <span className="text-xs text-muted-foreground">已有评分:</span>
-                {activeTaskReview.scores.map((s, i) => (
-                  <div key={i} className="flex items-center gap-2 text-xs p-2 bg-muted/50 rounded-lg">
-                    <span className="font-medium flex-1">{s.scorer_name || s.scorer_agent_id}</span>
-                    <span className="text-amber-400 font-bold">{s.score}/10</span>
-                    {s.capability && <span className="text-muted-foreground">({s.capability})</span>}
-                  </div>
-                ))}
-                <div className="flex items-center gap-2 text-xs pt-1">
-                  <span className="text-muted-foreground">平均分:</span>
-                  <span className="font-bold text-primary">{activeTaskReview.avg_score.toFixed(1)}</span>
-                </div>
-              </div>
-            )}
-
-            <button onClick={handleSubmitScore} disabled={!scorerAgentId}
-              className="w-full px-2 lg:px-4 py-2.5 bg-primary text-primary-foreground rounded-lg text-xs lg:text-sm font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
-              提交评分
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Group Management — Sheet on mobile, modal on desktop */}
+      {/* ===== Agent 成员管理面板 ===== */}
       {isMobile ? (
+        /* --- 移动端：Sheet 抽屉 --- */
         <Sheet open={showGroupPanel && !!selectedGroup} onOpenChange={setShowGroupPanel}>
           <SheetContent side="right" size="sm" showCloseButton={false}>
             <SheetHeader className="border-b border-border pb-3">
@@ -820,12 +520,37 @@ export default function AIGroupsPage() {
                 </SheetTitle>
               </div>
             </SheetHeader>
-            <div className="flex-1 overflow-y-auto p-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+              {/* Agent 成员列表 */}
+              <AgentMemberList
+                agents={selectedGroup?.agents || []}
+                editingAgent={editingAgent}
+                editName={editName}
+                editRole={editRole}
+                editModel={editModel}
+                setEditName={setEditName}
+                setEditRole={setEditRole}
+                setEditModel={setEditModel}
+                onStartEdit={startEditAgent}
+                onCancelEdit={cancelEditAgent}
+                onSaveEdit={saveEditAgent}
+                onDelete={deleteAgent}
+              />
+              {/* 添加 Agent 区域 */}
+              <AddAgentSection
+                show={showAddAgent}
+                onToggle={() => setShowAddAgent(!showAddAgent)}
+                agent={newAgent}
+                onChange={setNewAgent}
+                onAdd={addAgent}
+              />
+              {/* 工作区组件 */}
               <AIGroupsWorkspace />
             </div>
           </SheetContent>
         </Sheet>
       ) : (
+        /* --- 桌面端：模态弹窗 --- */
         showGroupPanel && selectedGroup && (
           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
             <div className="bg-card border border-border rounded-xl shadow-2xl w-full max-w-lg mx-4 max-h-[80vh] flex flex-col">
@@ -837,12 +562,203 @@ export default function AIGroupsPage() {
                   <X className="w-4 h-4 text-muted-foreground" />
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                {/* Agent 成员列表 */}
+                <AgentMemberList
+                  agents={selectedGroup.agents || []}
+                  editingAgent={editingAgent}
+                  editName={editName}
+                  editRole={editRole}
+                  editModel={editModel}
+                  setEditName={setEditName}
+                  setEditRole={setEditRole}
+                  setEditModel={setEditModel}
+                  onStartEdit={startEditAgent}
+                  onCancelEdit={cancelEditAgent}
+                  onSaveEdit={saveEditAgent}
+                  onDelete={deleteAgent}
+                />
+                {/* 添加 Agent 区域 */}
+                <AddAgentSection
+                  show={showAddAgent}
+                  onToggle={() => setShowAddAgent(!showAddAgent)}
+                  agent={newAgent}
+                  onChange={setNewAgent}
+                  onAdd={addAgent}
+                />
+                {/* 工作区组件 */}
                 <AIGroupsWorkspace />
               </div>
             </div>
           </div>
         )
+      )}
+    </div>
+  );
+}
+
+/* ====================================================================
+ * Agent 成员列表组件
+ * 展示所有 Agent 成员，支持编辑和删除
+ * ==================================================================== */
+function AgentMemberList({
+  agents,
+  editingAgent,
+  editName, editRole, editModel,
+  setEditName, setEditRole, setEditModel,
+  onStartEdit, onCancelEdit, onSaveEdit, onDelete,
+}: {
+  agents: AgentRole[];
+  editingAgent: string | null;
+  editName: string; editRole: string; editModel: string;
+  setEditName: (v: string) => void;
+  setEditRole: (v: string) => void;
+  setEditModel: (v: string) => void;
+  onStartEdit: (a: AgentRole) => void;
+  onCancelEdit: () => void;
+  onSaveEdit: () => void;
+  onDelete: (id: string) => void;
+}) {
+  return (
+    <div className="space-y-2">
+      <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+        Agent 成员 ({agents.length})
+      </h4>
+      <div className="space-y-2">
+        {agents.map((a, i) => {
+          const Icon = ROLE_ICONS[a.role] || Bot;
+          const isEditing = editingAgent === a.agent_id;
+
+          return (
+            <div key={a.agent_id}
+              className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                isEditing ? 'border-primary/50 bg-primary/5' : 'border-border hover:bg-muted/50'
+              }`}>
+              {/* Agent 头像 */}
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${getAgentAvatarColor(i)}`}>
+                <Icon className="w-4 h-4" />
+              </div>
+
+              {/* Agent 信息（普通模式 vs 编辑模式） */}
+              {isEditing ? (
+                /* --- 编辑模式 --- */
+                <div className="flex-1 space-y-2">
+                  <input value={editName} onChange={e => setEditName(e.target.value)}
+                    placeholder="名称"
+                    className="w-full px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
+                  <div className="flex gap-2">
+                    <select value={editRole} onChange={e => setEditRole(e.target.value)}
+                      className="flex-1 px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+                      <option value="advisor">advisor</option>
+                      <option value="executor">executor</option>
+                      <option value="verifier">verifier</option>
+                      <option value="human">human</option>
+                    </select>
+                    <input value={editModel} onChange={e => setEditModel(e.target.value)}
+                      placeholder="模型"
+                      className="flex-1 px-2 py-1 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
+                  </div>
+                </div>
+              ) : (
+                /* --- 普通模式 --- */
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium truncate">{a.name}</span>
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${ROLE_BG_COLORS[a.role]} ${ROLE_COLORS[a.role]}`}>
+                      {a.role}
+                    </span>
+                  </div>
+                  {a.model && (
+                    <span className="text-[10px] text-muted-foreground">{a.model}</span>
+                  )}
+                </div>
+              )}
+
+              {/* 操作按钮 */}
+              <div className="flex items-center gap-1 shrink-0">
+                {isEditing ? (
+                  /* --- 编辑模式按钮 --- */
+                  <>
+                    <button onClick={onSaveEdit}
+                      className="p-1.5 rounded hover:bg-green-500/20 text-green-500 transition-colors"
+                      title="保存">
+                      <Check className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={onCancelEdit}
+                      className="p-1.5 rounded hover:bg-muted text-muted-foreground transition-colors"
+                      title="取消">
+                      <XIcon className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                ) : (
+                  /* --- 普通模式按钮 --- */
+                  <>
+                    <button onClick={() => onStartEdit(a)}
+                      className="p-1.5 rounded hover:bg-muted text-muted-foreground transition-colors"
+                      title="编辑">
+                      <Edit3 className="w-3.5 h-3.5" />
+                    </button>
+                    <button onClick={() => onDelete(a.agent_id)}
+                      className="p-1.5 rounded hover:bg-red-500/20 text-muted-foreground hover:text-red-500 transition-colors"
+                      title="删除">
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+/* ====================================================================
+ * 添加 Agent 组件
+ * 展开/收起的添加 Agent 表单
+ * ==================================================================== */
+function AddAgentSection({
+  show, onToggle, agent, onChange, onAdd,
+}: {
+  show: boolean;
+  onToggle: () => void;
+  agent: { name: string; role: string; model: string };
+  onChange: (a: { name: string; role: string; model: string }) => void;
+  onAdd: () => void;
+}) {
+  return (
+    <div className="space-y-2">
+      {/* 展开/收起按钮 */}
+      <button onClick={onToggle}
+        className="w-full flex items-center justify-center gap-2 p-2 rounded-lg border border-dashed border-border hover:border-primary/50 hover:bg-primary/5 transition-colors text-xs text-muted-foreground hover:text-primary">
+        <Plus className="w-4 h-4" />
+        {show ? '收起' : '添加新 Agent'}
+      </button>
+
+      {/* 添加表单 */}
+      {show && (
+        <div className="p-3 rounded-lg border border-border bg-muted/30 space-y-2">
+          <input value={agent.name} onChange={e => onChange({ ...agent, name: e.target.value })}
+            placeholder="Agent 名称"
+            className="w-full px-2 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
+          <div className="flex gap-2">
+            <select value={agent.role} onChange={e => onChange({ ...agent, role: e.target.value })}
+              className="flex-1 px-2 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary">
+              <option value="advisor">advisor (顾问)</option>
+              <option value="executor">executor (执行者)</option>
+              <option value="verifier">verifier (验证者)</option>
+              <option value="human">human (人工)</option>
+            </select>
+            <input value={agent.model} onChange={e => onChange({ ...agent, model: e.target.value })}
+              placeholder="模型名称"
+              className="flex-1 px-2 py-1.5 bg-background border border-border rounded text-xs focus:outline-none focus:ring-1 focus:ring-primary" />
+          </div>
+          <button onClick={onAdd} disabled={!agent.name.trim()}
+            className="w-full px-3 py-1.5 bg-primary text-primary-foreground rounded text-xs font-medium hover:bg-primary/90 disabled:opacity-50 transition-colors">
+            添加
+          </button>
+        </div>
       )}
     </div>
   );

@@ -15,7 +15,7 @@ export interface AgentRole {
 
 export interface GroupMessage {
   id: string;
-  role: 'user' | 'agent';
+  role: 'user' | 'agent' | 'system';
   agent_id?: string;
   agent_name?: string;
   agent_role?: string;
