@@ -1491,7 +1491,9 @@ export function ChatClient() {
                   const newId = `temp-${Date.now()}`;
                   const newSession = { id: newId, name: text.slice(0, 30) || '新会话', platform: 'hermes', agentId: spAgentId, createdAt: new Date().toISOString() } as Session;
                   // 更新 store：设 activeSessionId + activeAgentId
+                  // 更新 store 和本地 state（messages 依赖本地 activeSessionId）
                   useAppStore.getState().setActiveSession(newId, spAgentId === 'soulmate' ? null : spAgentId, { agentName: agent?.name || spAgentId });
+                  setActiveSessionId(newId);
                   // 把新 session 加到侧边栏的 agent sessions 列表里
                   useAppStore.getState().setSidebarAgents((prev: AgentInfo[]) => prev.map(a =>
                     a.id === spAgentId ? { ...a, sessions: [newSession, ...a.sessions] } : a
