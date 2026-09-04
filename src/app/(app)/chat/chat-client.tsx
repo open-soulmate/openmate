@@ -1122,6 +1122,7 @@ export function ChatClient() {
   };
 
   const selectSession = (session: Session, agent: AgentInfo) => {
+    setActiveSessionId(session.id);
     setSelectedSession(session);
     selectedSessionRef.current = session;
     setSelectedAgent(agent);
