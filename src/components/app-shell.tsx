@@ -458,12 +458,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                             window.history.replaceState(null, '', '/chat');
                           }}
                           onNewSession={(agentId) => {
-                            const agent = agents.find((a: AgentInfo) => a.id === agentId);
-                            const tempSessionId = `temp-${Date.now()}`;
-                            // 设 store 触发 useEffect 创建 session，不导航（避免 router.push 导致 WS 断开）
-                            useAppStore.getState().setActiveSession(tempSessionId, agentId === 'soulmate' ? null : agentId, { agentName: agent?.name || agentId });
-                            // 用 replaceState 更新 URL 不触发页面重载
-                            window.history.replaceState(null, '', '/chat?new=' + Date.now());
+                            // 点击 + 只切换到欢迎页，不创建 session（等用户发送时才创建）
+                            useAppStore.getState().setActiveSession(null, agentId === 'soulmate' ? null : agentId, {});
                           }}
                           onDeleteSession={async (sessionId) => {
                             setDeleteTargetId(sessionId);
