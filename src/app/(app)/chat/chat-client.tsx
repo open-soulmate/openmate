@@ -217,19 +217,20 @@ function useAcpWebSocket(params: {
 
   // 发送用户消息到 ACP 会话（通过 ref 访问 ws，不依赖 useEffect 闭包）
   const sendAcpPrompt = useCallback(async (text: string) => {
-    // 等待 ACP 握手完成，避免 session.create 未返回时消息丢失
+    // 等待 ACP 握手完成，避免 newSession 未返回时消息丢失
     if (acpReadyRef.current) await acpReadyRef.current;
     const sid = acpSessionIdRef.current;
     const ws = wsRef.current;
     if (!sid || !ws || ws.readyState !== WebSocket.OPEN) return;
     const id = ++rpcIdRef.current;
-    // session/prompt 的 ack 响应不需要处理，注册一个空回调避免 pendingRequests 泄漏
+    // prompt 的 ack 响应不需要处理，注册一个空回调避免 pendingRequests 泄漏
     pendingRequestsRef.current.set(id, { resolve: () => {}, reject: () => {} });
+    // 官方ACP协议：prompt方法，prompt参数为内容块数组
     ws.send(JSON.stringify({
       jsonrpc: '2.0',
       id,
-      method: 'session.prompt',
-      params: { sessionId: sid, prompt: text },
+      method: 'prompt',
+      params: { session_id: sid, prompt: [{ type: 'text', text }] },
     }));
     // 10秒后清理 ack 回调
     setTimeout(() => { pendingRequestsRef.current.delete(id); }, 10000);
@@ -261,15 +262,16 @@ function useAcpWebSocket(params: {
       });
     };
 
-    // ACP 握手：initialize → session.create（普通函数，避免作为 useEffect 依赖）
+    // ACP 握手：initialize → newSession（官方ACP协议）
     const performAcpHandshake = async () => {
       try {
         // 第一步：initialize 握手
         await sendRpcRequest('initialize', {});
         // 第二步：创建会话
         const currentAgentId = selectedAgentRef.current?.id || 'soulmate';
-        const result = await sendRpcRequest('session.create', { clientId: 'openmate-web', agent_id: currentAgentId }) as { session_id?: string; sessionId?: string };
-        // ACP v1.0返回session_id，兼容旧sessionId
+        // 官方ACP协议：newSession方法，cwd参数
+        const result = await sendRpcRequest('newSession', { cwd: '/', agent_id: currentAgentId }) as { session_id?: string; sessionId?: string };
+        // 官方ACP协议返回session_id
         const sessionId = result?.session_id || result?.sessionId;
         if (sessionId) {
           acpSessionIdRef.current = sessionId;
@@ -290,7 +292,7 @@ function useAcpWebSocket(params: {
             console.warn('[ACP] 保存session到OpenSoul失败:', saveErr);
           }
         }
-        // session.create 完成，通知等待中的 sendAcpPrompt
+        // newSession 完成，通知等待中的 sendAcpPrompt
         resolveAcpReadyRef.current?.();
       } catch (e) {
         console.error('[ACP] 握手失败:', e);

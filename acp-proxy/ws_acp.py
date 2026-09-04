@@ -45,7 +45,7 @@ JWT_ALGORITHM = "HS256"
 # Agent路由配置：agent_id → 连接方式
 AGENT_ROUTES = {
     "soulmate": {"type": "websocket", "url": "ws://127.0.0.1:8787"},
-    "hermes": {"type": "websocket", "url": "ws://127.0.0.1:9119"},
+    "hermes": {"type": "subprocess", "cmd": ["hermes", "acp"]},
     "openclaw": {"type": "subprocess", "cmd": ["openclaw", "acp", "--session", "agent:main:main"]},
 }
 
