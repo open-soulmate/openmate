@@ -875,9 +875,10 @@ export function ChatClient() {
     updateCurrentSessionMessages(prev => prev.filter(m => m.id !== agentMsgId));
     // 通过 ACP 重新发送
     const text = getMessageText(userMsg);
+    const regenSessionId = selectedSession?.id || activeSessionId || 'default';
     setLoading(true);
-    streamingSessionIdRef.current = selectedSession?.id || null;
-    sendAcpPrompt(text);
+    streamingSessionIdRef.current = regenSessionId;
+    sendAcpPrompt(regenSessionId, text);
   }, [messages, selectedSession, selectedAgent, getMessageText, sendAcpPrompt]);
 
   // Edit user message — put text back into input
@@ -1072,7 +1073,10 @@ export function ChatClient() {
       sendAcpPrompt(currentSessionId, messageText);
       return;
     }
-    // 等待 WS 重连
+    // No WS exists — create ACP connection now
+    const agentId = selectedAgentRef.current?.id || 'soulmate';
+    connectSession(currentSessionId, agentId);
+    // 等待 WS 连接就绪
     let waited = 0;
     const waitConnect = setInterval(() => {
       waited += 500;
@@ -1131,6 +1135,8 @@ export function ChatClient() {
     setEditingTitle(false);
     setShowCheckpoints(false); // close checkpoints when switching sessions
     loadHistory(session.id);
+    // Ensure ACP WebSocket is connected for this session
+    connectSession(session.id, agent.id);
     // Update store with agent metadata for cross-component access
     setSessionDetails({
       agentIcon: agent.icon,
@@ -1434,7 +1440,27 @@ export function ChatClient() {
                 // 计划模式添加前缀
                 const messageText = agentMode === 'plan' ? `[PLAN MODE] ${text}` : text;
                 streamingSessionIdRef.current = selectedSession?.id || null;
-                sendAcpPrompt(currentSessionId, messageText);
+                const spWs = wsMapRef.current.get(currentSessionId);
+                if (spWs?.readyState === WebSocket.OPEN) {
+                  sendAcpPrompt(currentSessionId, messageText);
+                } else {
+                  // No WS exists — create ACP connection now
+                  const spAgentId = selectedAgentRef.current?.id || 'soulmate';
+                  connectSession(currentSessionId, spAgentId);
+                  let spWaited = 0;
+                  const spWaitConnect = setInterval(() => {
+                    spWaited += 500;
+                    const ws2 = wsMapRef.current.get(currentSessionId);
+                    if (ws2?.readyState === WebSocket.OPEN) {
+                      clearInterval(spWaitConnect);
+                      sendAcpPrompt(currentSessionId, messageText);
+                    } else if (spWaited >= 10000) {
+                      clearInterval(spWaitConnect);
+                      setLoading(false);
+                      updateSessionMessages(currentSessionId, prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: t('chat.connectionLost') }], timestamp: new Date() }]);
+                    }
+                  }, 500);
+                }
               }}
               isLoading={loading}
               placeholder={t("chat.inputPlaceholder", "输入任务，点 ✨ 展开字段（Enter 发送，Shift+Enter 换行）")}
