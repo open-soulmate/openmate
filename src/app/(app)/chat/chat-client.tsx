@@ -891,24 +891,24 @@ function ThinkingBlockComponent({ blocks, isStreaming }: { blocks: ThinkingBlock
   if (!content.trim()) return null;
 
   return (
-    <div className="mb-2 rounded-lg border-l-2 border-[#c586c0] bg-[#1e1e1e] overflow-hidden transition-all duration-200 ease-in-out">
+    <div className="mb-2 rounded-lg border-l-2 border-[var(--color-thinking-border)] bg-[var(--color-thinking-bg)] overflow-hidden transition-all duration-200 ease-in-out">
       {/* 可点击的标题栏：切换展开/收起 */}
       <button
         onClick={() => setExpanded(!expanded)}
-        className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-[#569cd6] hover:bg-[#2d2d2d] transition-colors cursor-pointer select-none"
+        className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-[var(--color-thinking-title)] hover:bg-[var(--color-thinking-hover)] transition-colors cursor-pointer select-none"
       >
         <span className="flex items-center gap-1.5">
-          💭
+          <Brain className="w-3.5 h-3.5 text-[var(--color-thinking-border)]" />
           <span className="font-medium">
             {isStreaming ? '正在思考...' : '思考过程'}
           </span>
           {isStreaming && (
-            /* 流式接收中的打字光标动画 — VS Code 暗色主题紫色(#c586c0) */
-            <span className="inline-block w-1.5 h-3.5 bg-[#c586c0] animate-pulse ml-0.5" />
+            /* 流式接收中的打字光标动画 — 使用主题边框色 */
+            <span className="inline-block w-1.5 h-3.5 bg-[var(--color-thinking-border)] animate-pulse ml-0.5" />
           )}
         </span>
-        {/* VS Code 暗色主题：浅灰色展开指示器 */}
-        <span className="text-[10px] text-[#d4d4d4] opacity-60">{expanded ? '▼' : '▶'}</span>
+        {/* 展开/收起指示器 — 使用主题前景色 */}
+        <span className="text-[10px] text-[var(--color-thinking-text)] opacity-60">{expanded ? '▼' : '▶'}</span>
       </button>
       {/* 展开时显示思考内容 */}
       {expanded && (
@@ -941,11 +941,11 @@ function ToolCallBlockComponent({ toolCalls }: { toolCalls: ToolCallInfo[] }) {
 function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
   const [showDetail, setShowDetail] = useState(false);
 
-  // 状态 → 图标 + 颜色映射（VS Code 暗色主题配色）
+  // 状态 → 图标 + 颜色映射（使用主题 CSS 变量）
   const statusConfig = {
-    running:   { icon: '⏳', label: '运行中',  color: 'text-[#569cd6]' },   // VS Code 蓝色关键字色
-    completed: { icon: '✅', label: '完成',    color: 'text-[#6a9955]' },   // VS Code 绿色注释色
-    failed:    { icon: '❌', label: '失败',    color: 'text-[#f44747]' },   // VS Code 红色错误色
+    running:   { icon: '⏳', label: '运行中',  color: 'text-[var(--color-tool-status-running)]' },
+    completed: { icon: '✅', label: '完成',    color: 'text-[var(--color-tool-status-done)]' },
+    failed:    { icon: '❌', label: '失败',    color: 'text-[var(--color-tool-status-fail)]' },
   };
   const cfg = statusConfig[tc.state] || statusConfig.running;
 
@@ -953,19 +953,19 @@ function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
   const hasDetail = !!(tc.args || tc.content);
 
   return (
-    <div className="rounded-lg bg-[#1e1e1e] border-l-2 border-[#569cd6] overflow-hidden">
+    <div className="rounded-lg bg-[var(--color-tool-bg)] border-l-2 border-[var(--color-tool-border)] overflow-hidden">
       {/* 工具调用摘要行 */}
       <button
         onClick={() => hasDetail && setShowDetail(!showDetail)}
-        className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${hasDetail ? 'cursor-pointer hover:bg-[#2d2d2d]' : 'cursor-default'}`}
+        className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${hasDetail ? 'cursor-pointer hover:bg-[var(--color-thinking-hover)]' : 'cursor-default'}`}
       >
         <span>🔧</span>
-        {/* VS Code 暗色主题：黄色函数名色(#dcdcaa) */}
-        <span className="font-mono font-medium text-[#dcdcaa] truncate">
+        {/* 工具名称 — 使用主题函数名色 */}
+        <span className="font-mono font-medium text-[var(--color-tool-name)] truncate">
           {tc.toolName}
         </span>
         {tc.serverName && (
-          <span className="text-[10px] text-[#6a9955] truncate">
+          <span className="text-[10px] text-[var(--color-tool-status-done)] truncate">
             ({tc.serverName})
           </span>
         )}
@@ -981,19 +981,19 @@ function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
       </button>
       {/* 展开的详情区域：调用参数和返回结果 */}
       {showDetail && hasDetail && (
-        <div className="px-3 pb-2 pt-0.5 border-t border-[#3c3c3c]">
+        <div className="px-3 pb-2 pt-0.5 border-t border-[var(--color-border)]">
           {tc.args && (
             <div className="mb-1">
-              <span className="text-[10px] text-[#569cd6] uppercase tracking-wide">参数</span>
-              <pre className="mt-0.5 text-[11px] text-[#d4d4d4] bg-[#252526] rounded p-1.5 overflow-x-auto whitespace-pre-wrap break-all max-h-32 overflow-y-auto">
+              <span className="text-[10px] text-[var(--color-tool-status-running)] uppercase tracking-wide">参数</span>
+              <pre className="mt-0.5 text-[11px] text-[var(--color-thinking-text)] bg-[var(--color-thinking-bg)] rounded p-1.5 overflow-x-auto whitespace-pre-wrap break-all max-h-32 overflow-y-auto">
                 {tc.args}
               </pre>
             </div>
           )}
           {tc.content && (
             <div>
-              <span className="text-[10px] text-[#569cd6] uppercase tracking-wide">结果</span>
-              <pre className="mt-0.5 text-[11px] text-[#d4d4d4] bg-[#252526] rounded p-1.5 overflow-x-auto whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
+              <span className="text-[10px] text-[var(--color-tool-status-running)] uppercase tracking-wide">结果</span>
+              <pre className="mt-0.5 text-[11px] text-[var(--color-thinking-text)] bg-[var(--color-thinking-bg)] rounded p-1.5 overflow-x-auto whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
                 {tc.content}
               </pre>
             </div>
@@ -1860,6 +1860,13 @@ export function ChatClient() {
                     {agentMode === 'plan' ? <Brain className="w-4 h-4" /> : <Zap className="w-4 h-4" />}
                     <span className="hidden lg:inline">{agentMode === 'plan' ? 'Plan' : 'Act'}</span>
                   </button>
+                  <button
+                    onClick={() => setShowThinking(prev => !prev)}
+                    className={`p-1.5 rounded transition-colors ${showThinking ? 'bg-muted/50 text-[var(--color-thinking-border)] hover:bg-muted/70' : 'text-muted-foreground/40 hover:bg-muted/30 hover:text-muted-foreground'}`}
+                    title={showThinking ? '隐藏思考过程' : '显示思考过程'}
+                  >
+                    <Brain className="w-4 h-4" />
+                  </button>
                   <button onClick={() => clearCurrentSessionMessages()} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="清空">
                     <RotateCcw className="w-4 h-4" />
                   </button>
@@ -1868,13 +1875,6 @@ export function ChatClient() {
                     {checkpoints.length > 0 && <span className="absolute -top-1 -right-1 bg-primary text-primary-foreground text-[9px] rounded-full w-3.5 h-3.5 flex items-center justify-center">{checkpoints.length}</span>}
                   </button>
                   <ContextRing />
-                  <button
-                    onClick={() => setShowThinking(prev => !prev)}
-                    className={`p-1.5 rounded transition-colors ${showThinking ? 'bg-muted/50 text-[#c586c0] hover:bg-muted/70' : 'text-muted-foreground/40 hover:bg-muted/30 hover:text-muted-foreground'}`}
-                    title={showThinking ? '隐藏思考过程' : '显示思考过程'}
-                  >
-                    💭
-                  </button>
                   {/* Session cumulative stats */}
                   {sessionStats.msgCount > 0 && (
                     <span className="text-[9px] text-muted-foreground/30 whitespace-nowrap">

@@ -24,8 +24,15 @@ export function TerminalPanel({ apiBase, token }: TerminalPanelProps) {
     const { FitAddon } = await import('@xterm/addon-fit');
     const { WebLinksAddon } = await import('@xterm/addon-web-links');
 
+    // 从 CSS 变量读取当前主题的颜色值，让终端配色跟随主题
+    const cs = getComputedStyle(document.documentElement);
+    const bg = cs.getPropertyValue('--color-background').trim() || '#0a0a0f';
+    const fg = cs.getPropertyValue('--color-foreground').trim() || '#e4e4e7';
+    const cursor = cs.getPropertyValue('--color-primary').trim() || '#7c3aed';
+    const selBg = cs.getPropertyValue('--color-primary').trim() || '#7c3aed';
+
     const term = new Terminal({
-      theme: { background: '#0a0a0f', foreground: '#e4e4e7', cursor: '#7c3aed', selectionBackground: '#7c3aed33' },
+      theme: { background: bg, foreground: fg, cursor: cursor, selectionBackground: selBg + '33' },
       fontFamily: 'monospace',
       fontSize: 13,
       lineHeight: 1.4,
@@ -78,7 +85,7 @@ export function TerminalPanel({ apiBase, token }: TerminalPanelProps) {
 
       {/* Terminal panel */}
       {open && (
-        <div className={`fixed z-40 bg-[#0a0a0f] border border-border rounded-t-xl shadow-2xl transition-all ${maximized ? 'inset-0' : 'bottom-0 right-2 lg:right-14 w-[calc(100%-1rem)] lg:w-[700px] h-[50vh] lg:h-[400px]'}`}>
+        <div className={`fixed z-40 bg-[var(--color-background)] border border-border rounded-t-xl shadow-2xl transition-all ${maximized ? 'inset-0' : 'bottom-0 right-2 lg:right-14 w-[calc(100%-1rem)] lg:w-[700px] h-[50vh] lg:h-[400px]'}`}>
           <div className="flex items-center justify-between px-3 py-2 border-b border-border bg-[var(--color-card)] rounded-t-xl">
             <div className="flex items-center gap-2">
               <TerminalIcon className="w-4 h-4 text-muted-foreground" />

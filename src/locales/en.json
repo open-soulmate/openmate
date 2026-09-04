@@ -5628,7 +5628,20 @@
   "theme": {
     "dark": "Dark",
     "light": "Light",
-    "purple": "Purple"
+    "purple": "Purple",
+    "deepAbyss": "Deep Abyss",
+    "deepAbyssLight": "Deep Abyss Light",
+    "creamMocha": "Cream Mocha",
+    "creamMochaLight": "Cream Mocha Light",
+    "nordNight": "Nord Night",
+    "nordNightLight": "Nord Night Light",
+    "obsidianCyan": "Obsidian Cyan",
+    "obsidianCyanLight": "Obsidian Cyan Light",
+    "twilightViolet": "Twilight Violet",
+    "twilightVioletLight": "Twilight Violet Light",
+    "duneSand": "Dune Sand",
+    "duneSandLight": "Dune Sand Light",
+    "custom": "Custom"
   },
   "agentInstaller": {
     "unknownAgent": "Unknown Agent",

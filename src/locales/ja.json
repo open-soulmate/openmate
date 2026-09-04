@@ -5634,7 +5634,20 @@
   "theme": {
     "dark": "ダーク",
     "light": "ライト",
-    "purple": "パープル"
+    "purple": "パープル",
+    "deepAbyss": "深海静謐",
+    "deepAbyssLight": "深海静謐（ライト）",
+    "creamMocha": "クリームモカ",
+    "creamMochaLight": "クリームモカ（ライト）",
+    "nordNight": "ノルダーク",
+    "nordNightLight": "ノルダーク（ライト）",
+    "obsidianCyan": "黒曜石シアン",
+    "obsidianCyanLight": "黒曜石シアン（ライト）",
+    "twilightViolet": "トワイライトバイオレット",
+    "twilightVioletLight": "トワイライトバイオレット（ライト）",
+    "duneSand": "デューンサンド",
+    "duneSandLight": "デューンサンド（ライト）",
+    "custom": "カスタム"
   },
   "agentInstaller": {
     "unknownAgent": "不明なエージェント",

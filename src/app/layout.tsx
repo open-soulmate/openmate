@@ -22,14 +22,32 @@ export const metadata: Metadata = {
 };
 
 // Inline script to prevent FOUC on theme load
+// 在 HTML 渲染前根据 localStorage 主题值设置 class，避免闪烁
 const themeInitScript = `
 (function() {
   try {
     var t = localStorage.getItem('openmate-theme') || 'dark';
     var r = document.documentElement;
     r.setAttribute('data-theme', t);
+    // 系统主题
     if (t === 'light') { r.classList.add('light'); }
     else if (t === 'purple') { r.classList.add('dark', 'theme-purple'); }
+    // 暗色版新主题：dark + theme-xxx
+    else if (t === 'deep-abyss') { r.classList.add('dark', 'theme-deep-abyss'); }
+    else if (t === 'cream-mocha') { r.classList.add('dark', 'theme-cream-mocha'); }
+    else if (t === 'nord-night') { r.classList.add('dark', 'theme-nord-night'); }
+    else if (t === 'obsidian-cyan') { r.classList.add('dark', 'theme-obsidian-cyan'); }
+    else if (t === 'twilight-violet') { r.classList.add('dark', 'theme-twilight-violet'); }
+    else if (t === 'dune-sand') { r.classList.add('dark', 'theme-dune-sand'); }
+    else if (t === 'custom') { r.classList.add('dark', 'theme-custom'); }
+    // 浅色版新主题：只加 theme-xxx-light（不加 dark）
+    else if (t === 'deep-abyss-light') { r.classList.add('theme-deep-abyss-light'); }
+    else if (t === 'cream-mocha-light') { r.classList.add('theme-cream-mocha-light'); }
+    else if (t === 'nord-night-light') { r.classList.add('theme-nord-night-light'); }
+    else if (t === 'obsidian-cyan-light') { r.classList.add('theme-obsidian-cyan-light'); }
+    else if (t === 'twilight-violet-light') { r.classList.add('theme-twilight-violet-light'); }
+    else if (t === 'dune-sand-light') { r.classList.add('theme-dune-sand-light'); }
+    // 默认深色
     else { r.classList.add('dark'); }
   } catch(e) {}
 })();

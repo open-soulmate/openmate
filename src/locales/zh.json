@@ -5636,7 +5636,20 @@
   "theme": {
     "dark": "深色",
     "light": "浅色",
-    "purple": "紫色"
+    "purple": "紫色",
+    "deepAbyss": "深海静谧",
+    "deepAbyssLight": "深海静谧（浅色）",
+    "creamMocha": "奶油摩卡",
+    "creamMochaLight": "奶油摩卡（浅色）",
+    "nordNight": "北欧极夜",
+    "nordNightLight": "北欧极夜（浅色）",
+    "obsidianCyan": "青空黑曜石",
+    "obsidianCyanLight": "青空黑曜石（浅色）",
+    "twilightViolet": "暮光紫罗兰",
+    "twilightVioletLight": "暮光紫罗兰（浅色）",
+    "duneSand": "沙丘黄昏",
+    "duneSandLight": "沙丘黄昏（浅色）",
+    "custom": "自定义"
   },
   "agentInstaller": {
     "unknownAgent": "未知的 Agent",

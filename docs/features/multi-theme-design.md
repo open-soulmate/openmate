@@ -1,224 +1,48 @@
-@import "tailwindcss";
+# OpenMate 多主题系统设计 v3
 
-@theme {
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+> 7 套主题：6 套标准 + 1 套自定义
+> 遵循 WCAG AA 标准，低饱和、语义色统一
+> CSS 变量直接可用，支持一键切换
 
-  /* ─── Dracula 主题配色（默认暗色主题） ─── */
-  --color-background: #282a36;
-  --color-foreground: #f8f8f2;
-  --color-card: #2d2f3d;
-  --color-card-foreground: #f8f8f2;
-  --color-popover: #2d2f3d;
-  --color-popover-foreground: #f8f8f2;
-  --color-primary: #bd93f9;
-  --color-primary-foreground: #f8f8f2;
-  --color-secondary: #44475a;
-  --color-secondary-foreground: #6272a4;
-  --color-muted: #343746;
-  --color-muted-foreground: #6272a4;
-  --color-accent: #44475a;
-  --color-accent-foreground: #f8f8f2;
-  --color-destructive: #ff5555;
-  --color-destructive-foreground: #f8f8f2;
-  --color-border: #44475a;
-  --color-input: #44475a;
-  --color-ring: #bd93f9;
-  --color-sidebar: #21222c;
-  --color-sidebar-foreground: #6272a4;
-  --color-sidebar-accent: #2d2f3d;
+---
 
-  /* ─── VS Code 风格块（ThinkingBlock / ToolCallBlock） ─── */
-  --color-thinking-bg: #282a36;
-  --color-thinking-border: #ff79c6;
-  --color-thinking-title: #8be9fd;
-  --color-thinking-text: #f8f8f2;
-  --color-thinking-hover: #44475a;
-  --color-tool-bg: #282a36;
-  --color-tool-border: #8be9fd;
-  --color-tool-hover: #44475a;
-  --color-tool-name: #f1fa8c;
-  --color-tool-server: #50fa7b;
-  --color-tool-status-running: #8be9fd;
-  --color-tool-status-done: #50fa7b;
-  --color-tool-status-fail: #ff5555;
-  --color-tool-detail-border: #6272a4;
-  --color-tool-detail-bg: #343746;
-  --color-tool-label: #8be9fd;
-  --color-tool-result-text: #f8f8f2;
-  --color-code-bg: #282a36;
+## 主题列表
 
-  --radius: 0.625rem;
-}
+| # | ID | 名称 | 风格 | 适用场景 |
+|---|---|---|---|---|
+| 1 | `deep-abyss` | 深海静谧 | 冷深蓝·工程风 | Agent后台、控制台 |
+| 2 | `cream-mocha` | 奶油摩卡 | 暖棕低饱和 | OpenFace前端、AI对话 |
+| 3 | `nord-night` | 北欧极夜 | 冷灰极简 | 代码面板、技术文档 |
+| 4 | `obsidian-cyan` | 青空黑曜石 | 青蓝科技风 | AI产品、演示Demo |
+| 5 | `twilight-violet` | 暮光紫罗兰 | 紫调优雅 | 可视化、流程图 |
+| 6 | `dune-sand` | 沙丘黄昏 | 暖灰工业风 | 大屏监控、运维 |
+| 7 | `custom` | 自定义 | 用户自选 | 高级用户 |
 
-* {
-  border-color: var(--color-border);
-}
+---
 
-body {
-  background-color: var(--color-background);
-  color: var(--color-foreground);
-  font-family: var(--font-sans);
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-}
+## 变量映射
 
-/* ─── Scrollbar 统一自动隐藏样式 ─────────────────────────── */
-* {
-  scrollbar-width: thin;
-  scrollbar-color: transparent transparent;
-}
+用户提供的变量名 → 系统变量名对应关系：
 
-*:hover {
-  scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
-}
+| 用户变量 | 系统变量 | 用途 |
+|---|---|---|
+| `--bg-primary` | `--color-background` | 主背景 |
+| `--bg-secondary` | `--color-card` / `--color-muted` / `--color-secondary` | 二级背景 |
+| `--bg-card` | `--color-accent` / `--color-border` | 卡片/分割线 |
+| `--text-primary` | `--color-foreground` | 正文 |
+| `--text-secondary` | `--color-muted-foreground` | 次要文字 |
+| `--accent` | `--color-primary` | 主强调色 |
+| `--success` | `--color-syntax-string` | 成功/绿色 |
+| `--warning` | `--color-syntax-number` | 警告/橙色 |
+| `--danger` | `--color-destructive` | 错误/红色 |
 
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
+---
 
-::-webkit-scrollbar-track {
-  background: transparent;
-}
+## 每套主题完整 CSS 变量定义
 
-::-webkit-scrollbar-thumb {
-  background: transparent;
-  border-radius: 3px;
-  transition: background 0.3s ease;
-}
+### 主题1：深海静谧 Deep Abyss
 
-*:hover::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.15);
-}
-
-::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.3);
-}
-
-/* Chat 消息区保留 scrollbar-gutter 防止布局抖动 */
-.chat-scrollbar {
-  scrollbar-gutter: stable;
-}
-
-/* Selection */
-::selection {
-  background: color-mix(in srgb, var(--color-primary) 30%, transparent);
-}
-
-/* ─── Light Theme ─────────────────────────────────────────────────────── */
-.light {
-  --color-background: #ffffff;
-  --color-foreground: #18181b;
-  --color-card: #fafafa;
-  --color-card-foreground: #18181b;
-  --color-popover: #fafafa;
-  --color-popover-foreground: #18181b;
-  --color-primary: #6366f1;
-  --color-primary-foreground: #ffffff;
-  --color-secondary: #f4f4f5;
-  --color-secondary-foreground: #71717a;
-  --color-muted: #f4f4f5;
-  --color-muted-foreground: #71717a;
-  --color-accent: #f4f4f5;
-  --color-accent-foreground: #18181b;
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #ffffff;
-  --color-border: #e4e4e7;
-  --color-input: #e4e4e7;
-  --color-ring: #6366f1;
-  --color-sidebar: #f8f9fa;
-  --color-sidebar-foreground: #374151;
-  --color-sidebar-accent: #e5e7eb;
-
-  /* ─── VS Code 风格块（亮色主题） ─── */
-  --color-thinking-bg: #f8f9fa;
-  --color-thinking-border: #c084fc;
-  --color-thinking-title: #2563eb;
-  --color-thinking-text: #18181b;
-  --color-thinking-hover: #e5e7eb;
-  --color-tool-bg: #f8f9fa;
-  --color-tool-border: #2563eb;
-  --color-tool-hover: #e5e7eb;
-  --color-tool-name: #b45309;
-  --color-tool-server: #16a34a;
-  --color-tool-status-running: #2563eb;
-  --color-tool-status-done: #16a34a;
-  --color-tool-status-fail: #dc2626;
-  --color-tool-detail-border: #d1d5db;
-  --color-tool-detail-bg: #f4f4f5;
-  --color-tool-label: #2563eb;
-  --color-tool-result-text: #18181b;
-  --color-code-bg: #f4f4f5;
-}
-
-.light * {
-  scrollbar-color: transparent transparent;
-}
-
-.light *:hover {
-  scrollbar-color: rgba(0, 0, 0, 0.15) transparent;
-}
-
-.light *:hover::-webkit-scrollbar-thumb {
-  background: rgba(0, 0, 0, 0.15);
-}
-
-.light ::-webkit-scrollbar-thumb:hover {
-  background: rgba(0, 0, 0, 0.3);
-}
-
-/* ─── Purple Theme ────────────────────────────────────────────────────── */
-.theme-purple {
-  --color-background: #0c0514;
-  --color-foreground: #e8e0f0;
-  --color-card: #130a1f;
-  --color-card-foreground: #e8e0f0;
-  --color-popover: #130a1f;
-  --color-popover-foreground: #e8e0f0;
-  --color-primary: #a855f7;
-  --color-primary-foreground: #fafafa;
-  --color-secondary: #1e1230;
-  --color-secondary-foreground: #a78bbc;
-  --color-muted: #160d24;
-  --color-muted-foreground: #8b72a0;
-  --color-accent: #1e1230;
-  --color-accent-foreground: #e8e0f0;
-  --color-destructive: #ef4444;
-  --color-destructive-foreground: #fafafa;
-  --color-border: #2a1a40;
-  --color-input: #2a1a40;
-  --color-ring: #a855f7;
-  --color-sidebar: #111118;
-  --color-sidebar-foreground: #a1a1aa;
-  --color-sidebar-accent: #1a1a20;
-
-  /* ─── VS Code 风格块（紫色主题） ─── */
-  --color-thinking-bg: #160d24;
-  --color-thinking-border: #c084fc;
-  --color-thinking-title: #a78bbc;
-  --color-thinking-text: #e8e0f0;
-  --color-thinking-hover: #1e1230;
-  --color-tool-bg: #160d24;
-  --color-tool-border: #a855f7;
-  --color-tool-hover: #1e1230;
-  --color-tool-name: #eab308;
-  --color-tool-server: #22c55e;
-  --color-tool-status-running: #a855f7;
-  --color-tool-status-done: #22c55e;
-  --color-tool-status-fail: #ef4444;
-  --color-tool-detail-border: #2a1a40;
-  --color-tool-detail-bg: #1e1230;
-  --color-tool-label: #a855f7;
-  --color-tool-result-text: #e8e0f0;
-  --color-code-bg: #160d24;
-}
-/* ═══════════════════════════════════════════════════════════════════════
-   多主题系统 — 7 套主题（6 标准 + 1 自定义）
-   每套主题含暗色版 + 浅色版，自定义主题默认值 = Cream Mocha
-   ═══════════════════════════════════════════════════════════════════════ */
-
-/* ─── 主题1：深海静谧 Deep Abyss（冷深蓝·工程风） ──────── */
+```css
 .theme-deep-abyss {
   --color-background: #121826;
   --color-foreground: #cdd6f4;
@@ -297,8 +121,11 @@ body {
   --color-tool-status-done: #387028;
   --color-tool-status-fail: #c53b4e;
 }
+```
 
-/* ─── 主题2：奶油摩卡 Cream Mocha（暖棕低饱和） ──────── */
+### 主题2：奶油摩卡 Cream Mocha
+
+```css
 .theme-cream-mocha {
   --color-background: #1e1e2e;
   --color-foreground: #cdd6f4;
@@ -377,8 +204,11 @@ body {
   --color-tool-status-done: #40a02b;
   --color-tool-status-fail: #d20f39;
 }
+```
 
-/* ─── 主题3：北欧极夜 Nord Night（冷灰极简） ──────── */
+### 主题3：北欧极夜 Nord Night
+
+```css
 .theme-nord-night {
   --color-background: #2e3440;
   --color-foreground: #eceff4;
@@ -457,8 +287,11 @@ body {
   --color-tool-status-done: #4c7248;
   --color-tool-status-fail: #a84848;
 }
+```
 
-/* ─── 主题4：青空黑曜石 Obsidian Cyan（青蓝科技风） ──────── */
+### 主题4：青空黑曜石 Obsidian Cyan
+
+```css
 .theme-obsidian-cyan {
   --color-background: #111b21;
   --color-foreground: #d8e6ec;
@@ -537,8 +370,11 @@ body {
   --color-tool-status-done: #239968;
   --color-tool-status-fail: #e03e3e;
 }
+```
 
-/* ─── 主题5：暮光紫罗兰 Twilight Violet（紫调优雅） ──────── */
+### 主题5：暮光紫罗兰 Twilight Violet
+
+```css
 .theme-twilight-violet {
   --color-background: #242038;
   --color-foreground: #e0def4;
@@ -617,8 +453,11 @@ body {
   --color-tool-status-done: #3c7c91;
   --color-tool-status-fail: #d64770;
 }
+```
 
-/* ─── 主题6：沙丘黄昏 Dune Sand（暖灰工业风） ──────── */
+### 主题6：沙丘黄昏 Dune Sand
+
+```css
 .theme-dune-sand {
   --color-background: #2c2622;
   --color-foreground: #e6ddd4;
@@ -697,10 +536,15 @@ body {
   --color-tool-status-done: #4c704e;
   --color-tool-status-fail: #c94b31;
 }
+```
 
-/* ─── 主题7：自定义 Custom（用户自选，默认值 = Cream Mocha） ──────── */
+### 主题7：自定义 Custom
+
+用户可在设置页面自定义以下颜色，存 localStorage：
+
+```css
 .theme-custom {
-  /* 默认值 = Cream Mocha 暗色色值，用户可在设置页面通过 --custom-xxx 覆盖 */
+  /* 默认值 = Cream Mocha，用户可覆盖 */
   --color-background: var(--custom-bg, #1e1e2e);
   --color-foreground: var(--custom-fg, #cdd6f4);
   --color-card: var(--custom-card, #26273a);
@@ -739,19 +583,29 @@ body {
   --color-tool-status-done: var(--custom-success, #a6e3a1);
   --color-tool-status-fail: var(--custom-danger, #f38ba8);
 }
+```
 
-/* ─── Safe Area (iOS notch/home indicator) ─────────────────────── */
-.safe-area-top {
-  padding-top: env(safe-area-inset-top);
-}
-.safe-area-bottom {
-  padding-bottom: env(safe-area-inset-bottom);
-}
-.safe-area-left {
-  padding-left: env(safe-area-inset-left);
-}
-.safe-area-right {
-  padding-right: env(safe-area-inset-right);
-}
+**自定义主题可调变量（9 个核心色）**：
+1. `--custom-bg` — 主背景
+2. `--custom-fg` — 正文
+3. `--custom-card` — 二级背景/卡片
+4. `--custom-accent` — 主强调色
+5. `--custom-success` — 成功绿
+6. `--custom-warning` — 警告橙
+7. `--custom-danger` — 错误红
+8. `--custom-fg-muted` — 次要文字
+9. `--custom-border` — 分割线
 
-@import "@xterm/xterm/css/xterm.css";
+---
+
+## 文件改动清单
+
+| 文件 | 改动 |
+|---|---|
+| `globals.css` | 新增 13 个主题类（6暗+6浅+1自定义） |
+| `src/lib/theme.ts` | ThemeId 扩展 + themes 数组 + applyTheme |
+| `src/app/layout.tsx` | FOUC 脚本新增主题 |
+| `src/components/command-menu.tsx` | 主题切换命令 |
+| `chat-client.tsx` | 硬编码颜色→CSS变量 |
+| `terminal-panel.tsx` | 终端主题色跟随 |
+| `settings-client.tsx` | 自定义主题调色板 UI |
