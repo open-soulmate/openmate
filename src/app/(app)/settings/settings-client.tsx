@@ -22,6 +22,48 @@ import { LeftPanel } from '@/components/left-panel';
 
 type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "organs" | "account" | "about";
 
+/** 自定义主题的 9 个核心颜色及其 CSS 变量名、默认值 */
+const CUSTOM_COLOR_DEFS: { key: string; var: string; default: string }[] = [
+  { key: "bg",       var: "--custom-bg",       default: "#1e1e2e" },
+  { key: "fg",       var: "--custom-fg",       default: "#cdd6f4" },
+  { key: "card",     var: "--custom-card",     default: "#26273a" },
+  { key: "accent",   var: "--custom-accent",   default: "#89b4fa" },
+  { key: "secondary", var: "--custom-secondary", default: "#313244" },
+  { key: "border",   var: "--custom-border",   default: "#313244" },
+  { key: "sidebar",  var: "--custom-sidebar",  default: "#181825" },
+  { key: "danger",   var: "--custom-danger",   default: "#f38ba8" },
+  { key: "success",  var: "--custom-success",  default: "#a6e3a1" },
+];
+
+const CUSTOM_COLORS_STORAGE_KEY = "openmate-custom-colors";
+
+type CustomColors = Record<string, string>;
+
+function loadCustomColors(): CustomColors {
+  if (typeof window === "undefined") return Object.fromEntries(CUSTOM_COLOR_DEFS.map(d => [d.key, d.default]));
+  try {
+    const stored = localStorage.getItem(CUSTOM_COLORS_STORAGE_KEY);
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return Object.fromEntries(CUSTOM_COLOR_DEFS.map(d => [d.key, parsed[d.key] || d.default]));
+    }
+  } catch {}
+  return Object.fromEntries(CUSTOM_COLOR_DEFS.map(d => [d.key, d.default]));
+}
+
+function saveCustomColors(colors: CustomColors) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(CUSTOM_COLORS_STORAGE_KEY, JSON.stringify(colors));
+}
+
+function applyCustomColors(colors: CustomColors) {
+  if (typeof document === "undefined") return;
+  const root = document.documentElement;
+  for (const def of CUSTOM_COLOR_DEFS) {
+    root.style.setProperty(def.var, colors[def.key] || def.default);
+  }
+}
+
 interface SettingsState {
   theme: ThemeId; fontSize: string; language: string; sidebarPosition: string; animationEnabled: boolean;
   defaultAgent: string; agentTimeout: number; retryStrategy: string; logLevel: string;
@@ -80,6 +122,7 @@ export function SettingsClient() {
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [backendVersion, setBackendVersion] = useState<string>("");
+  const [customColors, setCustomColors] = useState<CustomColors>(loadCustomColors);
 
   const [settings, setSettings] = useState<SettingsState>({
     theme: "dark", fontSize: "medium", language: "zh", sidebarPosition: "left", animationEnabled: true,
@@ -130,6 +173,13 @@ export function SettingsClient() {
 
   useEffect(() => { setSettings((s) => ({ ...s, theme: storeTheme })); }, [storeTheme]);
 
+  // Apply custom colors whenever the theme is "custom" or customColors change
+  useEffect(() => {
+    if (settings.theme === "custom") {
+      applyCustomColors(customColors);
+    }
+  }, [settings.theme, customColors]);
+
   // Register sidebar navigation into the global app shell sidebar
   useEffect(() => {
     setPageSidebar(
@@ -172,8 +222,11 @@ export function SettingsClient() {
       if (key === "language") i18n.changeLanguage(value as string);
       if (key === "theme") { persistTheme(next.theme); setStoreTheme(next.theme); }
       if (key === "fontSize") {
-        const sizes: Record<string, string> = { small: "13px", medium: "14px", large: "16px" };
-        document.documentElement.style.fontSize = sizes[value as string] || "14px";
+        const sizes: Record<string, string> = { small: "14px", medium: "16px", large: "18px" };
+        document.documentElement.style.fontSize = sizes[value as string] || "16px";
+        /* 同步更新 sidebar 的固定字号，使其跟随全局字号设置 */
+        const scale = parseInt(sizes[value as string]) / 16;
+        document.documentElement.style.setProperty("--sidebar-group-font", `${Math.round(11 * scale)}px`);
       }
       if (key === "animationEnabled") {
         document.documentElement.classList.toggle("no-animations", !value);
@@ -181,6 +234,22 @@ export function SettingsClient() {
       return next;
     });
   }, [setStoreTheme]);
+
+  // Handle custom color change for a single color key
+  const handleCustomColorChange = useCallback((key: string, value: string) => {
+    setCustomColors((prev) => {
+      const next = { ...prev, [key]: value };
+      saveCustomColors(next);
+      return next;
+    });
+  }, []);
+
+  // Reset all custom colors to defaults
+  const handleResetCustomColors = useCallback(() => {
+    const defaults = Object.fromEntries(CUSTOM_COLOR_DEFS.map(d => [d.key, d.default]));
+    setCustomColors(defaults);
+    saveCustomColors(defaults);
+  }, []);
 
   async function handleSave() {
     const apiBase = getApiBaseUrl();
@@ -463,7 +532,7 @@ export function SettingsClient() {
 
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto min-h-0" onClick={() => { if (isMobile && showSidebar) setShowSidebar(false); }}>
-        <div className="max-w-2xl mx-auto px-4 md:px-8 py-3 lg:py-6 md:py-8 space-y-3 lg:space-y-6">
+        <div className="mx-auto px-4 md:px-8 py-3 lg:py-6 md:py-8 space-y-3 lg:space-y-6">
           {/* Breadcrumb - hidden on mobile (shown in top bar) */}
           <div className="hidden lg:flex items-center gap-1.5 text-xs text-muted-foreground">
             <span>{t("settings.title")}</span><ChevronRight size={10} />
@@ -483,6 +552,50 @@ export function SettingsClient() {
                 <ButtonGroup value={settings.theme} onChange={(v) => update("theme", v as ThemeId)}
                   options={getThemes().map((t) => ({ value: t.id, label: t.label, icon: t.id === "dark" ? Moon : t.id === "light" ? Sun : Palette }))} />
               </SettingCard>
+
+              {/* ─── Custom Theme Color Editor ───────────────────────── */}
+              {settings.theme === "custom" && (
+                <SettingCard title={t("settings.customThemeColors")} description={t("settings.customThemeColorsDesc")}>
+                  <div className="grid grid-cols-3 gap-3 sm:grid-cols-3">
+                    {CUSTOM_COLOR_DEFS.map((def) => {
+                      const labelKey = `settings.color${def.key.charAt(0).toUpperCase() + def.key.slice(1)}` as string;
+                      return (
+                        <label
+                          key={def.key}
+                          className="flex flex-col items-center gap-1.5 cursor-pointer group"
+                        >
+                          <div className="relative">
+                            <div
+                              className="h-10 w-10 rounded-lg border-2 border-border shadow-sm transition-transform group-hover:scale-105 overflow-hidden"
+                              style={{ backgroundColor: customColors[def.key] || def.default }}
+                            >
+                              <input
+                                type="color"
+                                value={customColors[def.key] || def.default}
+                                onChange={(e) => handleCustomColorChange(def.key, e.target.value)}
+                                className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+                              />
+                            </div>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground text-center leading-tight">
+                            {t(labelKey)}
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                  <div className="mt-3 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={handleResetCustomColors}
+                      className="flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent/50 hover:text-foreground transition-colors"
+                    >
+                      <RotateCcw size={12} />
+                      {t("settings.resetColors")}
+                    </button>
+                  </div>
+                </SettingCard>
+              )}
 
               <SettingCard title={t("settings.fontSize")} description={t("settings.fontSizeDesc")}>
                 <ButtonGroup value={settings.fontSize} onChange={(v) => update("fontSize", v)}

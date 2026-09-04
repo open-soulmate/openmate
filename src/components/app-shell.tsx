@@ -1,5 +1,5 @@
 "use client";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, Loader2 } from "lucide-react";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -435,7 +435,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   pageSidebar
                 ) : isChatRoute ? (
                   <>
-                    {agents.length === 0 && <div className="px-3 py-1 text-[10px] text-muted-foreground">Loading...</div>}
                     <LeftPanel
                       placeholder={t("sidebar.searchPlaceholder", "搜索会话...")}
 

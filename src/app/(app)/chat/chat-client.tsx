@@ -1655,7 +1655,10 @@ export function ChatClient() {
                   <Bot className="w-4 h-4 text-primary" />
                 </div>
               )}
-              <div className={`max-w-[85%] lg:max-w-[70%] rounded-xl px-3 lg:px-4 py-2 lg:py-2.5 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+              <div
+                className={`max-w-[85%] lg:max-w-[70%] rounded-xl px-3 lg:px-4 py-2 lg:py-2.5 text-sm ${msg.role === 'user' ? 'text-foreground' : 'bg-card text-card-foreground border border-border'}`}
+                style={msg.role === 'user' ? { backgroundColor: 'color-mix(in srgb, var(--color-thinking-border) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--color-thinking-border) 25%, transparent)', borderWidth: '1px', borderStyle: 'solid' } : undefined}
+              >
                 {/* ── 思考过程区块（仅 agent 消息，有 thinking 数据时渲染）── */}
                 {showThinking && msg.role === 'agent' && msg.thinking && msg.thinking.length > 0 && (
                   <ThinkingBlockComponent

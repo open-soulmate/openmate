@@ -3,7 +3,7 @@
 import { useCallback, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { MessageSquare, ChevronDown, ChevronRight, Plus, Trash2 } from "lucide-react";
+import { MessageSquare, ChevronDown, ChevronRight, Plus, Trash2, Loader2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 // ── Types ────────────────────────────────────────────────────────
@@ -135,11 +135,11 @@ export function ConversationTree({
 
 
       {displayAgents.length === 0 ? (
-        <div className="px-4 py-8 text-center">
-          <MessageSquare size={24} className="mx-auto mb-2 text-muted-foreground/50" />
-          <p className="text-xs text-muted-foreground">
-            {t("sidebar.noConversations", "暂无会话")}
-          </p>
+        <div className="flex-1 flex items-center justify-center min-h-[200px]">
+          <div className="flex items-center gap-2 text-xs text-muted-foreground animate-pulse">
+            <Loader2 className="w-3.5 h-3.5 animate-spin" />
+            <span>{t("common.loading", "加载中...")}</span>
+          </div>
         </div>
       ) : (
         displayAgents.map(agent => (

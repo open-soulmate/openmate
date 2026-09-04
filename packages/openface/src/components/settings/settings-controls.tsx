@@ -66,7 +66,7 @@ export interface ButtonGroupProps<T extends string> {
 
 export function ButtonGroup<T extends string>({ value, onChange, options }: ButtonGroupProps<T>) {
   return (
-    <div className="flex gap-1 rounded-lg border border-border p-0.5 bg-muted/50">
+    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-1 rounded-lg border border-border p-0.5 bg-muted/50">
       {options.map((o) => (
         <button key={o.value} onClick={() => onChange(o.value)} className={cn("flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all", value === o.value ? "bg-background text-foreground shadow-sm" : "text-muted-foreground hover:text-foreground")}>
           {o.icon && <o.icon size={12} />}{o.label}

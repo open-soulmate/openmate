@@ -40,6 +40,14 @@ const themeInitScript = `
     else if (t === 'twilight-violet') { r.classList.add('dark', 'theme-twilight-violet'); }
     else if (t === 'dune-sand') { r.classList.add('dark', 'theme-dune-sand'); }
     else if (t === 'custom') { r.classList.add('dark', 'theme-custom'); }
+    // Apply custom theme colors from localStorage
+    if (t === 'custom') {
+      try {
+        var cc = JSON.parse(localStorage.getItem('openmate-custom-colors') || '{}');
+        var defs = [['bg','--custom-bg','#1e1e2e'],['fg','--custom-fg','#cdd6f4'],['card','--custom-card','#26273a'],['accent','--custom-accent','#89b4fa'],['secondary','--custom-secondary','#313244'],['border','--custom-border','#313244'],['sidebar','--custom-sidebar','#181825'],['danger','--custom-danger','#f38ba8'],['success','--custom-success','#a6e3a1']];
+        for (var i = 0; i < defs.length; i++) { r.style.setProperty(defs[i][1], cc[defs[i][0]] || defs[i][2]); }
+      } catch(e) {}
+    }
     // 浅色版新主题：只加 theme-xxx-light（不加 dark）
     else if (t === 'deep-abyss-light') { r.classList.add('theme-deep-abyss-light'); }
     else if (t === 'cream-mocha-light') { r.classList.add('theme-cream-mocha-light'); }

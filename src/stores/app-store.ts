@@ -612,6 +612,16 @@ export const useAppStore = create<AppState>((set, get) => ({
     applyTheme(theme);
     if (typeof window !== "undefined") {
       localStorage.setItem("openmate-theme", theme);
+      // Apply custom colors when switching to custom theme
+      if (theme === "custom") {
+        try {
+          const cc = JSON.parse(localStorage.getItem("openmate-custom-colors") || "{}");
+          const defs: [string, string, string][] = [["bg","--custom-bg","#1e1e2e"],["fg","--custom-fg","#cdd6f4"],["card","--custom-card","#26273a"],["accent","--custom-accent","#89b4fa"],["secondary","--custom-secondary","#313244"],["border","--custom-border","#313244"],["sidebar","--custom-sidebar","#181825"],["danger","--custom-danger","#f38ba8"],["success","--custom-success","#a6e3a1"]];
+          for (const [key, cssVar, fallback] of defs) {
+            document.documentElement.style.setProperty(cssVar, cc[key] || fallback);
+          }
+        } catch {}
+      }
     }
   },
 
