@@ -755,7 +755,9 @@ export function ChatClient() {
     // Update store's activeSessionId if it matches the old temp ID
     const currentActive = useAppStore.getState().activeSessionId;
     if (currentActive === oldId) {
-      useAppStore.getState().setActiveSession(newId, null, {});
+      // 迁移时保留当前 agentId，不要重置为 null
+      const currentAgentId = useAppStore.getState().activeAgentId;
+      useAppStore.getState().setActiveSession(newId, currentAgentId, {});
     }
     setSessionDataMap(prev => {
       const data = prev.get(oldId);
