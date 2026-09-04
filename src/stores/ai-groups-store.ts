@@ -350,14 +350,16 @@ export const useAIGroupsStore = create<AIGroupsState>((set, get) => ({
   addAgent: async () => {
     const { selectedGroup, newAgent } = get();
     if (!selectedGroup || !newAgent.name.trim()) return;
+    // 生成唯一 agent_id
+    const agentId = `agent-${Date.now()}`;
     const agent: AgentRole = {
-      agent_id: `agent-${Date.now()}`, name: newAgent.name,
+      agent_id: agentId, name: newAgent.name,
       role: newAgent.role, model: newAgent.model, status: 'online',
     };
-    const updated = [...(selectedGroup.agents || []), agent];
-    await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ agents: updated }),
+    // 使用 POST /{group_id}/agents 独立端点添加成员
+    await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/agents`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', ...authHeaders() },
+      body: JSON.stringify(agent),
     });
     set({ newAgent: { name: '', role: 'executor', model: 'claude-sonnet' }, showAddAgent: false });
     get().selectGroup(selectedGroup);
@@ -366,10 +368,9 @@ export const useAIGroupsStore = create<AIGroupsState>((set, get) => ({
   removeAgent: async (agentId: string) => {
     const { selectedGroup } = get();
     if (!selectedGroup) return;
-    const updated = (selectedGroup.agents || []).filter(a => a.agent_id !== agentId);
-    await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ agents: updated }),
+    // 使用 DELETE /{group_id}/agents/{agent_id} 独立端点删除成员
+    await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/agents/${agentId}`, {
+      method: 'DELETE', headers: authHeaders(),
     });
     get().selectGroup(selectedGroup);
   },
@@ -384,12 +385,10 @@ export const useAIGroupsStore = create<AIGroupsState>((set, get) => ({
   saveEditAgent: async (agentId: string) => {
     const { selectedGroup, editAgentData } = get();
     if (!selectedGroup) return;
-    const updated = (selectedGroup.agents || []).map(a =>
-      a.agent_id === agentId ? { ...a, name: editAgentData.name, model: editAgentData.model, temperature: editAgentData.temperature, role: editAgentData.role } : a
-    );
-    await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}`, {
+    // 使用 PATCH /{group_id}/agents/{agent_id} 独立端点更新成员
+    await fetch(`${getApiBaseUrl()}/api/ai-groups/${selectedGroup.id}/agents/${agentId}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json', ...authHeaders() },
-      body: JSON.stringify({ agents: updated }),
+      body: JSON.stringify({ model: editAgentData.model, temperature: editAgentData.temperature, role: editAgentData.role }),
     });
     set({ editingAgent: null });
     get().selectGroup(selectedGroup);
