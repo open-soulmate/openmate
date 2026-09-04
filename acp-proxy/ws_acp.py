@@ -129,21 +129,6 @@ async def ws_acp_endpoint(client_ws: WebSocket):
     })
     logger.info(f"[ACP] initialize handshake OK for user {user_id}")
 
-    # 立即回复 initialize（代理响应，让前端继续发 session/new）
-    await _send_acp(client_ws, {
-        "jsonrpc": "2.0",
-        "id": init_msg.get("id"),
-        "result": {
-            "protocolVersion": 1,
-            "agentInfo": {"name": "openmate-proxy", "version": "0.1.0"},
-            "agentCapabilities": {
-                "promptCapabilities": {},
-                "sessionCapabilities": {"fork": {}, "list": {}, "resume": {}}
-            },
-        }
-    })
-    logger.info(f"[ACP] initialize handshake OK for user {user_id}")
-
     # 初始化消息暂存，等session/new到了一起发
     buffered_msgs = [init_msg]
     
