@@ -143,7 +143,8 @@ async def ws_acp_endpoint(client_ws: WebSocket):
 
     # 提取agent_id
     params = session_msg.get("params", {})
-    agent_id = params.get("agent_id") or params.get("agentId", "soulmate")
+    logger.info(f"[ACP] session/new raw params: {json.dumps(params, ensure_ascii=False)[:200]}")
+    agent_id = params.get("agent_id") or params.get("agentId") or "soulmate"
     route = AGENT_ROUTES.get(agent_id, DEFAULT_ROUTE)
     logger.info(f"[ACP] user {user_id} → agent {agent_id} → {route['cmd']}")
 
@@ -167,8 +168,12 @@ async def ws_acp_endpoint(client_ws: WebSocket):
         return
 
     # 转发所有缓冲消息到子进程（initialize + session/new）
+    # 注意：子进程（ACP SDK）期望 initialize params 里有 protocolVersion
     try:
         for msg in buffered_msgs:
+            # 注入 protocolVersion 到 initialize 的 params
+            if msg.get("method") == "initialize":
+                msg.setdefault("params", {})["protocolVersion"] = 1
             _msg = json.dumps(msg, ensure_ascii=False)
             proc.stdin.write((_msg + "\n").encode())
             await proc.stdin.drain()
