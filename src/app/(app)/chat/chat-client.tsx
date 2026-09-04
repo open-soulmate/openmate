@@ -311,6 +311,17 @@ function useAcpWebSocket(params: {
           state.acpSessionId = acpSid;
           // Migrate temp session ID to real session ID
           if (sessionId.startsWith('temp-')) {
+            // 迁移 ACP 状态和 WebSocket 到真实 sessionId
+            const acpState = sessionStateMapRef.current.get(sessionId);
+            if (acpState) {
+              sessionStateMapRef.current.set(acpSid, acpState);
+              sessionStateMapRef.current.delete(sessionId);
+            }
+            const wsEntry = wsMapRef.current.get(sessionId);
+            if (wsEntry) {
+              wsMapRef.current.set(acpSid, wsEntry);
+              wsMapRef.current.delete(sessionId);
+            }
             migrateSessionId(sessionId, acpSid);
             // Update selectedSession with real ID
             const updated = { id: acpSid, name: '', platform: 'hermes' } as Session;
@@ -769,18 +780,7 @@ export function ChatClient() {
       next.set(newId, data);
       return next;
     });
-    // 迁移 ACP 状态 (sessionStateMapRef)
-    const acpState = sessionStateMapRef.current.get(oldId);
-    if (acpState) {
-      sessionStateMapRef.current.set(newId, acpState);
-      sessionStateMapRef.current.delete(oldId);
-    }
-    // 迁移 WebSocket (wsMapRef)
-    const ws = wsMapRef.current.get(oldId);
-    if (ws) {
-      wsMapRef.current.set(newId, ws);
-      wsMapRef.current.delete(oldId);
-    }
+    // Note: sessionStateMapRef and wsMapRef migration happens in hook's performHandshake
   }, []);
 
   // Derived messages for active session
