@@ -300,6 +300,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSidebarAgents((prev: AgentInfo[]) => prev.map(a =>
       a.id === agentId ? { ...a, expanded: !a.expanded } : a
     ));
+    // 点击 agent 标题时，同时设置 activeAgentId（让 selectedAgentRef 更新）
+    useAppStore.getState().setActiveSession(null, agentId === 'soulmate' ? null : agentId, {});
   }, []);
 
   // Toggle source group expand
