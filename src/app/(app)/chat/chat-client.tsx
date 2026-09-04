@@ -1114,15 +1114,16 @@ export function ChatClient() {
     // No WS exists — create ACP connection now
     const agentId = selectedAgentRef.current?.id || 'soulmate';
     connectSession(currentSessionId, agentId);
-    // 等待 WS 连接就绪
+    // 等待 WS 连接就绪（WS 可能被迁移到新 sessionId）
     let waited = 0;
     const waitConnect = setInterval(() => {
       waited += 500;
-      const ws2 = wsMapRef.current.get(currentSessionId);
+      const ws2 = wsMapRef.current.get(currentSessionId) || wsMapRef.current.get(activeSessionId || '');
       if (ws2?.readyState === WebSocket.OPEN) {
         clearInterval(waitConnect);
-        sendAcpPrompt(currentSessionId, messageText);
-      } else if (waited >= 10000) {
+        const sendId = activeSessionId && wsMapRef.current.has(activeSessionId) ? activeSessionId : currentSessionId;
+        sendAcpPrompt(sendId, messageText);
+      } else if (waited >= 15000) {
         clearInterval(waitConnect);
         setLoading(false);
         updateSessionMessages(currentSessionId, prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: t('chat.connectionLost') }], timestamp: new Date() }]);
@@ -1488,11 +1489,14 @@ export function ChatClient() {
                   let spWaited = 0;
                   const spWaitConnect = setInterval(() => {
                     spWaited += 500;
-                    const ws2 = wsMapRef.current.get(currentSessionId);
+                    // WS may have been migrated to a new sessionId (temp→real), check both
+                    const ws2 = wsMapRef.current.get(currentSessionId) || wsMapRef.current.get(activeSessionId || '');
                     if (ws2?.readyState === WebSocket.OPEN) {
                       clearInterval(spWaitConnect);
-                      sendAcpPrompt(currentSessionId, messageText);
-                    } else if (spWaited >= 10000) {
+                      // Use the migrated sessionId for sending
+                      const sendId = activeSessionId && wsMapRef.current.has(activeSessionId) ? activeSessionId : currentSessionId;
+                      sendAcpPrompt(sendId, messageText);
+                    } else if (spWaited >= 15000) {
                       clearInterval(spWaitConnect);
                       setLoading(false);
                       updateSessionMessages(currentSessionId, prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: t('chat.connectionLost') }], timestamp: new Date() }]);
