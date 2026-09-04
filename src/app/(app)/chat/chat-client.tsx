@@ -40,9 +40,37 @@ const getAcpWsUrl = () => getAcpProxyUrl().replace('http', 'ws');
 
 interface MessagePart { type: string; text?: string; data?: string; name?: string; mime_type?: string; url?: string; }
 interface TokenUsage { input: number; output: number; }
+
+/** 思考过程块 —— 用于存储 Agent 推理链/内心独白的流式文本 */
+interface ThinkingBlock {
+  id: string;        // 唯一标识（使用时间戳 + 随机后缀）
+  text: string;      // 累积的思考文本内容
+  isComplete: boolean; // 是否已完成接收（false = 仍在流式接收中）
+}
+
+/** 工具调用信息 —— 记录 Agent 调用外部工具的完整生命周期 */
+interface ToolCallInfo {
+  toolCallId: string;   // 唯一标识（来自 ACP 协议的 toolCallId）
+  toolName: string;     // 工具名称（如 web_search、read_file）
+  serverName?: string;  // MCP 服务器名称（可选）
+  state: 'running' | 'completed' | 'failed'; // 工具调用状态
+  args?: string;        // 调用参数（JSON 字符串）
+  content?: string;     // 调用结果内容
+}
+
 interface Checkpoint { id: string; messageId: string; timestamp: Date; messages: Message[]; label: string; }
 type AgentMode = 'plan' | 'act';
-interface Message { id: string; role: 'user' | 'agent'; parts: MessagePart[]; timestamp: Date; source?: string; fileChanges?: FileChange[]; tokenUsage?: TokenUsage; }
+interface Message {
+  id: string;
+  role: 'user' | 'agent';
+  parts: MessagePart[];
+  timestamp: Date;
+  source?: string;
+  fileChanges?: FileChange[];
+  tokenUsage?: TokenUsage;
+  thinking?: ThinkingBlock[]; // 思考过程块列表（新增：Agent 推理链可见性）
+  toolCalls?: ToolCallInfo[]; // 工具调用记录列表（新增：工具调用过程可见性）
+}
 interface Session { id: string; name?: string; title?: string; platform: string; chat_id?: string; last_message?: string; unread?: number; workspace?: string; last_active?: string; updated_at?: string; created_at?: string; message_count?: number; source?: string; }
 
 // Multi-session data: each session has its own messages and unread state
@@ -294,7 +322,95 @@ function useAcpWebSocket(params: {
     });
   }, [updateSessionMessages]);
 
-  // Finalize a completed session: clear streaming flag, parse file changes, record spending
+  // ── Agent 思考过程处理 (agent_thought_chunk / agent_thought) ──
+  // 累积思考文本到当前流式消息的 thinking 字段；如果消息不存在则先创建
+  const handleAgentThoughtChunk = useCallback((targetSessionId: string, text: string) => {
+    updateSessionMessages(targetSessionId, prev => {
+      const last = prev[prev.length - 1];
+      if (last?.role === 'agent' && last?.source === 'streaming') {
+        // 找到最后一个未完成的 thinking block，累积文本
+        const thinking = [...(last.thinking || [])];
+        const lastBlock = thinking[thinking.length - 1];
+        if (lastBlock && !lastBlock.isComplete) {
+          // 追加到现有的未完成思考块
+          lastBlock.text += text;
+        } else {
+          // 创建新的思考块（时间戳 + 随机后缀保证唯一性）
+          thinking.push({ id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, text, isComplete: false });
+        }
+        return [...prev.slice(0, -1), { ...last, thinking }];
+      }
+      // 如果还没有流式消息，先创建一个（思考块先于回复块到达时）
+      const newThinking: ThinkingBlock = { id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`, text, isComplete: false };
+      return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: '' }], timestamp: new Date(), source: 'streaming', thinking: [newThinking] }];
+    });
+  }, [updateSessionMessages]);
+
+  // 标记当前所有未完成的 thinking block 为已完成
+  const handleAgentThoughtComplete = useCallback((targetSessionId: string) => {
+    updateSessionMessages(targetSessionId, prev => {
+      const last = prev[prev.length - 1];
+      if (last?.role === 'agent' && last.thinking?.some(t => !t.isComplete)) {
+        // 将所有未完成的思考块标记为完成
+        const thinking = last.thinking.map(t => t.isComplete ? t : { ...t, isComplete: true });
+        return [...prev.slice(0, -1), { ...last, thinking }];
+      }
+      return prev;
+    });
+  }, [updateSessionMessages]);
+
+  // ── 工具调用处理 (tool_call / tool_call_update) ──
+  // 创建新的工具调用记录，或更新已有记录的状态
+  const handleToolCall = useCallback((targetSessionId: string, toolData: { toolCallId?: string; name?: string; arguments?: string; serverName?: string }) => {
+    updateSessionMessages(targetSessionId, prev => {
+      const last = prev[prev.length - 1];
+      if (last?.role === 'agent' && last?.source === 'streaming') {
+        const toolCalls = [...(last.toolCalls || [])];
+        const callId = toolData.toolCallId || `tc-${Date.now()}`;
+        // 检查是否已存在相同 ID 的工具调用（避免重复）
+        const existing = toolCalls.find(tc => tc.toolCallId === callId);
+        if (!existing) {
+          toolCalls.push({
+            toolCallId: callId,
+            toolName: toolData.name || 'unknown',
+            serverName: toolData.serverName,
+            state: 'running',
+            args: toolData.arguments,
+          });
+        }
+        return [...prev.slice(0, -1), { ...last, toolCalls }];
+      }
+      return prev;
+    });
+  }, [updateSessionMessages]);
+
+  // 更新工具调用进度/结果（tool_call_update）
+  const handleToolCallUpdate = useCallback((targetSessionId: string, update: { toolCallId?: string; state?: string; content?: string }) => {
+    updateSessionMessages(targetSessionId, prev => {
+      const last = prev[prev.length - 1];
+      if (last?.role === 'agent' && last.toolCalls?.length) {
+        const toolCalls = last.toolCalls.map(tc => {
+          if (tc.toolCallId === update.toolCallId) {
+            // 映射 ACP 状态到内部状态
+            const stateMap: Record<string, ToolCallInfo['state']> = {
+              running: 'running', completed: 'completed', done: 'completed',
+              failed: 'failed', error: 'failed',
+            };
+            return {
+              ...tc,
+              state: stateMap[update.state || ''] || tc.state,
+              content: update.content || tc.content,
+            };
+          }
+          return tc;
+        });
+        return [...prev.slice(0, -1), { ...last, toolCalls }];
+      }
+      return prev;
+    });
+  }, [updateSessionMessages]);
+
+  // Finalize a completed session: clear streaming flag, mark thinking complete, parse file changes, record spending
   const handleSessionComplete = useCallback((completedSessionId: string) => {
     setLoading(false);
     streamingSessionIdRef.current = null;
@@ -314,7 +430,11 @@ function useAcpWebSocket(params: {
             });
           }, 0);
         }
-        return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
+        // 会话完成时：标记所有思考块为已完成，清除流式标记
+        const thinking = last.thinking?.map(t => t.isComplete ? t : { ...t, isComplete: true });
+        // 工具调用：将仍在 running 的标记为 completed（兜底）
+        const toolCalls = last.toolCalls?.map(tc => tc.state === 'running' ? { ...tc, state: 'completed' as const } : tc);
+        return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage, thinking, toolCalls }];
       }
       return prev;
     });
@@ -603,6 +723,51 @@ function useAcpWebSocket(params: {
                 incrementUnread(updateSessionId, text);
               }
             }
+            // ── 思考过程流式块 (agent_thought_chunk) ──
+            // 累积思考文本到当前流式消息的 thinking 字段
+            else if (sessionUpdate === 'agent_thought_chunk') {
+              const text = update.content?.text as string | undefined;
+              if (text) {
+                handleAgentThoughtChunk(updateSessionId, text);
+              }
+            }
+            // ── 思考过程完整消息 (agent_thought) ──
+            // 一次性接收完整思考内容，创建已完成的 thinking block
+            else if (sessionUpdate === 'agent_thought') {
+              const text = update.content?.text as string | undefined;
+              if (text) {
+                handleAgentThoughtChunk(updateSessionId, text);
+                handleAgentThoughtComplete(updateSessionId);
+              }
+            }
+            // ── 工具调用开始 (tool_call) ──
+            // text 字段是 JSON 字符串，包含 name/arguments/toolCallId 等
+            else if (sessionUpdate === 'tool_call') {
+              const text = update.content?.text as string | undefined;
+              if (text) {
+                try {
+                  const toolData = JSON.parse(text);
+                  handleToolCall(updateSessionId, toolData);
+                } catch {
+                  // JSON 解析失败时用原始文本作为工具名（兜底）
+                  console.warn('[ACP] tool_call JSON 解析失败，使用原始文本:', text);
+                  handleToolCall(updateSessionId, { name: text });
+                }
+              }
+            }
+            // ── 工具调用进度/结果 (tool_call_update) ──
+            // text 字段是 JSON 字符串，包含 toolCallId/state/content 等
+            else if (sessionUpdate === 'tool_call_update') {
+              const text = update.content?.text as string | undefined;
+              if (text) {
+                try {
+                  const updateData = JSON.parse(text);
+                  handleToolCallUpdate(updateSessionId, updateData);
+                } catch {
+                  console.warn('[ACP] tool_call_update JSON 解析失败:', text);
+                }
+              }
+            }
           }
         } catch {}
       };
@@ -691,6 +856,150 @@ function useAcpWebSocket(params: {
   }, [getSessionState]);
 
   return { wsMapRef, wsConnected, streamingSessionIdRef, sendAcpPrompt, connectSession, disconnectSession, approvalRequest, sendApproval };
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 思考过程折叠组件 (ThinkingBlock)
+// 可折叠的思考过程区块，默认收起；流式接收时自动展开，完成后延迟自动折叠
+// ═══════════════════════════════════════════════════════════════
+function ThinkingBlockComponent({ blocks, isStreaming }: { blocks: ThinkingBlock[]; isStreaming: boolean }) {
+  // 展开/收起状态 —— 默认收起，用户不想看时无干扰
+  const [expanded, setExpanded] = useState(false);
+  // 记录上一次 isStreaming 状态，用于检测 流式→完成 的转变
+  const wasStreamingRef = useRef(isStreaming);
+
+  // 流式接收时自动展开，让用户实时看到思考过程
+  useEffect(() => {
+    if (isStreaming) {
+      setExpanded(true);
+    }
+  }, [isStreaming]);
+
+  // 流式完成（从 true 变为 false）时，延迟 500ms 自动收起
+  useEffect(() => {
+    if (wasStreamingRef.current && !isStreaming) {
+      const timer = setTimeout(() => setExpanded(false), 500);
+      return () => clearTimeout(timer);
+    }
+    wasStreamingRef.current = isStreaming;
+  }, [isStreaming]);
+
+  // 合并所有思考块的文本内容
+  const content = blocks.map(b => b.text).join('');
+
+  // 如果没有任何思考内容，不渲染（优雅降级）
+  if (!content.trim()) return null;
+
+  return (
+    <div className="mb-2 rounded-lg border-l-2 border-purple-300 dark:border-purple-600 bg-gray-100/60 dark:bg-gray-800/40 overflow-hidden transition-all duration-200 ease-in-out">
+      {/* 可点击的标题栏：切换展开/收起 */}
+      <button
+        onClick={() => setExpanded(!expanded)}
+        className="w-full flex items-center justify-between px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:bg-gray-200/40 dark:hover:bg-gray-700/30 transition-colors cursor-pointer select-none"
+      >
+        <span className="flex items-center gap-1.5">
+          💭
+          <span className="font-medium">
+            {isStreaming ? '正在思考...' : '思考过程'}
+          </span>
+          {isStreaming && (
+            /* 流式接收中的打字光标动画 */
+            <span className="inline-block w-1.5 h-3.5 bg-purple-400 animate-pulse ml-0.5" />
+          )}
+        </span>
+        <span className="text-[10px] opacity-60">{expanded ? '▼' : '▶'}</span>
+      </button>
+      {/* 展开时显示思考内容 */}
+      {expanded && (
+        <div className="px-3 pb-2 pt-0.5">
+          <MarkdownContent content={content} onCodeApply={() => {}} />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════
+// 工具调用信息组件 (ToolCallBlock)
+// 显示工具名称 + 状态标签（⏳运行中 / ✅完成 / ❌失败）
+// 可选：点击展开查看参数和结果
+// ═══════════════════════════════════════════════════════════════
+function ToolCallBlockComponent({ toolCalls }: { toolCalls: ToolCallInfo[] }) {
+  if (!toolCalls.length) return null;
+
+  return (
+    <div className="mb-2 space-y-1">
+      {toolCalls.map(tc => (
+        <ToolCallItem key={tc.toolCallId} tc={tc} />
+      ))}
+    </div>
+  );
+}
+
+/** 单个工具调用条目 —— 支持点击展开详情 */
+function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
+  const [showDetail, setShowDetail] = useState(false);
+
+  // 状态 → 图标 + 颜色映射
+  const statusConfig = {
+    running:   { icon: '⏳', label: '运行中',  color: 'text-yellow-500 dark:text-yellow-400' },
+    completed: { icon: '✅', label: '完成',    color: 'text-green-500 dark:text-green-400' },
+    failed:    { icon: '❌', label: '失败',    color: 'text-red-500 dark:text-red-400' },
+  };
+  const cfg = statusConfig[tc.state] || statusConfig.running;
+
+  // 是否有详情可展开（参数或结果）
+  const hasDetail = !!(tc.args || tc.content);
+
+  return (
+    <div className="rounded-lg bg-blue-50/60 dark:bg-blue-900/20 border border-blue-200/40 dark:border-blue-800/30 overflow-hidden">
+      {/* 工具调用摘要行 */}
+      <button
+        onClick={() => hasDetail && setShowDetail(!showDetail)}
+        className={`w-full flex items-center gap-2 px-3 py-1.5 text-xs transition-colors ${hasDetail ? 'cursor-pointer hover:bg-blue-100/40 dark:hover:bg-blue-800/20' : 'cursor-default'}`}
+      >
+        <span>🔧</span>
+        <span className="font-mono font-medium text-gray-700 dark:text-gray-300 truncate">
+          {tc.toolName}
+        </span>
+        {tc.serverName && (
+          <span className="text-[10px] text-gray-400 dark:text-gray-500 truncate">
+            ({tc.serverName})
+          </span>
+        )}
+        {/* 状态标签 */}
+        <span className={`ml-auto flex items-center gap-1 ${cfg.color}`}>
+          <span>{cfg.icon}</span>
+          <span>{cfg.label}</span>
+          {/* 运行中的旋转动画 */}
+          {tc.state === 'running' && (
+            <Loader2 className="w-3 h-3 animate-spin" />
+          )}
+        </span>
+      </button>
+      {/* 展开的详情区域：调用参数和返回结果 */}
+      {showDetail && hasDetail && (
+        <div className="px-3 pb-2 pt-0.5 border-t border-blue-200/30 dark:border-blue-800/20">
+          {tc.args && (
+            <div className="mb-1">
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">参数</span>
+              <pre className="mt-0.5 text-[11px] text-gray-600 dark:text-gray-400 bg-gray-100/50 dark:bg-gray-800/50 rounded p-1.5 overflow-x-auto whitespace-pre-wrap break-all max-h-32 overflow-y-auto">
+                {tc.args}
+              </pre>
+            </div>
+          )}
+          {tc.content && (
+            <div>
+              <span className="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wide">结果</span>
+              <pre className="mt-0.5 text-[11px] text-gray-600 dark:text-gray-400 bg-gray-100/50 dark:bg-gray-800/50 rounded p-1.5 overflow-x-auto whitespace-pre-wrap break-all max-h-48 overflow-y-auto">
+                {tc.content}
+              </pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
 }
 
 export function ChatClient() {
@@ -1335,6 +1644,17 @@ export function ChatClient() {
                 </div>
               )}
               <div className={`max-w-[85%] lg:max-w-[70%] rounded-xl px-3 lg:px-4 py-2 lg:py-2.5 text-sm ${msg.role === 'user' ? 'bg-primary text-primary-foreground' : 'bg-muted'}`}>
+                {/* ── 思考过程区块（仅 agent 消息，有 thinking 数据时渲染）── */}
+                {msg.role === 'agent' && msg.thinking && msg.thinking.length > 0 && (
+                  <ThinkingBlockComponent
+                    blocks={msg.thinking}
+                    isStreaming={msg.source === 'streaming' && msg.thinking.some(t => !t.isComplete)}
+                  />
+                )}
+                {/* ── 工具调用区块（仅 agent 消息，有 toolCalls 数据时渲染）── */}
+                {msg.role === 'agent' && msg.toolCalls && msg.toolCalls.length > 0 && (
+                  <ToolCallBlockComponent toolCalls={msg.toolCalls} />
+                )}
                 {msg.parts.map((p, i) => (
                   <div key={i}>
                     {p.type === 'text' && <MarkdownContent content={p.text || ''} onCodeApply={(code, lang) => {
