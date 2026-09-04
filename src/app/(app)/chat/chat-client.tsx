@@ -201,7 +201,7 @@ function useAcpWebSocket(params: {
   const wsRef = useRef<WebSocket | null>(null);
   const [wsConnected, setWsConnected] = useState(false);
   const streamingSessionIdRef = useRef<string | null>(null);
-  // ACP 会话 ID（由 session.create 返回）
+  // ACP 会话 ID（由 session/new 返回）
   const acpSessionIdRef = useRef<string | null>(null);
   // JSON-RPC 请求 ID 计数器
   const rpcIdRef = useRef(0);
@@ -217,20 +217,21 @@ function useAcpWebSocket(params: {
 
   // 发送用户消息到 ACP 会话（通过 ref 访问 ws，不依赖 useEffect 闭包）
   const sendAcpPrompt = useCallback(async (text: string) => {
-    // 等待 ACP 握手完成，避免 newSession 未返回时消息丢失
+    // 等待 ACP 握手完成，避免 session/new 未返回时消息丢失
     if (acpReadyRef.current) await acpReadyRef.current;
     const sid = acpSessionIdRef.current;
     const ws = wsRef.current;
     if (!sid || !ws || ws.readyState !== WebSocket.OPEN) return;
     const id = ++rpcIdRef.current;
+    const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     // prompt 的 ack 响应不需要处理，注册一个空回调避免 pendingRequests 泄漏
     pendingRequestsRef.current.set(id, { resolve: () => {}, reject: () => {} });
-    // 官方ACP协议：prompt方法，prompt参数为内容块数组
+    // 官方ACP v1.0协议：session/prompt方法，prompt参数为内容块数组，加sessionId和messageId
     ws.send(JSON.stringify({
       jsonrpc: '2.0',
       id,
-      method: 'prompt',
-      params: { session_id: sid, prompt: [{ type: 'text', text }] },
+      method: 'session/prompt',
+      params: { sessionId: sid, messageId, prompt: [{ type: 'text', text }] },
     }));
     // 10秒后清理 ack 回调
     setTimeout(() => { pendingRequestsRef.current.delete(id); }, 10000);
@@ -262,15 +263,16 @@ function useAcpWebSocket(params: {
       });
     };
 
-    // ACP 握手：initialize → newSession（官方ACP协议）
+    // ACP 握手：initialize → session/new（ACP v1.0 官方协议）
     const performAcpHandshake = async () => {
       try {
         // 第一步：initialize 握手
-        await sendRpcRequest('initialize', {});
-        // 第二步：创建会话
+        // 官方ACP协议：initialize需要protocolVersion(integer)
+        await sendRpcRequest('initialize', { protocolVersion: 1 });
+        // 第二步：创建会话（ACP v1.0: session/new 方法，带 cwd 参数）
         const currentAgentId = selectedAgentRef.current?.id || 'soulmate';
-        // 官方ACP协议：newSession方法，cwd参数
-        const result = await sendRpcRequest('newSession', { cwd: '/', agent_id: currentAgentId }) as { session_id?: string; sessionId?: string };
+        // 官方ACP v1.0协议：session/new方法，cwd参数
+        const result = await sendRpcRequest('session/new', { cwd: '/', mcpServers: [], agent_id: currentAgentId }) as { session_id?: string; sessionId?: string };
         // 官方ACP协议返回session_id
         const sessionId = result?.session_id || result?.sessionId;
         if (sessionId) {
@@ -482,6 +484,76 @@ function useAcpWebSocket(params: {
             else if (eventType === 'agent.tool_call') {
               // 工具调用事件 — 可选显示
               console.log('[ACP] tool call:', p.payload);
+            }
+          }
+
+          // ── ACP v1.0 官方流式通知：session/update ──
+          if (data.method === 'session/update') {
+            const p = data.params || {};
+            const sessionId = p.sessionId as string;
+            const update = p.update || {};
+            const sessionUpdate = update.sessionUpdate as string;
+
+            // agent_message_chunk: 流式文本增量
+            if (sessionUpdate === 'agent_message_chunk') {
+              if (streamingSessionIdRef.current && currentSessionId && streamingSessionIdRef.current !== currentSessionId) return;
+              const text = update.content?.text as string | undefined;
+              if (text) {
+                setMessages(prev => {
+                  const last = prev[prev.length - 1];
+                  if (last?.role === 'agent' && last?.source === 'streaming') {
+                    return [...prev.slice(0, -1), { ...last, parts: [{ type: 'text', text: (last.parts[0]?.text || '') + text }] }];
+                  }
+                  return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text }], timestamp: new Date(), source: 'streaming' }];
+                });
+              }
+              // last: true 表示流式完成
+              if (update.last === true) {
+                setLoading(false);
+                streamingSessionIdRef.current = null;
+                // 同步session到OpenSoul
+                if (sessionId && (!selectedSessionRef.current || !selectedSessionRef.current.id)) {
+                  const updated = { id: sessionId, name: '', platform: 'hermes' } as Session;
+                  setSelectedSession(updated);
+                  selectedSessionRef.current = updated;
+                  useAppStore.getState().setActiveSession(sessionId, null, { sessionName: '' });
+                  useAppStore.getState().refreshSidebar();
+                  tagSessionAgent(sessionId, selectedAgentRef.current?.id || 'soulmate');
+                }
+                setMessages(prev => {
+                  const last = prev[prev.length - 1];
+                  if (last?.role === 'agent' && last?.source === 'streaming') {
+                    const content = last.parts[0]?.text || '';
+                    const fileChanges = parseFileChanges(content);
+                    const tokenUsage = simulateTokenUsage(content);
+                    if (tokenUsage) {
+                      const sid = currentSessionId || 'default';
+                      setTimeout(() => {
+                        useAppStore.getState().addSessionSpending(sid, {
+                          input: tokenUsage.input,
+                          output: tokenUsage.output,
+                          cost: calculateCost(tokenUsage),
+                        });
+                      }, 0);
+                    }
+                    return [...prev.slice(0, -1), { ...last, source: undefined, fileChanges, tokenUsage }];
+                  }
+                  return prev;
+                });
+              }
+            }
+            // agent_message: 完整消息（非流式）
+            else if (sessionUpdate === 'agent_message') {
+              setLoading(false);
+              streamingSessionIdRef.current = null;
+              const text = update.content?.text as string | undefined;
+              if (text) {
+                setMessages(prev => {
+                  const fileChanges = parseFileChanges(text);
+                  const tokenUsage = simulateTokenUsage(text);
+                  return [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text }], timestamp: new Date(), fileChanges, tokenUsage }];
+                });
+              }
             }
           }
         } catch {}
