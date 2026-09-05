@@ -193,8 +193,10 @@ function drawEnt(
         const sp = p(ip);
         ctx.save();
         ctx.translate(sp.x, sp.y);
+        /* scale(1,-1) 翻转Y使文字正向显示（因为w2s已经翻转了一次Y） */
         ctx.scale(1, -1);
-        if (e.rotation) ctx.rotate((-e.rotation * Math.PI) / 180);
+        /* scale(1,-1) 后旋转方向变反，所以用正角度 */
+        if (e.rotation) ctx.rotate((e.rotation * Math.PI) / 180);
         ctx.font = `${Math.max(1, sz * Math.abs(s))}px sans-serif`;
         ctx.fillText(txt, 0, 0);
         ctx.restore();
