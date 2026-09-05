@@ -784,11 +784,15 @@ function renderEntityList(
         if (blockDef?.entities?.length) {
           ctx.save();
           ctx.translate(e.insertionPoint.x, e.insertionPoint.y);
-          const sx = e.xScale ?? 1;
-          const sy = e.yScale ?? 1;
+          const sx = typeof e.xScale === 'number' && isFinite(e.xScale) ? e.xScale : 1;
+          const sy = typeof e.yScale === 'number' && isFinite(e.yScale) ? e.yScale : sx;
+          const rot = typeof e.rotation === 'number' ? e.rotation : 0;
+          // 按飞鱼的顺序: translate → rotate → scale → (-basePoint)
+          if (rot !== 0) ctx.rotate((rot * Math.PI) / 180);
           if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
-          const rot = ((e.rotation ?? 0) * Math.PI) / 180;
-          if (rot !== 0) ctx.rotate(rot);
+          // 应用块的 basePoint 偏移
+          const bp = blockDef.basePoint;
+          if (bp && (bp.x !== 0 || bp.y !== 0)) ctx.translate(-bp.x, -bp.y);
           count += renderEntityList(ctx, blockDef.entities, lw, isDark, db);
           ctx.restore();
         } else {
@@ -1043,6 +1047,24 @@ export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className 
 
         if (disposed) return;
         if (!db || !db.entities) throw new Error('数据库转换失败');
+
+        // [DEBUG] 打印 db 的结构，确认字段名
+        console.log('[CAD] db keys:', Object.keys(db));
+        console.log('[CAD] db.tables keys:', db.tables ? Object.keys(db.tables) : 'no tables');
+        if (db.tables?.BLOCK_RECORD) {
+          const br = db.tables.BLOCK_RECORD;
+          console.log('[CAD] BLOCK_RECORD keys:', Object.keys(br));
+          const entries = (br as any).entries ?? (br as any).blocks ?? [];
+          console.log('[CAD] BLOCK_RECORD entries count:', entries.length);
+          if (entries.length > 0) {
+            console.log('[CAD] first block:', entries[0]?.name, 'entities:', entries[0]?.entities?.length);
+          }
+        }
+        console.log('[CAD] entities count:', db.entities.length);
+        console.log('[CAD] first entity:', db.entities[0]?.type);
+        // 统计 INSERT 数量
+        const insertCount = db.entities.filter((e: any) => e.type === 'INSERT').length;
+        console.log('[CAD] INSERT count:', insertCount);
 
         dbRef.current = db;
         sceneBBoxRef.current = computeSceneBBox(db.entities);
