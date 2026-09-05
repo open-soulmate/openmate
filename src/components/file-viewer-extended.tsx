@@ -12,6 +12,9 @@
  * - eml（.eml / .msg / .mbox）→ EmailRenderer
  * - geojson（.geojson）→ GeojsonRenderer
  * - typst（.typ）→ TypstRenderer
+ * - epub（.epub）→ EpubRenderer
+ * - ofd（.ofd）→ OfdRenderer
+ * - excalidraw（.excalidraw）→ ExcalidrawRenderer
  * - rtf（.rtf）→ 占位
  * - doc（.doc / .dot）→ 占位
  * - xls（.xls / .xlsm / .xlsb）→ 占位
@@ -36,6 +39,9 @@ import { GeojsonRenderer } from './renderers/geojson-renderer';
 import { TypstRenderer } from './renderers/typst-renderer';
 import { KmlRenderer } from './renderers/kml-renderer';
 import { GpxRenderer } from './renderers/gpx-renderer';
+import { EpubRenderer } from './renderers/epub-renderer';
+import { OfdRenderer } from './renderers/ofd-renderer';
+import { ExcalidrawRenderer } from './renderers/excalidraw-renderer';
 import { Clock, Construction } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -52,6 +58,9 @@ type ExtendedFileCategory =
   | 'eml'
   | 'geojson'
   | 'typst'
+  | 'epub'
+  | 'ofd'
+  | 'excalidraw'
   | 'rtf'
   | 'doc'
   | 'xls'
@@ -89,6 +98,12 @@ const EXTENDED_FORMAT_MAP: Record<string, ExtendedFileCategory> = {
   mbox: 'eml',
   // GeoJSON
   geojson: 'geojson',
+  // EPUB 电子书
+  epub: 'epub',
+  // OFD 国标文档
+  ofd: 'ofd',
+  // Excalidraw 图表
+  excalidraw: 'excalidraw',
   // RTF
   rtf: 'rtf',
   // Word 旧格式
@@ -196,6 +211,9 @@ const FORMAT_DESCRIPTIONS: Record<ExtendedFileCategory, string> = {
   sqlite: 'SQLite 数据库浏览器，支持查看表结构和执行查询',
   eml: '邮件文件渲染，支持查看邮件正文、附件和邮件头',
   geojson: 'GeoJSON 地理数据渲染，支持地图展示、要素弹窗、暗色/亮色底图切换',
+  epub: 'EPUB 电子书渲染，支持章节导航、目录、文本内容展示',
+  ofd: 'OFD 国标文档渲染（GB/T 33190-2016），支持页面浏览和文本提取',
+  excalidraw: 'Excalidraw 手绘风格图表渲染，支持 SVG 缩放和拖拽',
   rtf: 'RTF 富文本格式渲染',
   doc: 'Microsoft Word 旧格式 (.doc) 渲染',
   xls: 'Microsoft Excel 旧格式 (.xls) 渲染',
@@ -312,6 +330,42 @@ export function FileViewerExtended({
       case 'geojson':
         return (
           <GeojsonRenderer
+            fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className}
+          />
+        );
+
+      /* ---- EPUB 电子书（已实现） ---- */
+      case 'epub':
+        return (
+          <EpubRenderer
+            fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className}
+          />
+        );
+
+      /* ---- OFD 国标文档（已实现） ---- */
+      case 'ofd':
+        return (
+          <OfdRenderer
+            fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className}
+          />
+        );
+
+      /* ---- Excalidraw 图表（已实现） ---- */
+      case 'excalidraw':
+        return (
+          <ExcalidrawRenderer
             fileName={fileName}
             fileUrl={fileUrl}
             fileBuffer={fileBuffer}
