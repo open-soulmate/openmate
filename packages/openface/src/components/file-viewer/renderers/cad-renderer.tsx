@@ -83,6 +83,25 @@ function entColor(e: Ent, isDark: boolean): string {
 /*  世界坐标 → 屏幕坐标（Y轴翻转）                                       */
 /* ------------------------------------------------------------------ */
 
+/* ------------------------------------------------------------------ */
+/*  AutoCAD 文本控制码解码                                              */
+/*  %%C → ⌀ (直径), %%D → °, %%P → ±, %%u → _ (下划线), %%o → ‾ (上划线) */
+/* ------------------------------------------------------------------ */
+
+function decodeCadText(text: string): string {
+  return text
+    .replace(/%%[cC]/g, '\u2300')    /* %%C → ⌀ */
+    .replace(/%%[dD]/g, '\u00B0')    /* %%D → ° */
+    .replace(/%%[pP]/g, '\u00B1')    /* %%P → ± */
+    .replace(/%%[uU]/g, '')          /* %%u → 下划线开关（忽略） */
+    .replace(/%%[oO]/g, '')          /* %%o → 上划线开关（忽略） */
+    .replace(/\\P/g, '\n')           /* MTEXT 换行 */
+    .replace(/\\f[^;]+;/g, '')       /* MTEXT 字体指令 \fArial|b1|i0|c134|p2; */
+    .replace(/\\[A-Za-z][^;]*;/g, '') /* 其他 MTEXT 格式指令 */
+    .replace(/\{[^}]*\}/g, '')       /* MTEXT {} 分组 */
+    .trim();
+}
+
 function w2s(p: Pt, cx: number, cy: number, s: number, w: number, h: number) {
   return { x: w / 2 + (p.x - cx) * s, y: h / 2 + (p.y - cy) * s };
 }
@@ -187,7 +206,7 @@ function drawEnt(
     case 'TEXT':
     case 'MTEXT': {
       const ip = e.insertionPoint || e.startPoint;
-      const txt = e.text;
+      const txt = decodeCadText(e.text || "");
       const sz = e.height || e.textHeight || 2.5;
       if (ip && txt) {
         const sp = p(ip);
