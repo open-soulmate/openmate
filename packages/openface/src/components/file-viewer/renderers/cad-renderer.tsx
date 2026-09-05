@@ -227,6 +227,7 @@ export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className 
         viewBoxRef.current = parseViewBox(svg);
         setEntCount(countEntities(svg));
 
+        console.log('[CAD] SVG前2000字符:', svg.substring(0, 2000));
         console.log('[CAD] SVG 生成完成, viewBox:', viewBoxRef.current, '长度:', svg.length);
 
         /* 初始视图 */
