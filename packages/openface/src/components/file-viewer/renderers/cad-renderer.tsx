@@ -215,7 +215,13 @@ export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className 
 
         if (disposed) return;
         setStatusText('生成 SVG...');
-        const svg = libredwg.dwg_to_svg(db);
+        let svg = "";
+        try {
+          svg = libredwg.dwg_to_svg(db);
+        } catch (svgErr) {
+          console.warn("[CAD] dwg_to_svg 失败，尝试 convert:", svgErr);
+        }
+        if (!svg) throw new Error("SVG 生成失败");
 
         /* 释放 WASM 内存 */
         libredwg.dwg_free(ptr);
