@@ -14,9 +14,6 @@ importers:
       '@changesets/cli':
         specifier: ^3.0.1
         version: 3.0.1
-      '@flyfish-dev/cad-viewer':
-        specifier: ^0.8.0
-        version: 0.8.0(three@0.185.1)
       '@mlightcad/data-model':
         specifier: ^1.14.4
         version: 1.14.4
@@ -596,10 +593,6 @@ packages:
   '@floating-ui/utils@0.2.12':
     resolution: {integrity: sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww==}
 
-  '@flyfish-dev/cad-viewer@0.8.0':
-    resolution: {integrity: sha512-oBhcDZ93UlkPPCCtaki3Nskfv6amE+4MnD/sTosE+e9Wv8vX/c2Z7V9aiInIDeI49YFfj6nqS1pj6zNgchkOxw==}
-    engines: {node: '>=20.19.0'}
-
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
 
@@ -828,13 +821,6 @@ packages:
   '@mlightcad/libredwg-web@0.7.10':
     resolution: {integrity: sha512-L9wnwQn8cgHIr6I5El/8TgKSXaRacW9vytSpsU19xufmrnAAqEEGcW0MU92PgEiDKuQtU4GBenERIDfSrbY99g==}
     engines: {node: '>=20'}
-
-  '@mlightcad/libredwg-web@0.7.9':
-    resolution: {integrity: sha512-tqjx0eCiR0CNI3TyO3LVYzl4ptuzSFm7asGn/C1YiJaEk7Vneto+lRrVUco85qw+PZDihaFLwWqdYIEse1swbA==}
-    engines: {node: '>=20'}
-
-  '@mlightcad/shx-parser@1.4.5':
-    resolution: {integrity: sha512-wFY0X7vnuq1IYdP6JRggb7LHcKho1P8zmcWGtXa6XYthwyKZCUoZCswTXr7J26pbzyhBB7KsiCcCL48iwIevdQ==}
 
   '@monaco-editor/loader@1.7.0':
     resolution: {integrity: sha512-gIwR1HrJrrx+vfyOhYmCZ0/JcWqG5kbfG7+d3f/C1LXk2EvzAbHSg3MQ5lO2sMlo9izoAZ04shohfKLVT6crVA==}
@@ -2236,18 +2222,6 @@ packages:
 
   dompurify@3.4.8:
     resolution: {integrity: sha512-yb1cEmaOum7wFvOCSQxyfgVlv5D47Rc30iZWoMpbDIWTnJ6grDDQyu2KFJzB2k7u0pMuJcQ1zphH//fFnw2tjQ==}
-
-  dwf-viewer@0.6.5:
-    resolution: {integrity: sha512-tHKxQGKpWyTAcNxuvnn2er8nmoOLAMK7IqY8evz9gwzg4ow7qv3eThNFjfyQCWJnE+YISVCEl13p6wI2iGUYSg==}
-    engines: {node: '>=18'}
-    peerDependencies:
-      three: '>=0.150.0'
-    peerDependenciesMeta:
-      three:
-        optional: true
-
-  dxf-parser@1.1.2:
-    resolution: {integrity: sha512-GPTumUvRkounlIazLIyJMmTWt+nlg+ksS0Hdm8jWvejmZKBTz6gvHTam76wRm4PQMma5sgKLThblQyeIJcH79Q==}
 
   echarts-for-react@3.0.6:
     resolution: {integrity: sha512-4zqLgTGWS3JvkQDXjzkR1k1CHRdpd6by0988TWMJgnvDytegWLbeP/VNZmMa+0VJx2eD7Y632bi2JquXDgiGJg==}
@@ -3761,15 +3735,6 @@ snapshots:
 
   '@floating-ui/utils@0.2.12': {}
 
-  '@flyfish-dev/cad-viewer@0.8.0(three@0.185.1)':
-    dependencies:
-      '@mlightcad/libredwg-web': 0.7.9
-      '@mlightcad/shx-parser': 1.4.5
-      dwf-viewer: 0.6.5(three@0.185.1)
-      dxf-parser: 1.1.2
-    transitivePeerDependencies:
-      - three
-
   '@iconify/types@2.0.0': {}
 
   '@iconify/utils@3.1.5':
@@ -3952,10 +3917,6 @@ snapshots:
       '@mlightcad/libredwg-web': 0.7.10
 
   '@mlightcad/libredwg-web@0.7.10': {}
-
-  '@mlightcad/libredwg-web@0.7.9': {}
-
-  '@mlightcad/shx-parser@1.4.5': {}
 
   '@monaco-editor/loader@1.7.0':
     dependencies:
@@ -5148,14 +5109,6 @@ snapshots:
   dompurify@3.4.8:
     optionalDependencies:
       '@types/trusted-types': 2.0.7
-
-  dwf-viewer@0.6.5(three@0.185.1):
-    optionalDependencies:
-      three: 0.185.1
-
-  dxf-parser@1.1.2:
-    dependencies:
-      loglevel: 1.9.2
 
   echarts-for-react@3.0.6(echarts@6.1.0)(react@19.2.8):
     dependencies:

@@ -14,7 +14,6 @@
   "dependencies": {
     "@changesets/changelog-github": "^1.0.0",
     "@changesets/cli": "^3.0.1",
-    "@flyfish-dev/cad-viewer": "^0.8.0",
     "@mlightcad/data-model": "^1.14.4",
     "@mlightcad/libredwg-converter": "^3.14.4",
     "@mlightcad/libredwg-web": "^0.7.10",
