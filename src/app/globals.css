@@ -1,8 +1,50 @@
 @import "tailwindcss";
 
+/* ═══════════════════════════════════════════════════════════════
+ * OpenMate Design System v2.0
+ * 整合 HyperOS4 设计语言 + Web/桌面端/移动端三端适配
+ * 规范文档：docs/features/design-spec-v2.md
+ * ═══════════════════════════════════════════════════════════════ */
+
 @theme {
-  --font-sans: "Inter", system-ui, sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  /* ─── 字体 ─── */
+  --font-sans: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+  --font-mono: "JetBrains Mono", "Fira Code", monospace;
+  --font-cn: "Noto Sans SC", "PingFang SC", "Microsoft YaHei", sans-serif;
+
+  /* ─── 字阶（网页端/桌面端默认值，移动端通过 @media 覆盖） ─── */
+  --text-display: 1.75rem;   /* 28px — 大数据统计 */
+  --text-h1: 1.25rem;        /* 20px — 页面标题 */
+  --text-h2: 1rem;           /* 16px — 区域标题 */
+  --text-h3: 0.875rem;       /* 14px — 卡片标题 */
+  --text-body: 0.875rem;     /* 14px — 正文 */
+  --text-caption: 0.75rem;   /* 12px — 辅助说明 */
+  --text-overline: 0.625rem; /* 10px — 标签/徽章 */
+
+  /* ─── 圆角 ─── */
+  --radius-xs: 4px;      /* 徽章/标签 */
+  --radius-sm: 6px;      /* 小元素/头像 */
+  --radius-md: 10px;     /* 中卡片/按钮 */
+  --radius-lg: 16px;     /* 大卡片/弹窗 */
+  --radius-full: 50%;    /* 圆形头像 */
+  --radius-nav: 8px;     /* 侧边栏/导航项 */
+  --radius-bubble: 12px; /* 消息气泡 */
+  --radius-sheet: 20px;  /* 移动端底部 Sheet */
+  --radius: 0.625rem;    /* 全局默认圆角（兼容旧代码） */
+
+  /* ─── 间距（8px 网格） ─── */
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --space-12: 48px;
+
+  /* ─── 过渡动画 ─── */
+  --transition-fast: 150ms ease;
+  --transition-normal: 200ms ease;
+  --transition-slow: 300ms ease;
 
   /* ─── Dracula 主题配色（默认暗色主题） ─── */
   --color-background: #282a36;
@@ -27,6 +69,22 @@
   --color-sidebar: #21222c;
   --color-sidebar-foreground: #6272a4;
   --color-sidebar-accent: #2d2f3d;
+
+  /* ─── 文字颜色层级（v2.0 新增） ─── */
+  --color-text-primary: var(--color-foreground);       /* 主要文字 100% */
+  --color-text-secondary: var(--color-muted-foreground); /* 次要文字 60% */
+  --color-text-tertiary: rgba(248, 248, 242, 0.4);     /* 辅助文字 40% */
+
+  /* ─── 表面色（v2.0 三层体系：次级层 20%） ─── */
+  --color-surface: var(--color-card);
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-border-hover: rgba(255, 255, 255, 0.15);
+
+  /* ─── 语义色 ─── */
+  --color-success: #50fa7b;
+  --color-warning: #e0af68;
+  --color-error: var(--color-destructive);
+  --color-info: #8be9fd;
 
   /* ─── VS Code 风格块（ThinkingBlock / ToolCallBlock） ─── */
   --color-thinking-bg: #282a36;
@@ -99,6 +157,58 @@ body {
 /* Chat 消息区保留 scrollbar-gutter 防止布局抖动 */
 .chat-scrollbar {
   scrollbar-gutter: stable;
+}
+
+/* ═══════════════════════════════════════════════════════════════
+ * 移动端适配（≤768px）
+ * 字号更大、圆角更大、触摸目标更大、隐藏滚动条
+ * ═══════════════════════════════════════════════════════════════ */
+@media (max-width: 768px) {
+  :root {
+    /* 字阶：移动端正文16px，标题更大 */
+    --text-display: 1.875rem;  /* 30px */
+    --text-h1: 1.375rem;       /* 22px */
+    --text-h2: 1.125rem;       /* 18px */
+    --text-h3: 1rem;           /* 16px */
+    --text-body: 1rem;         /* 16px */
+    --text-caption: 0.8125rem; /* 13px */
+    --text-overline: 0.6875rem;/* 11px */
+
+    /* 圆角：移动端更圆润 */
+    --radius-xs: 6px;
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-bubble: 16px;
+  }
+
+  /* 隐藏滚动条但保留滚动 */
+  * {
+    scrollbar-width: none;
+  }
+  ::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* 底部安全区（刘海屏/Home指示器） */
+  .bottom-bar,
+  .chat-input-bar {
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom, 0px));
+  }
+
+  /* 触摸反馈替代 hover */
+  .touchable:active {
+    opacity: 0.7;
+    transform: scale(0.98);
+    transition: all 80ms ease;
+  }
+
+  /* 禁用 hover 效果（移动端 hover 不稳定） */
+  .no-mobile-hover:hover {
+    background-color: unset;
+    transform: none;
+    box-shadow: none;
+  }
 }
 
 /* Selection */
@@ -242,6 +352,17 @@ body {
   --color-sidebar: #0e1420;
   --color-sidebar-foreground: #a9b1d6;
   --color-sidebar-accent: #1c2437;
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #1c2437;
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-text-primary: #cdd6f4;
+  --color-text-secondary: #7d88a8;
+  --color-text-tertiary: rgba(205, 214, 244, 0.4);
+  --color-success: #9ece6a;
+  --color-warning: #e0af68;
+  --color-error: #f7768e;
+  --color-info: #7dcfff;
   --color-syntax-keyword: #7aa2f7;
   --color-syntax-string: #9ece6a;
   --color-syntax-number: #e0af68;
@@ -281,6 +402,17 @@ body {
   --color-sidebar: #e8edf7;
   --color-sidebar-foreground: #565f89;
   --color-sidebar-accent: #dce3f2;
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #e4ebf7;
+  --color-surface-hover: rgba(0, 0, 0, 0.03);
+  --color-border-hover: rgba(0, 0, 0, 0.1);
+  --color-text-primary: #20293d;
+  --color-text-secondary: #565f89;
+  --color-text-tertiary: rgba(32, 41, 61, 0.4);
+  --color-success: #2e7d32;
+  --color-warning: #e65100;
+  --color-error: #c53b4e;
+  --color-info: #0277bd;
   --color-syntax-keyword: #2b5cb8;
   --color-syntax-string: #387028;
   --color-syntax-number: #a1621c;
@@ -322,6 +454,17 @@ body {
   --color-sidebar: #181825;
   --color-sidebar-foreground: #a6adc8;
   --color-sidebar-accent: #26273a;
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #2a2320;
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-text-primary: #e8ddd4;
+  --color-text-secondary: #a89888;
+  --color-text-tertiary: rgba(232, 221, 212, 0.4);
+  --color-success: #81c784;
+  --color-warning: #e0af68;
+  --color-error: #e57373;
+  --color-info: #80cbc4;
   --color-syntax-keyword: #89b4fa;
   --color-syntax-string: #a6e3a1;
   --color-syntax-number: #fab387;
@@ -361,6 +504,17 @@ body {
   --color-sidebar: #e8e9ef;
   --color-sidebar-foreground: #8c8fa1;
   --color-sidebar-accent: #dce0e8;
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #f5f0eb;
+  --color-surface-hover: rgba(0, 0, 0, 0.03);
+  --color-border-hover: rgba(0, 0, 0, 0.1);
+  --color-text-primary: #3e2723;
+  --color-text-secondary: #8d6e63;
+  --color-text-tertiary: rgba(62, 39, 35, 0.4);
+  --color-success: #2e7d32;
+  --color-warning: #e65100;
+  --color-error: #c62828;
+  --color-info: #0277bd;
   --color-syntax-keyword: #3e7fb6;
   --color-syntax-string: #40a02b;
   --color-syntax-number: #df8e1d;
@@ -402,6 +556,17 @@ body {
   --color-sidebar: #272d38;
   --color-sidebar-foreground: #d8dee9;
   --color-sidebar-accent: #3b4252;
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #2e3440;
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-text-primary: #d8dee9;
+  --color-text-secondary: #7b88a1;
+  --color-text-tertiary: rgba(216, 222, 233, 0.4);
+  --color-success: #a3be8c;
+  --color-warning: #ebcb8b;
+  --color-error: #bf616a;
+  --color-info: #88c0d0;
   --color-syntax-keyword: #81a1c1;
   --color-syntax-string: #a3be8c;
   --color-syntax-number: #d08770;
@@ -441,6 +606,17 @@ body {
   --color-sidebar: #e5e9f0;
   --color-sidebar-foreground: #616e88;
   --color-sidebar-accent: #d8dee9;
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #eceff4;
+  --color-surface-hover: rgba(0, 0, 0, 0.03);
+  --color-border-hover: rgba(0, 0, 0, 0.1);
+  --color-text-primary: #2e3440;
+  --color-text-secondary: #616e88;
+  --color-text-tertiary: rgba(46, 52, 64, 0.4);
+  --color-success: #3b7a3e;
+  --color-warning: #c9820a;
+  --color-error: #b34040;
+  --color-info: #3585b0;
   --color-syntax-keyword: #5e81ac;
   --color-syntax-string: #4c7248;
   --color-syntax-number: #b46948;
@@ -482,6 +658,17 @@ body {
   --color-sidebar: #0d1519;
   --color-sidebar-foreground: #b0c4ce;
   --color-sidebar-accent: #1a2933;
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #0f1a1a;
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-text-primary: #b8e8e0;
+  --color-text-secondary: #6fa8a0;
+  --color-text-tertiary: rgba(184, 232, 224, 0.4);
+  --color-success: #66bb6a;
+  --color-warning: #e0af68;
+  --color-error: #ef5350;
+  --color-info: #4dd0e1;
   --color-syntax-keyword: #5ccfe6;
   --color-syntax-string: #62d2a2;
   --color-syntax-number: #ffc857;
@@ -521,6 +708,17 @@ body {
   --color-sidebar: #eaf3f7;
   --color-sidebar-foreground: #547485;
   --color-sidebar-accent: #d8e8ef;
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #e8f5f3;
+  --color-surface-hover: rgba(0, 0, 0, 0.03);
+  --color-border-hover: rgba(0, 0, 0, 0.1);
+  --color-text-primary: #0a2520;
+  --color-text-secondary: #3d7068;
+  --color-text-tertiary: rgba(10, 37, 32, 0.4);
+  --color-success: #2e7d32;
+  --color-warning: #e65100;
+  --color-error: #c62828;
+  --color-info: #00838f;
   --color-syntax-keyword: #0d96b0;
   --color-syntax-string: #239968;
   --color-syntax-number: #c48b00;
@@ -562,6 +760,17 @@ body {
   --color-sidebar: #1e1a30;
   --color-sidebar-foreground: #c2c0d6;
   --color-sidebar-accent: #2f2a48;
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #1a1025;
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-text-primary: #d4c4e8;
+  --color-text-secondary: #9080a8;
+  --color-text-tertiary: rgba(212, 196, 232, 0.4);
+  --color-success: #a5d6a7;
+  --color-warning: #e0af68;
+  --color-error: #ef9a9a;
+  --color-info: #b39ddb;
   --color-syntax-keyword: #c4a7e7;
   --color-syntax-string: #9ccfd8;
   --color-syntax-number: #f6c177;
@@ -601,6 +810,17 @@ body {
   --color-sidebar: #ece6f3;
   --color-sidebar-foreground: #726e8c;
   --color-sidebar-accent: #ddd4ea;
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #f3eef8;
+  --color-surface-hover: rgba(0, 0, 0, 0.03);
+  --color-border-hover: rgba(0, 0, 0, 0.1);
+  --color-text-primary: #2a1540;
+  --color-text-secondary: #7b5e90;
+  --color-text-tertiary: rgba(42, 21, 64, 0.4);
+  --color-success: #388e3c;
+  --color-warning: #e65100;
+  --color-error: #c62828;
+  --color-info: #7e57c2;
   --color-syntax-keyword: #8c68b8;
   --color-syntax-string: #3c7c91;
   --color-syntax-number: #c28120;
@@ -642,6 +862,17 @@ body {
   --color-sidebar: #241f1c;
   --color-sidebar-foreground: #c8bfb6;
   --color-sidebar-accent: #39322d;
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #1e1610;
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-text-primary: #e8d4c0;
+  --color-text-secondary: #a89080;
+  --color-text-tertiary: rgba(232, 212, 192, 0.4);
+  --color-success: #81c784;
+  --color-warning: #ffb74d;
+  --color-error: #e57373;
+  --color-info: #80cbc4;
   --color-syntax-keyword: #e69875;
   --color-syntax-string: #8fb391;
   --color-syntax-number: #e9c46a;
@@ -681,6 +912,17 @@ body {
   --color-sidebar: #f0e9e3;
   --color-sidebar-foreground: #7c7067;
   --color-sidebar-accent: #e2d9d1;
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #faf3ec;
+  --color-surface-hover: rgba(0, 0, 0, 0.03);
+  --color-border-hover: rgba(0, 0, 0, 0.1);
+  --color-text-primary: #3e2723;
+  --color-text-secondary: #8d6e63;
+  --color-text-tertiary: rgba(62, 39, 35, 0.4);
+  --color-success: #2e7d32;
+  --color-warning: #e65100;
+  --color-error: #c62828;
+  --color-info: #0277bd;
   --color-syntax-keyword: #c96c43;
   --color-syntax-string: #4c704e;
   --color-syntax-number: #b98b0e;
@@ -723,6 +965,17 @@ body {
   --color-sidebar: var(--custom-sidebar, #181825);
   --color-sidebar-foreground: var(--custom-fg-secondary, #a6adc8);
   --color-sidebar-accent: var(--custom-card, #26273a);
+  /* ── v2.0 三层体系 ── */
+  --color-surface: #1e1e2e;
+  --color-surface-hover: rgba(255, 255, 255, 0.05);
+  --color-border-hover: rgba(255, 255, 255, 0.12);
+  --color-text-primary: #cdd6f4;
+  --color-text-secondary: #a6adc8;
+  --color-text-tertiary: rgba(205, 214, 244, 0.4);
+  --color-success: #a6e3a1;
+  --color-warning: #f9e2af;
+  --color-error: #f38ba8;
+  --color-info: #89dceb;
   --color-syntax-keyword: var(--custom-accent, #89b4fa);
   --color-syntax-string: var(--custom-success, #a6e3a1);
   --color-syntax-number: var(--custom-warning, #fab387);
