@@ -205,8 +205,24 @@ type DwgEntity =
 interface DwgDatabase {
   entities: DwgEntity[];
   header?: Record<string, unknown>;
-  tables?: Record<string, unknown>;
-  blockHeaders?: Record<string, { entities: DwgEntity[] }>;
+  tables?: {
+    BLOCK_RECORD?: {
+      entries: Array<{
+        name: string;
+        entities: DwgEntity[];
+        basePoint?: { x: number; y: number; z: number };
+      }>;
+    };
+    LAYER?: {
+      entries: Array<{
+        name: string;
+        color?: { index: number };
+        isOff?: boolean;
+        isFrozen?: boolean;
+      }>;
+    };
+    [key: string]: unknown;
+  };
 }
 
 /* ------------------------------------------------------------------ */
@@ -762,7 +778,9 @@ function renderEntityList(
       case 'INSERT': {
         // Block 引用 — 递归渲染块内容
         const e = entity as DwgInsertEntity;
-        const blockDef = db?.blockHeaders?.[e.name];
+        // 查找 BLOCK_RECORD 中的块定义
+        const blockRecords = db?.tables?.BLOCK_RECORD?.entries ?? [];
+        const blockDef = blockRecords.find((b) => b.name === e.name);
         if (blockDef?.entities?.length) {
           ctx.save();
           ctx.translate(e.insertionPoint.x, e.insertionPoint.y);
