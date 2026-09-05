@@ -132,11 +132,31 @@
 
 ---
 
-## Step 6: 讨论引擎集成
+## Step 6: 讨论引擎集成 ✅ 完成
+
+### 实现内容
+- 创建 `acp-proxy/discussion_engine.py` (523行) — 讨论编排器核心
+- `DiscussionOrchestrator` 类：按 Advisor→Executor→Verifier 顺序执行多轮讨论
+- 每个 Agent 调用 LLM 生成回复，实时广播给所有客户端
+- 3 轮讨论 + 单轮超时60s + 全局超时5分钟
+- 支持取消（cancel_discussion 消息）
+- ws_group.py 新增 start_discussion/cancel_discussion 消息处理
+
+### 测试结果
+- [x] 模块导入正常 ✅
+- [x] ACP Proxy 启动正常 ✅
+- [x] 讨论流程需浏览器端测试
+
+### 提交
+- `feat: 讨论引擎 — DiscussionOrchestrator+角色提示词+轮次控制+超时+取消+WS集成`
+
+---
+
+## Step 7: 前端讨论触发 + 浏览器测试
 
 ### 状态：待开始
 
 ### 目标
-- 将讨论引擎（startDiscussion/respond/decide/execute/review/score）通过 WS 触发
-- Agent 自动参与讨论
-- 讨论轮次控制
+- 前端发送 start_discussion 消息触发讨论
+- 讨论进度实时显示
+- 端到端测试

@@ -13,6 +13,7 @@ import {
   Target,
   PanelLeft, Settings, X,
   Plus, Trash2, Edit3, Check, XIcon,
+  StopCircle,
 } from 'lucide-react';
 import { useIsMobile } from '@/hooks/use-mobile';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
@@ -75,6 +76,10 @@ export default function AIGroupsPage() {
   const newAgent = useAIGroupsStore((s) => s.newAgent);
   const setNewAgent = useAIGroupsStore((s) => s.setNewAgent);
   const addAgent = useAIGroupsStore((s) => s.addAgent);
+  // 讨论相关状态
+  const discussionLoading = useAIGroupsStore((s) => s.discussionLoading);
+  const startDiscussion = useAIGroupsStore((s) => s.startDiscussion);
+  const cancelDiscussion = useAIGroupsStore((s) => s.cancelDiscussion);
 
   /* ========== 本地 UI 状态 ========== */
   const [showGroupPanel, setShowGroupPanel] = useState(false);
@@ -86,6 +91,10 @@ export default function AIGroupsPage() {
   const [editName, setEditName] = useState('');
   const [editRole, setEditRole] = useState('');
   const [editModel, setEditModel] = useState('');
+  // 讨论触发 UI 状态
+  const [showDiscussionForm, setShowDiscussionForm] = useState(false);   // 是否展开讨论表单
+  const [discussionGoal, setDiscussionGoal] = useState('');              // 讨论任务描述
+  const [discussionConstraints, setDiscussionConstraints] = useState(''); // 约束条件（逗号分隔）
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -142,6 +151,29 @@ export default function AIGroupsPage() {
     // 清空输入框
     setInput('');
     setSelectedTarget('all');
+  };
+
+  /* ========== 发起讨论 ========== */
+  const handleStartDiscussion = () => {
+    const goal = discussionGoal.trim();
+    if (!goal || !wsConnected) return;
+    // 解析约束条件：按逗号分隔，去除空白
+    const constraints = discussionConstraints
+      .split(',')
+      .map(s => s.trim())
+      .filter(Boolean);
+    // 通过 WS 发送 start_discussion 消息
+    startDiscussion(goal, constraints);
+    // 关闭表单并清空输入
+    setShowDiscussionForm(false);
+    setDiscussionGoal('');
+    setDiscussionConstraints('');
+  };
+
+  /* ========== 取消讨论 ========== */
+  const handleCancelDiscussion = () => {
+    // 通过 WS 发送 cancel_discussion 消息
+    cancelDiscussion();
   };
 
   /* ========== 输入框 @mention 逻辑 ========== */
@@ -426,6 +458,19 @@ export default function AIGroupsPage() {
           </div>
         )}
 
+        {/* 讨论进行中指示器 — Agent 们正在思考讨论 */}
+        {discussionLoading && (
+          <div className="flex gap-3">
+            <div className="w-8 h-8 rounded-full bg-amber-500/20 flex items-center justify-center">
+              <MessageSquare className="w-4 h-4 text-amber-400" />
+            </div>
+            <div className="bg-muted/70 rounded-xl px-3 lg:px-4 py-2.5 flex items-center gap-2">
+              <Loader2 className="w-4 h-4 animate-spin text-amber-400" />
+              <span className="text-xs text-muted-foreground">Agent 正在思考讨论中...</span>
+            </div>
+          </div>
+        )}
+
         {/* 正在输入指示器（来自其他用户） */}
         {wsTypingUsers.length > 0 && (
           <div className="flex gap-3">
@@ -457,6 +502,45 @@ export default function AIGroupsPage() {
               );
             })}
           </div>
+
+          {/* ===== 讨论触发表单（展开/收起） ===== */}
+          {showDiscussionForm && (
+            <div className="mb-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5 space-y-2">
+              {/* 任务描述输入框 */}
+              <textarea
+                value={discussionGoal}
+                onChange={e => setDiscussionGoal(e.target.value)}
+                placeholder="描述讨论任务，例如：分析这个方案的可行性并提出改进建议"
+                rows={2}
+                className="w-full resize-none rounded-lg border border-input bg-background px-3 py-2 text-xs lg:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              />
+              {/* 约束条件输入框（可选，逗号分隔） */}
+              <input
+                value={discussionConstraints}
+                onChange={e => setDiscussionConstraints(e.target.value)}
+                placeholder="约束条件（可选，逗号分隔），例如：预算不超过10万, 3天内完成"
+                className="w-full rounded-lg border border-input bg-background px-3 py-2 text-xs lg:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/30"
+              />
+              {/* 操作按钮 */}
+              <div className="flex gap-2 justify-end">
+                {/* 取消按钮 — 关闭表单 */}
+                <button
+                  onClick={() => { setShowDiscussionForm(false); setDiscussionGoal(''); setDiscussionConstraints(''); }}
+                  className="px-3 py-1.5 rounded-lg text-xs text-muted-foreground hover:bg-muted transition-colors"
+                >
+                  取消
+                </button>
+                {/* 开始讨论按钮 — 通过 WS 发送 start_discussion */}
+                <button
+                  onClick={handleStartDiscussion}
+                  disabled={!discussionGoal.trim() || !wsConnected}
+                  className="px-3 py-1.5 rounded-lg text-xs bg-amber-500 text-white hover:bg-amber-600 disabled:opacity-50 transition-colors font-medium"
+                >
+                  开始讨论
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* 输入框 + 发送按钮 */}
           <div className="flex gap-2 items-end relative">
@@ -503,6 +587,20 @@ export default function AIGroupsPage() {
               className="px-3 lg:px-4 py-2.5 lg:py-2 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 touch-manipulation">
               <Send className="w-4 h-4" />
             </button>
+            {/* 讨论按钮 — 讨论中显示取消，否则显示发起讨论 */}
+            {discussionLoading ? (
+              <button onClick={handleCancelDiscussion}
+                className="px-3 lg:px-4 py-2.5 lg:py-2 rounded-lg bg-red-500/20 text-red-400 hover:bg-red-500/30 transition-colors touch-manipulation"
+                title="取消讨论">
+                <StopCircle className="w-4 h-4" />
+              </button>
+            ) : (
+              <button onClick={() => setShowDiscussionForm(!showDiscussionForm)}
+                className={`px-3 lg:px-4 py-2.5 lg:py-2 rounded-lg transition-colors touch-manipulation ${showDiscussionForm ? 'bg-amber-500/20 text-amber-400' : 'bg-muted hover:bg-muted/80 text-muted-foreground'}`}
+                title="发起讨论">
+                <MessageSquare className="w-4 h-4" />
+              </button>
+            )}
           </div>
         </div>
       )}

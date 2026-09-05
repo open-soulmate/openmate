@@ -180,6 +180,8 @@ interface AIGroupsState {
   connectGroupWS: (groupId: string) => void;         // 建立群组 WS 连接
   disconnectGroupWS: () => void;                      // 断开群组 WS 连接
   sendGroupMessage: (content: string, intent?: string) => void; // 通过 WS 发送消息
+  startDiscussion: (goal: string, constraints: string[]) => void; // 发起讨论
+  cancelDiscussion: () => void;                                // 取消讨论
   addMessage: (msg: GroupMessage) => void;            // 添加单条消息到列表
 
   // API actions
@@ -455,6 +457,47 @@ export const useAIGroupsStore = create<AIGroupsState>((set, get) => ({
     };
     console.log('[WS] 发送消息:', payload);
     wsGroup.send(JSON.stringify(payload));
+  },
+
+  /**
+   * 发起讨论 — 通过 WS 发送 start_discussion 消息
+   * @param goal 讨论任务描述
+   * @param constraints 约束条件列表
+   */
+  startDiscussion: (goal: string, constraints: string[]) => {
+    const { wsGroup, wsConnected } = get();
+    if (!wsGroup || !wsConnected) {
+      console.error('[WS] 无法发起讨论：WebSocket 未连接');
+      return;
+    }
+    // 构建讨论启动消息体
+    const payload = {
+      type: 'start_discussion',
+      goal,
+      constraints,
+      completion_criteria: [],
+    };
+    console.log('[WS] 发起讨论:', payload);
+    wsGroup.send(JSON.stringify(payload));
+    // 标记讨论加载中
+    set({ discussionLoading: true });
+  },
+
+  /**
+   * 取消讨论 — 通过 WS 发送 cancel_discussion 消息
+   */
+  cancelDiscussion: () => {
+    const { wsGroup, wsConnected } = get();
+    if (!wsGroup || !wsConnected) {
+      console.error('[WS] 无法取消讨论：WebSocket 未连接');
+      return;
+    }
+    // 构建取消讨论消息体
+    const payload = { type: 'cancel_discussion' };
+    console.log('[WS] 取消讨论:', payload);
+    wsGroup.send(JSON.stringify(payload));
+    // 清除讨论加载状态
+    set({ discussionLoading: false });
   },
 
   /**
