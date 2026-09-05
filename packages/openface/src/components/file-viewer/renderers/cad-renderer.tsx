@@ -97,8 +97,12 @@ function decodeCadText(text: string): string {
     .replace(/%%[oO]/g, '')          /* %%o → 上划线开关（忽略） */
     .replace(/\\P/g, '\n')           /* MTEXT 换行 */
     .replace(/\\f[^;]+;/g, '')       /* MTEXT 字体指令 \fArial|b1|i0|c134|p2; */
-    .replace(/\\[A-Za-z][^;]*;/g, '') /* 其他 MTEXT 格式指令 */
-    .replace(/\{[^}]*\}/g, '')       /* MTEXT {} 分组 */
+    .replace(/{\\[^}]*}/g, (m) => {
+      /* {\f...;文字内容} → 只保留分号后面的文字 */
+      const semi = m.indexOf(';');
+      return semi >= 0 ? m.slice(semi + 1, -1) : m.slice(1, -1);
+    })
+    .replace(/\\[A-Za-z][^\\{}]*/g, '') /* 其他 MTEXT 残留格式指令 */
     .trim();
 }
 
