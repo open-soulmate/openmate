@@ -26,6 +26,7 @@ import type { FileViewerProps } from '@opensoulmate/openface';
 import { FileViewer as OpenFaceFileViewer } from '@opensoulmate/openface';
 import { MermaidRenderer } from './renderers/mermaid-renderer';
 import { PlantumlRenderer } from './renderers/plantuml-renderer';
+import { DrawioRenderer } from './renderers/drawio-renderer';
 import { Clock, Construction } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -234,6 +235,18 @@ export function FileViewerExtended({
       case 'plantuml':
         return (
           <PlantumlRenderer
+            fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className}
+          />
+        );
+
+      /* ---- Draw.io（已实现） ---- */
+      case 'drawio':
+        return (
+          <DrawioRenderer
             fileName={fileName}
             fileUrl={fileUrl}
             fileBuffer={fileBuffer}
