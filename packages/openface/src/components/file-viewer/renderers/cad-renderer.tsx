@@ -1,107 +1,65 @@
 'use client';
 
 /**
- * CAD 图纸渲染器
+ * CAD 图纸渲染器（基于 @flyfish-dev/cad-viewer）
  *
  * 功能：
- * - DXF 文本格式：解析 ENTITIES 段提取 LINE/ARC/CIRCLE/LWPOLYLINE，SVG 渲染
- * - DWG/DWF 二进制格式：显示文件元信息（大小、版本检测）
- * - 缩放/拖拽/全屏
+ * - DWG/DXF/DWF 真实渲染（WebGL 优先，Canvas2D 回退）
+ * - WASM 驱动的 LibreDWG 解析（DWG 二进制格式）
+ * - 暗色/亮色主题自动适配
+ * - 工具栏：重置视图（fit）、缩放、全屏切换
+ * - 文件信息显示（格式、大小、加载耗时）
+ * - 错误处理与加载状态
+ * - 组件卸载时自动清理 viewer 资源
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  ZoomIn, ZoomOut, Maximize2, Minimize2, RotateCcw,
-  AlertTriangle, Code,
+  Maximize2,
+  Minimize2,
+  RotateCcw,
+  ZoomIn,
+  ZoomOut,
+  AlertTriangle,
+  Loader2,
 } from 'lucide-react';
 
+/* ------------------------------------------------------------------ */
+/*  类型定义                                                           */
+/* ------------------------------------------------------------------ */
+
 interface CadRendererProps {
+  /** 文件名 */
   fileName: string;
+  /** 文件内容 URL（可选） */
   fileUrl?: string;
+  /** 文件内容 ArrayBuffer（可选） */
   fileBuffer?: ArrayBuffer;
+  /** 错误回调 */
   onError?: (err: Error) => void;
+  /** 额外 className */
   className?: string;
 }
 
 /* ------------------------------------------------------------------ */
-/*  DXF 实体类型                                                       */
+/*  检测当前主题是否为暗色                                              */
 /* ------------------------------------------------------------------ */
 
-interface DxfEntity {
-  type: string;
-  /** SVG path 片段 */
-  d?: string;
-  /** SVG 元素（圆等） */
-  svg?: string;
-}
+function useIsDarkMode(): boolean {
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document === 'undefined') return false;
+    return document.documentElement.classList.contains('dark');
+  });
 
-/** 解析 DXF 文本，提取 ENTITIES 段中的几何实体 */
-function parseDxfEntities(text: string): DxfEntity[] {
-  const entities: DxfEntity[] = [];
-  const lines = text.split(/\r?\n/);
+  useEffect(() => {
+    const observer = new MutationObserver(() => {
+      setIsDark(document.documentElement.classList.contains('dark'));
+    });
+    observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    return () => observer.disconnect();
+  }, []);
 
-  let inEntities = false;
-  let i = 0;
-
-  while (i < lines.length) {
-    const line = lines[i].trim();
-
-    if (line === 'ENTITIES') inEntities = true;
-    if (inEntities && line === 'ENDSEC') break;
-
-    if (inEntities) {
-      if (line === 'LINE') {
-        const coords: Record<string, number> = {};
-        for (let j = 0; j < 12 && i + j + 1 < lines.length; j += 2) {
-          const code = lines[i + j + 1]?.trim();
-          const val = lines[i + j + 2]?.trim();
-          if (code === '10') coords.x1 = parseFloat(val);
-          if (code === '20') coords.y1 = parseFloat(val);
-          if (code === '11') coords.x2 = parseFloat(val);
-          if (code === '21') coords.y2 = parseFloat(val);
-        }
-        if (coords.x1 !== undefined && coords.y1 !== undefined &&
-            coords.x2 !== undefined && coords.y2 !== undefined) {
-          entities.push({
-            type: 'LINE',
-            d: `M${coords.x1},${-coords.y1}L${coords.x2},${-coords.y2}`,
-          });
-        }
-      } else if (line === 'CIRCLE') {
-        const props: Record<string, number> = {};
-        for (let j = 0; j < 8 && i + j + 1 < lines.length; j += 2) {
-          const code = lines[i + j + 1]?.trim();
-          const val = lines[i + j + 2]?.trim();
-          if (code === '10') props.cx = parseFloat(val);
-          if (code === '20') props.cy = parseFloat(val);
-          if (code === '40') props.r = parseFloat(val);
-        }
-        if (props.cx !== undefined && props.r !== undefined) {
-          entities.push({
-            type: 'CIRCLE',
-            svg: `<circle cx="${props.cx}" cy="${-props.cy}" r="${props.r}" fill="none" stroke-width="1"/>`,
-          });
-        }
-      } else if (line === 'LWPOLYLINE') {
-        const pts: [number, number][] = [];
-        let vertexCount = 0;
-        for (let j = 0; j < 200 && i + j + 1 < lines.length; j += 2) {
-          const code = lines[i + j + 1]?.trim();
-          const val = lines[i + j + 2]?.trim();
-          if (code === '90') vertexCount = parseInt(val);
-          if (code === '10') { pts.push([parseFloat(val), 0]); }
-          if (code === '20' && pts.length > 0) { pts[pts.length - 1][1] = -parseFloat(val); }
-          if (code === '0') break; // 下一个实体
-        }
-        if (pts.length > 1) {
-          const d = 'M' + pts.map(p => `${p[0]},${p[1]}`).join('L');
-          entities.push({ type: 'LWPOLYLINE', d });
-        }
-      }
-    }
-    i++;
-  }
-  return entities;
+  return isDark;
 }
 
 /* ------------------------------------------------------------------ */
@@ -109,164 +67,243 @@ function parseDxfEntities(text: string): DxfEntity[] {
 /* ------------------------------------------------------------------ */
 
 export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className }: CadRendererProps) {
-  const svgRef = useRef<SVGSVGElement>(null);
+  /* 容器 DOM 引用 */
   const containerRef = useRef<HTMLDivElement>(null);
+  /* viewer 实例引用（用于清理） */
+  const viewerRef = useRef<any>(null);
+  /* 全屏状态监听的容器引用 */
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [entities, setEntities] = useState<DxfEntity[]>([]);
-  const [isBinary, setIsBinary] = useState(false);
-  const [fileInfo, setFileInfo] = useState<{ size: number; type: string }>({ size: 0, type: '' });
-  const [zoom, setZoom] = useState(1);
-  const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const dragStart = useRef({ x: 0, y: 0, px: 0, py: 0 });
+  const [fileInfo, setFileInfo] = useState<{ format: string; size: number; elapsedMs?: number } | null>(null);
+  const [zoomPercent, setZoomPercent] = useState(100);
 
+  const isDark = useIsDarkMode();
+
+  /* 加载文件内容 */
   const loadContent = useCallback(async (): Promise<ArrayBuffer> => {
     if (fileBuffer) return fileBuffer;
-    if (fileUrl) { const r = await fetch(fileUrl); return r.arrayBuffer(); }
-    throw new Error('未提供文件内容');
+    if (fileUrl) {
+      const resp = await fetch(fileUrl);
+      if (!resp.ok) throw new Error(`获取文件失败: ${resp.status}`);
+      return resp.arrayBuffer();
+    }
+    throw new Error('未提供文件内容（fileBuffer 或 fileUrl）');
   }, [fileUrl, fileBuffer]);
 
+  /* 初始化 CadViewer */
   useEffect(() => {
-    (async () => {
+    let destroyed = false;
+
+    async function init() {
       try {
+        setLoading(true);
+        setError(null);
+
+        /* 动态导入 cad-viewer（避免 SSR 问题） */
+        const { CadViewer } = await import('@flyfish-dev/cad-viewer');
+        /* 导入样式 */
+        await import('@flyfish-dev/cad-viewer/style.css');
+
+        /* 检查组件是否已卸载 */
+        if (destroyed || !containerRef.current) return;
+
+        /* 获取文件内容 */
         const buf = await loadContent();
+        if (destroyed) return;
+
+        /* 记录文件大小 */
         const ext = fileName.split('.').pop()?.toLowerCase() || '';
-        setFileInfo({ size: buf.byteLength, type: ext === 'dxf' ? 'DXF' : ext === 'dwg' ? 'DWG' : 'DWF' });
+        const format = ext === 'dxf' ? 'DXF' : ext === 'dwg' ? 'DWG' : ext === 'dwf' ? 'DWF' : ext.toUpperCase();
 
-        if (ext === 'dxf') {
-          const text = new TextDecoder().decode(buf);
-          /* 检测是否为二进制 DXF */
-          if (text.startsWith('AutoCAD Binary DXF')) {
-            setIsBinary(true);
-            setError('二进制 DXF 文件，暂不支持预览');
-          } else {
-            const ents = parseDxfEntities(text);
-            setEntities(ents);
-            if (ents.length === 0) setError('未找到可渲染的几何实体');
-          }
-        } else {
-          /* DWG/DWF 是纯二进制 */
-          setIsBinary(true);
-        }
-        setLoading(false);
+        /* 创建 CadViewer 实例 */
+        /* wasmPath 默认指向 /wasm/，WASM 文件已部署到 public/wasm/ */
+        const viewer = new CadViewer({
+          container: containerRef.current,
+          renderer: 'auto', // WebGL 优先，Canvas2D 回退
+          autoFit: true,
+          onLoad(result) {
+            if (destroyed) return;
+            setLoading(false);
+            setFileInfo({
+              format: result.format?.toUpperCase() || format,
+              size: buf.byteLength,
+              elapsedMs: result.elapsedMs,
+            });
+            /* 更新缩放百分比 */
+            try {
+              const doc = viewer.getDocument();
+              if (doc) {
+                setZoomPercent(Math.round(viewer.getZoomPercent()));
+              }
+            } catch { /* 忽略 */ }
+          },
+          onError(err) {
+            if (destroyed) return;
+            const msg = err instanceof Error ? err.message : String(err);
+            setError(msg);
+            setLoading(false);
+            onError?.(err instanceof Error ? err : new Error(msg));
+          },
+        });
+
+        viewerRef.current = viewer;
+
+        /* 加载文件 */
+        await viewer.loadBuffer(buf, fileName);
       } catch (err) {
-        setError(err instanceof Error ? err.message : '加载 CAD 文件失败');
+        if (destroyed) return;
+        const msg = err instanceof Error ? err.message : '加载 CAD 文件失败';
+        setError(msg);
         setLoading(false);
-        onError?.(err instanceof Error ? err : new Error(String(err)));
-      }
-    })();
-  }, [loadContent, fileName, onError]);
-
-  /* 计算 SVG viewBox */
-  const getViewBox = () => {
-    if (entities.length === 0) return '-100 -100 200 200';
-    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const e of entities) {
-      if (e.d) {
-        const nums = e.d.match(/-?[\d.]+/g)?.map(Number) || [];
-        for (let k = 0; k < nums.length; k += 2) {
-          minX = Math.min(minX, nums[k]); maxX = Math.max(maxX, nums[k]);
-          minY = Math.min(minY, nums[k + 1]); maxY = Math.max(maxY, nums[k + 1]);
-        }
+        onError?.(err instanceof Error ? err : new Error(msg));
       }
     }
-    const pad = 20;
-    return `${minX - pad} ${minY - pad} ${maxX - minX + pad * 2} ${maxY - minY + pad * 2}`;
-  };
 
-  const handleWheel = (e: React.WheelEvent) => {
-    e.preventDefault();
-    setZoom(z => Math.max(0.1, Math.min(10, z * (e.deltaY < 0 ? 1.1 : 0.9))));
-  };
+    init();
 
-  const handlePointerDown = (e: React.PointerEvent) => {
-    setIsDragging(true);
-    dragStart.current = { x: e.clientX, y: e.clientY, px: pan.x, py: pan.y };
-  };
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isDragging) return;
-    setPan({ x: dragStart.current.px + e.clientX - dragStart.current.x, y: dragStart.current.py + e.clientY - dragStart.current.y });
-  };
-  const handlePointerUp = () => setIsDragging(false);
+    return () => {
+      destroyed = true;
+      if (viewerRef.current) {
+        try {
+          viewerRef.current.destroy();
+        } catch { /* 忽略清理错误 */ }
+        viewerRef.current = null;
+      }
+    };
+  }, [loadContent, fileName, onError]);
 
-  const toggleFullscreen = () => {
-    const el = containerRef.current?.parentElement;
+  /* 监听全屏变化 */
+  useEffect(() => {
+    const handleFullscreenChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', handleFullscreenChange);
+  }, []);
+
+  /* 切换全屏 */
+  const toggleFullscreen = useCallback(() => {
+    const el = wrapperRef.current;
     if (!el) return;
-    if (!document.fullscreenElement) { el.requestFullscreen(); setIsFullscreen(true); }
-    else { document.exitFullscreen(); setIsFullscreen(false); }
-  };
+    if (!document.fullscreenElement) {
+      el.requestFullscreen().catch(() => { /* 忽略 */ });
+    } else {
+      document.exitFullscreen().catch(() => { /* 忽略 */ });
+    }
+  }, []);
 
-  const resetView = () => { setZoom(1); setPan({ x: 0, y: 0 }); };
+  /* 重置视图（fit to screen） */
+  const resetView = useCallback(() => {
+    if (viewerRef.current) {
+      try {
+        viewerRef.current.fit();
+        setZoomPercent(Math.round(viewerRef.current.getZoomPercent()));
+      } catch { /* 忽略 */ }
+    }
+  }, []);
+
+  /* 放大 */
+  const zoomIn = useCallback(() => {
+    if (viewerRef.current) {
+      try {
+        viewerRef.current.zoomIn();
+        setZoomPercent(Math.round(viewerRef.current.getZoomPercent()));
+      } catch { /* 忽略 */ }
+    }
+  }, []);
+
+  /* 缩小 */
+  const zoomOut = useCallback(() => {
+    if (viewerRef.current) {
+      try {
+        viewerRef.current.zoomOut();
+        setZoomPercent(Math.round(viewerRef.current.getZoomPercent()));
+      } catch { /* 忽略 */ }
+    }
+  }, []);
+
+  /* 暗色主题下覆盖 cad-viewer 默认的白色背景 */
+  const bgStyle = isDark ? { backgroundColor: '#1a1a1a' } : undefined;
 
   return (
-    <div ref={containerRef} className={`relative w-full h-full min-h-[400px] ${className ?? ''}`}>
+    <div
+      ref={wrapperRef}
+      className={`relative w-full h-full min-h-[400px] ${className ?? ''}`}
+    >
+      {/* 加载状态 */}
       {loading && (
-        <div className="absolute inset-0 flex items-center justify-center bg-background/80 z-10">
-          <div className="text-sm text-muted-foreground">解析 CAD 文件...</div>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/80 z-20">
+          <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
+          <span className="text-sm text-muted-foreground">正在加载 CAD 文件...</span>
         </div>
       )}
 
-      {error && !isBinary && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/90 z-10">
+      {/* 错误提示 */}
+      {error && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/90 z-20">
           <AlertTriangle className="w-8 h-8 text-orange-500" />
-          <p className="text-sm text-muted-foreground">{error}</p>
+          <p className="text-sm text-muted-foreground text-center max-w-md px-4">{error}</p>
         </div>
       )}
 
-      {/* 二进制文件信息 */}
-      {isBinary && !loading && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/90 z-10">
-          <Code className="w-12 h-12 text-blue-400" />
-          <div className="text-lg font-medium">{fileName}</div>
-          <div className="text-sm text-muted-foreground">
-            {fileInfo.type} 二进制文件 · {(fileInfo.size / 1024).toFixed(1)} KB
-          </div>
-          <p className="text-xs text-muted-foreground max-w-md text-center">
-            {fileInfo.type === 'DWG'
-              ? 'DWG 是 AutoCAD 私有二进制格式，需要专用解析库。当前仅显示文件信息。'
-              : fileInfo.type === 'DWF'
-              ? 'DWF 是 Autodesk Design Web Format，需要专用解析库。'
-              : '二进制 DXF 文件需要专用解析器。请使用文本格式的 DXF。'}
-          </p>
-        </div>
-      )}
-
-      {/* SVG 渲染 DXF 实体 */}
-      {!loading && !isBinary && entities.length > 0 && (
-        <svg
-          ref={svgRef}
-          className="w-full h-full"
-          viewBox={getViewBox()}
-          onWheel={handleWheel}
-          onPointerDown={handlePointerDown}
-          onPointerMove={handlePointerMove}
-          onPointerUp={handlePointerUp}
-          style={{ cursor: isDragging ? 'grabbing' : 'grab' }}
-        >
-          <g transform={`translate(${pan.x / zoom},${pan.y / zoom}) scale(${zoom})`}>
-            {entities.map((e, i) =>
-              e.d ? (
-                <path key={i} d={e.d} fill="none" stroke="var(--color-text-primary, #e5e5e5)" strokeWidth="0.5" />
-              ) : e.svg ? (
-                <g key={i} dangerouslySetInnerHTML={{ __html: e.svg.replace('/>', ` stroke="var(--color-text-primary, #e5e5e5)"/>`) }} />
-              ) : null
-            )}
-          </g>
-        </svg>
-      )}
+      {/* cad-viewer 挂载容器 */}
+      <div
+        ref={containerRef}
+        className="w-full h-full"
+        style={bgStyle}
+      />
 
       {/* 工具栏 */}
-      {!loading && !isBinary && entities.length > 0 && (
-        <div className="absolute top-2 right-2 z-20 flex items-center gap-1 bg-background/90 backdrop-blur-sm rounded-lg p-1 border border-border shadow-sm">
-          <span className="text-xs text-muted-foreground px-2">DXF · {entities.length} 实体</span>
+      {!loading && !error && (
+        <div className="absolute top-2 right-2 z-30 flex items-center gap-1 bg-background/90 backdrop-blur-sm rounded-lg p-1 border border-border shadow-sm">
+          {/* 文件信息 */}
+          {fileInfo && (
+            <>
+              <span className="text-xs text-muted-foreground px-2">
+                {fileInfo.format} · {(fileInfo.size / 1024).toFixed(1)} KB
+                {fileInfo.elapsedMs !== undefined && ` · ${fileInfo.elapsedMs}ms`}
+              </span>
+              <div className="w-px h-4 bg-border" />
+            </>
+          )}
+          {/* 缩放百分比 */}
+          <span className="text-xs text-muted-foreground px-1 min-w-[3rem] text-center">
+            {zoomPercent}%
+          </span>
           <div className="w-px h-4 bg-border" />
-          <button onClick={() => setZoom(z => z * 1.2)} className="p-1.5 hover:bg-accent rounded"><ZoomIn className="w-4 h-4" /></button>
-          <button onClick={() => setZoom(z => z * 0.8)} className="p-1.5 hover:bg-accent rounded"><ZoomOut className="w-4 h-4" /></button>
-          <button onClick={resetView} className="p-1.5 hover:bg-accent rounded"><RotateCcw className="w-4 h-4" /></button>
-          <button onClick={toggleFullscreen} className="p-1.5 hover:bg-accent rounded">
+          {/* 缩小 */}
+          <button
+            onClick={zoomOut}
+            className="p-1.5 hover:bg-accent rounded"
+            title="缩小"
+          >
+            <ZoomOut className="w-4 h-4" />
+          </button>
+          {/* 放大 */}
+          <button
+            onClick={zoomIn}
+            className="p-1.5 hover:bg-accent rounded"
+            title="放大"
+          >
+            <ZoomIn className="w-4 h-4" />
+          </button>
+          {/* 重置视图 */}
+          <button
+            onClick={resetView}
+            className="p-1.5 hover:bg-accent rounded"
+            title="重置视图"
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+          {/* 全屏切换 */}
+          <button
+            onClick={toggleFullscreen}
+            className="p-1.5 hover:bg-accent rounded"
+            title={isFullscreen ? '退出全屏' : '全屏'}
+          >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         </div>

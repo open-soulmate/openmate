@@ -14,6 +14,10 @@
   "dependencies": {
     "@changesets/changelog-github": "^1.0.0",
     "@changesets/cli": "^3.0.1",
+    "@flyfish-dev/cad-viewer": "^0.8.0",
+    "@mlightcad/data-model": "^1.14.4",
+    "@mlightcad/libredwg-converter": "^3.14.4",
+    "@mlightcad/libredwg-web": "^0.7.10",
     "@monaco-editor/react": "^4.7.0",
     "@myriaddreamin/typst-ts-renderer": "^0.7.0",
     "@myriaddreamin/typst-ts-web-compiler": "^0.7.0",
