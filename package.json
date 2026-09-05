@@ -15,6 +15,7 @@
     "@changesets/changelog-github": "^1.0.0",
     "@changesets/cli": "^3.0.1",
     "@monaco-editor/react": "^4.7.0",
+    "@myriaddreamin/typst.ts": "^0.7.0",
     "@opensoulmate/openface": "workspace:*",
     "@plantuml/core": "^1.2026.7",
     "@radix-ui/react-alert-dialog": "^1.1.23",

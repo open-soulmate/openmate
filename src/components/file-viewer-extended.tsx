@@ -32,6 +32,8 @@ import { XmindRenderer } from './renderers/xmind-renderer';
 import { SqliteRenderer } from './renderers/sqlite-renderer';
 import { EmailRenderer } from './renderers/email-renderer';
 import { GeojsonRenderer } from './renderers/geojson-renderer';
+import { KmlRenderer } from './renderers/kml-renderer';
+import { GpxRenderer } from './renderers/gpx-renderer';
 import { Clock, Construction } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
