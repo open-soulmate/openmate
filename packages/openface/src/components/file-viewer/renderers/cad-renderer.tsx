@@ -206,6 +206,7 @@ interface DwgDatabase {
   entities: DwgEntity[];
   header?: Record<string, unknown>;
   tables?: Record<string, unknown>;
+  blockHeaders?: Record<string, { entities: DwgEntity[] }>;
 }
 
 /* ------------------------------------------------------------------ */
@@ -504,6 +505,7 @@ function renderEntities(
   panX: number,
   panY: number,
   isDark: boolean,
+  db?: DwgDatabase,
 ): number {
   const sceneW = sceneBBox.maxX - sceneBBox.minX;
   const sceneH = sceneBBox.maxY - sceneBBox.minY;
@@ -532,6 +534,25 @@ function renderEntities(
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
 
+  let count = 0;
+
+  count += renderEntityList(ctx, entities, lw, isDark, db);
+
+  ctx.restore();
+  return count;
+}
+
+/**
+ * 递归渲染实体列表（不清理画布、不设置主变换）
+ * 供 renderEntities 和 INSERT 块递归调用
+ */
+function renderEntityList(
+  ctx: CanvasRenderingContext2D,
+  entities: DwgEntity[],
+  lw: number,
+  isDark: boolean,
+  db?: DwgDatabase,
+): number {
   let count = 0;
 
   for (const entity of entities) {
@@ -739,16 +760,30 @@ function renderEntities(
       }
 
       case 'INSERT': {
-        // Block 引用 — 仅绘制插入点标记
+        // Block 引用 — 递归渲染块内容
         const e = entity as DwgInsertEntity;
-        const sz = lw * 4;
-        ctx.beginPath();
-        ctx.moveTo(e.insertionPoint.x - sz, e.insertionPoint.y);
-        ctx.lineTo(e.insertionPoint.x + sz, e.insertionPoint.y);
-        ctx.moveTo(e.insertionPoint.x, e.insertionPoint.y - sz);
-        ctx.lineTo(e.insertionPoint.x, e.insertionPoint.y + sz);
-        ctx.stroke();
-        count++;
+        const blockDef = db?.blockHeaders?.[e.name];
+        if (blockDef?.entities?.length) {
+          ctx.save();
+          ctx.translate(e.insertionPoint.x, e.insertionPoint.y);
+          const sx = e.xScale ?? 1;
+          const sy = e.yScale ?? 1;
+          if (sx !== 1 || sy !== 1) ctx.scale(sx, sy);
+          const rot = ((e.rotation ?? 0) * Math.PI) / 180;
+          if (rot !== 0) ctx.rotate(rot);
+          count += renderEntityList(ctx, blockDef.entities, lw, isDark, db);
+          ctx.restore();
+        } else {
+          // 找不到块定义，回退为十字标记
+          const sz = lw * 4;
+          ctx.beginPath();
+          ctx.moveTo(e.insertionPoint.x - sz, e.insertionPoint.y);
+          ctx.lineTo(e.insertionPoint.x + sz, e.insertionPoint.y);
+          ctx.moveTo(e.insertionPoint.x, e.insertionPoint.y - sz);
+          ctx.lineTo(e.insertionPoint.x, e.insertionPoint.y + sz);
+          ctx.stroke();
+          count++;
+        }
         break;
       }
 
@@ -879,7 +914,6 @@ function renderEntities(
     }
   }
 
-  ctx.restore();
   return count;
 }
 
@@ -939,7 +973,7 @@ export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className 
     ctx.scale(dpr, dpr);
 
     const { scale, panX, panY } = viewRef.current;
-    const count = renderEntities(ctx, db.entities, w, h, sceneBBoxRef.current, scale, panX, panY, isDarkRef.current);
+    const count = renderEntities(ctx, db.entities, w, h, sceneBBoxRef.current, scale, panX, panY, isDarkRef.current, db);
     setEntCount(count);
   }, []);
 
