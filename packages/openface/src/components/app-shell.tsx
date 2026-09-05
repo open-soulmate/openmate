@@ -242,8 +242,26 @@ export function AppShell({
 
   const resolvedTopRight = topRight || (
     onSettings ? (
-      <button onClick={onSettings} className="p-2 text-muted-foreground hover:text-foreground transition-colors" aria-label="设置">
-        <Settings className="w-4 h-4" />
+      <button onClick={onSettings} className="relative w-8 h-8 flex items-center justify-center group" aria-label="设置">
+        {/* 超椭圆 n=3 背景 */}
+        <svg width="32" height="32" viewBox="-100 -100 200 200" className="absolute inset-0">
+          <path d={(() => {
+            const pts: string[] = [];
+            for (let i = 0; i <= 72; i++) {
+              const theta = (i / 72) * Math.PI * 2;
+              const ct = Math.cos(theta);
+              const st = Math.sin(theta);
+              const x = 96 * Math.sign(ct) * Math.pow(Math.abs(ct), 2 / 3);
+              const y = 96 * Math.sign(st) * Math.pow(Math.abs(st), 2 / 3);
+              pts.push(`${x.toFixed(1)},${y.toFixed(1)}`);
+            }
+            return `M${pts.join('L')}Z`;
+          })()}
+          fill="currentColor"
+          className="text-[var(--color-bg-panel)] group-hover:text-[var(--color-bg-elevated)] transition-colors"
+        />
+        </svg>
+        <Settings className="relative w-3.5 h-3.5 text-muted-foreground group-hover:text-foreground transition-colors" />
       </button>
     ) : null
   );
