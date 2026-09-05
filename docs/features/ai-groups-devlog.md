@@ -119,12 +119,24 @@
 
 ---
 
-## Step 5: 群聊 UI 完善
+## Step 5: 群聊 UI 完善 ✅ 完成
 
-### 状态：进行中
+### 实现内容
+- 消息列表：用户靠右+Agent靠左+系统居中
+- 输入框：绑定 sendGroupMessage，Enter 发送
+- 连接状态指示器：绿色脉冲圆点
+- Agent 成员管理 UI：列表+编辑+删除+添加
+
+### 提交
+- `feat: 群聊UI完善 — WS消息列表+输入框+连接状态指示+成员管理面板`
+
+---
+
+## Step 6: 讨论引擎集成
+
+### 状态：待开始
 
 ### 目标
-- 群聊消息列表使用 WS 实时消息（而非从 tasks 拼接）
-- 用户输入框绑定 sendGroupMessage
-- 连接状态指示器
-- Agent 成员管理 UI 面板
+- 将讨论引擎（startDiscussion/respond/decide/execute/review/score）通过 WS 触发
+- Agent 自动参与讨论
+- 讨论轮次控制

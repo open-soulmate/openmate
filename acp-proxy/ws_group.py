@@ -28,8 +28,18 @@ from uuid import UUID, uuid4
 import jwt
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
+# 讨论编排器 — 自动化群组 Agent 讨论
+from discussion_engine import (
+    DiscussionAgent,
+    DiscussionOrchestrator,
+    DiscussionTask,
+)
+
 logger = logging.getLogger("acp-proxy.ws-group")
 router = APIRouter()
+
+# 讨论编排器实例 — 全局共享，管理所有群组的讨论任务
+_discussion_orchestrator = DiscussionOrchestrator()
 
 # ============================================================
 # 数据库配置 — 群组数据在 OpenSoul 的 ai_groups.db
@@ -105,6 +115,85 @@ def _remove_from_room(group_id: str, ws: WebSocket):
 # ============================================================
 # 消息持久化 — 写入 discussion_messages 表
 # ============================================================
+
+def _load_group_agents(group_id: str) -> list[DiscussionAgent]:
+    """从数据库加载群组的所有 Agent 成员
+
+    Args:
+        group_id: 群组ID
+
+    Returns:
+        DiscussionAgent 列表
+    """
+    db = _get_db()
+    try:
+        cursor = db.execute(
+            "SELECT agent_id, name, role, model, temperature "
+            "FROM ai_group_agents WHERE group_id = ? AND status = 'online'",
+            (group_id,),
+        )
+        rows = cursor.fetchall()
+        return [
+            DiscussionAgent(
+                agent_id=row["agent_id"],
+                name=row["name"],
+                role=row["role"],
+                model=row["model"] or "",
+                temperature=row["temperature"] or 0.7,
+            )
+            for row in rows
+        ]
+    except Exception as e:
+        logger.error(f"[数据库] 加载群组 {group_id} Agent 失败: {e}")
+        return []
+    finally:
+        db.close()
+
+
+def _create_discussion_task_db(
+    group_id: str,
+    goal: str,
+    constraints: list,
+    completion_criteria: list,
+) -> str:
+    """在数据库中创建讨论任务记录
+
+    Args:
+        group_id: 群组ID
+        goal: 任务目标
+        constraints: 约束条件
+        completion_criteria: 完成标准
+
+    Returns:
+        任务ID
+    """
+    task_id = str(uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    db = _get_db()
+    try:
+        db.execute(
+            """INSERT INTO ai_group_tasks
+               (id, group_id, goal, constraints, completion_criteria, status, created_at, updated_at)
+               VALUES (?, ?, ?, ?, ?, 'discussing', ?, ?)""",
+            (
+                task_id,
+                group_id,
+                goal,
+                json.dumps(constraints, ensure_ascii=False),
+                json.dumps(completion_criteria, ensure_ascii=False),
+                now,
+                now,
+            ),
+        )
+        db.commit()
+        logger.info(f"[数据库] 创建讨论任务: {task_id}")
+        return task_id
+    except Exception as e:
+        logger.error(f"[数据库] 创建任务失败: {e}")
+        return ""
+    finally:
+        db.close()
+
 
 def _persist_message(
     group_id: str,
@@ -333,6 +422,123 @@ async def group_websocket(websocket: WebSocket, group_id: str):
                         "timestamp": time.time(),
                     },
                 }, exclude=websocket)
+
+            elif msg_type == "start_discussion":
+                # 启动讨论流程 — 创建任务，加载Agent，后台执行编排
+                goal = data.get("goal", "").strip()
+                if not goal:
+                    await _safe_send(websocket, {
+                        "type": "error",
+                        "message": "start_discussion 缺少 goal 字段",
+                    })
+                    continue
+
+                # 从数据库加载群组 Agent
+                agents = _load_group_agents(group_id)
+                if not agents:
+                    await _safe_send(websocket, {
+                        "type": "error",
+                        "message": f"群组 {group_id} 没有在线 Agent，无法启动讨论",
+                    })
+                    continue
+
+                # 在数据库中创建任务记录
+                constraints = data.get("constraints", [])
+                completion_criteria = data.get("completion_criteria", [])
+                task_id = _create_discussion_task_db(
+                    group_id=group_id,
+                    goal=goal,
+                    constraints=constraints,
+                    completion_criteria=completion_criteria,
+                )
+                if not task_id:
+                    await _safe_send(websocket, {
+                        "type": "error",
+                        "message": "创建讨论任务失败",
+                    })
+                    continue
+
+                # 构造讨论任务
+                task = DiscussionTask(
+                    group_id=group_id,
+                    task_id=task_id,
+                    goal=goal,
+                    constraints=constraints,
+                    completion_criteria=completion_criteria,
+                    total_rounds=data.get("total_rounds", 3),
+                )
+
+                # 广播任务创建通知
+                await _broadcast(group_id, {
+                    "type": "task_update",
+                    "data": {
+                        "task_id": task_id,
+                        "group_id": group_id,
+                        "goal": goal,
+                        "status": "discussing",
+                        "agents": [{"agent_id": a.agent_id, "name": a.name, "role": a.role} for a in agents],
+                        "user_id": user_id_str,
+                        "timestamp": time.time(),
+                    },
+                })
+
+                # 后台异步执行讨论 — 不阻塞 WS 消息循环
+                asyncio.create_task(
+                    _discussion_orchestrator.run(
+                        task=task,
+                        agents=agents,
+                        broadcast_fn=_broadcast,
+                        persist_fn=_persist_message,
+                    )
+                )
+
+                # 立即回复发送者确认
+                await _safe_send(websocket, {
+                    "type": "message_ack",
+                    "data": {
+                        "task_id": task_id,
+                        "status": "discussion_started",
+                        "message": f"讨论已启动，{len(agents)} 个 Agent 参与",
+                        "timestamp": time.time(),
+                    },
+                })
+                logger.info(
+                    f"[讨论] 群组 {group_id} 讨论已启动: task_id={task_id}, "
+                    f"goal={goal}, agents={len(agents)}"
+                )
+
+            elif msg_type == "cancel_discussion":
+                # 取消讨论 — 支持取消指定任务或群组所有讨论
+                target_task_id = data.get("task_id", "")
+                if target_task_id:
+                    # 取消指定任务
+                    success = _discussion_orchestrator.cancel_discussion(target_task_id)
+                    if success:
+                        await _safe_send(websocket, {
+                            "type": "message_ack",
+                            "data": {
+                                "task_id": target_task_id,
+                                "status": "cancel_requested",
+                                "message": "取消信号已发送",
+                                "timestamp": time.time(),
+                            },
+                        })
+                    else:
+                        await _safe_send(websocket, {
+                            "type": "error",
+                            "message": f"未找到活跃的讨论任务: {target_task_id}",
+                        })
+                else:
+                    # 取消群组所有讨论
+                    count = _discussion_orchestrator.cancel_all_discussions(group_id)
+                    await _safe_send(websocket, {
+                        "type": "message_ack",
+                        "data": {
+                            "status": "cancel_requested",
+                            "message": f"已发送取消信号，共 {count} 个讨论",
+                            "timestamp": time.time(),
+                        },
+                    })
 
             elif msg_type == "message":
                 # 普通消息 — 广播 + 持久化
