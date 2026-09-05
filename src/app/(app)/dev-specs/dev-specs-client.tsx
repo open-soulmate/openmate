@@ -67,7 +67,7 @@ const specs: SpecItem[] = [
   { id: "25", name: "Security", desc: "全局安全风控规范", layer: "中间件与扩展层", status: "todo", priority: "P2", fileName: "25-Security-v1.0-全局安全风控规范.md" },
   { id: "26", name: "Storage", desc: "存储缓存与持久化规范", layer: "底座可观测层", status: "todo", priority: "P2", fileName: "26-Storage-v1.0-存储缓存与持久化规范.md" },
   { id: "27", name: "Vector", desc: "向量检索引擎规范", layer: "智能体业务层", status: "todo", priority: "P2", fileName: "27-Vector-v1.0-向量检索引擎规范.md" },
-  { id: "28", name: "UI", desc: "前端UI设计规范", layer: "前端UI设计规范", status: "done", priority: "P2", fileName: "28-UI-v1.0-前端UI设计规范.md", commits: ["ef01fd6"], date: "2026-09-02" },
+  { id: "28", name: "UI", desc: "前端UI设计规范 v2.0（整合HyperOS4+三端适配）", layer: "前端UI设计规范", status: "done", priority: "P2", fileName: "28-UI-v2.0-前端UI设计规范.md", commits: ["ef01fd6", "8824a41"], date: "2026-09-05" },
 ];
 
 /* ── 样式常量 ────────────────────────────────────────── */
