@@ -44,6 +44,14 @@ import { EpubRenderer } from './renderers/epub-renderer';
 import { OfdRenderer } from './renderers/ofd-renderer';
 import { ExcalidrawRenderer } from './renderers/excalidraw-renderer';
 import { Model3dRenderer } from './renderers/model3d-renderer';
+import { ShpRenderer } from './renderers/shp-renderer';
+import { ParquetRenderer } from './renderers/parquet-renderer';
+import { CadRenderer } from './renderers/cad-renderer';
+import { PsdRenderer } from './renderers/psd-renderer';
+import { GitBundleRenderer } from './renderers/git-bundle-renderer';
+import { FontRenderer } from './renderers/font-renderer';
+import { HlsRenderer } from './renderers/hls-renderer';
+import { MidiRenderer } from './renderers/midi-renderer';
 import { Clock, Construction } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -59,11 +67,21 @@ type ExtendedFileCategory =
   | 'sqlite'
   | 'eml'
   | 'geojson'
+  | 'kml'
+  | 'gpx'
   | 'typst'
   | 'epub'
   | 'ofd'
   | 'excalidraw'
   | 'model3d'
+  | 'shp'
+  | 'parquet'
+  | 'cad'
+  | 'psd'
+  | 'gitbundle'
+  | 'font'
+  | 'hls'
+  | 'midi'
   | 'rtf'
   | 'doc'
   | 'xls'
@@ -100,19 +118,50 @@ const EXTENDED_FORMAT_MAP: Record<string, ExtendedFileCategory> = {
   msg: 'eml',
   mbox: 'eml',
   // GeoJSON
+  // GeoJSON
   geojson: 'geojson',
+  // KML
+  kml: 'kml',
+  kmz: 'kml',
+  // GPX
+  gpx: 'gpx',
   // EPUB 电子书
   epub: 'epub',
   // OFD 国标文档
   ofd: 'ofd',
   // Excalidraw 图表
   excalidraw: 'excalidraw',
+  // SHP
+  shp: 'shp',
+  shx: 'shp',
+  dbf: 'shp',
+  // Parquet
+  parquet: 'parquet',
   // 3D 模型
   gltf: 'model3d',
   glb: 'model3d',
   obj: 'model3d',
   stl: 'model3d',
   ply: 'model3d',
+  // CAD
+  dwg: 'cad',
+  dxf: 'cad',
+  dwf: 'cad',
+  // PSD
+  psd: 'psd',
+  psb: 'psd',
+  // Git Bundle
+  bundle: 'gitbundle',
+  // Font
+  ttf: 'font',
+  otf: 'font',
+  woff: 'font',
+  woff2: 'font',
+  // HLS
+  m3u8: 'hls',
+  // MIDI
+  mid: 'midi',
+  midi: 'midi',
   // RTF
   rtf: 'rtf',
   // Word 旧格式
@@ -224,6 +273,16 @@ const FORMAT_DESCRIPTIONS: Record<ExtendedFileCategory, string> = {
   ofd: 'OFD 国标文档渲染（GB/T 33190-2016），支持页面浏览和文本提取',
   excalidraw: 'Excalidraw 手绘风格图表渲染，支持 SVG 缩放和拖拽',
   model3d: '3D 模型渲染，支持 GLTF/GLB/OBJ/STL/PLY 格式，Three.js 驱动',
+  kml: 'KML 地理标记语言渲染（Google Earth）',
+  gpx: 'GPS 轨迹数据渲染（航点/轨迹/路线）',
+  shp: 'ESRI Shapefile 地理数据渲染',
+  parquet: 'Apache Parquet 列式数据文件浏览器',
+  cad: 'CAD 图纸渲染（DXF/DWG/DWF）',
+  psd: 'Photoshop 设计文件预览',
+  gitbundle: 'Git Bundle 打包文件查看',
+  font: '字体文件预览（TTF/OTF/WOFF）',
+  hls: 'HLS 流媒体播放列表查看',
+  midi: 'MIDI 音乐文件解析与信息展示',
   rtf: 'RTF 富文本格式渲染',
   doc: 'Microsoft Word 旧格式 (.doc) 渲染',
   xls: 'Microsoft Excel 旧格式 (.xls) 渲染',
@@ -407,6 +466,67 @@ export function FileViewerExtended({
             className={className}
           />
         );
+
+      case 'kml':
+        return <KmlRenderer fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className} />;
+      case 'gpx':
+        return <GpxRenderer fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className} />;
+      case 'shp':
+        return <ShpRenderer fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className} />;
+      case 'parquet':
+        return <ParquetRenderer fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className} />;
+      case 'cad':
+        return <CadRenderer fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className} />;
+      case 'psd':
+        return <PsdRenderer fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className} />;
+      case 'gitbundle':
+        return <GitBundleRenderer fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className} />;
+      case 'font':
+        return <FontRenderer fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className} />;
+      case 'hls':
+        return <HlsRenderer fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className} />;
+      case 'midi':
+        return <MidiRenderer fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className} />;
 
       /* ---- 其他扩展格式（占位） ---- */
       default:
