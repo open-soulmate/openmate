@@ -5,7 +5,7 @@
  *
  * 在 openface 的 FileViewer 基础上扩展，支持更多文件格式：
  * - mermaid（.mmd / .mermaid）→ MermaidRenderer
- * - plantuml（.puml / .plantuml）→ 占位
+ * - plantuml（.puml / .plantuml）→ PlantumlRenderer
  * - drawio（.drawio / .dio）→ 占位
  * - xmind（.xmind）→ 占位
  * - sqlite（.sqlite / .sqlite3 / .db）→ 占位
@@ -25,6 +25,7 @@ import { useMemo } from 'react';
 import type { FileViewerProps } from '@opensoulmate/openface';
 import { FileViewer as OpenFaceFileViewer } from '@opensoulmate/openface';
 import { MermaidRenderer } from './renderers/mermaid-renderer';
+import { PlantumlRenderer } from './renderers/plantuml-renderer';
 import { Clock, Construction } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -172,7 +173,7 @@ function PlaceholderRenderer({
 
 const FORMAT_DESCRIPTIONS: Record<ExtendedFileCategory, string> = {
   mermaid: 'Mermaid 图表渲染', // 已实现，不会走到占位
-  plantuml: 'PlantUML UML 图表渲染，支持时序图、类图、活动图等',
+  plantuml: 'PlantUML UML 图表渲染，支持时序图、类图、活动图等', // 已实现，不会走到占位
   drawio: 'Draw.io (diagrams.net) 流程图和架构图渲染',
   xmind: 'XMind 思维导图渲染',
   sqlite: 'SQLite 数据库浏览器，支持查看表结构和执行查询',
@@ -221,6 +222,18 @@ export function FileViewerExtended({
       case 'mermaid':
         return (
           <MermaidRenderer
+            fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className}
+          />
+        );
+
+      /* ---- PlantUML（已实现） ---- */
+      case 'plantuml':
+        return (
+          <PlantumlRenderer
             fileName={fileName}
             fileUrl={fileUrl}
             fileBuffer={fileBuffer}

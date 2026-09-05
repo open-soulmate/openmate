@@ -20,6 +20,9 @@ importers:
       '@opensoulmate/openface':
         specifier: workspace:*
         version: link:packages/openface
+      '@plantuml/core':
+        specifier: ^1.2026.7
+        version: 1.2026.7
       '@radix-ui/react-alert-dialog':
         specifier: ^1.1.23
         version: 1.1.23(@types/react-dom@19.2.4(@types/react@19.2.18))(@types/react@19.2.18)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
@@ -930,6 +933,9 @@ packages:
   '@parcel/watcher@2.5.1':
     resolution: {integrity: sha512-dfUnCxiN9H4ap84DvD2ubjw+3vUNpstxa0TneY/Paat8a3R4uQZDLSvWjmznAY/DoahqTHl9V46HF/Zs3F29pg==}
     engines: {node: '>= 10.0.0'}
+
+  '@plantuml/core@1.2026.7':
+    resolution: {integrity: sha512-1yzQmABM9LmbVlCjBW+nxldnk0sAZqyYc927kwz63+PkOH3r26MARSJiz6aui6vZCYlorAE54vhlXskW92VzpA==}
 
   '@pnpm/deps.graph-sequencer@1100.0.1':
     resolution: {integrity: sha512-pOr5+q1fLYKwFN3LAJuGZEnfXDcQ73zqgDHMtGy+K+uIoUqyY+6MeDCWFwfu+4EFuq76I5EPFofoNAI+Bmmq4A==}
@@ -3797,6 +3803,8 @@ snapshots:
       '@parcel/watcher-win32-arm64': 2.5.1
       '@parcel/watcher-win32-ia32': 2.5.1
       '@parcel/watcher-win32-x64': 2.5.1
+
+  '@plantuml/core@1.2026.7': {}
 
   '@pnpm/deps.graph-sequencer@1100.0.1': {}
 
