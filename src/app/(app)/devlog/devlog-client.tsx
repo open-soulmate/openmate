@@ -1,15 +1,16 @@
 "use client";
 /**
- * 开发规范页面 — 动态读取 docs/specs/ 目录下的规范文件
+ * 开发记录页面 — 动态读取 docs/devlog/ 目录下的开发记录文件
  * 使用openface标准三栏布局：setPageSidebar(LeftPanel) + MainPanel(MainHeader) + setPageWorkspace(DetailPanel)
  *
- * 数据来源：GET /api/dev-specs/list → { specs: SpecItem[] }
+ * 数据来源：GET /api/devlog/list → { logs: DevlogItem[] }
+ * 文件命名规范：{YYYY-MM-DD}-{feature-name}.md
  */
 import { useState, useEffect, useCallback } from "react";
 import { cn } from "@/lib/utils";
 import { useAppStore } from "@/stores/app-store";
 import {
-  FileText, Layers, Shield, Radio, Database, Eye, Search,
+  FileText, Search, Calendar, Code2, CheckCircle2, Clock, AlertCircle,
 } from "lucide-react";
 import { LeftPanel } from "@/components/left-panel";
 import { DetailPanel } from "@/components/detail-panel";
@@ -18,73 +19,77 @@ import { FileViewer } from "@opensoulmate/openface";
 
 /* ── 数据模型 ────────────────────────────────────────── */
 
-/** 规范条目 — 只保留核心字段 */
-interface SpecItem {
-  id: string;       // 唯一标识
-  name: string;     // 规范名称
-  desc: string;     // 规范描述
-  version: string;  // 版本号
-  fileName: string; // 文件名（用于加载内容）
-  date: string;     // 日期
+/** 开发记录条目 — 只保留核心字段 */
+interface DevlogItem {
+  id: string;        // 唯一标识（文件名去掉.md）
+  name: string;      // 功能名称（从文件标题提取）
+  desc: string;      // 概述描述（从文件内容提取）
+  version: string;   // 版本号（从文件内容提取）
+  fileName: string;  // 文件名（用于加载内容）
+  date: string;      // 日期（从文件名解析）
 }
 
 /* ── 图标映射 ────────────────────────────────────────── */
 
-/** 根据规范名称关键字映射图标 */
+/** 根据功能名称关键字映射图标 */
 const NAME_ICONS: Record<string, typeof FileText> = {
-  Architecture: Layers, AgentCore: Database, Memory: Database,
-  Gateway: Radio, ACP: Radio, A2A: Radio, MCP: Radio,
-  Security: Shield, Monitor: Eye, UI: Eye,
+  ai: Code2,
+  group: Code2,
+  feature: Code2,
+  fix: AlertCircle,
+  refactor: Code2,
+  test: CheckCircle2,
+  deploy: Calendar,
 };
 
 /* ── 页面组件 ────────────────────────────────────────── */
 
-export function DevSpecsClient() {
+export function DevlogClient() {
   /* 状态管理 */
-  const [specs, setSpecs] = useState<SpecItem[]>([]);           // 规范列表
+  const [logs, setLogs] = useState<DevlogItem[]>([]);           // 开发记录列表
   const [loading, setLoading] = useState(true);                  // 列表加载状态
-  const [selectedId, setSelectedId] = useState<string | null>(null); // 当前选中的规范
+  const [selectedId, setSelectedId] = useState<string | null>(null); // 当前选中的记录
   const [query, setQuery] = useState("");                        // 搜索关键词
-  const [specContent, setSpecContent] = useState<string>("");    // 规范文件内容
+  const [logContent, setLogContent] = useState<string>("");     // 记录文件内容
   const [loadingContent, setLoadingContent] = useState(false);   // 内容加载状态
 
   const setPageSidebar = useAppStore((s) => s.setPageSidebar);
   const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
 
-  /* ── 从 API 加载规范列表 ── */
+  /* ── 从 API 加载开发记录列表 ── */
   useEffect(() => {
     setLoading(true);
-    fetch("/api/dev-specs/list")
+    fetch("/api/devlog/list")
       .then((res) => res.json())
       .then((data) => {
-        setSpecs(data.specs || []);
+        setLogs(data.logs || []);
       })
       .catch(() => {
-        setSpecs([]);
+        setLogs([]);
       })
       .finally(() => {
         setLoading(false);
       });
   }, []);
 
-  /* 当前选中的规范条目 */
-  const selected = specs.find((s) => s.id === selectedId) || null;
+  /* 当前选中的开发记录条目 */
+  const selected = logs.find((s) => s.id === selectedId) || null;
 
   /* 搜索过滤 */
-  const filtered = specs.filter(s => {
+  const filtered = logs.filter(s => {
     if (!query) return true;
     const q = query.toLowerCase();
-    return s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q) || s.id.toLowerCase().includes(q);
+    return s.name.toLowerCase().includes(q) || s.desc.toLowerCase().includes(q) || s.date.includes(q);
   });
 
-  /* ── 加载规范文件内容 ── */
-  const loadSpecContent = useCallback(async (fileName: string) => {
+  /* ── 加载开发记录文件内容 ── */
+  const loadLogContent = useCallback(async (fileName: string) => {
     setLoadingContent(true);
     try {
-      const resp = await fetch(`/api/dev-specs/content?file=${encodeURIComponent(fileName)}`);
-      if (resp.ok) { const data = await resp.json(); setSpecContent(data.content || "加载失败"); }
-      else { setSpecContent("无法加载规范文件"); }
-    } catch { setSpecContent("网络错误"); }
+      const resp = await fetch(`/api/devlog/content?file=${encodeURIComponent(fileName)}`);
+      if (resp.ok) { const data = await resp.json(); setLogContent(data.content || "加载失败"); }
+      else { setLogContent("无法加载开发记录文件"); }
+    } catch { setLogContent("网络错误"); }
     finally { setLoadingContent(false); }
   }, []);
 
@@ -93,70 +98,70 @@ export function DevSpecsClient() {
     setPageSidebar(
       <LeftPanel
         items={filtered}
-        filter={(spec: SpecItem, q: string) => {
+        filter={(log: DevlogItem, q: string) => {
           const ql = q.toLowerCase();
-          return spec.name.toLowerCase().includes(ql) || spec.desc.toLowerCase().includes(ql) || spec.id.toLowerCase().includes(ql);
+          return log.name.toLowerCase().includes(ql) || log.desc.toLowerCase().includes(ql) || log.date.includes(ql);
         }}
-        placeholder="搜索规范..."
+        placeholder="搜索开发记录..."
         header={
           <div className="px-2 pb-2 space-y-2">
             <div className="flex items-center gap-2 px-2">
               <FileText size={16} className="text-primary" />
-              <span className="text-sm font-semibold">OpenSoulMate v1.0</span>
+              <span className="text-sm font-semibold">开发记录</span>
             </div>
             <div className="flex gap-1 px-2">
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{specs.length} 项规范</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted text-muted-foreground">{logs.length} 条记录</span>
             </div>
           </div>
         }
-        renderItem={(spec: SpecItem) => {
+        renderItem={(log: DevlogItem) => {
           /* 根据名称关键字选择图标 */
-          const Icon = Object.entries(NAME_ICONS).find(([k]) => spec.name.includes(k))?.[1] || FileText;
+          const Icon = Object.entries(NAME_ICONS).find(([k]) => log.name.toLowerCase().includes(k))?.[1] || FileText;
           return (
             <div
-              key={spec.id}
+              key={log.id}
               className={cn(
                 "px-3 py-2.5 cursor-pointer hover:bg-muted/80 transition-colors border-b border-border/30",
-                selectedId === spec.id && "bg-primary/12 text-primary"
+                selectedId === log.id && "bg-primary/12 text-primary"
               )}
-              onClick={() => setSelectedId(spec.id)}
+              onClick={() => setSelectedId(log.id)}
             >
               <div className="flex items-center gap-2 min-w-0">
                 <Icon size={14} className="shrink-0 text-muted-foreground" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-xs font-medium truncate">{spec.name}</p>
-                  <p className="text-[10px] text-muted-foreground truncate">{spec.desc}</p>
+                  <p className="text-xs font-medium truncate">{log.name}</p>
+                  <p className="text-[10px] text-muted-foreground truncate">{log.desc}</p>
                   <div className="flex items-center gap-2 mt-0.5">
-                    <span className="text-[9px] text-muted-foreground">{spec.version}</span>
-                    {spec.date && <span className="text-[9px] text-muted-foreground">{spec.date}</span>}
+                    <span className="text-[9px] text-muted-foreground">v{log.version}</span>
+                    {log.date && <span className="text-[9px] text-muted-foreground">{log.date}</span>}
                   </div>
                 </div>
               </div>
             </div>
           );
         }}
-        emptyState={<div className="flex flex-col items-center justify-center h-40 text-muted-foreground"><FileText className="w-8 h-8 mb-2 opacity-40" /><p className="text-xs">未找到规范</p></div>}
+        emptyState={<div className="flex flex-col items-center justify-center h-40 text-muted-foreground"><FileText className="w-8 h-8 mb-2 opacity-40" /><p className="text-xs">未找到开发记录</p></div>}
       />
     );
     return () => setPageSidebar(null);
-  }, [filtered, selectedId, specs.length, setPageSidebar]);
+  }, [filtered, selectedId, logs.length, setPageSidebar]);
 
   /* ── 注册右侧workspace（DetailPanel） ── */
   useEffect(() => {
     if (!selected) { setPageWorkspace(null); return; }
-    loadSpecContent(selected.fileName);
+    loadLogContent(selected.fileName);
 
     /* 详情面板的基本信息项 */
     const detailItems = [
-      { label: "编号", value: selected.id },
-      { label: "版本", value: selected.version },
+      { label: "功能", value: selected.name },
+      { label: "版本", value: `v${selected.version}` },
       { label: "文件", value: selected.fileName },
       { label: "日期", value: selected.date || "—" },
     ];
 
     /* markdown内容转data URL供FileViewer渲染 */
-    const fileUrl = specContent
-      ? `data:application/octet-stream;base64,${btoa(unescape(encodeURIComponent(specContent)))}`
+    const fileUrl = logContent
+      ? `data:application/octet-stream;base64,${btoa(unescape(encodeURIComponent(logContent)))}`
       : "";
 
     setPageWorkspace(
@@ -164,7 +169,7 @@ export function DevSpecsClient() {
         title={selected.name}
         subtitle={selected.desc}
         icon={<FileText className="w-5 h-5 text-primary" />}
-        badge={selected.version}
+        badge={`v${selected.version}`}
         onClose={() => setSelectedId(null)}
       >
         {/* 基本信息 */}
@@ -176,37 +181,37 @@ export function DevSpecsClient() {
             </div>
           ))}
         </div>
-        {/* FileViewer渲染规范正文markdown */}
+        {/* FileViewer渲染开发记录正文markdown */}
         <div className="h-[50vh]">
           {loadingContent ? (
             <div className="flex items-center justify-center h-full text-muted-foreground text-sm">加载中...</div>
           ) : fileUrl ? (
             <FileViewer fileName={selected.fileName} fileUrl={fileUrl} className="h-full" />
           ) : (
-            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">无法加载规范文件</div>
+            <div className="flex items-center justify-center h-full text-muted-foreground text-sm">无法加载开发记录文件</div>
           )}
         </div>
       </DetailPanel>
     );
     return () => setPageWorkspace(null);
-  }, [selected, specContent, setPageWorkspace, loadSpecContent]);
+  }, [selected, logContent, setPageWorkspace, loadLogContent]);
 
-  /* ── MainPanel: 中间主内容区（对齐UI规范3.2） ── */
+  /* ── MainPanel: 中间主内容区 ── */
   return (
     <PageLayout
-      title="开发规范"
+      title="开发记录"
       icon={<FileText className="w-5 h-5" />}
-      badge={loading ? "加载中..." : `${specs.length} 项`}
+      badge={loading ? "加载中..." : `${logs.length} 条`}
       headerActions={
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{loading ? "加载中..." : `共 ${specs.length} 项规范`}</span>
+          <span className="text-xs text-muted-foreground">{loading ? "加载中..." : `共 ${logs.length} 条开发记录`}</span>
         </div>
       }
     >
       {/* 加载状态 */}
       {loading && (
         <div className="flex items-center justify-center py-20 text-muted-foreground text-sm">
-          加载规范列表...
+          加载开发记录列表...
         </div>
       )}
 
@@ -215,28 +220,28 @@ export function DevSpecsClient() {
         <>
           <div className="relative max-w-sm mb-4">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索规范..."
+            <input value={query} onChange={e => setQuery(e.target.value)} placeholder="搜索开发记录..."
               className="w-full pl-9 pr-3 py-2 rounded-lg border border-border bg-muted text-xs lg:text-sm outline-none focus:ring-2 focus:ring-primary/30" />
           </div>
 
-          {/* 规范卡片网格 */}
+          {/* 开发记录卡片网格 */}
           {filtered.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-20 text-muted-foreground">
               <FileText size={48} className="mb-4 opacity-30" />
-              <p className="text-xs lg:text-sm">未找到规范</p>
+              <p className="text-xs lg:text-sm">未找到开发记录</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2 lg:gap-4">
-              {filtered.map(spec => {
+              {filtered.map(log => {
                 /* 根据名称关键字选择图标 */
-                const Icon = Object.entries(NAME_ICONS).find(([k]) => spec.name.includes(k))?.[1] || FileText;
+                const Icon = Object.entries(NAME_ICONS).find(([k]) => log.name.toLowerCase().includes(k))?.[1] || FileText;
                 return (
                   <div
-                    key={spec.id}
-                    onClick={() => setSelectedId(spec.id)}
+                    key={log.id}
+                    onClick={() => setSelectedId(log.id)}
                     className={cn(
                       "rounded-xl border bg-card p-3 lg:p-4 transition-all hover:border-primary/30 cursor-pointer",
-                      selectedId === spec.id ? "border-primary ring-1 ring-primary/30" : ""
+                      selectedId === log.id ? "border-primary ring-1 ring-primary/30" : ""
                     )}
                   >
                     <div className="flex items-start justify-between mb-2">
@@ -245,15 +250,16 @@ export function DevSpecsClient() {
                           <Icon size={18} className="text-primary" />
                         </div>
                         <div>
-                          <h3 className="text-xs lg:text-sm font-medium">{spec.name}</h3>
-                          <span className="text-[10px] text-muted-foreground">{spec.id} · {spec.version}</span>
+                          <h3 className="text-xs lg:text-sm font-medium">{log.name}</h3>
+                          <span className="text-[10px] text-muted-foreground">v{log.version}</span>
                         </div>
                       </div>
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-3 min-h-[2rem]">{spec.desc}</p>
-                    {spec.date && (
+                    <p className="text-xs text-muted-foreground line-clamp-2 mb-3 min-h-[2rem]">{log.desc}</p>
+                    {log.date && (
                       <div className="flex items-center gap-1">
-                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{spec.date}</span>
+                        <Calendar size={10} className="text-muted-foreground" />
+                        <span className="text-[9px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{log.date}</span>
                       </div>
                     )}
                   </div>

@@ -97,6 +97,7 @@ const baseNavItems: BottomNavItem[] = [
   { href: "/timeline", label: "nav.timeline", icon: History },
   { href: "/changelog", label: "nav.changelog", icon: ScrollText },
   { href: "/dev-specs", label: "开发规范", icon: FileText },
+  { href: "/devlog", label: "开发记录", icon: ScrollText },
   { href: "/marketplace", label: "nav.marketplace", icon: Store },
 ];
 
