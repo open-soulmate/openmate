@@ -15,6 +15,7 @@
  * - epub（.epub）→ EpubRenderer
  * - ofd（.ofd）→ OfdRenderer
  * - excalidraw（.excalidraw）→ ExcalidrawRenderer
+ * - model3d（.gltf / .glb / .obj / .stl / .ply）→ Model3dRenderer
  * - rtf（.rtf）→ 占位
  * - doc（.doc / .dot）→ 占位
  * - xls（.xls / .xlsm / .xlsb）→ 占位
@@ -42,6 +43,7 @@ import { GpxRenderer } from './renderers/gpx-renderer';
 import { EpubRenderer } from './renderers/epub-renderer';
 import { OfdRenderer } from './renderers/ofd-renderer';
 import { ExcalidrawRenderer } from './renderers/excalidraw-renderer';
+import { Model3dRenderer } from './renderers/model3d-renderer';
 import { Clock, Construction } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -61,6 +63,7 @@ type ExtendedFileCategory =
   | 'epub'
   | 'ofd'
   | 'excalidraw'
+  | 'model3d'
   | 'rtf'
   | 'doc'
   | 'xls'
@@ -104,6 +107,12 @@ const EXTENDED_FORMAT_MAP: Record<string, ExtendedFileCategory> = {
   ofd: 'ofd',
   // Excalidraw 图表
   excalidraw: 'excalidraw',
+  // 3D 模型
+  gltf: 'model3d',
+  glb: 'model3d',
+  obj: 'model3d',
+  stl: 'model3d',
+  ply: 'model3d',
   // RTF
   rtf: 'rtf',
   // Word 旧格式
@@ -214,6 +223,7 @@ const FORMAT_DESCRIPTIONS: Record<ExtendedFileCategory, string> = {
   epub: 'EPUB 电子书渲染，支持章节导航、目录、文本内容展示',
   ofd: 'OFD 国标文档渲染（GB/T 33190-2016），支持页面浏览和文本提取',
   excalidraw: 'Excalidraw 手绘风格图表渲染，支持 SVG 缩放和拖拽',
+  model3d: '3D 模型渲染，支持 GLTF/GLB/OBJ/STL/PLY 格式，Three.js 驱动',
   rtf: 'RTF 富文本格式渲染',
   doc: 'Microsoft Word 旧格式 (.doc) 渲染',
   xls: 'Microsoft Excel 旧格式 (.xls) 渲染',
@@ -366,6 +376,18 @@ export function FileViewerExtended({
       case 'excalidraw':
         return (
           <ExcalidrawRenderer
+            fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className}
+          />
+        );
+
+      /* ---- 3D 模型（已实现） ---- */
+      case 'model3d':
+        return (
+          <Model3dRenderer
             fileName={fileName}
             fileUrl={fileUrl}
             fileBuffer={fileBuffer}
