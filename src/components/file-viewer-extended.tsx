@@ -11,6 +11,7 @@
  * - sqlite（.sqlite / .sqlite3 / .db）→ 占位
  * - eml（.eml / .msg / .mbox）→ EmailRenderer
  * - geojson（.geojson）→ GeojsonRenderer
+ * - typst（.typ）→ TypstRenderer
  * - rtf（.rtf）→ 占位
  * - doc（.doc / .dot）→ 占位
  * - xls（.xls / .xlsm / .xlsb）→ 占位
@@ -32,6 +33,7 @@ import { XmindRenderer } from './renderers/xmind-renderer';
 import { SqliteRenderer } from './renderers/sqlite-renderer';
 import { EmailRenderer } from './renderers/email-renderer';
 import { GeojsonRenderer } from './renderers/geojson-renderer';
+import { TypstRenderer } from './renderers/typst-renderer';
 import { KmlRenderer } from './renderers/kml-renderer';
 import { GpxRenderer } from './renderers/gpx-renderer';
 import { Clock, Construction } from 'lucide-react';
@@ -49,6 +51,7 @@ type ExtendedFileCategory =
   | 'sqlite'
   | 'eml'
   | 'geojson'
+  | 'typst'
   | 'rtf'
   | 'doc'
   | 'xls'
@@ -63,6 +66,8 @@ type ExtendedFileCategory =
 
 /** 扩展格式到类别的映射表 */
 const EXTENDED_FORMAT_MAP: Record<string, ExtendedFileCategory> = {
+  // Typst
+  typ: 'typst',
   // Mermaid
   mmd: 'mermaid',
   mermaid: 'mermaid',
@@ -183,6 +188,7 @@ function PlaceholderRenderer({
 /* ------------------------------------------------------------------ */
 
 const FORMAT_DESCRIPTIONS: Record<ExtendedFileCategory, string> = {
+  typst: 'Typst 排版文档渲染，支持 .typ 源码编译为 SVG 预览',
   mermaid: 'Mermaid 图表渲染', // 已实现，不会走到占位
   plantuml: 'PlantUML UML 图表渲染，支持时序图、类图、活动图等', // 已实现，不会走到占位
   drawio: 'Draw.io (diagrams.net) 流程图和架构图渲染',
@@ -306,6 +312,18 @@ export function FileViewerExtended({
       case 'geojson':
         return (
           <GeojsonRenderer
+            fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className}
+          />
+        );
+
+      /* ---- Typst（已实现） ---- */
+      case 'typst':
+        return (
+          <TypstRenderer
             fileName={fileName}
             fileUrl={fileUrl}
             fileBuffer={fileBuffer}
