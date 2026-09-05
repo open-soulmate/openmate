@@ -1,10 +1,10 @@
 # OpenMate 设计规范 v2.0
 
-> 整合 HyperOS4 设计语言 + Web/桌面端适配
+> 整合 HyperOS4 设计语言 + 全平台适配（Web/桌面端/移动端）
 > 更新时间：2026-09-05
 >
-> **适用范围**：网页端（浏览器）和桌面端（Tauri）共用一套规范，UI 代码完全相同。
-> 差异仅在壳层（标题栏、系统通知、文件访问），不影响设计规范。
+> **适用范围**：网页端（浏览器）、桌面端（Tauri）、移动端（Tauri Mobile / 响应式网页）共用一套规范。
+> 差异仅在壳层和交互方式，不影响设计规范核心。
 
 ---
 
@@ -18,30 +18,33 @@
 4. **圆角 = 尺寸的1/4**：大卡片16px、中卡片12px、小元素6px
 5. **不纯黑不纯白**：暗色模式用 #0a0a0f ~ #1a1a2e，不用 #000
 
-### HyperOS 移动端 → OpenMate 适配
+### 三端适配对比
 
-| HyperOS 移动端 | OpenMate（Web+桌面） | 原因 |
-|---|---|---|
-| 最小触摸目标 48dp | 最小点击目标 32px | 鼠标精度 > 手指 |
-| 安全区 ≥12px | 安全区 ≥8px | 鼠标不会误触 |
-| 字号基数 17px | 字号基数 14px | 屏幕距离更远，字号可小 |
-| 圆角偏大（柔润感） | 圆角适中（专业感） | 效率工具偏商务 |
-| 全屏沉浸 | 多窗口/多面板 | 信息密度更高 |
-| 手势操作优先 | 键盘快捷键优先 | 效率工具，键盘为主 |
+| 维度 | 移动端 | 网页端/桌面端 | 原因 |
+|---|---|---|---|
+| 最小点击目标 | 48dp（手指） | 32px（鼠标） | 手指面积 > 鼠标精度 |
+| 安全区边距 | ≥12px | ≥8px | 防止手指误触边缘 |
+| 字号基数 | 16px | 14px | 手机屏幕距离近，字号可大 |
+| 圆角风格 | 偏大（柔润感） | 适中（专业感） | 移动端偏消费级，桌面端偏效率工具 |
+| 布局模式 | 单列/全屏 | 多面板/侧边栏 | 手机屏幕窄，桌面屏幕宽 |
+| 导航方式 | 底部Tab栏 | 左侧边栏 | 手机单手操作，桌面鼠标效率 |
+| 交互方式 | 触摸+手势 | 鼠标+键盘 | 设备输入方式不同 |
+| 信息密度 | 低（呼吸感） | 高（效率优先） | 手机屏幕小，桌面可展示更多 |
 
 ---
 
-## 二、圆角规范（适配桌面端）
+## 二、圆角规范（三端适配）
 
-| 元素类型 | 移动端 HyperOS | 桌面端 OpenMate | CSS Token |
+| 元素类型 | 移动端 | 网页端/桌面端 | CSS Token |
 |---|---|---|---|
-| 大卡片/弹窗 | 24px | 16px | `--radius-lg` |
-| 中卡片/按钮 | 16px | 10px | `--radius-md` |
-| 小元素/头像 | 12px | 6px | `--radius-sm` |
-| 徽章/标签 | 8px | 4px | `--radius-xs` |
+| 大卡片/弹窗 | 20px | 16px | `--radius-lg` |
+| 中卡片/按钮 | 14px | 10px | `--radius-md` |
+| 小元素/头像 | 10px | 6px | `--radius-sm` |
+| 徽章/标签 | 6px | 4px | `--radius-xs` |
 | 圆形头像 | 50% | 50% | `--radius-full` |
-| 侧边栏项 | — | 8px | `--radius-nav` |
-| 消息气泡 | 18px | 12px | `--radius-bubble` |
+| 侧边栏/导航项 | — | 8px | `--radius-nav` |
+| 消息气泡 | 16px | 12px | `--radius-bubble` |
+| 底部Sheet | 20px 20px 0 0 | — | `--radius-sheet` |
 
 ```css
 :root {
@@ -52,6 +55,18 @@
   --radius-full: 50%;
   --radius-nav: 8px;
   --radius-bubble: 12px;
+  --radius-sheet: 20px;
+}
+
+/* 移动端覆盖 */
+@media (max-width: 768px) {
+  :root {
+    --radius-xs: 6px;
+    --radius-sm: 10px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    --radius-bubble: 16px;
+  }
 }
 ```
 
@@ -66,20 +81,20 @@
 --font-cn: 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei', sans-serif;
 ```
 
-> **注意**：HyperOS 的 MiSans 是小米定制字体，桌面端用 Inter 更通用。
-> 如需 MiSans，从小米官网下载后添加到 `--font-sans` 链头。
+> **MiSans**：小米定制字体，可从小米官网下载后添加到 `--font-sans` 链头。
+> 桌面端默认 Inter 更通用，移动端可用 MiSans 获得更原生的 HyperOS 感觉。
 
-### 字阶体系（桌面端适配）
+### 字阶体系（三端适配）
 
-| 层级 | 移动端 | 桌面端 | 字重 | 透明度 | 用途 |
+| 层级 | 移动端 | 网页端/桌面端 | 字重 | 透明度 | 用途 |
 |---|---|---|---|---|---|
-| Display | 32px | 28px | 600 | 100% | 大数据统计 |
-| H1 | 24px | 20px | 600 | 100% | 页面标题 |
-| H2 | 20px | 16px | 600 | 100% | 区域标题 |
+| Display | 30px | 28px | 600 | 100% | 大数据统计 |
+| H1 | 22px | 20px | 600 | 100% | 页面标题 |
+| H2 | 18px | 16px | 600 | 100% | 区域标题 |
 | H3 | 16px | 14px | 500 | 100% | 卡片标题 |
-| Body | 14px | 14px | 400 | 100% | 正文内容 |
-| Caption | 12px | 12px | 500 | 60% | 辅助说明 |
-| Overline | 10px | 10px | 500 | 40% | 标签/徽章 |
+| Body | 16px | 14px | 400 | 100% | 正文内容 |
+| Caption | 13px | 12px | 500 | 60% | 辅助说明 |
+| Overline | 11px | 10px | 500 | 40% | 标签/徽章 |
 
 ```css
 :root {
@@ -91,22 +106,36 @@
   --text-caption: 12px;
   --text-overline: 10px;
 }
+
+/* 移动端：正文和标题更大，提升可读性 */
+@media (max-width: 768px) {
+  :root {
+    --text-display: 30px;
+    --text-h1: 22px;
+    --text-h2: 18px;
+    --text-h3: 16px;
+    --text-body: 16px;
+    --text-caption: 13px;
+    --text-overline: 11px;
+  }
+}
 ```
 
 ---
 
 ## 四、间距规范
 
-### 桌面端间距体系（8px 网格）
+### 间距体系（8px 网格，三端通用）
 
-| Token | 值 | 用途 |
-|---|---|---|
-| `--space-1` | 4px | 微间距：图标与文字、标签内边距 |
-| `--space-2` | 8px | 小间距：列表项内、按钮内边距 |
-| `--space-3` | 12px | 中间距：卡片内边距、表单项间距 |
-| `--space-4` | 16px | 大间距：区域分隔、侧边栏内边距 |
-| `--space-6` | 24px | 区域间距：面板之间、区块标题与内容 |
-| `--space-8` | 32px | 大区域间距：页面级分隔 |
+| Token | 值 | 移动端用途 | 网页端/桌面端用途 |
+|---|---|---|---|
+| `--space-1` | 4px | 图标与文字间距 | 图标与文字、标签内边距 |
+| `--space-2` | 8px | 按钮内边距 | 列表项内、按钮内边距 |
+| `--space-3` | 12px | 卡片内边距 | 卡片内边距、表单项间距 |
+| `--space-4` | 16px | 区域分隔 | 区域分隔、侧边栏内边距 |
+| `--space-6` | 24px | 大区块间距 | 面板之间、标题与内容 |
+| `--space-8` | 32px | 页面级分隔 | 页面级分隔 |
+| `--space-12` | 48px | 移动端底部安全区 | — |
 
 ```css
 :root {
@@ -116,18 +145,29 @@
   --space-4: 16px;
   --space-6: 24px;
   --space-8: 32px;
+  --space-12: 48px;
 }
 ```
 
-### 安全区（桌面端）
+### 安全区（三端适配）
 
-| 场景 | 移动端 | 桌面端 |
+| 场景 | 移动端 | 网页端/桌面端 |
 |---|---|---|
-| 内容区边距 | ≥12px | ≥8px |
+| 内容区边距 | ≥16px | ≥8px |
 | 弹窗/模态框 | ≥20px | ≥16px |
 | 卡片内边距 | ≥16px | ≥12px |
-| 按钮最小高度 | 48dp | 32px |
-| 按钮最小宽度 | — | 64px |
+| 按钮最小高度 | 48px（手指） | 32px（鼠标） |
+| 按钮最小宽度 | 48px | 64px |
+| 底部安全区 | ≥env(safe-area-inset-bottom) | — |
+
+```css
+/* 移动端底部安全区（刘海屏/Home指示器） */
+@media (max-width: 768px) {
+  .bottom-bar {
+    padding-bottom: max(var(--space-4), env(safe-area-inset-bottom));
+  }
+}
+```
 
 ---
 
@@ -175,9 +215,11 @@
 
 ---
 
-## 六、交互规范（桌面端特有）
+## 六、交互规范
 
-### Hover 状态
+### 网页端/桌面端交互
+
+#### Hover 状态
 ```css
 /* 所有可交互元素必须有 hover 状态 */
 .hoverable:hover {
@@ -192,7 +234,7 @@ button:hover {
 }
 ```
 
-### Focus 状态（键盘导航）
+#### Focus 状态（键盘导航）
 ```css
 /* 键盘 Tab 聚焦时显示轮廓 */
 :focus-visible {
@@ -202,18 +244,68 @@ button:hover {
 }
 ```
 
-### 过渡动画
+### 移动端交互
+
+#### 触摸反馈
+```css
+/* 触摸时无 hover，用 active 状态替代 */
+@media (max-width: 768px) {
+  .touchable:active {
+    opacity: 0.7;
+    transform: scale(0.98);
+    transition: all 80ms ease;
+  }
+  
+  /* 禁用 hover 效果（移动端 hover 状态不稳定） */
+  .hoverable:hover {
+    background-color: unset;
+    transform: none;
+  }
+}
+```
+
+#### 手势支持
+```css
+/* 左滑删除 */
+.swipeable {
+  touch-action: pan-y;
+  overflow-x: hidden;
+}
+
+/* 下拉刷新区域 */
+.pull-to-refresh {
+  overscroll-behavior-y: contain;
+}
+
+/* 长按菜单 */
+.long-pressable {
+  -webkit-touch-callout: none;
+  user-select: none;
+}
+```
+
+#### 键盘弹出处理
+```css
+/* 移动端键盘弹出时，输入框固定在底部 */
+@media (max-width: 768px) {
+  .chat-input-bar {
+    position: sticky;
+    bottom: 0;
+    /* 虚拟键盘兼容 */
+    bottom: env(keyboard-inset-height, 0px);
+  }
+}
+```
+
+### 通用动画
+
 ```css
 /* 全局过渡 */
 --transition-fast: 150ms ease;
 --transition-normal: 200ms ease;
 --transition-slow: 300ms ease;
 
-/* 不用贝塞尔曲线，桌面端简洁为主 */
-```
-
-### 滚动条（暗色主题）
-```css
+/* 滚动条（桌面端） */
 ::-webkit-scrollbar {
   width: 6px;
   height: 6px;
@@ -225,13 +317,24 @@ button:hover {
   background: var(--color-surface-hover);
   border-radius: 3px;
 }
+
+/* 移动端隐藏滚动条但保留滚动 */
+@media (max-width: 768px) {
+  ::-webkit-scrollbar {
+    display: none;
+  }
+  .scrollable {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+}
 ```
 
 ---
 
 ## 七、组件规范
 
-### 消息气泡
+### 消息气泡（三端通用）
 ```css
 /* 用户消息 — 右对齐，主色调 */
 .msg-user {
@@ -239,6 +342,7 @@ button:hover {
   color: white;
   border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-xs) var(--radius-bubble);
   max-width: 70%;
+  padding: var(--space-2) var(--space-3);
 }
 
 /* AI 消息 — 左对齐，表面色 */
@@ -247,6 +351,7 @@ button:hover {
   color: var(--color-text-primary);
   border-radius: var(--radius-bubble) var(--radius-bubble) var(--radius-bubble) var(--radius-xs);
   max-width: 80%;
+  padding: var(--space-2) var(--space-3);
 }
 
 /* 系统消息 — 居中，小字 */
@@ -258,7 +363,7 @@ button:hover {
 }
 ```
 
-### 侧边栏
+### 侧边栏（网页端/桌面端）
 ```css
 .sidebar {
   width: 280px;
@@ -283,7 +388,74 @@ button:hover {
 }
 ```
 
-### 卡片
+### 底部导航栏（移动端）
+```css
+/* 移动端：侧边栏变底部 Tab 栏 */
+@media (max-width: 768px) {
+  .sidebar {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+    height: 56px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    align-items: center;
+    border-right: none;
+    border-top: 1px solid var(--color-border);
+    padding-bottom: env(safe-area-inset-bottom);
+    z-index: 100;
+  }
+  
+  /* 主内容区为底部导航留空间 */
+  .main-content {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom));
+  }
+}
+```
+
+### 弹窗/模态框（三端适配）
+```css
+/* 桌面端：居中弹窗 */
+.modal {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background: var(--color-surface);
+  border-radius: var(--radius-lg);
+  padding: var(--space-6);
+  max-width: 480px;
+  max-height: 80vh;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+}
+
+/* 移动端：底部 Sheet */
+@media (max-width: 768px) {
+  .modal {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    top: auto;
+    transform: none;
+    border-radius: var(--radius-sheet) var(--radius-sheet) 0 0;
+    max-width: 100%;
+    max-height: 90vh;
+    padding: var(--space-4);
+    animation: slideUp 300ms ease;
+  }
+  
+  @keyframes slideUp {
+    from { transform: translateY(100%); }
+    to { transform: translateY(0); }
+  }
+}
+```
+
+### 卡片（三端通用）
 ```css
 .card {
   background: var(--color-surface);
@@ -293,13 +465,16 @@ button:hover {
   transition: all var(--transition-fast);
 }
 
-.card:hover {
-  border-color: var(--color-border-hover);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+/* 桌面端 hover 效果 */
+@media (min-width: 769px) {
+  .card:hover {
+    border-color: var(--color-border-hover);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  }
 }
 ```
 
-### 按钮
+### 按钮（三端通用）
 ```css
 .btn-primary {
   background: var(--color-primary);
@@ -315,9 +490,21 @@ button:hover {
   transition: all var(--transition-fast);
 }
 
-.btn-primary:hover {
-  background: var(--color-primary-hover);
-  transform: translateY(-1px);
+/* 移动端按钮更大 */
+@media (max-width: 768px) {
+  .btn-primary {
+    min-height: 48px;
+    min-width: 48px;
+    font-size: 16px;
+  }
+}
+
+/* 桌面端 hover */
+@media (min-width: 769px) {
+  .btn-primary:hover {
+    background: var(--color-primary-hover);
+    transform: translateY(-1px);
+  }
 }
 ```
 
