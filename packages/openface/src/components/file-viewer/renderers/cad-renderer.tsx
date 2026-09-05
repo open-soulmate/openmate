@@ -1,17 +1,19 @@
 'use client';
 
 /**
- * CAD 图纸渲染器（自研，基于 @mlightcad/libredwg-web）
+ * CAD 图纸渲染器（基于 @mlightcad/libredwg-web 的 SVG 输出）
  *
- * 功能：
- * - DWG/DXF 文件解析（LibreDWG WASM convert()）
- * - Canvas 2D 渲染所有基本实体
- * - 坐标变换：CAD Y向上 → Canvas Y向下
- * - 图层可见性 + ACI颜色 + trueColor
- * - INSERT 块引用递归渲染
- * - 缩放/拖拽/fitBounds
- * - 全屏
- * - 暗色/亮色主题
+ * 核心策略：使用库自带的 dwg_to_svg() 生成完整 SVG，避免自行遍历实体导致的
+ * 文字镜像、坐标错误、细节缺失等问题。
+ *
+ * 流程：DWG/DXF 二进制 → dwg_read_data() → convert() → DwgDatabase → dwg_to_svg() → SVG 字符串
+ *
+ * 坐标系说明：
+ * - CAD 坐标系：Y 轴向上
+ * - SVG 坐标系：Y 轴向下
+ * - 库的 SvgConverter 已在主 group 上应用 matrix(1,0,0,-1,0,0) 做全局 Y 翻转
+ * - 文字元素单独用 translate(x,y) scale(1,-1) translate(-x,-y) 翻转回来
+ * - 我们只需要正确处理 viewBox 和缩放/拖拽即可
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -33,303 +35,88 @@ interface CadRendererProps {
 }
 
 /* ------------------------------------------------------------------ */
-/*  简化类型                                                            */
+/*  解析 SVG viewBox                                                    */
 /* ------------------------------------------------------------------ */
 
-interface Pt { x: number; y: number; z?: number; }
-interface Ent {
-  type: string;
-  startPoint?: Pt; endPoint?: Pt;
-  center?: Pt; radius?: number;
-  startAngle?: number; endAngle?: number;
-  points?: Pt[]; bulges?: number[]; flags?: number;
-  vertices?: Pt[]; flag?: number;
-  text?: string; insertionPoint?: Pt; height?: number; textHeight?: number;
-  rotation?: number; halign?: number; valign?: number;
-  majorAxisEndpoint?: Pt; axisRatio?: number; startParam?: number; endParam?: number;
-  name?: string; scaleX?: number; scaleY?: number;
-  corner1?: Pt; corner2?: Pt; corner3?: Pt; corner4?: Pt;
-  boundaryPaths?: unknown[]; solidFill?: boolean;
-  controlPoints?: Pt[]; degree?: number; knots?: number[];
-  point?: Pt;
-  colorIndex?: number; color?: number; layer?: string;
-  [k: string]: unknown;
-}
-interface Layer { name: string; colorIndex: number; frozen?: boolean; off?: boolean; }
-interface Block { entities?: Ent[]; }
-interface DwgDb { entities?: Ent[]; layers?: Record<string, Layer>; blocks?: Record<string, Block>; }
-
-/* ------------------------------------------------------------------ */
-/*  ACI 颜色表                                                          */
-/* ------------------------------------------------------------------ */
-
-const ACI: Record<number, string> = {
-  1: '#ff0000', 2: '#ffff00', 3: '#00ff00', 4: '#00ffff',
-  5: '#0000ff', 6: '#ff00ff', 7: '#ffffff', 8: '#808080',
-  9: '#c0c0c0', 0: '#000000',
-};
-
-/** 解析实体颜色 */
-function entColor(e: Ent, isDark: boolean): string {
-  if (e.color && e.color > 0) {
-    return `rgb(${(e.color >> 16) & 0xff},${(e.color >> 8) & 0xff},${e.color & 0xff})`;
-  }
-  const ci = e.colorIndex ?? 7;
-  if (ci === 7) return isDark ? '#e5e5e5' : '#000000';
-  return ACI[ci] || (isDark ? '#e5e5e5' : '#000000');
+interface SvgViewBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
 }
 
-/* ------------------------------------------------------------------ */
-/*  世界坐标 → 屏幕坐标（Y轴翻转）                                       */
-/* ------------------------------------------------------------------ */
-
-/* ------------------------------------------------------------------ */
-/*  AutoCAD 文本控制码解码                                              */
-/*  %%C → ⌀ (直径), %%D → °, %%P → ±, %%u → _ (下划线), %%o → ‾ (上划线) */
-/* ------------------------------------------------------------------ */
-
-function decodeCadText(text: string): string {
-  return text
-    .replace(/%%[cC]/g, '\u2300')    /* %%C → ⌀ */
-    .replace(/%%[dD]/g, '\u00B0')    /* %%D → ° */
-    .replace(/%%[pP]/g, '\u00B1')    /* %%P → ± */
-    .replace(/%%[uU]/g, '')          /* %%u → 下划线开关（忽略） */
-    .replace(/%%[oO]/g, '')          /* %%o → 上划线开关（忽略） */
-    .replace(/\\P/g, '\n')           /* MTEXT 换行 */
-    .replace(/\\f[^;]+;/g, '')       /* MTEXT 字体指令 \fArial|b1|i0|c134|p2; */
-    .replace(/{\\[^}]*}/g, (m) => {
-      /* {\f...;文字内容} → 只保留分号后面的文字 */
-      const semi = m.indexOf(';');
-      return semi >= 0 ? m.slice(semi + 1, -1) : m.slice(1, -1);
-    })
-    .replace(/\\[A-Za-z][^\\{}]*/g, '') /* 其他 MTEXT 残留格式指令 */
-    .trim();
-}
-
-function w2s(p: Pt, cx: number, cy: number, s: number, w: number, h: number) {
-  return { x: w / 2 + (p.x - cx) * s, y: h / 2 + (p.y - cy) * s };
-}
-
-/* ------------------------------------------------------------------ */
-/*  计算实体边界框（带 INSERT 递归）                                      */
-/* ------------------------------------------------------------------ */
-
-function expandBounds(e: Ent, b: { x0: number; y0: number; x1: number; y1: number }, blocks?: Record<string, Block>, ox = 0, oy = 0, depth = 0) {
-  const add = (p?: Pt) => {
-    if (p && isFinite(p.x) && isFinite(p.y)) {
-      const px = p.x + ox, py = p.y + oy;
-      b.x0 = Math.min(b.x0, px); b.y0 = Math.min(b.y0, py);
-      b.x1 = Math.max(b.x1, px); b.y1 = Math.max(b.y1, py);
-    }
-  };
-  add(e.startPoint); add(e.endPoint); add(e.insertionPoint); add(e.point);
-  add(e.corner1); add(e.corner2); add(e.corner3); add(e.corner4);
-  if (e.center) {
-    add(e.center);
-    if (e.radius) {
-      const cx = e.center.x + ox, cy = e.center.y + oy;
-      b.x0 = Math.min(b.x0, cx - e.radius); b.y0 = Math.min(b.y0, cy - e.radius);
-      b.x1 = Math.max(b.x1, cx + e.radius); b.y1 = Math.max(b.y1, cy + e.radius);
+function parseViewBox(svg: string): SvgViewBox {
+  const m = svg.match(/viewBox="([^"]+)"/);
+  if (m) {
+    const parts = m[1].split(/\s+/).map(Number);
+    if (parts.length === 4 && parts.every(isFinite)) {
+      return { x: parts[0], y: parts[1], width: parts[2], height: parts[3] };
     }
   }
-  if (e.points) e.points.forEach(p => add(p));
-  if (e.vertices) e.vertices.forEach(p => add(p));
-  if (e.controlPoints) e.controlPoints.forEach(p => add(p));
-  /* 递归 INSERT */
-  if (depth < 8 && e.type === 'INSERT' && e.name && blocks) {
-    const blk = blocks[e.name];
-    if (blk?.entities) {
-      const nx = ox + (e.insertionPoint?.x || 0);
-      const ny = oy + (e.insertionPoint?.y || 0);
-      for (const be of blk.entities) expandBounds(be, b, blocks, nx, ny, depth + 1);
-    }
-  }
+  return { x: 0, y: 0, width: 1000, height: 1000 };
 }
 
 /* ------------------------------------------------------------------ */
-/*  绘制单个实体                                                        */
+/*  计算实体数量（从 SVG 大致估算）                                       */
 /* ------------------------------------------------------------------ */
 
-function drawEnt(
-  ctx: CanvasRenderingContext2D,
-  e: Ent,
-  cx: number, cy: number, s: number, w: number, h: number,
-  isDark: boolean,
-  blocks?: Record<string, Block>,
-  ox = 0, oy = 0, depth = 0,
-) {
-  /* 如果图层被冻结/关闭，跳过 */
-  const color = entColor(e, isDark);
-  ctx.strokeStyle = color;
-  ctx.fillStyle = color;
-  ctx.lineWidth = 1;
-
-  const p = (pt: Pt) => w2s({ x: pt.x + ox, y: pt.y + oy }, cx, cy, s, w, h);
-
-  switch (e.type) {
-    case 'LINE': {
-      if (e.startPoint && e.endPoint) {
-        const a = p(e.startPoint), b = p(e.endPoint);
-        ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
-      }
-      break;
-    }
-    case 'CIRCLE': {
-      if (e.center && e.radius) {
-        const c = p(e.center);
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, e.radius * Math.abs(s), 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      break;
-    }
-    case 'ARC': {
-      if (e.center && e.radius && e.startAngle !== undefined && e.endAngle !== undefined) {
-        const c = p(e.center);
-        const sa = (-e.startAngle * Math.PI) / 180;
-        const ea = (-e.endAngle * Math.PI) / 180;
-        ctx.beginPath();
-        ctx.arc(c.x, c.y, e.radius * Math.abs(s), ea, sa);
-        ctx.stroke();
-      }
-      break;
-    }
-    case 'LWPOLYLINE':
-    case 'POLYLINE_2D': {
-      const pts = e.points || e.vertices;
-      const closed = !!(e.flags && (e.flags & 1)) || !!(e.flag && (e.flag & 1));
-      if (pts && pts.length > 1) {
-        const sp = pts.map(p);
-        ctx.beginPath(); ctx.moveTo(sp[0].x, sp[0].y);
-        for (let i = 1; i < sp.length; i++) ctx.lineTo(sp[i].x, sp[i].y);
-        if (closed) ctx.closePath();
-        ctx.stroke();
-      }
-      break;
-    }
-    case 'TEXT':
-    case 'MTEXT': {
-      const ip = e.insertionPoint || e.startPoint;
-      const txt = decodeCadText(e.text || "");
-      const sz = e.height || e.textHeight || 2.5;
-      if (ip && txt) {
-        const sp = p(ip);
-        ctx.save();
-        ctx.translate(sp.x, sp.y);
-        /* w2s 不翻转Y（+号），所以文字需要翻转Y使正向显示 */
-        ctx.scale(1, -1);
-        /* scale(1,-1) 后旋转方向变反，取反 */
-        if (e.rotation) ctx.rotate((e.rotation * Math.PI) / 180);
-        ctx.font = `${Math.max(1, sz * Math.abs(s))}px sans-serif`;
-        ctx.fillText(txt, 0, 0);
-        ctx.restore();
-      }
-      break;
-    }
-    case 'ELLIPSE': {
-      if (e.center && e.majorAxisEndpoint && e.axisRatio) {
-        const c = p(e.center);
-        const majLen = Math.sqrt(e.majorAxisEndpoint.x ** 2 + e.majorAxisEndpoint.y ** 2);
-        const minLen = majLen * e.axisRatio;
-        const angle = Math.atan2(e.majorAxisEndpoint.y, e.majorAxisEndpoint.x);
-        ctx.save();
-        ctx.translate(c.x, c.y);
-        ctx.rotate(-angle);
-        ctx.beginPath();
-        ctx.ellipse(0, 0, majLen * Math.abs(s), minLen * Math.abs(s), 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
-      }
-      break;
-    }
-    case 'POINT': {
-      if (e.point) {
-        const sp = p(e.point);
-        ctx.beginPath();
-        ctx.arc(sp.x, sp.y, 2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      break;
-    }
-    case 'SOLID': {
-      const corners = [e.corner1, e.corner2, e.corner3, e.corner4].filter((c): c is Pt => !!c).map(p);
-      if (corners.length >= 3) {
-        ctx.beginPath();
-        ctx.moveTo(corners[0].x, corners[0].y);
-        for (let i = 1; i < corners.length; i++) ctx.lineTo(corners[i].x, corners[i].y);
-        ctx.closePath();
-        ctx.fill();
-      }
-      break;
-    }
-    case 'INSERT': {
-      if (depth > 8 || !e.name || !blocks) break;
-      const blk = blocks[e.name];
-      if (blk?.entities) {
-        const nx = ox + (e.insertionPoint?.x || 0);
-        const ny = oy + (e.insertionPoint?.y || 0);
-        for (const be of blk.entities) {
-          drawEnt(ctx, be, cx, cy, s, w, h, isDark, blocks, nx, ny, depth + 1);
-        }
-      }
-      break;
-    }
-    case 'HATCH': {
-      if (e.boundaryPaths && Array.isArray(e.boundaryPaths)) {
-        for (const path of e.boundaryPaths) {
-          const bp = path as { points?: Pt[] };
-          if (bp.points && bp.points.length > 1) {
-            const sp = bp.points.map(pt => w2s({ x: pt.x + ox, y: pt.y + oy }, cx, cy, s, w, h));
-            ctx.beginPath(); ctx.moveTo(sp[0].x, sp[0].y);
-            for (let i = 1; i < sp.length; i++) ctx.lineTo(sp[i].x, sp[i].y);
-            ctx.closePath();
-            if (e.solidFill) ctx.fill(); else ctx.stroke();
-          }
-        }
-      }
-      break;
-    }
-    case 'SPLINE': {
-      if (e.controlPoints && e.controlPoints.length > 1) {
-        const sp = e.controlPoints.map(pt => w2s({ x: pt.x + ox, y: pt.y + oy }, cx, cy, s, w, h));
-        ctx.beginPath(); ctx.moveTo(sp[0].x, sp[0].y);
-        for (let i = 1; i < sp.length; i++) ctx.lineTo(sp[i].x, sp[i].y);
-        ctx.stroke();
-      }
-      break;
+function countEntities(svg: string): number {
+  /* 统计 SVG 中的主要绘图元素 */
+  const tags = ['<line ', '<circle ', '<ellipse ', '<path ', '<text ', '<use ', '<polyline ', '<polygon '];
+  let count = 0;
+  for (const tag of tags) {
+    let idx = 0;
+    while ((idx = svg.indexOf(tag, idx)) !== -1) {
+      count++;
+      idx += tag.length;
     }
   }
+  return count;
 }
 
 /* ------------------------------------------------------------------ */
-/*  主渲染函数                                                          */
+/*  后处理 SVG：适配暗色模式                                             */
 /* ------------------------------------------------------------------ */
 
-function renderAll(
-  ctx: CanvasRenderingContext2D,
-  canvas: HTMLCanvasElement,
-  db: DwgDb,
-  view: { cx: number; cy: number; scale: number },
-  isDark: boolean,
-) {
-  const dpr = window.devicePixelRatio || 1;
-  const w = canvas.clientWidth;
-  const h = canvas.clientHeight;
-  canvas.width = w * dpr;
-  canvas.height = h * dpr;
-  ctx.scale(dpr, dpr);
+function postProcessSvg(svg: string, isDark: boolean): string {
+  if (!isDark) return svg;
 
-  ctx.fillStyle = isDark ? '#1a1a1a' : '#ffffff';
-  ctx.fillRect(0, 0, w, h);
+  /*
+   * 暗色模式策略：
+   * 1. 将默认黑色 stroke (#000000 / black) 替换为浅色 (#e5e5e5)
+   * 2. 将默认黑色 fill 替换为浅色
+   * 3. 保留非黑色的颜色不变
+   *
+   * SVG 中库生成的默认颜色是 stroke="#000000" 和 fill="none"
+   * 在主 <g> 标签上设置
+   */
+  let result = svg;
 
-  const entities = db.entities || [];
-  for (const e of entities) {
-    if (e.layer && db.layers) {
-      const layer = db.layers[e.layer];
-      if (layer && (layer.frozen || layer.off)) continue;
-    }
-    drawEnt(ctx, e, view.cx, view.cy, view.scale, w, h, isDark, db.blocks);
-  }
+  /* 替换主 group 的 stroke 颜色 */
+  result = result.replace(
+    /stroke="#000000"/g,
+    'stroke="#e5e5e5"',
+  );
+  result = result.replace(
+    /stroke="black"/g,
+    'stroke="#e5e5e5"',
+  );
+
+  /* 替换 fill="black"（SOLID 等实体） */
+  result = result.replace(
+    /fill="black"/g,
+    'fill="#e5e5e5"',
+  );
+
+  /* 文字默认是黑色的 fill，需要替换 */
+  result = result.replace(
+    /fill="#000000"/g,
+    'fill="#e5e5e5"',
+  );
+
+  /* 确保 SVG 背景透明（由容器背景控制） */
+
+  return result;
 }
 
 /* ------------------------------------------------------------------ */
@@ -337,8 +124,8 @@ function renderAll(
 /* ------------------------------------------------------------------ */
 
 export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className }: CadRendererProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgContainerRef = useRef<HTMLDivElement>(null);
 
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -346,50 +133,59 @@ export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className 
   const [entCount, setEntCount] = useState(0);
   const [zoomPercent, setZoomPercent] = useState(100);
 
-  const viewRef = useRef({ cx: 0, cy: 0, scale: 1 });
-  const dbRef = useRef<DwgDb | null>(null);
-  const boundsRef = useRef({ x0: 0, y0: 0, x1: 100, y1: 100 });
-  const isDarkRef = useRef(document.documentElement.classList.contains('dark'));
-  const isDragging = useRef(false);
-  const dragStart = useRef({ x: 0, y: 0, cx: 0, cy: 0 });
+  /* SVG 原始数据 */
+  const svgRawRef = useRef<string>('');
+  const viewBoxRef = useRef<SvgViewBox>({ x: 0, y: 0, width: 1000, height: 1000 });
 
-  /* 重绘 */
-  const redraw = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas || !dbRef.current) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    renderAll(ctx, canvas, dbRef.current, viewRef.current, isDarkRef.current);
+  /* 视图状态：缩放和偏移 */
+  const viewRef = useRef({ scale: 1, panX: 0, panY: 0 });
+  const isDragging = useRef(false);
+  const dragStart = useRef({ x: 0, y: 0, panX: 0, panY: 0 });
+  const [isDark, setIsDark] = useState(() =>
+    typeof document !== 'undefined' && document.documentElement.classList.contains('dark'),
+  );
+  const isDarkRef = useRef(isDark);
+
+  /* ------------------------------------------------------------------ */
+  /*  将 SVG 渲染到容器                                                    */
+  /* ------------------------------------------------------------------ */
+
+  const renderSvg = useCallback(() => {
+    const container = svgContainerRef.current;
+    if (!container || !svgRawRef.current) return;
+
+    const svg = postProcessSvg(svgRawRef.current, isDarkRef.current);
+    container.innerHTML = svg;
+
+    /* 获取插入的 SVG 元素并设置样式 */
+    const svgEl = container.querySelector('svg');
+    if (svgEl) {
+      svgEl.style.width = '100%';
+      svgEl.style.height = '100%';
+      svgEl.style.display = 'block';
+
+      /* 应用缩放和平移变换 */
+      const { scale, panX, panY } = viewRef.current;
+      svgEl.style.transform = `scale(${scale}) translate(${panX}px, ${panY}px)`;
+      svgEl.style.transformOrigin = 'center center';
+    }
   }, []);
 
-  /* fitToView — 基于已保存的 bounds 和 canvas 实际尺寸 */
-  const fitToView = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const { x0, y0, x1, y1 } = boundsRef.current;
-    const cw = canvas.clientWidth || 800;
-    const ch = canvas.clientHeight || 600;
-    const bw = x1 - x0 || 1;
-    const bh = y1 - y0 || 1;
-    const scale = Math.min(cw / bw, ch / bh) * 0.92;
-    viewRef.current = {
-      cx: (x0 + x1) / 2,
-      cy: (y0 + y1) / 2,
-      scale,
-    };
-    redraw();
-  }, [redraw]);
+  /* ------------------------------------------------------------------ */
+  /*  加载文件                                                            */
+  /* ------------------------------------------------------------------ */
 
-  /* 加载文件 */
   const loadBuffer = useCallback(async (): Promise<ArrayBuffer> => {
     if (fileBuffer) return fileBuffer;
-    if (fileUrl) { const r = await fetch(fileUrl); return r.arrayBuffer(); }
+    if (fileUrl) {
+      const r = await fetch(fileUrl);
+      return r.arrayBuffer();
+    }
     throw new Error('未提供文件内容');
   }, [fileUrl, fileBuffer]);
 
   /* ------------------------------------------------------------------ */
-  /*  解析 DWG/DXF                                                       */
+  /*  解析 DWG/DXF → SVG                                                 */
   /* ------------------------------------------------------------------ */
 
   useEffect(() => {
@@ -414,23 +210,27 @@ export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className 
         if (disposed) return;
         if (ptr === undefined || ptr === null) throw new Error('解析失败');
 
-        setStatusText('转换数据...');
-        const db = libredwg.convert(ptr) as unknown as DwgDb;
+        setStatusText('转换为数据库...');
+        const db = libredwg.convert(ptr);
+
+        if (disposed) return;
+        setStatusText('生成 SVG...');
+        const svg = libredwg.dwg_to_svg(db);
+
+        /* 释放 WASM 内存 */
         libredwg.dwg_free(ptr);
 
         if (disposed) return;
-        dbRef.current = db;
-        setEntCount(db.entities?.length || 0);
 
-        /* 计算 bounds */
-        const b = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity };
-        for (const e of db.entities || []) expandBounds(e, b, db.blocks);
-        if (!isFinite(b.x0)) { b.x0 = -100; b.y0 = -100; b.x1 = 100; b.y1 = 100; }
-        boundsRef.current = b;
-        console.log('[CAD] bounds:', b, 'entities:', db.entities?.length);
+        /* 保存原始 SVG */
+        svgRawRef.current = svg;
+        viewBoxRef.current = parseViewBox(svg);
+        setEntCount(countEntities(svg));
 
-        /* 初始视图：先用 center + scale=1 显示，等 canvas 挂载后再 fitToView */
-        viewRef.current = { cx: (b.x0 + b.x1) / 2, cy: (b.y0 + b.y1) / 2, scale: 1 };
+        console.log('[CAD] SVG 生成完成, viewBox:', viewBoxRef.current, '长度:', svg.length);
+
+        /* 初始视图 */
+        viewRef.current = { scale: 1, panX: 0, panY: 0 };
         setLoading(false);
       } catch (err) {
         if (!disposed) {
@@ -441,51 +241,97 @@ export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className 
       }
     })();
 
+    /* 监听暗色模式切换 */
     const observer = new MutationObserver(() => {
-      isDarkRef.current = document.documentElement.classList.contains('dark');
-      redraw();
+      const dark = document.documentElement.classList.contains('dark');
+      isDarkRef.current = dark;
+      setIsDark(dark);
+      renderSvg();
     });
     observer.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+    isDarkRef.current = isDark;
 
     return () => { disposed = true; observer.disconnect(); };
-  }, [loadBuffer, fileName, onError, redraw]);
+  }, [loadBuffer, fileName, onError, renderSvg]);
 
-  /* loading 结束后自动 fitToView */
+  /* ------------------------------------------------------------------ */
+  /*  loading 结束后渲染 SVG                                               */
+  /* ------------------------------------------------------------------ */
+
   useEffect(() => {
-    if (!loading && !error && dbRef.current) {
-      /* 等一帧让 canvas 完全挂载 */
+    if (!loading && !error && svgRawRef.current) {
       requestAnimationFrame(() => {
+        renderSvg();
         fitToView();
       });
     }
-  }, [loading, error, fitToView]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, error]);
 
   /* ------------------------------------------------------------------ */
-  /*  交互：缩放/拖拽                                                     */
+  /*  适应视图                                                            */
+  /* ------------------------------------------------------------------ */
+
+  const fitToView = useCallback(() => {
+    viewRef.current = { scale: 1, panX: 0, panY: 0 };
+    setZoomPercent(100);
+    renderSvg();
+  }, [renderSvg]);
+
+  /* ------------------------------------------------------------------ */
+  /*  缩放                                                                */
+  /* ------------------------------------------------------------------ */
+
+  const applyZoom = useCallback((newScale: number, centerX?: number, centerY?: number) => {
+    const container = svgContainerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
+    const cx = centerX ?? rect.width / 2;
+    const cy = centerY ?? rect.height / 2;
+
+    const oldScale = viewRef.current.scale;
+    const factor = newScale / oldScale;
+
+    /* 以鼠标位置为中心缩放 */
+    viewRef.current.panX = cx - factor * (cx - viewRef.current.panX);
+    viewRef.current.panY = cy - factor * (cy - viewRef.current.panY);
+    viewRef.current.scale = newScale;
+
+    setZoomPercent(Math.round(newScale * 100));
+    renderSvg();
+  }, [renderSvg]);
+
+  /* ------------------------------------------------------------------ */
+  /*  交互：滚轮缩放                                                      */
   /* ------------------------------------------------------------------ */
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
     e.preventDefault();
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
+    const container = svgContainerRef.current;
+    if (!container) return;
+
+    const rect = container.getBoundingClientRect();
     const mx = e.clientX - rect.left;
     const my = e.clientY - rect.top;
-    const { cx, cy, scale } = viewRef.current;
-    const w = canvas.clientWidth;
-    const h = canvas.clientHeight;
-    const wx = cx + (mx - w / 2) / scale;
-    const wy = cy + (my - h / 2) / scale;
+
     const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
-    const ns = scale * factor;
-    viewRef.current = { cx: wx - (mx - w / 2) / ns, cy: wy - (my - h / 2) / ns, scale: ns };
-    setZoomPercent(Math.round(ns * 100));
-    redraw();
-  }, [redraw]);
+    const newScale = viewRef.current.scale * factor;
+    applyZoom(newScale, mx, my);
+  }, [applyZoom]);
+
+  /* ------------------------------------------------------------------ */
+  /*  交互：拖拽平移                                                      */
+  /* ------------------------------------------------------------------ */
 
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     isDragging.current = true;
-    dragStart.current = { x: e.clientX, y: e.clientY, cx: viewRef.current.cx, cy: viewRef.current.cy };
+    dragStart.current = {
+      x: e.clientX,
+      y: e.clientY,
+      panX: viewRef.current.panX,
+      panY: viewRef.current.panY,
+    };
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
   }, []);
 
@@ -494,41 +340,66 @@ export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className 
     const dx = e.clientX - dragStart.current.x;
     const dy = e.clientY - dragStart.current.y;
     const s = viewRef.current.scale;
-    viewRef.current.cx = dragStart.current.cx - dx / s;
-    viewRef.current.cy = dragStart.current.cy - dy / s;
-    redraw();
-  }, [redraw]);
+    viewRef.current.panX = dragStart.current.panX + dx / s;
+    viewRef.current.panY = dragStart.current.panY + dy / s;
+    renderSvg();
+  }, [renderSvg]);
 
-  const handlePointerUp = useCallback(() => { isDragging.current = false; }, []);
+  const handlePointerUp = useCallback(() => {
+    isDragging.current = false;
+  }, []);
 
-  /* 全屏 */
+  /* ------------------------------------------------------------------ */
+  /*  全屏                                                                */
+  /* ------------------------------------------------------------------ */
+
   const [isFullscreen, setIsFullscreen] = useState(false);
   const toggleFullscreen = useCallback(() => {
     const el = containerRef.current?.parentElement;
     if (!el) return;
-    if (!document.fullscreenElement) { el.requestFullscreen(); setIsFullscreen(true); }
-    else { document.exitFullscreen(); setIsFullscreen(false); }
+    if (!document.fullscreenElement) {
+      el.requestFullscreen();
+      setIsFullscreen(true);
+    } else {
+      document.exitFullscreen();
+      setIsFullscreen(false);
+    }
   }, []);
 
-  /* 窗口大小变化时重绘 */
+  /* ------------------------------------------------------------------ */
+  /*  窗口大小变化时重绘                                                    */
+  /* ------------------------------------------------------------------ */
+
   useEffect(() => {
-    const h = () => { redraw(); };
+    const h = () => renderSvg();
     window.addEventListener('resize', h);
     return () => window.removeEventListener('resize', h);
-  }, [redraw]);
+  }, [renderSvg]);
+
+  /* ------------------------------------------------------------------ */
+  /*  渲染                                                                */
+  /* ------------------------------------------------------------------ */
 
   return (
-    <div ref={containerRef} className={`relative w-full h-full min-h-[400px] ${className ?? ''}`}>
-      <canvas
-        ref={canvasRef}
-        className="w-full h-full"
-        style={{ cursor: isDragging.current ? 'grabbing' : 'grab' }}
+    <div
+      ref={containerRef}
+      className={`relative w-full h-full min-h-[400px] ${className ?? ''}`}
+    >
+      {/* SVG 渲染区域 */}
+      <div
+        ref={svgContainerRef}
+        className="w-full h-full overflow-hidden"
+        style={{
+          cursor: isDragging.current ? 'grabbing' : 'grab',
+          background: isDark ? '#1a1a1a' : '#ffffff',
+        }}
         onWheel={handleWheel}
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
       />
 
+      {/* 加载中 */}
       {loading && (
         <div className="absolute inset-0 flex flex-col items-center justify-center bg-background/80 z-10 gap-2">
           <Loader2 className="w-6 h-6 animate-spin text-muted-foreground" />
@@ -536,6 +407,7 @@ export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className 
         </div>
       )}
 
+      {/* 错误 */}
       {error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-background/90 z-10">
           <AlertTriangle className="w-8 h-8 text-orange-500" />
@@ -543,22 +415,39 @@ export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className 
         </div>
       )}
 
+      {/* 工具栏 */}
       {!loading && !error && (
         <div className="absolute top-2 right-2 z-20 flex items-center gap-1 bg-background/90 backdrop-blur-sm rounded-lg p-1 border border-border shadow-sm">
           <span className="text-xs text-muted-foreground px-2">
             {entCount} 实体 · {zoomPercent}%
           </span>
           <div className="w-px h-4 bg-border" />
-          <button onClick={() => { viewRef.current.scale *= 1.2; setZoomPercent(Math.round(viewRef.current.scale * 100)); redraw(); }} className="p-1.5 hover:bg-accent rounded" title="放大">
+          <button
+            onClick={() => applyZoom(viewRef.current.scale * 1.2)}
+            className="p-1.5 hover:bg-accent rounded"
+            title="放大"
+          >
             <ZoomIn className="w-4 h-4" />
           </button>
-          <button onClick={() => { viewRef.current.scale *= 0.8; setZoomPercent(Math.round(viewRef.current.scale * 100)); redraw(); }} className="p-1.5 hover:bg-accent rounded" title="缩小">
+          <button
+            onClick={() => applyZoom(viewRef.current.scale / 1.2)}
+            className="p-1.5 hover:bg-accent rounded"
+            title="缩小"
+          >
             <ZoomOut className="w-4 h-4" />
           </button>
-          <button onClick={() => { fitToView(); setZoomPercent(Math.round(viewRef.current.scale * 100)); }} className="p-1.5 hover:bg-accent rounded" title="适应窗口">
+          <button
+            onClick={fitToView}
+            className="p-1.5 hover:bg-accent rounded"
+            title="适应窗口"
+          >
             <RotateCcw className="w-4 h-4" />
           </button>
-          <button onClick={toggleFullscreen} className="p-1.5 hover:bg-accent rounded" title="全屏">
+          <button
+            onClick={toggleFullscreen}
+            className="p-1.5 hover:bg-accent rounded"
+            title="全屏"
+          >
             {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </button>
         </div>
