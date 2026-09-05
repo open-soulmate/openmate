@@ -28,6 +28,7 @@ import { MermaidRenderer } from './renderers/mermaid-renderer';
 import { PlantumlRenderer } from './renderers/plantuml-renderer';
 import { DrawioRenderer } from './renderers/drawio-renderer';
 import { XmindRenderer } from './renderers/xmind-renderer';
+import { SqliteRenderer } from './renderers/sqlite-renderer';
 import { Clock, Construction } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -260,6 +261,18 @@ export function FileViewerExtended({
       case 'xmind':
         return (
           <XmindRenderer
+            fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className}
+          />
+        );
+
+      /* ---- SQLite（已实现） ---- */
+      case 'sqlite':
+        return (
+          <SqliteRenderer
             fileName={fileName}
             fileUrl={fileUrl}
             fileBuffer={fileBuffer}
