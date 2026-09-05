@@ -9,7 +9,7 @@
  * - drawio（.drawio / .dio）→ 占位
  * - xmind（.xmind）→ XmindRenderer
  * - sqlite（.sqlite / .sqlite3 / .db）→ 占位
- * - eml（.eml / .msg / .mbox）→ 占位
+ * - eml（.eml / .msg / .mbox）→ EmailRenderer
  * - rtf（.rtf）→ 占位
  * - doc（.doc / .dot）→ 占位
  * - xls（.xls / .xlsm / .xlsb）→ 占位
@@ -29,6 +29,7 @@ import { PlantumlRenderer } from './renderers/plantuml-renderer';
 import { DrawioRenderer } from './renderers/drawio-renderer';
 import { XmindRenderer } from './renderers/xmind-renderer';
 import { SqliteRenderer } from './renderers/sqlite-renderer';
+import { EmailRenderer } from './renderers/email-renderer';
 import { Clock, Construction } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -273,6 +274,18 @@ export function FileViewerExtended({
       case 'sqlite':
         return (
           <SqliteRenderer
+            fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className}
+          />
+        );
+
+      /* ---- 邮件文件（已实现） ---- */
+      case 'eml':
+        return (
+          <EmailRenderer
             fileName={fileName}
             fileUrl={fileUrl}
             fileBuffer={fileBuffer}
