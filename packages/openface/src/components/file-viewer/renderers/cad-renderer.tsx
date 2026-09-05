@@ -216,7 +216,10 @@ function drawEnt(
         const sp = p(ip);
         ctx.save();
         ctx.translate(sp.x, sp.y);
-        if (e.rotation) ctx.rotate((-e.rotation * Math.PI) / 180);
+        /* w2s 不翻转Y（+号），所以文字需要翻转Y使正向显示 */
+        ctx.scale(1, -1);
+        /* scale(1,-1) 后旋转方向变反，取反 */
+        if (e.rotation) ctx.rotate((e.rotation * Math.PI) / 180);
         ctx.font = `${Math.max(1, sz * Math.abs(s))}px sans-serif`;
         ctx.fillText(txt, 0, 0);
         ctx.restore();
