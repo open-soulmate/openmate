@@ -7,7 +7,7 @@
  * - mermaid（.mmd / .mermaid）→ MermaidRenderer
  * - plantuml（.puml / .plantuml）→ PlantumlRenderer
  * - drawio（.drawio / .dio）→ 占位
- * - xmind（.xmind）→ 占位
+ * - xmind（.xmind）→ XmindRenderer
  * - sqlite（.sqlite / .sqlite3 / .db）→ 占位
  * - eml（.eml / .msg / .mbox）→ 占位
  * - rtf（.rtf）→ 占位
@@ -27,6 +27,7 @@ import { FileViewer as OpenFaceFileViewer } from '@opensoulmate/openface';
 import { MermaidRenderer } from './renderers/mermaid-renderer';
 import { PlantumlRenderer } from './renderers/plantuml-renderer';
 import { DrawioRenderer } from './renderers/drawio-renderer';
+import { XmindRenderer } from './renderers/xmind-renderer';
 import { Clock, Construction } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -176,7 +177,7 @@ const FORMAT_DESCRIPTIONS: Record<ExtendedFileCategory, string> = {
   mermaid: 'Mermaid 图表渲染', // 已实现，不会走到占位
   plantuml: 'PlantUML UML 图表渲染，支持时序图、类图、活动图等', // 已实现，不会走到占位
   drawio: 'Draw.io (diagrams.net) 流程图和架构图渲染',
-  xmind: 'XMind 思维导图渲染',
+  xmind: 'XMind 思维导图渲染', // 已实现，不会走到占位
   sqlite: 'SQLite 数据库浏览器，支持查看表结构和执行查询',
   eml: '邮件文件渲染，支持查看邮件正文、附件和邮件头',
   rtf: 'RTF 富文本格式渲染',
@@ -247,6 +248,18 @@ export function FileViewerExtended({
       case 'drawio':
         return (
           <DrawioRenderer
+            fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className}
+          />
+        );
+
+      /* ---- XMind（已实现） ---- */
+      case 'xmind':
+        return (
+          <XmindRenderer
             fileName={fileName}
             fileUrl={fileUrl}
             fileBuffer={fileBuffer}

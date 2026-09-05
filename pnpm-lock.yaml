@@ -83,6 +83,9 @@ importers:
       jspdf:
         specifier: ^4.2.1
         version: 4.2.1
+      jszip:
+        specifier: ^3.10.1
+        version: 3.10.1
       lucide-react:
         specifier: ^0.460.0
         version: 0.460.0(react@19.2.8)
@@ -116,6 +119,9 @@ importers:
       react-vega:
         specifier: ^8.0.0
         version: 8.0.0(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(vega-embed@7.1.0(vega-lite@6.4.3(vega@6.4.0))(vega@6.4.0))
+      sql.js:
+        specifier: ^1.14.2
+        version: 1.14.2
       tailwind-merge:
         specifier: ^2.5.0
         version: 2.6.1
@@ -2847,6 +2853,9 @@ packages:
 
   space-separated-tokens@2.0.2:
     resolution: {integrity: sha512-PEGlAwrG8yXGXRjW32fGbg66JAlOAwbObuqVoJpv/mRgoWDQfgH1wDPvtzWyUSNAXBGSk8h755YDbbcEy3SH2Q==}
+
+  sql.js@1.14.2:
+    resolution: {integrity: sha512-3ZGPovObMFrdw79zrUHbfdE/DLIsy8jdNdssmMSQuRAymedU6q84asPt0kgiqrdMYlPegDItiIMfmIXzZnYFcw==}
 
   ssf@0.11.2:
     resolution: {integrity: sha512-+idbmIXoYET47hH+d7dfm2epdOMUDjqcB4648sTZ+t2JwoyBFL/insLfB/racrDmsKB3diwsDA696pZMieAC5g==}
@@ -5777,6 +5786,8 @@ snapshots:
   source-map@0.7.6: {}
 
   space-separated-tokens@2.0.2: {}
+
+  sql.js@1.14.2: {}
 
   ssf@0.11.2:
     dependencies:
