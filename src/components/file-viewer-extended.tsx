@@ -10,6 +10,7 @@
  * - xmind（.xmind）→ XmindRenderer
  * - sqlite（.sqlite / .sqlite3 / .db）→ 占位
  * - eml（.eml / .msg / .mbox）→ EmailRenderer
+ * - geojson（.geojson）→ GeojsonRenderer
  * - rtf（.rtf）→ 占位
  * - doc（.doc / .dot）→ 占位
  * - xls（.xls / .xlsm / .xlsb）→ 占位
@@ -30,6 +31,7 @@ import { DrawioRenderer } from './renderers/drawio-renderer';
 import { XmindRenderer } from './renderers/xmind-renderer';
 import { SqliteRenderer } from './renderers/sqlite-renderer';
 import { EmailRenderer } from './renderers/email-renderer';
+import { GeojsonRenderer } from './renderers/geojson-renderer';
 import { Clock, Construction } from 'lucide-react';
 
 /* ------------------------------------------------------------------ */
@@ -44,6 +46,7 @@ type ExtendedFileCategory =
   | 'xmind'
   | 'sqlite'
   | 'eml'
+  | 'geojson'
   | 'rtf'
   | 'doc'
   | 'xls'
@@ -77,6 +80,8 @@ const EXTENDED_FORMAT_MAP: Record<string, ExtendedFileCategory> = {
   eml: 'eml',
   msg: 'eml',
   mbox: 'eml',
+  // GeoJSON
+  geojson: 'geojson',
   // RTF
   rtf: 'rtf',
   // Word 旧格式
@@ -182,6 +187,7 @@ const FORMAT_DESCRIPTIONS: Record<ExtendedFileCategory, string> = {
   xmind: 'XMind 思维导图渲染', // 已实现，不会走到占位
   sqlite: 'SQLite 数据库浏览器，支持查看表结构和执行查询',
   eml: '邮件文件渲染，支持查看邮件正文、附件和邮件头',
+  geojson: 'GeoJSON 地理数据渲染，支持地图展示、要素弹窗、暗色/亮色底图切换',
   rtf: 'RTF 富文本格式渲染',
   doc: 'Microsoft Word 旧格式 (.doc) 渲染',
   xls: 'Microsoft Excel 旧格式 (.xls) 渲染',
@@ -286,6 +292,18 @@ export function FileViewerExtended({
       case 'eml':
         return (
           <EmailRenderer
+            fileName={fileName}
+            fileUrl={fileUrl}
+            fileBuffer={fileBuffer}
+            onError={onError}
+            className={className}
+          />
+        );
+
+      /* ---- GeoJSON（已实现） ---- */
+      case 'geojson':
+        return (
+          <GeojsonRenderer
             fileName={fileName}
             fileUrl={fileUrl}
             fileBuffer={fileBuffer}
