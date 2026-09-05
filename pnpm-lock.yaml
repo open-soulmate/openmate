@@ -17,9 +17,15 @@ importers:
       '@monaco-editor/react':
         specifier: ^4.7.0
         version: 4.7.0(monaco-editor@0.56.0)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
-      '@myriaddreamin/typst.ts':
+      '@myriaddreamin/typst-ts-renderer':
         specifier: ^0.7.0
         version: 0.7.0
+      '@myriaddreamin/typst-ts-web-compiler':
+        specifier: ^0.7.0
+        version: 0.7.0
+      '@myriaddreamin/typst.ts':
+        specifier: ^0.7.0
+        version: 0.7.0(@myriaddreamin/typst-ts-renderer@0.7.0)(@myriaddreamin/typst-ts-web-compiler@0.7.0)
       '@opensoulmate/openface':
         specifier: workspace:*
         version: link:packages/openface
@@ -195,6 +201,15 @@ importers:
 
   packages/openface:
     dependencies:
+      '@myriaddreamin/typst.ts':
+        specifier: ^0.7.0
+        version: 0.7.0(@myriaddreamin/typst-ts-renderer@0.7.0)(@myriaddreamin/typst-ts-web-compiler@0.7.0)
+      '@plantuml/core':
+        specifier: ^1.2026.7
+        version: 1.2026.7
+      apache-arrow:
+        specifier: ^21.2.0
+        version: 21.2.0
       clsx:
         specifier: ^2.1.1
         version: 2.1.1
@@ -207,27 +222,51 @@ importers:
       echarts-for-react:
         specifier: ^3.0.6
         version: 3.0.6(echarts@6.1.0)(react@19.2.8)
+      hls.js:
+        specifier: ^1.7.2
+        version: 1.7.2
       jspdf:
         specifier: '>=2.0.0'
         version: 4.2.1
       jszip:
         specifier: ^3.10.1
         version: 3.10.1
+      leaflet:
+        specifier: ^1.9.4
+        version: 1.9.4
       lucide-react:
         specifier: ^0.500.0
         version: 0.500.0(react@19.2.8)
+      mermaid:
+        specifier: ^11.17.2
+        version: 11.17.2
       next:
         specifier: '>=16.0.0'
         version: 16.3.1(@types/node@22.20.1)(react-dom@19.2.8(react@19.2.8))(react@19.2.8)
+      omnimail:
+        specifier: ^1.0.0
+        version: 1.0.0
+      parquet-wasm:
+        specifier: ^0.7.2
+        version: 0.7.2
       pptx-preview:
         specifier: ^1.0.7
         version: 1.0.7
       react-i18next:
         specifier: '>=15.0.0'
         version: 17.0.11(i18next@26.3.6(typescript@5.9.3))(react-dom@19.2.8(react@19.2.8))(react@19.2.8)(typescript@5.9.3)
+      shapefile:
+        specifier: ^0.6.6
+        version: 0.6.6
+      sql.js:
+        specifier: ^1.14.2
+        version: 1.14.2
       tailwind-merge:
         specifier: ^3.0.0
         version: 3.6.0
+      three:
+        specifier: ^0.185.1
+        version: 0.185.1
       xlsx:
         specifier: '>=0.18.0'
         version: 0.18.5
@@ -241,12 +280,18 @@ importers:
       '@tailwindcss/postcss':
         specifier: ^4.0.0
         version: 4.3.3
+      '@types/leaflet':
+        specifier: ^1.9.22
+        version: 1.9.22
       '@types/react':
         specifier: ^19.0.0
         version: 19.2.18
       '@types/react-dom':
         specifier: ^19.0.0
         version: 19.2.4(@types/react@19.2.18)
+      '@types/three':
+        specifier: ^0.185.4
+        version: 0.185.4
       postcss:
         specifier: ^8.5.0
         version: 8.5.26
@@ -747,6 +792,12 @@ packages:
       monaco-editor: '>= 0.25.0 < 1'
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
+
+  '@myriaddreamin/typst-ts-renderer@0.7.0':
+    resolution: {integrity: sha512-3sXIGxZn9MufPrPn6251DeuLf2FIEILYNzY5lX0XOJmaIYqgvQ3qpfqkCjgQD+splBvt5R1N3BuuNFrZKsHhMw==}
+
+  '@myriaddreamin/typst-ts-web-compiler@0.7.0':
+    resolution: {integrity: sha512-nMwMcfOBy5pABPDuVM7/u8425SxhPUM+OJe6daqqgVOT3+neCTz4JKwx2L8XasfEHTNvd0cUI07LR9q5ADo7Gw==}
 
   '@myriaddreamin/typst.ts@0.7.0':
     resolution: {integrity: sha512-JtO5Td/1QesH1IBKAZtbayFNK8u2sl3iz18Y67uYqBEdcXiu3z+wpZcDDKlmVJvAcCgSjHTnuk6ZLfkYclrGGQ==}
@@ -3798,9 +3849,16 @@ snapshots:
       react: 19.2.8
       react-dom: 19.2.8(react@19.2.8)
 
-  '@myriaddreamin/typst.ts@0.7.0':
+  '@myriaddreamin/typst-ts-renderer@0.7.0': {}
+
+  '@myriaddreamin/typst-ts-web-compiler@0.7.0': {}
+
+  '@myriaddreamin/typst.ts@0.7.0(@myriaddreamin/typst-ts-renderer@0.7.0)(@myriaddreamin/typst-ts-web-compiler@0.7.0)':
     dependencies:
       idb: 7.1.1
+    optionalDependencies:
+      '@myriaddreamin/typst-ts-renderer': 0.7.0
+      '@myriaddreamin/typst-ts-web-compiler': 0.7.0
 
   '@napi-rs/canvas-android-arm64@1.0.8':
     optional: true

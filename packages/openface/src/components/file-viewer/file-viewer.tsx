@@ -19,6 +19,28 @@ import { LogRenderer } from './renderers/log-renderer';
 import { ZipArchiveRenderer } from './renderers/zip-renderer';
 import { FallbackRenderer } from './renderers/fallback-renderer';
 import { RendererToolbar } from './renderers/renderer-toolbar';
+import { MermaidRenderer } from './renderers/mermaid-renderer';
+import { PlantumlRenderer } from './renderers/plantuml-renderer';
+import { DrawioRenderer } from './renderers/drawio-renderer';
+import { XmindRenderer } from './renderers/xmind-renderer';
+import { SqliteRenderer } from './renderers/sqlite-renderer';
+import { EmailRenderer } from './renderers/email-renderer';
+import { GeojsonRenderer } from './renderers/geojson-renderer';
+import { KmlRenderer } from './renderers/kml-renderer';
+import { GpxRenderer } from './renderers/gpx-renderer';
+import { TypstRenderer } from './renderers/typst-renderer';
+import { EpubRenderer } from './renderers/epub-renderer';
+import { OfdRenderer } from './renderers/ofd-renderer';
+import { ExcalidrawRenderer } from './renderers/excalidraw-renderer';
+import { Model3dRenderer } from './renderers/model3d-renderer';
+import { ShpRenderer } from './renderers/shp-renderer';
+import { ParquetRenderer } from './renderers/parquet-renderer';
+import { CadRenderer } from './renderers/cad-renderer';
+import { PsdRenderer } from './renderers/psd-renderer';
+import { GitBundleRenderer } from './renderers/git-bundle-renderer';
+import { FontRenderer } from './renderers/font-renderer';
+import { HlsRenderer } from './renderers/hls-renderer';
+import { MidiRenderer } from './renderers/midi-renderer';
 
 export function FileViewer({
   fileName,
@@ -81,6 +103,50 @@ export function FileViewer({
         return <ZipArchiveRenderer {...rendererProps} />;
       case 'code':
         return <CodeRenderer {...rendererProps} category={category} />;
+      case 'mermaid':
+        return <MermaidRenderer {...rendererProps} />;
+      case 'plantuml':
+        return <PlantumlRenderer {...rendererProps} />;
+      case 'drawio':
+        return <DrawioRenderer {...rendererProps} />;
+      case 'xmind':
+        return <XmindRenderer {...rendererProps} />;
+      case 'sqlite':
+        return <SqliteRenderer {...rendererProps} />;
+      case 'email':
+        return <EmailRenderer {...rendererProps} />;
+      case 'geojson':
+        return <GeojsonRenderer {...rendererProps} />;
+      case 'kml':
+        return <KmlRenderer {...rendererProps} />;
+      case 'gpx':
+        return <GpxRenderer {...rendererProps} />;
+      case 'typst':
+        return <TypstRenderer {...rendererProps} />;
+      case 'epub':
+        return <EpubRenderer {...rendererProps} />;
+      case 'ofd':
+        return <OfdRenderer {...rendererProps} />;
+      case 'excalidraw':
+        return <ExcalidrawRenderer {...rendererProps} />;
+      case 'model3d':
+        return <Model3dRenderer {...rendererProps} />;
+      case 'shp':
+        return <ShpRenderer {...rendererProps} />;
+      case 'parquet':
+        return <ParquetRenderer {...rendererProps} />;
+      case 'cad':
+        return <CadRenderer {...rendererProps} />;
+      case 'psd':
+        return <PsdRenderer {...rendererProps} />;
+      case 'gitbundle':
+        return <GitBundleRenderer {...rendererProps} />;
+      case 'font':
+        return <FontRenderer {...rendererProps} />;
+      case 'hls':
+        return <HlsRenderer {...rendererProps} />;
+      case 'midi':
+        return <MidiRenderer {...rendererProps} />;
       default:
         return (
           <div className="flex flex-col h-full min-h-0">
