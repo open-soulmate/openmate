@@ -84,7 +84,7 @@ function entColor(e: Ent, isDark: boolean): string {
 /* ------------------------------------------------------------------ */
 
 function w2s(p: Pt, cx: number, cy: number, s: number, w: number, h: number) {
-  return { x: w / 2 + (p.x - cx) * s, y: h / 2 - (p.y - cy) * s };
+  return { x: w / 2 + (p.x - cx) * s, y: h / 2 + (p.y - cy) * s };
 }
 
 /* ------------------------------------------------------------------ */
@@ -193,10 +193,7 @@ function drawEnt(
         const sp = p(ip);
         ctx.save();
         ctx.translate(sp.x, sp.y);
-        /* scale(1,-1) 翻转Y使文字正向显示（因为w2s已经翻转了一次Y） */
-        ctx.scale(1, -1);
-        /* scale(1,-1) 后旋转方向变反，所以用正角度 */
-        if (e.rotation) ctx.rotate((e.rotation * Math.PI) / 180);
+        if (e.rotation) ctx.rotate((-e.rotation * Math.PI) / 180);
         ctx.font = `${Math.max(1, sz * Math.abs(s))}px sans-serif`;
         ctx.fillText(txt, 0, 0);
         ctx.restore();
@@ -452,10 +449,10 @@ export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className 
     const w = canvas.clientWidth;
     const h = canvas.clientHeight;
     const wx = cx + (mx - w / 2) / scale;
-    const wy = cy - (my - h / 2) / scale;
+    const wy = cy + (my - h / 2) / scale;
     const factor = e.deltaY < 0 ? 1.15 : 1 / 1.15;
     const ns = scale * factor;
-    viewRef.current = { cx: wx - (mx - w / 2) / ns, cy: wy + (my - h / 2) / ns, scale: ns };
+    viewRef.current = { cx: wx - (mx - w / 2) / ns, cy: wy - (my - h / 2) / ns, scale: ns };
     setZoomPercent(Math.round(ns * 100));
     redraw();
   }, [redraw]);
@@ -472,7 +469,7 @@ export function CadRenderer({ fileName, fileUrl, fileBuffer, onError, className 
     const dy = e.clientY - dragStart.current.y;
     const s = viewRef.current.scale;
     viewRef.current.cx = dragStart.current.cx - dx / s;
-    viewRef.current.cy = dragStart.current.cy + dy / s;
+    viewRef.current.cy = dragStart.current.cy - dy / s;
     redraw();
   }, [redraw]);
 
