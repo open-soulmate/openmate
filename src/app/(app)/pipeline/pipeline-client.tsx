@@ -175,7 +175,7 @@ export function PipelineClient() {
           <button
             onClick={() => setShowSettings(!showSettings)}
             className={cn(
-              "flex items-center gap-2 rounded-lg border px-3 py-1.5 text-xs transition-colors",
+              "flex items-center gap-2 rounded-[24px] border px-3 py-1.5 text-xs transition-colors",
               showSettings ? "bg-primary/10 border-primary/20 text-primary" : "border-border hover:bg-muted"
             )}
           >

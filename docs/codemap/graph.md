@@ -1,0 +1,12 @@
+## Dependency Graph (Top 10 Hub Files)
+
+1. `packages/openface/src/charts/pie-chart.ts` (rank: 0.0092)
+2. `packages/openface/src/theme/dark.ts` (rank: 0.0092)
+3. `packages/openface/src/components/file-viewer/renderers/browser-ai-control.tsx` (rank: 0.0092)
+4. `packages/openface/src/components/file-viewer/canvas-annotation.tsx` (rank: 0.0092)
+5. `packages/openface/src/components/file-viewer/renderers/video-renderer.tsx` (rank: 0.0092)
+6. `packages/openface/src/design-tokens/index.ts` (rank: 0.0092)
+7. `packages/openface/src/types/sql.js.d.ts` (rank: 0.0092)
+8. `packages/openface/src/schema/SCHEMA_SPEC.md` (rank: 0.0092)
+9. `packages/openface/src/charts/area-chart.ts` (rank: 0.0092)
+10. `packages/openface/src/components/file-viewer/renderers/svg-renderer.tsx` (rank: 0.0092)

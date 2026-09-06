@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { cn } from '@/lib/utils';
 import {
   Send,
@@ -14,7 +14,7 @@ import {
   Star,
   Paperclip,
 } from 'lucide-react';
-import { RichInput } from '@/components/rich-input';
+import { CodeMirrorEditor } from '@/components/codemirror-editor';
 
 // ── Types ────────────────────────────────────────────────────────
 
@@ -45,6 +45,18 @@ interface SmartPromptProps {
   onPaste?: (e: React.ClipboardEvent) => void;
   /** Initial task value — auto-expands and triggers generate */
   initialTask?: string;
+  /** Full session fields for per-session state sync */
+  sessionFields?: { task: string; role: string; background: string; constraints: string; format: string };
+  /** Called when any field changes (saves full state to session) */
+  onFieldsChange?: (fields: { task: string; role: string; background: string; constraints: string; format: string }) => void;
+  /** Expose clear function for parent to call */
+  onClearInput?: (clearFn: () => void) => void;
+  /** Session ID — drives per-session field sync on switch */
+  sessionId?: string;
+  /** Increment to trigger full clear (all fields + expanded) */
+  clearTrigger?: number;
+  /** Increment to force-load sessionFields into SmartPrompt (for edit/external updates) */
+  loadFieldsTrigger?: number;
 }
 
 // ── Field Definitions ────────────────────────────────────────────
@@ -92,6 +104,12 @@ export function SmartPrompt({
   onFileClick,
   onPaste,
   initialTask,
+  sessionFields,
+  onFieldsChange,
+  onClearInput,
+  sessionId,
+  clearTrigger,
+  loadFieldsTrigger,
 }: SmartPromptProps) {
   const [fields, setFields] = useState<SmartPromptFields>({
     task: '',
@@ -108,6 +126,55 @@ export function SmartPrompt({
       setExpanded(true);
     }
   }, [initialTask]);
+
+  // Track when updateField is firing so we skip the sessionFields sync (avoid loop)
+  const internalUpdateRef = useRef(false);
+
+  // Sync full session fields when switching sessions
+  const prevSessionIdRef = useRef(sessionId);
+  useEffect(() => {
+    const sessionChanged = sessionId !== prevSessionIdRef.current;
+    prevSessionIdRef.current = sessionId;
+
+    // Only skip if this was an internal (typing) update AND the session didn't change
+    if (internalUpdateRef.current && !sessionChanged) {
+      internalUpdateRef.current = false;
+      return;
+    }
+    internalUpdateRef.current = false;
+
+    if (sessionFields) {
+      setFields(prev => {
+        const differs = Object.keys(sessionFields).some(k => sessionFields[k as keyof typeof sessionFields] !== prev[k as keyof typeof prev]);
+        return differs ? sessionFields : prev;
+      });
+    } else if (sessionChanged) {
+      // Switching to a session with no saved fields — clear input
+      setFields({ task: '', role: '', background: '', constraints: '', format: '' });
+    }
+  }, [sessionId, sessionFields]);
+
+  // LoadFieldsTrigger: parent can increment to force-load sessionFields (e.g. after edit)
+  const lastLoadRef = useRef(0);
+  useEffect(() => {
+    if (loadFieldsTrigger && loadFieldsTrigger > lastLoadRef.current) {
+      lastLoadRef.current = loadFieldsTrigger;
+      if (sessionFields) {
+        setFields(sessionFields);
+      }
+    }
+  }, [loadFieldsTrigger]);
+
+  // ClearTrigger: parent can increment to clear all fields
+  const lastClearRef = useRef(0);
+  useEffect(() => {
+    if (clearTrigger && clearTrigger > lastClearRef.current) {
+      lastClearRef.current = clearTrigger;
+      setFields({ task: '', role: '', background: '', constraints: '', format: '' });
+      setGenerated(false);
+      if (onFieldsChange) onFieldsChange({ task: '', role: '', background: '', constraints: '', format: '' });
+    }
+  }, [clearTrigger, onFieldsChange]);
 
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
@@ -163,38 +230,49 @@ export function SmartPrompt({
   }, [fields.task, autoGenerate]);
 
   const updateField = (key: keyof SmartPromptFields, value: string) => {
-    setFields((prev) => ({ ...prev, [key]: value }));
+    internalUpdateRef.current = true;
+    setFields((prev) => {
+      const next = { ...prev, [key]: value };
+      // Defer parent notification to avoid setState-during-render
+      if (onFieldsChange) setTimeout(() => onFieldsChange(next), 0);
+      return next;
+    });
   };
 
   const handleClear = () => {
     if (fields.task || generated) {
-      setFields({ task: '', role: '', background: '', constraints: '', format: '' });
+      const empty = { task: '', role: '', background: '', constraints: '', format: '' };
+      setFields(empty);
       setGenerated(false);
+      if (onFieldsChange) onFieldsChange(empty);
     }
   };
+
+  // Expose clear function to parent
+  useEffect(() => {
+    if (onClearInput) onClearInput(handleClear);
+  }, [onClearInput, fields.task, generated]);
 
   const handleSend = () => {
     if (!fields.task.trim()) return;
     const assembled = assemblePrompt(fields);
     onSend(assembled, fields);
-    // Reset after send and collapse
-    setFields({ task: '', role: '', background: '', constraints: '', format: '' });
+    // 发送后清空所有字段和草稿
+    const empty = { task: '', role: '', background: '', constraints: '', format: '' };
+    setFields(empty);
     setGenerated(false);
     setExpanded(false);
-
+    if (onFieldsChange) onFieldsChange(empty);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent, view: any) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+      return true;
     }
+    return false;
   };
-
-  // Auto-expand when RichInput content wraps (triggers onOverflow)
-  const handleOverflow = useCallback(() => {
-    setExpanded(true);
-  }, []);
 
   // Listen for external send trigger (from chat action bar button)
   useEffect(() => {
@@ -206,23 +284,36 @@ export function SmartPrompt({
   return (
     <div
       className={cn(
-        'border border-border rounded-xl bg-background space-y-2 transition-all',
+        'border border-border rounded-xl bg-background transition-all h-full flex flex-col',
         className,
       )}
       onPaste={onPaste}
     >
       {/* Task input — always visible */}
-      <div className="p-3">
-        <div className="relative min-h-[48px]">
-          <RichInput
+      <div className="p-3 flex-1 min-h-0">
+        <div className="relative h-full" onClick={(e) => {
+          // 点击空白区域时聚焦 CodeMirror
+          const target = e.target as HTMLElement;
+          if (!target.closest('.cm-editor')) {
+            const cm = target.querySelector('.cm-content') as HTMLElement | null;
+            if (cm) cm.focus();
+          }
+        }}>
+          <CodeMirrorEditor
             value={fields.task}
-            onChange={(val) => updateField('task', val)}
-            onOverflow={handleOverflow}
-            onKeyDown={handleKeyDown}
+            onChange={(val: string) => updateField('task', val)}
+            onKeyDown={(e: KeyboardEvent, view) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSend();
+                return true;
+              }
+              return false;
+            }}
             placeholder={placeholder}
-            disabled={isLoading}
-            minRows={1}
-            maxRows={8}
+            readOnly={isLoading}
+            minHeight="40px"
+            maxHeight="200px"
           />
           {/* Generating indicator */}
           {generating && (

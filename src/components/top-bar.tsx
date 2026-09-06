@@ -10,6 +10,7 @@ import {
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { HealthWidget } from "@/components/health-widget";
+import { SuperEllipse } from "@/components/ui/super-ellipse";
 
 interface TopBarProps {
   eventCount?: number;
@@ -106,18 +107,23 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
         </button>
       </div>
 
-      {/* Fixed settings button on far right */}
+      {/* Fixed settings button on far right — 小米 Alive 超椭圆 */}
       <Link
         href="/settings"
         className={cn(
-          "flex shrink-0 items-center gap-1 rounded-md px-3 py-1.5 text-[10px] font-medium transition-colors border-l border-border h-full",
+          "flex shrink-0 items-center justify-center h-full px-3 transition-colors",
           pathname.startsWith("/settings")
-            ? "text-primary bg-primary/10"
-            : "text-muted-foreground hover:text-foreground hover:bg-accent"
+            ? "text-primary"
+            : "text-muted-foreground hover:text-foreground"
         )}
         title={t("nav.settings", "设置")}
       >
-        <Settings size={16} />
+        <SuperEllipse
+          size={36}
+          fill={pathname.startsWith("/settings") ? "var(--color-primary)" : "var(--color-muted)"}
+        >
+          <Settings size={18} className={pathname.startsWith("/settings") ? "text-primary-foreground" : "text-muted-foreground"} />
+        </SuperEllipse>
       </Link>
     </div>
   );

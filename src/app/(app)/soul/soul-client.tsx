@@ -359,7 +359,7 @@ export default function SoulClient() {
                           </div>
                         </td>
                         <td className="px-2 lg:px-4 py-2 text-xs text-muted-foreground">
-                          {item.created_at ? new Date(item.created_at).toLocaleDateString() : "-"}
+                          {item.created_at ? new Date(item.created_at).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' }) : "-"}
                         </td>
                       </tr>
                     ))}

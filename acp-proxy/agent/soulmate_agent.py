@@ -5,8 +5,10 @@
 """
 
 import logging
+import sqlite3
 import time
 import uuid
+from pathlib import Path
 from typing import Any
 
 import acp
@@ -44,6 +46,58 @@ class SoulMateAgent:
         self.llm_engine = llm_engine
         self.sessions: dict[str, dict] = {}  # session_id -> session state
         self._client = None  # AgentSideConnection，由 on_connect 设置
+        self._db_path = Path("/home/climbing/opensoul/data/opensoul.db")
+
+    def _get_db(self) -> sqlite3.Connection:
+        db = sqlite3.connect(str(self._db_path))
+        db.row_factory = sqlite3.Row
+        return db
+
+    def _save_message(self, session_id: str, role: str, content: str):
+        """保存消息到 agent_messages 表"""
+        try:
+            db = self._get_db()
+            db.execute(
+                "INSERT INTO agent_messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
+                (session_id, role, content, time.time()),
+            )
+            # 更新会话的 message_count 和 last_activity_at
+            db.execute(
+                "UPDATE agent_sessions SET message_count = message_count + 1, last_activity_at = ? WHERE id = ?",
+                (time.time(), session_id),
+            )
+            db.commit()
+            db.close()
+        except Exception as e:
+            logger.error(f"Failed to save message: {e}")
+
+    def _load_messages_from_db(self, session_id: str) -> list[dict]:
+        """从 DB 加载历史消息"""
+        try:
+            db = self._get_db()
+            rows = db.execute(
+                "SELECT role, content FROM agent_messages WHERE session_id = ? ORDER BY id",
+                (session_id,),
+            ).fetchall()
+            db.close()
+            return [{"role": r["role"], "content": r["content"]} for r in rows]
+        except Exception as e:
+            logger.error(f"Failed to load messages: {e}")
+            return []
+
+    def _session_exists_in_db(self, session_id: str) -> bool:
+        """检查会话是否存在于 DB"""
+        try:
+            db = self._get_db()
+            row = db.execute(
+                "SELECT id FROM agent_sessions WHERE id = ?",
+                (session_id,),
+            ).fetchone()
+            db.close()
+            return row is not None
+        except Exception as e:
+            logger.error(f"Failed to check session: {e}")
+            return False
 
     # ── ACP 协议方法 ──────────────────────────────────────────────
 
@@ -69,8 +123,27 @@ class SoulMateAgent:
             ),
         )
 
-    async def new_session(self, cwd: str = "/", mcp_servers=None, **kwargs) -> acp.NewSessionResponse:
-        """创建新会话"""
+    async def new_session(self, cwd: str = "/", mcp_servers=None, field_meta: dict | None = None, **kwargs) -> acp.NewSessionResponse:
+        """创建新会话，或重连到已有会话"""
+        # 从 _meta 中提取 session_id（前端通过 _meta 传递）
+        session_id = (field_meta or {}).get("session_id") or kwargs.get("session_id")
+        # 如果传了 session_id 且该会话存在于内存或 DB，直接重连
+        if session_id:
+            if session_id in self.sessions:
+                logger.info(f"Reconnect (memory): {session_id}")
+                return acp.NewSessionResponse(session_id=session_id)
+            if self._session_exists_in_db(session_id):
+                # 从 DB 加载历史消息到内存
+                messages = self._load_messages_from_db(session_id)
+                self.sessions[session_id] = {
+                    "session_id": session_id,
+                    "cwd": cwd,
+                    "messages": messages,
+                    "created_at": time.time(),
+                    "state": "active",
+                }
+                logger.info(f"Reconnect (DB): {session_id}, loaded {len(messages)} messages")
+                return acp.NewSessionResponse(session_id=session_id)
         sid = f"om-{uuid.uuid4().hex[:12]}"
         self.sessions[sid] = {
             "session_id": sid,
@@ -112,6 +185,7 @@ class SoulMateAgent:
             return PromptResponse(stop_reason="end_turn")
 
         session["messages"].append({"role": "user", "content": user_text})
+        self._save_message(session_id, "user", user_text)
         logger.info(f"Prompt [{session_id}]: {user_text[:100]}")
 
         # 构建上下文消息
@@ -148,6 +222,7 @@ class SoulMateAgent:
                 )
 
         session["messages"].append({"role": "assistant", "content": full_response})
+        self._save_message(session_id, "assistant", full_response)
         logger.info(f"Response [{session_id}]: {full_response[:100]}")
 
         return PromptResponse(stop_reason="end_turn")

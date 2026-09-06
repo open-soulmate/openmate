@@ -54,7 +54,7 @@ export function AIGroupsWorkspace() {
 
         groupFiles.push({
           id: msg.id,
-          name: `${msg.agent_name || 'Agent'} - ${new Date(msg.timestamp).toLocaleTimeString()}`,
+          name: `${msg.agent_name || 'Agent'} - ${new Date(msg.timestamp).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}`,
           type: fileType,
           url: isUrl ? msg.content.trim() : undefined,
           content: !isUrl ? msg.content : undefined,
@@ -116,7 +116,7 @@ export function AIGroupsWorkspace() {
                       <div className="flex items-center gap-1.5 mt-0.5">
                         <Clock className="w-2.5 h-2.5 text-muted-foreground" />
                         <span className="text-[10px] text-muted-foreground">
-                          {file.createdAt.toLocaleTimeString()}
+                          {file.createdAt.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </span>
                         {file.agentName && (
                           <>

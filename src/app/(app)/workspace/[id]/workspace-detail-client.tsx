@@ -131,22 +131,46 @@ function HighlightedCode({ content, language }: { content: string; language: str
 
 // ─── File Content Viewer ────────────────────────────────────────────────────
 
+/** 二进制文件扩展名（与 api/file/route.ts 保持一致） */
+const BINARY_EXTS = new Set([
+  'dwg','dxf','pdf','doc','docx','xls','xlsx','ppt','pptx',
+  'png','jpg','jpeg','gif','bmp','webp','svg','ico','tiff',
+  'mp3','mp4','wav','ogg','flac','avi','mkv','mov','webm',
+  'zip','tar','gz','bz2','7z','rar',
+  'woff','woff2','ttf','otf','eot',
+  'wasm','bin','sqlite','db','parquet','psd','sketch',
+])
+
 function FileViewerWrapper({
   path,
   content,
+  encoding,
 }: {
   path: string;
   content: string;
+  encoding?: string;
 }) {
   const fileName = path.split("/").pop() ?? path;
+  const ext = fileName.split('.').pop()?.toLowerCase() || ''
+  const isBinary = encoding === 'base64' || BINARY_EXTS.has(ext)
 
-  // Convert plain text to data URL for openface FileViewer
+  // 二进制文件：base64 → ArrayBuffer，传 fileBuffer 给渲染器
+  const fileBuffer = useMemo(() => {
+    if (!isBinary || !content) return undefined
+    const bin = atob(content)
+    const arr = new Uint8Array(bin.length)
+    for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i)
+    return arr.buffer
+  }, [isBinary, content])
+
+  // 文本文件：转 data URL
   const fileUrl = useMemo(() => {
+    if (isBinary) return undefined
     const encoder = new TextEncoder();
     const bytes = encoder.encode(content);
     const base64 = btoa(String.fromCharCode(...bytes));
     return `data:application/octet-stream;base64,${base64}`;
-  }, [content]);
+  }, [isBinary, content]);
 
   // Save file to disk
   const handleSave = useCallback(async (newContent: string, name: string) => {
@@ -180,6 +204,7 @@ function FileViewerWrapper({
       <OpenFaceFileViewer
         fileName={fileName}
         fileUrl={fileUrl}
+        fileBuffer={fileBuffer}
         onSave={handleSave}
         onSendToAgent={handleSendToAgent}
         className="flex-1"
@@ -281,6 +306,7 @@ export function WorkspaceDetailClient() {
   const [fileTree, setFileTree] = useState<FileNode[]>([]);
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [fileContent, setFileContent] = useState<string>("");
+  const [fileEncoding, setFileEncoding] = useState<string>("utf-8");
   const [terminalLines, setTerminalLines] = useState<TerminalLine[]>([
     {
       id: "welcome",
@@ -342,8 +368,14 @@ export function WorkspaceDetailClient() {
   useEffect(() => {
     if (!selectedFile) return;
     readFile(selectedFile)
-      .then(setFileContent)
-      .catch(() => setFileContent("// Failed to read file"));
+      .then(({ content, encoding }) => {
+        setFileContent(content)
+        setFileEncoding(encoding || 'utf-8')
+      })
+      .catch(() => {
+        setFileContent("// Failed to read file")
+        setFileEncoding('utf-8')
+      });
   }, [selectedFile]);
 
   // Terminal command handler
@@ -535,7 +567,7 @@ export function WorkspaceDetailClient() {
         {/* Editor area */}
         <div className="flex-1 overflow-hidden">
           {selectedFile ? (
-            <FileViewerWrapper path={selectedFile} content={fileContent} />
+            <FileViewerWrapper path={selectedFile} content={fileContent} encoding={fileEncoding} />
           ) : (
             <div className="flex h-full flex-col items-center justify-center">
               <Code size={32} className="mb-3 text-muted-foreground" />

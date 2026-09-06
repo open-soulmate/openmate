@@ -20,15 +20,16 @@ export async function executeCommand(cmd: string): Promise<string> {
   return data.output;
 }
 
-export async function readFile(path: string): Promise<string> {
+export async function readFile(path: string): Promise<{ content: string; encoding: string }> {
   if (isTauri()) {
-    return invoke<string>("read_local_file", { path });
+    const content = await invoke<string>("read_local_file", { path });
+    return { content, encoding: 'utf-8' };
   }
   const base = getApiBaseUrl();
   const res = await fetch(`${base}/api/file?path=${encodeURIComponent(path)}`);
   if (!res.ok) throw new Error(`Read failed: ${res.statusText}`);
   const data = await res.json();
-  return data.content;
+  return { content: data.content, encoding: data.encoding || 'utf-8' };
 }
 
 export async function writeFile(path: string, content: string): Promise<void> {

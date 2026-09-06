@@ -818,7 +818,10 @@ function renderEntityList(
         ctx.lineTo(e.corner4 ? e.corner4.x : e.corner3.x, e.corner4 ? e.corner4.y : e.corner3.y);
         ctx.lineTo(e.corner3.x, e.corner3.y);
         ctx.closePath();
+        ctx.save();
+        ctx.globalAlpha = 0.25;
         ctx.fill();
+        ctx.restore();
         count++;
         break;
       }
@@ -842,7 +845,11 @@ function renderEntityList(
             }
             if (e.solidFill === 1) {
               ctx.closePath();
+              // 实心填充用半透明，避免遮挡其他实体
+              ctx.save();
+              ctx.globalAlpha = 0.25;
               ctx.fill();
+              ctx.restore();
             } else {
               ctx.stroke();
             }

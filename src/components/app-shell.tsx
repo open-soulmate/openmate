@@ -197,7 +197,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     for (const s of sessions) {
       if (!s.platform && s.source) s.platform = s.source;
       const src = s.platform || s.source || '';
-      if (src === 'cron') continue; // filter cron sessions
+      if (src === 'cron' || src === 'subagent') continue; // filter cron and subagent sessions
       const HERMES_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui']);
       // Check server-side tags first (e.g. "agent:soulmate"), then platform detection
       const agentTag = (s.tags || []).find((t: string) => t.startsWith('agent:'));
@@ -305,10 +305,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     setSidebarAgents((prev: AgentInfo[]) => prev.map(a =>
       a.id === agentId ? { ...a, expanded: !a.expanded } : a
     ));
-    // 点击 agent 标题时，只设置 activeAgentId，不设置 activeSessionId
-    // 避免触发 chat-client 的 useEffect 自动创建 WebSocket 连接
-    const effectiveAgentId = agentId === 'soulmate' ? null : agentId;
-    useAppStore.getState().setActiveAgentId(effectiveAgentId);
   }, []);
 
   // Toggle source group expand

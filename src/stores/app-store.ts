@@ -439,14 +439,14 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeAgentDescription: null,
   activeSessionName: null,
   setActiveSession: (sessionId, agentId, meta) =>
-    set({
+    set((state) => ({
       activeSessionId: sessionId,
       activeAgentId: agentId,
-      activeAgentIcon: meta?.agentIcon ?? null,
-      activeAgentName: meta?.agentName ?? null,
-      activeAgentDescription: meta?.agentDescription ?? null,
-      activeSessionName: meta?.sessionName ?? null,
-    }),
+      ...(meta?.agentIcon !== undefined && { activeAgentIcon: meta.agentIcon }),
+      ...(meta?.agentName !== undefined && { activeAgentName: meta.agentName }),
+      ...(meta?.agentDescription !== undefined && { activeAgentDescription: meta.agentDescription }),
+      ...(meta?.sessionName !== undefined && { activeSessionName: meta.sessionName }),
+    })),
   // 只设置 activeAgentId，不触碰 activeSessionId（toggleAgent 专用）
   setActiveAgentId: (agentId) =>
     set({ activeAgentId: agentId }),

@@ -78,6 +78,8 @@ interface SessionData {
   messages: Message[];
   unreadCount: number;
   lastMessage?: string;
+  promptFields?: { task: string; role: string; background: string; constraints: string; format: string };
+  loading?: boolean;
 }
 
 // Agent definitions with detection
@@ -465,7 +467,7 @@ function useAcpWebSocket(params: {
   }, [updateSessionMessages, setSelectedSession]);
 
   // Connect a single session with its own WebSocket
-  const connectSession = useCallback((sessionId: string, agentId: string) => {
+  const connectSession = useCallback((sessionId: string, agentId: string, sessionName?: string) => {
     // 调试日志：追踪谁在调用 connectSession
     console.log(`[ACP] connectSession called: sessionId=${sessionId}, agentId=${agentId}`);
     // 防止无效 sessionId 创建无用 WebSocket 连接
@@ -506,7 +508,7 @@ function useAcpWebSocket(params: {
     const performHandshake = async (ws: WebSocket) => {
       try {
         await sendRpcRequest(ws, 'initialize', { protocolVersion: 1 });
-        const result = await sendRpcRequest(ws, 'session/new', { cwd: '/', mcpServers: [], agent_id: agentId }) as { session_id?: string; sessionId?: string };
+        const result = await sendRpcRequest(ws, 'session/new', { cwd: '/', mcpServers: [], agent_id: agentId, _meta: sessionId.startsWith('temp-') ? {} : { session_id: sessionId } }) as { session_id?: string; sessionId?: string };
         const acpSid = result?.session_id || result?.sessionId;
         if (acpSid) {
           state.acpSessionId = acpSid;
@@ -524,20 +526,20 @@ function useAcpWebSocket(params: {
               wsMapRef.current.delete(sessionId);
             }
             migrateSessionId(sessionId, acpSid);
-            // Update selectedSession with real ID
-            const updated = { id: acpSid, name: '', platform: 'hermes' } as Session;
+            // Update selectedSession with real ID, preserve session name
+            const updated = { id: acpSid, name: sessionName || selectedSessionRef.current?.name || '', platform: 'hermes' } as Session;
             setSelectedSession(updated);
             selectedSessionRef.current = updated;
-          }
-          try {
-            const apiBase = getApiBaseUrl();
-            await fetch(`${apiBase}/api/sessions`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-              body: JSON.stringify({ id: acpSid, name: `${agentId} 会话`, agent_id: agentId, tags: [`agent:${agentId}`] }),
-            });
-          } catch (saveErr) {
-            console.warn('[ACP] 保存session到OpenSoul失败:', saveErr);
+            try {
+              const apiBase = getApiBaseUrl();
+              await fetch(`${apiBase}/api/sessions`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+                body: JSON.stringify({ id: acpSid, name: sessionName || `${agentId} 会话`, agent_id: agentId, tags: [`agent:${agentId}`] }),
+              });
+            } catch (saveErr) {
+              console.warn('[ACP] 保存session到OpenSoul失败:', saveErr);
+            }
           }
         }
         state.resolveAcpReady?.();
@@ -1007,7 +1009,23 @@ function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
 export function ChatClient() {
   const [sessionDataMap, setSessionDataMap] = useState<Map<string, SessionData>>(new Map());
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [clearTrigger, setClearTrigger] = useState(0);
+  const [loadFieldsTrigger, setLoadFieldsTrigger] = useState(0);
+  const pendingSessionIdRef = useRef<string | null>(null);
+  // per-session loading: derived from sessionDataMap for current session
+  const effectiveSessionIdForLoading = useAppStore((s) => s.activeSessionId) || pendingSessionIdRef.current;
+  const loading = effectiveSessionIdForLoading ? (sessionDataMap.get(effectiveSessionIdForLoading)?.loading || false) : false;
+  const setLoading = useCallback((val: boolean | ((prev: boolean) => boolean)) => {
+    const sid = useAppStore.getState().activeSessionId || pendingSessionIdRef.current;
+    if (!sid) return;
+    setSessionDataMap(prev => {
+      const next = new Map(prev);
+      const data = next.get(sid) || { messages: [], unreadCount: 0 };
+      const newLoading = typeof val === 'function' ? val(data.loading || false) : val;
+      next.set(sid, { ...data, loading: newLoading });
+      return next;
+    });
+  }, []);
   const [showScrollDown, setShowScrollDown] = useState(false);
   const agents = useAppStore((s) => s.sidebarAgents) as AgentInfo[];
   const setSidebarAgents = useAppStore((s) => s.setSidebarAgents);
@@ -1047,8 +1065,6 @@ export function ChatClient() {
   const fileRef = useRef<HTMLInputElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const selectedSessionRef = useRef<Session | null>(null);
-  // 同步追踪当前活跃 sessionId（store 更新要下次渲染才生效，ref 立即生效）
-  const pendingSessionIdRef = useRef<string | null>(null);
   const activeAgentIdFromStore = useAppStore((s) => s.activeAgentId);
 
   // Multi-session helpers
@@ -1100,8 +1116,14 @@ export function ChatClient() {
     if (currentActive === oldId) {
       // 迁移时保留当前 agentId，不要重置为 null
       const currentAgentId = useAppStore.getState().activeAgentId;
-      useAppStore.getState().setActiveSession(newId, currentAgentId, {});
+      // 保留现有 metadata（特别是 sessionName），不要传空对象
+      useAppStore.getState().setActiveSession(newId, currentAgentId);
     }
+    // 更新 sidebarAgents 列表中的 session ID（temp → real）
+    useAppStore.getState().setSidebarAgents((prev: AgentInfo[]) => prev.map(a => ({
+      ...a,
+      sessions: a.sessions.map(s => s.id === oldId ? { ...s, id: newId } : s),
+    })));
     setSessionDataMap(prev => {
       const data = prev.get(oldId);
       if (!data) return prev;
@@ -1258,9 +1280,17 @@ export function ChatClient() {
     const text = getMessageText(msg);
     // Remove the message from list
     updateCurrentSessionMessages(prev => prev.filter(m => m.id !== msg.id));
-    // TODO: set the SmartPrompt content — for now just focus the input
-    // The user can paste back
-    copyToClipboard(text);
+    // Set the message text as draft in SmartPrompt
+    const sid = useAppStore.getState().activeSessionId;
+    if (sid) {
+      setSessionDataMap(prev => {
+        const next = new Map(prev);
+        const data = next.get(sid) || { messages: [], unreadCount: 0 };
+        next.set(sid, { ...data, promptFields: { task: text, role: '', background: '', constraints: '', format: '' } });
+        return next;
+      });
+      setLoadFieldsTrigger(n => n + 1);
+    }
   }, [getMessageText]);
 
   // Favorite message — save to store
@@ -1272,7 +1302,7 @@ export function ChatClient() {
         body: JSON.stringify({
           content: getMessageText(msg),
           content_type: 'feedback',
-          title: `收藏消息 ${new Date().toLocaleString()}`,
+          title: `收藏消息 ${new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}`,
           user_id: getUserId(),
         }),
       });
@@ -1318,13 +1348,7 @@ export function ChatClient() {
   const loadHistory = useCallback(async (sessionId: string) => {
     // 新建的 temp session 不需要加载历史，也不要清空（消息已经在 onSend 里写入了）
     if (sessionId.startsWith('temp-')) return;
-    // ACP sessions (soulmate) store messages in Agent Engine memory, not OpenSoul DB
-    // For ACP sessions, just clear messages - the WS will deliver new ones
-    const currentAgentId = useAppStore.getState().activeAgentId;
-    if (currentAgentId === 'soulmate' || !currentAgentId) {
-      clearCurrentSessionMessages();
-      return;
-    }
+    // 所有会话（包括 soulmate）都从 DB 加载历史
     try {
       const r = await fetch(`${getApiUrl()}/api/sessions/${sessionId}/messages`, { headers: { Authorization: `Bearer ${getToken()}` } });
       if (r.ok) {
@@ -1351,7 +1375,7 @@ export function ChatClient() {
           });
         updateCurrentSessionMessages(() => msgs);
       }
-    } catch {}
+    } catch (e) { console.error('[loadHistory] error:', e); }
   }, []);
 
   useEffect(() => {
@@ -1363,6 +1387,7 @@ export function ChatClient() {
   // activeSessionIdFromStore is already declared above near line 770
 
   useEffect(() => {
+    console.log(`[SESSION_EFFECT] activeSessionIdFromStore=${activeSessionIdFromStore}, selectedSession?.id=${selectedSession?.id}, activeAgentIdFromStore=${activeAgentIdFromStore}`);
     if (!activeSessionIdFromStore) {
       // SoulMate new session: clear session but keep WS alive (don't return early)
       const isSoulMate = !activeAgentIdFromStore || activeAgentIdFromStore === 'soulmate';
@@ -1416,16 +1441,18 @@ export function ChatClient() {
   }, [agents]);
 
   // When store agentId changes, switch selectedAgent and clear session/messages
+  // 但如果用户点击了具体会话（activeSessionId 有值），不要清空
   useEffect(() => {
     if (!agents.length) return;
-    // SoulMate: activeAgentId is null, find by name 'SoulMate' or use first agent
     const agent = activeAgentIdFromStore
       ? agents.find(a => a.id === activeAgentIdFromStore)
       : agents.find(a => a.id === 'soulmate') || agents[0];
     if (agent && selectedAgent?.id !== agent.id) {
       setSelectedAgent(agent);
-      setSelectedSession(null);
-      clearCurrentSessionMessages();
+      if (!useAppStore.getState().activeSessionId) {
+        setSelectedSession(null);
+        clearCurrentSessionMessages();
+      }
     }
   }, [activeAgentIdFromStore, agents]);
 
@@ -1485,6 +1512,7 @@ export function ChatClient() {
   }, [sendAcpPrompt, updateSessionMessages, t]);
 
   const selectSession = (session: Session, agent: AgentInfo) => {
+    console.log(`[selectSession] session.id=${session.id}, agent.id=${agent.id}`);
     // Update store (single source of truth for activeSessionId)
     useAppStore.getState().setActiveSession(session.id, agent.id === 'soulmate' ? null : agent.id, {
       agentName: agent.name,
@@ -1565,7 +1593,7 @@ export function ChatClient() {
           <div key={cp.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium truncate">{cp.label}</p>
-              <p className="text-[10px] text-muted-foreground">{cp.timestamp.toLocaleString()} · {cp.messages.length} msgs</p>
+              <p className="text-[10px] text-muted-foreground">{cp.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })} · {cp.messages.length} msgs</p>
             </div>
             <button
               onClick={() => rollbackToCheckpoint(cp.id)}
@@ -1739,7 +1767,7 @@ export function ChatClient() {
                     <button className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors" title="更多">
                       <MoreHorizontal className="w-3.5 h-3.5" />
                     </button>
-                    <span className="text-[10px] text-muted-foreground/40 ml-1 shrink-0">{msg.timestamp.toLocaleTimeString()}</span>
+                    <span className="text-[10px] text-muted-foreground/40 ml-1 shrink-0">{msg.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                   </div>
                 )}
                 {/* User message action bar */}
@@ -1760,7 +1788,7 @@ export function ChatClient() {
                     <button onClick={() => handleDeleteMessage(msg.id)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-red-500 transition-colors" title="删除">
                       <X className="w-3.5 h-3.5" />
                     </button>
-                    <span className="text-[10px] text-muted-foreground/40 ml-1 shrink-0">{msg.timestamp.toLocaleTimeString()}</span>
+                    <span className="text-[10px] text-muted-foreground/40 ml-1 shrink-0">{msg.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                   </div>
                 )}
               </div>
@@ -1802,10 +1830,24 @@ export function ChatClient() {
               ))}
             </div>
           )}
-          <div className="space-y-2">
+          <div className="space-y-2 h-64">
             <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
             <SmartPrompt
               initialTask={smartPromptTask}
+              sessionFields={effectiveSessionId ? sessionDataMap.get(effectiveSessionId)?.promptFields : undefined}
+              sessionId={effectiveSessionId || undefined}
+              clearTrigger={clearTrigger}
+              loadFieldsTrigger={loadFieldsTrigger}
+              onFieldsChange={(newFields) => {
+                const sid = useAppStore.getState().activeSessionId;
+                if (!sid) return;
+                setSessionDataMap(prev => {
+                  const next = new Map(prev);
+                  const data = next.get(sid) || { messages: [], unreadCount: 0 };
+                  next.set(sid, { ...data, promptFields: newFields });
+                  return next;
+                });
+              }}
               onSend={(assembled) => {
                 if ((!assembled.trim() && attachments.length === 0) || loading) return;
                 const text = assembled.trim();
@@ -1843,7 +1885,7 @@ export function ChatClient() {
                 } else {
                   // No WS exists — create ACP connection now
                   const spAgentId2 = useAppStore.getState().activeAgentId || 'soulmate';
-                  connectSession(currentSessionId, spAgentId2);
+                  connectSession(currentSessionId, spAgentId2, text.slice(0, 30));
                   // 等待 WS 连接就绪，使用公共等待函数
                   waitForConnection(currentSessionId, messageText, attachments);
                 }
@@ -1870,7 +1912,7 @@ export function ChatClient() {
                   >
                     <Brain className="w-4 h-4" />
                   </button>
-                  <button onClick={() => clearCurrentSessionMessages()} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="清空">
+                  <button onClick={() => setClearTrigger(n => n + 1)} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="清空输入">
                     <RotateCcw className="w-4 h-4" />
                   </button>
                   <button onClick={() => { const next = !showCheckpoints; setShowCheckpoints(next); if (next) { setRightPanelOpen(false); if (isMobile && sidebarOpen) toggleSidebar(); } }} className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors relative" title="历史">

@@ -225,7 +225,7 @@ export function ConversationTree({
                           </div>
                         ) : (session.last_active || session.updated_at) ? (
                           <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">
-                            {session.last_active || session.updated_at}
+                            {new Date(session.last_active || session.updated_at!).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                           </div>
                         ) : null}
                       </div>
@@ -267,7 +267,7 @@ export function ConversationTree({
                       </div>
                     ) : (session.last_active || session.updated_at) ? (
                       <div className="text-[10px] text-muted-foreground ml-4.5 mt-0.5">
-                        {session.last_active || session.updated_at}
+                        {new Date(session.last_active || session.updated_at!).toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                       </div>
                     ) : null}
                   </div>

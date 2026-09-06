@@ -64,7 +64,7 @@ export class AgentEngine {
           break;
         }
         case "read_file": {
-          const content = await readFile(intent.args.path);
+          const { content } = await readFile(intent.args.path);
           result = { tool: "read_file", success: true, output: content };
           break;
         }

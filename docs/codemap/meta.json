@@ -1,0 +1,15 @@
+{
+  "framework": "nextjs",
+  "language": "typescript",
+  "monorepo": true,
+  "branch": "main",
+  "remote": "https://ghfast.top/https://github.com/open-soulmate/openmate.git",
+  "generated_at": "2026-09-06T02:10:47.237235+00:00",
+  "sections": {
+    "packages/openface/definitions": {
+      "hash": "8fe4be3231fe",
+      "updated_at": "2026-09-06T02:10:46.844695+00:00",
+      "file_count": 109
+    }
+  }
+}

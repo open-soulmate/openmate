@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { LogIn, UserPlus, Loader2, Settings, ChevronDown, Check, Wifi, Eye, EyeOff } from 'lucide-react';
 import { setApiBaseUrl, getApiBaseUrl, setUserId, setToken, setUserName } from '@/lib/api-client';
 import { useTranslation } from 'react-i18next';
+import { SuperEllipse } from '@/components/ui/super-ellipse';
 
 function api() {
   const base = getApiBaseUrl();
@@ -91,17 +92,19 @@ export function LoginPage({ onLogin }: { onLogin: () => void }) {
 
         {/* Server Address */}
         <div className="mb-4">
-          <button onClick={() => setShowSettings(!showSettings)} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full">
+          <button onClick={() => setShowSettings(!showSettings)} className="flex items-center gap-2 text-xs text-muted-foreground hover:text-foreground transition-colors w-full px-3 py-2 rounded-[24px] bg-muted/50 hover:bg-muted border border-border/50">
             <Wifi className={`w-3 h-3 ${connStatus === 'ok' ? 'text-green-500' : connStatus === 'fail' ? 'text-red-500' : ''}`} />
-            <span suppressHydrationWarning className="truncate flex-1 text-left">{getApiBaseUrl()}</span>
+            <span suppressHydrationWarning className="truncate flex-1 text-left">{serverAddr}</span>
             <Settings className="w-3 h-3" />
           </button>
           {showSettings && (
             <div className="mt-2 flex gap-2">
               <input value={serverAddr} onChange={e => setServerAddr(e.target.value)} onKeyDown={e => e.key === 'Enter' && handleSaveServer()}
                 placeholder="http://127.0.0.1:8090" className="flex-1 px-3 py-2 rounded-lg border bg-background text-xs" />
-              <button onClick={handleSaveServer} className="px-3 py-2 rounded-lg bg-primary text-primary-foreground text-xs hover:bg-primary/90">
-                <Check className="w-3 h-3" />
+              <button onClick={handleSaveServer} className="text-primary-foreground hover:opacity-90 transition-opacity">
+                <SuperEllipse size={36} fill="var(--color-primary)">
+                  <Check size={16} className="text-primary-foreground" />
+                </SuperEllipse>
               </button>
             </div>
           )}
