@@ -395,7 +395,7 @@ export default function AIGroupsPage() {
                   <div className="rounded-xl px-2 lg:px-4 py-2.5 text-xs lg:text-sm bg-primary text-primary-foreground rounded-tr-sm">
                     <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                     <div className="text-[10px] mt-1.5 opacity-60">
-                      {msg.timestamp.toLocaleTimeString()}
+                      {msg.timestamp.toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 })}
                       {msg.target && msg.target !== 'all' && (
                         <span className="ml-1.5">@{getAgentById(msg.target)?.name || msg.target}</span>
                       )}
@@ -442,7 +442,7 @@ export default function AIGroupsPage() {
                 <div className="rounded-xl px-2 lg:px-4 py-2.5 text-xs lg:text-sm bg-muted rounded-tl-sm">
                   <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                   <div className="text-[10px] mt-1.5 opacity-60">
-                    {msg.timestamp.toLocaleTimeString()}
+                    {msg.timestamp.toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 })}
                   </div>
                 </div>
               </div>

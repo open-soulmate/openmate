@@ -295,7 +295,7 @@ export function NotificationsClient() {
   const formatTime = (ts: string) => {
     try {
       const d = new Date(ts)
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })
     } catch { return ts }
   }
 

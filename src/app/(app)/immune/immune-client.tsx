@@ -214,7 +214,7 @@ export function ImmuneClient() {
   }, [apiBase, fetchIpLists])
 
   const formatTimestamp = (ts: number) => {
-    return new Date(ts * 1000).toLocaleString()
+    return new Date(ts * 1000).toLocaleString('zh-CN', { fractionalSecondDigits: 3 })
   }
 
   const getRiskColor = (level: string) => {

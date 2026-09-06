@@ -524,7 +524,7 @@ export function GlandClient() {
                       <div key={i} className="rounded-lg border border-border p-3 hover:bg-muted/30 transition-colors">
                         <div className="flex items-center justify-between mb-1">
                           <span className="text-xs font-medium text-foreground">{r.provider}</span>
-                          <span className="text-[10px] text-muted-foreground">{new Date(r.timestamp * 1000).toLocaleTimeString(undefined)}</span>
+                          <span className="text-[10px] text-muted-foreground">{new Date(r.timestamp * 1000).toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 })}</span>
                         </div>
                         <p className="text-[10px] text-muted-foreground mb-1.5 truncate">{r.model}</p>
                         <div className="flex items-center gap-3 text-[10px]">
@@ -557,7 +557,7 @@ export function GlandClient() {
                           <td className="px-3 py-2 text-right text-muted-foreground">{formatNumber(r.completion_tokens)}</td>
                           <td className="px-3 py-2 text-right font-medium text-foreground">{formatNumber(r.total_tokens)}</td>
                           <td className="px-3 py-2 text-right text-xs text-muted-foreground">
-                            {new Date(r.timestamp * 1000).toLocaleTimeString(undefined)}
+                            {new Date(r.timestamp * 1000).toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 })}
                           </td>
                         </tr>
                       ))}

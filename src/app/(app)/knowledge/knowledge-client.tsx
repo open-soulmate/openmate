@@ -535,7 +535,7 @@ export function KnowledgeClient() {
               items: [
                 { label: 'ID', value: selectedItem.id },
                 ...(selectedItem.description ? [{ label: t('knowledge.description') || 'Description', value: selectedItem.description }] : []),
-                ...(selectedItem.created_at ? [{ label: t('knowledge.createdAt') || 'Created', value: new Date(selectedItem.created_at).toLocaleString(), icon: <Calendar className="w-3.5 h-3.5" /> }] : []),
+                ...(selectedItem.created_at ? [{ label: t('knowledge.createdAt') || 'Created', value: new Date(selectedItem.created_at).toLocaleString('zh-CN', { fractionalSecondDigits: 3 }), icon: <Calendar className="w-3.5 h-3.5" /> }] : []),
               ],
             },
             ...(selectedItem.content ? [{
@@ -584,7 +584,7 @@ export function KnowledgeClient() {
                 { label: t('knowledgeRequests.name', 'Name'), value: selectedRequest.kb_name },
                 { label: t('knowledgeRequests.description', 'Description'), value: selectedRequest.kb_description },
                 ...(selectedRequest.requester_name ? [{ label: t('knowledgeRequests.requester', 'Requester'), value: selectedRequest.requester_name }] : []),
-                { label: t('knowledge.createdAt') || 'Created', value: selectedRequest.created_at ? new Date(selectedRequest.created_at).toLocaleString() : '—', icon: <Calendar className="w-3.5 h-3.5" /> },
+                { label: t('knowledge.createdAt') || 'Created', value: selectedRequest.created_at ? new Date(selectedRequest.created_at).toLocaleString('zh-CN', { fractionalSecondDigits: 3 }) : '—', icon: <Calendar className="w-3.5 h-3.5" /> },
               ],
             },
             {
@@ -798,7 +798,7 @@ export function KnowledgeClient() {
                 {selectedItem.created_at && (
                   <p className="text-xs text-muted-foreground flex items-center gap-1.5">
                     <Calendar className="w-3.5 h-3.5" />
-                    {t('knowledge.createdAt') || 'Created'}: {new Date(selectedItem.created_at).toLocaleString()}
+                    {t('knowledge.createdAt') || 'Created'}: {new Date(selectedItem.created_at).toLocaleString('zh-CN', { fractionalSecondDigits: 3 })}
                   </p>
                 )}
               </div>
@@ -960,7 +960,7 @@ export function KnowledgeClient() {
                   {selectedRequest.created_at && (
                     <div className="flex items-center gap-2 text-xs">
                       <span className="text-muted-foreground">{t('knowledge.createdAt') || 'Created'}:</span>
-                      <span>{new Date(selectedRequest.created_at).toLocaleString()}</span>
+                      <span>{new Date(selectedRequest.created_at).toLocaleString('zh-CN', { fractionalSecondDigits: 3 })}</span>
                     </div>
                   )}
                   {selectedRequest.review_note && (

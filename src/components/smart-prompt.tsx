@@ -13,6 +13,8 @@ import {
   Smile,
   Star,
   Paperclip,
+  Check,
+  Settings2,
 } from 'lucide-react';
 import { CodeMirrorEditor } from '@/components/codemirror-editor';
 
@@ -253,6 +255,22 @@ export function SmartPrompt({
     if (onClearInput) onClearInput(handleClear);
   }, [onClearInput, fields.task, generated]);
 
+  const [sendMode, setSendMode] = useState<'enter' | 'ctrl-enter'>(() => {
+    if (typeof window !== 'undefined') {
+      return (localStorage.getItem('openmate-send-mode') as 'enter' | 'ctrl-enter') || 'enter';
+    }
+    return 'enter';
+  });
+  const [showSendMenu, setShowSendMenu] = useState(false);
+
+  // Close send menu on outside click
+  useEffect(() => {
+    if (!showSendMenu) return;
+    const close = () => setShowSendMenu(false);
+    document.addEventListener('click', close);
+    return () => document.removeEventListener('click', close);
+  }, [showSendMenu]);
+
   const handleSend = () => {
     if (!fields.task.trim()) return;
     const assembled = assemblePrompt(fields);
@@ -265,8 +283,16 @@ export function SmartPrompt({
     if (onFieldsChange) onFieldsChange(empty);
   };
 
+  const sendKeyLabel = sendMode === 'enter' ? 'Enter 发送，Shift+Enter 换行' : 'Ctrl+Enter 发送，Enter 换行';
+  const placeholderText = `输入任务，点 ✨ 展开字段（${sendKeyLabel}）`;
+
   const handleKeyDown = (e: KeyboardEvent, view: any) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    if (sendMode === 'enter' && e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      e.preventDefault();
+      handleSend();
+      return true;
+    }
+    if (sendMode === 'ctrl-enter' && e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       handleSend();
       return true;
@@ -302,18 +328,9 @@ export function SmartPrompt({
           <CodeMirrorEditor
             value={fields.task}
             onChange={(val: string) => updateField('task', val)}
-            onKeyDown={(e: KeyboardEvent, view) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSend();
-                return true;
-              }
-              return false;
-            }}
-            placeholder={placeholder}
+            onKeyDown={handleKeyDown}
+            placeholder={placeholderText}
             readOnly={isLoading}
-            minHeight="40px"
-            maxHeight="200px"
           />
           {/* Generating indicator */}
           {generating && (
@@ -379,6 +396,35 @@ export function SmartPrompt({
 
         {/* Spacer */}
         <div className="flex-1" />
+
+        {/* Send key mode dropdown */}
+        <div className="relative">
+          <button
+            onClick={(e) => { e.stopPropagation(); setShowSendMenu(!showSendMenu); }}
+            className="p-1 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+            title="发送键设置"
+          >
+            <Settings2 className="w-4 h-4" />
+          </button>
+          {showSendMenu && (
+            <div className="absolute bottom-full right-0 mb-1 bg-popover border border-border rounded-lg shadow-lg py-1 min-w-[180px] z-50">
+              <button
+                onClick={() => { setSendMode('enter'); localStorage.setItem('openmate-send-mode', 'enter'); setShowSendMenu(false); }}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left hover:bg-accent transition-colors"
+              >
+                <span className="w-4">{sendMode === 'enter' && <Check className="w-3.5 h-3.5" />}</span>
+                按 Enter 键发送消息
+              </button>
+              <button
+                onClick={() => { setSendMode('ctrl-enter'); localStorage.setItem('openmate-send-mode', 'ctrl-enter'); setShowSendMenu(false); }}
+                className="flex items-center gap-2 w-full px-3 py-1.5 text-sm text-left hover:bg-accent transition-colors"
+              >
+                <span className="w-4">{sendMode === 'ctrl-enter' && <Check className="w-3.5 h-3.5" />}</span>
+                按 Ctrl+Enter 键发送消息
+              </button>
+            </div>
+          )}
+        </div>
 
         {/* Right — action buttons from chat-client */}
         {footer}

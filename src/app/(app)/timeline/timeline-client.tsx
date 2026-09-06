@@ -90,9 +90,10 @@ function getTypeIcon(type: string): React.ElementType {
 
 function formatTimestamp(ts: number): string {
   const d = new Date(ts * 1000)
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString('zh-CN', {
     month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", second: "2-digit",
+    fractionalSecondDigits: 3,
   })
 }
 

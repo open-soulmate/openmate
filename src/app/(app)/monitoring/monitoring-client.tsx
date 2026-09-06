@@ -1246,7 +1246,7 @@ export function MonitoringClient() {
                       📊 {t('metrics.title', 'Prometheus Metrics')}
                     </h2>
                     <p className="text-xs text-muted-foreground mt-1">
-                      {lastMetricsUpdate && `${t('metrics.updated', 'Updated')}: ${lastMetricsUpdate.toLocaleTimeString()}`}
+                      {lastMetricsUpdate && `${t('metrics.updated', 'Updated')}: ${lastMetricsUpdate.toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 })}`}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
@@ -1589,7 +1589,7 @@ export function MonitoringClient() {
                                 <div><span className="text-muted-foreground">{t('benchmark.p99Latency')}</span><p className="font-mono font-medium">{formatMs(item.p99_ms)}</p></div>
                                 <div><span className="text-muted-foreground">{t('benchmark.totalDuration')}</span><p className="font-mono font-medium">{formatMs(item.total_ms)}</p></div>
                                 <div><span className="text-muted-foreground">{t('benchmark.throughput')}</span><p className="font-mono font-medium">{item.rps?.toFixed(1)} req/s</p></div>
-                                <div><span className="text-muted-foreground">{t('benchmark.testTime')}</span><p className="font-mono font-medium">{new Date(item.timestamp * 1000).toLocaleString()}</p></div>
+                                <div><span className="text-muted-foreground">{t('benchmark.testTime')}</span><p className="font-mono font-medium">{new Date(item.timestamp * 1000).toLocaleString('zh-CN', { fractionalSecondDigits: 3 })}</p></div>
                               </div>
                             </div>
                           )}
@@ -1639,7 +1639,7 @@ export function MonitoringClient() {
                       <tbody>
                         {history.map(h => (
                           <tr key={h.id} className="border-b border-border/50 hover:bg-muted/30">
-                            <td className="px-3 py-2 text-muted-foreground">{new Date(h.timestamp * 1000).toLocaleString()}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{new Date(h.timestamp * 1000).toLocaleString('zh-CN', { fractionalSecondDigits: 3 })}</td>
                             <td className="px-3 py-2 font-medium">{h.label}</td>
                             <td className="px-3 py-2 text-right">{h.iterations}</td>
                             <td className="px-3 py-2 text-right text-green-500">{h.success}</td>

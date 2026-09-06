@@ -284,7 +284,7 @@ export function MarrowClient() {
     if (diff <= 0) return t("marrow.runSoon") || "Running soon"
     if (diff < 3600000) return `${Math.round(diff / 60000)} ${t("marrow.minutesLater") || "minutes later"}`
     if (diff < 86400000) return `${Math.round(diff / 3600000)} ${t("marrow.hoursLater") || "hours later"}`
-    return d.toLocaleString()
+    return d.toLocaleString('zh-CN', { fractionalSecondDigits: 3 })
   }
 
   if (loading) {
@@ -491,7 +491,7 @@ export function MarrowClient() {
                       <div>
                         <div className="text-xs lg:text-sm font-semibold text-foreground">{b.name || b.backup_id}</div>
                         <div className="text-xs text-muted-foreground">
-                          {new Date(b.created_at).toLocaleString()} · {b.file_count} {t("marrow.files") || "files"} · {formatSize(b.size_bytes)}
+                          {new Date(b.created_at).toLocaleString('zh-CN', { fractionalSecondDigits: 3 })} · {b.file_count} {t("marrow.files") || "files"} · {formatSize(b.size_bytes)}
                         </div>
                         {b.description && <div className="text-xs text-muted-foreground mt-1">{b.description}</div>}
                         {b.tags && b.tags.length > 0 && (
@@ -681,7 +681,7 @@ export function MarrowClient() {
                         <FileText className="w-4 h-4 text-purple-400" />
                         <div>
                           <div className="text-xs lg:text-sm text-foreground">{exp.format.toUpperCase()} · {exp.record_count} {t("marrow.records") || "records"} · {formatSize(exp.size_bytes)}</div>
-                          <div className="text-xs text-muted-foreground">{new Date(exp.created_at).toLocaleString()}</div>
+                          <div className="text-xs text-muted-foreground">{new Date(exp.created_at).toLocaleString('zh-CN', { fractionalSecondDigits: 3 })}</div>
                         </div>
                       </div>
                       <a href={`${apiBase}/api/marrow/exports/${exp.job_id}/download`}

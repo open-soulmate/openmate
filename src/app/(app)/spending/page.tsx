@@ -65,7 +65,7 @@ export default function SpendingPage() {
                   <td className="px-4 py-2.5 text-right text-green-400">{s.totalInputTokens.toLocaleString()}</td>
                   <td className="px-4 py-2.5 text-right text-purple-400">{s.totalOutputTokens.toLocaleString()}</td>
                   <td className="px-4 py-2.5 text-right text-yellow-500 font-medium">${s.totalCost.toFixed(4)}</td>
-                  <td className="px-4 py-2.5 text-right text-muted-foreground text-xs">{new Date(s.lastUpdated).toLocaleString()}</td>
+                  <td className="px-4 py-2.5 text-right text-muted-foreground text-xs">{new Date(s.lastUpdated).toLocaleString('zh-CN', { fractionalSecondDigits: 3 })}</td>
                 </tr>
               ))
             )}

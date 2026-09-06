@@ -228,7 +228,7 @@ export function MetricsClient() {
         <div className="flex items-center gap-3">
           {lastUpdate && (
             <span className="text-xs text-muted-foreground">
-              {t("metrics.updated", "Updated")}: {lastUpdate.toLocaleTimeString()}
+              {t("metrics.updated", "Updated")}: {lastUpdate.toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 })}
             </span>
           )}
           <button

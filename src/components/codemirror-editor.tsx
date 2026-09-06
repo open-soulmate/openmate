@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useMemo } from 'react';
-import { EditorView, keymap, lineNumbers, ViewPlugin, ViewUpdate } from '@codemirror/view';
+import { EditorView, keymap, lineNumbers } from '@codemirror/view';
 import { EditorState, StateField, Compartment } from '@codemirror/state';
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching, LanguageDescription, HighlightStyle } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
@@ -16,35 +16,7 @@ import { yaml } from '@codemirror/lang-yaml';
 import { xml } from '@codemirror/lang-xml';
 import type { Extension } from '@codemirror/state';
 
-// Placeholder via CSS — no widget, no cm-widgetBuffer, no cursor misalignment
-// Uses ViewPlugin to toggle a class on the editor DOM when doc is empty
-function placeholderExtension(text: string): Extension {
-  const placeholderPlugin = ViewPlugin.fromClass(class {
-    constructor(view: EditorView) {
-      this.toggleClass(view);
-    }
-    update(update: ViewUpdate) {
-      if (update.docChanged) this.toggleClass(update.view);
-    }
-    toggleClass(view: EditorView) {
-      const empty = view.state.doc.length === 0;
-      view.dom.classList.toggle('cm-show-placeholder', empty);
-    }
-  });
-
-  return [
-    placeholderPlugin,
-    EditorView.theme({
-      '&.cm-show-placeholder .cm-content::before': {
-        content: `"${text}"`,
-        color: 'hsl(var(--muted-foreground) / 0.5)',
-        fontStyle: 'italic',
-        pointerEvents: 'none',
-        position: 'absolute',
-      },
-    }),
-  ];
-}
+// No placeholder extension needed — React overlay handles it
 
 // Code languages for markdown code blocks
 const codeLanguages = [
@@ -117,12 +89,12 @@ export function CodeMirrorEditor({
     },
     '&.cm-focused': { outline: 'none' },
     '.cm-scroller': {
-      padding: '12px 14px',
-      overflow: 'hidden',
+      padding: '0 14px 0 0',
+      overflow: 'auto',
       fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace',
       lineHeight: '1.6',
     },
-    '.cm-editor': { height: '100%' },
+    '.cm-editor': { height: '100%', padding: 0 },
     '.cm-content': {
       color: 'hsl(var(--foreground))',
       caretColor: 'hsl(var(--foreground))',
@@ -133,7 +105,7 @@ export function CodeMirrorEditor({
       backgroundColor: 'transparent',
       border: 'none',
       padding: '0 2px !important',
-      color: 'hsl(var(--muted-foreground) / 0.5)',
+      color: 'hsl(var(--muted-foreground) / 0.5) !important',
     },
     '.cm-gutterElement': {
       padding: '0 4px 0 0 !important',
@@ -168,7 +140,7 @@ export function CodeMirrorEditor({
       openmateHighlight,
       markdownLang,
       theme,
-      placeholderExtension(placeholder),
+
       EditorView.lineWrapping,
       keymap.of([
         { key: 'Tab', run: (view) => {
@@ -232,10 +204,28 @@ export function CodeMirrorEditor({
 
   return (
     <div
-      ref={containerRef}
-      className={`codemirror-editor ${className}`}
-      style={{ width: '100%' }}
+      style={{ position: 'relative', width: '100%' }}
       onClick={focus}
-    />
+    >
+      <div
+        ref={containerRef}
+        className={`codemirror-editor ${className}`}
+      />
+      {value.length === 0 && placeholder && (
+        <div style={{
+          position: 'absolute',
+          top: '4px',
+          left: '24px',
+          color: 'hsl(var(--muted-foreground) / 0.4)',
+          fontStyle: 'italic',
+          pointerEvents: 'none',
+          fontSize: '14px',
+          lineHeight: '1.6',
+          whiteSpace: 'pre-wrap',
+        }}>
+          {placeholder}
+        </div>
+      )}
+    </div>
   );
 }

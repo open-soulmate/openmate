@@ -1302,7 +1302,7 @@ export function ChatClient() {
         body: JSON.stringify({
           content: getMessageText(msg),
           content_type: 'feedback',
-          title: `收藏消息 ${new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}`,
+          title: `收藏消息 ${new Date().toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' , fractionalSecondDigits: 3 })}`,
           user_id: getUserId(),
         }),
       });
@@ -1593,7 +1593,7 @@ export function ChatClient() {
           <div key={cp.id} className="flex items-center justify-between p-3 rounded-lg border border-border bg-card hover:bg-muted/50 transition-colors">
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium truncate">{cp.label}</p>
-              <p className="text-[10px] text-muted-foreground">{cp.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })} · {cp.messages.length} msgs</p>
+              <p className="text-[10px] text-muted-foreground">{cp.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' , fractionalSecondDigits: 3 })} · {cp.messages.length} msgs</p>
             </div>
             <button
               onClick={() => rollbackToCheckpoint(cp.id)}
@@ -1767,7 +1767,7 @@ export function ChatClient() {
                     <button className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors" title="更多">
                       <MoreHorizontal className="w-3.5 h-3.5" />
                     </button>
-                    <span className="text-[10px] text-muted-foreground/40 ml-1 shrink-0">{msg.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                    <span className="text-[10px] text-muted-foreground/40 ml-1 shrink-0">{msg.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}</span>
                   </div>
                 )}
                 {/* User message action bar */}
@@ -1788,7 +1788,7 @@ export function ChatClient() {
                     <button onClick={() => handleDeleteMessage(msg.id)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-red-500 transition-colors" title="删除">
                       <X className="w-3.5 h-3.5" />
                     </button>
-                    <span className="text-[10px] text-muted-foreground/40 ml-1 shrink-0">{msg.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                    <span className="text-[10px] text-muted-foreground/40 ml-1 shrink-0">{msg.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}</span>
                   </div>
                 )}
               </div>

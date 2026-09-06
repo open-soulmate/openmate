@@ -499,7 +499,7 @@ export function SessionsClient() {
         }`}>
           <div className="whitespace-pre-wrap break-words">{msg.content}</div>
           {msg.timestamp && (
-            <div className="text-[10px] text-muted-foreground/70 mt-1">{new Date(msg.timestamp).toLocaleString()}</div>
+            <div className="text-[10px] text-muted-foreground/70 mt-1">{new Date(msg.timestamp).toLocaleString('zh-CN', { fractionalSecondDigits: 3 })}</div>
           )}
         </div>
         {msg.role === "user" && (
@@ -530,10 +530,10 @@ export function SessionsClient() {
       ext = "json"
       mime = "application/json"
     } else {
-      const lines = [`# ${title}`, "", `Session: \`${selectedSession.session_id}\``, `Exported: ${new Date().toLocaleString()}`, "", "---", ""]
+      const lines = [`# ${title}`, "", `Session: \`${selectedSession.session_id}\``, `Exported: ${new Date().toLocaleString('zh-CN', { fractionalSecondDigits: 3 })}`, "", "---", ""]
       for (const msg of selectedSession.messages) {
         const roleLabel = msg.role === "user" ? "**You**" : msg.role === "assistant" ? "**AI**" : `**${msg.role}**`
-        const ts = msg.timestamp ? ` _(${new Date(msg.timestamp).toLocaleString()})_` : ""
+        const ts = msg.timestamp ? ` _(${new Date(msg.timestamp).toLocaleString('zh-CN', { fractionalSecondDigits: 3 })})_` : ""
         lines.push(`### ${roleLabel}${ts}`, "", msg.content, "")
       }
       content = lines.join("\n")

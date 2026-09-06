@@ -207,7 +207,7 @@ export function NerveClient() {
   }, [apiBase, fetchNodes])
 
   const formatTime = (iso: string) => {
-    try { return new Date(iso).toLocaleString() } catch { return iso }
+    try { return new Date(iso).toLocaleString('zh-CN', { fractionalSecondDigits: 3 }) } catch { return iso }
   }
 
   const copyToClipboard = (text: string) => {

@@ -151,7 +151,7 @@ export function SharingTab() {
                   </div>
                   <p className="text-xs lg:text-sm text-muted-foreground">ID: {req.kb_id}</p>
                   {req.requester_name && <p className="text-xs lg:text-sm text-muted-foreground">{t('kbSharing.requester', 'Requester')}: {req.requester_name}</p>}
-                  <p className="text-xs text-muted-foreground">{req.created_at ? new Date(req.created_at).toLocaleString() : ''}</p>
+                  <p className="text-xs text-muted-foreground">{req.created_at ? new Date(req.created_at).toLocaleString('zh-CN', { fractionalSecondDigits: 3 }) : ''}</p>
                   {req.review_note && <p className="text-xs lg:text-sm mt-2 p-2 bg-muted rounded">{req.review_note}</p>}
                 </div>
                 {req.status === 'pending' && (

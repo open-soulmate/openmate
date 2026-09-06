@@ -544,7 +544,7 @@ export function EnterpriseClient() {
                               {entry.ip && <span>{entry.ip}</span>}
                               <span className="flex items-center gap-1">
                                 <Clock className="w-3 h-3" />
-                                {entry.timestamp ? new Date(entry.timestamp).toLocaleString() : "—"}
+                                {entry.timestamp ? new Date(entry.timestamp).toLocaleString('zh-CN', { fractionalSecondDigits: 3 }) : "—"}
                               </span>
                             </div>
                           </div>

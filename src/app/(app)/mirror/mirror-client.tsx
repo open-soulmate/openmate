@@ -432,7 +432,7 @@ export function MirrorClient() {
                               <p className="text-xs text-muted-foreground">{t("mirror.t59742") || "No logs"}</p>
                             ) : logs.map((l, i) => (
                               <div key={i} className="flex gap-2 text-xs">
-                                <span className="text-muted-foreground shrink-0">{new Date(l.ts * 1000).toLocaleTimeString(undefined)}</span>
+                                <span className="text-muted-foreground shrink-0">{new Date(l.ts * 1000).toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 })}</span>
                                 <span className={cn("font-mono", l.level === "error" ? "text-red-500" : l.level === "warn" ? "text-amber-500" : "text-foreground")}>
                                   {l.message}
                                 </span>
@@ -527,7 +527,7 @@ export function MirrorClient() {
                         <p className="text-xs text-muted-foreground">{t("mirror.t59742") || "No logs"}</p>
                       ) : logs.map((l, i) => (
                         <div key={i} className="flex gap-2 text-xs">
-                          <span className="text-muted-foreground shrink-0">{new Date(l.ts * 1000).toLocaleTimeString(undefined)}</span>
+                          <span className="text-muted-foreground shrink-0">{new Date(l.ts * 1000).toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 })}</span>
                           <span className={cn("font-mono", l.level === "error" ? "text-red-500" : l.level === "warn" ? "text-amber-500" : "text-foreground")}>
                             {l.message}
                           </span>

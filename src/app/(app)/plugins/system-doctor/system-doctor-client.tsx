@@ -179,7 +179,7 @@ export function SystemDoctorClient() {
           )}
           {lastScan > 0 && (
             <span className="text-xs text-muted-foreground">
-              Last scan: {new Date(lastScan).toLocaleTimeString()}
+              Last scan: {new Date(lastScan).toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 })}
             </span>
           )}
         </div>

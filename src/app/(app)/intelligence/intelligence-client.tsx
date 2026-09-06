@@ -263,7 +263,7 @@ export function IntelligenceClient() {
                         <div className="grid grid-cols-2 gap-2 text-xs">
                           <div><span className="text-muted-foreground">{t("intelligence.requestCount") || "Requests"}:</span> {c.request_count}</div>
                           <div><span className="text-muted-foreground">{t("intelligence.errorCount") || "Errors"}:</span> {c.error_count}</div>
-                          <div><span className="text-muted-foreground">{t("intelligence.lastCheck") || "Last Check"}:</span> {new Date(c.last_check * 1000).toLocaleTimeString()}</div>
+                          <div><span className="text-muted-foreground">{t("intelligence.lastCheck") || "Last Check"}:</span> {new Date(c.last_check * 1000).toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 })}</div>
                         </div>
                         {Object.keys(c.custom).length > 0 && (
                           <div className="mt-2 p-2 bg-muted/30 rounded text-xs">

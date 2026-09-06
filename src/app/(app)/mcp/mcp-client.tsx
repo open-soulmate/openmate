@@ -343,8 +343,8 @@ export function McpClient() {
               { label: "ID", value: selectedServer.id, icon: <Settings className="w-3.5 h-3.5" /> },
               { label: "URL", value: <span className="font-mono text-xs break-all">{selectedServer.url}</span> },
               { label: t("mcp.transport") || "Transport", value: selectedServer.transport },
-              { label: t("mcp.registeredAt") || "Registered", value: new Date(selectedServer.created_at * 1000).toLocaleString() },
-              ...(selectedServer.last_connected ? [{ label: t("mcp.lastConnected") || "Last Connected", value: new Date(selectedServer.last_connected * 1000).toLocaleString() }] : []),
+              { label: t("mcp.registeredAt") || "Registered", value: new Date(selectedServer.created_at * 1000).toLocaleString('zh-CN', { fractionalSecondDigits: 3 }) },
+              ...(selectedServer.last_connected ? [{ label: t("mcp.lastConnected") || "Last Connected", value: new Date(selectedServer.last_connected * 1000).toLocaleString('zh-CN', { fractionalSecondDigits: 3 }) }] : []),
             ],
           },
           {

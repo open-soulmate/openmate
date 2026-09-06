@@ -55,7 +55,7 @@ function formatDuration(ms?: number): string {
 
 function formatTime(iso?: string): string {
   if (!iso) return '-';
-  return new Date(iso).toLocaleString();
+  return new Date(iso).toLocaleString('zh-CN', { fractionalSecondDigits: 3 });
 }
 
 export function CronClient() {

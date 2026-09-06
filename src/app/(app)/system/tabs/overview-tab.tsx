@@ -140,7 +140,7 @@ export function OverviewTab() {
           <div>
             <h1 className="text-lg font-semibold">{t("system.systemOverview")}</h1>
             <p className="text-xs text-muted-foreground">
-              v{data?.version} · {data?.elapsed_ms}ms · {lastRefresh ? new Date(lastRefresh).toLocaleTimeString() : "—"}
+              v{data?.version} · {data?.elapsed_ms}ms · {lastRefresh ? new Date(lastRefresh).toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 }) : "—"}
               {autoRefresh && <span className="ml-1 text-emerald-500">● {t("system.live") || "LIVE"}</span>}
             </p>
           </div>

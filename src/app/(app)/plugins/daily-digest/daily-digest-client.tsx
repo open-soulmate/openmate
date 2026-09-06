@@ -449,7 +449,7 @@ export function DailyDigestClient() {
                     <div className="flex items-center gap-2">
                       <span className="font-semibold">{item.date}</span>
                       <span className="text-xs text-muted-foreground">
-                        {new Date(item.generated_at * 1000).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                        {new Date(item.generated_at * 1000).toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' , second: '2-digit', fractionalSecondDigits: 3 })}
                       </span>
                     </div>
                     <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">

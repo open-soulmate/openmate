@@ -297,7 +297,7 @@ export function DashboardClient() {
               },
               {
                 label: t("dashboard.lastCheck", "Last Check"),
-                value: new Date().toLocaleTimeString(),
+                value: new Date().toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 }),
                 icon: <Clock className="w-3.5 h-3.5" />,
               },
             ],
@@ -649,7 +649,7 @@ export function DashboardClient() {
                       {recentRecords.slice(0, 10).map((r, i) => (
                         <tr key={i} className="border-b border-border last:border-0 hover:bg-muted/30 transition-colors">
                           <td className="px-3 py-1.5 text-[10px] text-muted-foreground">
-                            {new Date(r.timestamp * 1000).toLocaleString(undefined, { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
+                            {new Date(r.timestamp * 1000).toLocaleString('zh-CN', { month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit" })}
                           </td>
                           <td className="px-3 py-1.5 text-[10px] font-medium">{r.model}</td>
                           <td className="px-3 py-1.5 text-[10px] text-muted-foreground">{r.provider}</td>

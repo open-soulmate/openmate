@@ -380,7 +380,7 @@ function EventCard({ event, idx, total }: { event: TrajectoryEvent; idx: number;
             </span>
           )}
           <span style={{ fontSize: 10, color: "hsl(var(--muted-foreground))" }}>
-            {new Date(event.created_at).toLocaleTimeString()}
+            {new Date(event.created_at).toLocaleTimeString('zh-CN', { fractionalSecondDigits: 3 })}
           </span>
         </div>
       </div>

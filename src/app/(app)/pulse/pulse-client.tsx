@@ -48,9 +48,9 @@ interface PulseStats {
 
 function formatTime(ts: number): string {
   if (!ts) return "-";
-  return new Date(ts * 1000).toLocaleString(undefined, {
+  return new Date(ts * 1000).toLocaleString('zh-CN', {
     month: "2-digit", day: "2-digit", hour: "2-digit", minute: "2-digit", second: "2-digit",
-  });
+  , fractionalSecondDigits: 3 });
 }
 
 function formatMs(ms: number): string {

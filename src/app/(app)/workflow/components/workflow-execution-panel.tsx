@@ -348,7 +348,7 @@ export function WorkflowExecutionPanel() {
                   <div className="flex items-center gap-3 text-xs text-muted-foreground">
                     <span>{exec.steps.length} {t("workflowBuilder.steps")}</span>
                     <span className="font-mono">
-                      {new Date(exec.started_at).toLocaleString(undefined)}
+                      {new Date(exec.started_at).toLocaleString("zh-CN", { fractionalSecondDigits: 3 })}
                     </span>
                   </div>
                 </div>
