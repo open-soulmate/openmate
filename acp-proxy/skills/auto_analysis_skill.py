@@ -1,169 +1,187 @@
-import asyncio
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+AutoAnalysisSkill - 自动观察分析技能
+定期分析未处理的观察记录，提取模式、洞察并更新知识库
+"""
+
+import time
 import logging
+import hashlib
+from typing import List, Dict, Any, Optional, Tuple
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
-from collections import defaultdict
 
-from ..skills.base import BaseSkill
-from ..memory.knowledge_manager import KnowledgeManager
-from ..analysis.observation_analyzer import ObservationAnalyzer
-
-logger = logging.getLogger(__name__)
+# 假设存在基础技能类
+try:
+    from .base_skill import BaseSkill
+except ImportError:
+    # 兼容直接导入
+    from base_skill import BaseSkill
 
 
 class AutoAnalysisSkill(BaseSkill):
-    """
-    自动观察分析技能，定期分析未处理的观察记录，提取模式和洞察，
-    更新内部知识库以优化学习循环和减少数据处理积压。
-    """
-
-    def __init__(
-        self,
-        knowledge_manager: KnowledgeManager,
-        observation_analyzer: ObservationAnalyzer,
-        config: Optional[Dict[str, Any]] = None
-    ):
-        super().__init__(name="auto_analysis", version="1.0.0")
-        self.knowledge_manager = knowledge_manager
-        self.observation_analyzer = observation_analyzer
-        self.config = config or {}
-        
-        # 默认配置
-        self.batch_size = self.config.get("batch_size", 50)
-        self.min_observations_trigger = self.config.get("min_observations_trigger", 10)
-        self.time_interval_minutes = self.config.get("time_interval_minutes", 30)
-        self.last_run_time = None
-        
-        # 处理状态统计
-        self.stats = {
-            "total_processed": 0,
-            "new_knowledge_items": 0,
-            "failed_records": 0,
-            "last_run": None,
-            "batch_runs": 0
-        }
-
-    async def execute(
-        self,
-        observations: Optional[List[Dict[str, Any]]] = None,
-        force_run: bool = False
-    ) -> Dict[str, Any]:
+    """自动观察分析技能，用于定期处理未分析的观察记录"""
+    
+    def __init__(self, config: Optional[Dict[str, Any]] = None):
         """
-        主要执行方法，由调度器定期调用。
+        初始化技能
         
         Args:
-            observations: 可选的观察列表，如果提供则处理这些；否则从待处理队列获取
-            force_run: 是否强制执行（忽略时间间隔和阈值）
-            
-        Returns:
-            处理状态字典
+            config: 配置字典，包含以下可选键：
+                - interval_minutes: 定时间隔（分钟），默认30
+                - threshold: 数量阈值，超过则触发分析，默认10
+                - batch_size: 批处理大小，默认5
+                - llm_client: 大语言模型客户端实例
+                - knowledge_base: 知识库存储对象
+                - logger: 日志记录器
         """
-        try:
-            # 检查是否应该运行
-            if not force_run and not self._should_run(observations):
-                logger.info("分析技能跳过执行：未达到触发条件")
-                return {"status": "skipped", "stats": self.stats}
-
-            logger.info("开始自动观察分析")
-            
-            # 获取观察数据
-            observations_to_process = observations or await self._fetch_observations()
-            if not observations_to_process:
-                logger.info("没有待处理的观察记录")
-                return {"status": "completed", "stats": self.stats}
-            
-            # 批量处理
-            batch_results = await self._process_in_batches(observations_to_process)
-            
-            # 更新统计信息
-            self._update_stats(batch_results)
-            
-            logger.info(
-                f"自动分析完成: 处理 {batch_results['processed']} 条观察记录, "
-                f"新增 {batch_results['new_knowledge']} 条知识, "
-                f"失败 {batch_results['failed']} 条"
-            )
-            
-            return {"status": "completed", "stats": self.stats, "batch_results": batch_results}
-            
-        except Exception as e:
-            logger.error(f"自动分析技能执行失败: {str(e)}", exc_info=True)
-            return {"status": "error", "error": str(e), "stats": self.stats}
-
-    def _should_run(self, observations: Optional[List[Dict[str, Any]]]) -> bool:
-        """判断是否应该运行分析"""
-        current_time = datetime.now()
+        super().__init__(skill_name="auto_analysis_skill", config=config)
         
-        # 如果提供了观察数据，总是运行
-        if observations:
-            return True
+        # 配置参数
+        self.interval_minutes = config.get('interval_minutes', 30) if config else 30
+        self.threshold = config.get('threshold', 10) if config else 10
+        self.batch_size = config.get('batch_size', 5) if config else 5
         
-        # 检查时间间隔
-        if self.last_run_time:
-            time_since_last = (current_time - self.last_run_time).total_seconds() / 60
-            if time_since_last < self.time_interval_minutes:
-                return False
+        # 依赖组件
+        self.llm_client = config.get('llm_client') if config else None
+        self.knowledge_base = config.get('knowledge_base') if config else None
         
-        return True
-
-    async def _fetch_observations(self) -> List[Dict[str, Any]]:
-        """从待处理队列获取观察记录"""
-        # 这里应该从实际的数据源获取未分析的观察记录
-        # 实现取决于系统的数据管理方式
-        # 临时实现：假设有一个全局的观察队列
-        try:
-            # 实际实现应调用数据管理器获取未分析观察
-            # observations = await self.data_manager.get_unanalyzed_observations(
-            #     limit=self.batch_size * 2  # 获取足够多的数据用于批量处理
-            # )
-            
-            # 临时示例实现
-            observations = []
-            logger.debug(f"获取到 {len(observations)} 条待处理观察记录")
-            return observations
-        except Exception as e:
-            logger.error(f"获取观察记录失败: {str(e)}")
-            return []
-
-    async def _process_in_batches(
-        self, observations: List[Dict[str, Any]]
-    ) -> Dict[str, Any]:
-        """批量处理观察记录"""
-        results = {
-            "processed": 0,
-            "new_knowledge": 0,
-            "failed": 0,
-            "batches_processed": 0,
-            "errors": []
+        # 日志配置
+        self.logger = config.get('logger') if config else logging.getLogger(__name__)
+        
+        # 状态管理
+        self.last_execution_time = datetime.min
+        self.processing_stats = {
+            'total_processed': 0,
+            'new_knowledge_added': 0,
+            'errors_occurred': 0,
+            'last_execution_duration': 0.0
         }
         
-        # 分割成批次
-        batches = [
-            observations[i:i + self.batch_size] 
-            for i in range(0, len(observations), self.batch_size)
-        ]
+        # 知识去重缓存
+        self.knowledge_hashes = set()
         
-        for batch_idx, batch in enumerate(batches, 1):
-            try:
-                logger.info(f"处理批次 {batch_idx}/{len(batches)}: {len(batch)} 条记录")
-                
-                # 批量分析
-                batch_results = await self._analyze_batch(batch)
-                
-                # 知识整合
-                knowledge_results = await self._integrate_knowledge(batch_results)
-                
-                # 更新状态
-                await self._update_observation_status(batch, knowledge_results)
-                
-                # 更新统计
-                results["processed"] += len(batch)
-                results["new_knowledge"] += knowledge_results["new_items"]
-                results["failed"] += len(batch) - len(batch_results.get("successful", []))
-                results["batches_processed"] += 1
-                
-                if batch_results.get("errors"):
-                    results["errors"].extend(batch_results["errors"])
-                    
-            except Exception as e:
-                logger.error(f"批次 {batch_idx} 处理失败: {str(e)}")
+    def _check_trigger_conditions(self) -> Tuple[bool, str]:
+        """
+        检查触发条件
+        
+        Returns:
+            Tuple[bool, str]: (是否触发, 触发原因)
+        """
+        now = datetime.now()
+        
+        # 检查时间间隔
+        time_diff = (now - self.last_execution_time).total_seconds() / 60
+        if time_diff >= self.interval_minutes:
+            return True, f"定时触发（{self.interval_minutes}分钟间隔）"
+        
+        # 检查数量阈值
+        unanalyzed_count = self._get_unanalyzed_count()
+        if unanalyzed_count >= self.threshold:
+            return True, f"数量阈值触发（当前{unanalyzed_count}条，阈值{self.threshold}）"
+        
+        return False, "未达到触发条件"
+    
+    def _get_unanalyzed_count(self) -> int:
+        """获取未分析记录的数量"""
+        try:
+            # 这里假设数据存储在某个数据结构中
+            # 实际实现中需要连接到具体的数据源
+            observations = self.get_observations_unanalyzed()
+            return len(observations)
+        except Exception as e:
+            self.logger.error(f"获取未分析记录数量失败: {str(e)}")
+            return 0
+    
+    def _generate_knowledge_hash(self, content: Dict[str, Any]) -> str:
+        """
+        生成知识条目的哈希值用于去重
+        
+        Args:
+            content: 知识内容
+            
+        Returns:
+            str: 内容的MD5哈希值
+        """
+        # 对内容进行排序确保一致性
+        content_str = str(sorted(content.items()))
+        return hashlib.md5(content_str.encode('utf-8')).hexdigest()
+    
+    def _analyze_observation(self, observation: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        分析单条观察记录
+        
+        Args:
+            observation: 观察记录字典
+            
+        Returns:
+            List[Dict[str, Any]]: 提取的知识条目列表
+        """
+        try:
+            # 构建分析提示
+            prompt = f"""
+请分析以下观察记录，提取关键信息：
+
+观察记录：{observation.get('content', '')}
+上下文：{observation.get('context', '无')}
+时间：{observation.get('timestamp', '未知')}
+
+请提取以下信息（如适用）：
+1. 关键实体（人名、地点、组织等）
+2. 情感倾向（正面、负面、中性）
+3. 事件或活动
+4. 用户偏好或习惯
+5. 潜在的模式或规律
+
+请以JSON格式返回，格式如下：
+{{
+    "entities": [...],
+    "sentiment": "...",
+    "events": [...],
+    "preferences": [...],
+    "patterns": [...],
+    "summary": "简要总结"
+}}
+"""
+            
+            # 调用大语言模型进行分析
+            if self.llm_client:
+                response = self.llm_client.analyze(prompt)
+                # 解析响应（假设返回JSON格式）
+                analysis_result = self._parse_llm_response(response)
+            else:
+                # 如果没有LLM客户端，使用简单的规则分析
+                analysis_result = self._simple_analysis(observation)
+            
+            # 将分析结果转换为知识条目
+            knowledge_entries = self._convert_to_knowledge(observation, analysis_result)
+            
+            return knowledge_entries
+            
+        except Exception as e:
+            self.logger.error(f"分析观察记录失败: {str(e)}")
+            raise
+    
+    def _parse_llm_response(self, response: str) -> Dict[str, Any]:
+        """解析大语言模型的响应"""
+        try:
+            # 尝试解析JSON
+            import json
+            return json.loads(response)
+        except:
+            # 如果解析失败，返回基本结构
+            return {
+                "entities": [],
+                "sentiment": "中性",
+                "events": [],
+                "preferences": [],
+                "patterns": [],
+                "summary": response[:200] if len(response) > 200 else response
+            }
+    
+    def _simple_analysis(self, observation: Dict[str, Any]) -> Dict[str, Any]:
+        """简单的规则分析（当没有LLM时使用）"""
+        content = observation.get('content', '')
+        
+        # 简单的情感关键词检测
+        positive_words = ['好', '棒', '优秀', '成功', '喜欢']
