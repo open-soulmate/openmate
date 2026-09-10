@@ -1,153 +1,262 @@
 /**
  * Evolution Planner Skill
- * 自我进化规划技能 - 负责分析进化目标、生成改进计划并跟踪进度
+ * 自我进化规划技能 - 负责系统自我改进的规划和执行
+ * 
+ * @author MiMo Team
  * @version 1.0.0
- * @author ACP Development Team
  */
 
 const fs = require('fs').promises;
 const path = require('path');
-const { v4: uuidv4 } = require('uuid');
+const { EventEmitter } = require('events');
 
-class EvolutionPlanner {
-  constructor(config = {}) {
-    this.name = 'evolution-planner';
-    this.description = '自我进化规划技能，分析系统瓶颈并生成改进计划';
+// ============================================================
+// 配置常量
+// ============================================================
+const DEFAULT_CONFIG = {
+  // 规划频率配置（毫秒）
+  planningInterval: 30 * 60 * 1000, // 30分钟
+  progressCheckInterval: 10 * 60 * 1000, // 10分钟
+  
+  // 确认流程配置
+  confirmation: {
+    requireManualApproval: true,
+    approvalTimeoutMs: 24 * 60 * 60 * 1000, // 24小时
+    maxPendingPlans: 10,
+    autoApproveThreshold: 0, // 0表示不自动批准
+  },
+  
+  // 目标分解配置
+  decomposition: {
+    maxSubGoalsPerGoal: 10,
+    maxTaskDepth: 3,
+    minTaskDurationMinutes: 5,
+    maxTaskDurationMinutes: 480, // 8小时
+  },
+  
+  // 进度阈值
+  progressThresholds: {
+    stalled: 0.1, // 进度低于10%视为停滞
+    slow: 0.3,    // 进度低于30%视为缓慢
+    onTrack: 0.6, // 进度高于60%视为正常
+  },
+  
+  // 知识库路径
+  paths: {
+    knowledgeBase: 'data/evolution-knowledge',
+    pendingPlans: 'data/evolution-plans/pending',
+    approvedPlans: 'data/evolution-plans/approved',
+    progressReports: 'data/evolution-reports',
+    roadmapOutput: 'data/evolution-roadmap',
+  },
+  
+  // 三个零进度目标的定义
+  zeroProgressGoals: [
+    {
+      id: 'self_programming',
+      name: '自编程能力',
+      description: '系统能够自主编写、修改和优化代码',
+      priority: 'critical',
+      estimatedComplexity: 'high',
+    },
+    {
+      id: 'tool_creation',
+      name: '工具创造',
+      description: '系统能够根据需求自动创建新工具',
+      priority: 'high',
+      estimatedComplexity: 'medium',
+    },
+    {
+      id: 'error_self_repair',
+      name: '错误自修复',
+      description: '系统能够自动检测、诊断并修复错误',
+      priority: 'high',
+      estimatedComplexity: 'medium',
+    },
+  ],
+};
+
+// ============================================================
+// 主类：EvolutionPlanner
+// ============================================================
+class EvolutionPlanner extends EventEmitter {
+  constructor(options = {}) {
+    super();
     
-    // 配置参数
-    this.config = {
-      planningFrequency: config.planningFrequency || 24 * 60 * 60 * 1000, // 默认24小时
-      confirmationTimeout: config.confirmationTimeout || 7 * 24 * 60 * 60 * 1000, // 默认7天确认超时
-      knowledgeBasePath: config.knowledgeBasePath || './knowledge-base/evolution-plans',
-      roadmapOutputPath: config.roadmapOutputPath || './evolution-roadmap.md',
-      observationThreshold: config.observationThreshold || 5, // 未分析观察数阈值
-      maxSubGoals: config.maxSubGoals || 10, // 每个目标最大子目标数
-      progressReportInterval: config.progressReportInterval || 7 * 24 * 60 * 60 * 1000, // 默认7天生成报告
-      ...config
+    this.config = this._mergeConfig(DEFAULT_CONFIG, options.config || {});
+    this.isRunning = false;
+    this.planningTimer = null;
+    this.progressTimer = null;
+    
+    // 状态存储
+    this.state = {
+      currentGoals: new Map(),
+      progressHistory: new Map(),
+      failurePatterns: new Map(),
+      pendingApprovals: new Map(),
+      knowledge: [],
+      lastPlanningTime: null,
+      lastProgressCheck: null,
+      observationsUnanalyzed: 0,
     };
     
-    // 内部状态
-    this.evolutionGoals = [];
-    this.pendingPlans = new Map(); // 待确认的计划
-    this.planHistory = []; // 计划历史
-    this.lastPlanningTime = null;
-    this.observationsUnanalyzed = 0;
+    // 依赖注入
+    this.introspect = options.introspect || null;
+    this.logger = options.logger || console;
+    this.storage = options.storage || null;
+    this.observationAnalyzer = options.observationAnalyzer || null;
     
-    // 集成的技能引用
-    this.introspectSkill = null;
-    this.observationAnalyzer = null;
-    this.skillManager = null;
-    
-    // 定时器
-    this.planningTimer = null;
-    this.reportTimer = null;
-    
-    this.isInitialized = false;
+    // 绑定方法
+    this._onObservationUnanalyzed = this._onObservationUnanalyzed.bind(this);
   }
+
+  // ============================================================
+  // 初始化方法
+  // ============================================================
   
   /**
-   * 初始化技能
-   * @param {Object} context - 技能上下文
+   * 初始化进化规划器
    */
-  async init(context) {
+  async initialize() {
+    this.logger.info('[EvolutionPlanner] Initializing...');
+    
+    // 创建必要的目录
+    await this._ensureDirectories();
+    
+    // 加载持久化状态
+    await this._loadState();
+    
+    // 集成self_introspect功能
+    await this._integrateIntrospection();
+    
+    // 集成观察分析器
+    await this._integrateObservationAnalyzer();
+    
+    // 初始化零进度目标
+    await this._initializeZeroProgressGoals();
+    
+    this.logger.info('[EvolutionPlanner] Initialized successfully');
+    this.emit('initialized');
+    
+    return this;
+  }
+
+  /**
+   * 确保所有必要目录存在
+   */
+  async _ensureDirectories() {
+    const dirs = Object.values(this.config.paths);
+    for (const dir of dirs) {
+      await fs.mkdir(dir, { recursive: true }).catch(() => {});
+    }
+  }
+
+  /**
+   * 加载持久化状态
+   */
+  async _loadState() {
     try {
-      console.log(`[${this.name}] Initializing evolution planner skill...`);
+      const statePath = path.join(this.config.paths.knowledgeBase, 'evolution-state.json');
+      const data = await fs.readFile(statePath, 'utf-8').catch(() => null);
       
-      // 加载进化目标配置
-      await this.loadEvolutionGoals();
+      if (data) {
+        const parsed = JSON.parse(data);
+        this.state.currentGoals = new Map(parsed.currentGoals || []);
+        this.state.progressHistory = new Map(parsed.progressHistory || []);
+        this.state.failurePatterns = new Map(parsed.failurePatterns || []);
+        this.state.knowledge = parsed.knowledge || [];
+        this.state.lastPlanningTime = parsed.lastPlanningTime;
+        this.state.lastProgressCheck = parsed.lastProgressCheck;
+        this.logger.info('[EvolutionPlanner] State loaded from storage');
+      }
+    } catch (error) {
+      this.logger.warn('[EvolutionPlanner] Could not load state:', error.message);
+    }
+  }
+
+  /**
+   * 保存状态到持久化存储
+   */
+  async _saveState() {
+    try {
+      const statePath = path.join(this.config.paths.knowledgeBase, 'evolution-state.json');
+      const stateData = {
+        currentGoals: Array.from(this.state.currentGoals.entries()),
+        progressHistory: Array.from(this.state.progressHistory.entries()),
+        failurePatterns: Array.from(this.state.failurePatterns.entries()),
+        knowledge: this.state.knowledge,
+        lastPlanningTime: this.state.lastPlanningTime,
+        lastProgressCheck: this.state.lastProgressCheck,
+        savedAt: new Date().toISOString(),
+      };
       
-      // 集成其他技能
-      this.introspectSkill = context.skills?.getSkill('self_introspect');
-      this.observationAnalyzer = context.skills?.getSkill('observation_analyzer');
-      this.skillManager = context.skills;
-      
-      // 创建知识库目录
-      await this.ensureDirectoryExists(this.config.knowledgeBasePath);
-      
-      // 初始化定时任务
-      this.setupTimers();
-      
-      // 加载待确认的计划
-      await this.loadPendingPlans();
-      
-      this.isInitialized = true;
-      console.log(`[${this.name}] Evolution planner initialized successfully`);
-      
-      // 记录初始化到知识库
-      await this.recordToKnowledgeBase('initialization', {
-        timestamp: new Date().toISOString(),
-        config: this.config,
-        goalsCount: this.evolutionGoals.length
+      await fs.writeFile(statePath, JSON.stringify(stateData, null, 2));
+    } catch (error) {
+      this.logger.error('[EvolutionPlanner] Failed to save state:', error.message);
+    }
+  }
+
+  /**
+   * 集成self_introspect功能
+   */
+  async _integrateIntrospection() {
+    if (!this.introspect) {
+      this.logger.warn('[EvolutionPlanner] No introspect module provided, using mock');
+      this.introspect = {
+        getIntrospectionReport: async () => ({
+          currentGoals: [],
+          progress: {},
+          failures: [],
+          capabilities: [],
+        }),
+        analyzeSystemState: async () => ({}),
+        getEvolutionHistory: async () => [],
+      };
+    }
+    
+    // 注册为introspect的监听器
+    if (this.introspect.on) {
+      this.introspect.on('introspection-complete', (data) => {
+        this._processIntrospectionData(data);
       });
-      
-      return true;
-    } catch (error) {
-      console.error(`[${this.name}] Initialization failed:`, error);
-      return false;
     }
+    
+    this.logger.info('[EvolutionPlanner] Introspection integration complete');
   }
-  
+
   /**
-   * 加载进化目标配置
+   * 集成观察分析器
    */
-  async loadEvolutionGoals() {
-    try {
-      // 从配置文件或数据库加载进化目标
-      const goalsPath = path.join(process.cwd(), 'evolution-goals.json');
-      const goalsData = await fs.readFile(goalsPath, 'utf8');
-      this.evolutionGoals = JSON.parse(goalsData);
-    } catch (error) {
-      // 使用默认进化目标
-      this.evolutionGoals = [
-        {
-          id: 'self-programming',
-          name: '自编程能力',
-          description: '系统能够自主编写和修改代码',
-          progress: 0,
-          status: 'active',
-          milestones: [],
-          failurePatterns: [],
-          lastChecked: null
-        },
-        {
-          id: 'tool-creation',
-          name: '工具创造',
-          description: '系统能够自主创建新工具和功能',
-          progress: 0,
-          status: 'active',
-          milestones: [],
-          failurePatterns: [],
-          lastChecked: null
-        },
-        {
-          id: 'error-self-repair',
-          name: '错误自修复',
-          description: '系统能够自主检测和修复错误',
-          progress: 0,
-          status: 'active',
-          milestones: [],
-          failurePatterns: [],
-          lastChecked: null
-        }
-      ];
+  async _integrateObservationAnalyzer() {
+    if (!this.observationAnalyzer) {
+      this.logger.warn('[EvolutionPlanner] No observation analyzer provided');
+      this.observationAnalyzer = {
+        getUnanalyzedCount: async () => 0,
+        analyzeObservations: async () => [],
+        getObservationInsights: async () => [],
+      };
     }
+    
+    this.logger.info('[EvolutionPlanner] Observation analyzer integration complete');
   }
-  
+
   /**
-   * 设置定时任务
+   * 初始化零进度目标
    */
-  setupTimers() {
-    // 清除现有定时器
-    if (this.planningTimer) clearInterval(this.planningTimer);
-    if (this.reportTimer) clearInterval(this.reportTimer);
-    
-    // 设置规划定时器
-    this.planningTimer = setInterval(async () => {
-      await this.performPlanningCycle();
-    }, this.config.planningFrequency);
-    
-    // 设置报告定时器
-    this.reportTimer = setInterval(async () => {
-      await this.generateProgressReport();
-    }, this.config.progressReportInterval);
-    
+  async _initializeZeroProgressGoals() {
+    for (const goalDef of this.config.zeroProgressGoals) {
+      if (!this.state.currentGoals.has(goalDef.id)) {
+        const goal = {
+          ...goalDef,
+          progress: 0,
+          status: 'pending',
+          subGoals: [],
+          actionSteps: [],
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          milestones: [],
+          blockers: [],
+          dependencies: [],
+        };
+        this.state.currentGoals.set(goalDef.id, goal);
+      }
