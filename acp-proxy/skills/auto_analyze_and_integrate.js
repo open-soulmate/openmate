@@ -1,192 +1,98 @@
-// acp-proxy/skills/auto_analyze_and_integrate.js
-// 核心技能：探索-分析-内化循环
-// 功能：处理未分析的观察，评估效果，内化成功模式，形成学习闭环。
+/**
+ * auto_analyze_and_integrate.js
+ * 探索-分析-内化强反馈循环技能
+ */
 
-const fs = require('fs').promises;
+const fs = require('fs');
 const path = require('path');
 
-// 假设这些依赖或接口在系统中存在
-// const { inferFromObservations } = require('../inference'); // 用于调用推理能力
-// const { updateSkill, createSkill } = require('../skill_manager'); // 用于操作技能库
-
-// 内置的记忆文件路径（示例，实际路径应根据系统配置调整）
-const MEMORY_FILE_PATH = path.join(__dirname, '../data/memories.json');
-const OBSERVATIONS_FILE_PATH = path.join(__dirname, '../data/observations.json');
-const LOG_FILE_PATH = path.join(__dirname, '../data/analysis_cycle_logs.json');
+// 配置路径
+const OBSERVATIONS_PATH = path.join(__dirname, '../data/observations.json');
+const MEMORIES_PATH = path.join(__dirname, '../data/memories.json');
+const SKILLS_DIR = path.join(__dirname, '../skills');
+const ANALYSIS_LOG_PATH = path.join(__dirname, '../data/analysis_logs.json');
 
 /**
- * 主入口函数：运行一次分析周期。
- * 由系统在探索性操作或改进规划后主动调用。
- * @returns {Promise<Object>} 分析周期的结果报告
- */
-async function runAnalysisCycle() {
-    const cycleReport = {
-        cycleId: Date.now(),
-        timestamp: new Date().toISOString(),
-        status: 'started',
-        observationsProcessed: 0,
-        analysisResults: [],
-        internalizationActions: [],
-        errors: []
-    };
-
-    try {
-        // 1. 读取未分析的观察
-        cycleReport.status = 'reading_observations';
-        const observations = await loadUnanalyzedObservations();
-        if (observations.length === 0) {
-            cycleReport.status = 'completed_no_observations';
-            cycleReport.message = '没有找到未分析的观察记录。';
-            await saveReport(cycleReport);
-            return cycleReport;
-        }
-        cycleReport.observationsProcessed = observations.length;
-
-        // 2. 逐条或分组调用分析
-        cycleReport.status = 'analyzing';
-        const analysisPromises = observations.map(obs => analyzeSingleObservation(obs));
-        const analysisResults = await Promise.allSettled(analysisPromises);
-
-        // 处理分析结果
-        for (let i = 0; i < analysisResults.length; i++) {
-            const result = analysisResults[i];
-            if (result.status === 'fulfilled') {
-                const analysis = result.value;
-                cycleReport.analysisResults.push({
-                    observationId: observations[i].id,
-                    analysis: analysis.summary,
-                    patterns: analysis.extractedPatterns,
-                    suggestions: analysis.skillUpdateSuggestions || []
-                });
-
-                // 3. 关联与内化：尝试将分析结果整合到系统
-                try {
-                    const internalizationResult = await internalizeAnalysis(analysis, observations[i]);
-                    if (internalizationResult.actionTaken) {
-                        cycleReport.internalizationActions.push({
-                            observationId: observations[i].id,
-                            action: internalizationResult.action,
-                            detail: internalizationResult.detail
-                        });
-                    }
-                } catch (intError) {
-                    cycleReport.errors.push({
-                        phase: 'internalization',
-                        observationId: observations[i].id,
-                        error: intError.message
-                    });
-                }
-
-                // 4. 更新观察状态为已分析
-                try {
-                    await markObservationAsAnalyzed(observations[i].id, analysis.summary);
-                } catch (markError) {
-                    cycleReport.errors.push({
-                        phase: 'mark_observation',
-                        observationId: observations[i].id,
-                        error: markError.message
-                    });
-                }
-            } else {
-                cycleReport.errors.push({
-                    phase: 'analysis',
-                    observationId: observations[i].id,
-                    error: result.reason.message
-                });
-            }
-        }
-
-        // 更新最终状态
-        cycleReport.status = cycleReport.errors.length > 0 ? 'completed_with_errors' : 'completed_successfully';
-        cycleReport.summary = generateCycleSummary(cycleReport);
-        await saveReport(cycleReport);
-
-        return cycleReport;
-    } catch (criticalError) {
-        cycleReport.status = 'failed';
-        cycleReport.errors.push({
-            phase: 'cycle_execution',
-            error: criticalError.message
-        });
-        await saveReport(cycleReport).catch(() => {}); // 尝试保存错误报告
-        throw criticalError; // 重新抛出供上层处理
-    }
-}
-
-/**
- * 加载所有未分析的观察记录
- * @returns {Promise<Array>} 未分析的观察对象数组
+ * 读取未分析的观察记录
+ * @returns {Promise<Array>} 未分析的观察记录数组
  */
 async function loadUnanalyzedObservations() {
     try {
-        const fileContent = await fs.readFile(OBSERVATIONS_FILE_PATH, 'utf8');
-        const observationsData = JSON.parse(fileContent);
-        // 假设observationsData是一个数组，或者有observations字段
-        const observationsArray = Array.isArray(observationsData) ? observationsData : (observationsData.observations || []);
-        return observationsArray.filter(obs => obs.analyzed === false || obs.analyzed === undefined);
-    } catch (error) {
-        if (error.code === 'ENOENT') {
-            console.log(`[auto_analyze] 观察文件 ${OBSERVATIONS_FILE_PATH} 不存在，返回空数组。`);
+        if (!fs.existsSync(OBSERVATIONS_PATH)) {
+            console.log('[auto_analyze] 观察记录文件不存在，返回空数组');
             return [];
         }
-        throw new Error(`读取观察文件失败: ${error.message}`);
+
+        const data = JSON.parse(fs.readFileSync(OBSERVATIONS_PATH, 'utf-8'));
+        return Array.isArray(data) ? data.filter(obs => obs.analyzed === false) : [];
+    } catch (error) {
+        console.error('[auto_analyze] 读取观察记录失败:', error);
+        return [];
     }
 }
 
 /**
- * 分析单条观察记录
- * @param {Object} observation - 单个观察对象
- * @returns {Promise<Object>} 分析结果对象
+ * 调用分析模型进行分析
+ * @param {Array} observations 观察记录
+ * @returns {Promise<Object>} 分析结果
  */
-async function analyzeSingleObservation(observation) {
-    // 首先尝试调用系统推理能力（例如 inference 技能）
-    // const inferenceResult = await inferFromObservations([observation]);
-    // if (inferenceResult && inferenceResult.success) {
-    //     return inferenceResult.analysis;
-    // }
+async function analyzeObservations(observations) {
+    try {
+        if (!observations || observations.length === 0) {
+            return { insights: [], patterns: [], recommendations: [] };
+        }
 
-    // 内置回退分析逻辑（当外部推理不可用或失败时使用）
-    console.log(`[auto_analyze] 使用内置逻辑分析观察 ${observation.id}`);
-
-    // 简单的模式提取逻辑（示例，实际应更复杂）
-    const summary = `对观察 ${observation.id} 的总结：${observation.content.substring(0, 100)}...`;
-    const extractedPatterns = [];
-
-    // 示例：从内容中提取关键词作为模式
-    if (observation.content.includes('错误') || observation.content.includes('失败')) {
-        extractedPatterns.push({ type: 'failure_pattern', keywords: ['错误', '失败'], confidence: 0.7 });
+        // 尝试使用系统推理能力
+        try {
+            const inferenceSkill = require('./inference');
+            const result = await inferenceSkill.analyze({
+                type: 'observation_analysis',
+                data: observations,
+                prompt: '分析以下观察记录，总结规律、提取模式、识别问题和成功因素，给出改进建议。'
+            });
+            return result;
+        } catch (inferenceError) {
+            console.warn('[auto_analyze] 推理技能不可用，使用基础分析:', inferenceError);
+            return basicAnalysis(observations);
+        }
+    } catch (error) {
+        console.error('[auto_analyze] 分析过程失败:', error);
+        return { insights: [], patterns: [], recommendations: [], error: error.message };
     }
-    if (observation.content.includes('成功') || observation.content.includes('完成')) {
-        extractedPatterns.push({ type: 'success_pattern', keywords: ['成功', '完成'], confidence: 0.8 });
-    }
-
-    // 示例：生成技能更新建议（这里仅作演示）
-    const skillUpdateSuggestions = [];
-    if (extractedPatterns.some(p => p.type === 'failure_pattern' && p.keywords.includes('参数校验'))) {
-        skillUpdateSuggestions.push({
-            skillId: 'self_introspect',
-            action: 'update_documentation',
-            reason: '发现与参数校验相关的失败模式。',
-            suggestedAddition: '在参数校验部分增加更严格的检查逻辑。'
-        });
-    }
-
-    return {
-        summary,
-        extractedPatterns,
-        skillUpdateSuggestions,
-        confidence: 0.6, // 内置逻辑的置信度通常较低
-        source: 'built-in_analysis'
-    };
 }
 
 /**
- * 将分析结果内化到系统
- * @param {Object} analysisResult - 分析结果
- * @param {Object} originalObservation - 原始观察
- * @returns {Promise<Object>} 内化动作结果
+ * 基础分析（当推理技能不可用时）
+ * @param {Array} observations 观察记录
+ * @returns {Object} 基础分析结果
  */
-async function internalizeAnalysis(analysisResult, originalObservation) {
-    let actionTaken = false;
-    let action = '';
-    let detail = '';
+function basicAnalysis(observations) {
+    const insights = [];
+    const patterns = [];
+    const recommendations = [];
+
+    observations.forEach(obs => {
+        if (obs.type === 'success') {
+            insights.push(`成功案例: ${obs.content}`);
+            patterns.push(`成功模式: ${obs.context || '未知上下文'}`);
+        } else if (obs.type === 'failure') {
+            insights.push(`失败案例: ${obs.content}`);
+            recommendations.push(`改进点: ${obs.content}`);
+        }
+    });
+
+    return { insights, patterns, recommendations };
+}
+
+/**
+ * 加载现有记忆
+ * @returns {Promise<Object>} 记忆数据
+ */
+async function loadMemories() {
+    try {
+        if (!fs.existsSync(MEMORIES_PATH)) {
+            return { skills: [], knowledge: [], patterns: [] };
+        }
+        return JSON.parse(fs.readFileSync(MEMORIES_PATH, 'utf-8'));
+    } catch (error) {
+        console.error('[auto_analyze] 加载记忆失败:', error);
