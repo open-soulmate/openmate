@@ -1,204 +1,165 @@
-/**
- * 观察分析技能模块
- * 用于定期扫描并分析未处理观察，提取结构化知识模式
- */
+// observation_analyzer.js
+// 自主观察分析技能 - 定期扫描分析未处理观察，支持知识积累
 
-const { EventEmitter } = require('events');
-const fs = require('fs');
+const fs = require('fs').promises;
 const path = require('path');
 
-class ObservationAnalyzer extends EventEmitter {
+class ObservationAnalyzer {
     constructor(config = {}) {
-        super();
-        
-        // 技能配置
-        this.name = 'observation_analyzer';
-        this.description = '定期分析未处理观察，提取结构化知识模式';
-        this.version = '1.0.0';
-        
-        // 触发配置
-        this.triggerInterval = config.triggerInterval || 30000; // 30秒
-        this.triggerTurns = config.triggerTurns || 5; // 每5个对话轮次
-        this.maxHistory = config.maxHistory || 50; // 分析最近50条对话历史
-        
-        // 分析配置
-        this.analysisThreshold = config.analysisThreshold || 3; // 最少需要3条观察才触发分析
-        this.knowledgeBasePath = config.knowledgeBasePath || './data/knowledge_base.json';
+        // 配置参数
+        this.config = {
+            // 触发条件配置
+            triggerIntervalMs: config.triggerIntervalMs || 30000, // 30秒
+            triggerTurnCount: config.triggerTurnCount || 5, // 每5个对话轮次
+            
+            // 分析配置
+            recentWindow: config.recentWindow || 10, // 分析最近的N轮对话
+            maxObservations: config.maxObservations || 50, // 最大处理观察数量
+            
+            // 文件路径
+            observationsPath: config.observationsPath || path.join(__dirname, '../data/observations.json'),
+            knowledgeBasePath: config.knowledgeBasePath || path.join(__dirname, '../data/knowledge_base.json'),
+            logPath: config.logPath || path.join(__dirname, '../logs/observation_analyzer.log'),
+            
+            // NLP配置
+            enableNLP: config.enableNLP || false,
+            sentimentThreshold: config.sentimentThreshold || 0.5,
+            
+            ...config
+        };
         
         // 内部状态
         this.turnCounter = 0;
         this.lastAnalysisTime = Date.now();
         this.isAnalyzing = false;
-        this.observationQueue = [];
-        this.conversationHistory = [];
+        this.analysisTimer = null;
         
-        // 初始化日志系统
-        this.setupLogging();
-        
-        // 初始化定时器
-        this.setupTriggers();
-        
-        // 加载知识库
-        this.loadKnowledgeBase();
-    }
-
-    /**
-     * 设置日志系统
-     */
-    setupLogging() {
-        this.logFile = path.join(__dirname, `../logs/observation_analyzer_${new Date().toISOString().split('T')[0]}.log`);
-        this.logStream = fs.createWriteStream(this.logFile, { flags: 'a' });
-    }
-
-    /**
-     * 记录日志
-     */
-    log(level, message, data = null) {
-        const timestamp = new Date().toISOString();
-        const logEntry = {
-            timestamp,
-            level,
-            skill: this.name,
-            message,
-            data
+        // 模板库
+        this.templates = {
+            preferencePatterns: [
+                { pattern: /喜欢|偏好|倾向于|prefer/i, category: 'preference', weight: 0.8 },
+                { pattern: /不喜欢|不要|避免|avoid/i, category: 'dislike', weight: 0.7 },
+                { pattern: /经常|总是|通常|always/i, category: 'habit', weight: 0.6 }
+            ],
+            taskPatterns: [
+                { pattern: /代码|编程|开发|code/i, category: 'coding', weight: 0.9 },
+                { pattern: /问题|错误|bug|issue/i, category: 'problem_solving', weight: 0.7 },
+                { pattern: /建议|推荐|help/i, category: 'request_advice', weight: 0.6 }
+            ],
+            feedbackPatterns: [
+                { pattern: /好|不错|优秀|good/i, category: 'positive', weight: 0.8 },
+                { pattern: /不好|错误|糟糕|bad/i, category: 'negative', weight: 0.8 },
+                { pattern: /感谢|谢谢|thanks/i, category: 'gratitude', weight: 0.5 }
+            ]
         };
         
-        this.logStream.write(JSON.stringify(logEntry) + '\n');
-        
-        if (level === 'error') {
-            console.error(`[${this.name}] ${message}`, data);
-        } else if (level === 'info') {
-            console.log(`[${this.name}] ${message}`);
+        // 初始化
+        this.init();
+    }
+    
+    // 初始化技能
+    async init() {
+        try {
+            await this.ensureDirectories();
+            this.startTimer();
+            this.log('ObservationAnalyzer initialized', 'info');
+        } catch (error) {
+            this.log(`Initialization failed: ${error.message}`, 'error');
         }
     }
-
-    /**
-     * 设置触发条件
-     */
-    setupTriggers() {
-        // 定时器触发
-        this.intervalTimer = setInterval(() => {
-            this.checkTriggers('timer');
-        }, this.triggerInterval);
+    
+    // 确保目录存在
+    async ensureDirectories() {
+        const dirs = [
+            path.dirname(this.config.observationsPath),
+            path.dirname(this.config.knowledgeBasePath),
+            path.dirname(this.config.logPath)
+        ];
         
-        this.log('info', '触发器设置完成', {
-            interval: this.triggerInterval,
-            turns: this.triggerTurns
-        });
-    }
-
-    /**
-     * 检查是否满足触发条件
-     */
-    checkTriggers(source = 'manual') {
-        const currentTime = Date.now();
-        const timeSinceLast = currentTime - this.lastAnalysisTime;
-        
-        // 检查时间触发
-        if (source === 'timer' && timeSinceLast >= this.triggerInterval) {
-            this.log('info', '时间触发条件满足，开始分析');
-            this.analyzeObservations().catch(error => {
-                this.log('error', '分析过程发生错误', error.message);
-            });
-            return;
-        }
-        
-        // 检查对话轮次触发
-        if (source === 'turn' && this.turnCounter >= this.triggerTurns) {
-            this.log('info', '对话轮次触发条件满足，开始分析');
-            this.analyzeObservations().catch(error => {
-                this.log('error', '分析过程发生错误', error.message);
-            });
-            this.turnCounter = 0; // 重置计数器
+        for (const dir of dirs) {
+            try {
+                await fs.mkdir(dir, { recursive: true });
+            } catch (error) {
+                // 目录可能已存在，忽略错误
+            }
         }
     }
-
-    /**
-     * 添加新观察到队列
-     */
-    addObservation(observation) {
-        if (!observation || typeof observation !== 'object') {
-            this.log('warn', '无效的观察对象', observation);
-            return;
+    
+    // 启动定时器
+    startTimer() {
+        if (this.analysisTimer) {
+            clearInterval(this.analysisTimer);
         }
         
-        const processedObservation = {
-            id: `obs_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-            timestamp: Date.now(),
-            content: observation,
-            processed: false,
-            source: observation.source || 'unknown'
-        };
-        
-        this.observationQueue.push(processedObservation);
-        
-        // 检查是否需要立即分析
-        if (this.observationQueue.length >= this.analysisThreshold) {
-            this.checkTriggers('queue');
-        }
-        
-        this.log('info', '新观察已添加到队列', { 
-            id: processedObservation.id,
-            queueLength: this.observationQueue.length 
-        });
+        this.analysisTimer = setInterval(() => {
+            const timeSinceLastAnalysis = Date.now() - this.lastAnalysisTime;
+            if (timeSinceLastAnalysis >= this.config.triggerIntervalMs) {
+                this.analyzeObservations();
+            }
+        }, this.config.triggerIntervalMs);
     }
-
-    /**
-     * 更新对话历史
-     */
-    updateConversationHistory(turn) {
-        this.conversationHistory.push({
-            timestamp: Date.now(),
-            turnNumber: this.conversationHistory.length + 1,
-            content: turn
-        });
-        
-        // 保持历史记录在最大限制内
-        if (this.conversationHistory.length > this.maxHistory) {
-            this.conversationHistory = this.conversationHistory.slice(-this.maxHistory);
-        }
-        
+    
+    // 对话轮次触发器
+    onNewTurn() {
         this.turnCounter++;
-        this.checkTriggers('turn');
+        
+        if (this.turnCounter >= this.config.triggerTurnCount) {
+            this.turnCounter = 0;
+            this.analyzeObservations();
+        }
     }
-
-    /**
-     * 核心分析函数：分析未处理观察
-     */
+    
+    // 核心分析函数
     async analyzeObservations() {
         if (this.isAnalyzing) {
-            this.log('warn', '分析正在进行中，跳过本次分析');
-            return null;
+            this.log('Analysis already in progress, skipping', 'warn');
+            return;
         }
         
         this.isAnalyzing = true;
-        this.lastAnalysisTime = Date.now();
-        
-        const analysisStartTime = Date.now();
-        this.log('info', '开始观察分析');
+        const startTime = Date.now();
         
         try {
-            // 1. 提取待分析数据
-            const observationsToAnalyze = this.extractObservations();
-            const conversationContext = this.extractConversationContext();
+            this.log('Starting observation analysis', 'info');
             
-            if (observationsToAnalyze.length === 0) {
-                this.log('info', '没有未处理的观察，跳过分析');
-                return null;
+            // 1. 从观察队列获取未处理观察
+            const observations = await this.loadObservations();
+            const unprocessed = observations.filter(obs => !obs.processed);
+            
+            if (unprocessed.length === 0) {
+                this.log('No unprocessed observations found', 'info');
+                return;
             }
             
-            // 2. 应用分析策略
-            const analysisResults = await this.applyAnalysisStrategies(
-                observationsToAnalyze, 
-                conversationContext
-            );
+            // 2. 提取文本并分析
+            const analysisResults = [];
             
-            // 3. 格式化并存储结果
-            const structuredKnowledge = this.formatAnalysisResults(analysisResults);
-            await this.saveToKnowledgeBase(structuredKnowledge);
+            for (const observation of unprocessed.slice(0, this.config.maxObservations)) {
+                const result = await this.analyzeObservation(observation);
+                if (result) {
+                    analysisResults.push(result);
+                }
+            }
+            
+            // 3. 存储分析结果到知识库
+            if (analysisResults.length > 0) {
+                await this.storeKnowledge(analysisResults);
+                this.log(`Analyzed ${analysisResults.length} observations`, 'info');
+            }
             
             // 4. 标记观察为已处理
-            this.markObservationsProcessed(observationsToAnalyze);
+            await this.markObservationsProcessed(unprocessed);
             
-            const analysisDuration = Date.now() - analysisStartTime;
-            this.log('info', '观察分析完成', {
+            // 5. 更新状态
+            this.lastAnalysisTime = Date.now();
+            
+            const duration = Date.now() - startTime;
+            this.log(`Analysis completed in ${duration}ms`, 'info');
+            
+            return {
+                success: true,
+                analyzedCount: analysisResults.length,
+                duration: duration,
+                results: analysisResults
+            };
+            
