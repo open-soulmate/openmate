@@ -2,38 +2,53 @@ import json
 import os
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
+from pathlib import Path
+
 
 class ExperimentManager:
-    """管理大胆实验的插件，用于系统性探索新策略、工具和方法"""
+    """实验管理插件，用于系统化地进行大胆尝试和高探索性的激进策略"""
     
-    def __init__(self, base_path: str = "experiments"):
-        """
-        初始化实验管理器
+    def __init__(self, base_dir: str = "experiments"):
+        """初始化实验管理器
         
         Args:
-            base_path: 实验存储的基础目录路径
+            base_dir: 实验目录的基础路径
         """
-        self.base_path = base_path
-        os.makedirs(self.base_path, exist_ok=True)
-        self.active_experiments = {}  # 内存中跟踪活跃实验
+        self.base_dir = Path(base_dir)
+        self.base_dir.mkdir(parents=True, exist_ok=True)
+        self.memory_connector = None  # 用于连接主Agent的对话记忆
+        self.workflow_connector = None  # 用于连接主Agent的工作流
+    
+    def set_connectors(self, memory_connector: Any, workflow_connector: Any):
+        """设置与主Agent的连接器
         
-    def create_experiment(self, name: str, hypothesis: str, variables: dict, metrics: list[str]) -> str:
+        Args:
+            memory_connector: 对话记忆连接器
+            workflow_connector: 工作流连接器
         """
-        创建新实验，定义假设、变量和评估指标
+        self.memory_connector = memory_connector
+        self.workflow_connector = workflow_connector
+    
+    def create_experiment(self, name: str, hypothesis: str, 
+                         variables: Dict[str, Any], metrics: List[str]) -> str:
+        """创建新实验
         
         Args:
             name: 实验名称
-            hypothesis: 要验证的假设
-            variables: 实验变量及其初始值
+            hypothesis: 实验假设
+            variables: 实验变量字典
             metrics: 评估指标列表
             
         Returns:
-            实验ID字符串
+            实验ID
         """
-        experiment_id = str(uuid.uuid4())[:8]
-        experiment_dir = os.path.join(self.base_path, experiment_id)
-        os.makedirs(experiment_dir, exist_ok=True)
+        experiment_id = str(uuid.uuid4())
+        experiment_dir = self.base_dir / experiment_id
+        
+        # 创建实验目录结构
+        experiment_dir.mkdir(exist_ok=True)
+        (experiment_dir / "steps").mkdir(exist_ok=True)
         
         # 创建实验配置文件
         experiment_data = {
@@ -45,148 +60,170 @@ class ExperimentManager:
             "status": "created",
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
+            "steps": [],
             "conclusion": None,
-            "outcome_summary": None
+            "success_score": None
         }
         
-        config_path = os.path.join(experiment_dir, "experiment.json")
+        # 保存实验配置
+        config_path = experiment_dir / "experiment.json"
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(experiment_data, f, ensure_ascii=False, indent=2)
         
-        # 创建日志文件
-        log_path = os.path.join(experiment_dir, "log.jsonl")
-        with open(log_path, 'w', encoding='utf-8') as f:
-            first_entry = {
-                "timestamp": datetime.now().isoformat(),
-                "type": "creation",
-                "description": f"实验 '{name}' 创建",
-                "data": {
-                    "hypothesis": hypothesis,
-                    "variables": variables,
-                    "metrics": metrics
-                }
-            }
-            f.write(json.dumps(first_entry, ensure_ascii=False) + "\n")
+        # 记录到对话记忆（如果可用）
+        if self.memory_connector:
+            self.memory_connector.add_memory(
+                f"创建了新实验: {name} (ID: {experiment_id})",
+                "experiment_creation",
+                {"experiment_id": experiment_id, "hypothesis": hypothesis}
+            )
         
-        # 内存中跟踪实验状态
-        self.active_experiments[experiment_id] = {
-            "config_path": config_path,
-            "log_path": log_path,
-            "status": "created"
-        }
-        
-        # 更新实验状态
-        experiment_data["status"] = "in_progress"
-        with open(config_path, 'w', encoding='utf-8') as f:
-            json.dump(experiment_data, f, ensure_ascii=False, indent=2)
-        
-        self.active_experiments[experiment_id]["status"] = "in_progress"
+        # 更新工作流状态（如果可用）
+        if self.workflow_connector:
+            self.workflow_connector.update_status(
+                "experiment_manager",
+                f"正在管理实验 {name}",
+                {"experiment_id": experiment_id}
+            )
         
         return experiment_id
     
-    def log_step(self, experiment_id: str, step_description: str, data: dict) -> bool:
-        """
-        记录实验步骤和数据
+    def log_step(self, experiment_id: str, step_description: str, data: Dict[str, Any]) -> bool:
+        """记录实验步骤
         
         Args:
             experiment_id: 实验ID
             step_description: 步骤描述
-            data: 相关数据
+            data: 步骤数据
             
         Returns:
-            操作是否成功
+            是否记录成功
         """
-        if experiment_id not in self.active_experiments:
+        experiment_dir = self.base_dir / experiment_id
+        if not experiment_dir.exists():
             return False
-            
-        log_path = self.active_experiments[experiment_id]["log_path"]
         
-        log_entry = {
-            "timestamp": datetime.now().isoformat(),
-            "type": "step",
+        # 读取实验配置
+        config_path = experiment_dir / "experiment.json"
+        with open(config_path, 'r', encoding='utf-8') as f:
+            experiment_data = json.load(f)
+        
+        # 创建步骤记录
+        step_id = str(uuid.uuid4())
+        step_data = {
+            "step_id": step_id,
             "description": step_description,
+            "timestamp": datetime.now().isoformat(),
             "data": data
         }
         
-        with open(log_path, 'a', encoding='utf-8') as f:
-            f.write(json.dumps(log_entry, ensure_ascii=False) + "\n")
+        # 保存步骤到单独文件
+        step_path = experiment_dir / "steps" / f"{step_id}.json"
+        with open(step_path, 'w', encoding='utf-8') as f:
+            json.dump(step_data, f, ensure_ascii=False, indent=2)
         
-        # 更新实验配置中的更新时间
-        config_path = self.active_experiments[experiment_id]["config_path"]
-        with open(config_path, 'r', encoding='utf-8') as f:
-            experiment_data = json.load(f)
-        
+        # 更新实验配置
+        experiment_data["steps"].append(step_id)
         experiment_data["updated_at"] = datetime.now().isoformat()
+        experiment_data["status"] = "in_progress"
+        
+        # 保存更新后的配置
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(experiment_data, f, ensure_ascii=False, indent=2)
+        
+        # 记录到对话记忆
+        if self.memory_connector:
+            self.memory_connector.add_memory(
+                f"实验 {experiment_id} 记录新步骤: {step_description}",
+                "experiment_step",
+                {
+                    "experiment_id": experiment_id,
+                    "step_id": step_id,
+                    "description": step_description
+                }
+            )
         
         return True
     
-    def conclude_experiment(self, experiment_id: str, outcome_summary: str) -> dict:
-        """
-        总结实验，生成结论
+    def conclude_experiment(self, experiment_id: str, outcome_summary: str) -> bool:
+        """总结实验并结束
         
         Args:
             experiment_id: 实验ID
-            outcome_summary: 实验结果总结
+            outcome_summary: 结果总结
             
         Returns:
-            包含实验结论的字典
+            是否成功结束实验
         """
-        if experiment_id not in self.active_experiments:
-            return {"error": "实验不存在"}
-            
-        config_path = self.active_experiments[experiment_id]["config_path"]
-        log_path = self.active_experiments[experiment_id]["log_path"]
+        experiment_dir = self.base_dir / experiment_id
+        if not experiment_dir.exists():
+            return False
         
         # 读取实验配置
+        config_path = experiment_dir / "experiment.json"
         with open(config_path, 'r', encoding='utf-8') as f:
             experiment_data = json.load(f)
         
-        # 读取所有日志条目
-        log_entries = []
-        with open(log_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                if line.strip():
-                    log_entries.append(json.loads(line))
+        # 更新实验状态
+        experiment_data["status"] = "concluded"
+        experiment_data["conclusion"] = {
+            "summary": outcome_summary,
+            "concluded_at": datetime.now().isoformat()
+        }
+        experiment_data["updated_at"] = datetime.now().isoformat()
         
-        # 生成结论
-        conclusion = {
+        # 计算成功分数（示例：基于步骤数量和完成状态）
+        step_count = len(experiment_data["steps"])
+        success_score = min(100, step_count * 20)  # 示例算法
+        experiment_data["success_score"] = success_score
+        
+        # 保存结论文件
+        conclusion_path = experiment_dir / "conclusion.json"
+        conclusion_data = {
             "experiment_id": experiment_id,
-            "experiment_name": experiment_data["name"],
-            "hypothesis": experiment_data["hypothesis"],
             "outcome_summary": outcome_summary,
-            "total_steps": len([e for e in log_entries if e["type"] == "step"]),
-            "metrics_collected": experiment_data["metrics"],
+            "success_score": success_score,
+            "step_count": step_count,
             "concluded_at": datetime.now().isoformat()
         }
         
-        # 保存结论文件
-        conclusion_path = os.path.join(self.base_path, experiment_id, "conclusion.json")
         with open(conclusion_path, 'w', encoding='utf-8') as f:
-            json.dump(conclusion, f, ensure_ascii=False, indent=2)
+            json.dump(conclusion_data, f, ensure_ascii=False, indent=2)
         
-        # 更新实验状态
-        experiment_data["status"] = "concluded"
-        experiment_data["conclusion"] = outcome_summary
-        experiment_data["updated_at"] = datetime.now().isoformat()
-        
+        # 更新实验配置
         with open(config_path, 'w', encoding='utf-8') as f:
             json.dump(experiment_data, f, ensure_ascii=False, indent=2)
         
-        # 从内存中移除
-        self.active_experiments.pop(experiment_id, None)
+        # 记录到对话记忆
+        if self.memory_connector:
+            self.memory_connector.add_memory(
+                f"实验 {experiment_id} 已结束，成功分数: {success_score}",
+                "experiment_conclusion",
+                {
+                    "experiment_id": experiment_id,
+                    "success_score": success_score,
+                    "outcome_summary": outcome_summary
+                }
+            )
         
-        return conclusion
+        return True
     
-    def suggest_new_skill_from_experiment(self, experiment_id: str) -> dict:
-        """
-        分析成功实验，建议新的技能定义
+    def suggest_new_skill_from_experiment(self, experiment_id: str) -> Optional[Dict[str, Any]]:
+        """分析成功实验并建议新技能
         
         Args:
             experiment_id: 实验ID
             
         Returns:
-            新技能的定义字典，或错误信息
+            新技能定义字典，或None如果实验不成功
         """
-        experiment_dir = os.path.join(self.base_path, experiment_id)
+        experiment_dir = self.base_dir / experiment_id
+        if not experiment_dir.exists():
+            return None
+        
+        # 读取实验配置
+        config_path = experiment_dir / "experiment.json"
+        with open(config_path, 'r', encoding='utf-8') as f:
+            experiment_data = json.load(f)
+        
+        # 检查实验是否成功（成功分数>70视为成功）
