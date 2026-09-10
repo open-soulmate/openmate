@@ -1,241 +1,161 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
-Knowledge Consolidation Skill for ACP Proxy
-Implements intelligent memory management with deduplication, scoring, 
-review scheduling, knowledge graph, and compression capabilities.
+知识巩固技能 - 记忆管理机制优化
 """
 
 import asyncio
-import hashlib
 import json
-import logging
-import os
-import pickle
 import time
-from collections import defaultdict
-from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta
-from enum import Enum
-from pathlib import Path
-from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
-import threading
-import schedule
+from typing import List, Dict, Any, Optional, Tuple
+from collections import defaultdict
 import numpy as np
-from difflib import SequenceMatcher
+from sentence_transformers import SentenceTransformer
+from sklearn.metrics.pairwise import cosine_similarity
+import schedule
+import networkx as nx
+from dataclasses import dataclass, asdict
+import hashlib
+import logging
 
-# Configure logging
+# 配置日志
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
-
-
-# ============================================================================
-# Data Models
-# ============================================================================
-
-class MemoryType(Enum):
-    """Memory type classification."""
-    EPISODIC = "episodic"
-    SEMANTIC = "semantic"
-    PROCEDURAL = "procedural"
-    EMOTIONAL = "emotional"
-
-
-class ConsolidationStatus(Enum):
-    """Memory consolidation status."""
-    ACTIVE = "active"
-    CONSOLIDATED = "consolidated"
-    ARCHIVED = "archived"
-    COMPRESSED = "compressed"
-
 
 @dataclass
 class Memory:
-    """Individual memory unit with metadata."""
+    """记忆数据结构"""
     id: str
     content: str
-    content_embedding: Optional[np.ndarray] = None
-    memory_type: MemoryType = MemoryType.SEMANTIC
-    creation_time: datetime = field(default_factory=datetime.now)
-    last_accessed: datetime = field(default_factory=datetime.now)
-    access_count: int = 0
+    embedding: List[float]
+    timestamp: datetime
+    usage_count: int = 0
     emotional_intensity: float = 0.5
     information_value: float = 0.5
     importance_score: float = 0.0
-    status: ConsolidationStatus = ConsolidationStatus.ACTIVE
-    tags: List[str] = field(default_factory=list)
-    source_session: str = ""
-    metadata: Dict[str, Any] = field(default_factory=dict)
-    related_memories: List[str] = field(default_factory=list)
-    compression_level: int = 0
+    tags: List[str] = None
+    related_memories: List[str] = None
     
-    def to_dict(self) -> Dict[str, Any]:
-        """Serialize memory to dictionary (backward compatible)."""
-        data = {
-            'id': self.id,
-            'content': self.content,
-            'memory_type': self.memory_type.value,
-            'creation_time': self.creation_time.isoformat(),
-            'last_accessed': self.last_accessed.isoformat(),
-            'access_count': self.access_count,
-            'emotional_intensity': self.emotional_intensity,
-            'information_value': self.information_value,
-            'importance_score': self.importance_score,
-            'status': self.status.value,
-            'tags': self.tags,
-            'source_session': self.source_session,
-            'metadata': self.metadata,
-            'related_memories': self.related_memories,
-            'compression_level': self.compression_level,
-        }
-        if self.content_embedding is not None:
-            data['content_embedding'] = self.content_embedding.tolist()
-        return data
+    def __post_init__(self):
+        if self.tags is None:
+            self.tags = []
+        if self.related_memories is None:
+            self.related_memories = []
+
+class KnowledgeConsolidationSkill:
+    """知识巩固技能类"""
     
-    @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Memory':
-        """Deserialize memory from dictionary (backward compatible)."""
-        embedding = None
-        if 'content_embedding' in data and data['content_embedding']:
-            embedding = np.array(data['content_embedding'])
+    def __init__(self):
+        # 初始化模型
+        self.model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
         
-        return cls(
-            id=data.get('id', ''),
-            content=data.get('content', ''),
-            content_embedding=embedding,
-            memory_type=MemoryType(data.get('memory_type', 'semantic')),
-            creation_time=datetime.fromisoformat(data.get('creation_time', datetime.now().isoformat())),
-            last_accessed=datetime.fromisoformat(data.get('last_accessed', datetime.now().isoformat())),
-            access_count=data.get('access_count', 0),
-            emotional_intensity=data.get('emotional_intensity', 0.5),
-            information_value=data.get('information_value', 0.5),
-            importance_score=data.get('importance_score', 0.0),
-            status=ConsolidationStatus(data.get('status', 'active')),
-            tags=data.get('tags', []),
-            source_session=data.get('source_session', ''),
-            metadata=data.get('metadata', {}),
-            related_memories=data.get('related_memories', []),
-            compression_level=data.get('compression_level', 0),
+        # 记忆存储
+        self.memories: Dict[str, Memory] = {}
+        self.memory_embeddings: np.ndarray = None
+        self.memory_ids: List[str] = []
+        
+        # 知识图谱
+        self.knowledge_graph = nx.DiGraph()
+        
+        # 配置参数
+        self.SIMILARITY_THRESHOLD = 0.85
+        self.IMPORTANCE_WEIGHTS = {
+            'usage_frequency': 0.3,
+            'emotional_intensity': 0.3,
+            'information_value': 0.4
+        }
+        self.COMPRESSION_THRESHOLD = 5  # 记忆压缩阈值
+        
+        # 性能监控
+        self.performance_metrics = {
+            'last_consolidation_time': None,
+            'processed_memories_count': 0
+        }
+        
+        # 加载现有记忆
+        self._load_memories()
+        
+        # 启动定期回顾任务
+        self._setup_scheduled_tasks()
+    
+    def _load_memories(self):
+        """加载现有记忆"""
+        try:
+            with open('memories.json', 'r', encoding='utf-8') as f:
+                data = json.load(f)
+                for mem_data in data:
+                    memory = Memory(
+                        id=mem_data['id'],
+                        content=mem_data['content'],
+                        embedding=mem_data['embedding'],
+                        timestamp=datetime.fromisoformat(mem_data['timestamp']),
+                        usage_count=mem_data.get('usage_count', 0),
+                        emotional_intensity=mem_data.get('emotional_intensity', 0.5),
+                        information_value=mem_data.get('information_value', 0.5),
+                        importance_score=mem_data.get('importance_score', 0.0),
+                        tags=mem_data.get('tags', []),
+                        related_memories=mem_data.get('related_memories', [])
+                    )
+                    self.memories[memory.id] = memory
+        except FileNotFoundError:
+            logger.info("未找到现有记忆文件，创建新存储")
+    
+    def _save_memories(self):
+        """保存记忆到文件"""
+        try:
+            memory_list = []
+            for memory in self.memories.values():
+                mem_dict = asdict(memory)
+                mem_dict['timestamp'] = mem_dict['timestamp'].isoformat()
+                memory_list.append(mem_dict)
+            
+            with open('memories.json', 'w', encoding='utf-8') as f:
+                json.dump(memory_list, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.error(f"保存记忆失败: {e}")
+    
+    def _setup_scheduled_tasks(self):
+        """设置定期任务"""
+        # 每周日晚上执行记忆回顾
+        schedule.every().sunday.at("23:00").do(self.consolidate_knowledge)
+        
+        # 启动定时任务线程
+        import threading
+        def run_scheduler():
+            while True:
+                schedule.run_pending()
+                time.sleep(60)
+        
+        scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
+        scheduler_thread.start()
+    
+    def _calculate_embedding(self, text: str) -> List[float]:
+        """计算文本嵌入向量"""
+        embedding = self.model.encode(text)
+        return embedding.tolist()
+    
+    def _calculate_similarity(self, vec1: List[float], vec2: List[float]) -> float:
+        """计算两个向量的余弦相似度"""
+        vec1 = np.array(vec1).reshape(1, -1)
+        vec2 = np.array(vec2).reshape(1, -1)
+        return cosine_similarity(vec1, vec2)[0][0]
+    
+    def _calculate_importance_score(self, memory: Memory) -> float:
+        """计算记忆重要性评分"""
+        # 归一化各项指标（假设输入范围是0-1）
+        score = (
+            memory.usage_count * self.IMPORTANCE_WEIGHTS['usage_frequency'] +
+            memory.emotional_intensity * self.IMPORTANCE_WEIGHTS['emotional_intensity'] +
+            memory.information_value * self.IMPORTANCE_WEIGHTS['information_value']
         )
-
-
-@dataclass
-class KnowledgeNode:
-    """Node in the knowledge graph."""
-    id: str
-    label: str
-    node_type: str = "concept"
-    properties: Dict[str, Any] = field(default_factory=dict)
-    memory_ids: List[str] = field(default_factory=list)
-    created_at: datetime = field(default_factory=datetime.now)
-    updated_at: datetime = field(default_factory=datetime.now)
+        return min(1.0, max(0.0, score))
     
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'id': self.id,
-            'label': self.label,
-            'node_type': self.node_type,
-            'properties': self.properties,
-            'memory_ids': self.memory_ids,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat(),
-        }
-
-
-@dataclass
-class KnowledgeEdge:
-    """Edge in the knowledge graph."""
-    id: str
-    source_id: str
-    target_id: str
-    relation_type: str = "related_to"
-    weight: float = 1.0
-    properties: Dict[str, Any] = field(default_factory=dict)
-    created_at: datetime = field(default_factory=datetime.now)
+    def _generate_memory_id(self, content: str) -> str:
+        """生成记忆ID"""
+        return hashlib.md5(content.encode()).hexdigest()[:16]
     
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'id': self.id,
-            'source_id': self.source_id,
-            'target_id': self.target_id,
-            'relation_type': self.relation_type,
-            'weight': self.weight,
-            'properties': self.properties,
-            'created_at': self.created_at.isoformat(),
-        }
-
-
-@dataclass
-class KnowledgeGraph:
-    """Knowledge graph structure for organizing memories."""
-    nodes: Dict[str, KnowledgeNode] = field(default_factory=dict)
-    edges: Dict[str, KnowledgeEdge] = field(default_factory=dict)
-    adjacency: Dict[str, Set[str]] = field(default_factory=lambda: defaultdict(set))
-    
-    def to_dict(self) -> Dict[str, Any]:
-        return {
-            'nodes': {k: v.to_dict() for k, v in self.nodes.items()},
-            'edges': {k: v.to_dict() for k, v in self.edges.items()},
-        }
-
-
-# ============================================================================
-# Embedding Utilities (lightweight, no external dependencies)
-# ============================================================================
-
-class SimpleEmbedder:
-    """Simple text embedding using character-level and word-level features.
-    For production use, replace with a proper sentence transformer."""
-    
-    def __init__(self, dim: int = 128):
-        self.dim = dim
-        self._vocab: Dict[str, int] = {}
-    
-    def encode(self, text: str) -> np.ndarray:
-        """Generate a simple embedding vector for text."""
-        # Normalize text
-        text = text.lower().strip()
-        words = text.split()
-        
-        # Create feature vector
-        features = np.zeros(self.dim, dtype=np.float32)
-        
-        # Word-level features (hashed)
-        for word in words:
-            hash_val = int(hashlib.md5(word.encode()).hexdigest(), 16)
-            idx = hash_val % self.dim
-            features[idx] += 1.0
-        
-        # Character n-gram features
-        for i in range(len(text) - 1):
-            bigram = text[i:i+2]
-            hash_val = int(hashlib.md5(bigram.encode()).hexdigest(), 16)
-            idx = hash_val % self.dim
-            features[idx] += 0.5
-        
-        # Normalize
-        norm = np.linalg.norm(features)
-        if norm > 0:
-            features = features / norm
-        
-        return features
-    
-    def batch_encode(self, texts: List[str]) -> np.ndarray:
-        """Encode multiple texts."""
-        return np.array([self.encode(t) for t in texts])
-
-
-# ============================================================================
-# Similarity Calculator
-# ============================================================================
-
-class SimilarityCalculator:
-    """Calculate semantic similarity between texts."""
-    
-    def __init__(self, embedder: SimpleEmbedder):
-        self.embedder = embedder
-    
-    def cosine_similarity(self, vec_a: np.ndarray, vec_b: np.ndarray) -> float:
-        """Calculate cosine similarity between two vectors."""
-        dot_product = np.dot(vec_a, vec_b)
-        norm_a = np.linalg.norm(vec_a)
-        norm_b = np.linalg.norm(vec_b)
-        if norm_a == 0 or norm_b == 0:
-            return 0.0
+    async def add_memory(self, content: str, tags: List[str] = None, 
+                        emotional_intensity: float = 0.5, 
+                        information_value: float = 0.5) -> Memory:
+        """添加新记忆"""
