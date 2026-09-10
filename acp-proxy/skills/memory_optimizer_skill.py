@@ -1,50 +1,53 @@
-import datetime
+# acp-proxy/skills/memory_optimizer_skill.py
+
+import asyncio
 import logging
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass
-from enum import Enum
+import time
+from datetime import datetime, timedelta
+from typing import Dict, List, Any, Optional, Set
 
-# 假设的导入，实际路径可能需要调整
-from acp_proxy.plugins.memory.memory_manager import (
-    get_all_memories,
-    update_memory,
-    archive_memory,
-    delete_memory,
-    summarize_memory,
-)
-from acp_proxy.core.observer import record_observation
-from acp_proxy.skills.base_skill import BaseSkill
+# 导入memory_manager模块（假设存在）
+try:
+    from acp_proxy.plugins.memory.memory_manager import MemoryManager
+except ImportError:
+    # 模拟MemoryManager，实际使用时请替换为真实模块
+    class MemoryManager:
+        async def get_all_memories(self) -> List[Dict]:
+            return []
+        
+        async def update_memory(self, memory_id: str, **kwargs) -> bool:
+            return True
+        
+        async def archive_memory(self, memory_id: str) -> bool:
+            return True
+        
+        async def delete_memory(self, memory_id: str) -> bool:
+            return True
+        
+        async def summarize_memory(self, memory_id: str) -> Optional[str]:
+            return None
+        
+        async def get_memory(self, memory_id: str) -> Optional[Dict]:
+            return None
 
+# 设置日志记录
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class MemoryAction(Enum):
-    """Memory optimization actions."""
-    COMPRESS = "compress"
-    ARCHIVE = "archive"
-    DELETE = "delete"
-    NONE = "none"
-
-
-@dataclass
-class OptimizationResult:
-    """Result of memory optimization."""
-    memory_id: str
-    action: MemoryAction
-    original_length: int
-    new_length: Optional[int]
-    score_before: float
-    reason: str
-
-
-class MemoryOptimizerSkill(BaseSkill):
-    """
-    Memory Optimizer Skill - The agent's memory butler.
+class MemoryOptimizerSkill:
+    """记忆优化器技能 - Agent的记忆管家"""
     
-    Automatically analyzes and optimizes memory pool when near capacity.
-    Uses scoring algorithm based on age, relevance, and usage frequency.
-    Implements safe optimization actions: compress, archive, or delete.
-    """
-    
-    # Default configuration
-    DEFAULT_MAX_MEMORY = 50
+    def __init__(self, agent=None):
+        """
+        初始化记忆优化器技能
+        
+        Args:
+            agent: Agent实例，用于访问记忆管理和日志系统
+        """
+        self.agent = agent
+        self.memory_manager = MemoryManager()
+        
+        # 配置参数
+        self.memory_capacity_limit = 50  # 记忆池上限
+        self.optimization_threshold = 0.8  # 触发阈值（80%容量）
