@@ -2,127 +2,143 @@ import json
 import os
 import uuid
 from datetime import datetime
-from typing import Dict, List, Optional, Any
-from pathlib import Path
-
+from typing import Dict, List, Any, Optional
 
 class ExperimentManager:
-    def __init__(self, base_path: str = "experiments"):
-        self.base_path = Path(base_path)
-        self.base_path.mkdir(parents=True, exist_ok=True)
+    """
+    实验管理插件，用于系统化地进行‘大胆尝试，高探索’的激进策略。
+    管理一个实验目录，每个实验代表一种新的方法、工具用法或问题解决路径。
+    """
 
-    def _get_experiment_path(self, experiment_id: str) -> Path:
-        return self.base_path / experiment_id
+    def __init__(self, base_dir: str = "experiments"):
+        """
+        初始化实验管理器。
+        
+        Args:
+            base_dir: 实验存储的基础目录路径，默认为 "experiments"
+        """
+        self.base_dir = base_dir
+        os.makedirs(self.base_dir, exist_ok=True)
 
-    def create_experiment(self, name: str, hypothesis: str, variables: dict, metrics: List[str]) -> str:
+    def create_experiment(self, name: str, hypothesis: str, variables: Dict[str, Any], metrics: List[str]) -> str:
+        """
+        创建一个新的实验。
+        
+        Args:
+            name: 实验名称
+            hypothesis: 实验假设
+            variables: 实验变量字典
+            metrics: 评估指标列表
+            
+        Returns:
+            实验ID
+        """
         experiment_id = str(uuid.uuid4())
-        experiment_dir = self._get_experiment_path(experiment_id)
-        experiment_dir.mkdir(parents=True, exist_ok=True)
-
-        experiment_data = {
+        experiment_dir = os.path.join(self.base_dir, experiment_id)
+        os.makedirs(experiment_dir, exist_ok=True)
+        
+        # 创建实验配置文件
+        experiment_config = {
             "id": experiment_id,
             "name": name,
             "hypothesis": hypothesis,
             "variables": variables,
             "metrics": metrics,
-            "status": "active",
+            "status": "in_progress",
             "created_at": datetime.now().isoformat(),
-            "concluded_at": None,
-            "outcome_summary": None,
-            "steps": [],
-            "results": {}
+            "updated_at": datetime.now().isoformat()
         }
-
-        with open(experiment_dir / "experiment.json", "w", encoding="utf-8") as f:
-            json.dump(experiment_data, f, indent=2, ensure_ascii=False)
-
-        with open(experiment_dir / "steps.log", "w", encoding="utf-8") as f:
-            f.write("")
-
+        
+        with open(os.path.join(experiment_dir, "experiment.json"), "w") as f:
+            json.dump(experiment_config, f, indent=2)
+        
+        # 创建步骤日志文件
+        with open(os.path.join(experiment_dir, "steps.json"), "w") as f:
+            json.dump([], f)
+        
         return experiment_id
 
-    def log_step(self, experiment_id: str, step_description: str, data: dict) -> None:
-        experiment_dir = self._get_experiment_path(experiment_id)
-        if not experiment_dir.exists():
-            raise FileNotFoundError(f"Experiment {experiment_id} not found")
-
+    def log_step(self, experiment_id: str, step_description: str, data: Dict[str, Any]) -> None:
+        """
+        记录实验步骤。
+        
+        Args:
+            experiment_id: 实验ID
+            step_description: 步骤描述
+            data: 步骤相关数据
+        """
+        experiment_dir = os.path.join(self.base_dir, experiment_id)
+        steps_file = os.path.join(experiment_dir, "steps.json")
+        
+        # 读取现有步骤
+        with open(steps_file, "r") as f:
+            steps = json.load(f)
+        
+        # 添加新步骤
         step = {
             "timestamp": datetime.now().isoformat(),
             "description": step_description,
             "data": data
         }
-
-        with open(experiment_dir / "experiment.json", "r+", encoding="utf-8") as f:
-            experiment_data = json.load(f)
-            experiment_data["steps"].append(step)
-            f.seek(0)
-            json.dump(experiment_data, f, indent=2, ensure_ascii=False)
-            f.truncate()
-
-        with open(experiment_dir / "steps.log", "a", encoding="utf-8") as f:
-            f.write(f"[{step['timestamp']}] {step_description}\n")
-            f.write(f"Data: {json.dumps(data, ensure_ascii=False)}\n\n")
-
-    def conclude_experiment(self, experiment_id: str, outcome_summary: str) -> dict:
-        experiment_dir = self._get_experiment_path(experiment_id)
-        if not experiment_dir.exists():
-            raise FileNotFoundError(f"Experiment {experiment_id} not found")
-
-        with open(experiment_dir / "experiment.json", "r+", encoding="utf-8") as f:
-            experiment_data = json.load(f)
-            experiment_data["status"] = "concluded"
-            experiment_data["concluded_at"] = datetime.now().isoformat()
-            experiment_data["outcome_summary"] = outcome_summary
-
-            success_metrics = self._calculate_success_metrics(experiment_data)
-            experiment_data["results"] = {
-                "success_metrics": success_metrics,
-                "learning_points": self._extract_learning_points(experiment_data)
-            }
-
-            f.seek(0)
-            json.dump(experiment_data, f, indent=2, ensure_ascii=False)
-            f.truncate()
-
-        return experiment_data
-
-    def suggest_new_skill_from_experiment(self, experiment_id: str) -> dict:
-        experiment_dir = self._get_experiment_path(experiment_id)
-        if not experiment_dir.exists():
-            raise FileNotFoundError(f"Experiment {experiment_id} not found")
-
-        with open(experiment_dir / "experiment.json", "r", encoding="utf-8") as f:
-            experiment_data = json.load(f)
-
-        if experiment_data["status"] != "concluded":
-            return {"error": "Experiment not concluded"}
-
-        success_score = self._calculate_success_score(experiment_data)
+        steps.append(step)
         
-        if success_score >= 0.7:
-            return {
-                "suggested": True,
-                "skill_definition": {
-                    "name": f"skill_from_{experiment_data['name']}_{experiment_id[:8]}",
-                    "description": f"Skill derived from successful experiment: {experiment_data['hypothesis']}",
-                    "approach": experiment_data["variables"],
-                    "expected_outcomes": experiment_data["metrics"],
-                    "source_experiment": experiment_id,
-                    "success_score": success_score,
-                    "implementation_guide": f"Use the methodology from experiment {experiment_id} as described in {experiment_dir}/steps.log"
-                }
-            }
-        else:
-            return {
-                "suggested": False,
-                "reason": f"Experiment had low success score: {success_score}",
-                "learning_points": experiment_data["results"].get("learning_points", [])
-            }
+        # 更新步骤文件
+        with open(steps_file, "w") as f:
+            json.dump(steps, f, indent=2)
+        
+        # 更新实验配置文件的更新时间
+        config_file = os.path.join(experiment_dir, "experiment.json")
+        with open(config_file, "r") as f:
+            config = json.load(f)
+        config["updated_at"] = datetime.now().isoformat()
+        with open(config_file, "w") as f:
+            json.dump(config, f, indent=2)
 
-    def get_experiment(self, experiment_id: str) -> Optional[dict]:
-        experiment_dir = self._get_experiment_path(experiment_id)
-        if not experiment_dir.exists():
-            return None
+    def conclude_experiment(self, experiment_id: str, outcome_summary: str) -> None:
+        """
+        总结实验。
+        
+        Args:
+            experiment_id: 实验ID
+            outcome_summary: 实验结果摘要
+        """
+        experiment_dir = os.path.join(self.base_dir, experiment_id)
+        config_file = os.path.join(experiment_dir, "experiment.json")
+        
+        # 读取实验配置
+        with open(config_file, "r") as f:
+            config = json.load(f)
+        
+        # 更新状态和结局信息
+        config["status"] = "completed"
+        config["outcome_summary"] = outcome_summary
+        config["completed_at"] = datetime.now().isoformat()
+        config["updated_at"] = datetime.now().isoformat()
+        
+        # 保存更新后的配置
+        with open(config_file, "w") as f:
+            json.dump(config, f, indent=2)
+        
+        # 创建结论文件
+        conclusion = {
+            "experiment_id": experiment_id,
+            "outcome_summary": outcome_summary,
+            "concluded_at": datetime.now().isoformat()
+        }
+        with open(os.path.join(experiment_dir, "conclusion.json"), "w") as f:
+            json.dump(conclusion, f, indent=2)
 
-        with open(experiment_dir / "experiment.json", "r", encoding="utf-8") as f:
-            return json.load(f)
+    def suggest_new_skill_from_experiment(self, experiment_id: str) -> Optional[Dict[str, Any]]:
+        """
+        分析成功实验，输出可能的新技能定义。
+        
+        Args:
+            experiment_id: 实验ID
+            
+        Returns:
+            如果实验成功，返回新技能定义字典；否则返回None
+        """
+        experiment_dir = os.path.join(self.base_dir, experiment_id)
+        config_file = os.path.join(experiment_dir, "experiment.json")
+        
+        # 读取实验配置
