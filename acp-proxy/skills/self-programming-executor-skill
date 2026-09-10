@@ -1,123 +1,232 @@
-# File: acp-proxy/skills/self-programming-executor-skill/__init__.py
-from .self_programming_executor_skill import SelfProgrammingExecutorSkill
-
-__all__ = ["SelfProgrammingExecutorSkill"]
-```
-
-```python
-# File: acp-proxy/skills/self-programming-executor-skill/self_programming_executor_skill.py
-import ast
-import subprocess
-import tempfile
 import os
+import sys
 import json
 import time
-import logging
 import hashlib
-from typing import Dict, List, Tuple, Optional, Any
+import subprocess
+import tempfile
+import shutil
+import re
 from datetime import datetime
-from dataclasses import dataclass
+from typing import Dict, List, Optional, Tuple, Any, Union
+from dataclasses import dataclass, asdict
 from enum import Enum
-import git
+from pathlib import Path
+from contextlib import contextmanager
+import ast
 import psutil
-import resource
+import git
+from git import Repo, GitCommandError
+import logging
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-class ImprovementTarget(Enum):
+
+class GoalType(Enum):
     SKILL_ENHANCEMENT = "skill_enhancement"
     PLUGIN_OPTIMIZATION = "plugin_optimization"
     TOOL_CREATION = "tool_creation"
 
-@dataclass
-class ImprovementTask:
-    target_type: ImprovementTarget
-    description: str
-    requirements: List[str]
-    constraints: List[str]
 
-class RiskAssessment:
-    def __init__(self):
-        self.risk_factors = {
-            "system_calls": self._check_system_calls,
-            "performance": self._check_performance_impact,
-            "compatibility": self._check_compatibility,
-            "resource_usage": self._check_resource_usage
+@dataclass
+class CodeImprovementTarget:
+    goal_type: GoalType
+    description: str
+    target_files: List[str]
+    constraints: Dict[str, Any]
+    priority: int = 1
+    created_at: str = None
+
+    def __post_init__(self):
+        if self.created_at is None:
+            self.created_at = datetime.now().isoformat()
+
+
+@dataclass
+class CodeModification:
+    id: str
+    target: CodeImprovementTarget
+    original_code: str
+    modified_code: str
+    explanation: str
+    risk_score: float = 0.0
+    test_results: Optional[Dict] = None
+    timestamp: str = None
+    status: str = "pending"
+
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.now().isoformat()
+
+
+@dataclass
+class ExecutionResult:
+    success: bool
+    output: str
+    error: Optional[str]
+    execution_time: float
+    memory_usage: float
+    cpu_usage: float
+    exit_code: int
+
+
+class SandboxEnvironment:
+    """安全沙箱环境，支持Python代码的测试执行"""
+
+    def __init__(self, timeout: int = 30, max_memory_mb: int = 512):
+        self.timeout = timeout
+        self.max_memory_mb = max_memory_mb
+        self.temp_dir = tempfile.mkdtemp(prefix="sandbox_")
+        self.sandbox_config = {
+            "allowed_modules": [
+                "json", "math", "datetime", "re", "os.path",
+                "pathlib", "collections", "itertools", "functools",
+                "typing", "abc", "copy", "pickle", "base64",
+                "hashlib", "hmac", "secrets", "statistics", "random",
+                "decimal", "fractions", "cmath", "operator", "string",
+                "textwrap", "unicodedata", "struct", "codecs", "io"
+            ],
+            "blocked_modules": [
+                "subprocess", "shutil", "sys", "os", "socket",
+                "http", "urllib", "requests", "multiprocessing",
+                "threading", "ctypes", "importlib", "code", "compile",
+                "eval", "exec", "globals", "locals", "vars", "dir",
+                "hasattr", "getattr", "setattr", "delattr", "classmethod",
+                "staticmethod", "property", "super", "object", "type"
+            ],
+            "blocked_functions": [
+                "open", "file", "execfile", "compile", "eval",
+                "exec", "__import__", "globals", "locals", "vars",
+                "dir", "hasattr", "getattr", "setattr", "delattr"
+            ]
         }
-    
-    def _check_system_calls(self, code: str) -> Tuple[float, str]:
-        """Check for risky system calls"""
-        risky_patterns = [
-            "os.system", "subprocess.call", "exec(", "eval(",
-            "__import__", "open(", "socket.", "ctypes."
-        ]
+
+    def __del__(self):
+        """清理临时目录"""
+        try:
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
+        except:
+            pass
+
+    def _create_restricted_script(self, code: str) -> str:
+        """创建受限的执行脚本"""
+        restricted_script = f"""
+import sys
+import os
+import time
+import psutil
+import resource
+
+# Set resource limits
+resource.setrlimit(resource.RLIMIT_AS, ({self.max_memory_mb} * 1024 * 1024, -1))
+resource.setrlimit(resource.RLIMIT_CPU, ({self.timeout}, {self.timeout + 5}))
+
+# Remove dangerous modules
+dangerous_modules = {self.sandbox_config['blocked_modules']}
+for module in dangerous_modules:
+    if module in sys.modules:
+        del sys.modules[module]
+        sys.modules[module] = None
+
+# Override dangerous functions
+original_open = builtins.open if hasattr(builtins, 'open') else None
+def safe_open(*args, **kwargs):
+    raise PermissionError("File operations not allowed in sandbox")
+builtins.open = safe_open
+
+# Execute the code in restricted environment
+try:
+    exec('''{code.replace("'", "\\'").replace("\\", "\\\\")}''')
+except Exception as e:
+    print(f"Error: {{type(e).__name__}}: {{e}}")
+    raise
+"""
+        return restricted_script
+
+    def execute_in_sandbox(self, code: str) -> ExecutionResult:
+        """在沙箱环境中执行代码"""
+        start_time = time.time()
+        start_memory = psutil.Process().memory_info().rss / 1024 / 1024
         
-        risk_score = 0.0
-        risk_details = []
+        # Create temporary script
+        script_path = os.path.join(self.temp_dir, f"script_{hashlib.md5(code.encode()).hexdigest()}.py")
+        restricted_code = self._create_restricted_script(code)
         
-        for pattern in risky_patterns:
-            if pattern in code:
-                risk_score += 0.3
-                risk_details.append(f"Risky pattern detected: {pattern}")
+        try:
+            with open(script_path, 'w') as f:
+                f.write(restricted_code)
+            
+            # Execute with resource limits
+            process = subprocess.Popen(
+                [sys.executable, script_path],
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                cwd=self.temp_dir,
+                env={},
+                preexec_fn=os.setsid
+            )
+            
+            try:
+                stdout, stderr = process.communicate(timeout=self.timeout)
+                execution_time = time.time() - start_time
+                end_memory = psutil.Process().memory_info().rss / 1024 / 1024
+                cpu_usage = psutil.cpu_percent(interval=0.1)
+                
+                return ExecutionResult(
+                    success=process.returncode == 0,
+                    output=stdout.decode('utf-8', errors='replace'),
+                    error=stderr.decode('utf-8', errors='replace') if process.returncode != 0 else None,
+                    execution_time=execution_time,
+                    memory_usage=end_memory - start_memory,
+                    cpu_usage=cpu_usage,
+                    exit_code=process.returncode
+                )
+                
+            except subprocess.TimeoutExpired:
+                # Terminate process and its children
+                os.killpg(os.getpgid(process.pid), signal.SIGTERM)
+                process.kill()
+                process.wait()
+                
+                return ExecutionResult(
+                    success=False,
+                    output="",
+                    error=f"Execution timed out after {self.timeout} seconds",
+                    execution_time=self.timeout,
+                    memory_usage=0,
+                    cpu_usage=0,
+                    exit_code=-1
+                )
+                
+        except Exception as e:
+            return ExecutionResult(
+                success=False,
+                output="",
+                error=str(e),
+                execution_time=time.time() - start_time,
+                memory_usage=0,
+                cpu_usage=0,
+                exit_code=-1
+            )
+        finally:
+            # Cleanup
+            if os.path.exists(script_path):
+                os.remove(script_path)
+
+    def validate_code_structure(self, code: str) -> Tuple[bool, List[str]]:
+        """验证代码结构和语法"""
+        issues = []
         
-        return min(risk_score, 1.0), "; ".join(risk_details)
-    
-    def _check_performance_impact(self, code: str) -> Tuple[float, str]:
-        """Estimate performance impact"""
-        performance_risks = [
-            "while True", "for i in range(1000000)", "time.sleep(",
-            "while 1:", "for _ in range(10**6)"
-        ]
-        
-        risk_score = 0.0
-        details = []
-        
-        for pattern in performance_risks:
-            if pattern in code:
-                risk_score += 0.2
-                details.append(f"Performance risk: {pattern}")
-        
-        return min(risk_score, 1.0), "; ".join(details)
-    
-    def _check_compatibility(self, code: str) -> Tuple[float, str]:
-        """Check Python version compatibility"""
-        python38_incompatible = [
-            "match ", "case ", "-> str:", "-> int:",
-            "walrus_operator := ", "f\"\"\""
-        ]
-        
-        risk_score = 0.0
-        details = []
-        
-        for pattern in python38_incompatible:
-            if pattern in code:
-                risk_score += 0.4
-                details.append(f"Python 3.8 incompatibility: {pattern}")
-        
-        return min(risk_score, 1.0), "; ".join(details)
-    
-    def _check_resource_usage(self, code: str) -> Tuple[float, str]:
-        """Check for excessive resource usage patterns"""
-        resource_patterns = [
-            "requests.get(", "urllib.request.urlopen(",
-            "sqlite3.connect(", "threading.Thread(",
-            "multiprocessing.Process("
-        ]
-        
-        risk_score = 0.0
-        details = []
-        
-        for pattern in resource_patterns:
-            if pattern in code:
-                risk_score += 0.25
-                details.append(f"Resource usage: {pattern}")
-        
-        return min(risk_score, 1.0), "; ".join(details)
-    
-    def assess(self, code: str) -> Dict[str, Any]:
-        """Perform comprehensive risk assessment"""
-        total_risk = 0.0
-        details = {}
-        
+        try:
+            # Parse AST
+            tree = ast.parse(code)
+            
+            # Check for dangerous patterns
+            dangerous_patterns = [
+                r'import\s+(?:subprocess|shutil|sys|os|socket|http|urllib|requests|multiprocessing|threading)',
+                r'from\s+(?:subprocess|shutil|sys|os|socket|http|urllib|requests|multiprocessing|threading)\s+import',
