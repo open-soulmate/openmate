@@ -1,170 +1,188 @@
-'use strict';
-
 const vm = require('vm');
+const fs = require('fs');
 const path = require('path');
 
-// 模拟日志记录器
-class PluginLogger {
+class AutonomousExecutorPlugin {
   constructor() {
     this.logs = [];
+    this.sandbox = this.createSandbox();
   }
 
-  log(taskDescription, status, details) {
-    const timestamp = new Date().toISOString();
+  createSandbox() {
+    const mockFileSystem = {};
+    
+    return {
+      console: {
+        log: (msg) => this.addLog('sandbox', `Console: ${msg}`)
+      },
+      JSON: JSON,
+      fs: {
+        readFile: (filePath) => {
+          return mockFileSystem[filePath] || null;
+        },
+        writeFile: (filePath, content) => {
+          mockFileSystem[filePath] = content;
+          return true;
+        },
+        existsSync: (filePath) => {
+          return !!mockFileSystem[filePath];
+        }
+      },
+      require: (module) => {
+        if (module === 'path') return path;
+        if (module === 'fs') return this.sandbox.fs;
+        throw new Error(`Module ${module} not allowed in sandbox`);
+      },
+      path: path,
+      setTimeout: (fn, delay) => setTimeout(fn, delay),
+      clearTimeout: (id) => clearTimeout(id),
+      setInterval: (fn, interval) => setInterval(fn, interval),
+      clearInterval: (id) => clearInterval(id),
+      Math: Math,
+      Date: Date,
+      String: String,
+      Number: Number,
+      Boolean: Boolean,
+      Array: Array,
+      Object: Object,
+      RegExp: RegExp,
+      Error: Error,
+      TypeError: TypeError,
+      RangeError: RangeError,
+      SyntaxError: SyntaxError,
+      ReferenceError: ReferenceError,
+      mockFileSystem: mockFileSystem
+    };
+  }
+
+  addLog(category, message, details = {}) {
     const logEntry = {
-      timestamp,
-      task_description: taskDescription,
-      status,
-      details
+      timestamp: new Date().toISOString(),
+      task_description: details.description || 'N/A',
+      status: details.status || 'info',
+      details: {
+        category,
+        message,
+        ...details
+      }
     };
     this.logs.push(logEntry);
-    console.log(`[Autonomous Executor] ${timestamp} - ${taskDescription} - ${status}: ${details}`);
+    console.log(`[${category.toUpperCase()}] ${message}`);
     return logEntry;
   }
 
-  getLogs() {
-    return this.logs;
-  }
-}
+  assessTaskComplexity(description, requirements) {
+    const lowRiskKeywords = [
+      '修改', '更新', '添加一个', '配置文件', '常量', '日志',
+      '调整', '更改', '设置', '文本', '字符串', '值',
+      '版本号', '注释', '空格', '换行', '缩进'
+    ];
+    
+    const complexKeywords = [
+      '架构', '重构', '算法', '数据库', '模式', '并发',
+      '多线程', '网络', '安全', '加密', '认证', '权限',
+      '性能优化', '缓存', '分布式', '微服务', 'API', '系统'
+    ];
 
-// 简单任务评估器
-function evaluateTask(proposal) {
-  const keywords = ['修改', '更新', '添加一个', '配置文件', '常量', '日志'];
-  const text = `${proposal.description} ${proposal.requirements}`.toLowerCase();
-  let matchCount = 0;
+    const textToAnalyze = `${description} ${requirements}`.toLowerCase();
+    
+    const hasLowRisk = lowRiskKeywords.some(keyword => 
+      textToAnalyze.includes(keyword.toLowerCase())
+    );
+    
+    const hasComplex = complexKeywords.some(keyword => 
+      textToAnalyze.includes(keyword.toLowerCase())
+    );
 
-  for (const keyword of keywords) {
-    if (text.includes(keyword.toLowerCase())) {
-      matchCount++;
+    if (hasComplex && !hasLowRisk) {
+      return { complexity: 'complex', reason: '包含复杂系统关键词' };
     }
-  }
-
-  // 根据关键词匹配数量判断复杂度，超过2个匹配为低风险
-  return matchCount >= 2 ? 'simple' : 'complex';
-}
-
-// 生成代码修改建议（diff格式）
-function generateDiff(proposal) {
-  // 基于描述和要求模拟生成diff，这里简化为文本diff
-  let diff = `--- Original Code\n+++ Modified Code\n`;
-  diff += `@@ Example Diff Based on Proposal @@\n`;
-
-  // 根据关键词生成示例修改
-  if (proposal.description.includes('配置文件')) {
-    diff += `- oldConfigValue = "default"\n+ newConfigValue = "updated"\n`;
-  } else if (proposal.description.includes('日志')) {
-    diff += `- // No logging\n+ console.log("Added log entry: ", process.env.NODE_ENV);\n`;
-  } else if (proposal.description.includes('常量')) {
-    diff += `- const CONSTANT = "oldValue";\n+ const CONSTANT = "newValue";\n`;
-  } else {
-    diff += `- // Generic placeholder\n+ // Modified based on proposal\n`;
-  }
-
-  return diff;
-}
-
-// 沙箱环境执行修改
-function executeInSandbox(diff) {
-  // 模拟文件系统，使用vm模块创建沙箱上下文
-  const sandbox = {
-    fileSystem: {
-      'config.json': '{"key": "value"}',
-      'script.js': 'console.log("Original script");'
-    },
-    console: console,
-    result: null
-  };
-
-  const context = vm.createContext(sandbox);
-
-  try {
-    // 解析diff并应用修改到模拟文件系统
-    const lines = diff.split('\n');
-    let targetFile = null;
-    const changes = [];
-
-    for (const line of lines) {
-      if (line.startsWith('+')) {
-        changes.push(line.substring(1).trim());
-      } else if (line.startsWith('-')) {
-        // 记录要删除的内容
-      } else if (line.includes('.json') || line.includes('.js')) {
-        targetFile = line.match(/(\w+\.\w+)/)?.[0];
-      }
+    
+    if (hasLowRisk && !hasComplex) {
+      return { complexity: 'low_risk', reason: '包含低风险模式化关键词' };
     }
-
-    if (targetFile && sandbox.fileSystem[targetFile]) {
-      // 应用第一个修改作为示例
-      if (changes.length > 0) {
-        const originalContent = sandbox.fileSystem[targetFile];
-        // 简单替换模拟
-        sandbox.fileSystem[targetFile] = changes[0];
-        sandbox.result = { success: true, modifiedFile: targetFile };
-      }
-    } else {
-      sandbox.result = { success: false, error: 'Target file not found in sandbox' };
+    
+    if (hasLowRisk && hasComplex) {
+      return { complexity: 'moderate', reason: '混合关键词，需要进一步分析' };
     }
-  } catch (error) {
-    sandbox.result = { success: false, error: error.message };
+    
+    return { complexity: 'unknown', reason: '无法确定复杂度，标记为复杂' };
   }
 
-  return sandbox.result;
-}
-
-// 验证修改
-function validateChanges(modificationResult) {
-  if (!modificationResult.success) {
-    return { valid: false, error: modificationResult.error };
-  }
-
-  try {
-    // 模拟基础验证
-    const simulatedContent = modificationResult.modifiedContent || '{}';
-
-    // JSON语法检查
-    if (modificationResult.modifiedFile?.endsWith('.json')) {
-      JSON.parse(simulatedContent);
-    }
-
-    // JavaScript语法检查（简化模拟）
-    if (modificationResult.modifiedFile?.endsWith('.js')) {
-      // 使用vm检查语法
-      new vm.Script(simulatedContent);
-    }
-
-    return { valid: true };
-  } catch (error) {
-    return { valid: false, error: `Validation failed: ${error.message}` };
-  }
-}
-
-// 主插件函数
-module.exports = function autonomousExecutor(proposal) {
-  const logger = new PluginLogger();
-
-  // 验证输入
-  if (!proposal || !proposal.description || !proposal.requirements) {
-    const error = 'Invalid proposal: missing description or requirements';
-    logger.log(proposal?.description || 'Unknown task', 'autonomous_fail', error);
-    return { status: 'autonomous_fail', details: error, logs: logger.getLogs() };
-  }
-
-  // 评估任务复杂度
-  const complexity = evaluateTask(proposal);
-  const taskDescription = proposal.description;
-
-  if (complexity === 'complex') {
-    // 复杂任务，标记为需要partner介入
-    const details = 'Task complexity evaluation: complex. Requires partner execution.';
-    logger.log(taskDescription, 'deferred_to_partner', details);
-    return {
-      status: 'deferred_to_partner',
-      recommendation: 'requires_partner_execution',
-      details,
-      logs: logger.getLogs()
+  generateCodeModification(description, requirements) {
+    // 模拟基于描述生成代码修改建议
+    const mockDiff = {
+      file: this.inferTargetFile(description, requirements),
+      changes: this.inferChanges(description, requirements),
+      reasoning: `基于任务描述 "${description}" 生成的修改建议`
     };
+    
+    return mockDiff;
   }
 
-  // 可自主执行的任务
-  try {
-    // 生成修改建议
+  inferTargetFile(description, requirements) {
+    const text = `${description} ${requirements}`.toLowerCase();
+    
+    if (text.includes('配置') || text.includes('config')) {
+      return 'config.json';
+    }
+    if (text.includes('日志') || text.includes('log')) {
+      return 'logger.js';
+    }
+    if (text.includes('常量') || text.includes('constant')) {
+      return 'constants.js';
+    }
+    if (text.includes('样式') || text.includes('css')) {
+      return 'styles.css';
+    }
+    
+    return 'unknown_file.txt';
+  }
+
+  inferChanges(description, requirements) {
+    const text = `${description} ${requirements}`.toLowerCase();
+    
+    if (text.includes('版本') || text.includes('version')) {
+      return [{
+        type: 'update',
+        old: '"version": "1.0.0"',
+        new: '"version": "1.1.0"'
+      }];
+    }
+    
+    if (text.includes('日志') && text.includes('添加')) {
+      return [{
+        type: 'add',
+        content: 'console.log("添加的日志输出");',
+        line: 10
+      }];
+    }
+    
+    if (text.includes('常量') && text.includes('修改')) {
+      return [{
+        type: 'update',
+        old: 'MAX_RETRIES = 3',
+        new: 'MAX_RETRIES = 5'
+      }];
+    }
+    
+    return [{
+      type: 'modify',
+      description: '根据描述进行通用修改',
+      suggestion: '需要根据具体需求细化修改内容'
+    }];
+  }
+
+  validateModification(diff, fileContent) {
+    const validationResults = [];
+    
+    try {
+      // 1. 检查文件路径是否有效
+      if (!diff.file || diff.file === 'unknown_file.txt') {
+        validationResults.push({
+          check: 'file_path',
+          passed: false,
+          message: '无法确定目标文件路径'
+        });
+      } else {
+        validationResults.push({
