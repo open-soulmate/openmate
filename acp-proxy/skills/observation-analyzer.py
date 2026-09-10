@@ -2,167 +2,192 @@ import json
 import time
 import threading
 from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Any, Optional
 from collections import defaultdict
 import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.feature_extraction.text import TfidfVectorizer
 
-# 假设的知识库接口
-class KnowledgeBase:
-    def __init__(self):
-        self.observations = []
-        self.patterns = []
-        self.reports = []
-    
-    def add_observation(self, observation: Dict[str, Any]):
-        self.observations.append(observation)
-    
-    def add_pattern(self, pattern: Dict[str, Any]):
-        self.patterns.append(pattern)
-    
-    def add_report(self, report: Dict[str, Any]):
-        self.reports.append(report)
-    
-    def get_historical_observations(self) -> List[Dict[str, Any]]:
-        return self.observations
-    
-    def get_patterns(self) -> List[Dict[str, Any]]:
-        return self.patterns
-
-@dataclass
-class Observation:
-    id: str
-    description: str
-    urgency: float  # 0-10
-    impact_range: float  # 0-10
-    difficulty: float  # 0-10
-    resource_consumption: float  # 0-10
-    timestamp: datetime
-    status: str = "unanalyzed"
-    
-    def to_dict(self):
-        return asdict(self)
-
 class PriorityScorer:
-    """优先级评分算法"""
-    WEIGHTS = {
-        'urgency': 0.4,
-        'impact_range': 0.3,
-        'difficulty': 0.2,
-        'resource_consumption': 0.1
-    }
+    """基于加权评分算法的观察优先级评估器"""
     
-    @classmethod
-    def calculate_priority(cls, observation: Observation) -> float:
+    def __init__(self):
+        # 权重配置：紧急度0.4，影响范围0.3，解决难度0.2，资源消耗0.1
+        self.weights = {
+            'urgency': 0.4,
+            'impact': 0.3,
+            'difficulty': 0.2,
+            'resource': 0.1
+        }
+    
+    def calculate_priority(self, observation: Dict[str, Any]) -> float:
         """计算单个观察的优先级分数"""
-        weighted_score = (
-            observation.urgency * cls.WEIGHTS['urgency'] +
-            observation.impact_range * cls.WEIGHTS['impact_range'] +
-            observation.difficulty * cls.WEIGHTS['difficulty'] +
-            observation.resource_consumption * cls.WEIGHTS['resource_consumption']
+        score = 0.0
+        
+        # 计算各维度得分（标准化到0-1范围）
+        urgency_score = min(observation.get('urgency', 0) / 10.0, 1.0)
+        impact_score = min(observation.get('impact', 0) / 10.0, 1.0)
+        difficulty_score = 1.0 - min(observation.get('difficulty', 0) / 10.0, 1.0)  # 难度越低分数越高
+        resource_score = 1.0 - min(observation.get('resource_consumption', 0) / 10.0, 1.0)  # 资源消耗越低分数越高
+        
+        # 加权求和
+        score = (
+            self.weights['urgency'] * urgency_score +
+            self.weights['impact'] * impact_score +
+            self.weights['difficulty'] * difficulty_score +
+            self.weights['resource'] * resource_score
         )
         
-        # 考虑时间衰减因子（较新的观察优先级稍高）
-        time_decay = 1.0 / (1.0 + (datetime.now() - observation.timestamp).total_seconds() / 3600)
-        
-        return weighted_score * (1 + time_decay * 0.1)  # 时间权重占10%
+        return round(score, 3)
     
-    @classmethod
-    def prioritize_observations(cls, observations: List[Observation]) -> List[Observation]:
+    def rank_observations(self, observations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """对观察列表进行优先级排序"""
-        return sorted(observations, 
-                     key=lambda obs: cls.calculate_priority(obs),
-                     reverse=True)
+        # 计算每个观察的优先级分数
+        scored_obs = []
+        for obs in observations:
+            obs_copy = obs.copy()
+            obs_copy['priority_score'] = self.calculate_priority(obs)
+            scored_obs.append(obs_copy)
+        
+        # 按分数降序排序
+        ranked = sorted(scored_obs, key=lambda x: x['priority_score'], reverse=True)
+        
+        # 添加排名
+        for i, obs in enumerate(ranked):
+            obs['rank'] = i + 1
+        
+        return ranked
+
 
 class PatternMatcher:
-    """模式识别模块"""
+    """模式识别模块，基于历史观察数据进行聚类分析"""
     
-    def __init__(self, knowledge_base: KnowledgeBase):
-        self.kb = knowledge_base
-        self.vectorizer = TfidfVectorizer(max_features=100)
-        self.clusterer = None
-        
-    def extract_features(self, observations: List[Observation]) -> np.ndarray:
-        """从观察中提取特征用于模式识别"""
-        descriptions = [obs.description for obs in observations]
-        if not descriptions:
-            return np.array([])
-        
-        # 使用TF-IDF提取文本特征
-        try:
-            tfidf_matrix = self.vectorizer.fit_transform(descriptions)
-            return tfidf_matrix.toarray()
-        except:
-            return np.array([])
+    def __init__(self):
+        self.vectorizer = TfidfVectorizer(max_features=1000, stop_words='english')
+        self.kmeans = None
+        self.pattern_labels = {}
+        self.common_patterns = []
     
-    def identify_patterns(self, observations: List[Observation], num_clusters: int = 3) -> List[Dict[str, Any]]:
+    def extract_features(self, observations: List[Dict[str, Any]]) -> np.ndarray:
+        """从观察中提取特征用于聚类"""
+        texts = []
+        for obs in observations:
+            # 组合多个字段作为文本特征
+            text_parts = [
+                obs.get('description', ''),
+                obs.get('category', ''),
+                obs.get('error_type', ''),
+                str(obs.get('components', []))
+            ]
+            texts.append(' '.join(filter(None, text_parts)))
+        
+        # 转换为TF-IDF向量
+        if texts:
+            return self.vectorizer.fit_transform(texts).toarray()
+        return np.array([])
+    
+    def identify_patterns(self, observations: List[Dict[str, Any]], n_clusters: int = 3) -> List[Dict[str, Any]]:
         """识别常见错误模式"""
-        if len(observations) < num_clusters:
+        if len(observations) < n_clusters:
             return []
         
         features = self.extract_features(observations)
-        if len(features) == 0:
+        
+        if features.size == 0:
             return []
         
-        # 使用K-means进行聚类
-        self.clusterer = KMeans(n_clusters=min(num_clusters, len(observations)), random_state=42)
-        clusters = self.clusterer.fit_predict(features)
+        # 执行K-means聚类
+        self.kmeans = KMeans(n_clusters=min(n_clusters, len(observations)), random_state=42, n_init=10)
+        clusters = self.kmeans.fit_predict(features)
         
-        # 为每个聚类生成模式
+        # 分析每个聚类
         patterns = []
-        for cluster_id in range(num_clusters):
-            cluster_observations = [obs for i, obs in enumerate(observations) if clusters[i] == cluster_id]
-            
-            if not cluster_observations:
-                continue
-            
-            # 提取聚类特征
-            common_words = self._extract_common_words(cluster_observations)
-            avg_urgency = np.mean([obs.urgency for obs in cluster_observations])
-            avg_impact = np.mean([obs.impact_range for obs in cluster_observations])
-            
-            pattern = {
-                'pattern_id': f"pattern_{cluster_id}_{int(time.time())}",
-                'cluster_id': cluster_id,
-                'common_issues': common_words[:5],  # 前5个常见问题
-                'average_urgency': float(avg_urgency),
-                'average_impact': float(avg_impact),
-                'observation_count': len(cluster_observations),
-                'example_observations': [obs.id for obs in cluster_observations[:3]],
-                'suggested_solutions': self._generate_solutions(cluster_observations),
-                'timestamp': datetime.now().isoformat()
-            }
-            patterns.append(pattern)
+        cluster_data = defaultdict(list)
+        
+        for idx, cluster_id in enumerate(clusters):
+            cluster_data[cluster_id].append(observations[idx])
+        
+        for cluster_id, cluster_obs in cluster_data.items():
+            if len(cluster_obs) >= 2:  # 至少2个观察才能构成模式
+                pattern = self._analyze_cluster(cluster_obs, cluster_id)
+                patterns.append(pattern)
+                self.common_patterns.append(pattern)
         
         return patterns
     
-    def _extract_common_words(self, observations: List[Observation]) -> List[str]:
-        """提取观察中的常见词汇"""
-        word_freq = defaultdict(int)
-        for obs in observations:
-            words = obs.description.lower().split()
-            for word in words:
-                if len(word) > 3:  # 忽略太短的词
-                    word_freq[word] += 1
+    def _analyze_cluster(self, observations: List[Dict[str, Any]], cluster_id: int) -> Dict[str, Any]:
+        """分析单个聚类，提取模式信息"""
+        # 计算聚类中心
+        texts = [obs.get('description', '') for obs in observations]
+        if texts:
+            cluster_vectors = self.vectorizer.transform(texts).toarray()
+            cluster_center = np.mean(cluster_vectors, axis=0)
         
-        return sorted(word_freq.keys(), key=lambda x: word_freq[x], reverse=True)
+        # 提取共同特征
+        common_categories = self._find_common_elements([obs.get('category', '') for obs in observations])
+        common_errors = self._find_common_elements([obs.get('error_type', '') for obs in observations])
+        
+        # 计算平均特征
+        avg_urgency = np.mean([obs.get('urgency', 0) for obs in observations])
+        avg_impact = np.mean([obs.get('impact', 0) for obs in observations])
+        
+        # 生成解决方案模板
+        solutions = self._generate_solutions_template(observations)
+        
+        return {
+            'pattern_id': f'PATTERN_{cluster_id}_{int(time.time())}',
+            'cluster_id': cluster_id,
+            'frequency': len(observations),
+            'common_categories': common_categories,
+            'common_errors': common_errors,
+            'average_urgency': round(float(avg_urgency), 2),
+            'average_impact': round(float(avg_impact), 2),
+            'solutions': solutions,
+            'example_observations': [obs.get('id') for obs in observations[:3]],
+            'timestamp': datetime.now().isoformat()
+        }
     
-    def _generate_solutions(self, observations: List[Observation]) -> List[str]:
-        """基于历史观察生成解决方案建议"""
-        solutions = []
+    def _find_common_elements(self, items: List[str]) -> List[str]:
+        """找出常见元素"""
+        if not items:
+            return []
         
-        # 检查知识库中是否有类似模式的解决方案
-        historical_patterns = self.kb.get_patterns()
+        # 计算频率
+        counter = defaultdict(int)
+        for item in items:
+            if item:
+                counter[item] += 1
         
-        # 简单匹配：如果有历史模式，提供类似建议
-        if historical_patterns:
-            solutions.append("参考历史模式中的解决方案")
-            solutions.append("检查已知的错误模式库")
+        # 返回出现次数超过一半的元素
+        threshold = len(items) / 2
+        return [item for item, count in counter.items() if count >= threshold]
+    
+    def _generate_solutions_template(self, observations: List[Dict[str, Any]]) -> List[str]:
+        """基于历史观察生成解决方案模板"""
+        solutions = set()
         
-        # 基于常见问题的通用建议
-        common_words = self._extract_common_words(observations)
-        if "timeout" in common_words:
-            solutions.append("增加超时时间设置")
-            solutions.append("检查网络连接")
+        for obs in observations:
+            if 'resolution' in obs:
+                solutions.add(obs['resolution'])
+            if 'suggested_action' in obs:
+                solutions.add(obs['suggested_action'])
+        
+        return list(solutions)[:5]  # 最多返回5个解决方案
+    
+    def get_pattern_suggestions(self, new_observation: Dict[str, Any]) -> List[str]:
+        """基于新模式匹配提供建议"""
+        suggestions = []
+        
+        # 检查是否匹配已知模式
+        for pattern in self.common_patterns:
+            if self._matches_pattern(new_observation, pattern):
+                suggestions.extend(pattern.get('solutions', []))
+        
+        return list(set(suggestions))
+    
+    def _matches_pattern(self, observation: Dict[str, Any], pattern: Dict[str, Any]) -> bool:
+        """检查观察是否匹配特定模式"""
+        # 简单匹配逻辑：类别和错误类型匹配
+        obs_category = observation.get('category', '')
+        obs_error = observation.get('error_type', '')
+        
