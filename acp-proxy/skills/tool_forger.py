@@ -1,193 +1,264 @@
 """
-tool_forger.py
-A skill for dynamically creating new tools based on natural language descriptions.
-It leverages the code_studio skill to generate MCP-compatible tool implementations
-and registers them with the plugin system for runtime availability.
+tool_forger.py - 工具创造技能
+
+该技能用于动态创建符合MCP工具接口标准的工具。
+接收自然语言描述，生成Python代码并注册到插件系统中。
 """
 
-import asyncio
-import importlib
-import json
 import os
-import sys
-import tempfile
-from typing import Any, Dict, Optional, Tuple
+import re
+import json
+import logging
+import importlib.util
+from typing import Dict, Any, Optional, Callable, List
+from datetime import datetime
 
-# Ensure project root is in Python path for proper module resolution
-project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if project_root not in sys.path:
-    sys.path.insert(0, project_root)
-
-from acp_proxy_plugins import PluginManager
-
-# Import code_studio skill for code generation
-from . import code_studio
+logger = logging.getLogger(__name__)
 
 
-class ToolForger:
-    """
-    Implements the 'tool_forger' skill for creating new MCP tools dynamically.
+class ToolForgerSkill:
+    """工具创造技能 - 动态创建和注册MCP工具"""
     
-    This skill:
-    1. Converts natural language tool descriptions into structured coding tasks
-    2. Delegates code generation to the code_studio skill
-    3. Loads and registers the generated tool with the plugin system
-    4. Returns registration status and usage examples
-    """
-    
-    def __init__(self, plugin_manager: Optional[PluginManager] = None):
-        """
-        Initialize the tool_forger skill.
-        
-        Args:
-            plugin_manager: Optional plugin manager instance. If None, creates a new one.
-        """
-        self.plugin_manager = plugin_manager or PluginManager()
-        self.temp_dir = tempfile.mkdtemp(prefix="tool_forger_")
-        
-    async def create_tool(self, tool_description: str) -> Dict[str, Any]:
-        """
-        Main entry point for creating a new tool from a natural language description.
-        
-        Args:
-            tool_description: Natural language description of the tool to create
-                Example: "Create a tool that queries today's weather"
-                
-        Returns:
-            Dictionary containing:
-                - status: "success" or "error"
-                - tool_name: Name of the created tool
-                - tool_description: Generated tool description
-                - usage_example: Example of how to call the tool
-                - file_path: Path to the generated code file
-                - error: Error message if status is "error"
-        """
-        try:
-            # Step 1: Create structured task description for code_studio
-            task_description = self._create_task_description(tool_description)
-            
-            # Step 2: Delegate to code_studio for code generation
-            code_studio_result = await self._generate_code_with_code_studio(task_description)
-            
-            if code_studio_result.get("status") != "success":
-                return {
-                    "status": "error",
-                    "error": f"Code generation failed: {code_studio_result.get('error', 'Unknown error')}"
-                }
-            
-            # Step 3: Load and register the generated tool
-            tool_path = code_studio_result.get("file_path")
-            if not tool_path:
-                return {
-                    "status": "error",
-                    "error": "Code generation succeeded but no file path returned"
-                }
-                
-            registration_result = await self._register_generated_tool(tool_path)
-            
-            if registration_result.get("status") != "success":
-                return {
-                    "status": "error",
-                    "error": f"Tool registration failed: {registration_result.get('error', 'Unknown error')}"
-                }
-            
-            # Step 4: Return success result
-            return {
-                "status": "success",
-                "tool_name": registration_result.get("tool_name"),
-                "tool_description": registration_result.get("tool_description"),
-                "usage_example": registration_result.get("usage_example"),
-                "file_path": tool_path
+    def __init__(self, name: str = "tool_forger", description: str = None):
+        self.name = name
+        self.description = description or "用于动态创建符合MCP接口标准的工具，实现能力的动态扩展"
+        self.parameters = {
+            "tool_description": {
+                "type": "string",
+                "description": "对要创建工具的自然语言描述，例如：'创建一个工具，用于查询今天的天气'"
             }
-            
-        except Exception as e:
-            return {
-                "status": "error",
-                "error": f"Unexpected error in tool creation: {str(e)}"
-            }
+        }
+        
+        # 工具注册表 - 存储动态创建的工具
+        self.tool_registry: Dict[str, Dict[str, Any]] = {}
+        
+        # 依赖的技能
+        self._code_studio = None
+        self._plugins_manager = None
+        
+        # 生成代码的输出目录
+        self.output_dir = os.path.join(os.path.dirname(__file__), "..", "generated_tools")
+        os.makedirs(self.output_dir, exist_ok=True)
     
-    def _create_task_description(self, tool_description: str) -> str:
+    def set_dependencies(self, code_studio_skill=None, plugins_manager=None):
+        """设置依赖的技能和管理器"""
+        self._code_studio = code_studio_skill
+        self._plugins_manager = plugins_manager
+    
+    def _build_task_description(self, tool_description: str) -> str:
         """
-        Convert natural language tool description into a structured task description
-        for the code_studio skill.
+        将自然语言工具描述转换为结构化的任务描述
         
         Args:
-            tool_description: Natural language description from user
+            tool_description: 用户提供的工具描述
             
         Returns:
-            Structured task description for code_studio
+            结构化的任务描述，供code_studio使用
         """
-        # Extract potential tool name from description
-        tool_name = self._extract_tool_name(tool_description)
+        # 清理输入描述
+        clean_desc = tool_description.strip()
+        if clean_desc.startswith("创建一个工具") or clean_desc.startswith("创建一个"):
+            # 提取核心功能描述
+            if "，" in clean_desc:
+                function_desc = clean_desc.split("，", 1)[1].strip()
+            elif "，" in clean_desc:
+                function_desc = clean_desc.split("，", 1)[1].strip()
+            else:
+                function_desc = clean_desc
+        else:
+            function_desc = clean_desc
         
-        return f"""
-Create a new MCP tool based on the following description:
+        task_description = f"""
+请创建一个符合MCP工具接口标准的Python函数，功能是：{function_desc}
 
-TOOL DESCRIPTION:
-{tool_description}
+要求：
+1. 使用 `@mcp.tool()` 装饰器
+2. 函数必须包含以下元数据：
+   - name: 工具的唯一标识名称（英文小写下划线命名）
+   - description: 工具功能的清晰描述
+   - parameters: 工具接受的参数定义（JSON Schema格式）
+3. 函数实现必须：
+   - 正确处理输入参数
+   - 包含适当的错误处理
+   - 返回有意义的结果
+4. 如果需要外部API或服务，请使用标准的requests库或模拟数据
+5. 文件必须可独立执行，包含必要的导入语句
 
-REQUIREMENTS:
-1. Tool Name: {tool_name}
-2. Implementation must be a Python function decorated with @mcp.tool()
-3. The function must have these attributes:
-   - name: '{tool_name}'
-   - description: Clear description of what the tool does
-   - parameters: JSON schema defining input parameters
-4. The function should:
-   - Accept input parameters matching the schema
-   - Process the inputs appropriately
-   - Return a meaningful result
-   - Handle errors gracefully with appropriate error messages
-
-EXAMPLE STRUCTURE:
+示例格式：
 ```python
-from mcp import mcp
+from typing import Any, Dict, Optional
 
 @mcp.tool(
-    name="{tool_name}",
-    description="Description of what this tool does",
+    name="tool_name",
+    description="工具功能描述",
     parameters={{
-        "type": "object",
-        "properties": {{
-            "param1": {{"type": "string", "description": "Description of param1"}},
-            "param2": {{"type": "integer", "description": "Description of param2"}}
-        }},
-        "required": ["param1"]
+        "param1": {{
+            "type": "string",
+            "description": "参数描述",
+            "required": True
+        }}
     }}
 )
-async def {tool_name}(param1: str, param2: int = 0) -> str:
-    \"\"\"
-    Implementation of the tool functionality.
-    
-    Args:
-        param1: Description of param1
-        param2: Description of param2 (default: 0)
-    
-    Returns:
-        Result string from the tool execution
-    \"\"\"
-    try:
-        # Implementation logic here
-        result = f"Processed: {{param1}} with value {{param2}}"
-        return result
-    except Exception as e:
-        return f"Error executing {tool_name}: {{str(e)}}"
+async def tool_function(param1: str, param2: Optional[int] = None) -> Dict[str, Any]:
+    # 实现逻辑
+    return {{"result": "..."}}
 ```
 
-Save the implementation to a Python file that can be dynamically loaded.
+请生成完整的、可直接使用的代码文件。
 """
+        return task_description.strip()
     
-    def _extract_tool_name(self, tool_description: str) -> str:
+    def _generate_fallback_code(self, tool_description: str) -> str:
         """
-        Extract a reasonable tool name from the natural language description.
+        生成备用代码（当code_studio不可用时）
         
         Args:
-            tool_description: Natural language description
+            tool_description: 工具描述
             
         Returns:
-            Extracted tool name (snake_case)
+            生成的Python代码
         """
-        # Simple extraction: take first few words, convert to snake_case
-        words = tool_description.lower().split()
+        # 从描述中提取工具名称
+        name_match = re.search(r'(查询|获取|创建|计算|生成|检查)(.*?)(的|信息|数据|结果|$)', tool_description)
+        if name_match:
+            tool_name = f"{name_match.group(1)}_{name_match.group(2)}".replace(" ", "_")
+        else:
+            tool_name = f"custom_tool_{datetime.now().strftime('%Y%m%d%H%M%S')}"
         
-        # Remove common prefix words
+        tool_name = re.sub(r'[^a-zA-Z0-9_]', '_', tool_name).lower()
+        tool_name = re.sub(r'_+', '_', tool_name).strip('_')
+        
+        code = f'''"""
+自动生成的MCP工具: {tool_name}
+创建时间: {datetime.now().isoformat()}
+功能描述: {tool_description}
+"""
+
+from typing import Any, Dict, Optional, List
+import json
+from datetime import datetime
+
+
+# MCP工具装饰器（兼容模式）
+def mcp_tool(name: str, description: str, parameters: Dict = None):
+    def decorator(func):
+        func._mcp_tool = True
+        func._mcp_name = name
+        func._mcp_description = description
+        func._mcp_parameters = parameters or {{}}
+        return func
+    return decorator
+
+
+@mcp_tool(
+    name="{tool_name}",
+    description="{tool_description}",
+    parameters={{
+        "query": {{
+            "type": "string",
+            "description": "查询内容或输入参数",
+            "required": True
+        }},
+        "options": {{
+            "type": "object",
+            "description": "可选配置项",
+            "required": False
+        }}
+    }}
+)
+async def {tool_name}(query: str, options: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+    """
+    {tool_description}
+    
+    Args:
+        query: 查询内容或输入参数
+        options: 可选配置项
+        
+    Returns:
+        包含结果的字典
+    """
+    try:
+        # 默认实现 - 返回模拟结果
+        result = {{
+            "status": "success",
+            "tool": "{tool_name}",
+            "query": query,
+            "result": f"{{query}}的处理结果",
+            "timestamp": datetime.now().isoformat(),
+            "options": options or {{}}
+        }}
+        
+        return result
+        
+    except Exception as e:
+        return {{
+            "status": "error",
+            "tool": "{tool_name}",
+            "error": str(e),
+            "timestamp": datetime.now().isoformat()
+        }}
+
+
+# 工具信息导出
+TOOL_INFO = {{
+    "name": "{tool_name}",
+    "description": "{tool_description}",
+    "parameters": {{
+        "query": {{
+            "type": "string",
+            "description": "查询内容或输入参数",
+            "required": True
+        }},
+        "options": {{
+            "type": "object",
+            "description": "可选配置项",
+            "required": False
+        }}
+    }},
+    "created_at": datetime.now().isoformat()
+}}
+
+
+if __name__ == "__main__":
+    import asyncio
+    
+    async def test():
+        result = await {tool_name}(query="测试查询")
+        print(json.dumps(result, ensure_ascii=False, indent=2))
+    
+    asyncio.run(test())
+'''
+        return code
+    
+    async def _execute_code_studio(self, task_description: str) -> Optional[str]:
+        """
+        调用code_studio技能生成代码
+        
+        Args:
+            task_description: 结构化的任务描述
+            
+        Returns:
+            生成的代码文件路径，失败返回None
+        """
+        if self._code_studio is None:
+            logger.warning("code_studio技能未设置，将使用备用代码生成")
+            return None
+        
+        try:
+            # 调用code_studio技能
+            result = await self._code_studio.execute(
+                task_description=task_description,
+                output_format="python",
+                output_dir=self.output_dir
+            )
+            
+            if result and isinstance(result, dict):
+                return result.get("file_path")
+            elif isinstance(result, str):
+                return result
+                
+        except Exception as e:
+            logger.error(f"调用code_studio失败: {e}")
+        
+        return None
+    
