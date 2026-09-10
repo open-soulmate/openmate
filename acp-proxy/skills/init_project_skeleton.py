@@ -1,119 +1,154 @@
+#!/usr/bin/env python3
+"""
+初始化项目骨架技能
+快速创建最小可行的项目基础结构，避免探索性开发后项目结构混乱
+"""
+
 import os
+import sys
 from datetime import datetime
 from pathlib import Path
+from typing import Dict, List, Optional, Tuple
+import questionary
+from rich.console import Console
+from rich.table import Table
+from rich.prompt import Prompt
+from rich import print as rprint
 
-class InitProjectSkeletonSkill:
-    """技能：初始化最小可行的项目基础结构"""
+console = Console()
 
-    def __init__(self):
-        self.name = "init_project_skeleton"
-        self.description = "创建标准化项目目录结构和基础文件"
+# 项目类型配置
+PROJECT_TYPES = {
+    'basic': {
+        'name': '基础项目',
+        'description': '通用基础项目结构',
+        'directories': ['src', 'tests', 'docs'],
+        'files': {
+            'requirements.txt': '# 项目依赖\n',
+            '.gitignore': '# 忽略文件\n__pycache__/\n*.pyc\n.env\nvenv/\n',
+            'pyproject.toml': '''[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
 
-    def execute(self, project_name: str, project_type: str = 'basic', description: str = '', root_dir: str = '.') -> dict:
-        """
-        执行项目骨架初始化
-        
-        Args:
-            project_name: 项目名称
-            project_type: 项目类型 (basic, api_service, data_processor)
-            description: 项目描述
-            root_dir: 根目录路径
-            
-        Returns:
-            dict: 包含创建的文件清单和下一步建议
-        """
-        
-        # 项目根目录
-        project_root = Path(root_dir) / project_name
-        
-        # 检查目录是否已存在
-        if project_root.exists():
-            return self._handle_existing_project(project_root, project_type, description)
-        
-        # 创建项目结构
-        created_files = self._create_project_structure(project_root, project_type, description)
-        
-        # 输出创建的文件清单
-        result = {
-            "status": "success",
-            "project_name": project_name,
-            "project_type": project_type,
-            "created_files": created_files,
-            "next_steps": self._get_next_steps(project_type)
+[project]
+name = "{project_name}"
+version = "0.1.0"
+description = "{description}"
+readme = "README.md"
+requires-python = ">=3.8"
+'''
         }
-        
-        return result
+    },
+    'api_service': {
+        'name': 'API服务',
+        'description': 'RESTful API服务结构',
+        'directories': ['routes', 'models', 'schemas', 'services', 'middleware', 'tests', 'docs', 'config'],
+        'files': {
+            'requirements.txt': '''fastapi>=0.100.0
+uvicorn>=0.22.0
+sqlalchemy>=2.0.0
+alembic>=1.11.0
+pydantic>=2.0.0
+python-jose>=3.3.0
+passlib>=1.7.4
+bcrypt>=4.0.1
+''',
+            '.gitignore': '''# 忽略文件
+__pycache__/
+*.pyc
+.env
+venv/
+*.db
+*.sqlite3
+''',
+            'pyproject.toml': '''[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
 
-    def _handle_existing_project(self, project_root: Path, project_type: str, description: str) -> dict:
-        """处理已存在的项目目录"""
-        
-        # 获取已存在的文件列表
-        existing_files = self._list_existing_files(project_root)
-        
-        # 计算缺失的文件
-        expected_files = self._get_expected_files(project_type)
-        missing_files = self._find_missing_files(project_root, expected_files)
-        
-        result = {
-            "status": "partial",
-            "project_name": project_root.name,
-            "project_type": project_type,
-            "existing_files": existing_files,
-            "missing_files": missing_files,
-            "action": "补充缺失文件",
-            "suggestion": "是否要补充缺失的文件？"
+[project]
+name = "{project_name}"
+version = "0.1.0"
+description = "{description}"
+readme = "README.md"
+requires-python = ">=3.8"
+
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.0",
+    "httpx>=0.24.0",
+    "pytest-asyncio>=0.21.0",
+]
+'''
         }
-        
-        return result
+    },
+    'data_processor': {
+        'name': '数据处理器',
+        'description': '数据处理与分析项目结构',
+        'directories': ['data', 'data/raw', 'data/processed', 'notebooks', 'scripts', 'models', 'tests', 'docs'],
+        'files': {
+            'requirements.txt': '''pandas>=2.0.0
+numpy>=1.24.0
+scikit-learn>=1.3.0
+matplotlib>=3.7.0
+seaborn>=0.12.0
+jupyter>=1.0.0
+''',
+            '.gitignore': '''# 忽略文件
+__pycache__/
+*.pyc
+.env
+venv/
+data/raw/*
+data/processed/*
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+*.pkl
+*.joblib
+''',
+            'pyproject.toml': '''[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.backends._legacy:_Backend"
 
-    def _create_project_structure(self, project_root: Path, project_type: str, description: str) -> list:
-        """创建项目结构"""
-        
-        created_files = []
-        
-        # 创建根目录
-        project_root.mkdir(parents=True, exist_ok=True)
-        created_files.append(str(project_root))
-        
-        # 根据项目类型创建子目录和文件
-        if project_type == 'basic':
-            created_files.extend(self._create_basic_structure(project_root))
-        elif project_type == 'api_service':
-            created_files.extend(self._create_api_service_structure(project_root))
-        elif project_type == 'data_processor':
-            created_files.extend(self._create_data_processor_structure(project_root))
-        else:
-            created_files.extend(self._create_basic_structure(project_root))
-        
-        # 创建通用基础文件
-        created_files.extend(self._create_common_files(project_root, description))
-        
-        return created_files
+[project]
+name = "{project_name}"
+version = "0.1.0"
+description = "{description}"
+readme = "README.md"
+requires-python = ">=3.8"
 
-    def _create_basic_structure(self, root: Path) -> list:
-        """创建基础项目结构"""
-        
-        files = []
-        dirs = [
-            'src',
-            'tests',
-            'docs',
-            'data'
-        ]
-        
-        for dir_name in dirs:
-            dir_path = root / dir_name
-            dir_path.mkdir(exist_ok=True)
-            files.append(str(dir_path))
-            
-            # 在每个子目录创建__init__.py
-            init_file = dir_path / '__init__.py'
-            if not init_file.exists():
-                init_file.touch()
-                files.append(str(init_file))
-        
-        return files
+[tool.uv]
+dev-dependencies = [
+    "pytest>=7.0",
+    "pytest-cov>=4.0",
+]
+'''
+        }
+    }
+}
 
-    def _create_api_service_structure(self, root: Path) -> list:
-        """创建API服务项目结构"""
+
+def init_skeleton(
+    project_name: str, 
+    project_type: str = 'basic', 
+    description: str = '',
+    base_path: str = '.'
+) -> Dict[str, List[str]]:
+    """
+    初始化项目骨架
+    
+    Args:
+        project_name: 项目名称
+        project_type: 项目类型 ('basic', 'api_service', 'data_processor')
+        description: 项目描述
+        base_path: 基础路径（默认为当前目录）
         
+    Returns:
+        创建的文件和目录清单
+    """
+    
+    # 验证项目类型
+    if project_type not in PROJECT_TYPES:
+        rprint(f"[red]错误: 不支持的项目类型 '{project_type}'[/red]")
+        rprint(f"[yellow]支持的项目类型: {', '.join(PROJECT_TYPES.keys())}[/yellow]")
+        sys.exit(1)
+    
