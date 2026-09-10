@@ -1,199 +1,237 @@
-**acp-proxy/skills/error-detection-repair-skill/__init__.py**
-```python
-from .main import ErrorDetectionRepairSkill
-
-__all__ = ['ErrorDetectionRepairSkill']
-```
-
-**acp-proxy/skills/error-detection-repair-skill/main.py**
-```python
-import logging
+import os
+import sys
+import time
 import json
-from typing import Dict, List, Optional, Any
-from datetime import datetime
-from .error_monitor import ErrorMonitor
-from .pattern_learner import PatternLearner
-from .root_cause_analyzer import RootCauseAnalyzer
-from .repair_strategy_generator import RepairStrategyGenerator
-from .auto_repair_executor import AutoRepairExecutor
-from .error_knowledge_base import ErrorKnowledgeBase
+import hashlib
+import logging
+import traceback
+import threading
+import queue
+import statistics
+from datetime import datetime, timedelta
+from collections import defaultdict, deque
+from typing import Dict, List, Tuple, Any, Optional
+from dataclasses import dataclass, asdict
+from enum import Enum
+import pickle
+import numpy as np
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.cluster import DBSCAN
+from sklearn.preprocessing import StandardScaler
+import joblib
 
-logging.basicConfig(level=logging.INFO)
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
 logger = logging.getLogger(__name__)
 
-class ErrorDetectionRepairSkill:
-    """错误检测与修复技能主类"""
+
+class ErrorType(Enum):
+    RUNTIME = "runtime"
+    PERFORMANCE = "performance"
+    LOGIC = "logic"
+    RESOURCE_LEAK = "resource_leak"
+    UNKNOWN = "unknown"
+
+
+class RepairPriority(Enum):
+    CRITICAL = 1
+    HIGH = 2
+    MEDIUM = 3
+    LOW = 4
+
+
+@dataclass
+class ErrorLog:
+    """Data class to represent an error log entry"""
+    timestamp: datetime
+    error_type: ErrorType
+    message: str
+    stack_trace: str
+    system_logs: List[str]
+    performance_metrics: Dict[str, float]
+    resource_usage: Dict[str, float]
+    context: Dict[str, Any]
+    error_id: str = None
+    
+    def __post_init__(self):
+        if not self.error_id:
+            # Generate unique error ID
+            hash_input = f"{self.timestamp}{self.message}{self.stack_trace}"
+            self.error_id = hashlib.md5(hash_input.encode()).hexdigest()
+
+
+@dataclass
+class RepairStrategy:
+    """Data class for repair strategies"""
+    strategy_id: str
+    error_type: ErrorType
+    description: str
+    fix_type: str  # 'temporary' or 'permanent'
+    confidence: float
+    estimated_time: float
+    side_effects: List[str]
+    stability_score: float
+    implementation_code: str = None
+
+
+@dataclass
+class RepairResult:
+    """Data class for repair execution results"""
+    strategy_id: str
+    success: bool
+    execution_time: float
+    before_metrics: Dict[str, float]
+    after_metrics: Dict[str, float]
+    verification_passed: bool
+    details: str
+
+
+class ErrorPatternLearner:
+    """Machine learning module for learning error patterns"""
     
     def __init__(self):
-        """初始化错误检测与修复技能组件"""
-        self.error_monitor = ErrorMonitor()
-        self.pattern_learner = PatternLearner()
-        self.root_cause_analyzer = RootCauseAnalyzer()
-        self.repair_generator = RepairStrategyGenerator()
-        self.repair_executor = AutoRepairExecutor()
-        self.knowledge_base = ErrorKnowledgeBase()
-        self.repair_statistics = {
-            "total_attempts": 0,
-            "successful_repairs": 0,
-            "failed_repairs": 0,
-            "repair_history": []
+        self.classifier = DecisionTreeClassifier()
+        self.cluster_model = DBSCAN(eps=0.5, min_samples=2)
+        self.scaler = StandardScaler()
+        self.is_trained = False
+        self.feature_names = []
+        self.patterns = {}
+        
+    def extract_features(self, error_log: ErrorLog) -> np.ndarray:
+        """Extract features from error log for ML models"""
+        features = []
+        
+        # Time-based features
+        features.append(error_log.timestamp.hour)
+        features.append(error_log.timestamp.weekday())
+        
+        # Performance metrics
+        if 'response_time' in error_log.performance_metrics:
+            features.append(error_log.performance_metrics['response_time'])
+        else:
+            features.append(0)
+            
+        if 'cpu_usage' in error_log.performance_metrics:
+            features.append(error_log.performance_metrics['cpu_usage'])
+        else:
+            features.append(0)
+            
+        # Resource usage
+        if 'memory_usage' in error_log.resource_usage:
+            features.append(error_log.resource_usage['memory_usage'])
+        else:
+            features.append(0)
+            
+        # Error type encoding
+        type_map = {
+            ErrorType.RUNTIME: 0,
+            ErrorType.PERFORMANCE: 1,
+            ErrorType.LOGIC: 2,
+            ErrorType.RESOURCE_LEAK: 3,
+            ErrorType.UNKNOWN: 4
         }
-        logger.info("错误检测与修复技能初始化完成")
+        features.append(type_map.get(error_log.error_type, 4))
+        
+        # Message length as proxy for complexity
+        features.append(len(error_log.message))
+        
+        # Stack trace depth
+        stack_lines = error_log.stack_trace.split('\n')
+        features.append(len(stack_lines))
+        
+        return np.array(features).reshape(1, -1)
     
-    def detect_errors(self) -> List[Dict[str, Any]]:
-        """
-        检测系统中的错误
+    def train_classifier(self, error_logs: List[ErrorLog], labels: List[str]):
+        """Train error type classifier"""
+        if not error_logs:
+            return
+            
+        X = np.vstack([self.extract_features(log) for log in error_logs])
+        y = np.array(labels)
         
-        Returns:
-            List[Dict]: 检测到的错误列表，每个错误包含类型、时间、详情等信息
-        """
-        logger.info("开始错误检测")
+        # Scale features
+        X_scaled = self.scaler.fit_transform(X)
         
-        # 多维度错误监控
-        runtime_errors = self.error_monitor.monitor_runtime_errors()
-        performance_anomalies = self.error_monitor.monitor_performance_anomalies()
-        logic_errors = self.error_monitor.monitor_logic_errors()
-        resource_leaks = self.error_monitor.monitor_resource_leaks()
+        # Train classifier
+        self.classifier.fit(X_scaled, y)
+        self.is_trained = True
         
-        # 合并所有错误
-        all_errors = runtime_errors + performance_anomalies + logic_errors + resource_leaks
+        # Update feature names
+        self.feature_names = [
+            'hour', 'weekday', 'response_time', 'cpu_usage',
+            'memory_usage', 'error_type_encoded', 'message_length',
+            'stack_trace_depth'
+        ]
         
-        # 记录错误到知识库
-        for error in all_errors:
-            self.knowledge_base.record_error(error)
-        
-        logger.info(f"检测到 {len(all_errors)} 个错误")
-        return all_errors
+        logger.info("Error classifier trained successfully")
     
-    def analyze_error(self, error_log: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        分析单个错误，确定根因
-        
-        Args:
-            error_log: 错误日志信息
+    def predict_error_type(self, error_log: ErrorLog) -> Tuple[str, float]:
+        """Predict error type using trained classifier"""
+        if not self.is_trained:
+            return ErrorType.UNKNOWN.value, 0.0
             
-        Returns:
-            Dict: 错误分析结果，包含根因、影响范围等
-        """
-        logger.info(f"分析错误: {error_log.get('error_id', 'unknown')}")
+        features = self.extract_features(error_log)
+        features_scaled = self.scaler.transform(features)
         
-        # 模式识别 - 从历史错误中学习模式
-        similar_patterns = self.pattern_learner.find_similar_patterns(error_log)
+        prediction = self.classifier.predict(features_scaled)[0]
+        confidence = np.max(self.classifier.predict_proba(features_scaled))
         
-        # 根因分析 - 结合多个维度数据
-        root_cause = self.root_cause_analyzer.analyze(
-            error_log=error_log,
-            system_logs=self.error_monitor.get_system_logs(),
-            performance_metrics=self.error_monitor.get_performance_metrics(),
-            resource_usage=self.error_monitor.get_resource_usage()
-        )
-        
-        # 构建分析结果
-        analysis_result = {
-            "error_log": error_log,
-            "root_cause": root_cause,
-            "similar_patterns": similar_patterns,
-            "analysis_timestamp": datetime.now().isoformat(),
-            "confidence_score": self._calculate_confidence(root_cause, similar_patterns)
-        }
-        
-        # 更新知识库
-        self.knowledge_base.update_analysis(error_log['error_id'], analysis_result)
-        
-        return analysis_result
+        return prediction, confidence
     
-    def generate_repair_strategy(self, error_type: str, analysis_result: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """
-        根据错误类型和分析结果生成修复策略
-        
-        Args:
-            error_type: 错误类型
-            analysis_result: 错误分析结果
+    def cluster_errors(self, error_logs: List[ErrorLog]) -> Dict[int, List[ErrorLog]]:
+        """Cluster similar errors using DBSCAN"""
+        if not error_logs:
+            return {}
             
-        Returns:
-            List[Dict]: 修复策略列表，每个策略包含修复步骤、预期效果等
-        """
-        logger.info(f"为错误类型 {error_type} 生成修复策略")
+        X = np.vstack([self.extract_features(log) for log in error_logs])
+        X_scaled = self.scaler.transform(X)
         
-        # 获取历史修复记录
-        historical_repairs = self.knowledge_base.get_historical_repairs(error_type)
+        clusters = self.cluster_model.fit_predict(X_scaled)
         
-        # 生成修复策略
-        strategies = self.repair_generator.generate(
-            error_type=error_type,
-            analysis_result=analysis_result,
-            historical_repairs=historical_repairs,
-            system_state=self.error_monitor.get_current_state()
-        )
-        
-        # 评估每个策略的优缺点
-        evaluated_strategies = []
-        for strategy in strategies:
-            evaluated = self.repair_generator.evaluate_strategy(strategy)
-            evaluated_strategies.append(evaluated)
-        
-        # 按优先级排序策略
-        sorted_strategies = self.repair_generator.prioritize_strategies(evaluated_strategies)
-        
-        logger.info(f"生成了 {len(sorted_strategies)} 个修复策略")
-        return sorted_strategies
+        clustered_errors = defaultdict(list)
+        for idx, cluster_id in enumerate(clusters):
+            clustered_errors[cluster_id].append(error_logs[idx])
+            
+        return clustered_errors
     
-    def execute_repair(self, strategy: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        执行修复策略
+    def update_patterns(self, error_log: ErrorLog, solution: RepairStrategy):
+        """Update error patterns with new solutions"""
+        error_hash = hashlib.md5(
+            f"{error_log.error_type}{error_log.message[:100]}".encode()
+        ).hexdigest()
         
-        Args:
-            strategy: 要执行的修复策略
-            
-        Returns:
-            Dict: 执行结果，包含成功/失败状态、执行时间等
-        """
-        strategy_id = strategy.get('strategy_id', 'unknown')
-        logger.info(f"开始执行修复策略: {strategy_id}")
-        
-        # 更新统计数据
-        self.repair_statistics["total_attempts"] += 1
-        
-        try:
-            # 在沙箱中测试修复策略
-            sandbox_result = self.repair_executor.test_in_sandbox(strategy)
-            
-            if not sandbox_result.get("success", False):
-                raise Exception(f"沙箱测试失败: {sandbox_result.get('error', 'unknown')}")
-            
-            # 执行实际修复
-            execution_result = self.repair_executor.execute(strategy)
-            
-            if execution_result.get("success", False):
-                self.repair_statistics["successful_repairs"] += 1
-                logger.info(f"修复策略 {strategy_id} 执行成功")
-            else:
-                self.repair_statistics["failed_repairs"] += 1
-                logger.error(f"修复策略 {strategy_id} 执行失败: {execution_result.get('error', 'unknown')}")
-            
-            # 记录修复历史
-            self.repair_statistics["repair_history"].append({
-                "strategy_id": strategy_id,
-                "timestamp": datetime.now().isoformat(),
-                "success": execution_result.get("success", False),
-                "execution_time": execution_result.get("execution_time", 0)
-            })
-            
-            # 更新知识库
-            self.knowledge_base.record_repair_attempt(strategy_id, execution_result)
-            
-            return execution_result
-            
-        except Exception as e:
-            self.repair_statistics["failed_repairs"] += 1
-            error_result = {
-                "success": False,
-                "error": str(e),
-                "timestamp": datetime.now().isoformat()
+        if error_hash not in self.patterns:
+            self.patterns[error_hash] = {
+                'count': 1,
+                'solutions': [solution],
+                'last_seen': datetime.now()
             }
+        else:
+            self.patterns[error_hash]['count'] += 1
+            self.patterns[error_hash]['solutions'].append(solution)
+            self.patterns[error_hash]['last_seen'] = datetime.now()
             
-            logger.error(f"修复执行异常: {str(e)}")
-            
-            # 记录失败修复
-            self.repair_statistics["repair_history"].append({
-                "strategy_id": strategy_id,
+            # Keep only top 5 solutions
+            self.patterns[error_hash]['solutions'] = sorted(
+                self.patterns[error_hash]['solutions'],
+                key=lambda x: x.confidence,
+                reverse=True
+            )[:5]
+
+
+class ErrorKnowledgeBase:
+    """Error knowledge base with incremental learning"""
+    
+    def __init__(self, db_path: str = "error_knowledge.db"):
+        self.db_path = db_path
+        self.errors = {}
+        self.solutions = {}
+        self.statistics = {
+            'total_errors': 0,
+            'total_repairs': 0,
+            'successful_repairs': 0,
+            'repair_times': deque(maxlen=1000)
+        }
