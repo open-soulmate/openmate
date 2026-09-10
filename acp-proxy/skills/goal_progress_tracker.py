@@ -1,157 +1,114 @@
+# acp-proxy/skills/goal_progress_tracker.py
+"""
+Goal Progress Tracker Skill
+解决目标孤立和自我进化循环不闭合问题
+"""
+
 import json
-from typing import Dict, List, Any
+import logging
+from typing import Dict, List, Any, Optional
+from dataclasses import dataclass, field
 from datetime import datetime
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class Goal:
+    """进化目标的数据结构"""
+    goal_id: str
+    description: str
+    current_milestone: str
+    next_milestone: str
+    progress_percentage: float = 0.0
+    priority: int = 1  # 1-5, 5为最高优先级
+    last_updated: datetime = field(default_factory=datetime.now)
+    dependencies: List[str] = field(default_factory=list)
 
 
 class GoalProgressTracker:
-    """
-    进化目标进度追踪技能 - 解决目标孤立和自我进化循环不闭合问题
-    维护目标进度字典，定义可验证里程碑，智能推荐下一步行动
-    """
+    """目标进度跟踪器，解决目标孤立和进化循环不闭合问题"""
     
-    def __init__(self, llm_handler=None):
-        self.llm_handler = llm_handler
-        self.goal_registry: Dict[str, Dict] = {}
-        self.initialize_default_goals()
-        
-    def initialize_default_goals(self):
-        """初始化默认进化目标及其初始里程碑定义"""
-        default_goals = {
-            "self_programming_ability": {
-                "description": "自编程能力 - 能够生成、执行和优化自身代码",
-                "current_milestone": "成功执行一次自我生成的代码片段",
-                "progress": 0.1,
-                "next_milestone": "实现一个完整的自定义功能模块",
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat(),
-                "milestone_history": []
-            },
-            "error_self_repair": {
-                "description": "错误自修复能力 - 能够识别、分析和修复自身错误",
-                "current_milestone": "识别并报告一个系统错误",
-                "progress": 0.15,
-                "next_milestone": "成功修复一个已知错误",
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat(),
-                "milestone_history": []
-            },
-            "knowledge_integration": {
-                "description": "知识整合能力 - 将多源信息整合为可执行知识",
-                "current_milestone": "完成一次成功的跨领域知识关联",
-                "progress": 0.2,
-                "next_milestone": "构建一个实用的知识图谱片段",
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat(),
-                "milestone_history": []
-            },
-            "adaptive_learning": {
-                "description": "自适应学习能力 - 根据反馈动态调整学习策略",
-                "current_milestone": "根据一次失败调整学习参数",
-                "progress": 0.1,
-                "next_milestone": "实现一个自动化的策略优化循环",
-                "created_at": datetime.now().isoformat(),
-                "updated_at": datetime.now().isoformat(),
-                "milestone_history": []
-            }
+    def __init__(self):
+        """初始化目标进度跟踪器"""
+        # 硬编码的初始进化目标和里程碑定义
+        self.goals: Dict[str, Goal] = {
+            "self_programming": Goal(
+                goal_id="self_programming",
+                description="自编程能力：系统能自主编写和优化代码",
+                current_milestone="理解基础代码结构",
+                next_milestone="成功执行一次自我生成的代码",
+                progress_percentage=10.0,
+                priority=4,
+                dependencies=[]
+            ),
+            "error_self_repair": Goal(
+                goal_id="error_self_repair",
+                description="错误自修复：系统能识别并修复自身错误",
+                current_milestone="错误模式识别",
+                next_milestone="成功修复一个已识别的错误",
+                progress_percentage=5.0,
+                priority=5,
+                dependencies=["self_programming"]
+            ),
+            "knowledge_expansion": Goal(
+                goal_id="knowledge_expansion",
+                description="知识扩展：系统能持续学习和扩展知识",
+                current_milestone="基础学习能力",
+                next_milestone="掌握一个新的知识领域",
+                progress_percentage=15.0,
+                priority=3,
+                dependencies=[]
+            ),
+            "performance_optimization": Goal(
+                goal_id="performance_optimization",
+                description="性能优化：系统能分析和优化自身性能",
+                current_milestone="性能指标识别",
+                next_milestone="实现可量化的性能提升",
+                progress_percentage=8.0,
+                priority=4,
+                dependencies=[]
+            ),
+            "context_awareness": Goal(
+                goal_id="context_awareness",
+                description="上下文感知：系统能理解复杂的环境上下文",
+                current_milestone="基础上下文理解",
+                next_milestone="在复杂场景中做出正确决策",
+                progress_percentage=12.0,
+                priority=4,
+                dependencies=[]
+            )
         }
         
-        self.goal_registry.update(default_goals)
+        # 行动到技能的映射
+        self.skill_mapping = {
+            "generate_code": "SelfCodeGenerator",
+            "debug_code": "CodeDebugger",
+            "analyze_error": "ErrorAnalyzer",
+            "learn_topic": "KnowledgeAcquirer",
+            "optimize_performance": "PerformanceOptimizer",
+            "analyze_context": "ContextAnalyzer"
+        }
+        
+        logger.info("GoalProgressTracker初始化完成，加载了%d个进化目标", len(self.goals))
     
-    def add_goal(self, goal_id: str, goal_data: Dict[str, Any]) -> bool:
-        """添加新进化目标"""
-        if goal_id in self.goal_registry:
+    def update_milestone(self, goal_id: str, new_milestone: str, progress_increment: float = 10.0) -> bool:
+        """更新指定目标的里程碑
+        
+        Args:
+            goal_id: 目标ID
+            new_milestone: 新的里程碑描述
+            progress_increment: 进度增量百分比
+            
+        Returns:
+            bool: 更新是否成功
+        """
+        if goal_id not in self.goals:
+            logger.warning("目标ID %s 不存在", goal_id)
             return False
-            
-        goal_data.setdefault("created_at", datetime.now().isoformat())
-        goal_data.setdefault("updated_at", datetime.now().isoformat())
-        goal_data.setdefault("progress", 0.0)
-        goal_data.setdefault("milestone_history", [])
         
-        self.goal_registry[goal_id] = goal_data
-        return True
-    
-    def update_milestone(self, goal_id: str, new_milestone: str, progress_increment: float = 0.1) -> Dict:
-        """更新目标里程碑，记录里程碑历史"""
-        if goal_id not in self.goal_registry:
-            raise ValueError(f"目标 {goal_id} 不存在")
-            
-        goal = self.goal_registry[goal_id]
+        goal = self.goals[goal_id]
+        goal.current_milestone = new_milestone
+        goal.progress_percentage = min(100.0, goal.progress_percentage + progress_increment)
+        goal.last_updated = datetime.now()
         
-        # 记录历史里程碑
-        milestone_record = {
-            "milestone": goal["current_milestone"],
-            "achieved_at": datetime.now().isoformat(),
-            "progress_before": goal["progress"]
-        }
-        goal["milestone_history"].append(milestone_record)
-        
-        # 更新当前里程碑和进度
-        goal["current_milestone"] = new_milestone
-        goal["progress"] = min(1.0, goal["progress"] + progress_increment)
-        goal["updated_at"] = datetime.now().isoformat()
-        
-        return goal
-    
-    def get_goal_progress(self, goal_id: str = None) -> Dict:
-        """获取目标进度信息"""
-        if goal_id:
-            return self.goal_registry.get(goal_id, {})
-        return self.goal_registry
-    
-    def recommend_actions(self, current_state: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """
-        基于当前状态推荐具体行动
-        
-        current_state应包含：
-        - goal_progress: 目标进度字典
-        - observations: 最近观察列表
-        - error_analysis: 错误分析结果
-        - recent_actions: 最近执行的动作
-        """
-        # 构造详细的上下文信息
-        context = self._build_context(current_state)
-        
-        # 构造LLM提示词
-        prompt = self._construct_recommendation_prompt(context)
-        
-        # 调用LLM获取建议
-        raw_response = self._call_llm(prompt)
-        
-        # 解析响应
-        recommended_actions = self._parse_response(raw_response)
-        
-        return recommended_actions
-    
-    def _build_context(self, current_state: Dict[str, Any]) -> Dict[str, Any]:
-        """构建完整上下文信息"""
-        goal_progress = current_state.get("goal_progress", {})
-        observations = current_state.get("observations", [])
-        error_analysis = current_state.get("error_analysis", {})
-        recent_actions = current_state.get("recent_actions", [])
-        
-        # 合并目标进度信息
-        enriched_progress = {}
-        for goal_id, progress_data in goal_progress.items():
-            if goal_id in self.goal_registry:
-                enriched_progress[goal_id] = {
-                    **self.goal_registry[goal_id],
-                    **progress_data,
-                    "goal_id": goal_id
-                }
-        
-        return {
-            "timestamp": datetime.now().isoformat(),
-            "goal_registry": self.goal_registry,
-            "enriched_progress": enriched_progress,
-            "recent_observations": observations[-5:] if observations else [],
-            "error_analysis": error_analysis,
-            "recent_actions": recent_actions[-3:] if recent_actions else [],
-            "system_state": {
-                "total_goals": len(self.goal_registry),
-                "active_goals": len([g for g in self.goal_registry.values() if g.get("progress", 0) < 1.0]),
-                "average_progress": sum(g.get("progress", 0) for g in self.goal_registry.values()) / max(1, len(self.goal_registry))
-            }
-        }
-    
-    def _construct_recommendation_prompt(self, context: Dict[str, Any]) -> str:
-        """构造详细的LLM提示词"""
