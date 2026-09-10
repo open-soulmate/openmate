@@ -1,210 +1,261 @@
 """
-Skill Infrastructure Framework
-===============================
+技能基础设施框架
 
-This module provides the foundational classes for creating, registering, and managing
-skills within the ACP-Proxy system. It includes:
-
-1. `Skill` - Base class defining standard interface for all skills
-2. `SkillRegistry` - Central registry for skill discovery and management
-3. Helper functions for accessing registered skills
-
-This framework serves as the foundation for self-programming and tool creation capabilities.
+提供 Skill 基类和 SkillRegistry 注册表，用于管理和执行各类技能。
+这是自编程和工具创造的基础架构。
 """
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Dict, List, Optional, Any, Type
+from typing import Any, Dict, List, Optional, Type
 
 
 class Skill(ABC):
     """
-    Abstract base class defining the standard interface for all skills.
+    技能基类
     
-    All skills must inherit from this class and implement the required methods.
-    This ensures consistency and enables the skill registry to manage them properly.
+    所有技能必须继承此类并实现 execute 方法。
+    每个技能都有名称、描述，并支持序列化以便存储和检索。
     """
     
-    @property
-    @abstractmethod
-    def name(self) -> str:
-        """Unique identifier for the skill."""
-        pass
+    # 子类应覆盖这两个属性
+    name: str = "base_skill"
+    description: str = "基础技能类"
     
-    @property
-    @abstractmethod
-    def description(self) -> str:
-        """Human-readable description of what the skill does."""
-        pass
-    
-    @abstractmethod
     def __init__(self, **kwargs: Any) -> None:
         """
-        Initialize the skill with configuration parameters.
+        初始化技能
         
         Args:
-            **kwargs: Skill-specific configuration parameters
+            **kwargs: 技能所需的任意参数
         """
-        pass
+        self.config: Dict[str, Any] = kwargs
     
     @abstractmethod
     def execute(self, *args: Any, **kwargs: Any) -> Any:
         """
-        Execute the skill's main logic.
+        执行技能逻辑
         
-        This method should be overridden by concrete skill implementations
-        to provide their specific functionality.
+        子类必须重写此方法以实现具体的技能功能。
         
         Args:
-            *args: Positional arguments for skill execution
-            **kwargs: Keyword arguments for skill execution
+            *args: 位置参数
+            **kwargs: 关键字参数
             
         Returns:
-            Result of skill execution, type depends on implementation
+            技能执行的结果
         """
-        pass
+        raise NotImplementedError("子类必须实现 execute 方法")
     
     def serialize(self) -> Dict[str, Any]:
         """
-        Serialize the skill to a dictionary for storage and retrieval.
+        将技能序列化为字典
+        
+        用于存储、检索和传输技能信息。
         
         Returns:
-            Dictionary containing skill metadata and configuration
+            包含技能信息的字典
         """
         return {
             "name": self.name,
             "description": self.description,
             "class": self.__class__.__name__,
             "module": self.__class__.__module__,
+            "config": self.config,
         }
+    
+    def __repr__(self) -> str:
+        return f"<Skill: {self.name}>"
 
 
 class SkillRegistry:
     """
-    Central registry for managing available skills.
+    技能注册表
     
-    Provides methods for:
-    - Registering skill classes
-    - Retrieving skills by name
-    - Listing all available skills with their descriptions
-    
-    This registry acts as the discovery mechanism for all skills in the system.
+    管理所有已注册的技能，支持注册、发现和实例化技能。
     """
     
     def __init__(self) -> None:
-        """Initialize an empty skill registry."""
+        """初始化空注册表"""
         self._skills: Dict[str, Type[Skill]] = {}
     
-    def register(self, skill_class: Type[Skill]) -> None:
+    def register(self, skill_class: Type[Skill]) -> Type[Skill]:
         """
-        Register a skill class with the registry.
+        注册技能类
         
         Args:
-            skill_class: The skill class to register (must inherit from Skill)
+            skill_class: 要注册的技能类
+            
+        Returns:
+            注册的技能类（支持作为装饰器使用）
             
         Raises:
-            TypeError: If skill_class doesn't inherit from Skill
-            ValueError: If a skill with the same name is already registered
+            TypeError: 如果 skill_class 不是 Skill 的子类
+            ValueError: 如果技能名称已被注册
         """
-        if not issubclass(skill_class, Skill):
-            raise TypeError(f"Cannot register {skill_class}: must be a subclass of Skill")
+        if not (isinstance(skill_class, type) and issubclass(skill_class, Skill)):
+            raise TypeError(f"skill_class 必须是 Skill 的子类，得到: {skill_class}")
         
-        # Create a temporary instance to get the skill name
-        try:
-            # We use a dummy instance just to get the name property
-            dummy = skill_class.__new__(skill_class)
-            skill_name = dummy.name
-        except (AttributeError, TypeError):
-            raise ValueError(f"Could not determine name for skill class {skill_class}")
+        name = skill_class.name
+        if name in self._skills:
+            raise ValueError(f"技能 '{name}' 已被注册")
         
-        if skill_name in self._skills:
-            raise ValueError(f"Skill with name '{skill_name}' is already registered")
-        
-        self._skills[skill_name] = skill_class
+        self._skills[name] = skill_class
+        return skill_class
     
     def get(self, name: str) -> Optional[Type[Skill]]:
         """
-        Retrieve a skill class by its name.
+        根据名称获取技能类
         
         Args:
-            name: The unique name of the skill
+            name: 技能名称
             
         Returns:
-            The skill class if found, None otherwise
+            技能类，如果未找到则返回 None
         """
         return self._skills.get(name)
     
+    def create(self, name: str, **kwargs: Any) -> Optional[Skill]:
+        """
+        根据名称创建技能实例
+        
+        Args:
+            name: 技能名称
+            **kwargs: 传递给技能构造函数的参数
+            
+        Returns:
+            技能实例，如果未找到则返回 None
+        """
+        skill_class = self.get(name)
+        if skill_class is None:
+            return None
+        return skill_class(**kwargs)
+    
     def list_skills(self) -> List[Dict[str, Any]]:
         """
-        List all registered skills with their description information.
+        列出所有已注册技能的描述信息
         
         Returns:
-            List of dictionaries containing skill metadata
+            技能描述字典列表
         """
-        skills_list = []
-        for name, skill_class in self._skills.items():
-            # Create a temporary instance to get description
-            try:
-                dummy = skill_class.__new__(skill_class)
-                skills_list.append({
-                    "name": name,
-                    "description": dummy.description,
-                    "class": skill_class.__name__,
-                    "module": skill_class.__module__,
-                })
-            except (AttributeError, TypeError):
-                # If we can't get description, use class name as fallback
-                skills_list.append({
-                    "name": name,
-                    "description": f"Skill: {skill_class.__name__}",
-                    "class": skill_class.__name__,
-                    "module": skill_class.__module__,
-                })
-        
-        return skills_list
-
-
-# Module-level registry instance (singleton)
-_default_registry = SkillRegistry()
-
-
-def get_skill_registry() -> SkillRegistry:
-    """
-    Get the default skill registry instance.
+        return [
+            {
+                "name": cls.name,
+                "description": cls.description,
+                "class": cls.__name__,
+                "module": cls.__module__,
+            }
+            for cls in self._skills.values()
+        ]
     
-    Returns:
-        The default SkillRegistry instance used for skill management
-    """
-    return _default_registry
+    def has(self, name: str) -> bool:
+        """
+        检查技能是否已注册
+        
+        Args:
+            name: 技能名称
+            
+        Returns:
+            是否已注册
+        """
+        return name in self._skills
+    
+    def unregister(self, name: str) -> bool:
+        """
+        注销技能
+        
+        Args:
+            name: 技能名称
+            
+        Returns:
+            是否成功注销
+        """
+        if name in self._skills:
+            del self._skills[name]
+            return True
+        return False
+    
+    def __len__(self) -> int:
+        return len(self._skills)
+    
+    def __contains__(self, name: str) -> bool:
+        return self.has(name)
+    
+    def __repr__(self) -> str:
+        return f"<SkillRegistry: {len(self)} skills>"
 
 
-def register_skill(skill_class: Type[Skill]) -> None:
+# 全局技能注册表实例
+registry = SkillRegistry()
+
+
+def register_skill(skill_class: Type[Skill]) -> Type[Skill]:
     """
-    Convenience function to register a skill with the default registry.
+    注册技能到全局注册表（装饰器用法）
     
     Args:
-        skill_class: The skill class to register
+        skill_class: 技能类
+        
+    Returns:
+        注册的技能类
+        
+    Example:
+        @register_skill
+        class MySkill(Skill):
+            name = "my_skill"
+            description = "我的技能"
+            
+            def execute(self, **kwargs):
+                return "执行结果"
     """
-    _default_registry.register(skill_class)
+    return registry.register(skill_class)
 
 
 def get_skill(name: str) -> Optional[Type[Skill]]:
     """
-    Get a skill class by name from the default registry.
+    从全局注册表获取技能类
     
     Args:
-        name: The unique name of the skill to retrieve
+        name: 技能名称
         
     Returns:
-        The skill class if found, None otherwise
+        技能类，如果未找到则返回 None
     """
-    return _default_registry.get(name)
+    return registry.get(name)
 
 
-def list_available_skills() -> List[Dict[str, Any]]:
+def create_skill(name: str, **kwargs: Any) -> Optional[Skill]:
     """
-    List all available skills from the default registry.
+    创建技能实例
+    
+    Args:
+        name: 技能名称
+        **kwargs: 技能初始化参数
+        
+    Returns:
+        技能实例，如果未找到则返回 None
+    """
+    return registry.create(name, **kwargs)
+
+
+def list_skills() -> List[Dict[str, Any]]:
+    """
+    列出所有已注册技能
     
     Returns:
-        List of dictionaries containing skill metadata
+        技能描述字典列表
     """
-    return _default_registry.list_skills()
+    return registry.list_skills()
+
+
+# 导出公共接口
+__all__ = [
+    "Skill",
+    "SkillRegistry",
+    "registry",
+    "register_skill",
+    "get_skill",
+    "create_skill",
+    "list_skills",
+]
