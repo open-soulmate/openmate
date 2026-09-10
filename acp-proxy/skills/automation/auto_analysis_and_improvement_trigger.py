@@ -1,138 +1,179 @@
+"""
+AutoAnalysisAndImprovementTrigger - 自动分析与改进触发技能
+
+核心目的：
+1. 及时处理未分析的观察记录
+2. 确保每个进化周期至少产生一项改进，避免零改进周期
+3. 提升Agent的自我执行能力，减少对partner的依赖
+4. 直接推动'自编程能力'和'错误自修复'目标的进展
+
+触发方式：在 evolution_planner 的规划阶段自动触发
+"""
+
 import os
 import json
-import glob
-from typing import Dict, List, Any, Optional
-from datetime import datetime, timedelta
+import time
+import logging
+from typing import Dict, List, Any, Optional, Tuple
+from pathlib import Path
+from dataclasses import dataclass, field, asdict
+from collections import defaultdict
+
+logger = logging.getLogger(__name__)
+
+
+@dataclass
+class ImprovementProposal:
+    """改进提案数据结构"""
+    id: str = ""
+    type: str = ""  # 'skill_creation', 'skill_enhancement', 'plugin_creation', 'plugin_enhancement', 'system_optimization'
+    category: str = ""  # 'self_programming', 'error_recovery', 'performance', 'capability_expansion'
+    target_file: str = ""
+    target_name: str = ""
+    description: str = ""
+    requirements: List[str] = field(default_factory=list)
+    expected_impact: str = ""
+    priority: int = 5  # 1-10, higher = more important
+    estimated_effort: str = "medium"  # 'small', 'medium', 'large'
+    source: str = "auto_analysis_trigger"  # 来源标记
+    related_goals: List[str] = field(default_factory=list)
+    related_observations: List[str] = field(default_factory=list)
+    created_at: float = field(default_factory=time.time)
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class AnalysisResult:
+    """分析结果数据结构"""
+    observation_count: int = 0
+    patterns_found: List[Dict[str, Any]] = field(default_factory=list)
+    actionable_suggestions: List[str] = field(default_factory=list)
+    error_patterns: List[Dict[str, Any]] = field(default_factory=list)
+    improvement_proposals: List[ImprovementProposal] = field(default_factory=list)
+
 
 class AutoAnalysisAndImprovementTrigger:
     """
-    自动分析与改进触发器技能。
-    在进化周期的规划阶段自动触发，确保系统持续自我改进。
-    解决三个关键问题：
-    1. 及时处理未分析的观察记录
-    2. 确保每个进化周期至少产生一项改进
-    3. 提升Agent的自我执行能力，减少对partner的依赖
+    自动分析与改进触发器技能
+    
+    此技能相当于为Agent植入一个'自我监督和驱动'的子系统。
+    它在每个进化周期的规划阶段被触发，确保：
+    - 未分析的观察记录得到及时处理
+    - 每个周期至少产生一项改进
+    - 改进与当前目标和问题紧密相关
     """
     
-    # 技能元数据
-    SKILL_NAME = "auto_analysis_and_improvement_trigger"
-    DESCRIPTION = "自动分析与改进触发器，确保系统持续自我改进"
-    TRIGGER_PHASE = "planning"  # 触发阶段：规划阶段
-    PRIORITY = 100  # 高优先级
+    # 配置常量
+    MIN_IMPROVEMENTS_PER_CYCLE = 1
+    MAX_IMPROVEMENTS_PER_CYCLE = 3
+    OBSERVATION_ANALYSIS_BATCH_SIZE = 10
+    LOW_PROGRESS_THRESHOLD = 0.3  # 进度低于30%认为是低进度
     
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """
-        初始化技能。
-        
-        Args:
-            config: 配置字典，可包含：
-                   - min_improvements_per_cycle: 每个周期最少改进数
-                   - analysis_threshold: 未分析观察记录阈值
-                   - improvement_generation_strategy: 改进生成策略
-        """
-        self.config = config or {}
-        self.min_improvements = self.config.get("min_improvements_per_cycle", 1)
-        self.analysis_threshold = self.config.get("analysis_threshold", 0)
-        self.improvement_strategies = [
-            "skill_optimization",
-            "plugin_enhancement", 
-            "new_capability",
-            "error_recovery",
-            "performance_tuning"
-        ]
-        
-        # 项目根目录（假设从当前文件向上回溯到acp-proxy）
-        self.project_root = self._find_project_root()
-        
-    def _find_project_root(self) -> str:
-        """找到项目根目录（acp-proxy目录）"""
-        current_dir = os.path.dirname(os.path.abspath(__file__))
-        while current_dir != os.path.dirname(current_dir):  # 直到根目录
-            if os.path.basename(current_dir) == "acp-proxy":
-                return current_dir
-            current_dir = os.path.dirname(current_dir)
-        
-        # 如果找不到，假设当前目录结构
-        return os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", ".."))
+    # 改进类型优先级映射
+    IMPROVEMENT_TYPE_PRIORITY = {
+        'error_recovery': 9,
+        'self_programming': 8,
+        'system_optimization': 7,
+        'capability_expansion': 6,
+        'performance': 5,
+        'documentation': 3,
+        'refactoring': 4,
+    }
     
-    def observe(self, cycle_context: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        观察方法，在规划阶段被调用。
-        
-        Args:
-            cycle_context: 周期上下文，包含：
-                          - cycle_count: 当前周期数
-                          - self_reflection_data: 自我反思数据
-                          - goals_progress: 目标进度
-                          - observations_unanalyzed: 未分析观察记录数量
-                          - last_cycle_improvements_planned: 上个周期计划的改进数
-                          - improvements_to_plan: 当前周期待规划的改进列表（可修改）
-        
-        Returns:
-            包含触发结果的字典
-        """
-        improvements = self.ensure_minimum_improvements(cycle_context)
-        
-        # 将改进注入到待规划列表中
-        if improvements:
-            existing_improvements = cycle_context.get("improvements_to_plan", [])
-            existing_improvements.extend(improvements)
-            cycle_context["improvements_to_plan"] = existing_improvements
-        
-        return {
-            "triggered": True,
-            "improvements_generated": len(improvements),
-            "total_improvements_planned": len(cycle_context.get("improvements_to_plan", [])),
-            "timestamp": datetime.now().isoformat()
+    # 目标到改进类型的映射
+    GOAL_TO_IMPROVEMENT_TYPE = {
+        '自编程': ['self_programming', 'capability_expansion'],
+        '错误自修复': ['error_recovery', 'system_optimization'],
+        '性能优化': ['performance', 'system_optimization'],
+        '能力扩展': ['capability_expansion', 'skill_creation'],
+    }
+    
+    # 已知的技能/插件模式
+    KNOWN_PATTERNS = {
+        'error_recovery': {
+            'keywords': ['error', 'exception', 'failure', 'crash', 'bug', 'retry', 'fallback'],
+            'suggested_modules': ['auto_diagnosis', 'log_pattern_analyzer', 'recovery_strategies'],
+            'file_template': 'acp-proxy/plugins/{name}/__init__.py'
+        },
+        'self_programming': {
+            'keywords': ['code', 'generate', 'template', 'scaffold', 'refactor', 'optimize'],
+            'suggested_modules': ['code_generator', 'template_engine', 'code_optimizer'],
+            'file_template': 'acp-proxy/skills/{name}.py'
+        },
+        'performance': {
+            'keywords': ['slow', 'timeout', 'memory', 'cpu', 'cache', 'optimize', 'benchmark'],
+            'suggested_modules': ['profiler', 'cache_manager', 'resource_monitor'],
+            'file_template': 'acp-proxy/skills/{name}.py'
+        },
+        'memory': {
+            'keywords': ['memory', 'recall', 'forget', 'consolidate', 'context', 'history'],
+            'suggested_modules': ['consolidation_optimizer', 'relevance_scorer', 'memory_pruner'],
+            'file_template': 'acp-proxy/skills/{name}.py'
         }
+    }
     
-    def ensure_minimum_improvements(self, cycle_context: Dict[str, Any]) -> List[Dict[str, Any]]:
+    def __init__(self, base_path: str = None, config: Dict[str, Any] = None):
         """
-        确保最少改进数的核心方法。
+        初始化自动分析与改进触发器
         
         Args:
-            cycle_context: 周期上下文
+            base_path: 项目基础路径，默认为当前工作目录
+            config: 可选配置覆盖
+        """
+        self.base_path = Path(base_path) if base_path else Path.cwd()
+        self.skills_path = self.base_path / "acp-proxy" / "skills"
+        self.plugins_path = self.base_path / "acp-proxy" / "plugins"
+        self.state_path = self.base_path / "acp-proxy" / "state"
+        
+        # 配置参数
+        self.config = config or {}
+        self.min_improvements = self.config.get('min_improvements', self.MIN_IMPROVEMENTS_PER_CYCLE)
+        self.max_improvements = self.config.get('max_improvements', self.MAX_IMPROVEMENTS_PER_CYCLE)
+        self.analysis_batch_size = self.config.get('analysis_batch_size', self.OBSERVATION_ANALYSIS_BATCH_SIZE)
+        self.low_progress_threshold = self.config.get('low_progress_threshold', self.LOW_PROGRESS_THRESHOLD)
+        
+        # 内部状态
+        self._existing_skills: List[str] = []
+        self._existing_plugins: List[str] = []
+        self._recent_proposals: List[str] = []  # 最近提案的ID，用于避免重复
+        self._cycle_cache: Dict[str, Any] = {}
+        
+        # 初始化扫描
+        self._scan_existing_capabilities()
+        
+        logger.info(f"AutoAnalysisAndImprovementTrigger initialized at {self.base_path}")
+    
+    def _scan_existing_capabilities(self) -> None:
+        """扫描现有的技能和插件"""
+        self._existing_skills = self._scan_directory(self.skills_path, pattern="*.py")
+        self._existing_plugins = self._scan_directory(self.plugins_path, pattern="__init__.py", return_parent=True)
+        
+        logger.debug(f"Scanned capabilities: {len(self._existing_skills)} skills, {len(self._existing_plugins)} plugins")
+    
+    def _scan_directory(self, path: Path, pattern: str = "*.py", return_parent: bool = False) -> List[str]:
+        """
+        扫描目录获取文件列表
+        
+        Args:
+            path: 目录路径
+            pattern: 文件匹配模式
+            return_parent: 是否返回父目录名（用于插件）
         
         Returns:
-            生成的改进对象列表
+            文件/目录名列表
         """
-        improvements = []
-        
-        # 1. 处理未分析的观察记录
-        unanalyzed_improvements = self._process_unanalyzed_observations(cycle_context)
-        improvements.extend(unanalyzed_improvements)
-        
-        # 2. 检查并确保最少改进数
-        planned_count = cycle_context.get("last_cycle_improvements_planned", 0)
-        
-        if planned_count < self.min_improvements:
-            # 需要生成额外的改进
-            additional_improvements = self._generate_forced_improvements(
-                cycle_context, 
-                needed_count=self.min_improvements - planned_count
-            )
-            improvements.extend(additional_improvements)
-        
-        # 3. 基于目标进度生成战略性改进
-        strategic_improvements = self._generate_strategic_improvements(cycle_context)
-        
-        # 合并去重
-        all_improvements = self._merge_improvements(improvements, strategic_improvements)
-        
-        return all_improvements
+        results = []
+        if path.exists():
+            for item in path.rglob(pattern):
+                if return_parent:
+                    results.append(item.parent.name)
+                else:
+                    # 转换为相对于skills_path的路径
+                    try:
+                        rel_path = item.relative_to(path)
+                        results.append(str(rel_path).replace(os.sep, '/'))
+                    except ValueError:
+                        results.append(item.name)
+        # 去重
+        return list(set(results))
     
-    def _process_unanalyzed_observations(self, cycle_context: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """处理未分析的观察记录"""
-        unanalyzed_count = cycle_context.get("observations_unanalyzed", 0)
-        
-        if unanalyzed_count <= self.analysis_threshold:
-            return []
-        
-        # 模拟分析未观察记录并提取改进建议
-        improvements = []
-        reflection_data = cycle_context.get("self_reflection_data", {})
-        recent_failures = reflection_data.get("failure_patterns", [])
-        
-        # 根据失败模式生成改进
-        if recent_failures:
-            failure_pattern = recent_failures[0] if recent_failures else {}
