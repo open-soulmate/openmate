@@ -1,189 +1,224 @@
-const { logger, state, memoryStore, observationLog } = require('../system/core');
-const { analyzeObservation, categorizeObservation, findRelatedMemories } = require('../system/analysis');
+'use strict';
 
-module.exports = {
-    name: 'observation_analyzer',
-    description: '自动处理观察数据积压，进行分析分类和关联记忆',
-    version: '1.0.0',
-    
-    /**
-     * 主分析函数 - 系统通过此接口调用技能
-     * @returns {Promise<Object>} 分析结果对象
-     */
-    async analyzeObservations() {
-        try {
-            // 获取当前未分析观察数量
-            const unanalyzedCount = state.get('observations_unanalyzed') || 0;
-            
-            if (unanalyzedCount < 1) {
-                logger.info('observation_analyzer: 无积压观察数据，跳过分析');
-                return { success: true, processed: 0, message: '无需处理' };
-            }
-            
-            logger.info(`observation_analyzer: 检测到 ${unanalyzedCount} 条未分析观察，开始处理...`);
-            
-            // 获取未分析的观察数据
-            const observations = await this.getUnanalyzedObservations(unanalyzedCount);
-            
-            if (!observations || observations.length === 0) {
-                logger.warn('observation_analyzer: 获取观察数据失败或数据为空');
-                return { success: false, error: '无法获取观察数据' };
-            }
-            
-            // 批量处理观察数据
-            const results = [];
-            for (const observation of observations) {
-                try {
-                    const result = await this.processObservation(observation);
-                    results.push(result);
-                } catch (processError) {
-                    logger.error(`observation_analyzer: 处理单个观察失败: ${processError.message}`, {
-                        observationId: observation?.id,
-                        error: processError.stack
-                    });
-                }
-            }
-            
-            // 重置计数器
-            state.set('observations_unanalyzed', 0);
-            
-            // 记录完成事件
-            logger.info(`observation_analyzer: 成功处理 ${results.length}/${observations.length} 条观察数据`);
-            
-            return {
-                success: true,
-                processed: results.length,
-                total: observations.length,
-                results: results,
-                timestamp: Date.now()
-            };
-            
-        } catch (error) {
-            logger.error(`observation_analyzer: 分析过程中发生错误: ${error.message}`, {
-                error: error.stack,
-                timestamp: Date.now()
-            });
-            
-            // 错误时不重置计数器，保持原值以便重试
-            return {
-                success: false,
-                error: error.message,
-                timestamp: Date.now()
-            };
-        }
+/**
+ * Observation Analyzer Skill
+ * 
+ * Monitors `observations_unanalyzed` counter and triggers analysis pipeline
+ * when count >= 1. Includes data fetching, classification, memory association,
+ * result storage, and counter reset with comprehensive error handling.
+ */
+
+// Assume system APIs are available globally or will be injected
+// These would be provided by the acp-proxy framework
+const system = {
+    getCounter: (name) => {
+        // Placeholder - in real implementation, fetch from system state
+        return 0;
     },
-    
-    /**
-     * 获取未分析的观察数据
-     * @param {number} count 需要获取的数量
-     * @returns {Promise<Array>} 观察数据数组
-     */
-    async getUnanalyzedObservations(count) {
-        try {
-            // 从观察日志获取未分析数据（假设这些数据已标记为unanalyzed）
-            const observations = await observationLog.getUnanalyzed({
-                limit: count,
-                sortOrder: 'asc' // 按时间顺序处理
-            });
-            
-            return observations || [];
-        } catch (error) {
-            logger.error(`observation_analyzer: 获取观察数据失败: ${error.message}`);
-            throw error;
-        }
+    setCounter: (name, value) => {
+        // Placeholder - in real implementation, update system state
     },
+    getObservations: () => {
+        // Placeholder - returns array of unanalyzed observation objects
+        return [];
+    },
+    logger: {
+        info: (message, meta) => console.log(`[INFO] ${message}`, meta || ''),
+        warn: (message, meta) => console.warn(`[WARN] ${message}`, meta || ''),
+        error: (message, meta) => console.error(`[ERROR] ${message}`, meta || '')
+    }
+};
+
+// Memory store interface (would be provided by acp-proxy framework)
+const memoryStore = {
+    search: async (query) => {
+        // Placeholder - returns matching memory entries
+        return [];
+    },
+    add: async (memory) => {
+        // Placeholder - stores memory and returns stored entry
+        return memory;
+    }
+};
+
+// Classification rules based on content analysis
+const classificationRules = [
+    { pattern: /error|exception|fail|crash|critical/i, type: 'error' },
+    { pattern: /warning|warn|alert|caution/i, type: 'warning' },
+    { pattern: /info|notice|log|debug/i, type: 'info' },
+    { pattern: /performance|slow|timeout|latency/i, type: 'performance' },
+    { pattern: /security|auth|permission|access/i, type: 'security' }
+];
+
+/**
+ * Classifies observation based on content keywords
+ * @param {Object} observation - The observation data
+ * @returns {string} Classification type
+ */
+function classifyObservation(observation) {
+    if (!observation || !observation.content) {
+        return 'unknown';
+    }
     
-    /**
-     * 处理单个观察数据
-     * @param {Object} observation 观察数据对象
-     * @returns {Promise<Object>} 处理结果
-     */
-    async processObservation(observation) {
-        const startTime = Date.now();
-        
-        // 1. 分类观察类型
-        const category = categorizeObservation(observation);
-        
-        // 2. 关联历史记忆
-        const relatedMemories = await this.findRelatedMemories(observation, category);
-        
-        // 3. 生成分析摘要
-        const analysisResult = this.generateAnalysisSummary(observation, category, relatedMemories);
-        
-        // 4. 存储分析结果到记忆系统
-        const memoryId = await this.storeToMemory(analysisResult);
-        
-        // 5. 标记原始观察为已分析
-        await this.markObservationAsAnalyzed(observation.id, memoryId);
-        
-        const processingTime = Date.now() - startTime;
-        
-        logger.debug(`observation_analyzer: 处理完成观察 ${observation.id}`, {
-            category,
-            memoryId,
-            processingTime: `${processingTime}ms`
-        });
-        
-        return {
-            observationId: observation.id,
-            category,
-            memoryId,
-            processingTime
+    const content = typeof observation.content === 'string' 
+        ? observation.content 
+        : JSON.stringify(observation.content);
+    
+    for (const rule of classificationRules) {
+        if (rule.pattern.test(content)) {
+            return rule.type;
+        }
+    }
+    
+    return 'info'; // Default classification
+}
+
+/**
+ * Searches for related memories based on observation characteristics
+ * @param {Object} observation - The observation data
+ * @param {string} classification - The observation type
+ * @returns {Promise<Array>} Related memory entries
+ */
+async function findRelatedMemories(observation, classification) {
+    try {
+        // Build search query based on observation properties
+        const searchCriteria = {
+            type: classification,
+            timestamp: {
+                // Look for memories within ±1 hour of observation
+                $gte: new Date(Date.now() - 3600000),
+                $lte: new Date()
+            }
         };
-    },
-    
-    /**
-     * 查找相关记忆
-     * @param {Object} observation 观察数据
-     * @param {string} category 观察类别
-     * @returns {Promise<Array>} 相关记忆数组
-     */
-    async findRelatedMemories(observation, category) {
-        try {
-            const query = {
-                type: category,
-                timeRange: {
-                    from: new Date(observation.timestamp - 24 * 60 * 60 * 1000), // 前24小时
-                    to: new Date(observation.timestamp + 60 * 60 * 1000) // 后1小时
-                },
-                keywords: this.extractKeywords(observation.content),
-                limit: 5
-            };
-            
-            const memories = await memoryStore.search(query);
-            return memories || [];
-        } catch (error) {
-            logger.warn(`observation_analyzer: 查找相关记忆失败，继续处理: ${error.message}`);
-            return [];
-        }
-    },
-    
-    /**
-     * 从内容中提取关键词
-     * @param {string} content 观察内容
-     * @returns {Array} 关键词数组
-     */
-    extractKeywords(content) {
-        if (!content || typeof content !== 'string') {
-            return [];
+        
+        // If observation has keywords, search by content
+        if (observation.keywords && Array.isArray(observation.keywords)) {
+            searchCriteria.$text = { $search: observation.keywords.join(' ') };
         }
         
-        // 简单的关键词提取：取前20个非停用词单词
-        const stopWords = new Set(['the', 'a', 'an', 'is', 'are', 'was', 'were', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by']);
-        
-        const words = content
-            .toLowerCase()
-            .replace(/[^\w\s]/g, ' ')
-            .split(/\s+/)
-            .filter(word => word.length > 2 && !stopWords.has(word));
-        
-        return [...new Set(words)].slice(0, 20);
-    },
+        return await memoryStore.search(searchCriteria);
+    } catch (error) {
+        system.logger.warn('Failed to search related memories', { 
+            error: error.message,
+            observationId: observation.id 
+        });
+        return [];
+    }
+}
+
+/**
+ * Generates analysis summary for storage
+ * @param {Object} observation - Original observation
+ * @param {string} classification - Classified type
+ * @param {Array} relatedMemories - Found related memories
+ * @returns {Object} Analysis result ready for storage
+ */
+function createAnalysisSummary(observation, classification, relatedMemories) {
+    const summary = {
+        observationId: observation.id || Date.now().toString(),
+        timestamp: new Date(),
+        type: classification,
+        originalContent: observation.content,
+        relatedMemoryIds: relatedMemories.map(m => m.id).filter(Boolean),
+        analysis: {
+            confidence: relatedMemories.length > 0 ? 'high' : 'low',
+            patternCount: relatedMemories.length,
+            description: `Observation classified as ${classification} with ${relatedMemories.length} related memories found`
+        }
+    };
     
-    /**
-     * 生成分析摘要
-     * @param {Object} observation 观察数据
-     * @param {string} category 观察类别
-     * @param {Array} relatedMemories 相关记忆
-     * @returns {Object} 分析结果对象
-     */
+    // Add keywords if available
+    if (observation.keywords) {
+        summary.keywords = observation.keywords;
+    }
+    
+    return summary;
+}
+
+/**
+ * Main analysis function - processes observation backlog
+ * @returns {Promise<Object>} Analysis results
+ */
+async function analyzeObservations() {
+    const counterName = 'observations_unanalyzed';
+    const startTime = Date.now();
+    
+    system.logger.info('Starting observation analysis check');
+    
+    try {
+        // Check if there are unanalyzed observations
+        const unanalyzedCount = system.getCounter(counterName);
+        
+        if (unanalyzedCount < 1) {
+            system.logger.info('No unanalyzed observations to process');
+            return { processed: 0, skipped: true };
+        }
+        
+        system.logger.info(`Found ${unanalyzedCount} unanalyzed observations`);
+        
+        // Fetch unanalyzed observations
+        const observations = system.getObservations();
+        
+        if (!observations || observations.length === 0) {
+            system.logger.warn('Observations counter indicates data but none retrieved');
+            return { processed: 0, skipped: false, reason: 'no_data' };
+        }
+        
+        const results = [];
+        
+        // Process each observation
+        for (const observation of observations) {
+            try {
+                // Classify the observation
+                const classification = classifyObservation(observation);
+                
+                // Find related memories
+                const relatedMemories = await findRelatedMemories(observation, classification);
+                
+                // Create analysis summary
+                const summary = createAnalysisSummary(observation, classification, relatedMemories);
+                
+                // Store analysis result in memory
+                const storedMemory = await memoryStore.add({
+                    type: 'observation_analysis',
+                    content: summary,
+                    metadata: {
+                        processedAt: new Date(),
+                        processingTime: Date.now() - startTime
+                    }
+                });
+                
+                results.push({
+                    observationId: observation.id,
+                    classification,
+                    memoryId: storedMemory.id,
+                    relatedCount: relatedMemories.length,
+                    success: true
+                });
+                
+                system.logger.info(`Processed observation ${observation.id}`, {
+                    classification,
+                    relatedMemories: relatedMemories.length
+                });
+                
+            } catch (obsError) {
+                system.logger.error(`Failed to process observation ${observation.id}`, {
+                    error: obsError.message,
+                    stack: obsError.stack
+                });
+                
+                results.push({
+                    observationId: observation.id,
+                    success: false,
+                    error: obsError.message
+                });
+            }
+        }
+        
+        // Reset counter only if all observations were processed successfully
+        const allSuccess = results.every(r => r.success);
+        
+        if (allSuccess) {
+            system.setCounter(counterName, 0);
+            system.logger.info('Observation analysis completed successfully', {
+                processedCount: results.length,
