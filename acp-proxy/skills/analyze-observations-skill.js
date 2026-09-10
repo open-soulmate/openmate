@@ -1,191 +1,169 @@
 // acp-proxy/skills/analyze-observations-skill.js
-
-import {
-  get_observations,
-  update_observation_status,
-  store_memory
-} from '../../plugins/memory-plugin.js';
-
 /**
- * 核心技能：分析未处理的观察记录
- * 功能：自动获取状态为 'unanalyzed' 的观察，进行分析，生成报告，并更新记录状态。
- * 这是建立“观察-分析-行动”闭环的关键组件。
+ * @description 分析观察记录技能 - 打破进化循环停滞的关键技能
+ * @skill analyze-observations-skill
+ * @version 1.0.0
+ * @author MiMo Team
  */
-export async function analyze_observations_skill() {
-  const result = {
-    success: false,
-    analyzed_count: 0,
-    report_ids: [],
-    errors: [],
-    timestamp: new Date().toISOString()
-  };
 
-  try {
-    // 步骤1: 获取所有未分析的观察记录
-    const unanalyzed_observations = await get_observations({ status: 'unanalyzed' });
+const memoryPlugin = require('../plugins/memory-plugin.js');
+const analysisModule = require('./analysis-module.js');
 
-    if (!Array.isArray(unanalyzed_observations)) {
-      throw new Error('从记忆插件获取观察记录失败，返回数据格式不正确。');
-    }
+class AnalyzeObservationsSkill {
+  constructor() {
+    this.name = 'analyze-observations-skill';
+    this.description = '分析未处理的观察记录，生成结构化分析和行动建议';
+    this.version = '1.0.0';
+    this.author = 'MiMo Team';
+    this.triggerConditions = [
+      'observations_unanalyzed > 0',
+      'evolution_loop_complete'
+    ];
+    this.executionFrequency = 'evolution_cycle';
+  }
 
-    if (unanalyzed_observations.length === 0) {
+  /**
+   * 技能执行入口 - 异步函数，无参数
+   * @returns {Object} 操作结果
+   */
+  async execute() {
+    const startTime = Date.now();
+    const result = {
+      success: false,
+      analyzedCount: 0,
+      reportsGenerated: 0,
+      errors: [],
+      executionTime: 0,
+      summary: {}
+    };
+
+    try {
+      console.log(`[${this.name}] 开始分析观察记录...`);
+      
+      // 步骤1: 获取所有未分析的观察记录
+      const unanalyzedObservations = await this.getUnanalyzedObservations();
+      console.log(`[${this.name}] 找到 ${unanalyzedObservations.length} 条未分析记录`);
+
+      if (unanalyzedObservations.length === 0) {
+        result.success = true;
+        result.summary = { message: '没有需要分析的观察记录' };
+        return result;
+      }
+
+      // 步骤2: 批量分析观察记录
+      const analysisResults = await this.analyzeObservations(unanalyzedObservations);
+      
+      // 步骤3: 生成分析报告
+      const reportId = await this.generateAnalysisReport(analysisResults, unanalyzedObservations.length);
+      
+      // 步骤4: 更新观察记录状态
+      const updatedCount = await this.updateObservationStatuses(unanalyzedObservations, analysisResults);
+      
+      // 步骤5: 计算统计信息
+      const statistics = this.calculateStatistics(analysisResults);
+      
+      // 更新结果
       result.success = true;
-      result.message = '没有发现需要分析的观察记录。';
+      result.analyzedCount = updatedCount;
+      result.reportsGenerated = 1;
+      result.executionTime = Date.now() - startTime;
+      result.summary = {
+        reportId,
+        statistics,
+        processedAt: new Date().toISOString(),
+        nextActions: this.generateNextActions(analysisResults)
+      };
+
+      console.log(`[${this.name}] 分析完成: ${updatedCount} 条记录已分析`);
+      return result;
+
+    } catch (error) {
+      console.error(`[${this.name}] 执行失败:`, error);
+      result.errors.push(error.message);
+      result.executionTime = Date.now() - startTime;
       return result;
     }
+  }
 
-    // 步骤2: 对每条观察进行分析，并准备更新和报告数据
-    const analysisPromises = unanalyzed_observations.map(async (observation) => {
+  /**
+   * 获取未分析的观察记录
+   * @returns {Array} 未分析记录数组
+   */
+  async getUnanalyzedObservations() {
+    try {
+      // 调用记忆插件的get_observations方法
+      const observations = await memoryPlugin.get_observations({
+        status: 'unanalyzed',
+        limit: 100, // 避免一次加载过多
+        sort: { timestamp: 1 } // 从旧到新处理
+      });
+      
+      // 数据格式验证
+      return observations.filter(obs => 
+        obs && 
+        obs.id && 
+        obs.content && 
+        obs.timestamp &&
+        obs.status === 'unanalyzed'
+      );
+    } catch (error) {
+      console.error(`[${this.name}] 获取观察记录失败:`, error);
+      throw new Error(`获取观察记录失败: ${error.message}`);
+    }
+  }
+
+  /**
+   * 分析观察记录 - 语义理解和模式识别
+   * @param {Array} observations 观察记录数组
+   * @returns {Array} 分析结果数组
+   */
+  async analyzeObservations(observations) {
+    const analysisResults = [];
+    
+    for (const observation of observations) {
       try {
-        // 步骤2 & 3: 进行语义理解和模式识别（内联简单分析示例）
-        const analysis = analyze_single_observation(observation);
-
-        // 准备更新元数据
-        const update_metadata = {
-          analysis_summary: analysis.summary,
-          analysis_details: analysis.details,
-          analysis_timestamp: new Date().toISOString(),
-          related_goals: analysis.related_goals
-        };
-
-        // 准备将作为新记忆存储的分析报告
-        const analysis_report = {
-          type: 'analysis_report',
-          source_observation_id: observation.id,
-          content: {
-            summary: analysis.summary,
-            full_analysis: analysis,
-            suggested_actions: analysis.suggested_actions
-          },
-          metadata: {
-            analyzed_at: new Date().toISOString(),
-            skill_version: '1.0.0'
+        // 基础分析: 识别问题和模式
+        const patternAnalysis = analysisModule.identifyPatterns(observation.content);
+        
+        // 关联进化目标
+        const goalAssociation = this.associateWithGoals(patternAnalysis);
+        
+        // 生成改进建议
+        const improvementSuggestions = this.generateImprovements(patternAnalysis, goalAssociation);
+        
+        analysisResults.push({
+          observationId: observation.id,
+          originalContent: observation.content,
+          timestamp: observation.timestamp,
+          analysis: {
+            patterns: patternAnalysis,
+            goals: goalAssociation,
+            improvements: improvementSuggestions,
+            confidence: this.calculateConfidence(patternAnalysis),
+            urgency: this.determineUrgency(patternAnalysis)
           }
-        };
-
-        return {
-          observation_id: observation.id,
-          update_metadata,
-          analysis_report
-        };
-      } catch (analysisError) {
-        // 捕获单个观察分析过程中的错误，避免中断整个流程
-        result.errors.push({
-          observation_id: observation.id,
-          error: analysisError.message,
-          phase: 'single_observation_analysis'
         });
-        return null; // 返回 null 表示此条记录处理失败
-      }
-    });
 
-    const analysisResults = (await Promise.all(analysisPromises)).filter(Boolean); // 过滤掉失败的(null)
+        console.log(`[${this.name}] 已分析观察 ${observation.id}: ${patternAnalysis.primaryPattern}`);
 
-    // 步骤4: 批量更新观察记录的状态
-    const updatePromises = analysisResults.map(async ({ observation_id, update_metadata }) => {
-      try {
-        await update_observation_status(observation_id, 'analyzed', update_metadata);
-        return observation_id;
-      } catch (updateError) {
-        result.errors.push({
-          observation_id,
-          error: updateError.message,
-          phase: 'status_update'
+      } catch (error) {
+        console.warn(`[${this.name}] 分析观察 ${observation.id} 失败:`, error);
+        // 记录分析失败但不中断流程
+        analysisResults.push({
+          observationId: observation.id,
+          error: error.message,
+          analysis: { failed: true }
         });
-        return null;
       }
-    });
-
-    const updated_ids = (await Promise.all(updatePromises)).filter(Boolean);
-    result.analyzed_count = updated_ids.length;
-
-    // 步骤5: 将分析报告作为新记忆存储
-    const storePromises = analysisResults.map(async ({ analysis_report, observation_id }) => {
-      // 只有对应的观察记录更新成功，才存储报告
-      if (updated_ids.includes(observation_id)) {
-        try {
-          const report_id = await store_memory(analysis_report);
-          return report_id;
-        } catch (storeError) {
-          result.errors.push({
-            observation_id,
-            error: storeError.message,
-            phase: 'report_storage'
-          });
-          return null;
-        }
-      }
-      return null;
-    });
-
-    const report_ids = (await Promise.all(storePromises)).filter(Boolean);
-    result.report_ids = report_ids;
-
-    // 如果有部分失败，但仍有部分成功，则技能仍视为成功完成
-    if (result.analyzed_count > 0) {
-      result.success = true;
-      result.message = `成功分析了 ${result.analyzed_count} 条观察记录，生成了 ${report_ids.length} 份分析报告。`;
-      if (result.errors.length > 0) {
-        result.message += ` 过程中有 ${result.errors.length} 个错误发生。`;
-      }
-    } else {
-      // 所有记录处理都失败
-      throw new Error(`所有 ${unanalyzed_observations.length} 条观察记录的分析均失败。`);
     }
 
-    return result;
-
-  } catch (skillError) {
-    // 捕获整个技能流程的顶层错误
-    result.success = false;
-    result.message = `技能执行失败: ${skillError.message}`;
-    result.errors.push({ error: skillError.message, phase: 'skill_flow' });
-    // 在实际系统中，这里可能需要记录日志或触发警报
-    console.error('[analyze-observations-skill] 执行错误:', skillError);
-    return result;
-  }
-}
-
-/**
- * 内联的简单分析工具（第一个微小工具创造的实例）
- * 对单条观察记录进行基础的语义分析和模式识别。
- * @param {object} observation - 单个观察记录对象，至少包含 { id, content, metadata }
- * @returns {object} 分析结果
- */
-function analyze_single_observation(observation) {
-  if (!observation || !observation.content) {
-    throw new Error('观察记录格式异常：缺少 content 字段。');
+    return analysisResults;
   }
 
-  // 基础的统计分析：计算内容中的关键词分布（示例）
-  const content = typeof observation.content === 'string' 
-    ? observation.content 
-    : JSON.stringify(observation.content);
-
-  // 模式识别：简单的关键词匹配和类型推断
-  const patterns = {
-    error: /错误|失败|异常|bug/i,
-    performance: /慢|延迟|性能|卡顿|优化/i,
-    config: /配置|设置|参数|调整/i,
-    logic: /逻辑|流程|算法|步骤/i,
-    tool: /工具|脚本|插件|函数|创建/i,
-    goal: /目标|计划|任务|里程碑/i
-  };
-
-  const detected_patterns = [];
-  const related_goals = [];
-  let primary_type = 'general';
-
-  for (const [type, regex] of Object.entries(patterns)) {
-    if (regex.test(content)) {
-      detected_patterns.push(type);
-      // 简单的规则：如果检测到error模式，则关联‘错误自修复’目标
-      if (type === 'error') {
-        related_goals.push('error_self_repair');
-      } else if (type === 'performance') {
-        related_goals.push('performance_optimization');
-      }
-      // 将第一个匹配到的类型作为主类型
-      if (primary_type === 'general') {
-        primary_type = type;
-      }
+  /**
+   * 关联进化目标
+   * @param {Object} patternAnalysis 模式分析结果
+   * @returns {Array} 关联的进化目标
+   */
+  associateWithGoals(patternAnalysis) {
+    const goalMap = {
