@@ -1,199 +1,169 @@
-# acp-proxy/skills/self-programming-executor-skill/self_programming_executor_skill.py
-
 import os
 import sys
-import subprocess
-import tempfile
-import shutil
 import json
-import ast
+import subprocess
+import shutil
+import tempfile
 import time
-import logging
+import ast
+import re
 import hashlib
 from datetime import datetime
 from typing import Dict, List, Any, Optional, Tuple
-from dataclasses import dataclass, asdict
-from enum import Enum
+from pathlib import Path
 import git
-import psutil
-import resource
-
-class RiskLevel(Enum):
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
-
-class TargetType(Enum):
-    SKILL_ENHANCEMENT = "skill_enhancement"
-    PLUGIN_OPTIMIZATION = "plugin_optimization"
-    TOOL_CREATION = "tool_creation"
-
-@dataclass
-class CodeModification:
-    id: str
-    target_type: TargetType
-    target_description: str
-    original_code: str
-    modified_code: str
-    file_path: str
-    created_at: datetime
-    status: str = "pending"
-    risk_assessment: Optional[Dict] = None
-    test_results: Optional[Dict] = None
-    deployed_at: Optional[datetime] = None
-
-@dataclass
-class SandBoxResult:
-    success: bool
-    output: str
-    error: Optional[str] = None
-    execution_time: float = 0.0
-    memory_usage: float = 0.0
-    cpu_usage: float = 0.0
-    exit_code: int = 0
-
-@dataclass
-class RiskAssessment:
-    risk_level: RiskLevel
-    system_calls: List[str]
-    performance_impact: float
-    compatibility_issues: List[str]
-    security_score: int
-    recommendations: List[str]
+import logging
 
 class SelfProgrammingExecutorSkill:
-    def __init__(self, workspace_dir: str, config: Dict[str, Any] = None):
-        self.workspace_dir = workspace_dir
-        self.config = config or {}
-        self.modification_history: List[CodeModification] = []
+    def __init__(self, config_path: Optional[str] = None):
+        self.logger = logging.getLogger(__name__)
+        self.project_root = os.getcwd()
+        self.sandbox_dir = os.path.join(self.project_root, '.sandbox')
+        self.history_file = os.path.join(self.project_root, 'modification_history.json')
         self.git_repo = None
-        self.logger = self._setup_logging()
-        self.sandbox_config = {
-            'python_version': '3.8+',
-            'timeout': 30,
-            'memory_limit': 512 * 1024 * 1024,  # 512MB
-            'cpu_limit': 30,  # seconds
-            'allowed_imports': ['json', 'math', 'datetime', 'typing', 'collections', 'copy'],
-            'blocked_imports': ['os', 'sys', 'subprocess', 'socket', 'http', 'urllib', 'shutil']
+        self.python_version = "3.8"
+        
+        # 配置参数
+        self.config = {
+            "sandbox_timeout": 30,
+            "max_rollback_time": 30,
+            "allowed_modules": ["math", "json", "datetime", "collections", "re"],
+            "forbidden_modules": ["os", "sys", "subprocess", "shutil", "ctypes"],
+            "forbidden_syscalls": ["system", "popen", "fork", "exec"],
+            "risk_thresholds": {
+                "high": ["network_access", "file_system_write", "process_creation"],
+                "medium": ["memory_usage", "cpu_usage"],
+                "low": ["module_import", "exception_handling"]
+            }
         }
-        self._initialize_git()
         
-    def _setup_logging(self) -> logging.Logger:
-        logger = logging.getLogger('SelfProgrammingExecutor')
-        logger.setLevel(logging.INFO)
-        handler = logging.FileHandler(os.path.join(self.workspace_dir, 'self_programming.log'))
-        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-        handler.setFormatter(formatter)
-        logger.addHandler(handler)
-        return logger
+        self._init_sandbox()
+        self._init_version_control()
+        
+    def _init_sandbox(self):
+        """初始化沙箱环境"""
+        os.makedirs(self.sandbox_dir, exist_ok=True)
+        os.makedirs(os.path.join(self.sandbox_dir, 'temp'), exist_ok=True)
+        os.makedirs(os.path.join(self.sandbox_dir, 'logs'), exist_ok=True)
+        
+        # 创建沙箱配置文件
+        sandbox_config = {
+            "python_path": sys.executable,
+            "temp_dir": os.path.join(self.sandbox_dir, 'temp'),
+            "log_dir": os.path.join(self.sandbox_dir, 'logs'),
+            "timeout": self.config["sandbox_timeout"]
+        }
+        
+        with open(os.path.join(self.sandbox_dir, 'config.json'), 'w') as f:
+            json.dump(sandbox_config, f)
     
-    def _initialize_git(self):
+    def _init_version_control(self):
+        """初始化版本控制"""
         try:
-            self.git_repo = git.Repo(self.workspace_dir)
-            self.logger.info(f"Git repository initialized at {self.workspace_dir}")
-        except git.InvalidGitRepositoryError:
-            self.git_repo = git.Repo.init(self.workspace_dir)
-            self.logger.info(f"Created new git repository at {self.workspace_dir}")
+            self.git_repo = git.Repo(self.project_root)
+            self.logger.info(f"Git仓库初始化完成: {self.project_root}")
+        except Exception as e:
+            self.logger.error(f"Git仓库初始化失败: {e}")
+            self.git_repo = None
     
-    def generate_code_improvement(self, target: Dict[str, Any]) -> CodeModification:
-        """生成代码改进方案"""
-        target_type = TargetType(target.get('type', 'skill_enhancement'))
-        target_description = target.get('description', '')
+    def generate_code_improvement(self, target: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        根据进化目标生成代码修改方案
+        :param target: 目标类型和描述
+        :return: 代码修改方案
+        """
+        self.logger.info(f"开始生成代码改进方案，目标: {target}")
         
-        # 目标分解
-        sub_targets = self._decompose_target(target_type, target_description)
+        # 分析目标
+        analysis = self._analyze_target(target)
         
-        # 伪代码生成
-        pseudocode = self._generate_pseudocode(sub_targets)
+        # 生成伪代码
+        pseudocode = self._generate_pseudocode(analysis)
         
-        # 完整代码生成
-        code_structure = self._generate_code_structure(pseudocode, target_type)
+        # 生成完整代码
+        implementation = self._generate_implementation(pseudocode, target)
         
-        # 创建修改记录
-        modification_id = hashlib.md5(f"{target_description}{datetime.now()}".encode()).hexdigest()[:12]
+        # 创建修改方案
+        modification_plan = {
+            "id": hashlib.md5(json.dumps(target).encode()).hexdigest(),
+            "target": target,
+            "analysis": analysis,
+            "pseudocode": pseudocode,
+            "implementation": implementation,
+            "timestamp": datetime.now().isoformat(),
+            "status": "generated"
+        }
         
-        modification = CodeModification(
-            id=modification_id,
-            target_type=target_type,
-            target_description=target_description,
-            original_code=self._get_current_code(target.get('file_path', '')),
-            modified_code=code_structure,
-            file_path=target.get('file_path', ''),
-            created_at=datetime.now()
-        )
+        # 记录到历史
+        self._log_modification(modification_plan)
         
-        self.modification_history.append(modification)
-        self.logger.info(f"Generated code improvement: {modification_id}")
-        
-        return modification
+        return modification_plan
     
-    def execute_in_sandbox(self, code: str) -> SandBoxResult:
-        """在沙箱环境中执行代码"""
-        start_time = time.time()
+    def execute_in_sandbox(self, code: str, test_cases: Optional[List[Dict]] = None) -> Dict[str, Any]:
+        """
+        在沙箱中执行代码
+        :param code: Python代码
+        :param test_cases: 测试用例
+        :return: 执行结果
+        """
+        self.logger.info("开始沙箱执行测试")
         
-        # 创建临时目录
-        sandbox_dir = tempfile.mkdtemp(prefix='sandbox_')
+        # 创建执行脚本
+        script_content = self._prepare_sandbox_script(code, test_cases)
         
+        # 写入临时文件
+        script_path = os.path.join(self.sandbox_dir, 'temp', f'script_{int(time.time())}.py')
+        with open(script_path, 'w') as f:
+            f.write(script_content)
+        
+        # 执行脚本
         try:
-            # 创建执行文件
-            code_file = os.path.join(sandbox_dir, 'test_code.py')
-            with open(code_file, 'w') as f:
-                f.write(code)
-            
-            # 执行代码
-            process = subprocess.Popen(
-                [sys.executable, code_file],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                cwd=sandbox_dir,
-                env=self._create_sandbox_env()
+            result = subprocess.run(
+                [sys.executable, script_path],
+                capture_output=True,
+                text=True,
+                timeout=self.config["sandbox_timeout"],
+                cwd=self.sandbox_dir
             )
             
-            # 设置资源限制
-            self._set_resource_limits()
+            # 清理临时文件
+            os.remove(script_path)
             
-            # 等待执行完成
-            stdout, stderr = process.communicate(timeout=self.sandbox_config['timeout'])
+            execution_result = {
+                "success": result.returncode == 0,
+                "stdout": result.stdout,
+                "stderr": result.stderr,
+                "return_code": result.returncode,
+                "timestamp": datetime.now().isoformat()
+            }
             
-            execution_time = time.time() - start_time
+            # 记录执行结果
+            self._log_sandbox_execution(execution_result)
             
-            return SandBoxResult(
-                success=process.returncode == 0,
-                output=stdout.decode('utf-8', errors='ignore'),
-                error=stderr.decode('utf-8', errors='ignore'),
-                execution_time=execution_time,
-                memory_usage=self._get_memory_usage(process.pid),
-                cpu_usage=self._get_cpu_usage(process.pid),
-                exit_code=process.returncode
-            )
+            return execution_result
             
         except subprocess.TimeoutExpired:
-            process.kill()
-            return SandBoxResult(
-                success=False,
-                output="",
-                error="Execution timeout exceeded",
-                execution_time=time.time() - start_time
-            )
+            self.logger.warning("沙箱执行超时")
+            return {
+                "success": False,
+                "error": "execution_timeout",
+                "timestamp": datetime.now().isoformat()
+            }
         except Exception as e:
-            return SandBoxResult(
-                success=False,
-                output="",
-                error=str(e),
-                execution_time=time.time() - start_time
-            )
-        finally:
-            # 清理沙箱
-            shutil.rmtree(sandbox_dir, ignore_errors=True)
+            self.logger.error(f"沙箱执行异常: {e}")
+            return {
+                "success": False,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            }
     
-    def assess_risk(self, code: str) -> RiskAssessment:
-        """评估代码风险"""
-        tree = ast.parse(code)
+    def assess_risk(self, code: str) -> Dict[str, Any]:
+        """
+        评估代码风险
+        :param code: Python代码
+        :return: 风险评估结果
+        """
+        self.logger.info("开始风险评估")
         
-        system_calls = self._extract_system_calls(tree)
-        performance_impact = self._estimate_performance_impact(tree)
-        compatibility_issues = self._check_compatibility(tree)
-        security_score = self._calculate_security_score(system_calls, compatibility_issues)
-        
-        risk_level = self._determine_risk_level(security_score)
+        risk_assessment = {
+            "risk_level": "low",
