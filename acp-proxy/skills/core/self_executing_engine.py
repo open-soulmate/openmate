@@ -1,121 +1,216 @@
 import json
-import re
+import sqlite3
+import datetime
 import uuid
-from datetime import datetime
 from typing import List, Dict, Any, Optional
 from pathlib import Path
-from loguru import logger
-import sqlite3
+import logging
 
+logger = logging.getLogger(__name__)
 
 class SelfExecutingEngine:
     """
     核心技能：自我执行引擎
-    让Agent能主动规划并执行自我改进任务，强制其自主执行比例
+    让Agent能主动规划并执行自我改进任务，强制其自主执行比例。
+    解析反思记录，识别可自主执行的改进项，生成执行计划。
     """
     
-    # 自主可行性关键词配置
-    SELF_EXECUTION_KEYWORDS = {
-        "positive": [
-            "自己写代码", "写代码", "修复bug", "修复错误", "创建脚本", "自动执行",
-            "自我改进", "优化", "重构", "编写", "实现", "开发", "编码", "自动化",
-            "脚本", "工具", "改进", "升级", "增强", "修复", "补丁", "配置",
-            "测试", "调试", "部署", "集成", "插件", "技能", "模块", "组件"
-        ],
-        "negative": [
-            "需要partner", "需要协作", "团队讨论", "共同决策", "会议",
-            "需要审批", "需要外部帮助", "等待反馈", "依赖他人", "多人",
-            "团队", "合作", "协调", "沟通", "讨论", "协商"
-        ]
-    }
-    
     def __init__(self, memory_db_path: str = "memory.db"):
-        """
-        初始化自我执行引擎
-        
-        Args:
-            memory_db_path: memory.db数据库路径
-        """
-        self.memory_db_path = Path(memory_db_path)
-        self._init_db()
-        
-    def _init_db(self):
-        """初始化数据库，确保必要的表存在"""
-        try:
-            conn = sqlite3.connect(self.memory_db_path)
-            cursor = conn.cursor()
-            
-            # 创建计划状态表
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS self_execution_plans (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    cycle_id INTEGER NOT NULL,
-                    plan_json TEXT NOT NULL,
-                    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    status TEXT DEFAULT 'active'
-                )
-            ''')
-            
-            # 创建历史执行记录表
-            cursor.execute('''
-                CREATE TABLE IF NOT EXISTS execution_history (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    task_id TEXT NOT NULL,
-                    reflection TEXT,
-                    success BOOLEAN,
-                    executed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                    notes TEXT
-                )
-            ''')
-            
-            conn.commit()
-            conn.close()
-            logger.info("数据库初始化完成")
-        except Exception as e:
-            logger.error(f"数据库初始化失败: {e}")
-            raise
+        self.memory_db_path = memory_db_path
+        self.keyword_weights = {
+            "自己写代码": 0.9,
+            "修复bug": 0.85,
+            "创建脚本": 0.8,
+            "优化代码": 0.75,
+            "重构": 0.7,
+            "编写函数": 0.8,
+            "添加测试": 0.75,
+            "自动生成": 0.9,
+            "编写插件": 0.8,
+            "创建技能": 0.85,
+            "修复错误": 0.85,
+            "代码改进": 0.75,
+            "实现功能": 0.8,
+            "独立完成": 0.9,
+            "无需协作": 0.85,
+            "自动化": 0.8,
+            "批处理": 0.75,
+            "模板化": 0.7,
+            "工具开发": 0.8
+        }
+        self.partner_keywords = [
+            "需要帮助", "协作", "共同", "讨论", "沟通", "审批", 
+            "外部依赖", "第三方", "团队", "人工审核", "需要反馈",
+            "用户输入", "外部API", "网络请求", "部署到服务器"
+        ]
     
-    def _get_historical_success_rate(self, task_description: str) -> float:
+    def generate_self_plan(self, reflection_json: List[Dict], 
+                          current_skills_plugins: List[str],
+                          cycle_id: Optional[int] = None) -> Dict[str, Any]:
         """
-        获取类似任务的历史执行成功率
+        生成自我执行计划
         
         Args:
-            task_description: 任务描述
+            reflection_json: 反思记录JSON列表
+            current_skills_plugins: 当前技能/插件目录列表
+            cycle_id: 周期ID，如果为None则自动生成
             
         Returns:
-            历史成功率 (0.0-1.0)
+            符合指定schema的自我执行计划
         """
-        try:
-            conn = sqlite3.connect(self.memory_db_path)
-            cursor = conn.cursor()
+        if cycle_id is None:
+            cycle_id = int(datetime.datetime.now().timestamp())
+        
+        # 1. 解析反思记录，识别可自主执行的改进项
+        executable_tasks = []
+        
+        for reflection in reflection_json:
+            reflection_id = reflection.get("id", str(uuid.uuid4()))
+            content = reflection.get("content", "")
+            context = reflection.get("context", "")
+            full_text = f"{content} {context}"
             
-            # 简单的关键词匹配查询
-            cursor.execute('''
-                SELECT success FROM execution_history 
-                WHERE reflection LIKE ? OR notes LIKE ?
-            ''', (f'%{task_description[:50]}%', f'%{task_description[:50]}%'))
+            # 2. 计算自主可行性得分
+            score, is_executable = self._calculate_self_executability_score(full_text)
             
-            results = cursor.fetchall()
-            conn.close()
-            
-            if not results:
-                return 0.5  # 默认成功率
-            
-            success_count = sum(1 for row in results if row[0])
-            return success_count / len(results)
-            
-        except Exception as e:
-            logger.warning(f"查询历史记录失败: {e}")
-            return 0.5  # 默认成功率
+            if is_executable:
+                # 3. 解析任务细节
+                task_details = self._parse_task_details(full_text, current_skills_plugins)
+                
+                if task_details:
+                    task = {
+                        "task_id": f"task_{reflection_id}_{uuid.uuid4().hex[:8]}",
+                        "description": task_details["description"],
+                        "target_files": task_details["target_files"],
+                        "verification_criteria": task_details["verification_criteria"],
+                        "status": "pending",
+                        "feasibility_score": score,
+                        "source_reflection_id": reflection_id
+                    }
+                    executable_tasks.append(task)
+        
+        # 4. 按可行性得分排序
+        executable_tasks.sort(key=lambda x: x["feasibility_score"], reverse=True)
+        
+        # 5. 限制任务数量，确保不超过合理范围
+        max_tasks = min(len(executable_tasks), 10)
+        final_tasks = executable_tasks[:max_tasks]
+        
+        # 6. 确保至少有1个任务，如果没有合适的任务则创建默认任务
+        if not final_tasks:
+            default_task = self._create_default_self_improvement_task()
+            final_tasks.append(default_task)
+        
+        # 7. 构建计划
+        plan = {
+            "cycle_id": cycle_id,
+            "tasks": final_tasks,
+            "self_exec_ratio_target": 0.5,
+            "generated_at": datetime.datetime.now().isoformat(),
+            "total_tasks": len(final_tasks),
+            "executive_tasks_count": len([t for t in final_tasks if t["feasibility_score"] >= 0.7])
+        }
+        
+        # 8. 保存计划到文件
+        self._save_plan_to_file(plan)
+        
+        # 9. 持久化到数据库
+        self._save_plan_to_db(plan)
+        
+        logger.info(f"Generated self-execution plan with {len(final_tasks)} tasks, cycle_id: {cycle_id}")
+        
+        return plan
     
-    def _calculate_self_exec_feasibility(self, reflection_text: str, historical_rate: float) -> float:
+    def _calculate_self_executability_score(self, text: str) -> tuple[float, bool]:
         """
-        计算自主可行性得分
+        计算改进项的自主可行性得分
         
         Args:
-            reflection_text: 反思文本
-            historical_rate: 历史成功率
+            text: 改进项文本
             
         Returns:
-            可行性得分 (0.0-1.0)
+            (得分, 是否可执行)
         """
+        text_lower = text.lower()
+        
+        # 检查是否包含需要协作的关键词
+        for partner_keyword in self.partner_keywords:
+            if partner_keyword in text_lower:
+                return 0.0, False
+        
+        # 计算正向关键词得分
+        score = 0.0
+        matched_keywords = []
+        
+        for keyword, weight in self.keyword_weights.items():
+            if keyword in text_lower:
+                score += weight
+                matched_keywords.append(keyword)
+        
+        # 归一化得分
+        if score > 0:
+            normalized_score = min(score / len(self.keyword_weights), 1.0)
+        else:
+            normalized_score = 0.0
+        
+        # 基于关键词数量的加成
+        if len(matched_keywords) >= 3:
+            normalized_score = min(normalized_score * 1.2, 1.0)
+        
+        # 判断是否可执行（阈值0.6）
+        is_executable = normalized_score >= 0.6
+        
+        return normalized_score, is_executable
+    
+    def _parse_task_details(self, text: str, current_skills_plugins: List[str]) -> Optional[Dict[str, Any]]:
+        """
+        解析任务细节，提取描述、目标文件和验证标准
+        
+        Args:
+            text: 改进项文本
+            current_skills_plugins: 当前技能/插件列表
+            
+        Returns:
+            任务细节字典，如果解析失败返回None
+        """
+        # 简单的规则提取（实际项目中可能需要更复杂的NLP）
+        lines = text.split('\n')
+        
+        # 提取描述
+        description = ""
+        for line in lines[:3]:  # 取前三行作为描述
+            if len(line.strip()) > 10:
+                description = line.strip()
+                break
+        
+        if not description:
+            description = text[:100] + "..." if len(text) > 100 else text
+        
+        # 提取可能的目标文件
+        target_files = []
+        file_indicators = [".py", ".js", ".ts", ".json", ".yaml", ".yml", ".md", ".txt", ".cfg"]
+        
+        for skill_plugin in current_skills_plugins:
+            if any(indicator in skill_plugin for indicator in file_indicators):
+                target_files.append(skill_plugin)
+        
+        # 基于文本内容推断可能的文件
+        if "技能" in text or "skill" in text.lower():
+            target_files.extend(["skills/", "core/"])
+        if "插件" in text or "plugin" in text.lower():
+            target_files.extend(["plugins/", "extensions/"])
+        if "配置" in text or "config" in text.lower():
+            target_files.extend(["config/", "settings/"])
+        
+        # 去重
+        target_files = list(set(target_files))
+        
+        # 生成验证标准
+        verification_criteria = self._generate_verification_criteria(text)
+        
+        return {
+            "description": description,
+            "target_files": target_files,
+            "verification_criteria": verification_criteria
+        }
+    
