@@ -1,114 +1,160 @@
-# acp-proxy/skills/goal_progress_tracker.py
+#!/usr/bin/env python3
 """
 Goal Progress Tracker Skill
-解决目标孤立和自我进化循环不闭合问题
+解决目标孤立和自我进化循环不闭合的问题
 """
 
 import json
-import logging
-from typing import Dict, List, Any, Optional
-from dataclasses import dataclass, field
+from typing import Dict, List, Optional, Any
 from datetime import datetime
+from enum import Enum
 
-logger = logging.getLogger(__name__)
+class GoalPriority(Enum):
+    """目标优先级枚举"""
+    CRITICAL = 1
+    HIGH = 2
+    MEDIUM = 3
+    LOW = 4
 
-
-@dataclass
-class Goal:
-    """进化目标的数据结构"""
-    goal_id: str
-    description: str
-    current_milestone: str
-    next_milestone: str
-    progress_percentage: float = 0.0
-    priority: int = 1  # 1-5, 5为最高优先级
-    last_updated: datetime = field(default_factory=datetime.now)
-    dependencies: List[str] = field(default_factory=list)
-
+class MilestoneStatus(Enum):
+    """里程碑状态枚举"""
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    ACHIEVED = "achieved"
+    FAILED = "failed"
 
 class GoalProgressTracker:
-    """目标进度跟踪器，解决目标孤立和进化循环不闭合问题"""
+    """目标进度跟踪器技能类
     
-    def __init__(self):
-        """初始化目标进度跟踪器"""
-        # 硬编码的初始进化目标和里程碑定义
-        self.goals: Dict[str, Goal] = {
-            "self_programming": Goal(
-                goal_id="self_programming",
-                description="自编程能力：系统能自主编写和优化代码",
-                current_milestone="理解基础代码结构",
-                next_milestone="成功执行一次自我生成的代码",
-                progress_percentage=10.0,
-                priority=4,
-                dependencies=[]
-            ),
-            "error_self_repair": Goal(
-                goal_id="error_self_repair",
-                description="错误自修复：系统能识别并修复自身错误",
-                current_milestone="错误模式识别",
-                next_milestone="成功修复一个已识别的错误",
-                progress_percentage=5.0,
-                priority=5,
-                dependencies=["self_programming"]
-            ),
-            "knowledge_expansion": Goal(
-                goal_id="knowledge_expansion",
-                description="知识扩展：系统能持续学习和扩展知识",
-                current_milestone="基础学习能力",
-                next_milestone="掌握一个新的知识领域",
-                progress_percentage=15.0,
-                priority=3,
-                dependencies=[]
-            ),
-            "performance_optimization": Goal(
-                goal_id="performance_optimization",
-                description="性能优化：系统能分析和优化自身性能",
-                current_milestone="性能指标识别",
-                next_milestone="实现可量化的性能提升",
-                progress_percentage=8.0,
-                priority=4,
-                dependencies=[]
-            ),
-            "context_awareness": Goal(
-                goal_id="context_awareness",
-                description="上下文感知：系统能理解复杂的环境上下文",
-                current_milestone="基础上下文理解",
-                next_milestone="在复杂场景中做出正确决策",
-                progress_percentage=12.0,
-                priority=4,
-                dependencies=[]
-            )
-        }
-        
-        # 行动到技能的映射
-        self.skill_mapping = {
-            "generate_code": "SelfCodeGenerator",
-            "debug_code": "CodeDebugger",
-            "analyze_error": "ErrorAnalyzer",
-            "learn_topic": "KnowledgeAcquirer",
-            "optimize_performance": "PerformanceOptimizer",
-            "analyze_context": "ContextAnalyzer"
-        }
-        
-        logger.info("GoalProgressTracker初始化完成，加载了%d个进化目标", len(self.goals))
+    功能：
+    1. 维护目标进度字典，记录量化里程碑
+    2. 智能推荐下一步行动
+    3. 确保所有探索都驱动目标进度
+    4. 形成自我进化闭环
+    """
     
-    def update_milestone(self, goal_id: str, new_milestone: str, progress_increment: float = 10.0) -> bool:
-        """更新指定目标的里程碑
+    def __init__(self, llm_caller=None):
+        """初始化目标进度跟踪器
         
         Args:
-            goal_id: 目标ID
-            new_milestone: 新的里程碑描述
-            progress_increment: 进度增量百分比
+            llm_caller: LLM调用函数，用于生成建议
+        """
+        self.llm_caller = llm_caller or self._default_llm_caller
+        self.goal_progress: Dict[str, Any] = {}
+        self.observations_history: List[Dict] = []
+        self.error_analysis_history: List[Dict] = []
+        self.action_history: List[Dict] = []
+        
+        # 硬编码初始进化目标
+        self._initialize_default_goals()
+    
+    def _initialize_default_goals(self):
+        """初始化默认的进化目标和里程碑"""
+        default_goals = {
+            "self_coding": {
+                "name": "自编程能力",
+                "description": "实现自我代码生成、调试和优化的能力",
+                "priority": GoalPriority.CRITICAL,
+                "next_milestone": "成功执行一次自我生成的代码",
+                "milestone_status": MilestoneStatus.IN_PROGRESS,
+                "progress_percentage": 15.0,
+                "achieved_milestones": [
+                    "能理解编程概念和语法",
+                    "能分析现有代码结构"
+                ],
+                "success_criteria": [
+                    "生成的代码能通过语法检查",
+                    "生成的代码能正确执行",
+                    "生成的代码能处理边界情况"
+                ],
+                "related_skills": ["SelfCodeGenerator", "CodeAnalyzer"]
+            },
+            "error_self_repair": {
+                "name": "错误自修复",
+                "description": "自动检测和修复运行时错误的能力",
+                "priority": GoalPriority.HIGH,
+                "next_milestone": "识别并修复至少3种常见错误模式",
+                "milestone_status": MilestoneStatus.IN_PROGRESS,
+                "progress_percentage": 25.0,
+                "achieved_milestones": [
+                    "能捕获错误堆栈",
+                    "能记录错误模式"
+                ],
+                "success_criteria": [
+                    "错误修复成功率 > 70%",
+                    "减少人工干预需求",
+                    "支持至少10种错误类型"
+                ],
+                "related_skills": ["ErrorPatternAnalyzer", "AutoRetryPlugin"]
+            },
+            "knowledge_expansion": {
+                "name": "知识扩展",
+                "description": "持续学习和扩展知识库的能力",
+                "priority": GoalPriority.MEDIUM,
+                "next_milestone": "成功整合一个新领域的知识到知识图谱",
+                "milestone_status": MilestoneStatus.NOT_STARTED,
+                "progress_percentage": 10.0,
+                "achieved_milestones": [
+                    "建立基本知识结构",
+                    "实现知识检索功能"
+                ],
+                "success_criteria": [
+                    "知识图谱节点增长 > 1000",
+                    "知识检索准确率 > 85%",
+                    "支持跨领域知识关联"
+                ],
+                "related_skills": ["KnowledgeGraphBuilder", "ExternalDataSource"]
+            },
+            "goal_reflection": {
+                "name": "目标反思能力",
+                "description": "定期反思和调整进化策略的能力",
+                "priority": GoalPriority.HIGH,
+                "next_milestone": "完成第一次完整的进化循环反思",
+                "milestone_status": MilestoneStatus.IN_PROGRESS,
+                "progress_percentage": 30.0,
+                "achieved_milestones": [
+                    "建立反思机制",
+                    "记录进化日志"
+                ],
+                "success_criteria": [
+                    "能识别进化瓶颈",
+                    "能提出有效改进策略",
+                    "反思结果能指导下一步行动"
+                ],
+                "related_skills": ["ReflectionEngine", "ProgressAnalyzer"]
+            }
+        }
+        
+        self.goal_progress = default_goals
+    
+    def _default_llm_caller(self, prompt: str) -> str:
+        """默认LLM调用函数，用于演示
+        
+        Args:
+            prompt: 输入提示
             
         Returns:
-            bool: 更新是否成功
+            模拟的LLM响应
         """
-        if goal_id not in self.goals:
-            logger.warning("目标ID %s 不存在", goal_id)
-            return False
+        # 这是一个简化的模拟，实际使用中应替换为真实的LLM调用
+        return json.dumps([
+            {
+                "action": "调用SelfCodeGenerator生成一个简单的计算器程序",
+                "related_goal": "self_coding",
+                "skill_to_use": "SelfCodeGenerator",
+                "expected_outcome": "成功生成可执行代码",
+                "priority": "critical"
+            }
+        ])
+    
+    def get_goal_progress(self, goal_id: Optional[str] = None) -> Dict:
+        """获取目标进度信息
         
-        goal = self.goals[goal_id]
-        goal.current_milestone = new_milestone
-        goal.progress_percentage = min(100.0, goal.progress_percentage + progress_increment)
-        goal.last_updated = datetime.now()
-        
+        Args:
+            goal_id: 目标ID，如果为None则返回所有目标
+            
+        Returns:
+            目标进度信息字典
+        """
+        if goal_id:
+            return self.goal_progress.get(goal_id, {})
