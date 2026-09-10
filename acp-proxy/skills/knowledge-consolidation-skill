@@ -1,161 +1,159 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 """
-知识巩固技能 - 记忆管理机制优化
+knowledge-consolidation-skill
+知识巩固技能 - 优化记忆管理机制
 """
 
-import asyncio
 import json
 import time
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional, Tuple
-from collections import defaultdict
+import datetime
 import numpy as np
-from sentence_transformers import SentenceTransformer
-from sklearn.metrics.pairwise import cosine_similarity
-import schedule
-import networkx as nx
+from collections import defaultdict
+from typing import Dict, List, Tuple, Any, Optional
 from dataclasses import dataclass, asdict
-import hashlib
-import logging
+from heapq import nlargest
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
 
-# 配置日志
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# Constants
+SEMANTIC_SIMILARITY_THRESHOLD = 0.85
+IMPORTANCE_WEIGHTS = {'frequency': 0.3, 'emotion': 0.3, 'information': 0.4}
+COMPRESSION_THRESHOLD = 5
+REVIEW_WEEKDAY = 6  # Sunday
+REVIEW_HOUR = 22  # 10 PM
+
 
 @dataclass
 class Memory:
-    """记忆数据结构"""
     id: str
     content: str
-    embedding: List[float]
-    timestamp: datetime
-    usage_count: int = 0
-    emotional_intensity: float = 0.5
-    information_value: float = 0.5
-    importance_score: float = 0.0
-    tags: List[str] = None
-    related_memories: List[str] = None
+    timestamp: float
+    emotion_intensity: float
+    information_value: float
+    usage_count: int
+    importance_score: float
+    tags: List[str]
+    source: str
+    embedding: Optional[List[float]] = None
+    metadata: Dict[str, Any] = None
     
     def __post_init__(self):
-        if self.tags is None:
-            self.tags = []
-        if self.related_memories is None:
-            self.related_memories = []
+        if self.metadata is None:
+            self.metadata = {}
+
+
+@dataclass
+class KnowledgeGraphNode:
+    id: str
+    type: str  # 'memory', 'concept', 'entity'
+    content: str
+    properties: Dict[str, Any]
+    connections: List[str]  # Node IDs this node connects to
+    last_updated: float
+
+
+@dataclass
+class KnowledgeGraphEdge:
+    source_id: str
+    target_id: str
+    relationship: str
+    weight: float
+    properties: Dict[str, Any]
+
 
 class KnowledgeConsolidationSkill:
-    """知识巩固技能类"""
-    
-    def __init__(self):
-        # 初始化模型
-        self.model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
-        
-        # 记忆存储
+    def __init__(self, storage_backend=None):
         self.memories: Dict[str, Memory] = {}
-        self.memory_embeddings: np.ndarray = None
-        self.memory_ids: List[str] = []
+        self.knowledge_graph_nodes: Dict[str, KnowledgeGraphNode] = {}
+        self.knowledge_graph_edges: List[KnowledgeGraphEdge] = []
+        self.embedding_cache: Dict[str, np.ndarray] = {}
+        self.vectorizer = TfidfVectorizer()
+        self.tfidf_matrix = None
+        self.memory_ids = []
+        self.last_review_time = None
         
-        # 知识图谱
-        self.knowledge_graph = nx.DiGraph()
+        # Storage backend for persistence
+        self.storage = storage_backend
         
-        # 配置参数
-        self.SIMILARITY_THRESHOLD = 0.85
-        self.IMPORTANCE_WEIGHTS = {
-            'usage_frequency': 0.3,
-            'emotional_intensity': 0.3,
-            'information_value': 0.4
-        }
-        self.COMPRESSION_THRESHOLD = 5  # 记忆压缩阈值
-        
-        # 性能监控
-        self.performance_metrics = {
-            'last_consolidation_time': None,
-            'processed_memories_count': 0
-        }
-        
-        # 加载现有记忆
-        self._load_memories()
-        
-        # 启动定期回顾任务
-        self._setup_scheduled_tasks()
+        # Load existing data if available
+        self._load_state()
     
-    def _load_memories(self):
-        """加载现有记忆"""
-        try:
-            with open('memories.json', 'r', encoding='utf-8') as f:
-                data = json.load(f)
-                for mem_data in data:
-                    memory = Memory(
-                        id=mem_data['id'],
-                        content=mem_data['content'],
-                        embedding=mem_data['embedding'],
-                        timestamp=datetime.fromisoformat(mem_data['timestamp']),
-                        usage_count=mem_data.get('usage_count', 0),
-                        emotional_intensity=mem_data.get('emotional_intensity', 0.5),
-                        information_value=mem_data.get('information_value', 0.5),
-                        importance_score=mem_data.get('importance_score', 0.0),
-                        tags=mem_data.get('tags', []),
-                        related_memories=mem_data.get('related_memories', [])
-                    )
-                    self.memories[memory.id] = memory
-        except FileNotFoundError:
-            logger.info("未找到现有记忆文件，创建新存储")
-    
-    def _save_memories(self):
-        """保存记忆到文件"""
-        try:
-            memory_list = []
-            for memory in self.memories.values():
-                mem_dict = asdict(memory)
-                mem_dict['timestamp'] = mem_dict['timestamp'].isoformat()
-                memory_list.append(mem_dict)
-            
-            with open('memories.json', 'w', encoding='utf-8') as f:
-                json.dump(memory_list, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            logger.error(f"保存记忆失败: {e}")
-    
-    def _setup_scheduled_tasks(self):
-        """设置定期任务"""
-        # 每周日晚上执行记忆回顾
-        schedule.every().sunday.at("23:00").do(self.consolidate_knowledge)
+    def add_memory(self, content: str, emotion_intensity: float = 0.5,
+                  information_value: float = 0.5, tags: List[str] = None,
+                  source: str = "default", metadata: Dict[str, Any] = None) -> str:
+        """添加新记忆，自动去重和计算重要性"""
+        # Check for duplicates first
+        if self._is_duplicate(content):
+            # Find and update existing memory
+            existing_id = self._find_similar_memory(content)
+            if existing_id:
+                existing = self.memories[existing_id]
+                existing.usage_count += 1
+                existing.importance_score = self._calculate_importance(existing)
+                return existing_id
         
-        # 启动定时任务线程
-        import threading
-        def run_scheduler():
-            while True:
-                schedule.run_pending()
-                time.sleep(60)
+        # Generate unique ID
+        memory_id = f"mem_{int(time.time() * 1000)}_{len(self.memories)}"
         
-        scheduler_thread = threading.Thread(target=run_scheduler, daemon=True)
-        scheduler_thread.start()
-    
-    def _calculate_embedding(self, text: str) -> List[float]:
-        """计算文本嵌入向量"""
-        embedding = self.model.encode(text)
-        return embedding.tolist()
-    
-    def _calculate_similarity(self, vec1: List[float], vec2: List[float]) -> float:
-        """计算两个向量的余弦相似度"""
-        vec1 = np.array(vec1).reshape(1, -1)
-        vec2 = np.array(vec2).reshape(1, -1)
-        return cosine_similarity(vec1, vec2)[0][0]
-    
-    def _calculate_importance_score(self, memory: Memory) -> float:
-        """计算记忆重要性评分"""
-        # 归一化各项指标（假设输入范围是0-1）
-        score = (
-            memory.usage_count * self.IMPORTANCE_WEIGHTS['usage_frequency'] +
-            memory.emotional_intensity * self.IMPORTANCE_WEIGHTS['emotional_intensity'] +
-            memory.information_value * self.IMPORTANCE_WEIGHTS['information_value']
+        # Create new memory
+        new_memory = Memory(
+            id=memory_id,
+            content=content,
+            timestamp=time.time(),
+            emotion_intensity=max(0, min(1, emotion_intensity)),
+            information_value=max(0, min(1, information_value)),
+            usage_count=1,
+            importance_score=0,
+            tags=tags or [],
+            source=source,
+            metadata=metadata or {}
         )
-        return min(1.0, max(0.0, score))
+        
+        # Calculate importance
+        new_memory.importance_score = self._calculate_importance(new_memory)
+        
+        # Store memory
+        self.memories[memory_id] = new_memory
+        
+        # Update TF-IDF matrix
+        self._update_tfidf_index()
+        
+        # Update knowledge graph
+        self._add_memory_to_graph(new_memory)
+        
+        # Save state
+        self._save_state()
+        
+        return memory_id
     
-    def _generate_memory_id(self, content: str) -> str:
-        """生成记忆ID"""
-        return hashlib.md5(content.encode()).hexdigest()[:16]
-    
-    async def add_memory(self, content: str, tags: List[str] = None, 
-                        emotional_intensity: float = 0.5, 
-                        information_value: float = 0.5) -> Memory:
-        """添加新记忆"""
+    def query_memories(self, query: str, top_k: int = 10,
+                      filters: Dict[str, Any] = None) -> List[Memory]:
+        """查询相关记忆"""
+        if not self.memories:
+            return []
+        
+        # Update TF-IDF index if needed
+        if self.tfidf_matrix is None or len(self.memories) != len(self.memory_ids):
+            self._update_tfidf_index()
+        
+        # Transform query to TF-IDF vector
+        query_vec = self.vectorizer.transform([query])
+        
+        # Calculate similarities
+        similarities = cosine_similarity(query_vec, self.tfidf_matrix)[0]
+        
+        # Get top-k indices
+        top_indices = np.argsort(similarities)[-top_k:][::-1]
+        
+        results = []
+        for idx in top_indices:
+            if similarities[idx] > 0:  # Filter non-zero similarities
+                memory_id = self.memory_ids[idx]
+                memory = self.memories[memory_id]
+                
+                # Apply filters
+                if filters:
+                    if not self._apply_filters(memory, filters):
+                        continue
+                
+                results.append(memory)
+        
