@@ -1,233 +1,199 @@
-"""
-Self-Programming Executor Skill - ACP Proxy
-Makes the agent capable of writing and executing code improvements for itself.
-"""
+# acp-proxy/skills/self-programming-executor-skill/self_programming_executor_skill.py
 
 import os
 import sys
-import json
 import subprocess
 import tempfile
 import shutil
-import hashlib
+import json
+import ast
 import time
 import logging
-import datetime
-import ast
-import re
-from pathlib import Path
-from typing import Dict, List, Tuple, Optional, Any, Set
+import hashlib
+from datetime import datetime
+from typing import Dict, List, Any, Optional, Tuple
+from dataclasses import dataclass, asdict
 from enum import Enum
-from dataclasses import dataclass
-from abc import ABC, abstractmethod
 import git
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-
-class TargetType(Enum):
-    """Types of improvement targets"""
-    SKILL_ENHANCEMENT = "skill_enhancement"
-    PLUGIN_OPTIMIZATION = "plugin_optimization"
-    TOOL_CREATION = "tool_creation"
-
+import psutil
+import resource
 
 class RiskLevel(Enum):
-    """Risk levels for code changes"""
     LOW = "low"
     MEDIUM = "medium"
     HIGH = "high"
     CRITICAL = "critical"
 
+class TargetType(Enum):
+    SKILL_ENHANCEMENT = "skill_enhancement"
+    PLUGIN_OPTIMIZATION = "plugin_optimization"
+    TOOL_CREATION = "tool_creation"
 
 @dataclass
-class CodeImprovementTarget:
-    """Target for code improvement"""
+class CodeModification:
+    id: str
     target_type: TargetType
-    description: str
-    priority: int  # 1-10, higher is more important
-    constraints: List[str]
-    expected_outcome: str
-    metadata: Dict[str, Any] = None
-
-
-@dataclass
-class CodeChange:
-    """Represents a code change"""
+    target_description: str
+    original_code: str
+    modified_code: str
     file_path: str
-    original_content: str
-    new_content: str
-    change_type: str  # "addition", "deletion", "modification"
-    description: str
-
+    created_at: datetime
+    status: str = "pending"
+    risk_assessment: Optional[Dict] = None
+    test_results: Optional[Dict] = None
+    deployed_at: Optional[datetime] = None
 
 @dataclass
-class ExecutionResult:
-    """Result of sandbox execution"""
+class SandBoxResult:
     success: bool
-    stdout: str
-    stderr: str
-    exit_code: int
-    execution_time: float
-    memory_usage: float
-    warnings: List[str]
-
+    output: str
+    error: Optional[str] = None
+    execution_time: float = 0.0
+    memory_usage: float = 0.0
+    cpu_usage: float = 0.0
+    exit_code: int = 0
 
 @dataclass
 class RiskAssessment:
-    """Risk assessment of code changes"""
     risk_level: RiskLevel
-    system_call_risks: List[str]
-    performance_impact: Dict[str, Any]
+    system_calls: List[str]
+    performance_impact: float
     compatibility_issues: List[str]
-    security_risks: List[str]
+    security_score: int
     recommendations: List[str]
-    score: float  # 0.0-1.0, lower is safer
 
-
-class SandboxEnvironment:
-    """Safe execution environment for Python code"""
-    
-    def __init__(self, base_dir: str = None):
-        self.base_dir = base_dir or tempfile.mkdtemp(prefix="acp_sandbox_")
-        self.allowed_modules = {
-            'os', 'sys', 'math', 'json', 'collections', 'itertools',
-            'functools', 're', 'datetime', 'pathlib', 'logging',
-            'typing', 'dataclasses', 'hashlib', 'copy', 'pprint'
+class SelfProgrammingExecutorSkill:
+    def __init__(self, workspace_dir: str, config: Dict[str, Any] = None):
+        self.workspace_dir = workspace_dir
+        self.config = config or {}
+        self.modification_history: List[CodeModification] = []
+        self.git_repo = None
+        self.logger = self._setup_logging()
+        self.sandbox_config = {
+            'python_version': '3.8+',
+            'timeout': 30,
+            'memory_limit': 512 * 1024 * 1024,  # 512MB
+            'cpu_limit': 30,  # seconds
+            'allowed_imports': ['json', 'math', 'datetime', 'typing', 'collections', 'copy'],
+            'blocked_imports': ['os', 'sys', 'subprocess', 'socket', 'http', 'urllib', 'shutil']
         }
-        self.max_execution_time = 30  # seconds
-        self.max_memory_mb = 512  # MB
+        self._initialize_git()
         
-    def _validate_code(self, code: str) -> Tuple[bool, List[str]]:
-        """Validate code for safety violations"""
-        warnings = []
-        
-        # Check for dangerous imports
-        import_pattern = r"import\s+(\w+)|from\s+(\w+)\s+import"
-        matches = re.findall(import_pattern, code)
-        
-        for match in matches:
-            module = match[0] or match[1]
-            if module not in self.allowed_modules and not module.startswith('.'):
-                warnings.append(f"Potentially unsafe import: {module}")
-        
-        # Check for dangerous functions
-        dangerous_calls = [
-            'eval', 'exec', 'compile', '__import__', 'open', 'file',
-            'subprocess', 'os.system', 'os.popen', 'os.exec*',
-            'shutil.rmtree', 'shutil.copytree'
-        ]
-        
-        for call in dangerous_calls:
-            if call in code:
-                warnings.append(f"Potentially dangerous call: {call}")
-        
-        # Check for file operations outside sandbox
-        if 'open(' in code and 'base_dir' not in code:
-            warnings.append("File operations without sandbox path")
-        
-        return len(warnings) == 0, warnings
+    def _setup_logging(self) -> logging.Logger:
+        logger = logging.getLogger('SelfProgrammingExecutor')
+        logger.setLevel(logging.INFO)
+        handler = logging.FileHandler(os.path.join(self.workspace_dir, 'self_programming.log'))
+        formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        handler.setFormatter(formatter)
+        logger.addHandler(handler)
+        return logger
     
-    def execute(self, code: str, timeout: int = None) -> ExecutionResult:
-        """Execute code in sandbox"""
-        timeout = timeout or self.max_execution_time
+    def _initialize_git(self):
+        try:
+            self.git_repo = git.Repo(self.workspace_dir)
+            self.logger.info(f"Git repository initialized at {self.workspace_dir}")
+        except git.InvalidGitRepositoryError:
+            self.git_repo = git.Repo.init(self.workspace_dir)
+            self.logger.info(f"Created new git repository at {self.workspace_dir}")
+    
+    def generate_code_improvement(self, target: Dict[str, Any]) -> CodeModification:
+        """生成代码改进方案"""
+        target_type = TargetType(target.get('type', 'skill_enhancement'))
+        target_description = target.get('description', '')
+        
+        # 目标分解
+        sub_targets = self._decompose_target(target_type, target_description)
+        
+        # 伪代码生成
+        pseudocode = self._generate_pseudocode(sub_targets)
+        
+        # 完整代码生成
+        code_structure = self._generate_code_structure(pseudocode, target_type)
+        
+        # 创建修改记录
+        modification_id = hashlib.md5(f"{target_description}{datetime.now()}".encode()).hexdigest()[:12]
+        
+        modification = CodeModification(
+            id=modification_id,
+            target_type=target_type,
+            target_description=target_description,
+            original_code=self._get_current_code(target.get('file_path', '')),
+            modified_code=code_structure,
+            file_path=target.get('file_path', ''),
+            created_at=datetime.now()
+        )
+        
+        self.modification_history.append(modification)
+        self.logger.info(f"Generated code improvement: {modification_id}")
+        
+        return modification
+    
+    def execute_in_sandbox(self, code: str) -> SandBoxResult:
+        """在沙箱环境中执行代码"""
         start_time = time.time()
         
-        # Create temporary execution file
-        exec_file = os.path.join(self.base_dir, "exec_script.py")
-        
-        # Wrap code with safety imports and sandbox setup
-        wrapped_code = f"""
-import sys
-import os
-import tempfile
-import resource
-
-# Set resource limits
-def set_limits():
-    # Memory limit (in bytes)
-    memory_limit = {self.max_memory_mb * 1024 * 1024}
-    try:
-        resource.setrlimit(resource.RLIMIT_AS, (memory_limit, memory_limit))
-    except:
-        pass
-    
-    # CPU time limit
-    resource.setrlimit(resource.RLIMIT_CPU, ({timeout}, {timeout}))
-
-set_limits()
-
-# Create isolated environment
-sandbox_dir = "{self.base_dir}"
-os.chdir(sandbox_dir)
-
-# Safe input/output
-import io
-old_stdout = sys.stdout
-old_stderr = sys.stderr
-sys.stdout = io.StringIO()
-sys.stderr = io.StringIO()
-
-try:
-    {code}
-    
-    # Get output
-    stdout_output = sys.stdout.getvalue()
-    stderr_output = sys.stderr.getvalue()
-    
-    # Write results to file
-    with open(os.path.join(sandbox_dir, "execution_result.json"), "w") as f:
-        json.dump({{
-            "success": True,
-            "stdout": stdout_output,
-            "stderr": stderr_output,
-            "exit_code": 0
-        }}, f)
-        
-except Exception as e:
-    stderr_output = sys.stderr.getvalue()
-    stderr_output += f"\\nException: {{str(e)}}"
-    
-    with open(os.path.join(sandbox_dir, "execution_result.json"), "w") as f:
-        json.dump({{
-            "success": False,
-            "stdout": sys.stdout.getvalue(),
-            "stderr": stderr_output,
-            "exit_code": 1
-        }}, f)
-
-finally:
-    sys.stdout = old_stdout
-    sys.stderr = old_stderr
-"""
+        # 创建临时目录
+        sandbox_dir = tempfile.mkdtemp(prefix='sandbox_')
         
         try:
-            # Validate code
-            is_safe, warnings = self._validate_code(code)
-            if not is_safe:
-                return ExecutionResult(
-                    success=False,
-                    stdout="",
-                    stderr="Code validation failed: " + "; ".join(warnings),
-                    exit_code=-1,
-                    execution_time=0.0,
-                    memory_usage=0.0,
-                    warnings=warnings
-                )
+            # 创建执行文件
+            code_file = os.path.join(sandbox_dir, 'test_code.py')
+            with open(code_file, 'w') as f:
+                f.write(code)
             
-            # Write code to file
-            with open(exec_file, 'w') as f:
-                f.write(wrapped_code)
-            
-            # Execute in subprocess with limits
+            # 执行代码
             process = subprocess.Popen(
-                [sys.executable, exec_file],
+                [sys.executable, code_file],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                cwd=self.base_dir,
-                preexec_fn=lambda: os.setsid() if hasattr(os, 'setsid') else None
+                cwd=sandbox_dir,
+                env=self._create_sandbox_env()
             )
             
-            try:
+            # 设置资源限制
+            self._set_resource_limits()
+            
+            # 等待执行完成
+            stdout, stderr = process.communicate(timeout=self.sandbox_config['timeout'])
+            
+            execution_time = time.time() - start_time
+            
+            return SandBoxResult(
+                success=process.returncode == 0,
+                output=stdout.decode('utf-8', errors='ignore'),
+                error=stderr.decode('utf-8', errors='ignore'),
+                execution_time=execution_time,
+                memory_usage=self._get_memory_usage(process.pid),
+                cpu_usage=self._get_cpu_usage(process.pid),
+                exit_code=process.returncode
+            )
+            
+        except subprocess.TimeoutExpired:
+            process.kill()
+            return SandBoxResult(
+                success=False,
+                output="",
+                error="Execution timeout exceeded",
+                execution_time=time.time() - start_time
+            )
+        except Exception as e:
+            return SandBoxResult(
+                success=False,
+                output="",
+                error=str(e),
+                execution_time=time.time() - start_time
+            )
+        finally:
+            # 清理沙箱
+            shutil.rmtree(sandbox_dir, ignore_errors=True)
+    
+    def assess_risk(self, code: str) -> RiskAssessment:
+        """评估代码风险"""
+        tree = ast.parse(code)
+        
+        system_calls = self._extract_system_calls(tree)
+        performance_impact = self._estimate_performance_impact(tree)
+        compatibility_issues = self._check_compatibility(tree)
+        security_score = self._calculate_security_score(system_calls, compatibility_issues)
+        
+        risk_level = self._determine_risk_level(security_score)
