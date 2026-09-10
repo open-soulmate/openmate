@@ -1,188 +1,191 @@
+/**
+ * analyze-observations-skill.js
+ * 核心技能：自动分析记忆库中的未观察记录，生成结构化分析报告与行动建议。
+ * 这是建立"观察-分析-行动"闭环的关键组件，用于打破进化循环停滞。
+ * 
+ * 功能概述：
+ * 1. 获取记忆库中所有状态为 'unanalyzed' 的观察记录。
+ * 2. 对每条记录进行语义分析和模式识别。
+ * 3. 生成分析报告，关联进化目标，并提供微小改进建议。
+ * 4. 更新已分析记录的状态为 'analyzed'，并附加摘要。
+ * 5. 将分析报告作为新记忆类型 'analysis_report' 存回记忆库。
+ * 
+ * 依赖：acp-proxy/plugins/memory-plugin.js
+ * 本技能自身力求模块化、清晰，便于未来自我修改和优化。
+ */
+
+// 导入记忆插件。假设 memory-plugin.js 导出了一个包含所需方法的对象。
+// 在实际集成时，路径可能需要调整或使用依赖注入。这里我们模拟导入。
 const memoryPlugin = require('../plugins/memory-plugin.js');
 
-/**
- * 分析观察记录的核心技能
- * 目标：将未分析的观察记录转化为结构化的分析结论和行动建议
- */
-const analyzeObservationsSkill = async () => {
-  const startTime = Date.now();
-  const result = {
-    success: false,
-    analyzedCount: 0,
-    reportId: null,
-    errors: [],
-    statistics: {}
-  };
-
-  try {
-    // 1. 获取所有状态为 unanalyzed 的观察记录
-    const unanalyzedObservations = await memoryPlugin.get_observations({
-      status: 'unanalyzed'
-    });
-
-    if (!unanalyzedObservations || unanalyzedObservations.length === 0) {
-      result.success = true;
-      result.message = '没有需要分析的观察记录';
-      return result;
+// 辅助工具：一个简单的统计分析函数，用于计算最近N条观察的类型分布。
+// 这是内联的第一个微小工具创造实例，体现了"自编程"的初级目标。
+function analyzeTypeDistribution(observations, lastN = 50) {
+    const recent = observations.slice(-lastN); // 取最近N条
+    const distribution = {};
+    for (const obs of recent) {
+        // 假设观察记录有一个 'type' 字段，如果没有则归类为 'unknown'
+        const type = (obs.metadata && obs.metadata.type) || 'unknown';
+        distribution[type] = (distribution[type] || 0) + 1;
     }
-
-    // 2. 内联统计分析功能 - 计算类型分布
-    result.statistics = calculateTypeDistribution(unanalyzedObservations);
-
-    // 3. 对每条观察记录进行分析
-    const analyzedRecords = [];
-    const analysisResults = [];
-
-    for (const observation of unanalyzedObservations) {
-      try {
-        const analysis = await analyzeSingleObservation(observation);
-        
-        // 更新观察记录状态
-        await memoryPlugin.update_observation_status({
-          observation_id: observation.id,
-          status: 'analyzed',
-          metadata: {
-            analysis_summary: analysis.summary,
-            analysis_timestamp: new Date().toISOString(),
-            patterns_identified: analysis.patterns.length
-          }
-        });
-
-        analyzedRecords.push({
-          observation_id: observation.id,
-          original_content: observation.content.substring(0, 100) + '...',
-          analysis_summary: analysis.summary,
-          patterns: analysis.patterns,
-          related_goals: analysis.related_goals,
-          suggested_actions: analysis.suggested_actions
-        });
-
-        analysisResults.push(analysis);
-        result.analyzedCount++;
-        
-      } catch (analysisError) {
-        result.errors.push({
-          observation_id: observation.id,
-          error: analysisError.message,
-          stack: analysisError.stack
-        });
-        console.error(`分析观察记录 ${observation.id} 时出错:`, analysisError);
-        // 继续处理下一条记录，不中断整个流程
-      }
-    }
-
-    // 4. 生成综合分析报告
-    const comprehensiveReport = generateComprehensiveReport(analyzedRecords, result.statistics);
-    
-    // 5. 存储分析报告作为新记忆
-    const reportMemory = {
-      type: 'analysis_report',
-      content: comprehensiveReport,
-      metadata: {
-        analyzed_count: result.analyzedCount,
-        total_errors: result.errors.length,
-        analysis_duration_ms: Date.now() - startTime,
-        generation_time: new Date().toISOString(),
-        pattern_statistics: calculatePatternStatistics(analysisResults)
-      }
+    return {
+        distribution,
+        total: recent.length,
+        period: `最近 ${recent.length} 条记录`
     };
+}
 
-    const reportResult = await memoryPlugin.create_memory(reportMemory);
-    result.reportId = reportResult.memory_id || reportResult.id;
+// 主技能函数：异步执行，无参数，返回操作结果。
+async function analyzeObservationsSkill() {
+    const startTime = new Date();
+    let processedCount = 0;
+    let updatedCount = 0;
+    let reportId = null;
+    const errors = []; // 收集非致命错误，避免中断流程
 
-    result.success = true;
-    result.message = `成功分析 ${result.analyzedCount} 条观察记录，生成分析报告`;
-    
-    if (result.errors.length > 0) {
-      result.message += `，${result.errors.length} 条记录分析失败`;
-    }
+    console.log(`[${startTime.toISOString()}] 开始执行 analyze-observations-skill...`);
 
-  } catch (mainError) {
-    result.errors.push({
-      error: mainError.message,
-      stack: mainError.stack,
-      context: 'analyzeObservationsSkill主流程'
-    });
-    result.message = `分析流程失败: ${mainError.message}`;
-    console.error('analyzeObservationsSkill 主流程错误:', mainError);
-  }
+    try {
+        // 1. 获取未分析的观察记录
+        console.log('步骤1：获取状态为 "unanalyzed" 的观察记录...');
+        let unanalyzedObservations;
+        try {
+            // 调用记忆插件的 get_observations 接口
+            unanalyzedObservations = await memoryPlugin.get_observations({ status: 'unanalyzed' });
+            if (!Array.isArray(unanalyzedObservations)) {
+                throw new Error('记忆插件返回的未分析记录不是数组格式');
+            }
+        } catch (fetchError) {
+            throw new Error(`获取未分析观察记录失败: ${fetchError.message}`);
+        }
 
-  return result;
-};
+        if (unanalyzedObservations.length === 0) {
+            console.log('没有找到需要分析的观察记录。');
+            return {
+                success: true,
+                analyzedCount: 0,
+                updatedCount: 0,
+                reportId: null,
+                message: '无需分析，无未处理观察记录。',
+                timestamp: startTime.toISOString()
+            };
+        }
 
-/**
- * 计算观察记录类型分布
- */
-const calculateTypeDistribution = (observations) => {
-  const distribution = {};
-  
-  observations.forEach(obs => {
-    const type = obs.type || 'unknown';
-    distribution[type] = (distribution[type] || 0) + 1;
-  });
+        console.log(`找到 ${unanalyzedObservations.length} 条未分析的观察记录。`);
+        processedCount = unanalyzedObservations.length;
 
-  return {
-    total_observations: observations.length,
-    type_distribution: distribution,
-    analysis_timeframe: {
-      oldest: observations.length > 0 ? 
-        new Date(Math.min(...observations.map(o => new Date(o.created_at || o.timestamp)))).toISOString() : null,
-      newest: observations.length > 0 ? 
-        new Date(Math.max(...observations.map(o => new Date(o.created_at || o.timestamp)))).toISOString() : null
-    }
-  };
-};
+        // 2 & 3. 对每条观察记录进行分析，生成分析结论与建议
+        console.log('步骤2/3：开始逐条分析观察记录，识别问题/模式并生成建议...');
+        const analysisResults = [];
+        // 内联统计：计算类型分布（作为工具创造实例）
+        const typeDistribution = analyzeTypeDistribution(unanalyzedObservations, 50);
 
-/**
- * 分析单条观察记录
- */
-const analyzeSingleObservation = async (observation) => {
-  const content = observation.content || '';
-  const metadata = observation.metadata || {};
-  
-  // 语义理解和模式识别（简化版本，实际可接入更复杂的NLP模型）
-  const patterns = identifyPatterns(content);
-  const relatedGoals = mapToEvolutionGoals(content, patterns);
-  const suggestedActions = generateSuggestedActions(patterns, relatedGoals, content);
-  
-  const analysis = {
-    observation_id: observation.id,
-    patterns: patterns,
-    related_goals: relatedGoals,
-    suggested_actions: suggestedActions,
-    summary: generateSummary(content, patterns, relatedGoals),
-    confidence_score: calculateConfidence(patterns),
-    analysis_method: 'rule_based_pattern_matching',
-    timestamp: new Date().toISOString()
-  };
+        for (const observation of unanalyzedObservations) {
+            try {
+                // 确保观察记录结构合理
+                if (!observation.id || !observation.content) {
+                    throw new Error(`观察记录缺少必要字段 (id 或 content): ${JSON.stringify(observation)}`);
+                }
 
-  return analysis;
-};
+                // 模拟语义理解和模式识别。实际实现中，这里可能调用更复杂的NLP服务或规则引擎。
+                // 这里我们基于内容关键词进行简单模式匹配作为示例。
+                const content = observation.content.toLowerCase();
+                let identifiedIssues = [];
+                let evolutionGoals = [];
+                let suggestedActions = [];
 
-/**
- * 识别内容中的模式
- */
-const identifyPatterns = (content) => {
-  const patterns = [];
-  
-  // 错误模式识别
-  if (/error|exception|fail|crash|bug/i.test(content)) {
-    patterns.push('error_pattern');
-  }
-  
-  // 性能模式识别
-  if (/slow|performance|latency|delay|timeout/i.test(content)) {
-    patterns.push('performance_pattern');
-  }
-  
-  // 资源模式识别
-  if (/memory|cpu|resource|usage|leak/i.test(content)) {
-    patterns.push('resource_pattern');
-  }
-  
-  // 成功模式识别
-  if (/success|improve|better|fix|resolve/i.test(content)) {
-    patterns.push('improvement_pattern');
-  }
-  
-  // 如果没有识别到特定模式，标记为通用观察
+                // 简单的模式识别示例
+                if (content.includes('error') || content.includes('fail')) {
+                    identifiedIssues.push('检测到错误或失败事件');
+                    evolutionGoals.push('错误自修复');
+                    suggestedActions.push('添加更详细的错误日志记录');
+                }
+                if (content.includes('slow') || content.includes('timeout')) {
+                    identifiedIssues.push('性能瓶颈或超时');
+                    evolutionGoals.push('性能优化');
+                    suggestedActions.push('分析该操作的耗时，考虑异步处理或缓存');
+                }
+                if (content.includes('config') || content.includes('setting')) {
+                    identifiedIssues.push('配置相关观察');
+                    evolutionGoals.push('系统自配置');
+                    suggestedActions.push('审查相关配置项的合理性');
+                }
+                if (content.includes('new tool') || content.includes('idea')) {
+                    identifiedIssues.push('工具或创意点子');
+                    evolutionGoals.push('工具创造');
+                    suggestedActions.push('详细规划该工具的实现，定义最小可行产品');
+                }
+
+                // 如果没有匹配到特定模式，则进行通用分析
+                if (identifiedIssues.length === 0) {
+                    identifiedIssues.push('未识别出特定模式');
+                    evolutionGoals.push('通用知识积累');
+                    suggestedActions.push('将此观察作为一般经验记录，等待更多相关数据');
+                }
+
+                // 生成该条记录的分析摘要
+                const observationAnalysis = {
+                    originalObservationId: observation.id,
+                    analysisTimestamp: new Date().toISOString(),
+                    identifiedIssues,
+                    evolutionGoals,
+                    suggestedActions,
+                    summary: `观察记录 "${observation.content.substring(0, 50)}..." 被分析为: ${identifiedIssues.join('; ')}. 关联进化目标: ${evolutionGoals.join(', ')}.`
+                };
+                analysisResults.push(observationAnalysis);
+
+            } catch (analysisError) {
+                // 单条记录分析失败，记录错误但继续处理下一条
+                console.error(`分析观察记录 ${observation.id} 时出错: ${analysisError.message}`);
+                errors.push({
+                    recordId: observation.id,
+                    error: analysisError.message,
+                    phase: 'analysis'
+                });
+                // 不将这条记录标记为已分析，保持原状，下次可能修复数据后重试
+                continue; // 跳过后续的更新步骤
+            }
+        }
+
+        // 4. 更新已成功分析记录的状态
+        console.log('步骤4：更新已分析观察记录的状态...');
+        for (const result of analysisResults) {
+            try {
+                await memoryPlugin.update_observation_status({
+                    observation_id: result.originalObservationId,
+                    new_status: 'analyzed',
+                    metadata: {
+                        analysis_summary: result.summary,
+                        analysis_timestamp: result.analysisTimestamp,
+                        identified_issues: result.identifiedIssues,
+                        evolution_goals: result.evolutionGoals,
+                        suggested_actions: result.suggestedActions
+                    }
+                });
+                updatedCount++;
+            } catch (updateError) {
+                console.error(`更新观察记录 ${result.originalObservationId} 状态失败: ${updateError.message}`);
+                errors.push({
+                    recordId: result.originalObservationId,
+                    error: updateError.message,
+                    phase: 'status_update'
+                });
+            }
+        }
+
+        // 5. 生成并存储整体的分析报告记忆
+        console.log('步骤5：生成并存储整体分析报告...');
+        const reportContent = {
+            type: 'analysis_report',
+            generation_timestamp: new Date().toISOString(),
+            execution_period: {
+                start: startTime.toISOString(),
+                end: new Date().toISOString()
+            },
+            statistics: {
+                total_unanalyzed: processedCount,
+                successfully_analyzed: analysisResults.length,
+                successfully_updated: updatedCount,
+                errors_count: errors.length,
+                type_distribution_snapshot: typeDistribution // 包含内联工具的输出
+            },
