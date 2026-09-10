@@ -1,112 +1,204 @@
-const ACP = require('../acp');
+'use strict';
 
-module.exports = async function analyzeObservations() {
-  try {
-    const unanalyzedCount = ACP.state.get('observations_unanalyzed') || 0;
+const logger = require('../utils/logger');
+const systemState = require('../utils/system_state');
+const observationSource = require('../data/observation_source');
+const memoryStore = require('../memory/memory_store');
+
+/**
+ * 观察数据分析技能
+ * 处理系统中的未分析观察数据，进行分类、关联记忆并重置计数器
+ */
+class ObservationAnalyzer {
+  constructor() {
+    this.name = 'observation_analyzer';
+    this.description = '处理未分析的观察数据积压问题';
     
-    if (unanalyzedCount < 1) {
-      ACP.logger.info('observation_analyzer: No unanalyzed observations, skipping analysis');
-      return { success: true, message: 'No observations to analyze' };
-    }
+    // 观察类型分类规则
+    this.classificationRules = [
+      {
+        type: 'error',
+        keywords: ['error', 'exception', 'failed', 'failure', 'critical', 'fatal']
+      },
+      {
+        type: 'warning',
+        keywords: ['warning', 'warn', 'caution', 'alert', 'attention']
+      },
+      {
+        type: 'info',
+        keywords: ['info', 'information', 'notice', 'log', 'debug', 'trace']
+      }
+    ];
+  }
 
-    ACP.logger.info(`observation_analyzer: Found ${unanalyzedCount} unanalyzed observations, starting analysis`);
+  /**
+   * 获取技能信息
+   * @returns {Object} 技能元数据
+   */
+  getMetadata() {
+    return {
+      name: this.name,
+      description: this.description,
+      version: '1.0.0',
+      author: 'ACP System',
+      triggers: [
+        {
+          condition: 'observations_unanalyzed >= 1',
+          type: 'threshold'
+        }
+      ]
+    };
+  }
 
-    // 获取未分析的观察数据
-    const unanalyzedObservations = await ACP.observations.getUnanalyzed();
-    
-    if (!unanalyzedObservations || unanalyzedObservations.length === 0) {
-      ACP.logger.warn('observation_analyzer: Counter shows unanalyzed observations but no data found');
-      return { success: false, message: 'No observation data found despite non-zero counter' };
-    }
-
-    const analysisResults = [];
-
-    for (const observation of unanalyzedObservations) {
-      try {
-        // 分类观察类型
-        const classification = classifyObservation(observation);
-        
-        // 关联历史记忆
-        const relatedMemories = await findRelatedMemories(observation, classification);
-        
-        // 生成分析结果摘要
-        const analysisSummary = {
-          observationId: observation.id || Date.now(),
-          timestamp: new Date().toISOString(),
-          classification: classification,
-          relatedMemoryIds: relatedMemories.map(mem => mem.id).filter(id => id),
-          relatedMemoryCount: relatedMemories.length,
-          summary: generateSummary(observation, classification, relatedMemories),
-          processed: true
+  /**
+   * 主分析函数
+   * @returns {Promise<Object>} 分析结果
+   */
+  async analyzeObservations() {
+    try {
+      // 获取当前未分析观察数量
+      const unanalyzedCount = await systemState.get('observations_unanalyzed');
+      
+      // 检查是否需要触发分析
+      if (unanalyzedCount < 1) {
+        logger.info(`[ObservationAnalyzer] 未分析的观察数量: ${unanalyzedCount}，无需处理`);
+        return {
+          status: 'skipped',
+          message: '未达到分析阈值',
+          count: unanalyzedCount
         };
+      }
 
-        // 存入记忆存储
-        await ACP.memory.add({
-          type: 'observation_analysis',
-          content: analysisSummary,
-          observation: observation,
-          timestamp: new Date().toISOString(),
-          metadata: {
-            analyzerVersion: '1.0',
-            source: 'observation_analyzer'
-          }
+      logger.info(`[ObservationAnalyzer] 检测到 ${unanalyzedCount} 个未分析的观察，开始处理...`);
+      
+      // 获取未分析的观察数据
+      const observations = await observationSource.getUnanalyzed();
+      
+      if (!observations || observations.length === 0) {
+        logger.warn('[ObservationAnalyzer] 未找到未分析的观察数据');
+        return {
+          status: 'error',
+          message: '无法获取观察数据',
+          count: unanalyzedCount
+        };
+      }
+
+      logger.info(`[ObservationAnalyzer] 获取到 ${observations.length} 条观察数据`);
+      
+      // 分析所有观察数据
+      const analysisResults = await this.processObservations(observations);
+      
+      // 重置计数器
+      await systemState.set('observations_unanalyzed', 0);
+      
+      logger.info(`[ObservationAnalyzer] 成功处理 ${analysisResults.length} 条观察数据，计数器已重置`);
+      
+      return {
+        status: 'success',
+        processedCount: analysisResults.length,
+        totalCount: observations.length,
+        results: analysisResults
+      };
+      
+    } catch (error) {
+      logger.error(`[ObservationAnalyzer] 分析过程中发生错误: ${error.message}`);
+      
+      // 重抛错误，不重置计数器
+      throw error;
+    }
+  }
+
+  /**
+   * 处理观察数据数组
+   * @param {Array} observations - 观察数据数组
+   * @returns {Promise<Array>} 分析结果数组
+   */
+  async processObservations(observations) {
+    const results = [];
+    
+    for (const observation of observations) {
+      try {
+        const result = await this.analyzeSingleObservation(observation);
+        results.push(result);
+      } catch (error) {
+        logger.error(`[ObservationAnalyzer] 处理单个观察数据失败: ${error.message}`);
+        results.push({
+          observationId: observation.id,
+          status: 'error',
+          error: error.message
         });
-
-        analysisResults.push(analysisSummary);
-        
-        ACP.logger.info(`observation_analyzer: Processed observation ${observation.id || 'unknown'}, classified as ${classification}`);
-
-      } catch (observationError) {
-        ACP.logger.error(`observation_analyzer: Failed to process individual observation: ${observationError.message}`);
-        // 继续处理其他观察数据
-        continue;
       }
     }
-
-    // 重置计数器
-    ACP.state.set('observations_unanalyzed', 0);
     
-    ACP.logger.info(`observation_analyzer: Successfully analyzed ${analysisResults.length} observations, counter reset to 0`);
+    return results;
+  }
 
-    return {
-      success: true,
-      analyzedCount: analysisResults.length,
-      analysisResults: analysisResults,
-      counterReset: true
+  /**
+   * 分析单个观察数据
+   * @param {Object} observation - 观察数据对象
+   * @returns {Promise<Object>} 分析结果
+   */
+  async analyzeSingleObservation(observation) {
+    // 分类观察类型
+    const classification = this.classifyObservation(observation);
+    
+    // 关联历史记忆
+    const relatedMemories = await this.findRelatedMemories(observation, classification);
+    
+    // 生成分析结果摘要
+    const analysisResult = {
+      observationId: observation.id,
+      timestamp: observation.timestamp || new Date().toISOString(),
+      originalContent: observation.content,
+      classification: classification,
+      relatedMemories: relatedMemories,
+      summary: this.generateSummary(observation, classification, relatedMemories)
     };
-
-  } catch (error) {
-    ACP.logger.error(`observation_analyzer: Analysis failed: ${error.message}`);
-    ACP.logger.error(`observation_analyzer: Stack trace: ${error.stack}`);
     
-    // 错误情况下保持计数器不变，以便后续重试
-    ACP.logger.warn('observation_analyzer: Counter left unchanged due to error');
+    // 存储分析结果到记忆
+    await this.storeAnalysisResult(analysisResult);
     
-    throw error;
-  }
-};
-
-function classifyObservation(observation) {
-  const content = (observation.content || observation.message || '').toLowerCase();
-  const title = (observation.title || '').toLowerCase();
-  const combinedText = `${content} ${title}`;
-
-  // 错误关键词匹配
-  const errorKeywords = ['error', 'fail', 'failed', 'exception', 'critical', 'fatal', 'panic', '异常', '错误', '失败', '致命'];
-  const warningKeywords = ['warn', 'warning', 'caution', 'alert', '注意', '警告', '警示'];
-  const infoKeywords = ['info', 'log', 'debug', 'notice', '信息', '日志', '调试'];
-
-  if (errorKeywords.some(keyword => combinedText.includes(keyword))) {
-    return 'error';
-  }
-  
-  if (warningKeywords.some(keyword => combinedText.includes(keyword))) {
-    return 'warning';
-  }
-  
-  if (infoKeywords.some(keyword => combinedText.includes(keyword))) {
-    return 'info';
+    return analysisResult;
   }
 
-  // 默认分类
-  if (observation.severity) {
+  /**
+   * 分类观察类型
+   * @param {Object} observation - 观察数据对象
+   * @returns {Object} 分类结果
+   */
+  classifyObservation(observation) {
+    const content = (observation.content || '').toLowerCase();
+    
+    // 遍历分类规则
+    for (const rule of this.classificationRules) {
+      for (const keyword of rule.keywords) {
+        if (content.includes(keyword)) {
+          return {
+            type: rule.type,
+            confidence: 0.8, // 默认置信度
+            matchedKeywords: [keyword]
+          };
+        }
+      }
+    }
+    
+    // 默认分类为信息类型
+    return {
+      type: 'info',
+      confidence: 0.5,
+      matchedKeywords: []
+    };
+  }
+
+  /**
+   * 查找相关记忆
+   * @param {Object} observation - 观察数据对象
+   * @param {Object} classification - 分类结果
+   * @returns {Promise<Array>} 相关记忆ID数组
+   */
+  async findRelatedMemories(observation, classification) {
+    try {
+      const searchQuery = {
+        type: classification.type,
+        keywords: classification.matchedKeywords,
+        timeRange: {
