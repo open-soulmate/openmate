@@ -1,94 +1,103 @@
-const fs = require('fs');
-const path = require('path');
-
 /**
- * memory_search - 记忆搜索微型MCP工具
- * 
- * 作为'工具创造'目标的第一个最低可行里程碑，
- * 增强系统的知识积累能力，优化记忆检索效率。
+ * memory_search.js
+ * MCP工具插件：记忆搜索工具
+ * 用于在系统记忆库中进行关键词匹配搜索，增强知识积累与检索能力
  */
 
+const fs = require('fs').promises;
+const path = require('path');
+
 // 记忆数据文件路径
-const MEMORY_DATA_PATH = path.join(__dirname, '..', 'data', 'memories.json');
+const MEMORIES_FILE_PATH = path.join(__dirname, '..', 'data', 'memories.json');
 
 /**
  * 加载记忆数据
- * @returns {Array} 记忆条目数组
+ * @returns {Promise<Array>} 记忆条目数组
  */
-function loadMemories() {
+async function loadMemories() {
   try {
-    if (!fs.existsSync(MEMORY_DATA_PATH)) {
-      return [];
-    }
-    const data = fs.readFileSync(MEMORY_DATA_PATH, 'utf-8');
+    const data = await fs.readFile(MEMORIES_FILE_PATH, 'utf-8');
     return JSON.parse(data);
   } catch (error) {
-    console.error('[memory_search] 加载记忆数据失败:', error.message);
-    return [];
+    // 文件不存在或格式错误时返回空数组
+    if (error.code === 'ENOENT') {
+      return [];
+    }
+    throw new Error(`Failed to load memories: ${error.message}`);
   }
 }
 
 /**
- * 计算记忆条目与查询的相关性分数
+ * 计算记忆条目与查询的相关性得分
  * @param {Object} memory - 记忆条目
- * @param {string} query - 搜索查询
- * @returns {number} 相关性分数 (0-1)
+ * @param {string} query - 搜索关键词
+ * @returns {number} 相关性得分
  */
 function calculateRelevance(memory, query) {
   const queryLower = query.toLowerCase();
   const queryTerms = queryLower.split(/\s+/).filter(term => term.length > 0);
   let score = 0;
-  let matchCount = 0;
 
-  // 搜索 content 字段
-  const content = (memory.content || '').toLowerCase();
-  for (const term of queryTerms) {
-    if (content.includes(term)) {
-      score += 3; // 内容匹配权重最高
-      matchCount++;
+  // 搜索内容字段
+  if (memory.content) {
+    const contentLower = memory.content.toLowerCase();
+    for (const term of queryTerms) {
+      // 计算关键词在内容中出现的次数
+      const regex = new RegExp(term.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'gi');
+      const matches = contentLower.match(regex);
+      if (matches) {
+        score += matches.length * 2; // 内容匹配权重较高
+      }
+    }
+    // 完整查询匹配加分
+    if (contentLower.includes(queryLower)) {
+      score += 10;
     }
   }
 
-  // 搜索 tags 字段
-  const tags = Array.isArray(memory.tags) ? memory.tags : [];
-  const tagsStr = tags.join(' ').toLowerCase();
-  for (const term of queryTerms) {
-    if (tagsStr.includes(term)) {
-      score += 2; // 标签匹配权重中等
-      matchCount++;
+  // 搜索标签字段
+  if (memory.tags && Array.isArray(memory.tags)) {
+    for (const tag of memory.tags) {
+      const tagLower = tag.toLowerCase();
+      for (const term of queryTerms) {
+        if (tagLower.includes(term)) {
+          score += 5; // 标签匹配权重
+        }
+      }
+      if (tagLower.includes(queryLower)) {
+        score += 8;
+      }
     }
   }
 
-  // 搜索 title 字段（如果有）
-  const title = (memory.title || '').toLowerCase();
-  for (const term of queryTerms) {
-    if (title.includes(term)) {
-      score += 2.5; // 标题匹配权重
-      matchCount++;
+  // 搜索标题字段（如果有）
+  if (memory.title) {
+    const titleLower = memory.title.toLowerCase();
+    for (const term of queryTerms) {
+      if (titleLower.includes(term)) {
+        score += 4; // 标题匹配权重
+      }
     }
   }
 
-  // 搜索 id 字段
-  const id = (memory.id || '').toLowerCase();
-  if (id.includes(queryLower)) {
-    score += 1;
-    matchCount++;
+  // 搜索类别字段（如果有）
+  if (memory.category) {
+    const categoryLower = memory.category.toLowerCase();
+    for (const term of queryTerms) {
+      if (categoryLower.includes(term)) {
+        score += 3;
+      }
+    }
   }
 
-  // 计算匹配覆盖率（多个词都匹配会增加分数）
-  const coverage = matchCount / Math.max(queryTerms.length, 1);
-  score *= (0.5 + coverage * 0.5);
-
-  // 归一化到 0-1 范围
-  const maxPossibleScore = queryTerms.length * 3 * 1.5;
-  return Math.min(score / Math.max(maxPossibleScore, 1), 1);
+  return score;
 }
 
 /**
  * 生成内容摘要
  * @param {string} content - 完整内容
  * @param {number} maxLength - 最大长度
- * @returns {string} 内容摘要
+ * @returns {string} 摘要
  */
 function generateSummary(content, maxLength = 200) {
   if (!content) return '';
@@ -96,90 +105,140 @@ function generateSummary(content, maxLength = 200) {
   return content.substring(0, maxLength) + '...';
 }
 
-/**
- * 执行记忆搜索
- * @param {Object} params - 搜索参数
- * @param {string} params.query - 搜索查询字符串
- * @param {number} [params.limit=10] - 返回结果数量限制
- * @returns {Object} 搜索结果
- */
-function execute(params) {
-  const { query, limit = 10 } = params;
-
-  // 验证参数
-  if (!query || typeof query !== 'string' || query.trim().length === 0) {
-    return {
-      success: false,
-      error: '请提供有效的搜索查询字符串',
-      results: [],
-      total: 0
-    };
-  }
-
-  // 加载记忆数据
-  const memories = loadMemories();
-
-  if (memories.length === 0) {
-    return {
-      success: true,
-      results: [],
-      total: 0,
-      message: '记忆库为空，未找到任何记忆条目'
-    };
-  }
-
-  // 计算每条记忆的相关性分数
-  const scoredMemories = memories
-    .map(memory => ({
-      ...memory,
-      _relevance: calculateRelevance(memory, query.trim())
-    }))
-    .filter(memory => memory._relevance > 0) // 过滤掉完全不相关的
-    .sort((a, b) => b._relevance - a._relevance) // 按相关性降序排序
-    .slice(0, Math.max(1, Math.min(limit, 100))); // 限制返回数量
-
-  // 格式化返回结果
-  const results = scoredMemories.map(memory => ({
-    id: memory.id,
-    content: generateSummary(memory.content),
-    created_at: memory.created_at,
-    tags: memory.tags || [],
-    relevance_score: Math.round(memory._relevance * 100) / 100
-  }));
-
-  return {
-    success: true,
-    results: results,
-    total: results.length,
-    query: query.trim(),
-    message: `找到 ${results.length} 条相关记忆`
-  };
-}
-
-// 导出 MCP 工具接口
-module.exports = {
+// 工具定义
+const tool = {
   name: 'memory_search',
-  
-  description: '在系统记忆库中进行关键词匹配搜索，支持搜索记忆的内容(content)、标签(tags)、标题(title)等字段。返回按相关性排序的记忆条目列表。适用于知识检索、历史信息查找、上下文回忆等场景。是系统知识积累和技能支撑的核心基础工具。',
-  
+  description: '在系统记忆库中进行关键词匹配搜索。支持搜索记忆内容、标签、标题和类别等字段，按相关性返回排序结果。适用于知识检索、历史信息查找、上下文回忆等场景，可帮助智能体快速获取相关记忆信息以支持决策和任务执行。',
   parameters: {
     type: 'object',
     properties: {
       query: {
         type: 'string',
-        description: '搜索查询字符串，支持多个关键词（空格分隔），将在记忆的内容、标签等字段中进行匹配'
+        description: '搜索关键词或查询语句，支持多个关键词用空格分隔'
       },
       limit: {
         type: 'number',
-        description: '返回结果的数量限制，默认为10，最大不超过100',
-        minimum: 1,
-        maximum: 100,
+        description: '返回结果的最大数量，默认为10',
         default: 10
+      },
+      min_relevance: {
+        type: 'number',
+        description: '最小相关性得分阈值，低于此分数的结果将被过滤，默认为0',
+        default: 0
+      },
+      include_tags: {
+        type: 'boolean',
+        description: '是否在结果中包含标签信息，默认为true',
+        default: true
       }
     },
-    required: ['query'],
-    additionalProperties: false
+    required: ['query']
   },
-  
-  execute: execute
+
+  /**
+   * 执行记忆搜索
+   * @param {Object} params - 工具参数
+   * @param {string} params.query - 搜索关键词
+   * @param {number} [params.limit=10] - 返回结果数量限制
+   * @param {number} [params.min_relevance=0] - 最小相关性阈值
+   * @param {boolean} [params.include_tags=true] - 是否包含标签
+   * @returns {Promise<Object>} 搜索结果
+   */
+  async execute(params) {
+    const {
+      query,
+      limit = 10,
+      min_relevance = 0,
+      include_tags = true
+    } = params;
+
+    // 参数验证
+    if (!query || typeof query !== 'string' || query.trim().length === 0) {
+      return {
+        success: false,
+        error: '搜索查询不能为空',
+        results: [],
+        total_count: 0
+      };
+    }
+
+    try {
+      // 加载记忆数据
+      const memories = await loadMemories();
+
+      if (memories.length === 0) {
+        return {
+          success: true,
+          results: [],
+          total_count: 0,
+          message: '记忆库为空，暂无可用记忆'
+        };
+      }
+
+      // 计算每条记忆的相关性得分
+      const scoredMemories = memories.map(memory => ({
+        ...memory,
+        relevance_score: calculateRelevance(memory, query.trim())
+      }));
+
+      // 过滤低相关性结果并排序
+      const filteredMemories = scoredMemories
+        .filter(memory => memory.relevance_score > min_relevance)
+        .sort((a, b) => b.relevance_score - a.relevance_score)
+        .slice(0, limit);
+
+      // 格式化返回结果
+      const results = filteredMemories.map(memory => {
+        const result = {
+          id: memory.id,
+          content: generateSummary(memory.content),
+          created_at: memory.created_at,
+          relevance_score: memory.relevance_score
+        };
+
+        // 可选字段
+        if (memory.title) {
+          result.title = memory.title;
+        }
+        if (memory.category) {
+          result.category = memory.category;
+        }
+        if (include_tags && memory.tags) {
+          result.tags = memory.tags;
+        }
+        if (memory.source) {
+          result.source = memory.source;
+        }
+        if (memory.updated_at) {
+          result.updated_at = memory.updated_at;
+        }
+
+        return result;
+      });
+
+      return {
+        success: true,
+        query: query.trim(),
+        results: results,
+        total_count: results.length,
+        total_memories_searched: memories.length
+      };
+
+    } catch (error) {
+      return {
+        success: false,
+        error: `记忆搜索失败: ${error.message}`,
+        results: [],
+        total_count: 0
+      };
+    }
+  }
+};
+
+// 导出工具
+module.exports = {
+  name: tool.name,
+  description: tool.description,
+  parameters: tool.parameters,
+  execute: tool.execute.bind(tool)
 };
