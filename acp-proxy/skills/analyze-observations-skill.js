@@ -1,145 +1,104 @@
-'use strict';
-
-const logger = require('../utils/logger');
+// acp-proxy/skills/analyze-observations-skill.js
+const memoryPlugin = require('../plugins/memory-plugin');
 
 /**
- * 观察分析技能 - 分析记忆库中未分析的观察记录
- * 
- * 核心技能：自动分析状态为 'unanalyzed' 的观察记录，
- * 生成结构化的分析结论和行动建议，建立观察-分析-行动闭环。
+ * 简单的统计分析工具 - 计算最近N条观察的类型分布
+ * @param {Array} observations - 观察记录数组
+ * @param {number} n - 取最近N条，默认20
+ * @returns {Object} 类型分布统计
  */
-class AnalyzeObservationsSkill {
-    constructor() {
-        this.name = 'analyze-observations-skill';
-        this.description = '分析未观察的记录，生成结构化分析和行动建议';
-        this.version = '1.0.0';
-        this.dependencies = ['memory-plugin'];
-        
-        // 简单的统计分析工具 - 第一个内联的微小工具创造
-        this.typeDistribution = {};
-    }
+function computeTypeDistribution(observations, n = 20) {
+    const recent = observations.slice(0, n);
+    const distribution = {};
+    
+    recent.forEach(obs => {
+        const type = obs.type || 'unknown';
+        distribution[type] = (distribution[type] || 0) + 1;
+    });
+    
+    return {
+        total: recent.length,
+        distribution,
+        topTypes: Object.entries(distribution)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5)
+            .map(([type, count]) => ({ type, count, percentage: (count / recent.length * 100).toFixed(1) + '%' }))
+    };
+}
 
-    /**
-     * 技能执行主入口
-     * @returns {Promise<Object>} 操作结果
-     */
-    async execute() {
-        const startTime = Date.now();
-        const result = {
-            success: false,
-            analyzedCount: 0,
-            reportId: null,
-            errors: [],
-            executionTime: 0,
-            timestamp: new Date().toISOString()
-        };
-
-        try {
-            logger.info(`[analyze-observations] 开始执行分析技能`);
-
-            // 1. 获取记忆插件实例
-            const memoryPlugin = this.getMemoryPlugin();
-            if (!memoryPlugin) {
-                throw new Error('无法获取记忆插件实例');
-            }
-
-            // 2. 获取未分析的观察记录
-            const unanalyzedObservations = await this.fetchUnanalyzedObservations(memoryPlugin);
-            logger.info(`[analyze-observations] 找到 ${unanalyzedObservations.length} 条未分析的观察记录`);
-
-            if (unanalyzedObservations.length === 0) {
-                result.success = true;
-                result.analyzedCount = 0;
-                result.message = '没有需要分析的观察记录';
-                return result;
-            }
-
-            // 3. 分析每条观察记录
-            const analysisResults = await this.analyzeObservations(unanalyzedObservations);
-            
-            // 4. 更新观察记录状态
-            await this.updateObservationStatuses(memoryPlugin, analysisResults);
-
-            // 5. 生成分析报告
-            const reportId = await this.generateAnalysisReport(memoryPlugin, analysisResults);
-            result.reportId = reportId;
-
-            // 6. 生成操作结果
-            result.success = true;
-            result.analyzedCount = unanalyzedObservations.length;
-            result.executionTime = Date.now() - startTime;
-            
-            logger.info(`[analyze-observations] 分析完成，已处理 ${result.analyzedCount} 条记录，报告ID: ${result.reportId}`);
-
-        } catch (error) {
-            logger.error(`[analyze-observations] 技能执行失败: ${error.message}`, error);
-            result.success = false;
-            result.errors.push({
-                type: 'execution_error',
-                message: error.message,
-                stack: error.stack
+/**
+ * 分析单条观察记录
+ * @param {Object} observation - 观察记录
+ * @returns {Object} 分析结果
+ */
+function analyzeSingleObservation(observation) {
+    const content = observation.content || '';
+    const type = observation.type || 'unknown';
+    const timestamp = observation.timestamp || new Date().toISOString();
+    
+    // 简单的模式识别逻辑
+    const patterns = {
+        error: /(错误|失败|异常|crash|error|fail|bug)/i,
+        performance: /(性能|慢|卡顿|延迟|performance|slow|latency)/i,
+        behavior: /(行为|模式|习惯|pattern|behavior)/i,
+        improvement: /(优化|改进|提升|improve|enhance)/i,
+        security: /(安全|漏洞|风险|security|vulnerability|risk)/i
+    };
+    
+    const identifiedProblems = [];
+    const relatedGoals = [];
+    const suggestedImprovements = [];
+    
+    // 识别问题/模式
+    Object.entries(patterns).forEach(([key, regex]) => {
+        if (regex.test(content)) {
+            identifiedProblems.push({
+                pattern: key,
+                confidence: 'medium',
+                evidence: content.substring(0, 100)
             });
-            result.executionTime = Date.now() - startTime;
         }
-
-        return result;
+    });
+    
+    // 关联进化目标
+    if (patterns.error.test(content)) {
+        relatedGoals.push({
+            goal: '错误自修复',
+            relevance: 'high',
+            description: '该观察涉及错误或失败，直接关联到系统自我修复能力的提升'
+        });
+        suggestedImprovements.push({
+            type: 'configuration',
+            suggestion: '更新错误监控配置，添加该类错误的自动检测规则',
+            priority: 'high'
+        });
     }
-
-    /**
-     * 获取记忆插件实例
-     * @returns {Object|null} 记忆插件实例
-     */
-    getMemoryPlugin() {
-        try {
-            // 尝试从全局插件注册表获取
-            if (global.acp && global.acp.plugins && global.acp.plugins.memoryPlugin) {
-                return global.acp.plugins.memoryPlugin;
-            }
-            
-            // 尝试动态导入
-            const memoryPluginPath = require.resolve('../plugins/memory-plugin');
-            return require(memoryPluginPath);
-        } catch (error) {
-            logger.error(`[analyze-observations] 获取记忆插件失败: ${error.message}`);
-            return null;
-        }
+    
+    if (patterns.performance.test(content)) {
+        relatedGoals.push({
+            goal: '性能优化',
+            relevance: 'medium',
+            description: '该观察涉及性能问题，关联到系统效率提升'
+        });
+        suggestedImprovements.push({
+            type: 'logic',
+            suggestion: '优化相关代码路径，减少不必要的计算',
+            priority: 'medium'
+        });
     }
-
-    /**
-     * 获取未分析的观察记录
-     * @param {Object} memoryPlugin 记忆插件实例
-     * @returns {Promise<Array>} 未分析的观察记录数组
-     */
-    async fetchUnanalyzedObservations(memoryPlugin) {
-        try {
-            const observations = await memoryPlugin.get_observations({
-                status: 'unanalyzed',
-                limit: 100, // 限制每次分析的数量，避免资源消耗过大
-                sort: { createdAt: 1 } // 按创建时间正序，先处理最早的
-            });
-            
-            return Array.isArray(observations) ? observations : [];
-        } catch (error) {
-            logger.error(`[analyze-observations] 获取观察记录失败: ${error.message}`);
-            throw new Error(`获取观察记录失败: ${error.message}`);
-        }
+    
+    // 默认建议
+    if (suggestedImprovements.length === 0) {
+        suggestedImprovements.push({
+            type: 'tool',
+            suggestion: '基于此观察创建新的分析工具或监控脚本',
+            priority: 'low'
+        });
     }
-
-    /**
-     * 分析观察记录
-     * @param {Array} observations 观察记录数组
-     * @returns {Promise<Array>} 分析结果数组
-     */
-    async analyzeObservations(observations) {
-        const results = [];
-        
-        for (const observation of observations) {
-            try {
-                const analysis = await this.analyzeSingleObservation(observation);
-                results.push({
-                    observationId: observation.id,
-                    analysis,
-                    success: true
-                });
-                
-                // 更新类型分布统计
+    
+    return {
+        observationId: observation.id,
+        analyzedAt: new Date().toISOString(),
+        identifiedProblems,
+        relatedGoals,
+        suggestedImprovements,
