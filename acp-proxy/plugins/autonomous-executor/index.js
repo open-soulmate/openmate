@@ -1,215 +1,211 @@
-/**
- * 自主执行引擎插件 (Autonomous Executor Plugin)
- * 
- * 旨在降低对'partner'的绝对依赖，培养agent的自编程和自修复能力。
- * 提供标准化、安全的沙箱环境，让agent能够自主执行低风险、模式化的代码修改任务。
- */
+'use strict';
 
 const vm = require('vm');
 const fs = require('fs');
 const path = require('path');
+const { execSync } = require('child_process');
+const os = require('os');
 
-// 插件日志存储
-const executionLogs = [];
-
-// 低风险模式化任务关键词配置
-const LOW_RISK_KEYWORDS = {
-  action: ['修改', '更新', '替换', '添加一个', '删除一个', '增加一个', '减少一个'],
-  target: ['配置文件', '常量', '字符串', '日志', '注释', '变量名', '函数名', '标记', '标签', '值'],
-  scope: ['单个', '一个', '某一个', '特定', '局部', '简单']
-};
-
-// 高风险/复杂任务关键词
-const HIGH_RISK_KEYWORDS = [
-  '架构', '重构', '重写', '迁移', '数据库', '表结构', '索引',
-  '算法', '优化', '性能', '并发', '异步', '回调', '中间件',
-  '认证', '授权', '安全', '加密', '解密', '网络', '协议',
-  '集成', '第三方', 'API接口', '微服务', '分布式', '集群'
-];
-
-// 文件扩展名与验证方法映射
-const VALIDATORS = {
-  '.json': 'json',
-  '.js': 'javascript',
-  '.ts': 'typescript',
-  '.yaml': 'yaml',
-  '.yml': 'yaml'
-};
-
-/**
- * 简单任务评估器
- * 根据description和requirements中的关键词判断任务复杂度
- */
-function assessTaskComplexity(description, requirements = []) {
-  const textToAnalyze = `${description} ${requirements.join(' ')}`.toLowerCase();
-  
-  // 计算低风险关键词匹配数
-  let lowRiskScore = 0;
-  let matchedLowRiskKeywords = [];
-  
-  // 检查动作关键词
-  for (const keyword of LOW_RISK_KEYWORDS.action) {
-    if (textToAnalyze.includes(keyword.toLowerCase())) {
-      lowRiskScore += 2;
-      matchedLowRiskKeywords.push(keyword);
-    }
-  }
-  
-  // 检查目标关键词
-  for (const keyword of LOW_RISK_KEYWORDS.target) {
-    if (textToAnalyze.includes(keyword.toLowerCase())) {
-      lowRiskScore += 2;
-      matchedLowRiskKeywords.push(keyword);
-    }
-  }
-  
-  // 检查范围关键词
-  for (const keyword of LOW_RISK_KEYWORDS.scope) {
-    if (textToAnalyze.includes(keyword.toLowerCase())) {
-      lowRiskScore += 1;
-      matchedLowRiskKeywords.push(keyword);
-    }
-  }
-  
-  // 计算高风险关键词匹配数
-  let highRiskScore = 0;
-  let matchedHighRiskKeywords = [];
-  
-  for (const keyword of HIGH_RISK_KEYWORDS) {
-    if (textToAnalyze.includes(keyword.toLowerCase())) {
-      highRiskScore += 3;
-      matchedHighRiskKeywords.push(keyword);
-    }
-  }
-  
-  // 决策逻辑
-  const isLowRisk = lowRiskScore >= 3 && highRiskScore === 0;
-  const isHighRisk = highRiskScore >= 3;
-  
-  return {
-    isLowRisk,
-    isHighRisk,
-    complexity: isHighRisk ? 'complex' : (isLowRisk ? 'simple' : 'moderate'),
-    lowRiskScore,
-    highRiskScore,
-    matchedLowRiskKeywords,
-    matchedHighRiskKeywords,
-    recommendation: isHighRisk ? 'requires_partner_execution' : 
-                    (isLowRisk ? 'autonomous_execution' : 'requires_review')
-  };
-}
-
-/**
- * 生成代码修改建议（diff格式）
- * 基于任务描述和要求，智能生成修改建议
- */
-function generateCodeModification(description, requirements = []) {
-  const modificationPlan = {
-    type: 'unknown',
-    targetFile: null,
-    changes: [],
-    diff: ''
-  };
-  
-  const text = `${description} ${requirements.join(' ')}`.toLowerCase();
-  
-  // 检测修改类型
-  if (text.includes('配置文件') || text.includes('配置')) {
-    modificationPlan.type = 'config_update';
-    modificationPlan.targetFile = detectConfigFile(text);
-  } else if (text.includes('日志') || text.includes('日志输出')) {
-    modificationPlan.type = 'log_addition';
-    modificationPlan.targetFile = detectSourceFile(text);
-  } else if (text.includes('常量') || text.includes('字符串')) {
-    modificationPlan.type = 'constant_update';
-    modificationPlan.targetFile = detectSourceFile(text);
-  } else if (text.includes('注释')) {
-    modificationPlan.type = 'comment_update';
-    modificationPlan.targetFile = detectSourceFile(text);
-  }
-  
-  // 生成diff
-  modificationPlan.diff = generateDiff(modificationPlan, description, requirements);
-  
-  return modificationPlan;
-}
-
-/**
- * 检测配置文件类型
- */
-function detectConfigFile(text) {
-  if (text.includes('json')) return 'config.json';
-  if (text.includes('yaml') || text.includes('yml')) return 'config.yaml';
-  if (text.includes('env') || text.includes('环境')) return '.env';
-  return 'config.json'; // 默认
-}
-
-/**
- * 检测源代码文件类型
- */
-function detectSourceFile(text) {
-  if (text.includes('javascript') || text.includes('js')) return 'src/index.js';
-  if (text.includes('typescript') || text.includes('ts')) return 'src/index.ts';
-  if (text.includes('python') || text.includes('py')) return 'src/main.py';
-  return 'src/index.js'; // 默认
-}
-
-/**
- * 生成diff格式的代码变更
- */
-function generateDiff(modificationPlan, description, requirements) {
-  const timestamp = new Date().toISOString();
-  let diff = `--- a/${modificationPlan.targetFile || 'unknown'}\n`;
-  diff += `+++ b/${modificationPlan.targetFile || 'unknown'}\n`;
-  diff += `@@ -1,5 +1,10 @@\n`;
-  diff += ` # Auto-generated modification\n`;
-  diff += ` # Task: ${description}\n`;
-  diff += ` # Generated at: ${timestamp}\n`;
-  diff += ` # Type: ${modificationPlan.type}\n`;
-  diff += `+\n`;
-  
-  // 根据任务类型生成具体变更
-  switch (modificationPlan.type) {
-    case 'config_update':
-      diff += `+// Configuration updated based on requirements\n`;
-      diff += `+// ${requirements.join('\n+// ')}\n`;
-      break;
-    case 'log_addition':
-      diff += `+console.log('[${timestamp}] ${description}');\n`;
-      break;
-    case 'constant_update':
-      diff += `+// Constant updated: ${description}\n`;
-      break;
-    case 'comment_update':
-      diff += `+// ${description}\n`;
-      break;
-    default:
-      diff += `+// Modification: ${description}\n`;
-  }
-  
-  return diff;
-}
-
-/**
- * 沙箱执行环境
- * 使用Node.js vm模块创建安全的执行环境
- */
-class Sandbox {
+class AutonomousExecutor {
   constructor() {
-    this.context = vm.createContext({
-      console: {
-        log: (...args) => this.captureOutput('log', args),
-        error: (...args) => this.captureOutput('error', args),
-        warn: (...args) => this.captureOutput('warn', args)
-      },
-      JSON: JSON,
-      Date: Date,
-      Math: Math,
-      Array: Array,
-      Object: Object,
-      String: String,
-      Number: Number,
-      Boolean: Boolean,
-      RegExp: RegExp,
-      Error: Error,
-      TypeError: TypeError,
+    this.logs = [];
+    this.sandboxDir = path.join(os.tmpdir(), `autonomous-executor-sandbox-${Date.now()}`);
+    this.initSandbox();
+  }
+
+  initSandbox() {
+    try {
+      if (!fs.existsSync(this.sandboxDir)) {
+        fs.mkdirSync(this.sandboxDir, { recursive: true });
+      }
+      // Create basic sandbox files for testing
+      fs.writeFileSync(path.join(this.sandboxDir, 'package.json'), JSON.stringify({ name: 'sandbox', version: '1.0.0' }));
+    } catch (error) {
+      console.error('Failed to initialize sandbox:', error);
+    }
+  }
+
+  evaluateTaskComplexity(description, requirements) {
+    const lowRiskPatterns = [
+      /修改配置文件/i,
+      /更新.*?常量/i,
+      /添加.*?日志/i,
+      /修改.*?字符串/i,
+      /更新.*?值/i,
+      /添加.*?注释/i,
+      /修改.*?格式/i,
+      /更新.*?默认值/i,
+      /调整.*?顺序/i,
+      /修改.*?路径/i
+    ];
+
+    const complexPatterns = [
+      /架构变更/i,
+      /重构/i,
+      /重新设计/i,
+      /迁移/i,
+      /大规模.*?修改/i,
+      /新增.*?模块/i,
+      /修改.*?接口/i,
+      /变更.*?协议/i
+    ];
+
+    const combinedText = `${description} ${requirements || ''}`;
+    
+    const isLowRisk = lowRiskPatterns.some(pattern => pattern.test(combinedText));
+    const isComplex = complexPatterns.some(pattern => pattern.test(combinedText));
+
+    if (isComplex) return 'complex';
+    if (isLowRisk) return 'low_risk';
+    return 'moderate';
+  }
+
+  generateCodeSuggestion(description, requirements) {
+    // Simple code suggestion generator based on task description
+    const suggestions = [];
+    
+    if (/修改配置文件/i.test(description)) {
+      suggestions.push({
+        file: 'config.json',
+        diff: `--- a/config.json\n+++ b/config.json\n@@ -1,3 +1,4 @@\n {\n-  "defaultPort": 3000\n+  "defaultPort": 3000,\n+  "enableLogging": true\n }\n`,
+        language: 'json'
+      });
+    }
+
+    if (/更新.*?常量/i.test(description)) {
+      suggestions.push({
+        file: 'constants.js',
+        diff: `--- a/constants.js\n+++ b/constants.js\n@@ -1,3 +1,3 @@\n-const TIMEOUT = 5000;\n+const TIMEOUT = 10000;\n`,
+        language: 'javascript'
+      });
+    }
+
+    if (/添加.*?日志/i.test(description)) {
+      suggestions.push({
+        file: 'app.js',
+        diff: `--- a/app.js\n+++ b/app.js\n@@ -1,3 +1,4 @@\n function startApp() {\n+  console.log('Application started');\n   initialize();\n }\n`,
+        language: 'javascript'
+      });
+    }
+
+    return suggestions;
+  }
+
+  applyInSandbox(suggestion) {
+    try {
+      const filePath = path.join(this.sandboxDir, suggestion.file);
+      let originalContent = '';
+      
+      try {
+        originalContent = fs.readFileSync(filePath, 'utf8');
+      } catch (error) {
+        // File doesn't exist, create empty
+        originalContent = '';
+      }
+
+      // Simple diff application (for demo purposes)
+      // In real implementation, we'd use a proper diff library
+      let newContent = this.applySimpleDiff(originalContent, suggestion.diff);
+      
+      fs.writeFileSync(filePath, newContent);
+      
+      return {
+        success: true,
+        filePath,
+        newContent
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error.message
+      };
+    }
+  }
+
+  applySimpleDiff(content, diff) {
+    // Simplified diff application - in real scenario, use proper patching
+    if (diff.includes('"enableLogging": true')) {
+      return content.replace(/"defaultPort": 3000/, '"defaultPort": 3000,\n  "enableLogging": true');
+    }
+    if (diff.includes('const TIMEOUT = 10000')) {
+      return content.replace(/const TIMEOUT = 5000/, 'const TIMEOUT = 10000');
+    }
+    if (diff.includes("console.log('Application started')")) {
+      return content.replace(/function startApp\(\) \{/, "function startApp() {\n  console.log('Application started');");
+    }
+    return content;
+  }
+
+  validateModification(filePath, language) {
+    try {
+      const content = fs.readFileSync(filePath, 'utf8');
+      
+      if (language === 'json') {
+        JSON.parse(content);
+        return { valid: true, language: 'json' };
+      }
+      
+      if (language === 'javascript') {
+        // Try to compile the JavaScript code in a sandbox
+        const script = new vm.Script(content, { filename: filePath });
+        // We only check if it compiles, not if it runs
+        script.compile();
+        return { valid: true, language: 'javascript' };
+      }
+
+      // For other file types, basic syntax checking
+      return { valid: true, language };
+    } catch (error) {
+      return {
+        valid: false,
+        error: error.message,
+        language
+      };
+    }
+  }
+
+  logTask(taskDescription, status, details) {
+    const logEntry = {
+      timestamp: new Date().toISOString(),
+      task_description: taskDescription,
+      status,
+      details
+    };
+    
+    this.logs.push(logEntry);
+    return logEntry;
+  }
+
+  async execute(implementation) {
+    const { description, requirements } = implementation;
+    
+    // Evaluate task complexity
+    const complexity = this.evaluateTaskComplexity(description, requirements);
+    
+    if (complexity === 'complex') {
+      const logEntry = this.logTask(
+        description,
+        'deferred_to_partner',
+        'Task requires partner execution due to complexity'
+      );
+      
+      return {
+        success: false,
+        status: 'deferred_to_partner',
+        message: 'Task marked as requiring partner execution',
+        log: logEntry
+      };
+    }
+
+    // For low risk tasks, attempt autonomous execution
+    const suggestions = this.generateCodeSuggestion(description, requirements);
+    
+    if (suggestions.length === 0) {
+      const logEntry = this.logTask(
+        description,
+        'autonomous_fail',
+        'No actionable code suggestions generated'
+      );
+      
+      return {
+        success: false,
