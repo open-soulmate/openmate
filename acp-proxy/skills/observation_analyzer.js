@@ -1,97 +1,76 @@
-const systemState = require('../system_state');
-const observationDataSource = require('../data_sources/observations');
-const memoryStore = require('../memory/memory_store');
-const systemLog = require('../utils/system_log');
+const systemState = require('../system/state');
+const memoryStore = require('../memory/store');
+const systemLogger = require('../utils/logger');
+const observationSource = require('../data/observationSource');
 
-async function analyzeObservations() {
-    try {
-        const unanalyzedCount = systemState.get('observations_unanalyzed');
-        if (unanalyzedCount < 1) {
-            return;
-        }
-
-        systemLog.log(`Starting analysis of ${unanalyzedCount} unanalyzed observations`, 'info');
-
-        const observations = await observationDataSource.getUnanalyzed();
-        if (!observations || observations.length === 0) {
-            systemLog.log('No observation data found to analyze', 'warning');
-            return;
-        }
-
-        const analysisResults = [];
-        for (const observation of observations) {
-            try {
-                const category = classifyObservation(observation.content);
-                const relatedMemories = await findRelatedMemories(observation, category);
-                
-                const analysis = {
-                    originalId: observation.id,
-                    category: category,
-                    relatedMemoryIds: relatedMemories.map(m => m.id),
-                    summary: generateSummary(observation, category, relatedMemories),
-                    timestamp: new Date(),
-                    originalTimestamp: observation.timestamp
-                };
-
-                await memoryStore.add({
-                    type: 'observation_analysis',
-                    data: analysis,
-                    createdAt: new Date()
-                });
-
-                analysisResults.push(analysis);
-            } catch (error) {
-                systemLog.log(`Failed to analyze observation ${observation.id}: ${error.message}`, 'error');
-                throw error;
-            }
-        }
-
-        systemState.set('observations_unanalyzed', 0);
-        systemLog.log(`Successfully analyzed ${analysisResults.length} observations`, 'info');
-
-    } catch (error) {
-        systemLog.log(`Observation analysis failed: ${error.message}`, 'error');
+const observation_analyzer = async () => {
+  try {
+    if (systemState.observations_unanalyzed < 1) {
+      return;
     }
-}
-
-function classifyObservation(content) {
-    const lowerContent = content.toLowerCase();
     
-    if (lowerContent.includes('error') || lowerContent.includes('fail') || lowerContent.includes('exception')) {
-        return 'error';
-    } else if (lowerContent.includes('warning') || lowerContent.includes('warn') || lowerContent.includes('deprecated')) {
-        return 'warning';
-    } else if (lowerContent.includes('debug') || lowerContent.includes('trace')) {
-        return 'debug';
-    } else {
-        return 'info';
-    }
-}
-
-async function findRelatedMemories(observation, category) {
-    try {
-        const searchQuery = {
-            $or: [
-                { 'data.content': { $regex: observation.content.substring(0, 50), $options: 'i' } },
-                { 'data.category': category },
-                { createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }
-            ],
-            type: { $in: ['observation_analysis', 'log_entry'] }
-        };
-        
-        return await memoryStore.search(searchQuery, 5);
-    } catch (error) {
-        systemLog.log(`Memory search failed: ${error.message}`, 'error');
-        return [];
-    }
-}
-
-function generateSummary(observation, category, relatedMemories) {
-    const memorySummary = relatedMemories.length > 0 
-        ? `Found ${relatedMemories.length} related memories` 
-        : 'No related memories found';
+    const unanalyzedObservations = await observationSource.getUnanalyzedObservations();
     
-    return `${category.toUpperCase()}: ${observation.content.substring(0, 100)}... ${memorySummary}`;
-}
+    const analysisResults = [];
+    for (const observation of unanalyzedObservations) {
+      const category = categorizeObservation(observation.content);
+      const relatedMemories = await memoryStore.search({
+        timestamp: { $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000) },
+        $or: [
+          { type: category },
+          { keywords: { $in: extractKeywords(observation.content) } }
+        ]
+      });
+      
+      const memoryIds = relatedMemories.map(m => m.id);
+      const summary = generateSummary(observation, category, memoryIds);
+      
+      const analysisResult = {
+        timestamp: new Date(),
+        observationId: observation.id,
+        category,
+        relatedMemoryIds: memoryIds,
+        summary,
+        processedAt: new Date()
+      };
+      
+      analysisResults.push(analysisResult);
+    }
+    
+    for (const result of analysisResults) {
+      await memoryStore.add({
+        type: 'observation_analysis',
+        ...result
+      });
+    }
+    
+    await systemState.update('observations_unanalyzed', 0);
+    systemLogger.info(`Analyzed ${analysisResults.length} observations and reset counter`);
+    
+  } catch (error) {
+    systemLogger.error(`Observation analysis failed: ${error.message}`);
+    throw error;
+  }
+};
 
-module.exports = analyzeObservations;
+const categorizeObservation = (content) => {
+  const lowerContent = content.toLowerCase();
+  if (lowerContent.includes('error') || lowerContent.includes('fail')) return 'error';
+  if (lowerContent.includes('warn')) return 'warning';
+  return 'info';
+};
+
+const extractKeywords = (content) => {
+  return content.split(/\W+/)
+    .filter(word => word.length > 3)
+    .slice(0, 10);
+};
+
+const generateSummary = (observation, category, memoryIds) => {
+  return `${category.toUpperCase()}: ${observation.content.substring(0, 100)}... [${memoryIds.length} related memories]`;
+};
+
+module.exports = {
+  analyzeObservations: observation_analyzer,
+  trigger: observation_analyzer
+};
