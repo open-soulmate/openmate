@@ -1,158 +1,184 @@
-import os
+# acp-proxy/skills/tool_creator.py
 import json
-import ast
+import os
+import re
+import sys
 import inspect
-import importlib.util
-from typing import Dict, List, Any, Optional, Tuple
-from datetime import datetime
+import importlib
+import traceback
+from typing import Dict, List, Any, Optional, Union
+from pathlib import Path
+
+# 假设BaseSkill从现有基类导入
+# from acp_proxy.skills.base import BaseSkill
 
 class BaseSkill:
-    """基础技能类"""
-    def __init__(self, name: str, description: str):
-        self.name = name
-        self.description = description
-        self.created_at = datetime.now()
-    
-    def execute(self, *args, **kwargs):
-        raise NotImplementedError("Subclasses must implement execute method")
+    """临时基类，实际项目中应替换为真实基类"""
+    def __init__(self, agent=None, config=None):
+        self.agent = agent
+        self.config = config or {}
+        
+    def execute(self, **kwargs):
+        raise NotImplementedError
+        
+    def update_progress(self, target: str, progress: float):
+        """更新进度（模拟）"""
+        print(f"Progress update - {target}: {progress:.2%}")
 
 class ToolCreatorSkill(BaseSkill):
-    """MCP工具自动创造技能"""
+    """
+    创建MCP工具自动创造技能
+    支持agent识别能力缺口并自动创建新的MCP工具
+    """
     
-    def __init__(self):
-        super().__init__(
-            name="tool_creator",
-            description="创建MCP工具自动创造技能，支持agent识别能力缺口并自动创建新的MCP工具"
-        )
-        self.tool_registry: Dict[str, Dict] = {}  # 工具注册表
-        self.created_tools: List[str] = []  # 已创建工具列表
-        self.mcp_protocol_version = "1.0"
-        self.plugins_dir = "plugins"
-        self._ensure_plugins_dir()
-        self._load_existing_tools()
+    def __init__(self, agent=None, config=None):
+        super().__init__(agent, config)
+        self.tool_registry = {}  # 已创建工具注册表
+        self.mcp_protocol_docs = config.get('mcp_protocol_docs', {})
+        self.existing_tools_interface = config.get('existing_tools_interface')
+        self.plugins_dir = config.get('plugins_dir', 'plugins')
+        self.created_tools_count = 0
         
-    def _ensure_plugins_dir(self):
-        """确保插件目录存在"""
-        os.makedirs(self.plugins_dir, exist_ok=True)
-    
-    def _load_existing_tools(self):
-        """加载现有的工具注册表"""
-        registry_file = os.path.join(self.plugins_dir, "tool_registry.json")
-        if os.path.exists(registry_file):
-            try:
-                with open(registry_file, 'r', encoding='utf-8') as f:
-                    registry_data = json.load(f)
-                    self.tool_registry = registry_data.get("tools", {})
-                    self.created_tools = list(self.tool_registry.keys())
-            except Exception as e:
-                print(f"加载工具注册表失败: {e}")
-    
-    def _save_registry(self):
-        """保存工具注册表"""
-        registry_file = os.path.join(self.plugins_dir, "tool_registry.json")
-        registry_data = {
-            "version": self.mcp_protocol_version,
-            "last_updated": datetime.now().isoformat(),
-            "tools": self.tool_registry
-        }
+        # 确保plugins目录存在
+        Path(self.plugins_dir).mkdir(parents=True, exist_ok=True)
         
-        try:
-            with open(registry_file, 'w', encoding='utf-8') as f:
-                json.dump(registry_data, f, ensure_ascii=False, indent=2)
-        except Exception as e:
-            print(f"保存工具注册表失败: {e}")
-    
-    def execute(self, *args, **kwargs):
-        """执行工具创建流程"""
-        if "failed_tasks" in kwargs:
-            gaps = self.identify_capability_gaps(kwargs["failed_tasks"])
-            if gaps:
-                results = []
-                for gap in gaps[:3]:  # 每次最多处理3个能力缺口
-                    tool_spec = self.design_tool_specification(gap)
-                    tool_code = self.generate_mcp_tool(tool_spec)
-                    tool_name = self.register_tool(tool_code, tool_spec)
-                    if tool_name:
-                        results.append(tool_name)
-                return {
-                    "status": "success",
-                    "created_tools": results,
-                    "gaps_identified": len(gaps),
-                    "message": f"成功创建 {len(results)} 个工具"
-                }
-            else:
-                return {
-                    "status": "success",
-                    "created_tools": [],
-                    "gaps_identified": 0,
-                    "message": "未发现需要创建新工具的能力缺口"
-                }
+    def execute(self, **kwargs) -> Dict[str, Any]:
+        """主执行方法"""
+        action = kwargs.get('action', 'create_tool')
+        
+        if action == 'identify_gaps':
+            failed_tasks = kwargs.get('failed_tasks', [])
+            return self.identify_capability_gaps(failed_tasks)
+        elif action == 'design_tool':
+            gap_description = kwargs.get('gap_description', '')
+            return self.design_tool_specification(gap_description)
+        elif action == 'generate_tool':
+            tool_spec = kwargs.get('tool_spec', {})
+            return self.generate_mcp_tool(tool_spec)
+        elif action == 'register_tool':
+            tool_code = kwargs.get('tool_code', '')
+            return self.register_tool(tool_code)
+        elif action == 'test_tool':
+            tool_name = kwargs.get('tool_name', '')
+            test_cases = kwargs.get('test_cases', [])
+            return self.test_tool(tool_name, test_cases)
+        elif action == 'create_tool':
+            failed_tasks = kwargs.get('failed_tasks', [])
+            return self.create_new_tool(failed_tasks)
         else:
+            return {'success': False, 'error': f'Unknown action: {action}'}
+    
+    def create_new_tool(self, failed_tasks: List[Dict]) -> Dict[str, Any]:
+        """完整流程：从失败任务创建新工具"""
+        try:
+            # 1. 识别能力缺口
+            gaps = self.identify_capability_gaps(failed_tasks)
+            if not gaps['success']:
+                return gaps
+                
+            # 2. 设计工具规格
+            tool_specs = []
+            for gap in gaps['gaps']:
+                spec = self.design_tool_specification(gap)
+                if spec['success']:
+                    tool_specs.append(spec['specification'])
+                    
+            # 3. 生成并注册工具
+            created_tools = []
+            for spec in tool_specs:
+                # 生成工具代码
+                code_result = self.generate_mcp_tool(spec)
+                if not code_result['success']:
+                    continue
+                    
+                # 注册工具
+                reg_result = self.register_tool(code_result['code'])
+                if reg_result['success']:
+                    created_tools.append({
+                        'tool_name': spec['name'],
+                        'tool_spec': spec,
+                        'code': code_result['code']
+                    })
+                    
+            # 更新进度
+            self.created_tools_count += len(created_tools)
+            self.update_progress('工具创造', self.created_tools_count / 100)
+            
             return {
-                "status": "error",
-                "message": "缺少 failed_tasks 参数"
+                'success': True,
+                'created_tools': len(created_tools),
+                'tools': created_tools,
+                'progress': self.created_tools_count / 100
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'创建工具失败: {str(e)}',
+                'traceback': traceback.format_exc()
             }
     
-    def identify_capability_gaps(self, failed_tasks: List[Dict]) -> List[Dict]:
-        """
-        分析历史失败任务，识别当前缺失的能力类型
-        
-        Args:
-            failed_tasks: 失败任务列表，每个任务包含任务描述、失败原因等信息
+    def identify_capability_gaps(self, failed_tasks: List[Dict]) -> Dict[str, Any]:
+        """分析历史失败任务，识别当前缺失的能力类型"""
+        try:
+            gaps = []
+            task_patterns = {}
             
-        Returns:
-            识别出的能力缺口列表
-        """
-        gaps = []
-        
-        # 分析失败任务模式
-        capability_patterns = {
-            "data_processing": ["数据处理", "解析", "转换", "清洗", "分析"],
-            "api_integration": ["API", "接口", "调用", "网络请求", "服务集成"],
-            "file_manipulation": ["文件操作", "读写", "解析", "转换", "格式化"],
-            "math_calculation": ["计算", "数学", "统计", "算法", "数值"],
-            "text_processing": ["文本处理", "字符串", "格式化", "解析", "转换"],
-            "media_handling": ["图片", "音视频", "媒体", "处理", "转换"],
-            "database_ops": ["数据库", "查询", "存储", "管理", "优化"],
-            "system_admin": ["系统", "管理", "监控", "配置", "维护"]
-        }
-        
-        for task in failed_tasks:
-            task_desc = task.get("description", "").lower()
-            failure_reason = task.get("failure_reason", "").lower()
-            combined_text = f"{task_desc} {failure_reason}"
+            for task in failed_tasks:
+                task_type = task.get('type', 'unknown')
+                error_type = task.get('error', '').split(':')[0] if task.get('error') else 'unknown'
+                pattern_key = f"{task_type}_{error_type}"
+                
+                if pattern_key not in task_patterns:
+                    task_patterns[pattern_key] = {
+                        'count': 0,
+                        'examples': [],
+                        'task_type': task_type,
+                        'error_type': error_type
+                    }
+                
+                task_patterns[pattern_key]['count'] += 1
+                task_patterns[pattern_key]['examples'].append(task)
+                
+                # 分析缺口类型
+                if 'api' in task_type.lower() or 'service' in task_type.lower():
+                    gap_type = 'api_integration'
+                elif 'data' in task_type.lower() or 'process' in task_type.lower():
+                    gap_type = 'data_processing'
+                elif 'file' in task_type.lower() or 'io' in task_type.lower():
+                    gap_type = 'file_operations'
+                elif 'auth' in task_type.lower() or 'security' in task_type.lower():
+                    gap_type = 'security'
+                else:
+                    gap_type = 'general'
+                    
+                # 检查是否已存在类似工具
+                similar_tools = self._find_similar_tools(task_type, error_type)
+                if not similar_tools:
+                    gaps.append({
+                        'gap_type': gap_type,
+                        'task_type': task_type,
+                        'error_type': error_type,
+                        'frequency': task_patterns[pattern_key]['count'],
+                        'suggested_capability': self._suggest_capability(task_type, error_type)
+                    })
+                    
+            # 按频率排序
+            gaps.sort(key=lambda x: x['frequency'], reverse=True)
             
-            # 检查是否缺少现有工具
-            for capability, keywords in capability_patterns.items():
-                if any(keyword in combined_text for keyword in keywords):
-                    # 检查现有工具是否能处理该能力
-                    if not self._has_capability(capability):
-                        gap = {
-                            "capability_type": capability,
-                            "description": f"处理{task_desc}的能力",
-                            "keywords": [kw for kw in keywords if kw in combined_text],
-                            "example_task": task,
-                            "priority": self._calculate_priority(task)
-                        }
-                        gaps.append(gap)
-        
-        # 去重并按优先级排序
-        unique_gaps = []
-        seen_types = set()
-        
-        for gap in gaps:
-            if gap["capability_type"] not in seen_types:
-                unique_gaps.append(gap)
-                seen_types.add(gap["capability_type"])
-        
-        return sorted(unique_gaps, key=lambda x: x["priority"], reverse=True)
+            return {
+                'success': True,
+                'gaps': gaps,
+                'patterns': task_patterns,
+                'total_failed_tasks': len(failed_tasks)
+            }
+            
+        except Exception as e:
+            return {
+                'success': False,
+                'error': f'识别能力缺口失败: {str(e)}',
+                'traceback': traceback.format_exc()
+            }
     
-    def _has_capability(self, capability_type: str) -> bool:
-        """检查是否已有特定能力的工具"""
-        for tool_name, tool_info in self.tool_registry.items():
-            if capability_type in tool_info.get("capabilities", []):
-                return True
-        return False
-    
-    def _calculate_priority(self, task: Dict) -> int:
-        """计算任务优先级（1-10，10最高）"""
+    def _find_similar_tools(self, task_type: str, error_type: str) -> List[str]:
+        """查找类似工具"""
