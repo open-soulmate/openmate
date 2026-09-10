@@ -1,192 +1,112 @@
-import datetime
-import json
-from typing import Dict, List, Any, Optional
-from dataclasses import dataclass, asdict
+import time
+import uuid
+from typing import Any, Dict, List, Optional
 
 from acp_proxy.skills.base import BaseSkill
 from acp_proxy.memory.manager import MemoryManager
 
-
-@dataclass
-class ImprovementItem:
-    """改进项数据类"""
-    improvement_id: str
-    description: str
-    priority: int  # 1-5，5为最高
-    trigger_condition: str
-    execution_status: str  # pending, in_progress, completed, failed
-    created_time: datetime.datetime
-    planned_time: Optional[datetime.datetime] = None
-    start_time: Optional[datetime.datetime] = None
-    end_time: Optional[datetime.datetime] = None
-    result_evaluation: Optional[str] = None
-    error_message: Optional[str] = None
-
-
 class PlanningExecutionLoop(BaseSkill):
-    """规划-执行闭环技能类
-    
-    实现规划与执行的完整闭环，解决规划与执行脱节问题
-    """
-    
     def __init__(self, memory_manager: MemoryManager):
-        super().__init__(
-            name="planning_execution_loop",
-            description="规划-执行闭环技能，实现规划与执行的完整闭环",
-            version="1.0.0"
-        )
+        super().__init__()
         self.memory_manager = memory_manager
-        self.cycle_count = 0
-        self.pending_improvements: List[ImprovementItem] = []
-        self.execution_history: List[ImprovementItem] = []
-        
-        # 从内存中恢复历史数据
-        self._load_history()
+        self.current_cycle = 0
+        self.pending_improvements: List[Dict[str, Any]] = []
+        self.execution_history: List[Dict[str, Any]] = []
     
-    def _load_history(self):
-        """从内存加载历史数据"""
-        try:
-            history_data = self.memory_manager.get("planning_execution_history")
-            if history_data:
-                self.execution_history = [ImprovementItem(**item) for item in history_data]
-                
-            pending_data = self.memory_manager.get("pending_improvements")
-            if pending_data:
-                self.pending_improvements = [ImprovementItem(**item) for item in pending_data]
-                
-            cycle_data = self.memory_manager.get("cycle_count")
-            if cycle_data:
-                self.cycle_count = cycle_data
-                
-        except Exception as e:
-            print(f"加载历史数据失败: {e}")
-    
-    def _save_history(self):
-        """保存数据到内存"""
-        try:
-            # 保存执行历史
-            history_dicts = [asdict(item) for item in self.execution_history]
-            self.memory_manager.store("planning_execution_history", history_dicts)
-            
-            # 保存待执行项
-            pending_dicts = [asdict(item) for item in self.pending_improvements]
-            self.memory_manager.store("pending_improvements", pending_dicts)
-            
-            # 保存周期计数
-            self.memory_manager.store("cycle_count", self.cycle_count)
-            
-        except Exception as e:
-            print(f"保存数据失败: {e}")
-    
-    def execute_cycle(self, current_state: Dict[str, Any]) -> Dict[str, Any]:
-        """执行一个进化周期
-        
-        Args:
-            current_state: 当前状态数据，包含错误率、目标进度等信息
-            
-        Returns:
-            本次周期的执行结果
-        """
-        self.cycle_count += 1
-        
-        # 检查触发条件
-        should_generate = self.check_triggers(current_state)
-        
-        # 如果触发，生成改进项
-        if should_generate:
-            improvements = self.generate_improvements(current_state)
+    def execute_cycle(self) -> List[Dict[str, Any]]:
+        """Execute one evolution cycle, returning any improvements triggered."""
+        self.current_cycle += 1
+        triggered = self.check_triggers()
+        if triggered:
+            improvements = self.generate_improvements(triggered)
             self.pending_improvements.extend(improvements)
-        
-        # 执行待处理的改进项
-        execution_results = []
-        if self.pending_improvements:
-            execution_results = self._execute_pending_improvements(current_state)
-        
-        # 保存数据
-        self._save_history()
-        
-        return {
-            "cycle_count": self.cycle_count,
-            "generated_improvements": len(improvements) if should_generate else 0,
-            "executed_improvements": len(execution_results),
-            "pending_improvements_count": len(self.pending_improvements),
-            "execution_history_count": len(self.execution_history)
-        }
+            for imp in improvements:
+                self.track_execution(imp)
+        return triggered
     
-    def check_triggers(self, current_state: Dict[str, Any]) -> bool:
-        """检查是否应该触发改进项生成
+    def generate_improvements(self, trigger_conditions: List[str]) -> List[Dict[str, Any]]:
+        """Generate executable improvement items based on reflection data and triggers."""
+        improvements = []
+        reflections = self.memory_manager.read_data("reflections") or {}
         
-        Args:
-            current_state: 当前状态数据
-            
-        Returns:
-            是否应该生成改进项
-        """
+        # Force at least one improvement every 5 cycles
+        if self.current_cycle % 5 == 0 and not improvements:
+            imp = {
+                "improvement_id": str(uuid.uuid4()),
+                "description": "Forced improvement due to cycle count",
+                "priority": "medium",
+                "trigger_condition": "cycle_count_divisible_by_5",
+                "execution_status": "pending"
+            }
+            improvements.append(imp)
+        
+        # Generate based on triggers and reflection data
+        for condition in trigger_conditions:
+            if condition == "high_error_rate":
+                imp = {
+                    "improvement_id": str(uuid.uuid4()),
+                    "description": "Reduce error rate by optimizing core processes",
+                    "priority": "high",
+                    "trigger_condition": "error_rate > 10%",
+                    "execution_status": "pending"
+                }
+                improvements.append(imp)
+            elif condition == "goal_progress_stalled":
+                imp = {
+                    "improvement_id": str(uuid.uuid4()),
+                    "description": "Reassess goals and adjust strategies for progress",
+                    "priority": "high",
+                    "trigger_condition": "goal_progress_stalled",
+                    "execution_status": "pending"
+                }
+                improvements.append(imp)
+        
+        return improvements
+    
+    def check_triggers(self) -> List[str]:
+        """Check trigger conditions and return list of triggered conditions."""
         triggers = []
+        reflections = self.memory_manager.read_data("reflections") or {}
         
-        # 检查错误率触发条件
-        error_rate = current_state.get("error_rate", 0)
-        if error_rate > 10.0:
+        # Check error rate > 10%
+        error_rate = reflections.get("error_rate", 0.0)
+        if error_rate > 0.1:
             triggers.append("high_error_rate")
         
-        # 检查周期数触发条件（每5个周期）
-        if self.cycle_count % 5 == 0:
-            triggers.append("periodic_cycle")
+        # Check cycle count divisible by 5
+        if self.current_cycle % 5 == 0:
+            triggers.append("cycle_count_divisible_by_5")
         
-        # 检查目标进度停滞触发条件
-        progress_stagnation = current_state.get("progress_stagnation", False)
-        if progress_stagnation:
-            triggers.append("progress_stagnation")
+        # Check goal progress stalled
+        goal_progress = reflections.get("goal_progress", {})
+        if goal_progress.get("stalled", False):
+            triggers.append("goal_progress_stalled")
         
-        # 如果有任何触发条件，或者当前没有待执行的改进项
-        return len(triggers) > 0 or len(self.pending_improvements) == 0
+        return triggers
     
-    def generate_improvements(self, current_state: Dict[str, Any]) -> List[ImprovementItem]:
-        """生成改进项
+    def track_execution(self, improvement: Dict[str, Any]) -> None:
+        """Record execution details of an improvement item."""
+        planning_time = time.time()
+        execution_status = improvement.get("execution_status", "unknown")
+        result_assessment = "pending_assessment"
         
-        Args:
-            current_state: 当前状态数据
-            
-        Returns:
-            生成的改进项列表
-        """
-        improvements = []
-        
-        # 基于当前状态分析需要改进的方面
-        reflection_data = current_state.get("reflection_data", {})
-        problems = reflection_data.get("identified_problems", [])
-        opportunities = reflection_data.get("improvement_opportunities", [])
-        
-        # 为每个问题和机会创建改进项
-        for i, problem in enumerate(problems):
-            improvement = ImprovementItem(
-                improvement_id=f"improvement_{self.cycle_count}_{i+1}",
-                description=f"解决问题: {problem.get('description', '未知问题')}",
-                priority=problem.get("priority", 3),
-                trigger_condition="problem_identified",
-                execution_status="pending",
-                created_time=datetime.datetime.now()
-            )
-            improvements.append(improvement)
-        
-        for i, opportunity in enumerate(opportunities):
-            improvement = ImprovementItem(
-                improvement_id=f"improvement_{self.cycle_count}_{len(problems)+i+1}",
-                description=f"实现机会: {opportunity.get('description', '未知机会')}",
-                priority=opportunity.get("priority", 2),
-                trigger_condition="opportunity_identified",
-                execution_status="pending",
-                created_time=datetime.datetime.now()
-            )
-            improvements.append(improvement)
-        
-        # 强制每5个周期生成至少一项改进项
-        if len(improvements) == 0 and self.cycle_count % 5 == 0:
-            improvement = ImprovementItem(
-                improvement_id=f"improvement_{self.cycle_count}_forced",
-                description="周期性改进: 优化当前流程或系统",
-                priority=3,
-                trigger_condition="periodic_cycle",
-                execution_status="pending",
-                created_time=datetime.datetime.now()
-            )
+        record = {
+            "improvement_id": improvement["improvement_id"],
+            "description": improvement["description"],
+            "priority": improvement["priority"],
+            "trigger_condition": improvement["trigger_condition"],
+            "execution_status": execution_status,
+            "planning_time": planning_time,
+            "result_assessment": result_assessment,
+            "cycle": self.current_cycle
+        }
+        self.execution_history.append(record)
+        self.memory_manager.write_data("execution_history", self.execution_history)
+    
+    def get_pending_improvements(self) -> List[Dict[str, Any]]:
+        """Return list of pending improvement items."""
+        return self.pending_improvements
+    
+    def get_execution_history(self) -> List[Dict[str, Any]]:
+        """Return full execution history for auditing."""
+        return self.execution_history
