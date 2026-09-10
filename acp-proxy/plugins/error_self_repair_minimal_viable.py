@@ -1,126 +1,129 @@
-#!/usr/bin/env python3
-"""
-错误自修复最小可行插件 - 实现从0%到1%的突破
-"""
-
 import json
-import time
 import logging
+import os
+import time
 from datetime import datetime
-from typing import Dict, List, Any, Optional
-import threading
-from collections import defaultdict
+from typing import Dict, List, Any, Optional, Callable
+from pathlib import Path
+from dataclasses import dataclass, asdict
+from enum import Enum
 
 # 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('error_self_repair.log'),
-        logging.StreamHandler()
-    ]
-)
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
-class ErrorPatternLibrary:
-    """错误模式库"""
+class ErrorPatternType(Enum):
+    """错误模式类型枚举"""
+    INFO_PROCESSING_INTERRUPT = "info_processing_interrupt"
+    TASK_ASSIGNMENT_IMBALANCE = "task_assignment_imbalance"
+    RESOURCE_EXHAUSTION = "resource_exhaustion"
+
+
+@dataclass
+class ErrorPattern:
+    """错误模式定义"""
+    pattern_id: str
+    pattern_type: ErrorPatternType
+    description: str
+    detection_rules: List[Dict[str, Any]]
+    repair_script_template: str
+    verification_method: str
+    rollback_script: Optional[str] = None
+
+
+@dataclass
+class RepairRecord:
+    """修复记录"""
+    record_id: str
+    timestamp: str
+    error_pattern: str
+    repair_description: str
+    pre_state: Dict[str, Any]
+    post_state: Dict[str, Any]
+    repair_result: str  # success, failed, partial
+    execution_time: float
+    notes: str = ""
+
+
+class DataSourceInterface:
+    """数据源接口"""
     
-    def __init__(self):
-        self.patterns = {
-            "information_processing_interruption": {
-                "description": "信息处理中断 - 观察数据堆积未分析",
-                "detection_rules": [
-                    {"metric": "unanalyzed_observations_count", "threshold": 10, "operator": "gt"},
-                    {"metric": "processing_queue_length", "threshold": 5, "operator": "gt"}
-                ],
-                "repair_strategies": [
-                    {
-                        "name": "add_priority_labels",
-                        "description": "为未分析观察添加优先级标签",
-                        "params": {"priority_field": "auto_priority"}
-                    },
-                    {
-                        "name": "create_analysis_queue",
-                        "description": "创建自动分析队列",
-                        "params": {"queue_name": "auto_analysis_queue"}
-                    }
-                ]
-            },
-            "task_allocation_imbalance": {
-                "description": "任务分配失衡 - 分析任务分配不均",
-                "detection_rules": [
-                    {"metric": "worker_load_variance", "threshold": 0.7, "operator": "gt"}
-                ],
-                "repair_strategies": [
-                    {
-                        "name": "load_balancing",
-                        "description": "实现简单的负载均衡",
-                        "params": {"redistribute_threshold": 0.8}
-                    }
-                ]
-            },
-            "resource_exhaustion": {
-                "description": "资源耗尽 - 内存或CPU使用率过高",
-                "detection_rules": [
-                    {"metric": "memory_usage", "threshold": 85, "operator": "gt"},
-                    {"metric": "cpu_usage", "threshold": 90, "operator": "gt"}
-                ],
-                "repair_strategies": [
-                    {
-                        "name": "cleanup_old_data",
-                        "description": "清理过期数据释放资源",
-                        "params": {"max_age_hours": 24}
-                    }
-                ]
-            }
+    def __init__(self, config: Dict[str, Any] = None):
+        self.config = config or {}
+        self.logger = logging.getLogger(f"{__name__}.DataSource")
+    
+    def get_unanalyzed_observations(self) -> Dict[str, Any]:
+        """获取未分析观察数据"""
+        # 模拟实际数据源，实际实现时需替换为真实数据获取
+        self.logger.info("从数据源获取未分析观察")
+        
+        # 模拟数据
+        return {
+            "count": 45,  # 当前未分析观察数量
+            "details": [
+                {"id": 1, "timestamp": datetime.now().isoformat(), "type": "error", "priority": "low"},
+                {"id": 2, "timestamp": datetime.now().isoformat(), "type": "warning", "priority": "medium"},
+                {"id": 3, "timestamp": datetime.now().isoformat(), "type": "info", "priority": "low"},
+            ],
+            "threshold": 30  # 阈值
         }
     
-    def get_pattern(self, pattern_name: str) -> Optional[Dict]:
-        return self.patterns.get(pattern_name)
-    
-    def add_pattern(self, pattern_name: str, pattern_data: Dict):
-        self.patterns[pattern_name] = pattern_data
-
-
-class SystemMonitor:
-    """系统监控器"""
-    
-    def __init__(self):
-        self.metrics = defaultdict(float)
-        self.unanalyzed_observations = []
-        self.system_logs = []
-        self.lock = threading.Lock()
+    def get_system_logs(self, time_range: int = 3600) -> List[Dict[str, Any]]:
+        """获取系统日志"""
+        self.logger.info(f"获取最近{time_range}秒的系统日志")
         
-    def add_observation(self, observation: Dict):
-        """添加观察数据"""
-        with self.lock:
-            self.unanalyzed_observations.append(observation)
-            self.metrics["unanalyzed_observations_count"] = len(self.unanalyzed_observations)
+        # 模拟日志数据
+        return [
+            {"timestamp": datetime.now().isoformat(), "level": "ERROR", "message": "处理队列阻塞"},
+            {"timestamp": datetime.now().isoformat(), "level": "WARNING", "message": "资源使用率90%"},
+            {"timestamp": datetime.now().isoformat(), "level": "INFO", "message": "系统正常运行"}
+        ]
     
-    def get_metric(self, metric_name: str) -> float:
-        """获取指标值"""
-        with self.lock:
-            return self.metrics.get(metric_name, 0)
-    
-    def update_metrics(self, metrics: Dict):
-        """更新系统指标"""
-        with self.lock:
-            self.metrics.update(metrics)
-    
-    def add_log(self, log_entry: str):
-        """添加系统日志"""
-        with self.lock:
-            self.system_logs.append({
-                "timestamp": datetime.now().isoformat(),
-                "content": log_entry
-            })
+    def update_system_config(self, config_updates: Dict[str, Any]) -> bool:
+        """更新系统配置"""
+        self.logger.info(f"更新系统配置: {config_updates}")
+        # 模拟配置更新
+        return True
 
 
 class KnowledgeBase:
-    """知识库 - 记录修复经验"""
+    """知识库管理"""
     
-    def __init__(self, knowledge_file: str = "repair_knowledge.json"):
-        self.knowledge_file = knowledge_file
-        self.knowledge = self._load_knowledge()
+    def __init__(self, kb_path: str = "repair_knowledge.json"):
+        self.kb_path = Path(kb_path)
+        self.kb_data = self._load_kb()
+        self.logger = logging.getLogger(f"{__name__}.KnowledgeBase")
     
+    def _load_kb(self) -> Dict[str, Any]:
+        """加载知识库"""
+        if self.kb_path.exists():
+            with open(self.kb_path, 'r', encoding='utf-8') as f:
+                return json.load(f)
+        return {
+            "error_patterns": [],
+            "repair_records": [],
+            "statistics": {
+                "total_repairs": 0,
+                "successful_repairs": 0,
+                "failed_repairs": 0,
+                "last_updated": datetime.now().isoformat()
+            }
+        }
+    
+    def save_kb(self):
+        """保存知识库"""
+        self.kb_data["statistics"]["last_updated"] = datetime.now().isoformat()
+        with open(self.kb_path, 'w', encoding='utf-8') as f:
+            json.dump(self.kb_data, f, indent=2, ensure_ascii=False)
+        self.logger.info(f"知识库已保存到 {self.kb_path}")
+    
+    def add_repair_record(self, record: RepairRecord):
+        """添加修复记录"""
+        self.kb_data["repair_records"].append(asdict(record))
+        self.kb_data["statistics"]["total_repairs"] += 1
+        if record.repair_result == "success":
+            self.kb_data["statistics"]["successful_repairs"] += 1
+        elif record.repair_result == "failed":
+            self.kb_data["statistics"]["failed_repairs"] += 1
+        self.save_kb()
