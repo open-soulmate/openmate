@@ -1,237 +1,208 @@
-import os
-import sys
+#!/usr/bin/env python3
+"""
+Error Detection and Repair Skill
+Implements self-healing capabilities with multi-dimensional error monitoring,
+pattern learning, root cause analysis, and automated repair.
+"""
+
 import time
 import json
-import hashlib
 import logging
-import traceback
-import threading
-import queue
-import statistics
-from datetime import datetime, timedelta
-from collections import defaultdict, deque
-from typing import Dict, List, Tuple, Any, Optional
-from dataclasses import dataclass, asdict
-from enum import Enum
+import hashlib
 import pickle
 import numpy as np
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.cluster import DBSCAN
-from sklearn.preprocessing import StandardScaler
-import joblib
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple, Any, Set
+from dataclasses import dataclass, asdict
+from collections import defaultdict, deque
+from enum import Enum
+import threading
+from pathlib import Path
+import traceback
+import psutil
+import sys
 
 # Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[
+        logging.FileHandler('error_detection_repair.log'),
+        logging.StreamHandler()
+    ]
 )
 logger = logging.getLogger(__name__)
 
 
 class ErrorType(Enum):
+    """Error type classification"""
     RUNTIME = "runtime"
     PERFORMANCE = "performance"
-    LOGIC = "logic"
+    LOGICAL = "logical"
     RESOURCE_LEAK = "resource_leak"
+    SYSTEM = "system"
+    NETWORK = "network"
     UNKNOWN = "unknown"
 
 
-class RepairPriority(Enum):
-    CRITICAL = 1
-    HIGH = 2
-    MEDIUM = 3
-    LOW = 4
+class RepairUrgency(Enum):
+    """Repair urgency levels"""
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
 
 
 @dataclass
 class ErrorLog:
-    """Data class to represent an error log entry"""
+    """Error log data structure"""
     timestamp: datetime
     error_type: ErrorType
     message: str
-    stack_trace: str
-    system_logs: List[str]
-    performance_metrics: Dict[str, float]
-    resource_usage: Dict[str, float]
-    context: Dict[str, Any]
-    error_id: str = None
+    stack_trace: Optional[str] = None
+    system_metrics: Optional[Dict] = None
+    context: Optional[Dict] = None
+    root_cause: Optional[str] = None
+    severity: float = 0.0  # 0-1 scale
     
-    def __post_init__(self):
-        if not self.error_id:
-            # Generate unique error ID
-            hash_input = f"{self.timestamp}{self.message}{self.stack_trace}"
-            self.error_id = hashlib.md5(hash_input.encode()).hexdigest()
+    def to_dict(self) -> Dict:
+        """Convert to dictionary for serialization"""
+        result = asdict(self)
+        result['timestamp'] = self.timestamp.isoformat()
+        result['error_type'] = self.error_type.value
+        return result
+    
+    @classmethod
+    def from_dict(cls, data: Dict) -> 'ErrorLog':
+        """Create from dictionary"""
+        data['timestamp'] = datetime.fromisoformat(data['timestamp'])
+        data['error_type'] = ErrorType(data['error_type'])
+        return cls(**data)
 
 
 @dataclass
 class RepairStrategy:
-    """Data class for repair strategies"""
+    """Repair strategy data structure"""
     strategy_id: str
     error_type: ErrorType
     description: str
-    fix_type: str  # 'temporary' or 'permanent'
-    confidence: float
-    estimated_time: float
+    steps: List[str]
+    estimated_time: float  # seconds
+    stability_score: float  # 0-1 scale
     side_effects: List[str]
-    stability_score: float
-    implementation_code: str = None
+    rollback_plan: Optional[str] = None
+    priority: RepairUrgency = RepairUrgency.MEDIUM
+    
+    def to_dict(self) -> Dict:
+        """Convert to dictionary"""
+        result = asdict(self)
+        result['error_type'] = self.error_type.value
+        result['priority'] = self.priority.value
+        return result
 
 
 @dataclass
 class RepairResult:
-    """Data class for repair execution results"""
+    """Repair result data structure"""
     strategy_id: str
     success: bool
     execution_time: float
-    before_metrics: Dict[str, float]
-    after_metrics: Dict[str, float]
-    verification_passed: bool
-    details: str
-
-
-class ErrorPatternLearner:
-    """Machine learning module for learning error patterns"""
+    verification_result: bool
+    error_reduction: float  # percentage
+    timestamp: datetime
+    details: Optional[str] = None
     
-    def __init__(self):
-        self.classifier = DecisionTreeClassifier()
-        self.cluster_model = DBSCAN(eps=0.5, min_samples=2)
-        self.scaler = StandardScaler()
-        self.is_trained = False
-        self.feature_names = []
-        self.patterns = {}
-        
-    def extract_features(self, error_log: ErrorLog) -> np.ndarray:
-        """Extract features from error log for ML models"""
-        features = []
-        
-        # Time-based features
-        features.append(error_log.timestamp.hour)
-        features.append(error_log.timestamp.weekday())
-        
-        # Performance metrics
-        if 'response_time' in error_log.performance_metrics:
-            features.append(error_log.performance_metrics['response_time'])
-        else:
-            features.append(0)
-            
-        if 'cpu_usage' in error_log.performance_metrics:
-            features.append(error_log.performance_metrics['cpu_usage'])
-        else:
-            features.append(0)
-            
-        # Resource usage
-        if 'memory_usage' in error_log.resource_usage:
-            features.append(error_log.resource_usage['memory_usage'])
-        else:
-            features.append(0)
-            
-        # Error type encoding
-        type_map = {
-            ErrorType.RUNTIME: 0,
-            ErrorType.PERFORMANCE: 1,
-            ErrorType.LOGIC: 2,
-            ErrorType.RESOURCE_LEAK: 3,
-            ErrorType.UNKNOWN: 4
-        }
-        features.append(type_map.get(error_log.error_type, 4))
-        
-        # Message length as proxy for complexity
-        features.append(len(error_log.message))
-        
-        # Stack trace depth
-        stack_lines = error_log.stack_trace.split('\n')
-        features.append(len(stack_lines))
-        
-        return np.array(features).reshape(1, -1)
-    
-    def train_classifier(self, error_logs: List[ErrorLog], labels: List[str]):
-        """Train error type classifier"""
-        if not error_logs:
-            return
-            
-        X = np.vstack([self.extract_features(log) for log in error_logs])
-        y = np.array(labels)
-        
-        # Scale features
-        X_scaled = self.scaler.fit_transform(X)
-        
-        # Train classifier
-        self.classifier.fit(X_scaled, y)
-        self.is_trained = True
-        
-        # Update feature names
-        self.feature_names = [
-            'hour', 'weekday', 'response_time', 'cpu_usage',
-            'memory_usage', 'error_type_encoded', 'message_length',
-            'stack_trace_depth'
-        ]
-        
-        logger.info("Error classifier trained successfully")
-    
-    def predict_error_type(self, error_log: ErrorLog) -> Tuple[str, float]:
-        """Predict error type using trained classifier"""
-        if not self.is_trained:
-            return ErrorType.UNKNOWN.value, 0.0
-            
-        features = self.extract_features(error_log)
-        features_scaled = self.scaler.transform(features)
-        
-        prediction = self.classifier.predict(features_scaled)[0]
-        confidence = np.max(self.classifier.predict_proba(features_scaled))
-        
-        return prediction, confidence
-    
-    def cluster_errors(self, error_logs: List[ErrorLog]) -> Dict[int, List[ErrorLog]]:
-        """Cluster similar errors using DBSCAN"""
-        if not error_logs:
-            return {}
-            
-        X = np.vstack([self.extract_features(log) for log in error_logs])
-        X_scaled = self.scaler.transform(X)
-        
-        clusters = self.cluster_model.fit_predict(X_scaled)
-        
-        clustered_errors = defaultdict(list)
-        for idx, cluster_id in enumerate(clusters):
-            clustered_errors[cluster_id].append(error_logs[idx])
-            
-        return clustered_errors
-    
-    def update_patterns(self, error_log: ErrorLog, solution: RepairStrategy):
-        """Update error patterns with new solutions"""
-        error_hash = hashlib.md5(
-            f"{error_log.error_type}{error_log.message[:100]}".encode()
-        ).hexdigest()
-        
-        if error_hash not in self.patterns:
-            self.patterns[error_hash] = {
-                'count': 1,
-                'solutions': [solution],
-                'last_seen': datetime.now()
-            }
-        else:
-            self.patterns[error_hash]['count'] += 1
-            self.patterns[error_hash]['solutions'].append(solution)
-            self.patterns[error_hash]['last_seen'] = datetime.now()
-            
-            # Keep only top 5 solutions
-            self.patterns[error_hash]['solutions'] = sorted(
-                self.patterns[error_hash]['solutions'],
-                key=lambda x: x.confidence,
-                reverse=True
-            )[:5]
+    def to_dict(self) -> Dict:
+        """Convert to dictionary"""
+        result = asdict(self)
+        result['timestamp'] = self.timestamp.isoformat()
+        return result
 
 
 class ErrorKnowledgeBase:
     """Error knowledge base with incremental learning"""
     
-    def __init__(self, db_path: str = "error_knowledge.db"):
-        self.db_path = db_path
-        self.errors = {}
-        self.solutions = {}
-        self.statistics = {
-            'total_errors': 0,
-            'total_repairs': 0,
-            'successful_repairs': 0,
-            'repair_times': deque(maxlen=1000)
-        }
+    def __init__(self, base_path: str = "error_knowledge_base"):
+        self.base_path = Path(base_path)
+        self.base_path.mkdir(exist_ok=True)
+        
+        # Knowledge storage
+        self.error_patterns: Dict[str, Dict] = {}  # pattern_hash -> pattern_data
+        self.repair_strategies: Dict[str, List[RepairStrategy]] = defaultdict(list)  # error_type -> strategies
+        self.repair_history: List[RepairResult] = []
+        
+        # Machine learning components
+        self.error_classifier = None
+        self.pattern_clusters = None
+        self.training_data: List[Tuple[Dict, str]] = []  # (features, error_type)
+        
+        # Load existing knowledge
+        self._load_knowledge()
+    
+    def _load_knowledge(self):
+        """Load existing knowledge from disk"""
+        try:
+            patterns_file = self.base_path / "error_patterns.pkl"
+            if patterns_file.exists():
+                with open(patterns_file, 'rb') as f:
+                    self.error_patterns = pickle.load(f)
+            
+            strategies_file = self.base_path / "repair_strategies.pkl"
+            if strategies_file.exists():
+                with open(strategies_file, 'rb') as f:
+                    self.repair_strategies = pickle.load(f)
+            
+            history_file = self.base_path / "repair_history.pkl"
+            if history_file.exists():
+                with open(history_file, 'rb') as f:
+                    self.repair_history = pickle.load(f)
+            
+            training_file = self.base_path / "training_data.pkl"
+            if training_file.exists():
+                with open(training_file, 'rb') as f:
+                    self.training_data = pickle.load(f)
+            
+            # Load ML models if exist
+            classifier_file = self.base_path / "error_classifier.pkl"
+            if classifier_file.exists():
+                with open(classifier_file, 'rb') as f:
+                    self.error_classifier = pickle.load(f)
+            
+            clusters_file = self.base_path / "pattern_clusters.pkl"
+            if clusters_file.exists():
+                with open(clusters_file, 'rb') as f:
+                    self.pattern_clusters = pickle.load(f)
+            
+            logger.info(f"Loaded {len(self.error_patterns)} patterns, "
+                       f"{sum(len(strategies) for strategies in self.repair_strategies.values())} strategies")
+        except Exception as e:
+            logger.error(f"Error loading knowledge base: {e}")
+    
+    def save_knowledge(self):
+        """Save knowledge to disk"""
+        try:
+            with open(self.base_path / "error_patterns.pkl", 'wb') as f:
+                pickle.dump(self.error_patterns, f)
+            
+            with open(self.base_path / "repair_strategies.pkl", 'wb') as f:
+                pickle.dump(self.repair_strategies, f)
+            
+            with open(self.base_path / "repair_history.pkl", 'wb') as f:
+                pickle.dump(self.repair_history, f)
+            
+            with open(self.base_path / "training_data.pkl", 'wb') as f:
+                pickle.dump(self.training_data, f)
+            
+            if self.error_classifier:
+                with open(self.base_path / "error_classifier.pkl", 'wb') as f:
+                    pickle.dump(self.error_classifier, f)
+            
+            if self.pattern_clusters:
+                with open(self.base_path / "pattern_clusters.pkl", 'wb') as f:
+                    pickle.dump(self.pattern_clusters, f)
+            
+            logger.info("Knowledge base saved successfully")
+        except Exception as e:
+            logger.error(f"Error saving knowledge base: {e}")
+    
+    def add_error_pattern(self, error_features: Dict, error_type: ErrorType, solution: str):
