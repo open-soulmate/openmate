@@ -1,225 +1,190 @@
-import os
+import asyncio
 import json
-from datetime import datetime, timedelta
-from typing import List, Dict, Optional, Any
 import re
-from collections import Counter
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Any, Callable
+from dataclasses import dataclass, asdict
+from enum import Enum
+import hashlib
+
+
+class ErrorSeverity(Enum):
+    CRITICAL = "critical"
+    HIGH = "high"
+    MEDIUM = "medium"
+    LOW = "low"
+
+
+class ErrorCategory(Enum):
+    RUNTIME = "runtime"
+    DEPENDENCY = "dependency"
+    PARAMETER = "parameter"
+    LOGIC = "logic"
+    SYSTEM = "system"
+    NETWORK = "network"
+    UNKNOWN = "unknown"
+
+
+@dataclass
+class ErrorAnalysis:
+    error_id: str
+    category: ErrorCategory
+    severity: ErrorSeverity
+    root_cause: str
+    suggested_fix: str
+    occurrence_count: int
+    first_seen: str
+    last_seen: str
+    affected_components: List[str]
+    confidence_score: float
+
+
+@dataclass
+class DiagnosticReport:
+    analysis_timestamp: str
+    time_window: str
+    total_errors: int
+    unique_patterns: int
+    critical_count: int
+    high_count: int
+    medium_count: int
+    low_count: int
+    top_errors: List[ErrorAnalysis]
+    overall_health: str
+    recommendations: List[str]
+
 
 class ErrorPatternAnalyzer:
-    """错误模式分析器：分析系统失败模式，生成诊断报告和改进建议"""
-    
-    def __init__(self, memory_manager=None, llm_client=None, config=None):
-        """
-        初始化错误模式分析器
-        
-        Args:
-            memory_manager: 记忆管理器实例，用于检索和存储记忆
-            llm_client: LLM客户端实例，用于文本分析和归纳
-            config: 配置字典，包含各种设置
-        """
+    def __init__(
+        self,
+        memory_manager: Any,
+        llm_client: Callable,
+        log_file_path: Optional[str] = None,
+        error_db_table: Optional[str] = None
+    ):
         self.memory_manager = memory_manager
         self.llm_client = llm_client
-        self.config = config or {}
+        self.log_file_path = log_file_path
+        self.error_db_table = error_db_table
         
-        # 默认配置
-        self.error_keywords = self.config.get('error_keywords', [
-            'error', 'failure', 'exception', 'failed', 'crash', 'bug', 
-            'timeout', 'invalid', 'missing', 'null', 'undefined'
-        ])
+        # Cache for error analysis results
+        self._analysis_cache = {}
+        self._cache_ttl = 3600  # 1 hour TTL
         
-        self.error_log_path = self.config.get('error_log_path', 'logs/error_logs.json')
-        self.max_errors_per_analysis = self.config.get('max_errors_per_analysis', 50)
-        self.diagnosis_memory_tag = self.config.get('diagnosis_memory_tag', 'error_diagnosis')
-    
-    def analyze_recent_errors(self, time_window: str = 'last_24h') -> List[Dict]:
-        """
-        分析最近时间窗口内的错误
+        # Error pattern database
+        self._error_patterns_db = {}
+
+    async def analyze_recent_errors(
+        self, 
+        time_window: str = 'last_24h'
+    ) -> DiagnosticReport:
+        """Main method to analyze recent errors and generate diagnostic report"""
         
-        Args:
-            time_window: 时间窗口字符串，如 'last_1h', 'last_24h', 'last_7d', 'last_30d'
-            
-        Returns:
-            分析结果列表，每个结果包含错误分类、频率、原因和建议
-        """
-        # 1. 检索错误相关记录
-        error_records = self._collect_error_records(time_window)
+        # 1. Retrieve errors from multiple sources
+        errors = await self._collect_errors(time_window)
         
-        if not error_records:
-            return []
+        if not errors:
+            return self._create_empty_report(time_window)
         
-        # 2. 对错误进行聚类和诊断
-        analysis_results = self._cluster_and_diagnose(error_records)
+        # 2. Process and cluster errors
+        analyzed_errors = await self._process_errors(errors)
         
-        # 3. 生成结构化诊断报告
-        structured_reports = self._generate_structured_reports(analysis_results)
+        # 3. Generate diagnostic report
+        report = self._generate_report(analyzed_errors, time_window)
         
-        # 4. 存储分析结果到记忆系统
-        self._store_analysis_results(structured_reports)
+        # 4. Store analysis results
+        await self._store_analysis_results(report)
         
-        return structured_reports
-    
-    def _collect_error_records(self, time_window: str) -> List[Dict]:
-        """
-        收集指定时间窗口内的错误记录
+        return report
+
+    async def _collect_errors(self, time_window: str) -> List[Dict]:
+        """Collect errors from memory manager and external log sources"""
         
-        Args:
-            time_window: 时间窗口字符串
-            
-        Returns:
-            错误记录列表
-        """
-        error_records = []
+        errors = []
+        time_delta = self._parse_time_window(time_window)
+        cutoff_time = datetime.now() - time_delta
         
-        # 1. 从记忆系统检索错误相关记录
-        if self.memory_manager:
-            error_records.extend(self._search_memory_errors(time_window))
+        # Get errors from memory manager
+        memory_errors = await self._search_memory_errors(cutoff_time)
+        errors.extend(memory_errors)
         
-        # 2. 从错误日志文件读取
-        if os.path.exists(self.error_log_path):
-            error_records.extend(self._read_error_log_file(time_window))
+        # Get errors from log file if specified
+        if self.log_file_path:
+            file_errors = await self._parse_log_file(cutoff_time)
+            errors.extend(file_errors)
         
-        # 限制最大数量
-        if len(error_records) > self.max_errors_per_analysis:
-            error_records = error_records[:self.max_errors_per_analysis]
+        # Get errors from database if specified
+        if self.error_db_table:
+            db_errors = await self._query_error_database(cutoff_time)
+            errors.extend(db_errors)
         
-        return error_records
-    
-    def _search_memory_errors(self, time_window: str) -> List[Dict]:
-        """
-        从记忆系统搜索错误相关记录
+        # Remove duplicates
+        unique_errors = self._deduplicate_errors(errors)
         
-        Args:
-            time_window: 时间窗口字符串
-            
-        Returns:
-            错误记录列表
-        """
-        error_records = []
+        return unique_errors
+
+    async def _search_memory_errors(self, cutoff_time: datetime) -> List[Dict]:
+        """Search memory manager for error-related records"""
+        
+        error_keywords = [
+            'error', 'failure', 'exception', 'bug', 'crash', 
+            'traceback', 'error:', 'failed', 'invalid', 'missing'
+        ]
+        
+        query = " OR ".join(error_keywords)
         
         try:
-            # 构建时间范围
-            time_range = self._parse_time_window(time_window)
+            results = await self.memory_manager.search(
+                query=query,
+                tags=['error', 'failure', 'exception'],
+                after=cutoff_time.isoformat(),
+                limit=100
+            )
             
-            # 搜索错误关键词相关的记忆
-            for keyword in self.error_keywords:
-                results = self.memory_manager.search(
-                    query=keyword,
-                    tags=['error', 'failure', 'exception'],
-                    time_range=time_range,
-                    limit=20
-                )
-                
-                for result in results:
-                    # 提取错误信息
-                    error_info = self._extract_error_info(result)
-                    if error_info:
-                        error_records.append(error_info)
-        
-        except Exception as e:
-            print(f"从记忆系统检索错误记录失败: {e}")
-        
-        return error_records
-    
-    def _read_error_log_file(self, time_window: str) -> List[Dict]:
-        """
-        从错误日志文件读取记录
-        
-        Args:
-            time_window: 时间窗口字符串
-            
-        Returns:
-            错误记录列表
-        """
-        error_records = []
-        
-        try:
-            with open(self.error_log_path, 'r', encoding='utf-8') as f:
-                log_data = json.load(f)
-                
-                if not isinstance(log_data, list):
-                    log_data = [log_data]
-                
-                # 根据时间窗口过滤
-                time_threshold = self._get_time_threshold(time_window)
-                
-                for record in log_data:
-                    try:
-                        # 检查记录时间是否在时间窗口内
-                        record_time = datetime.fromisoformat(record.get('timestamp', ''))
-                        if record_time >= time_threshold:
-                            error_info = self._extract_error_from_log(record)
-                            if error_info:
-                                error_records.append(error_info)
-                    except:
-                        continue
-        
-        except Exception as e:
-            print(f"读取错误日志文件失败: {e}")
-        
-        return error_records
-    
-    def _extract_error_info(self, memory_record: Dict) -> Optional[Dict]:
-        """
-        从记忆记录中提取错误信息
-        
-        Args:
-            memory_record: 记忆记录字典
-            
-        Returns:
-            错误信息字典，或None
-        """
-        try:
-            content = memory_record.get('content', '')
-            if not content:
-                return None
-            
-            # 检查是否包含错误相关关键词
-            content_lower = content.lower()
-            if not any(keyword in content_lower for keyword in self.error_keywords):
-                return None
-            
-            return {
-                'id': memory_record.get('id', ''),
-                'content': content,
-                'timestamp': memory_record.get('timestamp', ''),
-                'source': 'memory',
-                'tags': memory_record.get('tags', [])
-            }
-        
-        except Exception:
-            return None
-    
-    def _extract_error_from_log(self, log_record: Dict) -> Optional[Dict]:
-        """
-        从日志记录中提取错误信息
-        
-        Args:
-            log_record: 日志记录字典
-            
-        Returns:
-            错误信息字典，或None
-        """
-        try:
-            # 提取错误消息
-            error_message = log_record.get('message', '')
-            if not error_message:
-                error_message = log_record.get('error', '')
-            
-            if not error_message:
-                return None
-            
-            return {
-                'id': f"log_{log_record.get('timestamp', '')}",
-                'content': error_message,
-                'timestamp': log_record.get('timestamp', ''),
-                'source': 'log_file',
-                'metadata': {
-                    'level': log_record.get('level', 'ERROR'),
-                    'component': log_record.get('component', ''),
-                    'stacktrace': log_record.get('stacktrace', '')
+            return [
+                {
+                    'source': 'memory',
+                    'content': result.get('content', ''),
+                    'timestamp': result.get('timestamp', ''),
+                    'metadata': result.get('metadata', {}),
+                    'id': result.get('id', hashlib.md5(str(result).encode()).hexdigest())
                 }
-            }
+                for result in results
+            ]
+            
+        except Exception as e:
+            print(f"Error searching memory: {e}")
+            return []
+
+    async def _parse_log_file(self, cutoff_time: datetime) -> List[Dict]:
+        """Parse error log file for errors"""
         
-        except Exception:
-            return None
-    
+        errors = []
+        error_patterns = [
+            r'ERROR|Exception|Traceback|FATAL|CRITICAL',
+            r'failed|invalid|missing|unavailable'
+        ]
+        
+        try:
+            # This is a simplified log parser
+            with open(self.log_file_path, 'r') as f:
+                lines = f.readlines()
+                
+                for i, line in enumerate(lines[-1000:]):  # Last 1000 lines
+                    if any(re.search(pattern, line, re.IGNORECASE) for pattern in error_patterns):
+                        timestamp = self._extract_timestamp_from_log(line)
+                        if timestamp and timestamp >= cutoff_time:
+                            errors.append({
+                                'source': 'log_file',
+                                'content': line.strip(),
+                                'timestamp': timestamp.isoformat(),
+                                'metadata': {'line_number': len(lines) - 1000 + i},
+                                'id': hashlib.md5(line.strip().encode()).hexdigest()
+                            })
+                            
+        except FileNotFoundError:
+            print(f"Log file not found: {self.log_file_path}")
+        except Exception as e:
+            print(f"Error reading log file: {e}")
+            
+        return errors
