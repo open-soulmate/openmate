@@ -1,162 +1,97 @@
-const { getLogger } = require('../utils/logger');
-const { getSystemState, setSystemState } = require('../system/state');
-const { getObservationData } = require('../system/observation_data');
-const { searchMemories, addMemory } = require('../memory/store');
-const { CATEGORIES, CATEGORY_KEYWORDS } = require('../constants');
+const systemState = require('../system_state');
+const observationDataSource = require('../data_sources/observations');
+const memoryStore = require('../memory/memory_store');
+const systemLog = require('../utils/system_log');
 
-const logger = getLogger('observation-analyzer');
-
-class ObservationAnalyzer {
-  constructor() {
-    this.isProcessing = false;
-  }
-
-  async analyzeObservations() {
-    if (this.isProcessing) {
-      logger.info('Analysis already in progress, skipping...');
-      return false;
-    }
-
-    this.isProcessing = true;
-    
+async function analyzeObservations() {
     try {
-      const counter = getSystemState('observations_unanalyzed') || 0;
-      
-      if (counter < 1) {
-        this.isProcessing = false;
-        return false;
-      }
-
-      logger.info(`Starting observation analysis. Found ${counter} unanalyzed observations.`);
-
-      const observations = await getObservationData();
-      
-      if (!observations || observations.length === 0) {
-        logger.warn('No observation data found to analyze.');
-        this.isProcessing = false;
-        return false;
-      }
-
-      const analysisResults = await this._processObservations(observations);
-      
-      if (analysisResults.length > 0) {
-        await this._storeResults(analysisResults);
-        setSystemState('observations_unanalyzed', 0);
-        logger.info(`Analysis completed. Processed ${analysisResults.length} observations.`);
-      } else {
-        logger.warn('No observations were successfully processed.');
-      }
-
-      this.isProcessing = false;
-      return true;
-    } catch (error) {
-      logger.error(`Analysis failed: ${error.message}`);
-      this.isProcessing = false;
-      return false;
-    }
-  }
-
-  async _processObservations(observations) {
-    const results = [];
-    
-    for (const observation of observations) {
-      try {
-        const category = this._categorizeObservation(observation);
-        const relatedMemories = await this._findRelatedMemories(observation, category);
-        
-        const result = {
-          timestamp: observation.timestamp || new Date().toISOString(),
-          category: category,
-          content: observation.content || '',
-          observationId: observation.id,
-          relatedMemoryIds: relatedMemories.map(m => m.id),
-          summary: this._generateSummary(observation, category, relatedMemories)
-        };
-
-        results.push(result);
-      } catch (error) {
-        logger.error(`Failed to process observation ${observation.id}: ${error.message}`);
-      }
-    }
-
-    return results;
-  }
-
-  _categorizeObservation(observation) {
-    const content = (observation.content || '').toLowerCase();
-    
-    for (const [category, keywords] of Object.entries(CATEGORY_KEYWORDS)) {
-      if (keywords.some(keyword => content.includes(keyword))) {
-        return category;
-      }
-    }
-    
-    return CATEGORIES.INFO;
-  }
-
-  async _findRelatedMemories(observation, category) {
-    try {
-      const searchCriteria = {
-        type: 'observation',
-        category: category,
-        timeRange: {
-          start: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-          end: new Date().toISOString()
+        const unanalyzedCount = systemState.get('observations_unanalyzed');
+        if (unanalyzedCount < 1) {
+            return;
         }
-      };
 
-      if (observation.keywords && observation.keywords.length > 0) {
-        searchCriteria.keywords = observation.keywords;
-      }
+        systemLog.log(`Starting analysis of ${unanalyzedCount} unanalyzed observations`, 'info');
 
-      const memories = await searchMemories(searchCriteria);
-      return memories.slice(0, 5);
+        const observations = await observationDataSource.getUnanalyzed();
+        if (!observations || observations.length === 0) {
+            systemLog.log('No observation data found to analyze', 'warning');
+            return;
+        }
+
+        const analysisResults = [];
+        for (const observation of observations) {
+            try {
+                const category = classifyObservation(observation.content);
+                const relatedMemories = await findRelatedMemories(observation, category);
+                
+                const analysis = {
+                    originalId: observation.id,
+                    category: category,
+                    relatedMemoryIds: relatedMemories.map(m => m.id),
+                    summary: generateSummary(observation, category, relatedMemories),
+                    timestamp: new Date(),
+                    originalTimestamp: observation.timestamp
+                };
+
+                await memoryStore.add({
+                    type: 'observation_analysis',
+                    data: analysis,
+                    createdAt: new Date()
+                });
+
+                analysisResults.push(analysis);
+            } catch (error) {
+                systemLog.log(`Failed to analyze observation ${observation.id}: ${error.message}`, 'error');
+                throw error;
+            }
+        }
+
+        systemState.set('observations_unanalyzed', 0);
+        systemLog.log(`Successfully analyzed ${analysisResults.length} observations`, 'info');
+
     } catch (error) {
-      logger.warn(`Memory search failed for observation ${observation.id}: ${error.message}`);
-      return [];
+        systemLog.log(`Observation analysis failed: ${error.message}`, 'error');
     }
-  }
-
-  _generateSummary(observation, category, relatedMemories) {
-    const observationType = category === CATEGORIES.ERROR ? '错误' :
-                          category === CATEGORIES.WARNING ? '警告' : '信息';
-    
-    let summary = `${observationType}: ${observation.content ? observation.content.substring(0, 100) : '无内容'}`;
-    
-    if (relatedMemories.length > 0) {
-      summary += ` | 关联记忆: ${relatedMemories.length}条`;
-    }
-    
-    return summary;
-  }
-
-  async _storeResults(results) {
-    for (const result of results) {
-      try {
-        const memoryEntry = {
-          id: `obs_analysis_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
-          type: 'observation_analysis',
-          category: result.category,
-          content: result.summary,
-          timestamp: result.timestamp,
-          metadata: {
-            observationId: result.observationId,
-            relatedMemoryIds: result.relatedMemoryIds,
-            analysisVersion: '1.0'
-          }
-        };
-
-        await addMemory(memoryEntry);
-      } catch (error) {
-        logger.error(`Failed to store analysis result for observation ${result.observationId}: ${error.message}`);
-      }
-    }
-  }
 }
 
-const analyzer = new ObservationAnalyzer();
+function classifyObservation(content) {
+    const lowerContent = content.toLowerCase();
+    
+    if (lowerContent.includes('error') || lowerContent.includes('fail') || lowerContent.includes('exception')) {
+        return 'error';
+    } else if (lowerContent.includes('warning') || lowerContent.includes('warn') || lowerContent.includes('deprecated')) {
+        return 'warning';
+    } else if (lowerContent.includes('debug') || lowerContent.includes('trace')) {
+        return 'debug';
+    } else {
+        return 'info';
+    }
+}
 
-module.exports = {
-  analyzeObservations: () => analyzer.analyzeObservations(),
-  ObservationAnalyzer
-};
+async function findRelatedMemories(observation, category) {
+    try {
+        const searchQuery = {
+            $or: [
+                { 'data.content': { $regex: observation.content.substring(0, 50), $options: 'i' } },
+                { 'data.category': category },
+                { createdAt: { $gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }
+            ],
+            type: { $in: ['observation_analysis', 'log_entry'] }
+        };
+        
+        return await memoryStore.search(searchQuery, 5);
+    } catch (error) {
+        systemLog.log(`Memory search failed: ${error.message}`, 'error');
+        return [];
+    }
+}
+
+function generateSummary(observation, category, relatedMemories) {
+    const memorySummary = relatedMemories.length > 0 
+        ? `Found ${relatedMemories.length} related memories` 
+        : 'No related memories found';
+    
+    return `${category.toUpperCase()}: ${observation.content.substring(0, 100)}... ${memorySummary}`;
+}
+
+module.exports = analyzeObservations;
