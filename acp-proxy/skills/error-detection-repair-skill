@@ -1,179 +1,199 @@
-import asyncio
+**acp-proxy/skills/error-detection-repair-skill/__init__.py**
+```python
+from .main import ErrorDetectionRepairSkill
+
+__all__ = ['ErrorDetectionRepairSkill']
+```
+
+**acp-proxy/skills/error-detection-repair-skill/main.py**
+```python
 import logging
-import time
 import json
-import re
-import hashlib
-from datetime import datetime, timedelta
-from typing import Dict, List, Any, Optional, Tuple, Set
-from dataclasses import dataclass, asdict
-from enum import Enum
-import numpy as np
-from collections import defaultdict
-import pickle
-from pathlib import Path
+from typing import Dict, List, Optional, Any
+from datetime import datetime
+from .error_monitor import ErrorMonitor
+from .pattern_learner import PatternLearner
+from .root_cause_analyzer import RootCauseAnalyzer
+from .repair_strategy_generator import RepairStrategyGenerator
+from .auto_repair_executor import AutoRepairExecutor
+from .error_knowledge_base import ErrorKnowledgeBase
 
-# 尝试导入ML库，如果没有就使用简化的实现
-try:
-    from sklearn.tree import DecisionTreeClassifier
-    from sklearn.cluster import DBSCAN
-    from sklearn.preprocessing import StandardScaler
-    HAS_SKLEARN = True
-except ImportError:
-    HAS_SKLEARN = False
-
-import warnings
-warnings.filterwarnings('ignore')
-
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-
-class ErrorType(Enum):
-    """错误类型枚举"""
-    RUNTIME_ERROR = "runtime_error"
-    PERFORMANCE_ANOMALY = "performance_anomaly"
-    LOGIC_ERROR = "logic_error"
-    RESOURCE_LEAK = "resource_leak"
-    NETWORK_ERROR = "network_error"
-    PERMISSION_ERROR = "permission_error"
-    TIMEOUT_ERROR = "timeout_error"
-    MEMORY_ERROR = "memory_error"
-    UNKNOWN = "unknown"
-
-
-class RepairStatus(Enum):
-    """修复状态枚举"""
-    PENDING = "pending"
-    TESTING = "testing"
-    DEPLOYING = "deploying"
-    COMPLETED = "completed"
-    FAILED = "failed"
-    ROLLED_BACK = "rolled_back"
-
-
-@dataclass
-class ErrorPattern:
-    """错误模式数据结构"""
-    error_type: ErrorType
-    pattern_signature: str
-    frequency: int
-    last_occurrence: datetime
-    root_causes: List[str]
-    repair_strategies: List[Dict[str, Any]]
-    success_rate: float
-    metadata: Dict[str, Any]
-
-
-@dataclass
-class ErrorLog:
-    """错误日志数据结构"""
-    error_id: str
-    timestamp: datetime
-    error_type: ErrorType
-    message: str
-    stack_trace: str
-    system_metrics: Dict[str, Any]
-    context: Dict[str, Any]
-    severity: int  # 1-10
-    resolved: bool = False
-    resolution_time: Optional[float] = None
-
-
-@dataclass
-class RepairStrategy:
-    """修复策略数据结构"""
-    strategy_id: str
-    error_type: ErrorType
-    description: str
-    steps: List[str]
-    estimated_time: float  # 秒
-    stability_score: float  # 0-1
-    side_effects: List[str]
-    rollback_plan: List[str]
-    prerequisites: List[str]
-    success_probability: float
-
-
-class ErrorPatternLearner:
-    """错误模式学习模块"""
+class ErrorDetectionRepairSkill:
+    """错误检测与修复技能主类"""
     
-    def __init__(self, model_path: Optional[str] = None):
-        self.patterns: Dict[str, ErrorPattern] = {}
-        self.error_history: List[ErrorLog] = []
-        self.model = None
-        self.scaler = StandardScaler() if HAS_SKLEARN else None
-        self.model_path = model_path
-        self._load_model()
+    def __init__(self):
+        """初始化错误检测与修复技能组件"""
+        self.error_monitor = ErrorMonitor()
+        self.pattern_learner = PatternLearner()
+        self.root_cause_analyzer = RootCauseAnalyzer()
+        self.repair_generator = RepairStrategyGenerator()
+        self.repair_executor = AutoRepairExecutor()
+        self.knowledge_base = ErrorKnowledgeBase()
+        self.repair_statistics = {
+            "total_attempts": 0,
+            "successful_repairs": 0,
+            "failed_repairs": 0,
+            "repair_history": []
+        }
+        logger.info("错误检测与修复技能初始化完成")
     
-    def _load_model(self):
-        """加载预训练模型"""
-        if self.model_path and Path(self.model_path).exists():
-            try:
-                with open(self.model_path, 'rb') as f:
-                    data = pickle.load(f)
-                    self.model = data.get('model')
-                    self.scaler = data.get('scaler')
-                    self.patterns = data.get('patterns', {})
-                    logger.info(f"已加载错误模式模型，包含 {len(self.patterns)} 个模式")
-            except Exception as e:
-                logger.warning(f"加载模型失败: {e}")
-                self._initialize_default_model()
-    
-    def _initialize_default_model(self):
-        """初始化默认模型"""
-        if HAS_SKLEARN:
-            self.model = DecisionTreeClassifier(
-                max_depth=10,
-                min_samples_split=5,
-                random_state=42
-            )
-            # 使用简化的聚类进行模式识别
-            self.cluster_model = DBSCAN(eps=0.3, min_samples=2)
+    def detect_errors(self) -> List[Dict[str, Any]]:
+        """
+        检测系统中的错误
         
-        # 初始化常见错误模式
-        self._initialize_common_patterns()
-    
-    def _initialize_common_patterns(self):
-        """初始化常见错误模式"""
-        common_patterns = [
-            ErrorPattern(
-                error_type=ErrorType.RUNTIME_ERROR,
-                pattern_signature="NullPointerException",
-                frequency=0,
-                last_occurrence=datetime.now(),
-                root_causes=["空对象引用", "未初始化变量", "异步操作未完成"],
-                repair_strategies=[
-                    {"type": "临时", "action": "添加空值检查", "time": 30},
-                    {"type": "永久", "action": "重构代码添加非空断言", "time": 300}
-                ],
-                success_rate=0.85,
-                metadata={"common_in": ["Java", "Python"], "severity": 7}
-            ),
-            ErrorPattern(
-                error_type=ErrorType.PERFORMANCE_ANOMALY,
-                pattern_signature="HighCPUUsage",
-                frequency=0,
-                last_occurrence=datetime.now(),
-                root_causes=["无限循环", "资源密集型操作", "内存泄漏"],
-                repair_strategies=[
-                    {"type": "临时", "action": "增加超时限制", "time": 60},
-                    {"type": "永久", "action": "优化算法或添加缓存", "time": 1800}
-                ],
-                success_rate=0.75,
-                metadata={"threshold": ">80% CPU", "monitoring": "continuous"}
-            ),
-            ErrorPattern(
-                error_type=ErrorType.RESOURCE_LEAK,
-                pattern_signature="MemoryLeak",
-                frequency=0,
-                last_occurrence=datetime.now(),
-                root_causes=["未关闭资源", "循环引用", "缓存未清理"],
-                repair_strategies=[
-                    {"type": "临时", "action": "重启服务", "time": 120},
-                    {"type": "永久", "action": "实现资源池和定期清理", "time": 3600}
-                ],
-                success_rate=0.9,
-                metadata={"detection_method": "memory_monitoring", "leak_rate": "gradual"}
-            )
-        ]
+        Returns:
+            List[Dict]: 检测到的错误列表，每个错误包含类型、时间、详情等信息
+        """
+        logger.info("开始错误检测")
         
+        # 多维度错误监控
+        runtime_errors = self.error_monitor.monitor_runtime_errors()
+        performance_anomalies = self.error_monitor.monitor_performance_anomalies()
+        logic_errors = self.error_monitor.monitor_logic_errors()
+        resource_leaks = self.error_monitor.monitor_resource_leaks()
+        
+        # 合并所有错误
+        all_errors = runtime_errors + performance_anomalies + logic_errors + resource_leaks
+        
+        # 记录错误到知识库
+        for error in all_errors:
+            self.knowledge_base.record_error(error)
+        
+        logger.info(f"检测到 {len(all_errors)} 个错误")
+        return all_errors
+    
+    def analyze_error(self, error_log: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        分析单个错误，确定根因
+        
+        Args:
+            error_log: 错误日志信息
+            
+        Returns:
+            Dict: 错误分析结果，包含根因、影响范围等
+        """
+        logger.info(f"分析错误: {error_log.get('error_id', 'unknown')}")
+        
+        # 模式识别 - 从历史错误中学习模式
+        similar_patterns = self.pattern_learner.find_similar_patterns(error_log)
+        
+        # 根因分析 - 结合多个维度数据
+        root_cause = self.root_cause_analyzer.analyze(
+            error_log=error_log,
+            system_logs=self.error_monitor.get_system_logs(),
+            performance_metrics=self.error_monitor.get_performance_metrics(),
+            resource_usage=self.error_monitor.get_resource_usage()
+        )
+        
+        # 构建分析结果
+        analysis_result = {
+            "error_log": error_log,
+            "root_cause": root_cause,
+            "similar_patterns": similar_patterns,
+            "analysis_timestamp": datetime.now().isoformat(),
+            "confidence_score": self._calculate_confidence(root_cause, similar_patterns)
+        }
+        
+        # 更新知识库
+        self.knowledge_base.update_analysis(error_log['error_id'], analysis_result)
+        
+        return analysis_result
+    
+    def generate_repair_strategy(self, error_type: str, analysis_result: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """
+        根据错误类型和分析结果生成修复策略
+        
+        Args:
+            error_type: 错误类型
+            analysis_result: 错误分析结果
+            
+        Returns:
+            List[Dict]: 修复策略列表，每个策略包含修复步骤、预期效果等
+        """
+        logger.info(f"为错误类型 {error_type} 生成修复策略")
+        
+        # 获取历史修复记录
+        historical_repairs = self.knowledge_base.get_historical_repairs(error_type)
+        
+        # 生成修复策略
+        strategies = self.repair_generator.generate(
+            error_type=error_type,
+            analysis_result=analysis_result,
+            historical_repairs=historical_repairs,
+            system_state=self.error_monitor.get_current_state()
+        )
+        
+        # 评估每个策略的优缺点
+        evaluated_strategies = []
+        for strategy in strategies:
+            evaluated = self.repair_generator.evaluate_strategy(strategy)
+            evaluated_strategies.append(evaluated)
+        
+        # 按优先级排序策略
+        sorted_strategies = self.repair_generator.prioritize_strategies(evaluated_strategies)
+        
+        logger.info(f"生成了 {len(sorted_strategies)} 个修复策略")
+        return sorted_strategies
+    
+    def execute_repair(self, strategy: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        执行修复策略
+        
+        Args:
+            strategy: 要执行的修复策略
+            
+        Returns:
+            Dict: 执行结果，包含成功/失败状态、执行时间等
+        """
+        strategy_id = strategy.get('strategy_id', 'unknown')
+        logger.info(f"开始执行修复策略: {strategy_id}")
+        
+        # 更新统计数据
+        self.repair_statistics["total_attempts"] += 1
+        
+        try:
+            # 在沙箱中测试修复策略
+            sandbox_result = self.repair_executor.test_in_sandbox(strategy)
+            
+            if not sandbox_result.get("success", False):
+                raise Exception(f"沙箱测试失败: {sandbox_result.get('error', 'unknown')}")
+            
+            # 执行实际修复
+            execution_result = self.repair_executor.execute(strategy)
+            
+            if execution_result.get("success", False):
+                self.repair_statistics["successful_repairs"] += 1
+                logger.info(f"修复策略 {strategy_id} 执行成功")
+            else:
+                self.repair_statistics["failed_repairs"] += 1
+                logger.error(f"修复策略 {strategy_id} 执行失败: {execution_result.get('error', 'unknown')}")
+            
+            # 记录修复历史
+            self.repair_statistics["repair_history"].append({
+                "strategy_id": strategy_id,
+                "timestamp": datetime.now().isoformat(),
+                "success": execution_result.get("success", False),
+                "execution_time": execution_result.get("execution_time", 0)
+            })
+            
+            # 更新知识库
+            self.knowledge_base.record_repair_attempt(strategy_id, execution_result)
+            
+            return execution_result
+            
+        except Exception as e:
+            self.repair_statistics["failed_repairs"] += 1
+            error_result = {
+                "success": False,
+                "error": str(e),
+                "timestamp": datetime.now().isoformat()
+            }
+            
+            logger.error(f"修复执行异常: {str(e)}")
+            
+            # 记录失败修复
+            self.repair_statistics["repair_history"].append({
+                "strategy_id": strategy_id,
