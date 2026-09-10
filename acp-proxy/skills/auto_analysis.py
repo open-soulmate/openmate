@@ -1,186 +1,241 @@
 # acp-proxy/skills/auto_analysis.py
+"""
+auto_analysis skill: A callable atomic action that processes excessive observations
+into structured insights by implementing an 'information processing threshold'
+and batch analysis capabilities. This addresses information overload and processing
+lag issues to improve knowledge accumulation efficiency.
+"""
 
 import datetime
-from typing import List, Dict, Any, Optional
-from collections import defaultdict
-import hashlib
-import json
+from typing import List, Dict, Any, Optional, Tuple
+from acp_proxy.core.skill import Skill, SkillConfig
+from acp_proxy.core.context import Context
 
-# 假设存在以下基类和API（需根据实际项目调整）
-# from .base_skill import BaseSkill
-# from ..memory import MemorySystem
+class AutoAnalysisConfig(SkillConfig):
+    """Configuration for the auto_analysis skill."""
+    # Minimum number of unanalyzed observations to trigger the skill
+    UNANALYZED_THRESHOLD: int = 3
+    # Maximum observations to process in a single batch (optional safeguard)
+    MAX_BATCH_SIZE: int = 100
 
-class AutoAnalysisSkill:
-    """自动分析技能，用于处理过量的observations并转化为insights"""
+class AutoAnalysisSkill(Skill):
+    """
+    Implements an auto_analysis skill that batch-processes unanalyzed observations
+    into structured insights and writes them directly to the memory system.
+    """
     
-    # 触发阈值配置
-    UNANALYZED_THRESHOLD = 3
+    skill_name = "auto_analysis"
+    skill_config_class = AutoAnalysisConfig
     
-    def __init__(self, context: Any):
+    def __init__(self, context: Context, config: Optional[AutoAnalysisConfig] = None):
+        super().__init__(context, config)
+        self.config = config or AutoAnalysisConfig()
+    
+    async def should_trigger(self) -> bool:
         """
-        初始化技能
-        
-        Args:
-            context: 包含记忆系统等上下文的对象
-        """
-        self.context = context
-        self.memory_system = context.memories
-        
-    def execute(self) -> str:
-        """
-        执行自动分析技能
-        
-        Returns:
-            str: 分析报告
+        Determine if the skill should be triggered based on the number
+        of unanalyzed observations.
         """
         try:
-            # 检查未分析观察数量是否达到阈值
-            unanalyzed_observations = self._get_unanalyzed_observations()
+            unanalyzed_count = await self.context.memories.count_unanalyzed()
+            return unanalyzed_count >= self.config.UNANALYZED_THRESHOLD
+        except AttributeError:
+            # Fallback if count_unanalyzed is not implemented
+            unanalyzed_observations = await self.context.memories.get_unanalyzed()
+            return len(unanalyzed_observations) >= self.config.UNANALYZED_THRESHOLD
+    
+    async def execute(self) -> str:
+        """
+        Execute the auto_analysis skill.
+        
+        Returns:
+            A brief analysis report string.
+        """
+        try:
+            # 1. Check and retrieve all unanalyzed observations
+            unanalyzed_observations = await self.context.memories.get_unanalyzed()
             
-            if len(unanalyzed_observations) < self.UNANALYZED_THRESHOLD:
-                return f"未达到分析阈值（当前：{len(unanalyzed_observations)}，阈值：{self.UNANALYZED_THRESHOLD}）"
+            if not unanalyzed_observations:
+                return "No unanalyzed observations found. Auto-analysis skipped."
             
-            # 执行批量分析
-            analysis_results = self._batch_analysis(unanalyzed_observations)
+            # Apply batch size limit
+            observations_to_process = unanalyzed_observations[:self.config.MAX_BATCH_SIZE]
             
-            # 生成insights并存储
-            insights = self._generate_insights(analysis_results)
-            stored_count = self._store_insights(insights)
+            # 2. Perform batch analysis
+            analyzed_results = self._analyze_observations(observations_to_process)
             
-            # 标记原始观察为已分析
-            self._mark_observations_as_analyzed(unanalyzed_observations)
+            # 3. Format into insight memory entries
+            insight_entries = self._format_as_insights(analyzed_results)
             
-            # 生成报告
+            # 4. Store new insights and mark original observations as analyzed
+            stored_count = await self._store_and_mark(insight_entries, observations_to_process)
+            
+            # 5. Generate analysis report
             report = self._generate_report(
-                observation_count=len(unanalyzed_observations),
-                insight_count=len(insights)
+                processed=len(observations_to_process),
+                generated=len(insight_entries),
+                stored=stored_count
             )
             
             return report
             
         except Exception as e:
-            return f"自动分析执行失败: {str(e)}"
+            return f"Auto-analysis failed: {str(e)}"
     
-    def _get_unanalyzed_observations(self) -> List[Dict[str, Any]]:
-        """获取所有未分析的观察"""
-        # 假设记忆系统有类似API
-        if hasattr(self.memory_system, 'get_unanalyzed'):
-            return self.memory_system.get_unanalyzed()
-        
-        # 备选方案：通过过滤获取
-        all_memories = self.memory_system.get_all() if hasattr(self.memory_system, 'get_all') else []
-        return [m for m in all_memories if not m.get('analyzed', False) and m.get('type') == 'observation']
-    
-    def _batch_analysis(self, observations: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def _analyze_observations(self, observations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        批量分析观察
+        Perform batch analysis on observations.
         
         Args:
-            observations: 观察列表
+            observations: List of observation dictionaries to analyze.
             
         Returns:
-            Dict: 分析结果
+            List of analyzed results.
         """
-        analysis_results = {
-            'deduplicated': [],
-            'clusters': defaultdict(list),
-            'entities': set(),
-            'actions': set()
-        }
+        # Step 1: Deduplicate observations based on content similarity
+        unique_observations = self._deduplicate_observations(observations)
         
-        # 1. 去重（基于内容哈希）
-        seen_hashes = set()
-        for obs in observations:
-            content_hash = self._hash_content(obs.get('content', ''))
-            if content_hash not in seen_hashes:
-                seen_hashes.add(content_hash)
-                analysis_results['deduplicated'].append(obs)
+        # Step 2: Cluster by type/tag
+        clustered = self._cluster_by_type(unique_observations)
         
-        # 2. 按类型/标签聚类
-        for obs in analysis_results['deduplicated']:
-            # 优先按标签聚类，其次按类型
-            if 'tags' in obs and obs['tags']:
-                cluster_key = ','.join(obs['tags'])
-            else:
-                cluster_key = obs.get('type', 'untagged')
-            
-            analysis_results['clusters'][cluster_key].append(obs)
-        
-        # 3. 提取关键实体和动作（简化版）
-        for obs in analysis_results['deduplicated']:
-            content = obs.get('content', '')
-            entities, actions = self._extract_entities_and_actions(content)
-            analysis_results['entities'].update(entities)
-            analysis_results['actions'].update(actions)
-        
-        return analysis_results
-    
-    def _generate_insights(self, analysis_results: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """
-        基于分析结果生成洞察
-        
-        Args:
-            analysis_results: 分析结果
-            
-        Returns:
-            List: 洞察列表
-        """
+        # Step 3: Extract key entities and actions as preliminary insights
         insights = []
-        
-        # 生成聚类洞察
-        for cluster_key, cluster_obs in analysis_results['clusters'].items():
-            if len(cluster_obs) > 1:  # 只处理有多个观察的聚类
-                insight_content = f"发现{len(cluster_obs)}条相关观察（类别：{cluster_key}）"
-                
-                # 提取共同特征
-                common_tags = set.intersection(*[set(obs.get('tags', [])) for obs in cluster_obs]) if cluster_obs else set()
-                if common_tags:
-                    insight_content += f"，共同标签：{', '.join(common_tags)}"
-                
-                # 添加到洞察
-                insights.append({
-                    'type': 'insight',
-                    'source': 'auto_analysis',
-                    'content': insight_content,
-                    'timestamp': datetime.datetime.now().isoformat(),
-                    'cluster_key': cluster_key,
-                    'related_observations': [obs.get('id') for obs in cluster_obs if 'id' in obs]
-                })
-        
-        # 生成实体和动作洞察
-        if analysis_results['entities']:
-            insights.append({
-                'type': 'insight',
-                'source': 'auto_analysis',
-                'content': f"发现关键实体：{', '.join(list(analysis_results['entities'])[:10])}",
-                'timestamp': datetime.datetime.now().isoformat(),
-                'entity_count': len(analysis_results['entities'])
-            })
-        
-        if analysis_results['actions']:
-            insights.append({
-                'type': 'insight',
-                'source': 'auto_analysis',
-                'content': f"发现关键动作：{', '.join(list(analysis_results['actions'])[:10])}",
-                'timestamp': datetime.datetime.now().isoformat(),
-                'action_count': len(analysis_results['actions'])
-            })
+        for cluster_type, cluster_observations in clustered.items():
+            cluster_insights = self._extract_insights(cluster_type, cluster_observations)
+            insights.extend(cluster_insights)
         
         return insights
     
-    def _store_insights(self, insights: List[Dict[str, Any]]) -> int:
+    def _deduplicate_observations(self, observations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        存储洞察到记忆系统
+        Remove duplicate or highly similar observations.
+        """
+        # Simple implementation: remove exact content duplicates
+        seen_contents = set()
+        unique_observations = []
         
-        Args:
-            insights: 洞察列表
+        for obs in observations:
+            content = str(obs.get('content', ''))
+            # Create a simplified key for comparison
+            content_key = content.strip().lower()[:200]  # Use first 200 chars for comparison
             
+            if content_key not in seen_contents:
+                seen_contents.add(content_key)
+                unique_observations.append(obs)
+        
+        return unique_observations
+    
+    def _cluster_by_type(self, observations: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
+        """
+        Cluster observations by their type or primary tag.
+        """
+        clusters = {}
+        
+        for obs in observations:
+            # Determine cluster key from tags or type
+            tags = obs.get('tags', [])
+            obs_type = obs.get('type', 'general')
+            
+            # Use first tag if available, otherwise use type
+            cluster_key = tags[0] if tags else obs_type
+            
+            if cluster_key not in clusters:
+                clusters[cluster_key] = []
+            
+            clusters[cluster_key].append(obs)
+        
+        return clusters
+    
+    def _extract_insights(self, cluster_type: str, observations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Extract key entities and actions from a cluster of observations.
+        
+        This is a simplified implementation that could be enhanced with NLP.
+        """
+        insights = []
+        
+        # Simple extraction: create a summary insight for each cluster
+        if observations:
+            # Combine contents for analysis
+            combined_content = "\n".join([
+                str(obs.get('content', '')) for obs in observations
+            ])
+            
+            # Extract key entities (simplified: look for capitalized words)
+            words = combined_content.split()
+            key_entities = [word for word in words if word[0].isupper() and len(word) > 3]
+            key_entities = list(set(key_entities))[:5]  # Limit to 5 unique entities
+            
+            # Create insight
+            insight = {
+                'type': 'insight',
+                'category': cluster_type,
+                'summary': f"Processed {len(observations)} observations in '{cluster_type}' category",
+                'key_entities': key_entities,
+                'observation_count': len(observations),
+                'confidence': 0.7  # Placeholder confidence score
+            }
+            
+            insights.append(insight)
+        
+        return insights
+    
+    def _format_as_insights(self, analyzed_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        Format analysis results into proper insight memory entries.
+        """
+        timestamp = datetime.datetime.now().isoformat()
+        insight_entries = []
+        
+        for result in analyzed_results:
+            insight_entry = {
+                'type': 'insight',
+                'source': 'auto_analysis',
+                'timestamp': timestamp,
+                'content': result.get('summary', 'Auto-generated insight'),
+                'metadata': {
+                    'category': result.get('category'),
+                    'key_entities': result.get('key_entities', []),
+                    'observation_count': result.get('observation_count', 0),
+                    'confidence': result.get('confidence', 0.5),
+                    'analysis_type': 'batch_processing'
+                },
+                'tags': ['auto_analysis', 'insight', result.get('category', 'general')]
+            }
+            
+            insight_entries.append(insight_entry)
+        
+        return insight_entries
+    
+    async def _store_and_mark(
+        self, 
+        insight_entries: List[Dict[str, Any]], 
+        original_observations: List[Dict[str, Any]]
+    ) -> int:
+        """
+        Store new insights and mark original observations as analyzed.
+        
         Returns:
-            int: 成功存储的数量
+            Number of insights successfully stored.
         """
         stored_count = 0
         
-        for insight in insights:
-            if hasattr(self.memory_system, 'add'):
-                self.memory_system.add(insight)
-                stored_count += 1
+        try:
+            # Store new insights
+            for insight in insight_entries:
+                success = await self.context.memories.store(insight)
+                if success:
+                    stored_count += 1
+            
+            # Mark original observations as analyzed
+            observation_ids = [obs.get('id') for obs in original_observations if obs.get('id')]
+            
+            if observation_ids:
+                await self.context.memories.mark_as_analyzed(observation_ids)
+            
+        except Exception as e:
+            # Log error but don't fail the entire operation
+            print(f"Error in storage/mark operation: {e}")
+        
+        return stored_count
+    
