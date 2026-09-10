@@ -1,165 +1,184 @@
-// observation_analyzer.js
-// 自主观察分析技能 - 定期扫描分析未处理观察，支持知识积累
+// acp-proxy/skills/observation_analyzer.js
 
-const fs = require('fs').promises;
-const path = require('path');
+/**
+ * 观察数据分析器技能
+ * 监控 observations_unanalyzed 计数器，当其 >= 1 时自动触发分析流程。
+ * 对观察数据进行分类、关联记忆并存储，然后重置计数器。
+ */
 
-class ObservationAnalyzer {
-    constructor(config = {}) {
-        // 配置参数
-        this.config = {
-            // 触发条件配置
-            triggerIntervalMs: config.triggerIntervalMs || 30000, // 30秒
-            triggerTurnCount: config.triggerTurnCount || 5, // 每5个对话轮次
-            
-            // 分析配置
-            recentWindow: config.recentWindow || 10, // 分析最近的N轮对话
-            maxObservations: config.maxObservations || 50, // 最大处理观察数量
-            
-            // 文件路径
-            observationsPath: config.observationsPath || path.join(__dirname, '../data/observations.json'),
-            knowledgeBasePath: config.knowledgeBasePath || path.join(__dirname, '../data/knowledge_base.json'),
-            logPath: config.logPath || path.join(__dirname, '../logs/observation_analyzer.log'),
-            
-            // NLP配置
-            enableNLP: config.enableNLP || false,
-            sentimentThreshold: config.sentimentThreshold || 0.5,
-            
-            ...config
-        };
-        
-        // 内部状态
-        this.turnCounter = 0;
-        this.lastAnalysisTime = Date.now();
-        this.isAnalyzing = false;
-        this.analysisTimer = null;
-        
-        // 模板库
-        this.templates = {
-            preferencePatterns: [
-                { pattern: /喜欢|偏好|倾向于|prefer/i, category: 'preference', weight: 0.8 },
-                { pattern: /不喜欢|不要|避免|avoid/i, category: 'dislike', weight: 0.7 },
-                { pattern: /经常|总是|通常|always/i, category: 'habit', weight: 0.6 }
-            ],
-            taskPatterns: [
-                { pattern: /代码|编程|开发|code/i, category: 'coding', weight: 0.9 },
-                { pattern: /问题|错误|bug|issue/i, category: 'problem_solving', weight: 0.7 },
-                { pattern: /建议|推荐|help/i, category: 'request_advice', weight: 0.6 }
-            ],
-            feedbackPatterns: [
-                { pattern: /好|不错|优秀|good/i, category: 'positive', weight: 0.8 },
-                { pattern: /不好|错误|糟糕|bad/i, category: 'negative', weight: 0.8 },
-                { pattern: /感谢|谢谢|thanks/i, category: 'gratitude', weight: 0.5 }
-            ]
-        };
-        
-        // 初始化
-        this.init();
-    }
-    
-    // 初始化技能
-    async init() {
-        try {
-            await this.ensureDirectories();
-            this.startTimer();
-            this.log('ObservationAnalyzer initialized', 'info');
-        } catch (error) {
-            this.log(`Initialization failed: ${error.message}`, 'error');
+// 假设系统提供了以下接口或可导入的模块。
+// 这里使用伪代码/占位符表示，实际集成时需替换为真实实现。
+const systemState = {
+    get: (key) => {
+        // 模拟从系统状态获取变量
+        if (key === 'observations_unanalyzed') {
+            return global.__observations_unanalyzed || 0; // 使用全局变量模拟，实际应从系统获取
+        }
+        return undefined;
+    },
+    set: (key, value) => {
+        // 模拟设置系统状态变量
+        if (key === 'observations_unanalyzed') {
+            global.__observations_unanalyzed = value;
         }
     }
-    
-    // 确保目录存在
-    async ensureDirectories() {
-        const dirs = [
-            path.dirname(this.config.observationsPath),
-            path.dirname(this.config.knowledgeBasePath),
-            path.dirname(this.config.logPath)
+};
+
+const observationDataSource = {
+    getUnanalyzed: async () => {
+        // 模拟从未分析的观察数据源读取数据
+        // 实际实现应从日志、缓存或数据库中获取
+        console.log('[ObservationAnalyzer] 从数据源获取未分析的观察数据...');
+        // 模拟数据，实际应替换为真实数据结构
+        return [
+            {
+                id: 'obs_001',
+                timestamp: Date.now() - 60000,
+                content: 'User authentication failed due to invalid token.',
+                source: 'auth_service'
+            },
+            {
+                id: 'obs_002',
+                timestamp: Date.now() - 30000,
+                content: 'Database connection timeout exceeded.',
+                source: 'db_connector'
+            },
+            {
+                id: 'obs_003',
+                timestamp: Date.now() - 10000,
+                content: 'New feature flag "dark_mode" enabled for beta users.',
+                source: 'feature_toggle'
+            }
         ];
-        
-        for (const dir of dirs) {
+    }
+};
+
+const memoryStore = {
+    search: async (query) => {
+        // 模拟查询系统记忆API
+        // query 包含时间戳、类型、关键词等
+        console.log(`[ObservationAnalyzer] 查询记忆，条件: ${JSON.stringify(query)}`);
+        // 模拟返回相关的记忆条目
+        return [
+            {
+                id: 'mem_001',
+                type: 'error',
+                content: 'Previous auth token validation issue on ' + new Date(Date.now() - 3600000).toISOString(),
+                keywords: ['auth', 'token', 'validation']
+            }
+        ];
+    },
+    add: async (memoryEntry) => {
+        // 模拟将分析结果存入系统记忆
+        console.log(`[ObservationAnalyzer] 存储分析结果到记忆:`, memoryEntry);
+        // 实际应调用记忆存储API并返回存储结果
+        return { success: true, id: memoryEntry.id || 'mem_new_' + Date.now() };
+    }
+};
+
+const logger = {
+    info: (message, data) => {
+        console.log(`[INFO][ObservationAnalyzer] ${message}`, data || '');
+    },
+    error: (message, error) => {
+        console.error(`[ERROR][ObservationAnalyzer] ${message}`, error);
+    }
+};
+
+/**
+ * 根据观察内容，使用简单规则进行分类
+ * @param {string} content 观察内容
+ * @returns {string} 分类类型 ('error', 'warning', 'info', 'debug')
+ */
+function classifyObservation(content) {
+    const lowerContent = content.toLowerCase();
+    if (lowerContent.includes('error') || lowerContent.includes('fail') || lowerContent.includes('exception') || lowerContent.includes('timeout')) {
+        return 'error';
+    } else if (lowerContent.includes('warn') || lowerContent.includes('timeout') || lowerContent.includes('unavailable')) {
+        return 'warning';
+    } else if (lowerContent.includes('info') || lowerContent.includes('enable') || lowerContent.includes('start') || lowerContent.includes('complete')) {
+        return 'info';
+    } else {
+        return 'debug';
+    }
+}
+
+/**
+ * 生成分析结果摘要
+ * @param {object} observation 原始观察
+ * @param {string} classification 分类
+ * @param {Array} relatedMemories 关联的记忆条目
+ * @returns {object} 分析摘要
+ */
+function generateSummary(observation, classification, relatedMemories) {
+    const relatedIds = relatedMemories.map(m => m.id);
+    const summary = {
+        observationId: observation.id,
+        timestamp: new Date().toISOString(),
+        classification: classification,
+        originalContent: observation.content,
+        source: observation.source,
+        relatedMemoryIds: relatedIds,
+        summaryText: `观察 [${observation.id}] (${classification}): "${observation.content.substring(0, 50)}..." 关联了 ${relatedIds.length} 条历史记忆。`
+    };
+    return summary;
+}
+
+/**
+ * 主分析函数
+ * 该函数应被系统调度器定期调用，或通过事件触发。
+ * @returns {Promise<object>} 返回分析状态结果
+ */
+async function analyzeObservations() {
+    try {
+        logger.info('开始检查观察数据积压情况...');
+        const unanalyzedCount = systemState.get('observations_unanalyzed');
+
+        if (unanalyzedCount === undefined || unanalyzedCount < 1) {
+            logger.info(`观察计数器 (${unanalyzedCount}) 未达到触发阈值。跳过本次分析。`);
+            return { status: 'skipped', reason: 'counter_below_threshold' };
+        }
+
+        logger.info(`检测到 ${unanalyzedCount} 个未分析的观察。开始处理...`);
+
+        // 1. 获取未分析的观察数据
+        const unanalyzedObservations = await observationDataSource.getUnanalyzed();
+        if (!unanalyzedObservations || unanalyzedObservations.length === 0) {
+            logger.error('未找到观察数据，但计数器显示有积压。检查数据源。');
+            // 根据要求，数据源异常时，应记录错误但不重置计数器
+            throw new Error('No observation data found from source.');
+        }
+
+        // 2. 逐个分析观察
+        const analysisResults = [];
+        for (const observation of unanalyzedObservations) {
             try {
-                await fs.mkdir(dir, { recursive: true });
-            } catch (error) {
-                // 目录可能已存在，忽略错误
-            }
-        }
-    }
-    
-    // 启动定时器
-    startTimer() {
-        if (this.analysisTimer) {
-            clearInterval(this.analysisTimer);
-        }
-        
-        this.analysisTimer = setInterval(() => {
-            const timeSinceLastAnalysis = Date.now() - this.lastAnalysisTime;
-            if (timeSinceLastAnalysis >= this.config.triggerIntervalMs) {
-                this.analyzeObservations();
-            }
-        }, this.config.triggerIntervalMs);
-    }
-    
-    // 对话轮次触发器
-    onNewTurn() {
-        this.turnCounter++;
-        
-        if (this.turnCounter >= this.config.triggerTurnCount) {
-            this.turnCounter = 0;
-            this.analyzeObservations();
-        }
-    }
-    
-    // 核心分析函数
-    async analyzeObservations() {
-        if (this.isAnalyzing) {
-            this.log('Analysis already in progress, skipping', 'warn');
-            return;
-        }
-        
-        this.isAnalyzing = true;
-        const startTime = Date.now();
-        
-        try {
-            this.log('Starting observation analysis', 'info');
-            
-            // 1. 从观察队列获取未处理观察
-            const observations = await this.loadObservations();
-            const unprocessed = observations.filter(obs => !obs.processed);
-            
-            if (unprocessed.length === 0) {
-                this.log('No unprocessed observations found', 'info');
-                return;
-            }
-            
-            // 2. 提取文本并分析
-            const analysisResults = [];
-            
-            for (const observation of unprocessed.slice(0, this.config.maxObservations)) {
-                const result = await this.analyzeObservation(observation);
-                if (result) {
-                    analysisResults.push(result);
-                }
-            }
-            
-            // 3. 存储分析结果到知识库
-            if (analysisResults.length > 0) {
-                await this.storeKnowledge(analysisResults);
-                this.log(`Analyzed ${analysisResults.length} observations`, 'info');
-            }
-            
-            // 4. 标记观察为已处理
-            await this.markObservationsProcessed(unprocessed);
-            
-            // 5. 更新状态
-            this.lastAnalysisTime = Date.now();
-            
-            const duration = Date.now() - startTime;
-            this.log(`Analysis completed in ${duration}ms`, 'info');
-            
-            return {
-                success: true,
-                analyzedCount: analysisResults.length,
-                duration: duration,
-                results: analysisResults
-            };
-            
+                // a) 分类
+                const classification = classifyObservation(observation.content);
+
+                // b) 关联记忆查询
+                const memoryQuery = {
+                    type: classification,
+                    keywords: observation.content.split(' ').slice(0, 3).map(w => w.toLowerCase()), // 取前几个词作为关键词
+                    // 假设基于时间戳查询近似时间的记录
+                    timestamp: { $gte: observation.timestamp - 3600000, $lte: observation.timestamp + 3600000 } // 前后1小时
+                };
+                const relatedMemories = await memoryStore.search(memoryQuery);
+
+                // c) 生成摘要
+                const summary = generateSummary(observation, classification, relatedMemories);
+
+                // d) 存储分析结果到记忆
+                const memoryEntry = {
+                    type: `observation_analysis`,
+                    subType: classification,
+                    content: summary.summaryText,
+                    data: summary, // 存储完整摘要数据
+                    source: 'observation_analyzer',
+                    timestamp: new Date().toISOString()
+                };
+                await memoryStore.add(memoryEntry);
+                logger.info(`观察 [${observation.id}] 分析完成并存储。`);
+
+                analysisResults.push({ observationId: observation.id, status: 'success', classification });
+            } catch (innerError) {
