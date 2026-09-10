@@ -1,136 +1,137 @@
 // acp-proxy/skills/self_debug_and_repair.js
+const fs = require('fs').promises;
+const path = require('path');
 
-const Skill = require('../models/Skill');
-const SkillRegistry = require('../services/SkillRegistry');
-const Logger = require('../utils/Logger');
-const RepairKnowledgeBase = require('../services/RepairKnowledgeBase');
-
-class SelfDebugAndRepair extends Skill {
+class SelfDebugAndRepair {
   constructor() {
-    super({
-      name: 'self_debug_and_repair',
-      description: '自我调试与修复技能，自动检测和修复技能调用中的常见错误',
-      version: '1.0.0',
-      category: 'system',
-      inputSchema: {
-        type: 'object',
-        properties: {
-          skillName: {
-            type: 'string',
-            description: '要调用的技能名称'
-          },
-          args: {
-            type: 'object',
-            description: '技能调用参数'
-          },
-          repairContext: {
-            type: 'object',
-            description: '修复上下文信息，包含额外的修复线索',
-            properties: {
-              errorHints: {
-                type: 'object',
-                description: '错误提示信息'
-              },
-              documentations: {
-                type: 'object',
-                description: '技能相关文档'
-              }
-            }
-          }
-        },
-        required: ['skillName', 'args']
-      }
-    });
-    
-    this.repairKnowledgeBase = new RepairKnowledgeBase();
+    this.repairKnowledgeBase = new Map();
     this.maxRetries = 3;
-    this.retryableErrors = new Set(['ETIMEDOUT', 'ECONNRESET', 'ENOTFOUND', 'RATE_LIMIT']);
+    this.logPath = path.join(__dirname, '../logs/repair_knowledge.json');
+    this._initKnowledgeBase();
   }
 
-  /**
-   * 包装对其他技能的调用，实现自动错误检测与修复
-   */
-  async callWithRepair(skillName, args, repairContext = {}) {
-    const callId = `call_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    
-    Logger.info(`[${callId}] 开始技能调用: ${skillName}`, { args });
-    
-    let attempt = 0;
-    let lastError = null;
-    
-    // 首次调用尝试
+  async _initKnowledgeBase() {
     try {
-      attempt++;
-      const result = await this._executeSkill(skillName, args);
-      
-      Logger.info(`[${callId}] 技能调用成功`, { result });
-      return {
-        success: true,
-        result,
-        attempts: attempt,
-        repairs: []
-      };
-      
+      const data = await fs.readFile(this.logPath, 'utf8');
+      const entries = JSON.parse(data);
+      entries.forEach(([key, value]) => this.repairKnowledgeBase.set(key, value));
     } catch (error) {
-      lastError = error;
-      Logger.warn(`[${callId}] 技能调用失败，尝试诊断与修复`, {
-        error: error.message,
-        code: error.code
-      });
-      
-      // 分析错误模式
-      const errorAnalysis = this._analyzeError(error, skillName, args);
-      
-      if (!errorAnalysis.repairable) {
-        Logger.warn(`[${callId}] 错误不可修复`, { errorAnalysis });
-        return this._generateErrorReport(error, skillName, args, errorAnalysis);
-      }
-      
-      // 尝试修复
-      const repairResult = await this._attemptRepair(
-        skillName, 
-        args, 
-        errorAnalysis, 
-        repairContext,
-        callId
-      );
-      
-      if (repairResult.repaired) {
-        // 修复成功，记录到知识库
-        this._recordRepairKnowledge(skillName, errorAnalysis, repairResult, callId);
-        
-        return {
-          success: true,
-          result: repairResult.result,
-          attempts: attempt,
-          repairs: [{
-            errorType: errorAnalysis.errorType,
-            repairStrategy: repairResult.strategy,
-            applied: true
-          }]
-        };
-      } else {
-        // 修复失败，返回错误报告
-        return this._generateErrorReport(
-          repairResult.error || error,
-          skillName,
-          args,
-          errorAnalysis,
-          repairResult.strategy
-        );
-      }
+      // 文件不存在或解析错误，从空知识库开始
     }
   }
 
-  /**
-   * 分析错误模式，判断是否可修复
-   */
-  _analyzeError(error, skillName, args) {
+  async _saveKnowledgeBase() {
+    try {
+      const data = JSON.stringify([...this.repairKnowledgeBase.entries()], null, 2);
+      await fs.writeFile(this.logPath, data, 'utf8');
+    } catch (error) {
+      console.error('Failed to save repair knowledge base:', error);
+    }
+  }
+
+  _analyzeErrorPattern(error) {
+    const patterns = {
+      PARAM_TYPE_ERROR: /type|typeof|expected.*received|invalid type/i,
+      MISSING_PARAM: /missing|required|parameter.*not provided/i,
+      RESOURCE_NOT_FOUND: /not found|does not exist|resource.*missing/i,
+      NETWORK_ERROR: /network|timeout|connection|fetch failed/i,
+      VALIDATION_ERROR: /validation|invalid|check failed/i
+    };
+
     const errorMessage = error.message || error.toString();
-    const errorCode = error.code || '';
     
-    // 参数错误模式
-    const paramErrorPatterns = [
-      { pattern: /missing required parameter/i, type: 'MISSING_PARAMETER' },
-      { pattern: /invalid parameter type/i, type: 'INVALID_PARAMETER_TYPE' },
-      { pattern: /parameter validation failed/i, type: 'PARAMETER_VALIDATION' },
+    for (const [patternType, regex] of Object.entries(patterns)) {
+      if (regex.test(errorMessage)) {
+        return {
+          type: patternType,
+          message: errorMessage,
+          match: regex.exec(errorMessage)[0]
+        };
+      }
+    }
+
+    return {
+      type: 'UNKNOWN',
+      message: errorMessage,
+      match: null
+    };
+  }
+
+  async _applyRepairStrategy(errorAnalysis, skillName, originalArgs, repairContext) {
+    const repairKey = `${skillName}:${errorAnalysis.type}`;
+    
+    // 检查是否有已知的修复方案
+    if (this.repairKnowledgeBase.has(repairKey)) {
+      const knownRepair = this.repairKnowledgeBase.get(repairKey);
+      if (knownRepair.successRate > 0.7) { // 成功率高于70%的方案
+        return this._executeKnownRepair(knownRepair, originalArgs, repairContext);
+      }
+    }
+
+    // 根据错误类型应用修复策略
+    switch (errorAnalysis.type) {
+      case 'PARAM_TYPE_ERROR':
+        return this._repairParamType(originalArgs, repairContext);
+      case 'MISSING_PARAM':
+        return this._repairMissingParam(originalArgs, repairContext);
+      case 'NETWORK_ERROR':
+        return { shouldRetry: true, modifiedArgs: originalArgs };
+      default:
+        return { shouldRetry: false, modifiedArgs: originalArgs };
+    }
+  }
+
+  _repairParamType(originalArgs, repairContext) {
+    const repairedArgs = { ...originalArgs };
+    
+    if (repairContext && repairContext.expectedTypes) {
+      for (const [param, expectedType] of Object.entries(repairContext.expectedTypes)) {
+        if (repairedArgs[param] !== undefined) {
+          try {
+            switch (expectedType) {
+              case 'number':
+                repairedArgs[param] = Number(repairedArgs[param]);
+                break;
+              case 'string':
+                repairedArgs[param] = String(repairedArgs[param]);
+                break;
+              case 'boolean':
+                repairedArgs[param] = Boolean(repairedArgs[param]);
+                break;
+              case 'array':
+                if (!Array.isArray(repairedArgs[param])) {
+                  repairedArgs[param] = [repairedArgs[param]];
+                }
+                break;
+            }
+          } catch (e) {
+            // 转换失败，保持原值
+          }
+        }
+      }
+    }
+
+    return { shouldRetry: true, modifiedArgs: repairedArgs };
+  }
+
+  _repairMissingParam(originalArgs, repairContext) {
+    const repairedArgs = { ...originalArgs };
+    
+    if (repairContext && repairContext.defaultValues) {
+      for (const [param, defaultValue] of Object.entries(repairContext.defaultValues)) {
+        if (repairedArgs[param] === undefined || repairedArgs[param] === null) {
+          repairedArgs[param] = defaultValue;
+        }
+      }
+    }
+
+    return { shouldRetry: true, modifiedArgs: repairedArgs };
+  }
+
+  _executeKnownRepair(knownRepair, originalArgs, repairContext) {
+    // 执行已知的修复方案
+    if (knownRepair.repairFunction) {
+      try {
+        const repairedArgs = knownRepair.repairFunction(originalArgs, repairContext);
+        return { shouldRetry: true, modifiedArgs: repairedArgs };
+      } catch (e) {
