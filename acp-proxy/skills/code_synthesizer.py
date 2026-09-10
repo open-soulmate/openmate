@@ -1,257 +1,224 @@
-# acp-proxy/skills/code_synthesizer.py
-
 import subprocess
-import sys
 import json
 import logging
 import time
 import os
-import re
-from typing import Dict, List, Optional, Any
+import sys
+from typing import Dict, Any, Optional
 
-# 设置日志记录
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
-
 
 class CodeSynthesizer:
     """
-    代码合成器技能模块
+    CodeSynthesizer 技能模块。
     
-    该技能接收自然语言描述的简单编码任务，生成符合标准的Python代码。
-    它是一个目标导向的生成器，用于实现系统的自编程能力和工具创造进化目标。
+    该技能接收自然语言描述的编码任务，生成符合标准的 Python 代码，并安全执行。
+    它是一个目标导向的代码生成器，用于实现自编程能力和工具创造。
     
-    输入要求：
-        - task_description: 自然语言描述的任务，应包含明确的操作关键词和参数
-          示例："创建一个函数add，接收两个参数a和b，返回它们的和"
+    使用示例：
+        synthesizer = CodeSynthesizer()
+        result = synthesizer.execute("定义一个计算两个数之和的函数 add")
         
+    输入要求：
+        - task_description: 自然语言字符串，描述编码任务。
+          示例："创建函数 add，计算两个数的和"
+          支持关键词：创建函数、定义函数、读取文件、写入文件、发送请求等。
+          
     输出结构：
         返回字典包含：
-        - success: bool，表示执行是否成功
-        - code: str，生成的代码
-        - stdout: str，标准输出内容
-        - stderr: str，错误输出内容
-        - error_type: str，错误类型（如果有）
-        - confidence: float，置信度（0-1）
-        - execution_time: float，执行时间（秒）
-        
+            - 'success': bool, 是否成功
+            - 'code': str, 生成的代码
+            - 'execution_output': str, 执行输出（stdout）
+            - 'error_log': str, 错误信息（stderr）
+            - 'confidence': float, 置信度（0-1）
+            - 'attempts': int, 尝试次数
+            
     使用限制：
-        - 仅支持简单的编码任务
-        - 代码在受限沙箱中执行，有超时和内存限制
-        - 不能执行需要外部依赖或特殊环境的复杂任务
+        - 仅支持简单任务，不能处理复杂逻辑或多步骤任务
+        - 生成的代码将在受限沙箱中执行，有时间和资源限制
+        - 模板匹配基于简单关键词，可能不准确
         
     潜在风险：
-        - 生成的代码可能包含逻辑错误
-        - 沙箱执行无法完全保证安全性
-        - 复杂任务可能需要人工干预
+        - 生成的代码可能包含安全漏洞
+        - 执行超时可能导致资源泄露
+        - 错误匹配可能生成错误代码
     """
     
-    def __init__(self, 
-                 templates_path: Optional[str] = None,
-                 timeout: int = 10,
-                 log_file: str = "acp-proxy/data/code_synthesizer_experience.jsonl"):
+    def __init__(
+        self,
+        template_library_path: Optional[str] = None,
+        sandbox_timeout: int = 10,
+        experience_log_path: str = "acp-proxy/data/code_synthesizer_experience.jsonl"
+    ):
         """
-        初始化代码合成器
+        初始化 CodeSynthesizer。
         
         Args:
-            templates_path: 模板文件路径（如果为None则使用内置模板）
-            timeout: 沙箱执行超时时间（秒）
-            log_file: 经验日志文件路径
+            template_library_path: 模板库文件路径（可选，默认使用内置模板）
+            sandbox_timeout: 沙箱执行超时时间（秒）
+            experience_log_path: 经验日志文件路径
         """
-        self.timeout = timeout
-        self.log_file = log_file
-        self.success_log = []  # 存储成功经验的内部列表
-        self.templates = self._load_templates(templates_path)
+        self.template_library_path = template_library_path
+        self.sandbox_timeout = sandbox_timeout
+        self.experience_log_path = experience_log_path
+        self.success_log = []  # 内存中的经验缓存
         
         # 确保日志目录存在
-        os.makedirs(os.path.dirname(log_file), exist_ok=True)
+        log_dir = os.path.dirname(experience_log_path)
+        if log_dir and not os.path.exists(log_dir):
+            os.makedirs(log_dir, exist_ok=True)
         
-        logger.info(f"CodeSynthesizer initialized with timeout={timeout}s")
-    
-    def _load_templates(self, templates_path: Optional[str] = None) -> Dict[str, str]:
-        """
-        加载代码模板库
+        # 加载模板
+        self.templates = self._load_templates()
         
-        Args:
-            templates_path: 模板文件路径（如果为None则使用内置模板）
-            
-        Returns:
-            模板字典，键为模式名，值为代码模板字符串
-        """
-        if templates_path and os.path.exists(templates_path):
-            # 从文件加载模板（简化实现，实际应解析JSON/YAML等格式）
+    def _load_templates(self) -> Dict[str, str]:
+        """加载代码模板库"""
+        if self.template_library_path:
             try:
-                with open(templates_path, 'r', encoding='utf-8') as f:
-                    # 这里假设文件是JSON格式
+                with open(self.template_library_path, 'r', encoding='utf-8') as f:
                     return json.load(f)
             except Exception as e:
-                logger.warning(f"Failed to load templates from {templates_path}: {e}")
+                logger.warning(f"无法加载外部模板库: {e}，使用内置模板")
         
-        # 使用内置模板库
+        # 内置基础模板库
         templates = {
-            'python_function': '''def {function_name}({parameters}):
-    """
-    {docstring}
-    """
+            "python_function": '''def {function_name}({parameters}):
+    """{docstring}"""
     {function_body}
-''',
-            'file_read': '''def read_file(file_path):
-    """
-    读取指定文件的内容
-    
-    Args:
-        file_path: 文件路径
-        
-    Returns:
-        文件内容字符串
-    """
+    return {return_value}''',
+            
+            "file_read": '''def read_file(file_path):
+    """读取文件内容"""
     try:
-        with open('{file_path}', 'r', encoding='utf-8') as f:
+        with open(file_path, 'r', encoding='utf-8') as f:
             content = f.read()
+        print(f"文件内容长度: {len(content)}")
+        print(content[:500])  # 打印前500字符
         return content
     except FileNotFoundError:
-        print(f"Error: File '{file_path}' not found")
+        print(f"错误: 文件 {file_path} 不存在")
         return None
     except Exception as e:
-        print(f"Error reading file: {e}")
-        return None
-''',
-            'http_request': '''import requests
-
-def make_http_request(url, method='GET', data=None, headers=None):
-    """
-    发送HTTP请求
-    
-    Args:
-        url: 请求URL
-        method: HTTP方法（GET/POST等）
-        data: 请求数据（字典或JSON字符串）
-        headers: 请求头（字典）
-        
-    Returns:
-        响应对象
-    """
+        print(f"读取文件时发生错误: {e}")
+        return None''',
+            
+            "file_write": '''def write_file(file_path, content):
+    """写入文件内容"""
     try:
-        if method.upper() == 'GET':
-            response = requests.get(url, headers=headers)
-        elif method.upper() == 'POST':
-            response = requests.post(url, json=data, headers=headers)
-        else:
-            raise ValueError(f"Unsupported HTTP method: {method}")
-        
-        return response
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(content)
+        print(f"成功写入文件: {file_path}")
+        return True
     except Exception as e:
-        print(f"HTTP request failed: {e}")
-        return None
-''',
-            'data_processing': '''import json
+        print(f"写入文件时发生错误: {e}")
+        return False''',
+            
+            "api_request": '''import requests
 
-def process_data(input_data, output_file=None):
-    """
-    处理输入数据并可选保存到文件
-    
-    Args:
-        input_data: 输入数据（字典或列表）
-        output_file: 输出文件路径（可选）
+def {function_name}(url, method="{method}", data=None):
+    """发送HTTP请求"""
+    try:
+        if method.upper() == "GET":
+            response = requests.get(url, timeout=10)
+        elif method.upper() == "POST":
+            response = requests.post(url, json=data, timeout=10)
+        else:
+            print(f"不支持的方法: {method}")
+            return None
+            
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"请求失败: {e}")
+        return None''',
+            
+            "data_processing": '''def process_data(data):
+    """处理数据"""
+    # 示例: 统计字频
+    if isinstance(data, str):
+        words = data.split()
+        word_count = {}
+        for word in words:
+            word_count[word] = word_count.get(word, 0) + 1
         
-    Returns:
-        处理后的数据
-    """
-    # 示例：简单数据处理
-    processed_data = {
-        "original": input_data,
-        "processed_at": "{timestamp}",
-        "type": type(input_data).__name__
-    }
-    
-    if output_file:
-        try:
-            with open(output_file, 'w', encoding='utf-8') as f:
-                json.dump(processed_data, f, indent=2)
-            print(f"Data saved to {output_file}")
-        except Exception as e:
-            print(f"Failed to save data: {e}")
-    
-    return processed_data
-'''
+        # 按词频排序
+        sorted_words = sorted(word_count.items(), key=lambda x: x[1], reverse=True)
+        return sorted_words[:10]  # 返回前10个高频词
+    elif isinstance(data, list):
+        # 计算基本统计量
+        if len(data) == 0:
+            return {"平均值": 0, "总和": 0, "数量": 0}
+        
+        total = sum(data)
+        avg = total / len(data)
+        return {
+            "平均值": round(avg, 2),
+            "总和": total,
+            "数量": len(data),
+            "最大值": max(data),
+            "最小值": min(data)
         }
+    else:
+        print("不支持的数据类型")
+        return None'''
+        }
+        
         return templates
     
     def generate_from_template(self, description: str) -> str:
-        """
-        根据任务描述生成代码
+        """根据任务描述生成代码"""
+        desc_lower = description.lower()
         
-        Args:
-            description: 自然语言任务描述
+        # 匹配模板的关键词
+        template_keywords = {
+            "python_function": ["创建函数", "定义函数", "编写函数", "函数定义", "def "],
+            "file_read": ["读取文件", "打开文件", "文件读取", "read_file"],
+            "file_write": ["写入文件", "保存文件", "文件写入", "write_file"],
+            "api_request": ["发送请求", "api调用", "http请求", "请求api", "requests"],
+            "data_processing": ["处理数据", "数据分析", "数据处理", "统计", "计算"]
+        }
+        
+        selected_template = None
+        selected_pattern = None
+        
+        # 尝试匹配模板
+        for template_name, keywords in template_keywords.items():
+            for keyword in keywords:
+                if keyword in desc_lower:
+                    selected_template = template_name
+                    selected_pattern = keyword
+                    break
+            if selected_template:
+                break
+        
+        # 默认使用python_function模板
+        if not selected_template:
+            selected_template = "python_function"
+        
+        # 提取参数并填充模板
+        template = self.templates[selected_template]
+        
+        # 简单的参数提取逻辑
+        if selected_template == "python_function":
+            # 提取函数名
+            function_name = "unnamed_function"
+            func_name_patterns = ["函数", "function", "def ", "名为", "叫做"]
+            for pattern in func_name_patterns:
+                if pattern in desc_lower:
+                    # 尝试提取函数名
+                    idx = desc_lower.find(pattern) + len(pattern)
+                    remaining = description[idx:].strip()
+                    # 找到第一个空格或特殊字符
+                    for i, char in enumerate(remaining):
+                        if char in " (，,。:：":
+                            if i > 0:
+                                function_name = remaining[:i]
+                            break
+                    else:
+                        function_name = remaining[:15]  # 限制长度
+                    break
             
-        Returns:
-            生成的代码字符串
-        """
-        description_lower = description.lower()
-        
-        # 根据关键词匹配模板
-        if any(keyword in description_lower for keyword in ['创建函数', '定义函数', '实现函数', '编写函数']):
-            template_key = 'python_function'
-        elif any(keyword in description_lower for keyword in ['读取文件', '读文件', '读取文本', '查看文件']):
-            template_key = 'file_read'
-        elif any(keyword in description_lower for keyword in ['发送请求', 'http请求', 'api调用', '调用接口']):
-            template_key = 'http_request'
-        elif any(keyword in description_lower for keyword in ['处理数据', '数据处理', '分析数据', '数据转换']):
-            template_key = 'data_processing'
-        else:
-            # 默认使用函数模板
-            template_key = 'python_function'
-        
-        template = self.templates.get(template_key, self.templates['python_function'])
-        
-        # 从描述中提取信息并填充模板
-        if template_key == 'python_function':
-            return self._fill_function_template(template, description)
-        elif template_key == 'file_read':
-            return self._fill_file_template(template, description)
-        elif template_key == 'http_request':
-            return self._fill_http_template(template, description)
-        elif template_key == 'data_processing':
-            return self._fill_data_template(template, description)
-        
-        return template
-    
-    def _fill_function_template(self, template: str, description: str) -> str:
-        """填充函数模板"""
-        # 提取函数名
-        function_name = self._extract_parameter(description, 
-                                                ['创建函数', '定义函数', '函数名为', '函数叫', '函数', '叫做', '名为'],
-                                                default_value='generated_function')
-        
-        # 提取参数
-        parameters = self._extract_parameter(description,
-                                           ['接收参数', '参数是', '参数为', '接收', '参数', '有参数'],
-                                           default_value='')
-        
-        # 生成文档字符串
-        docstring = f"根据描述生成的函数: {description}"
-        
-        # 根据描述生成函数体
-        if '返回' in description or '计算' in description:
-            function_body = '    # TODO: 实现具体逻辑\n    return result'
-        else:
-            function_body = '    # TODO: 实现具体逻辑\n    pass'
-        
-        # 替换模板中的占位符
-        code = template.format(
-            function_name=function_name,
-            parameters=parameters,
-            docstring=docstring,
-            function_body=function_body
-        )
-        
-        return code
-    
-    def _fill_file_template(self, template: str, description: str) -> str:
-        """填充文件读取模板"""
-        # 提取文件路径
-        file_path = self._extract_parameter(description,
-                                          ['读取文件', '读文件', '文件路径', '文件名为', '文件', '文件叫', '读取', '文件是'],
-                                          default_value='input.txt')
-        
-        # 如果路径没有扩展名，添加.txt
+            # 提取参数
+            parameters = ""
+            if "两个参数" in desc_lower or "两个数" in desc_lower or "两数" in desc_lower:
+                parameters = "a, b"
