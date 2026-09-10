@@ -1,106 +1,198 @@
-from acp_proxy.skills.base import BaseSkill
-import json
+"""
+Observation Analysis Skill for breaking observation backlog and cycle stagnation.
+"""
+
+import logging
 from typing import Dict, List, Any, Optional
 from datetime import datetime
 
+from .base_skill import BaseSkill, SkillResult, SkillStatus
+from ..utils.memory import save_memory, load_memories
+from ..utils.observations import get_unanalyzed_observations, mark_observations_processed
+from ..utils.llm import call_llm
+from ..utils.evolution_goals import get_current_goals
+
+logger = logging.getLogger(__name__)
+
+
 class ObservationAnalysisSkill(BaseSkill):
     """
-    观察分析技能 - 自动分析系统观察记录，生成见解和记忆
-    打破观察积压和周期停滞僵局，为自编程和工具创造提供基础分析
+    A skill for analyzing system observation records and converting them into actionable insights.
+    
+    This skill processes unanalyzed observations to identify patterns, failures, and successes,
+    generating structured insights that drive system evolution and self-improvement.
     """
     
-    name = "observation_analysis"
-    description = "分析未处理的观察记录，识别模式，生成可执行见解"
+    skill_name = "observation_analysis"
+    skill_description = "Analyze observation records to generate actionable insights and memories"
     version = "1.0.0"
     
-    def __init__(self, context: Dict[str, Any] = None):
-        super().__init__(context)
-        self.llm = self.context.get("llm", None)
-        self.memory_store = self.context.get("memory_store", None)
-        self.observation_queue = self.context.get("observation_queue", None)
-        self.cycle_state = self.context.get("cycle_state", {})
+    def __init__(self, config: Optional[Dict] = None):
+        super().__init__(config)
+        self.analysis_batch_size = config.get("analysis_batch_size", 10) if config else 10
+        self.min_relevance_threshold = config.get("min_relevance_threshold", 0.3) if config else 0.3
         
-    async def execute(self, **kwargs) -> Dict[str, Any]:
-        """执行观察分析任务"""
+    async def execute(self, **kwargs) -> SkillResult:
+        """Execute the observation analysis skill."""
+        start_time = datetime.now()
+        
         try:
-            # 获取未分析的观察记录
-            observations = await self._get_unanalyzed_observations()
+            # Step 1: Get unanalyzed observations
+            observations = get_unanalyzed_observations(limit=self.analysis_batch_size)
+            
             if not observations:
-                return {
-                    "status": "skipped",
-                    "message": "没有未分析的观察记录",
-                    "analyzed_count": 0
-                }
+                logger.info("No unanalyzed observations found")
+                return SkillResult(
+                    status=SkillStatus.SUCCESS,
+                    data={"message": "No observations to analyze", "processed_count": 0},
+                    execution_time=(datetime.now() - start_time).total_seconds()
+                )
             
-            analyzed_insights = []
-            valuable_memories = []
+            logger.info(f"Analyzing {len(observations)} observations")
             
-            # 分析每条观察记录
-            for observation in observations:
-                insight = await self._analyze_observation(observation)
-                if insight:
-                    analyzed_insights.append(insight)
-                    
-                    # 如果见解有价值，保存为长期记忆
-                    if insight.get("relevance_to_goals", 0) >= 7:
-                        memory = await self._save_as_memory(insight)
-                        valuable_memories.append(memory)
+            # Step 2: Analyze each observation
+            insights = []
+            high_value_insights = []
             
-            # 清理已处理的观察记录
-            await self._cleanup_processed_observations(len(observations))
+            for obs in observations:
+                analysis = await self._analyze_observation(obs)
+                insights.append(analysis)
+                
+                # Check if insight is valuable enough to persist
+                if analysis.get("relevance_to_goals", 0) >= self.min_relevance_threshold:
+                    high_value_insights.append(analysis)
+                    await self._persist_insight(analysis)
             
-            return {
-                "status": "success",
-                "analyzed_count": len(observations),
-                "insights_generated": len(analyzed_insights),
-                "memories_created": len(valuable_memories),
-                "key_insights": self._extract_key_insights(analyzed_insights),
-                "suggested_actions": self._generate_action_plan(analyzed_insights)
+            # Step 3: Generate summary and suggested actions
+            summary = await self._generate_analysis_summary(insights, high_value_insights)
+            
+            # Step 4: Mark observations as processed
+            mark_observations_processed([obs["id"] for obs in observations])
+            
+            # Step 5: Determine if action should be triggered
+            suggested_action = await self._determine_action(high_value_insights, summary)
+            
+            result_data = {
+                "processed_count": len(observations),
+                "insights_generated": len(insights),
+                "high_value_insights": len(high_value_insights),
+                "summary": summary,
+                "suggested_action": suggested_action,
+                "top_insights": self._get_top_insights(high_value_insights, limit=5)
             }
             
-        except Exception as e:
-            return {
-                "status": "error",
-                "message": f"观察分析失败: {str(e)}",
-                "error": str(e)
-            }
-    
-    async def _get_unanalyzed_observations(self) -> List[Dict[str, Any]]:
-        """获取未分析的观察记录"""
-        try:
-            if self.observation_queue:
-                return await self.observation_queue.get_unprocessed()
-            
-            # 备用方案：从上下文获取
-            observations = self.context.get("observations_unanalyzed", [])
-            return observations if isinstance(observations, list) else []
-            
-        except Exception as e:
-            print(f"获取观察记录失败: {e}")
-            return []
-    
-    async def _analyze_observation(self, observation: Dict[str, Any]) -> Optional[Dict[str, Any]]:
-        """分析单条观察记录"""
-        if not self.llm:
-            return None
-            
-        try:
-            # 准备分析提示词
-            prompt = self._build_analysis_prompt(observation)
-            
-            # 调用LLM进行分析
-            analysis_text = await self.llm.generate(
-                prompt=prompt,
-                max_tokens=1000,
-                temperature=0.3  # 较低温度以确保分析一致性
+            return SkillResult(
+                status=SkillStatus.SUCCESS,
+                data=result_data,
+                execution_time=(datetime.now() - start_time).total_seconds()
             )
             
-            # 解析LLM响应
-            return self._parse_analysis_response(analysis_text, observation)
+        except Exception as e:
+            logger.error(f"Observation analysis failed: {str(e)}")
+            return SkillResult(
+                status=SkillStatus.ERROR,
+                error=str(e),
+                execution_time=(datetime.now() - start_time).total_seconds()
+            )
+    
+    async def _analyze_observation(self, observation: Dict) -> Dict:
+        """Analyze a single observation using LLM."""
+        observation_text = self._format_observation(observation)
+        current_goals = get_current_goals()
+        
+        prompt = f"""Analyze the following system observation in the context of these evolution goals:
+{current_goals}
+
+Observation:
+{observation_text}
+
+Provide a structured analysis with:
+1. insight: Core insight or pattern identified
+2. category: "failure_pattern", "success_pattern", "improvement_opportunity", or "informational"
+3. suggested_action: Specific, executable suggestion (e.g., "trigger_new_cycle", "create_new_skill", "modify_config")
+4. relevance_to_goals: Score from 0.0 to 1.0 indicating relevance to current goals
+5. confidence: Confidence level in the analysis (0.0-1.0)
+6. supporting_evidence: Key evidence from the observation
+7. potential_impact: Expected impact if suggestion is implemented
+
+Return as JSON with these keys."""
+        
+        try:
+            response = await call_llm(
+                prompt=prompt,
+                model="analysis",
+                response_format={"type": "json_object"},
+                temperature=0.3
+            )
+            
+            analysis = response if isinstance(response, dict) else json.loads(response)
+            analysis["observation_id"] = observation.get("id")
+            analysis["analyzed_at"] = datetime.now().isoformat()
+            
+            return analysis
             
         except Exception as e:
-            print(f"分析观察记录失败: {e}")
-            return None
+            logger.warning(f"Failed to analyze observation {observation.get('id')}: {str(e)}")
+            return {
+                "observation_id": observation.get("id"),
+                "insight": f"Analysis failed: {str(e)}",
+                "category": "analysis_error",
+                "relevance_to_goals": 0.0,
+                "confidence": 0.0,
+                "analyzed_at": datetime.now().isoformat()
+            }
     
-    def _build_analysis_prompt(self, observation: Dict[str, Any]) -> str:
-        """构建分析提示词"""
+    def _format_observation(self, observation: Dict) -> str:
+        """Format observation data into readable text."""
+        parts = []
+        
+        # Add metadata
+        if "timestamp" in observation:
+            parts.append(f"Timestamp: {observation['timestamp']}")
+        if "type" in observation:
+            parts.append(f"Type: {observation['type']}")
+        if "source" in observation:
+            parts.append(f"Source: {observation['source']}")
+        
+        # Add content
+        if "content" in observation:
+            parts.append(f"Content:\n{observation['content']}")
+        if "metrics" in observation:
+            parts.append(f"Metrics: {observation['metrics']}")
+        if "error" in observation:
+            parts.append(f"Error: {observation['error']}")
+        
+        return "\n".join(parts)
+    
+    async def _persist_insight(self, insight: Dict) -> bool:
+        """Persist valuable insight to long-term memory."""
+        try:
+            memory_entry = {
+                "type": "observation_insight",
+                "insight": insight.get("insight"),
+                "category": insight.get("category"),
+                "suggested_action": insight.get("suggested_action"),
+                "relevance_to_goals": insight.get("relevance_to_goals"),
+                "supporting_evidence": insight.get("supporting_evidence"),
+                "analyzed_at": insight.get("analyzed_at"),
+                "source_observation_id": insight.get("observation_id"),
+                "confidence": insight.get("confidence"),
+                "metadata": {
+                    "potential_impact": insight.get("potential_impact"),
+                    "skill_source": "observation_analysis"
+                }
+            }
+            
+            memory_id = save_memory(memory_entry)
+            logger.info(f"Persisted insight {memory_id}: {insight.get('insight')[:100]}...")
+            return True
+            
+        except Exception as e:
+            logger.error(f"Failed to persist insight: {str(e)}")
+            return False
+    
+    async def _generate_analysis_summary(self, all_insights: List[Dict], high_value_insights: List[Dict]) -> Dict:
+        """Generate summary of analysis results."""
+        if not all_insights:
+            return {"message": "No insights generated"}
+        
