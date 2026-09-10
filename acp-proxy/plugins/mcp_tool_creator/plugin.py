@@ -1,82 +1,207 @@
 # acp-proxy/plugins/mcp_tool_creator/plugin.py
+
 import json
 import os
 import logging
+from pathlib import Path
 from typing import Dict, Any, Optional
-from datetime import datetime
 
-# Import BasePlugin from the base module
-# Note: This import path may need to be adjusted based on your project structure
-from ..base import BasePlugin
+# Import BasePlugin from the core framework
+from acp_proxy.core.plugin_system import BasePlugin, PluginManager
+from acp_proxy.core.tool_manager import ToolManager
+
+# Configure logger for this plugin
+logger = logging.getLogger(__name__)
 
 
 class MCPToolCreatorPlugin(BasePlugin):
     """
-    MCP工具动态创建插件。监听代理对话与任务执行过程，当现有工具无法覆盖功能需求时，
-    自动生成符合MCP协议标准的工具定义文件，并注册到可用工具列表中。
+    MCP Tool Creator Plugin.
+    Dynamically creates MCP protocol-compliant tool definitions when existing tools
+    cannot cover required functionality. Monitors agent conversations and task executions.
     """
 
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(config or {})
-        self.logger = logging.getLogger(__name__)
-        self._tool_registry = {}  # 内部工具注册表
-        self._generated_tools_dir = os.path.join(
-            os.path.dirname(__file__), 
-            "generated_tools"
-        )
-        
-        # 确保生成工具目录存在
-        os.makedirs(self._generated_tools_dir, exist_ok=True)
-        
-        # 初始化事件监听
-        self._setup_event_listeners()
-        
-        self.logger.info("MCPToolCreatorPlugin 初始化完成")
-
-    def _setup_event_listeners(self):
-        """设置事件监听器"""
-        # 监听任务失败事件
-        if hasattr(self, 'event_bus'):
-            self.event_bus.on('task_failure', self.on_task_failure)
-            self.event_bus.on('tool_not_found', self.on_tool_not_found)
-            self.event_bus.on('capability_gap_detected', self.on_capability_gap_detected)
-
-    def on_task_failure(self, task_details: dict, error: str):
+    def __init__(self, plugin_manager: PluginManager, tool_manager: ToolManager, config: Dict[str, Any]):
         """
-        处理任务失败事件
-        检测是否因缺少工具导致失败，并自动生成相应工具
+        Initialize the MCP Tool Creator Plugin.
+        
+        Args:
+            plugin_manager: Instance of the plugin manager.
+            tool_manager: Instance of the tool manager for registering new tools.
+            config: Plugin configuration dictionary.
         """
-        self.logger.warning(f"任务失败: {task_details.get('task_id', 'unknown')}, 错误: {error}")
+        super().__init__(plugin_manager, tool_manager, config)
         
-        # 检查错误类型是否为工具缺失
-        if self._is_tool_missing_error(error):
-            self.logger.info("检测到工具缺失错误，开始工具生成流程")
-            
-            # 从任务详情中提取工具需求信息
-            tool_info = self._extract_tool_info_from_failure(task_details, error)
-            
-            if tool_info:
-                tool_name = tool_info.get('name')
-                tool_desc = tool_info.get('description')
-                params_schema = tool_info.get('parameters_schema')
-                response_schema = tool_info.get('response_schema')
-                
-                # 生成工具定义
-                tool_definition = self.generate_tool_definition(
-                    tool_name=tool_name,
-                    tool_description=tool_desc,
-                    parameters_schema=params_schema,
-                    response_schema=response_schema
-                )
-                
-                # 保存并注册工具
-                tool_path = self._save_tool_definition(tool_name, tool_definition)
-                self._register_tool_to_agent(tool_name, tool_definition)
-                
-                self.logger.info(f"成功创建工具: {tool_name}, 保存至: {tool_path}")
+        # Internal tool registry for tracking generated tools
+        self.internal_tool_registry: Dict[str, Dict] = {}
+        
+        # Directory for storing generated tool definitions
+        self.generated_tools_dir = Path(__file__).parent / "generated_tools"
+        
+        # Ensure the directory exists
+        self.generated_tools_dir.mkdir(parents=True, exist_ok=True)
+        
+        # Load any previously generated tools
+        self._load_existing_tools()
+        
+        logger.info("MCPToolCreatorPlugin initialized. Tools directory: %s", self.generated_tools_dir)
 
-    def on_tool_not_found(self, tool_name: str, task_context: dict):
-        """处理工具未找到事件"""
-        self.logger.info(f"工具未找到: {tool_name}, 尝试自动创建")
+    def _load_existing_tools(self) -> None:
+        """Load tool definitions from the generated_tools directory."""
+        try:
+            for tool_file in self.generated_tools_dir.glob("*.json"):
+                with open(tool_file, 'r', encoding='utf-8') as f:
+                    tool_definition = json.load(f)
+                    tool_name = tool_definition.get('name')
+                    if tool_name:
+                        self.internal_tool_registry[tool_name] = tool_definition
+                        logger.debug("Loaded existing tool definition: %s", tool_name)
+        except Exception as e:
+            logger.error("Failed to load existing tool definitions: %s", str(e))
+
+    def on_task_failure(self, task_details: Dict[str, Any], error: str) -> None:
+        """
+        Event handler triggered when a task fails.
+        Analyzes the failure to determine if it's due to missing tool functionality.
         
-        # 基于任务上下文推测工具需求
+        Args:
+            task_details: Dictionary containing task execution details.
+            error: Error message from the failed task.
+        """
+        logger.info("Task failure detected. Analyzing for missing tool functionality...")
+        
+        # Analyze the error and task details to determine if a new tool is needed
+        # This is a placeholder - actual implementation would depend on error patterns
+        # and task context analysis
+        tool_analysis = self._analyze_for_missing_tool(task_details, error)
+        
+        if tool_analysis:
+            logger.info("Potential tool gap identified: %s", tool_analysis.get('suggested_tool_name'))
+            # In a real implementation, you might queue this for review or auto-generate
+            # For now, we log the suggestion
+            self._suggest_tool_creation(tool_analysis)
+
+    def _analyze_for_missing_tool(self, task_details: Dict, error: str) -> Optional[Dict]:
+        """
+        Analyze task failure to identify potential missing tool functionality.
+        
+        Args:
+            task_details: Task execution details.
+            error: Error message.
+            
+        Returns:
+            Dictionary with tool suggestion or None if no tool gap identified.
+        """
+        # Placeholder implementation - in reality, this would use NLP/LLM to analyze
+        # the conversation and error to determine what tool might be missing
+        
+        # Example pattern matching (simplified)
+        error_patterns = {
+            "I don't know how to": "knowledge_retrieval",
+            "cannot access": "resource_access",
+            "need to parse": "data_parser",
+            "format conversion": "format_converter"
+        }
+        
+        for pattern, tool_type in error_patterns.items():
+            if pattern.lower() in error.lower():
+                return {
+                    "suggested_tool_name": f"auto_{tool_type}",
+                    "tool_type": tool_type,
+                    "context": error[:200],  # First 200 chars of error
+                    "task_id": task_details.get("task_id", "unknown")
+                }
+        
+        return None
+
+    def _suggest_tool_creation(self, tool_analysis: Dict) -> None:
+        """
+        Log tool creation suggestion. Could be extended to trigger automated creation.
+        
+        Args:
+            tool_analysis: Analysis results suggesting a new tool.
+        """
+        suggestion = {
+            "timestamp": self._get_current_timestamp(),
+            "suggested_tool": tool_analysis,
+            "status": "suggestion_logged"
+        }
+        
+        logger.info("Tool creation suggestion logged: %s", suggestion)
+        
+        # For now, just log the suggestion. In a production system, this might:
+        # 1. Send to an approval queue
+        # 2. Trigger automated tool generation
+        # 3. Notify administrators
+
+    def generate_tool_definition(self, tool_name: str, tool_description: str, 
+                                 parameters_schema: Dict, response_schema: Dict) -> str:
+        """
+        Generate a complete MCP-compliant tool definition and save it to file.
+        
+        Args:
+            tool_name: Unique name for the tool.
+            tool_description: Description of what the tool does.
+            parameters_schema: JSON Schema defining the tool's input parameters.
+            response_schema: JSON Schema defining the tool's response format.
+            
+        Returns:
+            Path to the generated JSON file.
+            
+        Raises:
+            ValueError: If tool_name already exists in registry.
+        """
+        # Check if tool already exists
+        if tool_name in self.internal_tool_registry:
+            raise ValueError(f"Tool '{tool_name}' already exists in the registry.")
+        
+        # Create MCP-compliant tool definition
+        tool_definition = {
+            "name": tool_name,
+            "description": tool_description,
+            "parameters": parameters_schema,
+            "returns": response_schema,
+            "metadata": {
+                "version": "1.0.0",
+                "created_by": "MCPToolCreatorPlugin",
+                "created_at": self._get_current_timestamp(),
+                "protocol": "MCP-1.0"
+            }
+        }
+        
+        # Validate the JSON schemas (basic validation)
+        self._validate_schema(parameters_schema, "parameters")
+        self._validate_schema(response_schema, "returns")
+        
+        # Save to file
+        file_path = self.generated_tools_dir / f"{tool_name}.json"
+        try:
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(tool_definition, f, indent=2, ensure_ascii=False)
+            logger.info("Generated tool definition saved to: %s", file_path)
+        except Exception as e:
+            logger.error("Failed to save tool definition: %s", str(e))
+            raise
+        
+        # Add to internal registry
+        self.internal_tool_registry[tool_name] = tool_definition
+        
+        # Register with the tool manager
+        self._register_tool_with_manager(tool_definition)
+        
+        return str(file_path)
+
+    def _validate_schema(self, schema: Dict, schema_type: str) -> None:
+        """
+        Basic validation of JSON Schema structure.
+        
+        Args:
+            schema: JSON Schema to validate.
+            schema_type: Type of schema (parameters/returns) for error messages.
+        """
+        # Basic validation - in production, use a JSON Schema validator
+        if not isinstance(schema, dict):
+            raise ValueError(f"{schema_type} schema must be a dictionary")
+        
+        if 'type' not in schema and 'properties' not in schema:
+            logger.warning(f"{schema_type} schema might be incomplete: missing 'type' or 'properties'")
