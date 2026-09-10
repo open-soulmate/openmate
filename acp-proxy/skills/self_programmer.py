@@ -1,212 +1,266 @@
-import ast
-import json
-import logging
 import os
+import json
+import ast
 import subprocess
-import sys
-import tempfile
-import time
-import uuid
-from dataclasses import dataclass, field
+import re
 from datetime import datetime
+from typing import Dict, List, Any, Optional, Tuple
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
-
-# 假设BaseSkill已经定义，这里需要根据实际项目调整导入
-from .base_skill import BaseSkill
-
+from dataclasses import dataclass, asdict
+from abc import ABC, abstractmethod
 
 @dataclass
-class TaskSpec:
-    """任务规格数据类"""
+class ProgramTask:
     task_id: str
-    description: str
-    language: str = "python"
-    framework: Optional[str] = None
-    input_data: Optional[Dict[str, Any]] = None
-    expected_output: Optional[Dict[str, Any]] = None
-    constraints: Optional[Dict[str, Any]] = None
-
+    requirement: str
+    task_type: str
+    target_files: List[str]
+    dependencies: List[str]
+    priority: int
+    status: str = "pending"
 
 @dataclass
-class ValidationResult:
-    """验证结果数据类"""
-    is_valid: bool
-    syntax_valid: bool
-    test_results: Optional[Dict[str, Any]] = None
-    security_issues: List[str] = field(default_factory=list)
-    error_message: Optional[str] = None
+class CodeGenerationResult:
+    success: bool
+    code: Optional[str]
+    files_created: List[str]
+    error: Optional[str]
+    execution_time: float
 
+@dataclass
+class ValidationReport:
+    syntax_valid: bool
+    tests_passed: bool
+    security_check_passed: bool
+    style_check_passed: bool
+    coverage: float
+    warnings: List[str]
+    errors: List[str]
 
 @dataclass
 class DeploymentResult:
-    """部署结果数据类"""
     success: bool
-    file_path: str
-    timestamp: str
-    backup_path: Optional[str] = None
-    error_message: Optional[str] = None
+    target_path: str
+    backup_created: bool
+    git_commit_hash: Optional[str]
+    deployment_time: datetime
+    error: Optional[str]
 
-
-@dataclass
-class Milestone:
-    """里程碑数据类"""
-    id: str
+@dataclass 
+class ProgrammingMilestone:
+    milestone_id: str
     description: str
-    progress: float = 0.0
-    completed: bool = False
-    start_time: Optional[str] = None
-    end_time: Optional[str] = None
-    dependencies: List[str] = field(default_factory=list)
-
+    completion_criteria: str
+    progress_increment: float
+    is_completed: bool = False
+    completion_time: Optional[datetime] = None
 
 @dataclass
-class ProgrammingRecord:
-    """自编程记录数据类"""
-    record_id: str
-    timestamp: str
+class ProgrammingLog:
+    log_id: str
+    timestamp: datetime
     requirement: str
-    generated_code: Optional[str] = None
-    validation_result: Optional[Dict[str, Any]] = None
-    deployment_result: Optional[Dict[str, Any]] = None
-    success: bool = False
-    reason: Optional[str] = None
-    duration: Optional[float] = None
+    generated_code: str
+    validation_result: Dict[str, Any]
+    deployment_result: Optional[Dict[str, Any]]
+    success: bool
+    failure_reason: Optional[str]
+    metadata: Dict[str, Any]
 
+class BaseSkill(ABC):
+    """Base class for all skills"""
+    
+    def __init__(self, name: str, description: str):
+        self.name = name
+        self.description = description
+        self.config = {}
+        self.logger = None
+        
+    @abstractmethod
+    def execute(self, **kwargs) -> Any:
+        """Execute the skill with given parameters"""
+        pass
+    
+    def set_config(self, config: Dict[str, Any]) -> None:
+        """Set configuration for the skill"""
+        self.config.update(config)
+    
+    def get_config(self) -> Dict[str, Any]:
+        """Get current configuration"""
+        return self.config.copy()
 
 class SelfProgrammerSkill(BaseSkill):
     """
-    自编程能力技能实现
-    支持agent根据需求自动生成、测试和部署代码
+    Self-programming skill that enables agents to automatically generate, test, 
+    and deploy code based on requirements. Core component for achieving 
+    the "self-programming capability" goal.
     """
     
-    # 危险操作模式列表（用于静态分析）
+    # Security patterns to block
     DANGEROUS_PATTERNS = [
-        r"os\.remove\s*\(",
-        r"shutil\.rmtree\s*\(",
-        r"subprocess\.(?:run|call|Popen)\s*\(",
-        r"requests\.post\s*\(",
-        r"urllib\.request\.urlopen\s*\(",
-        r"socket\.connect\s*\(",
-        r"__import__\s*\(",
-        r"exec\s*\(",
-        r"eval\s*\(",
-        r"compile\s*\(",
-        r"open\s*\(.+['\"]w['\"]",
-        r"open\s*\(.+['\"]a['\"]"
+        r'os\.system\(',
+        r'subprocess\.call\(',
+        r'subprocess\.run\(',
+        r'os\.remove\(',
+        r'os\.unlink\(',
+        r'shutil\.rmtree\(',
+        r'requests\.get\(',
+        r'urllib\.request\.urlopen\(',
+        r'socket\.connect\(',
+        r'exec\(',
+        r'eval\(',
+        r'__import__\(',
     ]
     
-    def __init__(self, config: Dict[str, Any] = None):
-        """初始化自编程技能"""
-        super().__init__(name="self_programmer", description="自编程能力技能")
-        self.logger = logging.getLogger(__name__)
-        self.config = config or {}
+    def __init__(self):
+        super().__init__(
+            name="self_programmer",
+            description="Enables self-programming capability for code generation, testing, and deployment"
+        )
         
-        # 初始化路径配置
-        self.project_root = Path(self.config.get("project_root", "."))
-        self.sandbox_dir = Path(self.config.get("sandbox_dir", "/tmp/acp_sandbox"))
-        self.backup_dir = Path(self.config.get("backup_dir", "/tmp/acp_backups"))
-        self.log_dir = Path(self.config.get("log_dir", "/tmp/acp_logs"))
+        self.milestones: Dict[str, ProgrammingMilestone] = {}
+        self.programming_logs: List[ProgrammingLog] = []
+        self.sandbox_path: Optional[str] = None
+        self.project_root: Optional[str] = None
         
-        # 创建必要目录
-        self._create_directories()
+        # Initialize default milestones
+        self._initialize_milestones()
         
-        # 初始化里程碑追踪器
-        self.milestones: Dict[str, Milestone] = {}
-        self.current_milestone_id: Optional[str] = None
-        
-        # 初始化编程记录
-        self.programming_records: List[ProgrammingRecord] = []
-        
-        # 加载代码模板和规范
-        self._load_code_standards()
-        
-    def _create_directories(self):
-        """创建必要的目录结构"""
-        directories = [self.sandbox_dir, self.backup_dir, self.log_dir]
-        for directory in directories:
-            directory.mkdir(parents=True, exist_ok=True)
-            
-    def _load_code_standards(self):
-        """加载项目代码规范和模板"""
-        self.code_standards = {
-            "python": {
-                "max_line_length": 100,
-                "indent_size": 4,
-                "docstring_style": "google",
-                "type_hints": True,
-                "line_ending": "\n",
-                "encoding": "utf-8"
-            },
-            "file_structure": {
-                "skills": "acp-proxy/skills/",
-                "plugins": "acp-proxy/plugins/",
-                "tests": "tests/",
-                "docs": "docs/"
-            }
+        # Configuration for code style
+        self.code_style = {
+            "indentation": 4,
+            "max_line_length": 88,
+            "docstring_style": "google",
+            "type_hints_required": True,
         }
-        
+    
+    def execute(self, **kwargs) -> Any:
+        """Main execution method"""
+        if 'requirement' in kwargs:
+            return self.analyze_requirement(kwargs['requirement'])
+        return {"error": "Invalid operation"}
+    
     def analyze_requirement(self, requirement_text: str) -> Dict[str, Any]:
         """
-        解析功能需求，拆解为可执行的编程任务
+        Analyze and break down a functional requirement into executable programming tasks.
         
         Args:
-            requirement_text: 功能需求描述文本
+            requirement_text: Description of the requirement
             
         Returns:
-            分析结果字典，包含任务列表和优先级
+            Dictionary containing analysis results and task breakdown
         """
-        self.logger.info(f"分析需求: {requirement_text[:100]}...")
-        
-        # 这里可以集成NLP或规则引擎来解析需求
-        # 简化实现：通过关键词匹配拆解任务
-        tasks = []
-        
-        # 解析关键词
-        if "函数" in requirement_text or "function" in requirement_text:
-            tasks.append({
-                "type": "function",
-                "description": requirement_text,
-                "priority": "high",
-                "estimated_complexity": self._estimate_complexity(requirement_text)
-            })
+        try:
+            # Parse requirement into structured data
+            parsed = self._parse_requirement(requirement_text)
             
-        if "类" in requirement_text or "class" in requirement_text:
-            tasks.append({
-                "type": "class",
-                "description": requirement_text,
-                "priority": "high",
-                "estimated_complexity": self._estimate_complexity(requirement_text)
-            })
+            # Generate task specifications
+            tasks = self._generate_task_specifications(parsed)
             
-        if "测试" in requirement_text or "test" in requirement_text:
-            tasks.append({
-                "type": "test",
-                "description": requirement_text,
-                "priority": "medium",
-                "estimated_complexity": self._estimate_complexity(requirement_text)
-            })
+            # Update milestones based on requirements
+            self._update_milestones(parsed)
             
-        # 如果没有特定关键词，创建通用任务
-        if not tasks:
-            tasks.append({
-                "type": "module",
-                "description": requirement_text,
-                "priority": "medium",
-                "estimated_complexity": self._estimate_complexity(requirement_text)
-            })
+            return {
+                "success": True,
+                "original_requirement": requirement_text,
+                "parsed_components": parsed,
+                "tasks": [asdict(task) for task in tasks],
+                "estimated_complexity": self._estimate_complexity(parsed),
+                "suggested_approach": self._suggest_approach(parsed),
+            }
             
-        analysis_result = {
-            "original_requirement": requirement_text,
-            "task_count": len(tasks),
-            "tasks": tasks,
-            "analysis_timestamp": datetime.now().isoformat(),
-            "suggested_approach": self._suggest_approach(tasks)
-        }
-        
-        self.logger.info(f"需求分析完成，生成 {len(tasks)} 个任务")
-        return analysis_result
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+                "requirement": requirement_text
+            }
     
-    def _estimate_complexity(self, requirement_text: str) -> str:
-        """估算需求复杂度"""
-        word_count = len(requirement_text.split())
+    def generate_code(self, task_spec: Dict[str, Any]) -> CodeGenerationResult:
+        """
+        Generate code implementation based on task specification.
+        
+        Args:
+            task_spec: Task specification including requirements and constraints
+            
+        Returns:
+            CodeGenerationResult with generated code and metadata
+        """
+        start_time = datetime.now()
+        
+        try:
+            # Validate task specification
+            if not self._validate_task_spec(task_spec):
+                return CodeGenerationResult(
+                    success=False,
+                    code=None,
+                    files_created=[],
+                    error="Invalid task specification",
+                    execution_time=0.0
+                )
+            
+            # Generate code based on task type
+            generated_files = {}
+            task_type = task_spec.get('type', 'module')
+            
+            if task_type == 'module':
+                generated_files = self._generate_module(task_spec)
+            elif task_type == 'skill':
+                generated_files = self._generate_skill(task_spec)
+            elif task_type == 'plugin':
+                generated_files = self._generate_plugin(task_spec)
+            elif task_type == 'test':
+                generated_files = self._generate_tests(task_spec)
+            else:
+                return CodeGenerationResult(
+                    success=False,
+                    code=None,
+                    files_created=[],
+                    error=f"Unknown task type: {task_type}",
+                    execution_time=(datetime.now() - start_time).total_seconds()
+                )
+            
+            # Apply code style and security checks
+            for filename, content in generated_files.items():
+                if not self._security_check(content):
+                    return CodeGenerationResult(
+                        success=False,
+                        code=None,
+                        files_created=[],
+                        error=f"Security violation detected in {filename}",
+                        execution_time=(datetime.now() - start_time).total_seconds()
+                    )
+                
+                generated_files[filename] = self._apply_code_style(content)
+            
+            # Save to sandbox
+            files_created = []
+            if self.sandbox_path:
+                files_created = self._save_to_sandbox(generated_files)
+            
+            # Log the generation
+            self._log_programming(
+                requirement=str(task_spec),
+                code=str(generated_files),
+                validation_result={"code_generated": True},
+                success=True,
+                metadata={"task_spec": task_spec}
+            )
+            
+            return CodeGenerationResult(
+                success=True,
+                code=json.dumps(generated_files, indent=2),
+                files_created=files_created,
+                error=None,
+                execution_time=(datetime.now() - start_time).total_seconds()
+            )
+            
+        except Exception as e:
+            return CodeGenerationResult(
+                success=False,
+                code=None,
+                files_created=[],
+                error=str(e),
+                execution_time=(datetime.now() - start_time).total_seconds()
+            )
+    
