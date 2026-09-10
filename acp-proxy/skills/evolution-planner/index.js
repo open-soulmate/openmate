@@ -1,210 +1,161 @@
-const fs = require('fs').promises;
+// acp-proxy/skills/evolution-planner/index.js
+const fs = require('fs');
 const path = require('path');
+const { v4: uuidv4 } = require('uuid');
 
 class EvolutionPlanner {
   constructor(config = {}) {
+    this.skillName = 'EvolutionPlanner';
+    this.version = '1.0.0';
+    this.description = 'Self-evolution planning and goal management';
+    
+    // Configuration with defaults
     this.config = {
-      planCheckInterval: 24 * 60 * 60 * 1000, // 24小时
-      confirmationTimeout: 48 * 60 * 60 * 1000, // 48小时
-      plansDirectory: './evolution_plans',
-      progressFile: './evolution_progress.json',
-      knowledgeBaseFile: './evolution_knowledge.json',
-      targetProgressThreshold: 0.0,
-      autoConfirmRiskLevel: 'low',
+      planningFrequency: config.planningFrequency || '24h',
+      confirmationTimeout: config.confirmationTimeout || 72 * 60 * 60 * 1000, // 72 hours
+      maxSubGoals: config.maxSubGoals || 5,
+      progressThreshold: config.progressThreshold || 0.1, // 10% progress threshold
+      analysisTriggerThreshold: config.analysisTriggerThreshold || 1,
       ...config
     };
     
-    this.skills = new Map();
-    this.observationAnalyzer = null;
-    this.progressTracker = new ProgressTracker();
-    this.goalDecomposer = new GoalDecomposer();
+    // State management
+    this.state = {
+      activePlans: [],
+      pendingConfirmations: [],
+      lastPlanningTime: null,
+      evolutionGoals: this.loadEvolutionGoals(),
+      progressHistory: new Map(),
+      observationQueue: []
+    };
     
-    this.evolutionTargets = [
-      'self_programming',
-      'tool_creation',
-      'error_self_repair'
-    ];
+    // Initialize paths
+    this.plansDir = path.join(__dirname, 'plans');
+    this.confirmationsDir = path.join(__dirname, 'confirmations');
+    this.knowledgeBaseDir = path.join(__dirname, 'knowledge-base');
+    
+    this.ensureDirectories();
+    this.loadExistingState();
   }
 
-  async initialize(skillSystem, observationAnalyzer) {
-    this.skills = skillSystem;
-    this.observationAnalyzer = observationAnalyzer;
-    
-    // 确保计划目录存在
-    await fs.mkdir(this.config.plansDirectory, { recursive: true });
-    
-    // 初始化进度跟踪器
-    await this.progressTracker.load(this.config.progressFile);
-    
-    // 设置定期检查
-    this.setupPeriodicChecks();
-    
-    console.log('Evolution Planner initialized');
+  ensureDirectories() {
+    [this.plansDir, this.confirmationsDir, this.knowledgeBaseDir].forEach(dir => {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    });
   }
 
-  setupPeriodicChecks() {
-    // 定期检查目标进度
-    setInterval(async () => {
-      await this.checkProgressAndGeneratePlans();
-    }, this.config.planCheckInterval);
-    
-    // 定期检查未分析的观察
-    setInterval(async () => {
-      await this.checkUnanalyzedObservations();
-    }, 60 * 60 * 1000); // 每小时检查一次
-  }
-
-  async checkProgressAndGeneratePlans() {
+  loadExistingState() {
     try {
-      const progress = await this.progressTracker.getProgress();
-      const plans = [];
+      const statePath = path.join(__dirname, 'state.json');
+      if (fs.existsSync(statePath)) {
+        const savedState = JSON.parse(fs.readFileSync(statePath, 'utf8'));
+        this.state = { ...this.state, ...savedState };
+      }
+    } catch (error) {
+      console.warn(`Failed to load saved state: ${error.message}`);
+    }
+  }
+
+  saveState() {
+    try {
+      const statePath = path.join(__dirname, 'state.json');
+      const stateToSave = {
+        ...this.state,
+        progressHistory: Object.fromEntries(this.state.progressHistory)
+      };
+      fs.writeFileSync(statePath, JSON.stringify(stateToSave, null, 2));
+    } catch (error) {
+      console.error(`Failed to save state: ${error.message}`);
+    }
+  }
+
+  loadEvolutionGoals() {
+    try {
+      const goalsPath = path.join(__dirname, 'evolution-goals.json');
+      if (fs.existsSync(goalsPath)) {
+        return JSON.parse(fs.readFileSync(goalsPath, 'utf8'));
+      }
+      return this.getDefaultGoals();
+    } catch (error) {
+      console.warn(`Failed to load evolution goals: ${error.message}`);
+      return this.getDefaultGoals();
+    }
+  }
+
+  getDefaultGoals() {
+    return {
+      selfProgramming: {
+        id: 'self_programming',
+        title: 'Self-Programming Capability',
+        description: 'Ability to write, test, and modify own code',
+        progress: 0,
+        status: 'in_progress',
+        milestones: [],
+        createdAt: new Date().toISOString()
+      },
+      toolCreation: {
+        id: 'tool_creation',
+        title: 'Tool Creation',
+        description: 'Ability to create new tools and utilities',
+        progress: 0,
+        status: 'in_progress',
+        milestones: [],
+        createdAt: new Date().toISOString()
+      },
+      errorSelfHealing: {
+        id: 'error_self_healing',
+        title: 'Error Self-Healing',
+        description: 'Ability to detect and fix own errors automatically',
+        progress: 0,
+        status: 'in_progress',
+        milestones: [],
+        createdAt: new Date().toISOString()
+      }
+    };
+  }
+
+  async execute(parameters = {}) {
+    try {
+      await this.logPlanningActivity('Starting evolution planning cycle');
       
-      // 检查每个进化目标的进度
-      for (const target of this.evolutionTargets) {
-        const targetProgress = progress[target] || { progress: 0, lastUpdated: null };
-        
-        // 分析进度缓慢的原因
-        const analysis = await this.analyzeTargetProgress(target, targetProgress);
-        
-        // 针对零进度目标生成具体计划
-        if (targetProgress.progress <= this.config.targetProgressThreshold) {
-          const plan = await this.generateTargetPlan(target, analysis);
-          plans.push(plan);
-        }
+      // Check for unanalyzed observations
+      if (this.state.evolutionGoals.observations_unanalyzed > this.config.analysisTriggerThreshold) {
+        await this.triggerObservationAnalysis();
       }
       
-      // 保存生成的计划
-      if (plans.length > 0) {
-        await this.savePlans(plans);
-        this.logPlanGeneration(plans);
-      }
+      // Analyze current progress and identify bottlenecks
+      const analysis = await this.analyzeProgress();
       
-      // 生成进化路线图
-      await this.generateEvolutionRoadmap();
+      // Generate improvement plans for stagnant goals
+      const improvementPlans = await this.generateImprovementPlans(analysis);
+      
+      // Save plans for human confirmation
+      await this.savePlansForConfirmation(improvementPlans);
+      
+      // Generate progress visualization
+      const visualization = await this.generateProgressVisualization();
+      
+      // Update planning history
+      this.state.lastPlanningTime = new Date().toISOString();
+      this.saveState();
+      
+      // Log to knowledge base
+      await this.logToKnowledgeBase({
+        activity: 'evolution_planning',
+        analysis,
+        improvementPlans: improvementPlans.length,
+        visualizationGenerated: true,
+        timestamp: new Date().toISOString()
+      });
+      
+      return {
+        success: true,
+        analysis,
+        improvementPlans,
+        visualization,
+        pendingConfirmations: this.state.pendingConfirmations.length
+      };
       
     } catch (error) {
-      console.error('Error in checkProgressAndGeneratePlans:', error);
-    }
-  }
-
-  async analyzeTargetProgress(target, progress) {
-    const analysis = {
-      target,
-      currentProgress: progress.progress,
-      bottlenecks: [],
-      failurePatterns: [],
-      recommendations: []
-    };
-    
-    // 分析失败模式
-    if (progress.failures && progress.failures.length > 0) {
-      analysis.failurePatterns = this.identifyFailurePatterns(progress.failures);
-    }
-    
-    // 识别系统瓶颈
-    analysis.bottlenecks = await this.identifySystemBottlenecks(target, progress);
-    
-    return analysis;
-  }
-
-  identifyFailurePatterns(failures) {
-    const patterns = [];
-    const patternCounts = {};
-    
-    failures.forEach(failure => {
-      const pattern = failure.category || 'unknown';
-      patternCounts[pattern] = (patternCounts[pattern] || 0) + 1;
-    });
-    
-    Object.entries(patternCounts).forEach(([pattern, count]) => {
-      if (count >= 2) { // 出现2次以上的模式认为是显著模式
-        patterns.push({
-          pattern,
-          frequency: count,
-          severity: count >= 5 ? 'high' : 'medium'
-        });
-      }
-    });
-    
-    return patterns;
-  }
-
-  async identifySystemBottlenecks(target, progress) {
-    const bottlenecks = [];
-    
-    // 检查资源瓶颈
-    const resourceUsage = await this.getResourceUsage();
-    if (resourceUsage.cpu > 90 || resourceUsage.memory > 80) {
-      bottlenecks.push({
-        type: 'resource',
-        description: 'High resource usage',
-        impact: 'medium',
-        mitigation: 'Optimize resource allocation'
-      });
-    }
-    
-    // 检查技能可用性
-    const requiredSkills = this.getRequiredSkills(target);
-    const unavailableSkills = requiredSkills.filter(skill => !this.skills.has(skill));
-    if (unavailableSkills.length > 0) {
-      bottlenecks.push({
-        type: 'dependency',
-        description: `Missing required skills: ${unavailableSkills.join(', ')}`,
-        impact: 'high',
-        mitigation: 'Implement missing skills'
-      });
-    }
-    
-    return bottlenecks;
-  }
-
-  getRequiredSkills(target) {
-    const skillRequirements = {
-      'self_programming': ['code_generation', 'code_analysis', 'testing'],
-      'tool_creation': ['api_integration', 'data_processing', 'automation'],
-      'error_self_repair': ['error_detection', 'debugging', 'patch_generation']
-    };
-    
-    return skillRequirements[target] || [];
-  }
-
-  async generateTargetPlan(target, analysis) {
-    const plan = {
-      target,
-      timestamp: new Date().toISOString(),
-      status: 'pending_confirmation',
-      expectedBenefits: this.calculateExpectedBenefits(target),
-      implementationSteps: [],
-      testMethods: [],
-      rollbackPlan: this.generateRollbackPlan(target),
-      riskAssessment: this.assessRisks(target, analysis),
-      subGoals: []
-    };
-    
-    // 基于分析生成实施步骤
-    plan.implementationSteps = await this.generateImplementationSteps(target, analysis);
-    
-    // 生成测试方法
-    plan.testMethods = this.generateTestMethods(target);
-    
-    // 分解目标为子目标
-    plan.subGoals = await this.goalDecomposer.decompose(target, plan.implementationSteps);
-    
-    // 保守策略：保存计划等待确认
-    plan.needsConfirmation = true;
-    plan.confirmationDeadline = new Date(
-      Date.now() + this.config.confirmationTimeout
-    ).toISOString();
-    
-    return plan;
-  }
-
-  calculateExpectedBenefits(target) {
-    const benefits = {
-      'self_programming': [
-        'Increased development speed by 300%',
-        'Reduced manual coding effort',
-        '24/7 development capability'
-      ],
-      'tool_creation': [
-        'Automated tool generation',
