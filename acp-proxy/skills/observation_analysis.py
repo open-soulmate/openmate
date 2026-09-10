@@ -1,136 +1,173 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+观察分析技能 - 自动化处理观察数据积压
+"""
+
 import json
-import logging
+import os
 import time
 import signal
+import logging
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import List, Dict, Any, Optional, Tuple
 from pathlib import Path
 
-# 假设的基础技能类
-class BaseSkill:
-    """基础技能类，所有技能的父类"""
-    
-    def __init__(self, name: str, config: Optional[Dict[str, Any]] = None):
-        self.name = name
-        self.config = config or {}
-        self.logger = logging.getLogger(f"skill.{name}")
+# 假设存在基础技能类
+try:
+    from acp_proxy.skills.base import BaseSkill
+except ImportError:
+    # 如果没有基础类，创建一个简化的替代
+    class BaseSkill:
+        def __init__(self, *args, **kwargs):
+            pass
         
-    def execute(self, *args, **kwargs) -> Dict[str, Any]:
-        """执行技能的核心逻辑"""
-        raise NotImplementedError("子类必须实现execute方法")
-        
-    def log(self, message: str, level: str = "info"):
-        """记录日志"""
-        getattr(self.logger, level)(message)
+        def execute(self, *args, **kwargs):
+            raise NotImplementedError
 
-# 超时信号处理
-class TimeoutException(Exception):
-    pass
-
-def timeout_handler(signum, frame):
-    raise TimeoutException("分析超时")
-
-# 模拟的观察数据管理器
-class ObservationManager:
-    """观察数据管理器，负责读取和更新观察数据"""
-    
-    def __init__(self, data_dir: str = "acp-proxy/data"):
-        self.data_dir = Path(data_dir)
-        self.observations_file = self.data_dir / "observations.json"
-        self._ensure_data_structure()
-        
-    def _ensure_data_structure(self):
-        """确保数据目录和文件存在"""
-        self.data_dir.mkdir(parents=True, exist_ok=True)
-        if not self.observations_file.exists():
-            with open(self.observations_file, 'w') as f:
-                json.dump([], f)
-    
-    def load_observations(self) -> List[Dict[str, Any]]:
-        """加载所有观察数据"""
-        try:
-            with open(self.observations_file, 'r') as f:
-                observations = json.load(f)
-            return observations
-        except (FileNotFoundError, json.JSONDecodeError) as e:
-            self.log(f"加载观察数据失败: {e}", "error")
-            return []
-    
-    def save_observations(self, observations: List[Dict[str, Any]]):
-        """保存观察数据"""
-        try:
-            with open(self.observations_file, 'w') as f:
-                json.dump(observations, f, indent=2)
-        except Exception as e:
-            self.log(f"保存观察数据失败: {e}", "error")
-            raise
-    
-    def log(self, message: str, level: str = "info"):
-        """记录日志"""
-        logger = logging.getLogger("ObservationManager")
-        getattr(logger, level)(message)
-
-# 模拟的记忆系统管理器
-class MemoryManager:
-    """记忆系统管理器，负责存储分析结果"""
-    
-    def __init__(self, memory_dir: str = "acp-proxy/memory"):
-        self.memory_dir = Path(memory_dir)
-        self.memory_dir.mkdir(parents=True, exist_ok=True)
-        
-    def store_analysis_result(self, observation_id: str, analysis_result: Dict[str, Any]):
-        """存储分析结果到记忆系统"""
-        try:
-            result_file = self.memory_dir / f"analysis_{observation_id}_{int(time.time())}.json"
-            with open(result_file, 'w') as f:
-                json.dump({
-                    "observation_id": observation_id,
-                    "timestamp": datetime.now().isoformat(),
-                    "analysis": analysis_result
-                }, f, indent=2)
-            return True
-        except Exception as e:
-            logging.getLogger("MemoryManager").error(f"存储分析结果失败: {e}")
-            return False
 
 class ObservationAnalysisSkill(BaseSkill):
     """
-    自动化观察分析技能
-    用于消除观察数据积压问题，在每个进化周期中自动分析未处理的观察
+    观察分析技能：自动处理观察数据积压，提高决策质量和知识积累
     """
     
-    DEFAULT_CONFIG = {
-        "max_analysis_per_cycle": 3,
-        "priority_rule": "timestamp",  # 或 "importance"
-        "timeout_seconds": 5,
-        "data_dir": "acp-proxy/data",
-        "memory_dir": "acp-proxy/memory"
-    }
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        super().__init__(
-            name="ObservationAnalysisSkill",
-            config={**self.DEFAULT_CONFIG, **(config or {})}
-        )
+    def __init__(self, config: Optional[Dict] = None):
+        """
+        初始化观察分析技能
         
-        # 初始化管理器
-        self.observation_manager = ObservationManager(self.config["data_dir"])
-        self.memory_manager = MemoryManager(self.config["memory_dir"])
+        Args:
+            config: 配置字典，包含技能配置
+        """
+        super().__init__()
         
-        # 统计信息
-        self.stats = {
-            "total_analyzed": 0,
-            "total_failed": 0,
-            "last_cycle": None
+        # 默认配置
+        self.default_config = {
+            "max_analysis_per_cycle": 3,
+            "priority_rule": "timestamp",  # 可选: timestamp, importance, combined
+            "timeout_per_observation": 5,  # 每个观察分析的最大时间(秒)
+            "observation_data_path": "acp-proxy/data/observations.json",
+            "memory_path": "acp-proxy/memory/",
+            "log_file": "acp-proxy/logs/observation_analysis.log"
         }
         
-        # 设置超时信号处理器
-        signal.signal(signal.SIGALRM, timeout_handler)
+        # 合并配置
+        self.config = {**self.default_config, **(config or {})}
         
-    def get_priority_key(self, observation: Dict[str, Any]):
-        """获取观察的优先级键值"""
-        if self.config["priority_rule"] == "importance":
-            return observation.get("importance", 0)
-        else:  # 默认按时间戳
-            return observation.get("timestamp", 0)
+        # 初始化日志
+        self._setup_logging()
+        
+        # 创建必要的目录
+        self._ensure_directories()
+        
+        # 运行状态
+        self.is_running = False
+        
+        self.logger.info("观察分析技能已初始化")
     
+    def _setup_logging(self):
+        """设置日志系统"""
+        self.logger = logging.getLogger("ObservationAnalysisSkill")
+        self.logger.setLevel(logging.INFO)
+        
+        # 防止重复添加处理器
+        if not self.logger.handlers:
+            # 文件处理器
+            try:
+                log_dir = os.path.dirname(self.config["log_file"])
+                os.makedirs(log_dir, exist_ok=True)
+                
+                file_handler = logging.FileHandler(
+                    self.config["log_file"],
+                    encoding='utf-8'
+                )
+                file_handler.setLevel(logging.INFO)
+                
+                # 控制台处理器
+                console_handler = logging.StreamHandler()
+                console_handler.setLevel(logging.WARNING)
+                
+                # 格式化器
+                formatter = logging.Formatter(
+                    '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+                )
+                file_handler.setFormatter(formatter)
+                console_handler.setFormatter(formatter)
+                
+                self.logger.addHandler(file_handler)
+                self.logger.addHandler(console_handler)
+            except Exception as e:
+                # 如果无法创建文件处理器，只使用控制台
+                console_handler = logging.StreamHandler()
+                console_handler.setLevel(logging.INFO)
+                self.logger.addHandler(console_handler)
+                self.logger.warning(f"无法创建日志文件: {e}")
+    
+    def _ensure_directories(self):
+        """确保必要的目录存在"""
+        directories = [
+            self.config["memory_path"],
+            os.path.dirname(self.config["observation_data_path"])
+        ]
+        
+        for directory in directories:
+            try:
+                os.makedirs(directory, exist_ok=True)
+            except Exception as e:
+                self.logger.error(f"创建目录失败 {directory}: {e}")
+    
+    def _load_observations(self) -> List[Dict]:
+        """
+        加载观察数据
+        
+        Returns:
+            观察数据列表
+        """
+        try:
+            file_path = self.config["observation_data_path"]
+            
+            if not os.path.exists(file_path):
+                self.logger.warning(f"观察数据文件不存在: {file_path}")
+                return []
+            
+            with open(file_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
+            
+            # 确保数据结构正确
+            if isinstance(data, list):
+                return data
+            elif isinstance(data, dict) and "observations" in data:
+                return data["observations"]
+            else:
+                self.logger.error("观察数据格式不正确")
+                return []
+                
+        except json.JSONDecodeError as e:
+            self.logger.error(f"观察数据JSON解析失败: {e}")
+            return []
+        except Exception as e:
+            self.logger.error(f"加载观察数据失败: {e}")
+            return []
+    
+    def _save_observations(self, observations: List[Dict]):
+        """
+        保存观察数据
+        
+        Args:
+            observations: 观察数据列表
+        """
+        try:
+            file_path = self.config["observation_data_path"]
+            
+            # 创建备份
+            if os.path.exists(file_path):
+                backup_path = f"{file_path}.backup.{datetime.now().strftime('%Y%m%d_%H%M%S')}"
+                os.rename(file_path, backup_path)
+            
+            # 保存新数据
+            with open(file_path, 'w', encoding='utf-8') as f:
+                json.dump(observations, f, indent=2, ensure_ascii=False)
+            
+            self.logger.info(f"观察数据已保存到 {file_path}")
+            
+        except Exception as e:
+            self.logger.error(f"保存观察数据失败: {e}")
