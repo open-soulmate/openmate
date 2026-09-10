@@ -1,182 +1,114 @@
 #!/usr/bin/env python3
 """
-ACP技能：初始化项目基础结构
-根据项目类型创建标准化的项目骨架
+项目骨架初始化技能
+用于快速创建标准化项目基础结构
 """
-
 import os
-import shutil
+import datetime
 from pathlib import Path
-from datetime import datetime
-from typing import Dict, List, Set
-import questionary
-from rich.console import Console
-from rich.tree import Tree
+from typing import Dict, List, Optional, Tuple
 
-console = Console()
-
-# 项目类型模板定义
-PROJECT_TEMPLATES: Dict[str, Dict[str, List[str]]] = {
+# 项目类型配置字典：定义每种项目的目录结构和默认文件
+PROJECT_TEMPLATES = {
     "basic": {
-        "directories": [],
-        "files": ["__init__.py", "README.md", "config.example.py"]
+        "directories": ["src", "tests", "docs"],
+        "files": {
+            "requirements.txt": "# 项目依赖\n",
+            ".gitignore": """# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+.venv/
+*.egg-info/
+dist/
+build/
+"""
+        }
     },
     "api_service": {
-        "directories": ["routes", "models", "services", "tests"],
-        "files": ["__init__.py", "README.md", "config.example.py", "requirements.txt"]
+        "directories": ["src", "routes", "models", "utils", "tests", "docs", "config"],
+        "files": {
+            "requirements.txt": """flask>=2.0.0
+requests>=2.25.0
+gunicorn>=20.1.0
+""",
+            "src/__init__.py": "# API 服务入口\n",
+            "routes/__init__.py": "# API 路由\n",
+            "models/__init__.py": "# 数据模型\n",
+            "utils/__init__.py": "# 工具函数\n",
+            "config/__init__.py": "# 配置管理\n",
+            "config/settings.py": """# 配置文件示例
+class Config:
+    DEBUG = False
+    SECRET_KEY = 'your-secret-key'
+    
+class DevelopmentConfig(Config):
+    DEBUG = True
+    
+class ProductionConfig(Config):
+    SECRET_KEY = os.environ.get('SECRET_KEY', 'fallback-secret-key')
+"""
+        }
     },
     "data_processor": {
-        "directories": ["data/input", "data/output", "processors", "utils", "tests"],
-        "files": ["__init__.py", "README.md", "config.example.py", "requirements.txt"]
+        "directories": ["data", "src", "processors", "output", "tests", "docs"],
+        "files": {
+            "requirements.txt": """pandas>=1.3.0
+numpy>=1.21.0
+scikit-learn>=1.0.0
+""",
+            "data/__init__.py": "# 数据目录\n",
+            "src/__init__.py": "# 数据处理源码\n",
+            "processors/__init__.py": "# 数据处理器\n",
+            "output/__init__.py": "# 输出目录\n",
+            "src/processor.py": '''"""数据处理器模板"""
+
+class DataProcessor:
+    """数据处理器基类"""
+    
+    def __init__(self):
+        self.data = None
+        
+    def load_data(self, path):
+        """加载数据"""
+        # TODO: 实现数据加载逻辑
+        pass
+        
+    def process(self):
+        """处理数据"""
+        # TODO: 实现数据处理逻辑
+        pass
+        
+    def save_output(self, output_path):
+        """保存处理结果"""
+        # TODO: 实现结果保存逻辑
+        pass
+'''
+        }
     }
 }
 
-def get_project_structure(project_type: str) -> Dict[str, List[str]]:
-    """获取项目类型的目录和文件结构"""
-    return PROJECT_TEMPLATES.get(project_type, PROJECT_TEMPLATES["basic"])
-
-def check_existing_structure(root_path: Path, template: Dict[str, List[str]]) -> Dict[str, Set[Path]]:
-    """检查已存在的目录和文件结构"""
-    existing = {
-        "directories": set(),
-        "files": set()
-    }
+def init_skeleton(
+    project_name: str, 
+    project_type: str = "basic", 
+    description: str = "", 
+    root_dir: str = ".",
+    interactive: bool = True
+) -> Tuple[bool, List[str], List[str]]:
+    """
+    初始化项目骨架
     
-    # 检查目录
-    for dir_path in template["directories"]:
-        full_path = root_path / dir_path
-        if full_path.exists():
-            existing["directories"].add(dir_path)
-    
-    # 检查文件
-    for file_path in template["files"]:
-        full_path = root_path / file_path
-        if full_path.exists():
-            existing["files"].add(file_path)
-    
-    return existing
-
-def create_directory_structure(root_path: Path, template: Dict[str, List[str]], mode: str) -> List[str]:
-    """创建目录结构"""
-    created_items = []
-    
-    # 创建目录
-    for dir_path in template["directories"]:
-        full_path = root_path / dir_path
-        if not full_path.exists():
-            full_path.mkdir(parents=True, exist_ok=True)
-            created_items.append(f"📁 创建目录: {dir_path}")
-    
-    return created_items
-
-def create_init_file(file_path: Path) -> None:
-    """创建__init__.py文件"""
-    content = '''"""
-初始化文件
-"""
-'''
-    file_path.write_text(content, encoding='utf-8')
-
-def create_readme(file_path: Path, project_name: str, description: str) -> None:
-    """创建README.md文件"""
-    content = f'''# {project_name}
-
-{description if description else "项目描述"}
-
-## 创建时间
-{datetime.now().strftime("%Y-%m-%d %H:%M:%S")}
-
-## 项目结构
-请在此处添加项目结构说明
-
-## 安装和使用
-请在此处添加安装和使用说明
-
-## 开发说明
-请在此处添加开发说明
-'''
-    file_path.write_text(content, encoding='utf-8')
-
-def create_config_example(file_path: Path, project_type: str) -> None:
-    """创建config.example.py文件"""
-    if project_type == "api_service":
-        content = '''# API服务配置示例
-HOST = "0.0.0.0"
-PORT = 8000
-DEBUG = True
-DATABASE_URL = "sqlite:///./app.db"
-SECRET_KEY = "your-secret-key-here"
-'''
-    elif project_type == "data_processor":
-        content = '''# 数据处理器配置示例
-INPUT_DIR = "./data/input"
-OUTPUT_DIR = "./data/output"
-BATCH_SIZE = 100
-LOG_LEVEL = "INFO"
-'''
-    else:
-        content = '''# 基础配置示例
-DEBUG = True
-LOG_LEVEL = "INFO"
-'''
-    file_path.write_text(content, encoding='utf-8')
-
-def create_requirements_file(file_path: Path, project_type: str) -> None:
-    """创建requirements.txt文件"""
-    if project_type == "api_service":
-        content = '''# API服务依赖
-fastapi>=0.68.0
-uvicorn>=0.15.0
-sqlalchemy>=1.4.0
-pydantic>=1.8.0
-python-multipart>=0.0.5
-'''
-    elif project_type == "data_processor":
-        content = '''# 数据处理器依赖
-pandas>=1.3.0
-numpy>=1.21.0
-sqlalchemy>=1.4.0
-pydantic>=1.8.0
-tqdm>=4.62.0
-'''
-    else:
-        content = '''# 基础依赖
-# 根据项目需求添加依赖包
-'''
-    file_path.write_text(content, encoding='utf-8')
-
-def create_files(root_path: Path, template: Dict[str, List[str]], project_name: str, description: str) -> List[str]:
-    """创建文件"""
-    created_items = []
-    
-    for file_path in template["files"]:
-        full_path = root_path / file_path
+    Args:
+        project_name: 项目名称
+        project_type: 项目类型，支持 'basic', 'api_service', 'data_processor'
+        description: 项目描述
+        root_dir: 根目录路径
+        interactive: 是否为交互模式（询问覆盖策略）
         
-        # 根据文件类型创建不同内容
-        if file_path == "__init__.py":
-            create_init_file(full_path)
-        elif file_path == "README.md":
-            create_readme(full_path, project_name, description)
-        elif file_path == "config.example.py":
-            create_config_example(full_path, template["project_type"])
-        elif file_path == "requirements.txt":
-            create_requirements_file(full_path, template["project_type"])
-        
-        created_items.append(f"📄 创建文件: {file_path}")
-    
-    return created_items
-
-def show_next_steps(project_type: str) -> None:
-    """显示下一步建议"""
-    console.print("\n[bold green]✅ 项目初始化完成！[/bold green]")
-    
-    tree = Tree("[bold cyan]📋 下一步建议[/bold cyan]")
-    
-    if project_type == "basic":
-        tree.add("📝 编写requirements.txt并初始化虚拟环境")
-        tree.add("📖 补充README.md中的项目描述")
-        tree.add("⚙️ 根据实际需求修改config.example.py")
-    elif project_type == "api_service":
-        tree.add("📝 安装依赖: [bold]pip install -r requirements.txt[/bold]")
-        tree.add("📖 添加路由到routes/目录")
-        tree.add("📑 定义数据模型到models/目录")
+    Returns:
+        Tuple: (成功标志, 创建的文件列表, 下一步建议列表)
+    """
