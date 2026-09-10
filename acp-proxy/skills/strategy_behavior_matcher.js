@@ -1,98 +1,116 @@
 /**
- * strategy_behavior_matcher.js
+ * Strategy-Behavior Matcher Skill
  * 策略-行为匹配度监控技能
- * 用于解决策略声明激进但行为保守的认知不协调问题
+ * 
+ * 解决"策略声明激进，但行为保守"的认知不协调问题
+ * 定期分析进化日志，对比声明的策略与实际行为，计算匹配度分数
+ * 当分数低于阈值时，生成探索性任务建议注入下一个cycle
  */
 
-const fs = require('fs');
-const path = require('path');
+const SKILL_CONFIG = {
+  name: 'strategy_behavior_matcher',
+  version: '1.0.0',
+  description: '策略-行为匹配度监控技能',
+  checkInterval: 3,
+  matchThreshold: 60,
+  suggestionsCount: 2
+};
+
+const STRATEGY_KEYWORDS = {
+  exploration: ['探索', '尝试', '试验', '探索性', 'experiment', 'explore'],
+  boldness: ['大胆', '激进', '突破', '冒险', 'bold', 'aggressive'],
+  innovation: ['创新', '新方法', '新工具', '创新性', 'innovate', 'creative'],
+  growth: ['成长', '学习', '进化', '提升', 'grow', 'learn', 'evolve']
+};
+
+const EXPLORATION_TASKS = [
+  { title: '探索未使用MCP工具', description: '分析一个从未使用过的MCP工具描述，了解其功能和潜在应用场景' },
+  { title: '编写备选实现', description: '尝试为现有技能编写一个备选实现方案，比较不同实现的优劣' },
+  { title: '研究新技术概念', description: '研究一个与当前问题相关的新技术概念，并评估其应用价值' },
+  { title: '探索未知API', description: '查找并尝试一个之前未接触过的API或服务接口' },
+  { title: '系统边界探索', description: '主动探索系统能力边界，记录发现的限制和潜在突破点' },
+  { title: '配置实验', description: '对一个现有功能进行不同的配置组合实验，记录结果差异' },
+  { title: '日志模式分析', description: '深入分析系统日志，发现之前未注意到的模式或异常' },
+  { title: '替代方案调研', description: '为当前使用的核心组件调研至少两个替代方案' },
+  { title: '跨领域知识应用', description: '从其他领域借鉴一个方法论，尝试应用到当前工作流中' },
+  { title: '失败案例研究', description: '回顾并分析最近一次未达预期的尝试，提取改进点' }
+];
 
 class StrategyBehaviorMatcher {
-    constructor() {
-        this.name = 'strategy_behavior_matcher';
-        this.description = '策略-行为匹配度监控技能';
-        this.version = '1.0.0';
-        this.cycleInterval = 3; // 每3个cycle执行一次
-        this.matchThreshold = 60; // 匹配度阈值
-        this.taskSuggestions = [
-            '分析一个从未使用过的MCP工具描述',
-            '尝试为现有技能编写一个备选实现',
-            '研究一个与当前问题相关的新技术概念',
-            '在代码库中搜索并应用一个新的设计模式',
-            '尝试使用不同的算法解决已解决的问题',
-            '将一个复杂的函数重构为更小的单元',
-            '探索系统配置中未使用的功能选项',
-            '为现有的API添加一个新的端点或方法'
-        ];
+  constructor(config = {}) {
+    this.config = { ...SKILL_CONFIG, ...config };
+    this.cycleCounter = 0;
+    this.lastMatchScore = null;
+    this.history = [];
+  }
+
+  async execute(context = {}) {
+    this.cycleCounter++;
+    
+    if (this.cycleCounter % this.config.checkInterval !== 0) {
+      return { triggered: false, reason: `等待下次检查，还需 ${this.config.checkInterval - (this.cycleCounter % this.config.checkInterval)} 个cycle` };
     }
 
-    /**
-     * 获取策略声明源
-     * @returns {Object} 策略声明数据
-     */
-    getStrategyDeclaration() {
-        try {
-            // 尝试从配置文件读取
-            const configPath = path.join(__dirname, '../config/current_config.json');
-            if (fs.existsSync(configPath)) {
-                const config = JSON.parse(fs.readFileSync(configPath, 'utf8'));
-                if (config.current_strategy) {
-                    return {
-                        source: 'config',
-                        strategy: config.current_strategy,
-                        keywords: this.extractKeywords(config.current_strategy)
-                    };
-                }
-            }
-
-            // 如果配置文件没有，尝试从历史指令中提取
-            const historyPath = path.join(__dirname, '../logs/instruction_history.json');
-            if (fs.existsSync(historyPath)) {
-                const history = JSON.parse(fs.readFileSync(historyPath, 'utf8'));
-                const recentInstructions = history.slice(-10); // 取最近10条指令
-                const keywords = this.extractStrategyKeywords(recentInstructions);
-                if (keywords.length > 0) {
-                    return {
-                        source: 'history',
-                        strategy: keywords.join(', '),
-                        keywords: keywords
-                    };
-                }
-            }
-
-            // 默认策略
-            return {
-                source: 'default',
-                strategy: 'balanced exploration',
-                keywords: ['平衡', '探索', '优化']
-            };
-        } catch (error) {
-            console.error('获取策略声明失败:', error);
-            return {
-                source: 'error',
-                strategy: 'unknown',
-                keywords: []
-            };
-        }
+    const strategy = this.extractStrategy(context);
+    const behaviorData = this.extractBehaviorData(context);
+    const matchResult = this.calculateMatchScore(strategy, behaviorData);
+    
+    this.lastMatchScore = matchResult.score;
+    
+    const report = this.generateReport(strategy, behaviorData, matchResult);
+    
+    if (matchResult.score < this.config.matchThreshold) {
+      report.suggestedTasks = this.generateExplorationTasks();
+      report.actionRequired = true;
+      report.priority = matchResult.score < 40 ? 'high' : 'medium';
     }
 
-    /**
-     * 从文本中提取策略关键词
-     * @param {string} text 策略文本
-     * @returns {Array} 关键词列表
-     */
-    extractKeywords(text) {
-        const strategyKeywords = [
-            '大胆尝试', '高探索', '探索', '创新', '风险', '激进',
-            '保守', '稳定', '安全', '平衡', '优化', '改进',
-            '突破', '实验', '尝试', '冒险', '进取'
-        ];
-        
-        return strategyKeywords.filter(keyword => 
-            text.includes(keyword)
-        );
+    this.history.push({
+      cycle: this.cycleCounter,
+      score: matchResult.score,
+      timestamp: new Date().toISOString()
+    });
+
+    return report;
+  }
+
+  extractStrategy(context) {
+    const sources = {
+      explicit: null,
+      keywords: [],
+      category: 'unknown'
+    };
+
+    if (context.config?.current_strategy) {
+      sources.explicit = context.config.current_strategy;
+    } else if (context.config?.strategy) {
+      sources.explicit = context.config.strategy;
     }
 
-    /**
-     * 从历史指令中提取策略关键词
-     * @param {Array} instructions 指令历史
+    if (!sources.explicit && context.instructionHistory) {
+      const recentInstructions = context.instructionHistory.slice(-5);
+      sources.explicit = recentInstructions
+        .map(i => i.content || i.instruction || '')
+        .join(' ');
+    }
+
+    const textToAnalyze = sources.explicit || '';
+    
+    for (const [category, keywords] of Object.entries(STRATEGY_KEYWORDS)) {
+      const matched = keywords.filter(kw => textToAnalyze.toLowerCase().includes(kw.toLowerCase()));
+      if (matched.length > 0) {
+        sources.keywords.push(...matched);
+        sources.category = category;
+      }
+    }
+
+    if (sources.keywords.length === 0) {
+      sources.keywords = ['探索', '成长'];
+      sources.category = 'exploration';
+      sources.inferred = true;
+    }
+
+    return sources;
+  }
+
+  extractBehaviorData(context) {
