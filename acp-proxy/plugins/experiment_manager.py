@@ -1,135 +1,183 @@
-import os
 import json
+import os
 import uuid
 from datetime import datetime
-from typing import Any, Dict, List, Optional
+from pathlib import Path
+from typing import Dict, List, Any, Optional
+from acp_proxy.core.base_plugin import BasePlugin
 
-class ExperimentManager:
-    def __init__(self, base_path: str = "experiments") -> None:
-        self.base_path = base_path
-        os.makedirs(base_path, exist_ok=True)
+
+class ExperimentManager(BasePlugin):
+    """
+    实验管理插件 - 系统化地进行'大胆尝试，高探索'的激进策略
+    """
     
-    def create_experiment(self, name: str, hypothesis: str, variables: Dict[str, Any], metrics: List[str]) -> str:
-        experiment_id = str(uuid.uuid4())
-        experiment_dir = os.path.join(self.base_path, experiment_id)
-        os.makedirs(experiment_dir, exist_ok=True)
+    def __init__(self, experiments_dir: str = "experiments"):
+        """
+        初始化实验管理器
         
+        Args:
+            experiments_dir: 实验存储目录
+        """
+        super().__init__()
+        self.experiments_dir = Path(experiments_dir)
+        self.experiments_dir.mkdir(exist_ok=True)
+        self.active_experiments: Dict[str, Dict] = {}
+        self._load_active_experiments()
+    
+    def _load_active_experiments(self):
+        """加载所有活跃的实验"""
+        for exp_dir in self.experiments_dir.iterdir():
+            if exp_dir.is_dir() and (exp_dir / "experiment.json").exists():
+                with open(exp_dir / "experiment.json", 'r', encoding='utf-8') as f:
+                    experiment_data = json.load(f)
+                    if experiment_data.get("status") == "active":
+                        self.active_experiments[experiment_data["id"]] = experiment_data
+    
+    def _save_experiment(self, experiment_id: str, experiment_data: Dict):
+        """保存实验数据到文件"""
+        exp_dir = self.experiments_dir / experiment_id
+        exp_dir.mkdir(exist_ok=True)
+        
+        with open(exp_dir / "experiment.json", 'w', encoding='utf-8') as f:
+            json.dump(experiment_data, f, indent=2, ensure_ascii=False)
+        
+        self.active_experiments[experiment_id] = experiment_data
+    
+    def create_experiment(
+        self,
+        name: str,
+        hypothesis: str,
+        variables: Dict[str, Any],
+        metrics: List[str],
+        description: Optional[str] = None
+    ) -> str:
+        """
+        创建新的实验
+        
+        Args:
+            name: 实验名称
+            hypothesis: 实验假设
+            variables: 实验变量字典
+            metrics: 评估指标列表
+            description: 实验描述
+            
+        Returns:
+            str: 实验ID
+        """
+        experiment_id = str(uuid.uuid4())[:8]
         experiment_data = {
             "id": experiment_id,
             "name": name,
             "hypothesis": hypothesis,
             "variables": variables,
             "metrics": metrics,
-            "status": "in_progress",
+            "description": description,
+            "status": "active",
             "created_at": datetime.now().isoformat(),
             "updated_at": datetime.now().isoformat(),
             "steps": [],
-            "outcome": None,
-            "learnings": None
+            "conclusion": None,
+            "outcome_summary": None,
+            "learning_points": [],
+            "new_skill_suggestion": None
         }
         
-        with open(os.path.join(experiment_dir, "experiment.json"), "w") as f:
-            json.dump(experiment_data, f, indent=2)
+        self._save_experiment(experiment_id, experiment_data)
+        
+        # 记录到主Agent的工作流中
+        self.log_to_workflow(f"创建新实验: {name} (ID: {experiment_id})")
+        self.log_to_memory(f"实验开始: {name} - {hypothesis}")
         
         return experiment_id
     
-    def _load_experiment(self, experiment_id: str) -> Dict[str, Any]:
-        experiment_path = os.path.join(self.base_path, experiment_id, "experiment.json")
-        if not os.path.exists(experiment_path):
-            raise FileNotFoundError(f"Experiment {experiment_id} not found")
+    def log_step(
+        self,
+        experiment_id: str,
+        step_description: str,
+        data: Optional[Dict[str, Any]] = None,
+        observations: Optional[str] = None
+    ) -> bool:
+        """
+        记录实验步骤
         
-        with open(experiment_path, "r") as f:
-            return json.load(f)
-    
-    def _save_experiment(self, experiment_id: str, data: Dict[str, Any]) -> None:
-        experiment_path = os.path.join(self.base_path, experiment_id, "experiment.json")
-        data["updated_at"] = datetime.now().isoformat()
+        Args:
+            experiment_id: 实验ID
+            step_description: 步骤描述
+            data: 步骤数据
+            observations: 观察结果
+            
+        Returns:
+            bool: 是否成功记录
+        """
+        if experiment_id not in self.active_experiments:
+            self.log_to_workflow(f"实验 {experiment_id} 不存在或已结束", level="WARNING")
+            return False
         
-        with open(experiment_path, "w") as f:
-            json.dump(data, f, indent=2)
-    
-    def log_step(self, experiment_id: str, step_description: str, data: Dict[str, Any]) -> None:
-        experiment_data = self._load_experiment(experiment_id)
-        
-        step_entry = {
+        step = {
             "timestamp": datetime.now().isoformat(),
             "description": step_description,
-            "data": data
+            "data": data or {},
+            "observations": observations
         }
         
-        experiment_data["steps"].append(step_entry)
-        self._save_experiment(experiment_id, experiment_data)
-    
-    def conclude_experiment(self, experiment_id: str, outcome_summary: str) -> Dict[str, Any]:
-        experiment_data = self._load_experiment(experiment_id)
-        
-        if experiment_data["status"] != "in_progress":
-            raise ValueError(f"Experiment {experiment_id} is already {experiment_data['status']}")
-        
-        experiment_data["status"] = "completed"
-        experiment_data["outcome"] = outcome_summary
-        experiment_data["conclusion_timestamp"] = datetime.now().isoformat()
+        experiment_data = self.active_experiments[experiment_id]
+        experiment_data["steps"].append(step)
+        experiment_data["updated_at"] = datetime.now().isoformat()
         
         self._save_experiment(experiment_id, experiment_data)
-        return experiment_data
+        
+        self.log_to_workflow(f"实验 {experiment_data['name']} 步骤记录: {step_description}")
+        
+        return True
     
-    def suggest_new_skill_from_experiment(self, experiment_id: str) -> Dict[str, Any]:
-        experiment_data = self._load_experiment(experiment_id)
+    def conclude_experiment(
+        self,
+        experiment_id: str,
+        outcome_summary: str,
+        conclusion: str,
+        learning_points: Optional[List[str]] = None,
+        success: bool = False
+    ) -> Dict[str, Any]:
+        """
+        结束实验并生成总结
         
-        if experiment_data["status"] != "completed":
-            raise ValueError(f"Experiment {experiment_id} must be completed to extract skills")
+        Args:
+            experiment_id: 实验ID
+            outcome_summary: 结果摘要
+            conclusion: 结论
+            learning_points: 学习要点列表
+            success: 是否成功
+            
+        Returns:
+            dict: 实验结果分析
+        """
+        if experiment_id not in self.active_experiments:
+            self.log_to_workflow(f"实验 {experiment_id} 不存在或已结束", level="WARNING")
+            return {"error": "实验不存在或已结束"}
         
-        suggestion = {
-            "source_experiment": experiment_id,
-            "extracted_at": datetime.now().isoformat(),
-            "hypothesis": experiment_data["hypothesis"],
-            "outcome": experiment_data["outcome"],
-            "variables": experiment_data["variables"],
-            "metrics": experiment_data["metrics"],
-            "recommendation": self._generate_recommendation(experiment_data)
-        }
+        experiment_data = self.active_experiments[experiment_id]
+        experiment_data["status"] = "concluded"
+        experiment_data["conclusion"] = conclusion
+        experiment_data["outcome_summary"] = outcome_summary
+        experiment_data["learning_points"] = learning_points or []
+        experiment_data["success"] = success
+        experiment_data["concluded_at"] = datetime.now().isoformat()
+        experiment_data["updated_at"] = datetime.now().isoformat()
         
-        suggestions_path = os.path.join(self.base_path, experiment_id, "skill_suggestions.json")
-        with open(suggestions_path, "w") as f:
-            json.dump(suggestion, f, indent=2)
+        # 计算实验指标
+        analysis = self._analyze_experiment(experiment_data)
+        experiment_data["analysis"] = analysis
         
-        return suggestion
-    
-    def _generate_recommendation(self, experiment_data: Dict[str, Any]) -> str:
-        outcome = experiment_data.get("outcome", "").lower()
-        hypothesis = experiment_data.get("hypothesis", "")
+        self._save_experiment(experiment_id, experiment_data)
         
-        if "success" in outcome or "positive" in outcome:
-            return f"Based on successful experiment '{hypothesis}', consider creating new skill: '{hypothesis[:50]}...' implementation."
-        elif "failure" in outcome or "negative" in outcome:
-            return f"From failed experiment '{hypothesis}', avoid similar approaches and document as anti-pattern."
-        else:
-            return f"Intermediate results for '{hypothesis[:50]}...', requires further analysis before skill extraction."
-    
-    def get_experiment_summary(self, experiment_id: str) -> Dict[str, Any]:
-        experiment_data = self._load_experiment(experiment_id)
-        return {
-            "id": experiment_data["id"],
-            "name": experiment_data["name"],
-            "status": experiment_data["status"],
-            "created_at": experiment_data["created_at"],
-            "updated_at": experiment_data["updated_at"],
-            "hypothesis": experiment_data["hypothesis"],
-            "outcome": experiment_data.get("outcome")
-        }
-    
-    def list_experiments(self) -> List[Dict[str, Any]]:
-        experiments = []
-        if not os.path.exists(self.base_path):
-            return experiments
+        # 从活跃实验中移除
+        del self.active_experiments[experiment_id]
         
-        for experiment_id in os.listdir(self.base_path):
-            experiment_path = os.path.join(self.base_path, experiment_id)
-            if os.path.isdir(experiment_path):
-                try:
-                    summary = self.get_experiment_summary(experiment_id)
-                    experiments.append(summary)
-                except (FileNotFoundError, json.JSONDecodeError):
-                    continue
+        self.log_to_workflow(f"实验 {experiment_data['name']} 已结束: {outcome_summary}")
+        self.log_to_memory(f"实验总结: {experiment_data['name']} - {conclusion}")
         
-        return experiments
+        # 如果实验成功，建议新技能
+        if success:
+            skill_suggestion = self.suggest_new_skill_from_experiment(experiment_id)
+            experiment_data["new_skill_suggestion"] = skill_suggestion
