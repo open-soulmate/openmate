@@ -1,94 +1,113 @@
-import datetime
-import logging
-from typing import List, Dict, Any, Optional, Tuple
-
-# 假设导入实际存在的模块
-try:
-    from acp_proxy.plugins.memory.memory_manager import memory_manager
-    from acp_proxy.plugins.memory.summarize import summarize_memory
-    from acp_proxy.observation.observation_log import log_observation
-except ImportError:
-    # 处理导入失败的情况，实际使用时应替换为正确的导入路径
-    import sys
-    print("警告: 无法导入所需模块，请检查模块路径", file=sys.stderr)
-    # 定义模拟对象以便测试
-    class MockMemoryManager:
-        def get_all_memories(self): return []
-        def update_memory(self, memory_id, updates): pass
-        def archive_memory(self, memory_id): pass
-        def delete_memory(self, memory_id): pass
-    memory_manager = MockMemoryManager()
-    def summarize_memory(content): return content
-    def log_observation(message): print(f"LOG: {message}")
-
+import math
+from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional
+from acp_proxy.plugins.memory import memory_manager
+from acp_proxy.observation import log_to_observation
+from acp_proxy.config import get_config
 
 class MemoryOptimizerSkill:
-    """
-    记忆优化器技能 - Agent的"记忆管家"
+    """自动化的记忆优化器技能，作为agent的记忆管家，解决知识容量停滞问题"""
     
-    当agent的记忆池接近饱和时自动触发，通过评估记忆价值进行智能优化：
-    - 分析每条记忆的年龄、引用频率和与用户目标的相关性
-    - 对低价值记忆进行压缩、归档或安全删除
-    - 为新的高价值知识腾出空间
-    - 支持手动触发和周期性自动触发
-    """
-    
-    def __init__(self, config: Optional[Dict[str, Any]] = None):
-        """
-        初始化记忆优化器技能
-        
-        Args:
-            config: 配置参数，可包含：
-                - optimization_threshold: 触发优化的记忆数量阈值（默认45）
-                - optimization_percentage: 每次优化记忆的百分比（默认10%）
-                - max_memories: 记忆池上限（默认50）
-                - age_weight: 年龄维度的权重（默认0.3）
-                - reference_weight: 引用频率维度的权重（默认0.4）
-                - relevance_weight: 相关性维度的权重（默认0.3）
-                - relevance_keywords: 与用户目标相关的关键词列表
-                - min_content_length_for_compression: 压缩的最小内容长度（默认100字符）
-                - archive_threshold: 归档的分数阈值（默认0.4）
-                - delete_threshold: 删除的分数阈值（默认0.2）
-                - cycle_count: 对话周期计数（默认0）
-                - cycle_interval: 触发周期间隔（默认10）
-        """
-        self.config = config or {}
-        
-        # 默认配置
-        self.optimization_threshold = self.config.get("optimization_threshold", 45)
-        self.optimization_percentage = self.config.get("optimization_percentage", 0.1)
-        self.max_memories = self.config.get("max_memories", 50)
+    def __init__(self):
+        self.memory_capacity = 50  # 记忆池上限
+        self.optimization_threshold = 45  # 接近饱和的阈值（90%）
+        self.low_value_percentage = 0.1  # 优化最低价值记忆的百分比（10%）
+        self.user_goal_keywords = ["目标", "计划", "任务", "需求", "偏好"]  # 可配置的用户目标关键词
+        self.core_memory_tags = ["核心", "不可变", "重要"]  # 核心记忆标签
         
         # 评分权重配置
-        self.age_weight = self.config.get("age_weight", 0.3)
-        self.reference_weight = self.config.get("reference_weight", 0.4)
-        self.relevance_weight = self.config.get("relevance_weight", 0.3)
+        self.age_weight = 0.4  # 年龄权重
+        self.reference_weight = 0.3  # 引用频率权重
+        self.keyword_weight = 0.3  # 关键词匹配权重
         
-        # 与用户目标相关的关键词
-        self.relevance_keywords = self.config.get("relevance_keywords", [
-            "目标", "偏好", "计划", "需求", "优先", "重要", "长期", "目标"
-        ])
+        # 时间衰减系数
+        self.time_decay_factor = 0.1  # 每天衰减10%的初始分数
         
-        # 操作阈值配置
-        self.min_content_length_for_compression = self.config.get(
-            "min_content_length_for_compression", 100
-        )
-        self.archive_threshold = self.config.get("archive_threshold", 0.4)
-        self.delete_threshold = self.config.get("delete_threshold", 0.2)
-        
-        # 周期性触发配置
-        self.cycle_count = self.config.get("cycle_count", 0)
-        self.cycle_interval = self.config.get("cycle_interval", 10)
-        
-        # 初始化日志
-        self.logger = logging.getLogger(__name__)
-        self.logger.setLevel(logging.INFO)
-        
-        if not self.logger.handlers:
-            handler = logging.StreamHandler()
-            formatter = logging.Formatter(
-                '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-            )
-            handler.setFormatter(formatter)
-            self.logger.addHandler(handler)
+    def run(self) -> Dict[str, Any]:
+        """主运行方法，执行记忆优化流程"""
+        try:
+            # 1. 获取当前所有记忆
+            memories = memory_manager.get_all_memories()
+            current_count = len(memories)
+            
+            # 2. 检查是否需要优化（接近饱和）
+            if current_count < self.optimization_threshold:
+                log_to_observation(
+                    f"记忆数量未达到优化阈值（{current_count}/{self.optimization_threshold}），跳过优化"
+                )
+                return {"status": "skipped", "reason": "below_threshold"}
+            
+            # 3. 计算每条记忆的价值分数
+            scored_memories = []
+            for memory in memories:
+                score = self._calculate_memory_value(memory)
+                if not self._is_core_memory(memory):  # 排除核心记忆
+                    scored_memories.append((memory, score))
+            
+            # 4. 按分数排序，选出最低价值的X%
+            scored_memories.sort(key=lambda x: x[1])  # 升序排序
+            optimize_count = max(1, int(len(scored_memories) * self.low_value_percentage))
+            memories_to_optimize = scored_memories[:optimize_count]
+            
+            # 5. 对低价值记忆执行优化操作
+            optimized_memories = []
+            for memory, score in memories_to_optimize:
+                result = self._optimize_memory(memory, score)
+                if result["action"] != "skipped":
+                    optimized_memories.append(result)
+            
+            # 6. 记录优化日志
+            self._log_optimization(memories, optimized_memories, current_count)
+            
+            return {
+                "status": "success",
+                "optimized_count": len(optimized_memories),
+                "original_count": current_count,
+                "new_count": len(memory_manager.get_all_memories()),
+                "details": optimized_memories
+            }
+            
+        except Exception as e:
+            log_to_observation(f"记忆优化过程中出错: {str(e)}")
+            return {"status": "error", "message": str(e)}
     
+    def _calculate_memory_value(self, memory: Dict[str, Any]) -> float:
+        """计算记忆的价值分数"""
+        try:
+            score = 0.0
+            
+            # 1. 年龄分数（越旧分数越低）
+            age_days = self._calculate_age_days(memory.get("created_at", datetime.now()))
+            age_score = max(0, 1.0 - (age_days * self.time_decay_factor))
+            score += age_score * self.age_weight
+            
+            # 2. 引用频率分数（越高分数越高）
+            reference_count = memory.get("reference_count", 0)
+            reference_score = min(1.0, math.log(1 + reference_count) / 10)  # 对数归一化
+            score += reference_score * self.reference_weight
+            
+            # 3. 关键词匹配分数
+            keyword_score = self._calculate_keyword_match(memory)
+            score += keyword_score * self.keyword_weight
+            
+            return score
+            
+        except Exception:
+            return 0.0  # 计算失败返回最低分
+    
+    def _calculate_age_days(self, created_at: Any) -> float:
+        """计算记忆年龄（天数）"""
+        if isinstance(created_at, str):
+            try:
+                created_at = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+            except:
+                created_at = datetime.now()
+        
+        if isinstance(created_at, datetime):
+            now = datetime.now(created_at.tzinfo) if created_at.tzinfo else datetime.now()
+            return (now - created_at).days
+        return 0
+    
+    def _calculate_keyword_match(self, memory: Dict[str, Any]) -> float:
+        """计算关键词匹配分数"""
+        content = memory.get("content", "").lower()
