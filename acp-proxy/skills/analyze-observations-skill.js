@@ -1,76 +1,158 @@
-'use strict';
-
-// 依赖的插件接口 - 在实际环境中会由系统注入
 const memoryPlugin = require('../plugins/memory-plugin.js');
+const logger = require('../utils/logger.js');
+
+// 进化目标映射表，用于识别观察记录与目标的关联
+const EVOLUTION_GOALS = {
+  '错误自修复': {
+    keywords: ['错误', '异常', '失败', '崩溃', 'bug', 'error', 'crash', 'exception'],
+    category: 'error_fix'
+  },
+  '性能优化': {
+    keywords: ['慢', '延迟', '性能', '内存', 'CPU', 'slow', 'delay', 'performance'],
+    category: 'performance'
+  },
+  '功能扩展': {
+    keywords: ['需要', '缺少', '功能', '添加', '扩展', 'feature', 'add', 'extend'],
+    category: 'feature'
+  },
+  '安全加固': {
+    keywords: ['安全', '漏洞', '攻击', '权限', 'security', 'vulnerability', 'attack'],
+    category: 'security'
+  }
+};
+
+// 简单的模式识别规则
+const PATTERN_RULES = {
+  frequency_pattern: {
+    test: (content, stats) => stats.recentSimilar >= 3,
+    analysis: '检测到高频重复模式',
+    suggestion: '考虑创建处理此模式的专用工具'
+  },
+  configuration_pattern: {
+    test: (content) => /配置|设置|config|setting/i.test(content),
+    analysis: '涉及配置问题',
+    suggestion: '考虑优化配置管理或创建配置验证工具'
+  },
+  dependency_pattern: {
+    test: (content) => /依赖|版本|冲突|dependency|version/i.test(content),
+    analysis: '涉及依赖问题',
+    suggestion: '考虑创建依赖检查或版本管理工具'
+  }
+};
 
 /**
- * analyze-observations-skill 核心技能
- * 自动分析记忆库中所有状态为 unanalyzed 的观察记录
+ * 计算最近N条观察记录的类型分布统计
+ * @param {Array} observations 观察记录数组
+ * @param {number} n 最近记录数
+ * @returns {Object} 统计结果
  */
-const analyzeObservationsSkill = async () => {
-  const results = {
-    processedCount: 0,
-    updatedCount: 0,
-    reportId: null,
-    statistics: null,
-    errors: []
-  };
-
-  try {
-    console.log('[analyze-observations-skill] 开始分析未处理观察记录...');
-    
-    // 1. 获取所有未分析的观察记录
-    const unanalyzedObservations = await memoryPlugin.get_observations({
-      status: 'unanalyzed'
-    });
-    
-    if (!unanalyzedObservations || unanalyzedObservations.length === 0) {
-      console.log('[analyze-observations-skill] 没有找到需要分析的观察记录');
-      return results;
-    }
-    
-    console.log(`[analyze-observations-skill] 找到 ${unanalyzedObservations.length} 条未分析记录`);
-    results.processedCount = unanalyzedObservations.length;
-    
-    // 2. 内联统计分析功能：计算最近N条观察的类型分布
-    results.statistics = await analyzeObservationDistribution(unanalyzedObservations);
-    
-    // 3. 对每条观察记录进行语义分析和模式识别
-    const analysisResults = [];
-    
-    for (const observation of unanalyzedObservations) {
-      try {
-        const analysis = analyzeSingleObservation(observation);
-        
-        if (analysis) {
-          analysisResults.push({
-            observationId: observation.id,
-            analysis: analysis
-          });
-          
-          // 4. 更新观察记录状态为已分析，并附加分析元数据
-          await memoryPlugin.update_observation_status(
-            observation.id,
-            'analyzed',
-            {
-              analyzedAt: new Date().toISOString(),
-              analysisSummary: analysis.summary,
-              identifiedPatterns: analysis.patterns,
-              evolutionGoals: analysis.evolutionGoals,
-              suggestedActions: analysis.actions
-            }
-          );
-          
-          results.updatedCount++;
+function calculateTypeDistribution(observations, n = 50) {
+  const recent = observations.slice(0, n);
+  const distribution = {};
+  
+  recent.forEach(obs => {
+    if (obs.content) {
+      // 简单分类
+      let category = 'general';
+      for (const [goal, config] of Object.entries(EVOLUTION_GOALS)) {
+        if (config.keywords.some(kw => obs.content.toLowerCase().includes(kw))) {
+          category = config.category;
+          break;
         }
-      } catch (error) {
-        console.error(`[analyze-observations-skill] 处理观察记录 ${observation.id} 时出错:`, error);
-        results.errors.push({
-          observationId: observation.id,
-          error: error.message,
-          stack: error.stack
+      }
+      distribution[category] = (distribution[category] || 0) + 1;
+    }
+  });
+  
+  return {
+    total: recent.length,
+    distribution,
+    timestamp: new Date().toISOString()
+  };
+}
+
+/**
+ * 分析单条观察记录
+ * @param {Object} observation 观察记录对象
+ * @param {Array} recentObservations 最近观察记录，用于模式检测
+ * @returns {Object} 分析结果
+ */
+function analyzeObservation(observation, recentObservations = []) {
+  const content = observation.content || '';
+  const analysis = {
+    observationId: observation.id,
+    timestamp: new Date().toISOString(),
+    problems: [],
+    patterns: [],
+    goalAssociations: [],
+    suggestions: [],
+    confidence: 0
+  };
+  
+  try {
+    // 1. 关键词分析，识别问题类型
+    for (const [goal, config] of Object.entries(EVOLUTION_GOALS)) {
+      const matchedKeywords = config.keywords.filter(kw => 
+        content.toLowerCase().includes(kw.toLowerCase())
+      );
+      
+      if (matchedKeywords.length > 0) {
+        analysis.goalAssociations.push({
+          goal,
+          category: config.category,
+          matchedKeywords,
+          relevance: matchedKeywords.length / config.keywords.length
         });
       }
     }
     
-    // 5. 生成并存储分析报告
+    // 2. 模式识别
+    const stats = {
+      recentSimilar: recentObservations.filter(obs => 
+        obs.content && obs.content.includes(content.substring(0, 20))
+      ).length
+    };
+    
+    for (const [pattern, rule] of Object.entries(PATTERN_RULES)) {
+      if (rule.test(content, stats)) {
+        analysis.patterns.push({
+          pattern,
+          analysis: rule.analysis,
+          suggestion: rule.suggestion
+        });
+      }
+    }
+    
+    // 3. 生成建议
+    if (analysis.goalAssociations.length > 0) {
+      analysis.suggestions.push(
+        `关联到${analysis.goalAssociations[0].goal}目标，建议针对性改进`
+      );
+    }
+    
+    if (analysis.patterns.length > 0) {
+      analysis.suggestions.push(analysis.patterns[0].suggestion);
+    }
+    
+    // 4. 计算置信度
+    analysis.confidence = Math.min(
+      (analysis.goalAssociations.length * 0.4) + 
+      (analysis.patterns.length * 0.3) + 
+      (analysis.suggestions.length * 0.3),
+      1.0
+    );
+    
+    // 5. 生成分析摘要
+    analysis.summary = `发现${analysis.problems.length}个问题，识别出${analysis.patterns.length}种模式，关联到${analysis.goalAssociations.length}个进化目标`;
+    
+  } catch (error) {
+    logger.error(`分析观察记录失败: ${observation.id}`, error);
+    analysis.error = error.message;
+    analysis.summary = `分析失败: ${error.message}`;
+  }
+  
+  return analysis;
+}
+
+/**
+ * 创建分析报告记忆
