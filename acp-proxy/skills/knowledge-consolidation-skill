@@ -1,82 +1,248 @@
-# acp-proxy/skills/knowledge-consolidation-skill/__init__.py
 """
-知识巩固技能 - 优化记忆管理机制
-实现智能记忆去重、重要性评分、定期回顾和知识图谱构建
+Knowledge Consolidation Skill
+Optimizes memory management through deduplication, scoring, periodic review, 
+knowledge graph construction, and memory compression.
 """
 
+import json
 import time
+import logging
+import schedule
+from datetime import datetime, timedelta
+from typing import Dict, List, Any, Optional, Tuple
+from dataclasses import dataclass, asdict
+from collections import defaultdict
 import hashlib
 import numpy as np
-from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple, Any
-from collections import defaultdict
-import json
-import threading
-from sentence_transformers import SentenceTransformer
-import faiss
-import logging
 
-# 配置日志
+# Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+@dataclass
 class Memory:
-    """记忆数据结构"""
-    def __init__(self, 
-                 content: str,
-                 embedding: Optional[np.ndarray] = None,
-                 metadata: Optional[Dict] = None):
-        self.id = hashlib.md5(content.encode()).hexdigest()[:16]
-        self.content = content
-        self.embedding = embedding
-        self.metadata = metadata or {}
-        self.created_at = datetime.now()
-        self.last_accessed = datetime.now()
-        self.access_count = 0
-        self.importance_score = 0.0
-        self.is_compressed = False
-        self.related_memories = []  # 关联的记忆ID
-        
-    def to_dict(self) -> Dict:
-        """转换为字典格式，兼容现有存储格式"""
-        return {
-            'id': self.id,
-            'content': self.content,
-            'metadata': self.metadata,
-            'created_at': self.created_at.isoformat(),
-            'last_accessed': self.last_accessed.isoformat(),
-            'access_count': self.access_count,
-            'importance_score': self.importance_score,
-            'is_compressed': self.is_compressed,
-            'related_memories': self.related_memories
-        }
+    """Memory data structure."""
+    id: str
+    content: str
+    embedding: List[float]  # Semantic embedding vector
+    created_at: float
+    last_accessed: float
+    access_count: int
+    emotional_intensity: float  # 0.0 - 1.0
+    information_value: float  # 0.0 - 1.0
+    tags: List[str]
+    source_session: str
+    metadata: Dict[str, Any]
+    
+    def to_dict(self) -> Dict[str, Any]:
+        return asdict(self)
     
     @classmethod
-    def from_dict(cls, data: Dict) -> 'Memory':
-        """从字典创建记忆，兼容旧格式"""
-        memory = cls(content=data['content'], metadata=data.get('metadata', {}))
-        memory.id = data.get('id', memory.id)
-        memory.created_at = datetime.fromisoformat(data.get('created_at', datetime.now().isoformat()))
-        memory.last_accessed = datetime.fromisoformat(data.get('last_accessed', datetime.now().isoformat()))
-        memory.access_count = data.get('access_count', 0)
-        memory.importance_score = data.get('importance_score', 0.0)
-        memory.is_compressed = data.get('is_compressed', False)
-        memory.related_memories = data.get('related_memories', [])
-        return memory
+    def from_dict(cls, data: Dict[str, Any]) -> 'Memory':
+        return cls(**data)
 
-class KnowledgeGraph:
-    """知识图谱数据结构"""
-    def __init__(self):
-        self.nodes = {}  # {node_id: {'content': str, 'type': str, 'properties': dict}}
-        self.edges = {}  # {edge_id: {'source': str, 'target': str, 'relation': str, 'weight': float}}
-        self.adjacency_list = defaultdict(set)  # {node_id: set(edge_ids)}
-        
-    def add_node(self, node_id: str, content: str, node_type: str, properties: Optional[Dict] = None):
-        """添加节点"""
-        self.nodes[node_id] = {
-            'content': content,
-            'type': node_type,
-            'properties': properties or {},
-            'created_at': datetime.now().isoformat()
+
+class KnowledgeConsolidationSkill:
+    """Main skill class for knowledge consolidation and memory management."""
+    
+    def __init__(self, storage_path: str = "memory_storage.json"):
+        self.storage_path = storage_path
+        self.memories: Dict[str, Memory] = {}
+        self.knowledge_graph: Dict[str, Dict[str, Any]] = {
+            "nodes": {},  # node_id -> node_data
+            "edges": []   # list of edge objects
         }
+        self.similarity_threshold = 0.85
+        self.scoring_weights = {
+            "access_frequency": 0.3,
+            "emotional_intensity": 0.3,
+            "information_value": 0.4
+        }
+        self.compression_threshold = 5  # Minimum memories for compression
         
+        # Load existing data
+        self._load_from_storage()
+        
+        # Schedule weekly review (Sunday at 22:00)
+        schedule.every().sunday.at("22:00").do(self._weekly_memory_review)
+        
+        logger.info("Knowledge Consolidation Skill initialized")
+    
+    # ==================== CORE ALGORITHMS ====================
+    
+    def _calculate_cosine_similarity(self, vec1: List[float], vec2: List[float]) -> float:
+        """Calculate cosine similarity between two vectors."""
+        if not vec1 or not vec2 or len(vec1) != len(vec2):
+            return 0.0
+        
+        try:
+            dot_product = sum(a * b for a, b in zip(vec1, vec2))
+            norm1 = sum(a * a for a in vec1) ** 0.5
+            norm2 = sum(b * b for b in vec2) ** 0.5
+            
+            if norm1 == 0 or norm2 == 0:
+                return 0.0
+            
+            return dot_product / (norm1 * norm2)
+        except:
+            return 0.0
+    
+    def _calculate_memory_importance(self, memory: Memory) -> float:
+        """Calculate importance score for a memory."""
+        # Normalize access frequency (log scale to handle wide range)
+        freq_score = min(1.0, np.log1p(memory.access_count) / 5.0)
+        
+        # Other scores are already normalized 0-1
+        emotional_score = memory.emotional_intensity
+        value_score = memory.information_value
+        
+        # Weighted sum
+        importance = (
+            self.scoring_weights["access_frequency"] * freq_score +
+            self.scoring_weights["emotional_intensity"] * emotional_score +
+            self.scoring_weights["information_value"] * value_score
+        )
+        
+        return round(importance, 4)
+    
+    def _generate_memory_id(self, content: str, timestamp: float) -> str:
+        """Generate unique memory ID."""
+        hash_input = f"{content}{timestamp}"
+        return hashlib.md5(hash_input.encode()).hexdigest()
+    
+    # ==================== MEMORY OPERATIONS ====================
+    
+    def add_memory(self, content: str, embedding: List[float], 
+                   emotional_intensity: float = 0.5, 
+                   information_value: float = 0.5,
+                   tags: List[str] = None,
+                   source_session: str = "default",
+                   metadata: Dict[str, Any] = None) -> Dict[str, Any]:
+        """
+        Add a new memory with deduplication check.
+        Returns: {"success": bool, "memory_id": str, "is_duplicate": bool, "merged_with": Optional[str]}
+        """
+        if tags is None:
+            tags = []
+        if metadata is None:
+            metadata = {}
+        
+        # Check for duplicates
+        duplicate_id = self._find_duplicate_memory(embedding)
+        
+        if duplicate_id:
+            # Merge with existing memory
+            self._merge_memories(duplicate_id, content, embedding, 
+                               emotional_intensity, information_value, tags)
+            logger.info(f"Merged new memory with existing memory {duplicate_id}")
+            return {
+                "success": True,
+                "memory_id": duplicate_id,
+                "is_duplicate": True,
+                "merged_with": duplicate_id
+            }
+        
+        # Create new memory
+        timestamp = time.time()
+        memory_id = self._generate_memory_id(content, timestamp)
+        
+        new_memory = Memory(
+            id=memory_id,
+            content=content,
+            embedding=embedding,
+            created_at=timestamp,
+            last_accessed=timestamp,
+            access_count=1,
+            emotional_intensity=emotional_intensity,
+            information_value=information_value,
+            tags=tags,
+            source_session=source_session,
+            metadata=metadata
+        )
+        
+        self.memories[memory_id] = new_memory
+        self._save_to_storage()
+        
+        logger.info(f"Added new memory {memory_id}")
+        return {
+            "success": True,
+            "memory_id": memory_id,
+            "is_duplicate": False,
+            "merged_with": None
+        }
+    
+    def _find_duplicate_memory(self, new_embedding: List[float]) -> Optional[str]:
+        """Find duplicate memory based on semantic similarity."""
+        if not new_embedding:
+            return None
+        
+        for memory_id, memory in self.memories.items():
+            similarity = self._calculate_cosine_similarity(new_embedding, memory.embedding)
+            if similarity >= self.similarity_threshold:
+                return memory_id
+        
+        return None
+    
+    def _merge_memories(self, existing_id: str, new_content: str, 
+                       new_embedding: List[float], new_emotional: float,
+                       new_value: float, new_tags: List[str]):
+        """Merge new information into existing memory."""
+        memory = self.memories[existing_id]
+        
+        # Update access statistics
+        memory.last_accessed = time.time()
+        memory.access_count += 1
+        
+        # Update embedding to be weighted average
+        weight_existing = 0.7
+        weight_new = 0.3
+        memory.embedding = [
+            (existing * weight_existing + new * weight_new)
+            for existing, new in zip(memory.embedding, new_embedding)
+        ]
+        
+        # Update emotional intensity and information value (weighted average)
+        memory.emotional_intensity = (
+            memory.emotional_intensity * weight_existing + 
+            new_emotional * weight_new
+        )
+        memory.information_value = (
+            memory.information_value * weight_existing + 
+            new_value * weight_new
+        )
+        
+        # Merge tags
+        memory.tags = list(set(memory.tags + new_tags))
+        
+        # Append to metadata about merges
+        if "merge_history" not in memory.metadata:
+            memory.metadata["merge_history"] = []
+        memory.metadata["merge_history"].append({
+            "timestamp": time.time(),
+            "content_preview": new_content[:100]
+        })
+        
+        self._save_to_storage()
+    
+    def query_memories(self, query_embedding: List[float] = None,
+                      tags: List[str] = None,
+                      top_k: int = 10,
+                      min_importance: float = 0.0,
+                      time_range: Tuple[float, float] = None) -> List[Dict[str, Any]]:
+        """
+        Query memories with various filters.
+        Returns list of memories sorted by relevance/importance.
+        """
+        results = []
+        
+        for memory in self.memories.values():
+            # Apply filters
+            if tags and not any(tag in memory.tags for tag in tags):
+                continue
+            
+            importance = self._calculate_memory_importance(memory)
+            if importance < min_importance:
+                continue
+            
+            if time_range:
+                start_time, end_time = time_range
