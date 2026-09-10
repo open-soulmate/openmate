@@ -1,0 +1,71 @@
+import time
+import json
+import heapq
+from datetime import datetime, timedelta
+from typing import Dict, List, Tuple, Any, Optional, Set
+import numpy as np
+from collections import defaultdict
+import threading
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import schedule
+
+class Memory:
+    """记忆数据结构"""
+    def __init__(self, memory_id: str, content: str, metadata: Dict[str, Any] = None):
+        self.id = memory_id
+        self.content = content
+        self.metadata = metadata or {}
+        self.embedding = None
+        self.usage_count = self.metadata.get('usage_count', 0)
+        self.emotion_intensity = self.metadata.get('emotion_intensity', 0.5)
+        self.information_value = self.metadata.get('information_value', 0.5)
+        self.timestamp = self.metadata.get('timestamp', datetime.now().isoformat())
+        self.last_accessed = self.metadata.get('last_accessed', datetime.now().isoformat())
+        self.importance_score = 0.0
+        self.connections: Set[str] = set()
+        
+    def update_importance_score(self):
+        """更新记忆重要性评分"""
+        self.importance_score = (
+            0.3 * min(1.0, self.usage_count / 10) +
+            0.3 * self.emotion_intensity +
+            0.4 * self.information_value
+        )
+        
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': self.id,
+            'content': self.content,
+            'metadata': {
+                **self.metadata,
+                'usage_count': self.usage_count,
+                'emotion_intensity': self.emotion_intensity,
+                'information_value': self.information_value,
+                'timestamp': self.timestamp,
+                'last_accessed': self.last_accessed,
+                'connections': list(self.connections)
+            },
+            'embedding': self.embedding.tolist() if self.embedding is not None else None,
+            'importance_score': self.importance_score
+        }
+
+class KnowledgeGraph:
+    """知识图谱结构"""
+    def __init__(self):
+        self.nodes: Dict[str, Dict[str, Any]] = {}
+        self.edges: Dict[str, List[str]] = defaultdict(list)
+        
+    def add_node(self, node_id: str, node_data: Dict[str, Any]):
+        self.nodes[node_id] = node_data
+        
+    def add_edge(self, from_node: str, to_node: str, relation: str = "related_to"):
+        if from_node in self.nodes and to_node in self.nodes:
+            self.edges[from_node].append(f"{relation}:{to_node}")
+            self.edges[to_node].append(f"{relation}:{from_node}")
+            
+    def query_node(self, node_id: str) -> Optional[Dict[str, Any]]:
+        return self.nodes.get(node_id)
+    
+    def query_neighbors(self, node_id: str, relation_filter: str = None) -> List[str]:
+        neighbors = self.edges.get(node_id, [])
+        if relation_filter:
