@@ -1,203 +1,238 @@
-# acp-proxy/skills/self-programming-executor-skill/__init__.py
+#!/usr/bin/env python3
+"""
+Self-Programming Executor Skill - Enables agent to write and execute code improvements
+"""
 
-from .sandbox import CodeSandbox
-from .code_generator import CodeGenerator
-from .risk_assessor import RiskAssessor
-from .improvement_loop import ImprovementLoop
-from .version_control import VersionControl
-from .rollback_manager import RollbackManager
-from .logger import SelfProgrammingLogger
+import ast
+import os
+import sys
+import json
+import time
+import shutil
+import tempfile
+import subprocess
+import hashlib
+import logging
+from typing import Dict, List, Optional, Any, Tuple
+from dataclasses import dataclass, asdict
+from datetime import datetime
+from pathlib import Path
+from enum import Enum
+import threading
+from contextlib import contextmanager
+import importlib.util
 
-class SelfProgrammingExecutorSkill:
-    """自我编程执行技能"""
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+
+class TargetType(Enum):
+    """Types of improvement targets"""
+    SKILL_ENHANCEMENT = "skill_enhancement"
+    PLUGIN_OPTIMIZATION = "plugin_optimization"
+    TOOL_CREATION = "tool_creation"
+
+
+class RiskLevel(Enum):
+    """Risk assessment levels"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+@dataclass
+class CodeImprovement:
+    """Represents a code improvement proposal"""
+    id: str
+    target_type: TargetType
+    target_name: str
+    description: str
+    original_code: Optional[str] = None
+    proposed_code: str = ""
+    pseudocode: str = ""
+    file_path: str = ""
+    risk_assessment: Optional[Dict] = None
+    timestamp: datetime = None
     
-    def __init__(self, workspace_path: str = "/tmp/self_programming"):
-        self.workspace_path = workspace_path
-        self.logger = SelfProgrammingLogger(workspace_path)
-        self.sandbox = CodeSandbox(workspace_path)
-        self.code_generator = CodeGenerator()
-        self.risk_assessor = RiskAssessor()
-        self.version_control = VersionControl(workspace_path)
-        self.rollback_manager = RollbackManager(workspace_path)
-        self.improvement_loop = ImprovementLoop(
-            sandbox=self.sandbox,
-            code_generator=self.code_generator,
-            risk_assessor=self.risk_assessor,
-            version_control=self.version_control,
-            rollback_manager=self.rollback_manager,
-            logger=self.logger
-        )
-        
-        # 初始化技能目录结构
-        self._init_skill_directory()
+    def __post_init__(self):
+        if self.timestamp is None:
+            self.timestamp = datetime.now()
+
+
+@dataclass
+class SandboxResult:
+    """Result of sandbox execution"""
+    success: bool
+    output: str
+    error: Optional[str] = None
+    execution_time: float = 0.0
+    memory_usage: Optional[int] = None
+    return_value: Any = None
+
+
+@dataclass
+class ExecutionLog:
+    """Log of self-modification operations"""
+    operation: str
+    timestamp: datetime
+    details: Dict[str, Any]
+    success: bool
+    error: Optional[str] = None
+
+
+class SandboxEnvironment:
+    """Sandbox environment for safe code execution"""
     
-    def _init_skill_directory(self):
-        """初始化技能目录结构"""
-        import os
-        directories = [
-            self.workspace_path,
-            os.path.join(self.workspace_path, "temp"),
-            os.path.join(self.workspace_path, "versions"),
-            os.path.join(self.workspace_path, "logs"),
-            os.path.join(self.workspace_path, "backups")
+    def __init__(self, temp_dir: Optional[str] = None):
+        self.temp_dir = temp_dir or tempfile.mkdtemp(prefix="self_programming_")
+        self.restricted_imports = [
+            'os', 'sys', 'subprocess', 'shutil', 'pathlib',
+            'socket', 'http', 'urllib', 'ftplib', 'smtplib'
+        ]
+        self.allowed_modules = [
+            'math', 'datetime', 'json', 'collections', 'itertools',
+            'functools', 'typing', 'dataclasses', 'logging'
         ]
         
-        for directory in directories:
-            os.makedirs(directory, exist_ok=True)
-    
-    def generate_code_improvement(self, target: str, target_type: str = "skill_enhancement") -> dict:
-        """
-        生成代码改进方案
+    def validate_code(self, code: str) -> Tuple[bool, List[str]]:
+        """Validate code for safety"""
+        issues = []
         
-        参数:
-            target: 改进目标描述
-            target_type: 目标类型 - skill_enhancement/plugin_optimization/tool_creation
-            
-        返回:
-            改进方案详情
-        """
         try:
-            self.logger.log_action("generate_improvement", {
-                "target": target,
-                "target_type": target_type
-            })
-            
-            # 生成代码改进方案
-            improvement_plan = self.code_generator.generate_improvement(target, target_type)
-            
-            # 进行风险评估
-            risk_assessment = self.assess_risk(improvement_plan["code"])
-            improvement_plan["risk_assessment"] = risk_assessment
-            
-            self.logger.log_action("improvement_generated", {
-                "target": target,
-                "code_lines": len(improvement_plan["code"].split("\n")),
-                "risk_level": risk_assessment["risk_level"]
-            })
-            
-            return improvement_plan
-            
-        except Exception as e:
-            self.logger.log_error("generate_improvement_failed", str(e))
-            raise
-    
-    def execute_in_sandbox(self, code: str, timeout: int = 30) -> dict:
-        """
-        在沙箱中执行代码
+            tree = ast.parse(code)
+        except SyntaxError as e:
+            return False, [f"Syntax error: {e}"]
         
-        参数:
-            code: 要执行的Python代码
-            timeout: 执行超时时间(秒)
+        # Check for dangerous system calls
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Call):
+                if isinstance(node.func, ast.Attribute):
+                    if node.func.attr in ['system', 'popen', 'exec', 'eval']:
+                        issues.append(f"Dangerous function call: {node.func.attr}")
+                elif isinstance(node.func, ast.Name):
+                    if node.func.id in ['exec', 'eval', 'compile']:
+                        issues.append(f"Dangerous function call: {node.func.id}")
             
-        返回:
-            执行结果详情
-        """
-        try:
-            self.logger.log_action("execute_in_sandbox", {
-                "code_lines": len(code.split("\n")),
-                "timeout": timeout
-            })
+            # Check for file operations
+            if isinstance(node, ast.Name) and node.id in ['open', 'file']:
+                issues.append("File operation detected")
             
-            # 在沙箱中执行代码
-            execution_result = self.sandbox.execute(code, timeout)
-            
-            self.logger.log_action("sandbox_execution_completed", {
-                "success": execution_result["success"],
-                "execution_time": execution_result.get("execution_time", 0)
-            })
-            
-            return execution_result
-            
-        except Exception as e:
-            self.logger.log_error("sandbox_execution_failed", str(e))
-            raise
-    
-    def assess_risk(self, code: str) -> dict:
-        """
-        评估代码风险
+            # Check for network operations
+            if isinstance(node, ast.Import):
+                for alias in node.names:
+                    if alias.name.split('.')[0] in self.restricted_imports:
+                        issues.append(f"Restricted import: {alias.name}")
         
-        参数:
-            code: 要评估的Python代码
-            
-        返回:
-            风险评估详情
-        """
-        try:
-            self.logger.log_action("assess_risk", {
-                "code_lines": len(code.split("\n"))
-            })
-            
-            # 进行风险评估
-            risk_assessment = self.risk_assessor.assess(code)
-            
-            self.logger.log_action("risk_assessment_completed", {
-                "risk_level": risk_assessment["risk_level"],
-                "risk_score": risk_assessment["risk_score"],
-                "issues_found": len(risk_assessment.get("issues", []))
-            })
-            
-            return risk_assessment
-            
-        except Exception as e:
-            self.logger.log_error("risk_assessment_failed", str(e))
-            raise
+        return len(issues) == 0, issues
     
-    def deploy_change(self, code: str, commit_message: str, auto_rollback: bool = True) -> dict:
-        """
-        部署代码更改
+    @contextmanager
+    def execution_context(self):
+        """Create isolated execution context"""
+        original_dir = os.getcwd()
+        os.chdir(self.temp_dir)
         
-        参数:
-            code: 要部署的代码
-            commit_message: 提交信息
-            auto_rollback: 是否在失败时自动回滚
-            
-        返回:
-            部署结果详情
-        """
-        try:
-            self.logger.log_action("deploy_change", {
-                "code_lines": len(code.split("\n")),
-                "commit_message": commit_message,
-                "auto_rollback": auto_rollback
-            })
-            
-            # 创建备份点
-            backup_id = self.rollback_manager.create_backup()
-            
-            # 在沙箱中测试代码
-            test_result = self.execute_in_sandbox(code)
-            
-            if not test_result["success"]:
-                if auto_rollback:
-                    self.logger.log_action("auto_rollback_triggered", {
-                        "backup_id": backup_id,
-                        "reason": "sandbox_test_failed"
-                    })
-                    self.rollback_manager.rollback(backup_id)
-                    
-                return {
-                    "success": False,
-                    "error": "沙箱测试失败",
-                    "test_result": test_result,
-                    "rolled_back": auto_rollback
-                }
-            
-            # 版本控制提交
-            commit_result = self.version_control.commit_code(code, commit_message)
-            
-            self.logger.log_action("deployment_completed", {
-                "commit_id": commit_result.get("commit_id"),
-                "success": True
-            })
-            
-            return {
-                "success": True,
-                "commit_result": commit_result,
-                "test_result": test_result,
-                "backup_id": backup_id
+        # Create restricted Python environment
+        restricted_globals = {
+            '__builtins__': {
+                'print': print,
+                'range': range,
+                'len': len,
+                'type': type,
+                'isinstance': isinstance,
+                'int': int,
+                'float': float,
+                'str': str,
+                'bool': bool,
+                'list': list,
+                'dict': dict,
+                'tuple': tuple,
+                'set': set,
+                'map': map,
+                'filter': filter,
+                'zip': zip,
+                'sum': sum,
+                'min': min,
+                'max': max,
+                'sorted': sorted,
+                'reversed': reversed,
+                'enumerate': enumerate,
+                'any': any,
+                'all': all,
+                'abs': abs,
+                'round': round,
+                'pow': pow,
+                'divmod': divmod,
+                'hash': hash,
+                'id': id,
+                'chr': chr,
+                'ord': ord,
+                'hex': hex,
+                'oct': oct,
+                'bin': bin,
             }
-            
+        }
+        
+        try:
+            yield restricted_globals
+        finally:
+            os.chdir(original_dir)
+    
+    def execute(self, code: str, timeout: int = 30) -> SandboxResult:
+        """Execute code in sandbox environment"""
+        start_time = time.time()
+        
+        # Validate code first
+        is_valid, issues = self.validate_code(code)
+        if not is_valid:
+            return SandboxResult(
+                success=False,
+                output="",
+                error=f"Code validation failed: {'; '.join(issues)}",
+                execution_time=time.time() - start_time
+            )
+        
+        try:
+            with self.execution_context() as globals_dict:
+                # Add safe imports
+                for module_name in self.allowed_modules:
+                    try:
+                        module = importlib.import_module(module_name)
+                        globals_dict[module_name] = module
+                    except ImportError:
+                        pass
+                
+                # Compile and execute
+                compiled_code = compile(code, '<sandbox>', 'exec')
+                exec(compiled_code, globals_dict)
+                
+                return SandboxResult(
+                    success=True,
+                    output="Execution completed successfully",
+                    execution_time=time.time() - start_time
+                )
+                
         except Exception as e:
-            if auto_rollback:
-                self.logger.log_action("auto_rollback_triggered", {
-                    "backup_id": backup_id,
+            return SandboxResult(
+                success=False,
+                output="",
+                error=str(e),
+                execution_time=time.time() - start_time
+            )
+    
+    def cleanup(self):
+        """Clean up sandbox environment"""
+        if os.path.exists(self.temp_dir):
+            shutil.rmtree(self.temp_dir, ignore_errors=True)
+
+
+class CodeGenerator:
+    """Generates code based on improvement targets"""
+    
+    def __init__(self):
+        self.templates = self._load_templates()
+        
