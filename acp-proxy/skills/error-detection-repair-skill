@@ -1,33 +1,21 @@
-# acp-proxy/skills/error-detection-repair-skill/error_detection_repair_skill.py
 """
 Error Detection and Repair Skill - 实现错误自修复能力
-多维度错误监控、错误模式学习、根因分析、修复策略生成与执行
 """
-
 import time
 import logging
-import json
-import hashlib
-import traceback
+import threading
+import psutil
 from typing import Dict, List, Any, Optional, Tuple
 from datetime import datetime, timedelta
-from dataclasses import dataclass, asdict
+from collections import defaultdict
+from dataclasses import dataclass, field
 from enum import Enum
 import numpy as np
-from collections import defaultdict
-import sqlite3
-import threading
-from concurrent.futures import ThreadPoolExecutor, Future
-import pickle
-from pathlib import Path
-
-# 机器学习相关
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.cluster import DBSCAN, KMeans
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import RandomForestClassifier
-import warnings
-warnings.filterwarnings('ignore')
+from sklearn.cluster import DBSCAN
+import joblib
+import json
+import hashlib
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -37,54 +25,34 @@ logger = logging.getLogger(__name__)
 class ErrorType(Enum):
     """错误类型枚举"""
     RUNTIME_ERROR = "runtime_error"
-    PERFORMANCE_ANOMALY = "performance_anomaly"
+    PERFORMANCE_ERROR = "performance_error"
     LOGIC_ERROR = "logic_error"
-    RESOURCE_LEAK = "resource_leak"
-    NETWORK_ERROR = "network_error"
-    TIMEOUT_ERROR = "timeout_error"
-    MEMORY_ERROR = "memory_error"
-    UNKNOWN = "unknown"
+    RESOURCE_ERROR = "resource_error"
+    UNKNOWN_ERROR = "unknown_error"
 
 
 class ErrorSeverity(Enum):
     """错误严重程度"""
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+    CRITICAL = 4
 
 
 @dataclass
 class ErrorLog:
     """错误日志数据结构"""
+    error_id: str
     timestamp: datetime
     error_type: ErrorType
-    error_message: str
-    error_traceback: str
-    system_metrics: Dict[str, Any]
-    context: Dict[str, Any]
     severity: ErrorSeverity
-    occurrence_count: int = 1
-    last_occurrence: datetime = None
-    
-    def __post_init__(self):
-        if self.last_occurrence is None:
-            self.last_occurrence = self.timestamp
-        self.error_id = self._generate_error_id()
-    
-    def _generate_error_id(self) -> str:
-        """生成错误唯一标识"""
-        content = f"{self.error_type.value}:{self.error_message[:100]}"
-        return hashlib.md5(content.encode()).hexdigest()
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
-        data = asdict(self)
-        data['timestamp'] = self.timestamp.isoformat()
-        data['last_occurrence'] = self.last_occurrence.isoformat()
-        data['error_type'] = self.error_type.value
-        data['severity'] = self.severity.value
-        return data
+    error_message: str
+    stack_trace: Optional[str] = None
+    system_metrics: Dict[str, Any] = field(default_factory=dict)
+    context_info: Dict[str, Any] = field(default_factory=dict)
+    resolved: bool = False
+    resolution_method: Optional[str] = None
+    resolution_time: Optional[datetime] = None
 
 
 @dataclass
@@ -92,172 +60,162 @@ class RepairStrategy:
     """修复策略数据结构"""
     strategy_id: str
     error_type: ErrorType
-    repair_type: str  # temporary, permanent
+    description: str
     steps: List[str]
     estimated_time: float  # 秒
-    success_probability: float
+    stability_score: float  # 0-1
     side_effects: List[str]
     rollback_plan: List[str]
-    validation_checks: List[str]
-    created_at: datetime = None
-    
-    def __post_init__(self):
-        if self.created_at is None:
-            self.created_at = datetime.now()
+    sandbox_test_required: bool = True
 
 
-class ErrorKnowledgeBase:
-    """错误知识库 - 存储和管理错误模式与解决方案"""
+class ErrorDetectionRepairSkill:
+    """错误检测与修复技能主类"""
     
-    def __init__(self, db_path: str = "error_knowledge.db"):
-        self.db_path = db_path
-        self._init_database()
-        self.error_patterns = defaultdict(list)
-        self.repair_strategies = {}
-        self._load_knowledge()
+    def __init__(self):
+        """初始化错误检测与修复技能"""
+        # 错误监控配置
+        self.monitoring_config = {
+            'response_time_threshold': 2.0,  # 秒
+            'cpu_threshold': 80.0,  # 百分比
+            'memory_threshold': 85.0,  # 百分比
+            'disk_io_threshold': 90.0,  # 百分比
+            'check_interval': 5  # 秒
+        }
         
-    def _init_database(self):
-        """初始化数据库"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+        # 错误存储
+        self.error_logs: Dict[str, ErrorLog] = {}
+        self.error_history: List[ErrorLog] = []
         
-        # 创建错误日志表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS error_logs (
-                id TEXT PRIMARY KEY,
-                timestamp DATETIME,
-                error_type TEXT,
-                error_message TEXT,
-                error_traceback TEXT,
-                system_metrics TEXT,
-                context TEXT,
-                severity TEXT,
-                occurrence_count INTEGER DEFAULT 1,
-                last_occurrence DATETIME,
-                solution_applied TEXT,
-                resolution_time REAL,
-                success BOOLEAN
-            )
-        ''')
+        # 机器学习模型
+        self.error_classifier = DecisionTreeClassifier()
+        self.error_clusterer = DBSCAN(eps=0.5, min_samples=5)
+        self.models_trained = False
         
-        # 创建修复策略表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS repair_strategies (
-                strategy_id TEXT PRIMARY KEY,
-                error_type TEXT,
-                repair_type TEXT,
-                steps TEXT,
-                estimated_time REAL,
-                success_probability REAL,
-                side_effects TEXT,
-                validation_checks TEXT,
-                usage_count INTEGER DEFAULT 0,
-                success_count INTEGER DEFAULT 0,
-                created_at DATETIME
-            )
-        ''')
+        # 错误知识库
+        self.knowledge_base: Dict[str, Any] = {
+            'error_patterns': {},
+            'solutions': {},
+            'statistics': {
+                'total_errors': 0,
+                'resolved_errors': 0,
+                'success_rate': 0.0,
+                'avg_resolution_time': 0.0
+            }
+        }
         
-        # 创建错误模式表
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS error_patterns (
-                pattern_id TEXT PRIMARY KEY,
-                error_type TEXT,
-                pattern_signature TEXT,
-                frequency INTEGER DEFAULT 1,
-                common_solution TEXT,
-                avg_resolution_time REAL,
-                success_rate REAL,
-                last_seen DATETIME
-            )
-        ''')
+        # 监控线程控制
+        self.monitoring_active = False
+        self.monitoring_thread = None
         
-        conn.commit()
-        conn.close()
+        # 初始化错误模式库
+        self._initialize_error_patterns()
+        
+        # 加载预训练模型（如果有）
+        self._load_models()
+        
+        logger.info("错误检测与修复技能初始化完成")
     
-    def add_error_log(self, error_log: ErrorLog):
-        """添加错误日志到知识库"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
+    def _initialize_error_patterns(self):
+        """初始化常见错误模式库"""
+        self.knowledge_base['error_patterns'] = {
+            'null_pointer': {
+                'type': ErrorType.RUNTIME_ERROR,
+                'pattern': r'NullPointerException|NullPointerError',
+                'solution': '添加空值检查，确保对象初始化'
+            },
+            'memory_leak': {
+                'type': ErrorType.RESOURCE_ERROR,
+                'pattern': r'MemoryError|OutOfMemory',
+                'solution': '检查资源释放，优化内存使用'
+            },
+            'timeout': {
+                'type': ErrorType.PERFORMANCE_ERROR,
+                'pattern': r'TimeoutError|ConnectionTimeout',
+                'solution': '优化响应时间，增加超时设置'
+            },
+            'infinite_loop': {
+                'type': ErrorType.LOGIC_ERROR,
+                'pattern': r'InfiniteLoopError|StackOverflow',
+                'solution': '检查循环条件，添加终止条件'
+            }
+        }
+    
+    def _load_models(self):
+        """加载预训练的机器学习模型"""
+        try:
+            # 尝试加载已训练的模型
+            self.error_classifier = joblib.load('error_classifier.pkl')
+            self.error_clusterer = joblib.load('error_clusterer.pkl')
+            self.models_trained = True
+            logger.info("已加载预训练的错误分类和聚类模型")
+        except FileNotFoundError:
+            logger.warning("未找到预训练模型，将在首次使用时进行训练")
+            self.models_trained = False
+    
+    def detect_errors(self) -> List[ErrorLog]:
+        """
+        执行多维度错误检测
+        
+        Returns:
+            List[ErrorLog]: 检测到的错误列表
+        """
+        logger.info("开始执行错误检测...")
+        detected_errors = []
+        
+        # 1. 运行时错误监控
+        runtime_errors = self._monitor_runtime_errors()
+        detected_errors.extend(runtime_errors)
+        
+        # 2. 性能异常监控
+        performance_errors = self._monitor_performance_errors()
+        detected_errors.extend(performance_errors)
+        
+        # 3. 逻辑错误检测
+        logic_errors = self._detect_logic_errors()
+        detected_errors.extend(logic_errors)
+        
+        # 4. 资源泄漏监控
+        resource_errors = self._monitor_resource_leaks()
+        detected_errors.extend(resource_errors)
+        
+        # 保存检测到的错误
+        for error in detected_errors:
+            self.error_logs[error.error_id] = error
+            self.error_history.append(error)
+            self.knowledge_base['statistics']['total_errors'] += 1
+        
+        logger.info(f"错误检测完成，共检测到 {len(detected_errors)} 个错误")
+        return detected_errors
+    
+    def _monitor_runtime_errors(self) -> List[ErrorLog]:
+        """监控运行时错误（异常捕获）"""
+        errors = []
+        
+        # 这里可以集成实际的异常捕获机制
+        # 示例：监控特定日志或异常处理程序
+        
+        return errors
+    
+    def _monitor_performance_errors(self) -> List[ErrorLog]:
+        """监控性能异常（响应时间、CPU、内存等）"""
+        errors = []
         
         try:
-            # 检查是否已存在相同错误
-            cursor.execute(
-                "SELECT occurrence_count, last_occurrence FROM error_logs WHERE id = ?",
-                (error_log.error_id,)
-            )
-            result = cursor.fetchone()
+            # 获取当前性能指标
+            cpu_percent = psutil.cpu_percent(interval=1)
+            memory = psutil.virtual_memory()
+            disk_io = psutil.disk_io_counters()
             
-            if result:
-                # 更新已存在的错误
-                occurrence_count = result[0] + 1
-                cursor.execute('''
-                    UPDATE error_logs 
-                    SET occurrence_count = ?, last_occurrence = ?, 
-                        system_metrics = ?, context = ?
-                    WHERE id = ?
-                ''', (occurrence_count, datetime.now(), 
-                     json.dumps(error_log.system_metrics),
-                     json.dumps(error_log.context),
-                     error_log.error_id))
-            else:
-                # 插入新错误
-                cursor.execute('''
-                    INSERT INTO error_logs 
-                    (id, timestamp, error_type, error_message, error_traceback,
-                     system_metrics, context, severity, occurrence_count, last_occurrence)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ''', (
-                    error_log.error_id,
-                    error_log.timestamp,
-                    error_log.error_type.value,
-                    error_log.error_message,
-                    error_log.error_traceback,
-                    json.dumps(error_log.system_metrics),
-                    json.dumps(error_log.context),
-                    error_log.severity.value,
-                    error_log.occurrence_count,
-                    error_log.last_occurrence
-                ))
+            # 检查CPU使用率
+            if cpu_percent > self.monitoring_config['cpu_threshold']:
+                error = ErrorLog(
+                    error_id=self._generate_error_id(),
+                    timestamp=datetime.now(),
+                    error_type=ErrorType.PERFORMANCE_ERROR,
+                    severity=ErrorSeverity.HIGH,
+                    error_message=f"CPU使用率过高: {cpu_percent}%",
+                    system_metrics={'cpu_percent': cpu_percent}
+                )
+                errors.append(error)
             
-            conn.commit()
-        finally:
-            conn.close()
-    
-    def add_repair_strategy(self, strategy: RepairStrategy):
-        """添加修复策略到知识库"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        try:
-            cursor.execute('''
-                INSERT OR REPLACE INTO repair_strategies 
-                (strategy_id, error_type, repair_type, steps, estimated_time,
-                 success_probability, side_effects, validation_checks, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ''', (
-                strategy.strategy_id,
-                strategy.error_type.value,
-                strategy.repair_type,
-                json.dumps(strategy.steps),
-                strategy.estimated_time,
-                strategy.success_probability,
-                json.dumps(strategy.side_effects),
-                json.dumps(strategy.validation_checks),
-                strategy.created_at
-            ))
-            
-            conn.commit()
-        finally:
-            conn.close()
-    
-    def get_error_history(self, error_type: ErrorType, limit: int = 100) -> List[Dict]:
-        """获取错误历史"""
-        conn = sqlite3.connect(self.db_path)
-        cursor = conn.cursor()
-        
-        try:
-            cursor.execute('''
-                SELECT * FROM error_logs 
-                WHERE error_type = ? 
-                ORDER BY timestamp DESC 
-                LIMIT ?
