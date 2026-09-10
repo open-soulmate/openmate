@@ -1,209 +1,172 @@
+#!/usr/bin/env python3
+"""
+Observation Analyzer Skill - Core component for continuous evolution
+"""
+
+import json
+import os
+import time
 from datetime import datetime
-from typing import Any, Dict, List, Optional
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Any, Optional
+import logging
+from pathlib import Path
 
-from acp_proxy.skills.base import BaseSkill
-from acp_proxy.memory.manager import MemoryManager
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger('observation_analyzer')
 
-
-@dataclass
-class Pattern:
-    """观察模式数据结构"""
-    pattern_type: str
-    description: str
-    frequency: int
-    last_seen: str
-
-
-class ObservationAnalyzer(BaseSkill):
-    """观察分析优化技能，用于分析观察数据并提取可复用模式"""
+class ObservationAnalyzer:
+    """Skill for analyzing observations and triggering evolutionary improvements"""
     
-    # 可配置的分析阈值
-    UNANALYZED_THRESHOLD = 2
-    
-    def __init__(self, memory_manager: MemoryManager, config: Optional[Dict[str, Any]] = None):
-        """初始化观察分析器
+    def __init__(self, 
+                 observations_path: str = "data/observations.json",
+                 goals_path: str = "data/goals.json",
+                 knowledge_path: str = "data/knowledge_base.md",
+                 unanalyzed_threshold: int = 2):
+        """
+        Initialize the observation analyzer skill
         
         Args:
-            memory_manager: 记忆管理器实例
-            config: 配置字典，可包含自定义阈值等配置
+            observations_path: Path to observations data file
+            goals_path: Path to evolution goals file
+            knowledge_path: Path to knowledge base file
+            unanalyzed_threshold: Minimum number of unanalyzed observations to trigger analysis
         """
-        super().__init__()
-        self.memory = memory_manager
+        self.observations_path = Path(observations_path)
+        self.goals_path = Path(goals_path)
+        self.knowledge_path = Path(knowledge_path)
+        self.unanalyzed_threshold = unanalyzed_threshold
         
-        # 应用配置
-        if config:
-            self.UNANALYZED_THRESHOLD = config.get('unanalyzed_threshold', self.UNANALYZED_THRESHOLD)
+        # Ensure directories exist
+        self.observations_path.parent.mkdir(parents=True, exist_ok=True)
+        self.knowledge_path.parent.mkdir(parents=True, exist_ok=True)
         
-        # 确保patterns字段存在
-        if 'patterns' not in self.memory.get_all():
-            self.memory.set('patterns', [])
-        
-        # 确保observations字段存在
-        if 'observations' not in self.memory.get_all():
-            self.memory.set('observations', [])
+        logger.info(f"ObservationAnalyzer initialized with threshold: {unanalyzed_threshold}")
     
-    def monitor_unanalyzed(self) -> Dict[str, Any]:
-        """监控未分析观察数量
+    def run_analysis(self) -> Dict[str, Any]:
+        """
+        Main entry point for triggering analysis cycle
         
         Returns:
-            监控结果，包含是否需要处理的状态
+            Dictionary containing analysis report and execution status
         """
-        observations = self.memory.get('observations', [])
-        unanalyzed_count = sum(1 for obs in observations if not obs.get('analyzed', False))
-        
-        needs_attention = unanalyzed_count > self.UNANALYZED_THRESHOLD
-        
-        return {
-            'unanalyzed_count': unanalyzed_count,
-            'threshold': self.UNANALYZED_THRESHOLD,
-            'needs_attention': needs_attention,
-            'timestamp': datetime.now().isoformat()
+        start_time = time.time()
+        report = {
+            "timestamp": datetime.now().isoformat(),
+            "observations_processed": 0,
+            "insights_generated": [],
+            "suggestions": [],
+            "potential_goal_impacts": {},
+            "self_programming_task": None,
+            "errors": []
         }
-    
-    def auto_analyze(self) -> List[Dict[str, Any]]:
-        """自动分析未分析的观察，进行分类
         
-        Returns:
-            分析结果列表，每个结果包含分析后的观察数据
-        """
-        observations = self.memory.get('observations', [])
-        analysis_results = []
-        
-        for obs in observations:
-            if not obs.get('analyzed', False):
-                # 分析观察并分类
-                analysis = self._analyze_observation(obs)
-                obs.update(analysis)
-                obs['analyzed'] = True
-                obs['analysis_timestamp'] = datetime.now().isoformat()
-                analysis_results.append(obs)
-        
-        # 更新记忆
-        self.memory.set('observations', observations)
-        
-        return analysis_results
-    
-    def _analyze_observation(self, observation: Dict[str, Any]) -> Dict[str, Any]:
-        """分析单个观察并分类
-        
-        Args:
-            observation: 待分析的观察数据
+        try:
+            # Step 1: Load and analyze observations
+            observations = self._load_observations()
+            unanalyzed = self._get_unanalyzed_observations(observations)
             
-        Returns:
-            分析结果，包含分类和分析详情
-        """
-        content = observation.get('content', '')
-        category = observation.get('category', 'unknown')
-        
-        # 基于内容特征的简单分类逻辑（实际应用中可能需要更复杂的分析）
-        if any(keyword in content.lower() for keyword in ['error', 'fail', 'exception', 'crash']):
-            analysis_type = 'error_pattern'
-        elif any(keyword in content.lower() for keyword in ['success', 'complete', 'achieve']):
-            analysis_type = 'success_pattern'
-        elif any(keyword in content.lower() for keyword in ['memory', 'cpu', 'resource', 'usage']):
-            analysis_type = 'resource_usage'
-        elif any(keyword in content.lower() for keyword in ['time', 'latency', 'performance', 'slow']):
-            analysis_type = 'performance_metric'
-        else:
-            analysis_type = 'general'
-        
-        return {
-            'analysis_type': analysis_type,
-            'confidence': 0.8,  # 示例置信度
-            'keywords': self._extract_keywords(content)
-        }
-    
-    def _extract_keywords(self, text: str) -> List[str]:
-        """从文本中提取关键词（简化实现）
-        
-        Args:
-            text: 输入文本
+            if len(unanalyzed) < self.unanalyzed_threshold:
+                logger.info(f"Only {len(unanalyzed)} unanalyzed observations (threshold: {self.unanalyzed_threshold}). Skipping analysis.")
+                report["status"] = "skipped"
+                report["reason"] = f"Insufficient unanalyzed observations ({len(unanalyzed)} < {self.unanalyzed_threshold})"
+                return report
             
-        Returns:
-            提取的关键词列表
-        """
-        # 简单实现：按空格分割并过滤短词
-        words = text.lower().split()
-        keywords = [word for word in words if len(word) > 3][:5]
-        return keywords
+            logger.info(f"Starting analysis of {len(unanalyzed)} unanalyzed observations")
+            
+            # Step 2: Perform analysis
+            analysis_results = self._analyze_observations(unanalyzed)
+            report.update({
+                "observations_processed": len(unanalyzed),
+                "insights_generated": analysis_results["insights"],
+                "suggestions": analysis_results["suggestions"],
+                "potential_goal_impacts": analysis_results["goal_impacts"]
+            })
+            
+            # Step 3: Generate self-programming task if needed
+            self_programming_task = self._check_and_generate_self_programming_task(analysis_results)
+            if self_programming_task:
+                report["self_programming_task"] = self_programming_task
+            
+            # Step 4: Update observation status and knowledge base
+            self._update_observations_status(observations, unanalyzed)
+            self._update_knowledge_base(analysis_results)
+            
+            report["status"] = "completed"
+            report["execution_time"] = time.time() - start_time
+            
+            logger.info(f"Analysis completed in {report['execution_time']:.2f} seconds")
+            
+        except Exception as e:
+            logger.error(f"Error during analysis: {str(e)}")
+            report["status"] = "failed"
+            report["errors"].append(str(e))
+            report["execution_time"] = time.time() - start_time
+            
+            # Log error for self-repair goal
+            self._log_error_for_repair(str(e))
+        
+        return report
     
-    def extract_patterns(self) -> List[Dict[str, Any]]:
-        """从分析结果中识别可复用的模式
-        
-        Returns:
-            提取的模式列表
-        """
-        observations = self.memory.get('observations', [])
-        patterns = self.memory.get('patterns', [])
-        
-        # 统计模式频率
-        pattern_stats = {}
-        current_time = datetime.now().isoformat()
-        
-        for obs in observations:
-            if obs.get('analyzed', False):
-                analysis_type = obs.get('analysis_type', 'unknown')
+    def _load_observations(self) -> List[Dict[str, Any]]:
+        """Load observations from file with error handling"""
+        try:
+            if not self.observations_path.exists():
+                logger.warning(f"Observations file not found: {self.observations_path}. Creating empty file.")
+                with open(self.observations_path, 'w') as f:
+                    json.dump([], f)
+                return []
+            
+            with open(self.observations_path, 'r', encoding='utf-8') as f:
+                data = json.load(f)
                 
-                if analysis_type not in pattern_stats:
-                    pattern_stats[analysis_type] = {
-                        'count': 0,
-                        'descriptions': [],
-                        'last_seen': current_time
-                    }
+            if not isinstance(data, list):
+                raise ValueError("Observations file must contain a JSON array")
                 
-                pattern_stats[analysis_type]['count'] += 1
-                if obs.get('content'):
-                    pattern_stats[analysis_type]['descriptions'].append(obs['content'][:100])
-                pattern_stats[analysis_type]['last_seen'] = current_time
-        
-        # 创建或更新模式
-        for pattern_type, stats in pattern_stats.items():
-            existing_pattern = next(
-                (p for p in patterns if p.get('pattern_type') == pattern_type), 
-                None
-            )
+            return data
             
-            if existing_pattern:
-                existing_pattern['frequency'] += stats['count']
-                existing_pattern['last_seen'] = current_time
-                if stats['descriptions']:
-                    existing_pattern['description'] = f"包含 {len(stats['descriptions'])} 个相关观察"
-            else:
-                new_pattern = Pattern(
-                    pattern_type=pattern_type,
-                    description=f"新发现的{pattern_type}模式，包含 {stats['count']} 个观察",
-                    frequency=stats['count'],
-                    last_seen=current_time
-                )
-                patterns.append(asdict(new_pattern))
-        
-        # 更新记忆
-        self.memory.set('patterns', patterns)
-        
-        return patterns
+        except json.JSONDecodeError as e:
+            logger.error(f"Invalid JSON in observations file: {e}")
+            raise ValueError(f"Invalid JSON format in observations file: {e}")
+        except Exception as e:
+            logger.error(f"Error loading observations: {e}")
+            raise
     
-    def link_to_knowledge(self) -> Dict[str, Any]:
-        """将分析结果关联到知识积累目标
+    def _get_unanalyzed_observations(self, observations: List[Dict]) -> List[Dict]:
+        """Filter and return unanalyzed observations"""
+        unanalyzed = []
+        for obs in observations:
+            if not obs.get("analyzed", False):
+                # Ensure required fields exist
+                required_fields = ["content", "timestamp", "target"]
+                if all(field in obs for field in required_fields):
+                    unanalyzed.append(obs)
+                else:
+                    logger.warning(f"Skipping observation missing required fields: {obs}")
+        return unanalyzed
+    
+    def _analyze_observations(self, observations: List[Dict]) -> Dict[str, Any]:
+        """Perform analysis on observations - rule-driven analysis logic"""
+        insights = []
+        suggestions = []
+        goal_impacts = {}
         
-        Returns:
-            关联结果，包含更新的目标进度
-        """
-        patterns = self.memory.get('patterns', [])
-        goals = self.memory.get('goals', {})
-        
-        # 查找或创建知识积累目标
-        if 'knowledge_accumulation' not in goals:
-            goals['knowledge_accumulation'] = {
-                'target': 100,  # 示例目标
-                'progress': 0,
-                'patterns_learned': [],
-                'last_updated': datetime.now().isoformat()
-            }
-        
-        goal = goals['knowledge_accumulation']
-        
-        # 更新目标进度：每个模式贡献10点进度
-        new_patterns = [p for p in patterns if p['pattern_type'] not in goal['patterns_learned']]
-        progress_increment = len(new_patterns) * 10
-        
+        # Simple rule-based analysis
+        for obs in observations:
+            content = obs.get("content", "").lower()
+            target = obs.get("target", "general")
+            
+            # Rule 1: Pattern detection for self-programming opportunities
+            if any(keyword in content for keyword in ["error", "bug", "fix", "improve", "optimize"]):
+                insights.append({
+                    "type": "improvement_opportunity",
+                    "observation_id": obs.get("id", "unknown"),
+                    "content": f"Potential improvement opportunity detected in {target}: {content[:100]}...",
+                    "confidence": 0.7,
+                    "related_target": target
+                })
+            
+            # Rule 2: Performance anomaly detection
