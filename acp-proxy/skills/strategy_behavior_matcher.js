@@ -1,149 +1,177 @@
 /**
  * 策略-行为匹配度监控技能
- * 解决策略声明激进但行为保守的认知不协调问题
+ * 用于检测策略声明与实际行为之间的不协调问题
+ * 定期分析进化日志，计算匹配度分数，并生成改进建议
  */
-
-const _ = require('lodash');
 
 class StrategyBehaviorMatcher {
   constructor() {
-    this.name = 'strategy-behavior-matcher';
+    this.skillName = 'strategy-behavior-matcher';
+    this.description = '策略-行为匹配度监控技能';
     this.version = '1.0.0';
-    this.description = '定期分析进化日志，对比声明的策略与实际行为记录，计算匹配度分数';
-    this.config = {
-      // 运行周期（每N个cycle运行一次）
-      runInterval: 3,
-      // 匹配度阈值
-      matchThreshold: 60,
-      // 探索性任务库
-      explorationTaskLibrary: [
-        '分析一个从未使用过的MCP工具描述',
-        '尝试为现有技能编写一个备选实现',
-        '研究一个与当前问题相关的新技术概念',
-        '探索一种新的数据处理方法或算法',
-        '尝试连接一个新的外部API或数据源',
-        '重构一个现有技能的实现，提升其性能或可扩展性',
-        '编写自动化测试用例覆盖一个未测试的功能模块',
-        '分析一个复杂系统的架构，提出优化建议',
-        '学习并应用一种新的设计模式',
-        '探索边缘案例的处理方法'
-      ],
-      // 策略关键词映射
-      strategyKeywords: {
-        exploration: ['探索', '大胆', '尝试', '创新', '实验', '未知', '新领域'],
-        efficiency: ['高效', '优化', '加速', '精简', '自动化'],
-        robustness: ['稳健', '可靠', '容错', '备份', '恢复'],
-        learning: ['学习', '研究', '分析', '理解', '掌握']
-      }
+    
+    // 配置参数
+    this.executionInterval = 3; // 每3个cycle执行一次
+    this.matchThreshold = 60;   // 匹配度阈值，低于此分数触发建议
+    
+    // 策略关键词库
+    this.strategyKeywords = {
+      highExploration: ['大胆尝试', '高探索', '创新', '实验', '测试新方法'],
+      aggressive: ['激进', '冒险', '突破', '挑战'],
+      growth: ['增长', '扩展', '进化', '提升']
     };
     
-    // 数据源定义
-    this.dataSources = {
-      // 策略声明源
-      strategySource: {
-        // 当前策略（来自配置）
-        currentStrategy: null,
-        // 历史指令中的策略关键词
-        historicalKeywords: [],
-        // 策略声明时间戳
-        timestamp: null
-      },
-      // 行为数据源（来自进化日志）
-      behaviorSource: {
-        // 自主执行比例
-        autonomous_execution_ratio: 0,
-        // 使用新工具次数
-        new_tools_used_count: 0,
-        // 探索性动作计数
-        exploration_actions: 0,
-        // 其他行为指标
-        total_actions: 0,
-        risky_attempts: 0,
-        tool_switch_frequency: 0
-      }
-    };
-    
-    // 匹配度计算结果
-    this.matchResult = {
-      score: 0,
-      reason: '',
-      details: {},
-      suggestedTasks: [],
-      warning: null
+    // 探索性任务库
+    this.explorationTasks = [
+      '分析一个从未使用过的MCP工具描述',
+      '尝试为现有技能编写一个备选实现',
+      '研究一个与当前问题相关的新技术概念',
+      '尝试使用不同的数据处理方法解决同一问题',
+      '分析历史任务，找出可优化的步骤',
+      '研究一种新的算法或技术框架',
+      '尝试将两个现有功能组合创建新功能',
+      '分析用户行为模式，提出改进建议',
+      '测试系统在边缘情况下的表现',
+      '研究竞争对手的解决方案，提出改进建议'
+    ];
+  }
+
+  /**
+   * 获取技能元信息
+   * @returns {Object} 技能描述信息
+   */
+  getMetadata() {
+    return {
+      name: this.skillName,
+      description: this.description,
+      version: this.version,
+      executionInterval: this.executionInterval,
+      dependencies: ['evolution-log', 'autonomous-executor']
     };
   }
-  
+
   /**
-   * 主运行函数，每N个cycle执行一次
-   * @param {Object} context - 运行上下文
-   * @param {number} currentCycle - 当前周期数
-   * @param {Object} evolutionLog - 进化日志数据
+   * 执行策略-行为匹配分析
+   * @param {Object} context - 执行上下文，包含进化日志等数据
+   * @returns {Object} 匹配度报告和建议
    */
-  run(context, currentCycle, evolutionLog) {
-    // 检查是否满足运行周期
-    if (currentCycle % this.config.runInterval !== 0) {
-      return {
-        status: 'skip',
-        message: `当前周期(${currentCycle})不是运行周期，需在每${this.config.runInterval}个周期运行`
-      };
-    }
-    
+  async execute(context) {
     try {
-      // 1. 提取策略声明数据
-      this.extractStrategyData(context);
+      // 检查是否到达执行间隔
+      if (!this.shouldExecute(context.cycleNumber)) {
+        return { shouldRun: false };
+      }
+
+      // 1. 获取策略声明源
+      const strategyDeclaration = await this.getStrategyDeclaration(context);
       
-      // 2. 提取行为数据
-      this.extractBehaviorData(evolutionLog);
+      // 2. 获取行为数据源
+      const behaviorData = await this.getBehaviorData(context);
       
       // 3. 计算匹配度分数
-      const matchScore = this.calculateMatchScore();
+      const matchResult = this.calculateMatchScore(strategyDeclaration, behaviorData);
       
-      // 4. 生成匹配理由
-      const matchReason = this.generateMatchReason(matchScore);
+      // 4. 生成报告
+      const report = this.generateReport(strategyDeclaration, behaviorData, matchResult);
       
-      // 5. 处理低分数情况
-      if (matchScore < this.config.matchThreshold) {
-        // 从探索性任务库中抽取任务
-        const suggestedTasks = this.selectExplorationTasks(matchScore);
-        
-        this.matchResult = {
-          score: matchScore,
-          reason: matchReason,
-          details: {
-            strategyKeywords: this.dataSources.strategySource.historicalKeywords,
-            behaviorMetrics: this.dataSources.behaviorSource
-          },
-          suggestedTasks: suggestedTasks,
-          warning: `匹配度低于阈值(${this.config.matchThreshold})，建议执行探索性任务以提升策略-行为一致性`
-        };
-      } else {
-        this.matchResult = {
-          score: matchScore,
-          reason: matchReason,
-          details: {
-            strategyKeywords: this.dataSources.strategySource.historicalKeywords,
-            behaviorMetrics: this.dataSources.behaviorSource
-          },
-          suggestedTasks: [],
-          warning: null
-        };
+      // 5. 如果低于阈值，生成探索性任务建议
+      let explorationTask = null;
+      if (matchResult.score < this.matchThreshold) {
+        explorationTask = this.selectExplorationTask(strategyDeclaration);
       }
       
       return {
-        status: 'success',
-        result: this.matchResult,
-        message: `策略-行为匹配度分析完成，得分: ${matchScore}/100`
+        shouldRun: true,
+        cycleNumber: context.cycleNumber,
+        strategyDeclaration: strategyDeclaration,
+        behaviorData: behaviorData,
+        matchResult: matchResult,
+        report: report,
+        explorationTask: explorationTask,
+        timestamp: new Date().toISOString()
       };
       
     } catch (error) {
+      console.error(`策略-行为匹配分析失败: ${error.message}`);
       return {
-        status: 'error',
-        message: `策略-行为匹配度分析失败: ${error.message}`,
-        error: error
+        shouldRun: true,
+        error: error.message,
+        timestamp: new Date().toISOString()
       };
     }
   }
-  
+
   /**
-   * 提取策略声明数据
+   * 检查是否应该执行（基于执行间隔）
+   * @param {number} currentCycle - 当前cycle编号
+   * @returns {boolean} 是否应该执行
    */
+  shouldExecute(currentCycle) {
+    return currentCycle % this.executionInterval === 0;
+  }
+
+  /**
+   * 获取策略声明源
+   * @param {Object} context - 上下文
+   * @returns {Object} 策略声明信息
+   */
+  async getStrategyDeclaration(context) {
+    // 首先尝试从配置中获取
+    if (context.config && context.config.current_strategy) {
+      return {
+        source: 'config',
+        strategyText: context.config.current_strategy,
+        keywords: this.extractKeywords(context.config.current_strategy)
+      };
+    }
+    
+    // 如果没有配置，从历史指令中提取
+    if (context.historicalInstructions && context.historicalInstructions.length > 0) {
+      const recentInstructions = context.historicalInstructions.slice(-5); // 最近5条指令
+      const allText = recentInstructions.join(' ');
+      
+      return {
+        source: 'historical_instructions',
+        strategyText: allText,
+        keywords: this.extractKeywords(allText),
+        instructionCount: recentInstructions.length
+      };
+    }
+    
+    // 默认策略
+    return {
+      source: 'default',
+      strategyText: '保持稳定进化，适度探索',
+      keywords: ['稳定', '进化', '探索']
+    };
+  }
+
+  /**
+   * 从文本中提取策略关键词
+   * @param {string} text - 策略文本
+   * @returns {Object} 提取的关键词分类
+   */
+  extractKeywords(text) {
+    const extracted = {
+      highExploration: [],
+      aggressive: [],
+      growth: []
+    };
+    
+    if (!text) return extracted;
+    
+    // 检查各关键词类别
+    for (const [category, keywords] of Object.entries(this.strategyKeywords)) {
+      for (const keyword of keywords) {
+        if (text.includes(keyword)) {
+          extracted[category].push(keyword);
+        }
+      }
+    }
+    
+    return extracted;
+  }
+
+  /**
+   * 获取行为数据源
+   * @param {Object} context - 上下文
