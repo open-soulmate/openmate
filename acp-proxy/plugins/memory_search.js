@@ -1,113 +1,118 @@
 const fs = require('fs');
 const path = require('path');
 
-const MEMORY_FILE_PATH = path.join(__dirname, '..', 'data', 'memories.json');
+const MEMORY_FILE_PATH = path.join(__dirname, '../data/memories.json');
 
-module.exports = {
-  name: 'memory_search',
-  description: '在系统记忆库中进行关键词匹配搜索，支持搜索记忆内容、标签和创建时间字段，用于快速检索相关记忆，优化知识积累效率。返回按相关性排序的记忆条目，每条包含ID、内容摘要和创建时间。',
+function loadMemories() {
+  try {
+    const data = fs.readFileSync(MEMORY_FILE_PATH, 'utf-8');
+    return JSON.parse(data);
+  } catch (error) {
+    console.error('Error loading memories:', error);
+    return [];
+  }
+}
+
+function parseKeywords(query) {
+  return query.toLowerCase()
+    .split(/\s+/)
+    .filter(word => word.length > 0);
+}
+
+function calculateRelevance(memory, keywords) {
+  let score = 0;
+  const contentLower = memory.content?.toLowerCase() || '';
+  const tagsLower = (memory.tags || []).map(tag => tag.toLowerCase()).join(' ');
+  const createdAt = memory.created_at?.toLowerCase() || '';
+
+  keywords.forEach(keyword => {
+    if (contentLower.includes(keyword)) {
+      score += 3;
+    }
+    if (tagsLower.includes(keyword)) {
+      score += 2;
+    }
+    if (createdAt.includes(keyword)) {
+      score += 1;
+    }
+  });
+
+  return score;
+}
+
+function searchMemories(query, limit = 10) {
+  const memories = loadMemories();
+  const keywords = parseKeywords(query);
   
+  if (keywords.length === 0) {
+    return memories.slice(0, limit);
+  }
+
+  const scoredMemories = memories.map(memory => ({
+    ...memory,
+    relevance: calculateRelevance(memory, keywords)
+  }));
+
+  return scoredMemories
+    .filter(memory => memory.relevance > 0)
+    .sort((a, b) => {
+      if (a.relevance !== b.relevance) {
+        return b.relevance - a.relevance;
+      }
+      return new Date(b.created_at) - new Date(a.created_at);
+    })
+    .slice(0, limit)
+    .map(memory => ({
+      id: memory.id,
+      content: memory.content?.length > 200 ? memory.content.substring(0, 200) + '...' : memory.content,
+      created_at: memory.created_at
+    }));
+}
+
+const memory_search = {
+  name: 'memory_search',
+  description: '在系统的记忆库中进行关键词匹配搜索，用于检索历史记忆、知识点和积累的经验。支持同时匹配记忆内容、标签和创建时间，按相关性排序返回结果。适用于需要查找特定信息、回忆历史记录或构建知识图谱的场景。',
   parameters: {
     type: 'object',
     properties: {
       query: {
         type: 'string',
-        description: '搜索关键词，用于匹配记忆内容、标签和创建时间'
+        description: '搜索查询字符串，将被拆分为关键词进行匹配搜索'
       },
       limit: {
         type: 'number',
         description: '返回结果的最大数量，默认为10',
-        default: 10,
-        minimum: 1,
-        maximum: 100
+        default: 10
       }
     },
     required: ['query']
   },
-  
-  execute: async function({ query, limit = 10 }) {
+  execute: async function(params) {
     try {
-      // 读取记忆文件
-      let memories = [];
-      if (fs.existsSync(MEMORY_FILE_PATH)) {
-        const fileContent = fs.readFileSync(MEMORY_FILE_PATH, 'utf8');
-        memories = JSON.parse(fileContent);
-      }
-      
-      // 处理搜索查询
-      const queryLower = query.toLowerCase();
-      const results = [];
-      
-      for (const memory of memories) {
-        let matchScore = 0;
-        
-        // 搜索内容字段
-        if (memory.content && memory.content.toLowerCase().includes(queryLower)) {
-          matchScore += 2; // 内容匹配权重较高
-        }
-        
-        // 搜索标签字段（如果有）
-        if (memory.tags && Array.isArray(memory.tags)) {
-          for (const tag of memory.tags) {
-            if (tag.toLowerCase().includes(queryLower)) {
-              matchScore += 1;
-              break; // 标签只匹配一次
-            }
-          }
-        }
-        
-        // 搜索创建时间字段（如果有）
-        if (memory.created_at) {
-          const createdAtStr = memory.created_at.toString();
-          if (createdAtStr.includes(query)) {
-            matchScore += 0.5; // 时间匹配权重较低
-          }
-        }
-        
-        // 如果有匹配，添加到结果中
-        if (matchScore > 0) {
-          // 创建内容摘要（最多100个字符）
-          const contentSummary = memory.content 
-            ? memory.content.length > 100 
-              ? memory.content.substring(0, 100) + '...' 
-              : memory.content
-            : 'No content';
-          
-          results.push({
-            id: memory.id,
-            content: contentSummary,
-            created_at: memory.created_at,
-            match_score: matchScore
-          });
-        }
-      }
-      
-      // 按匹配分数降序排序，分数相同按创建时间降序
-      results.sort((a, b) => {
-        if (b.match_score !== a.match_score) {
-          return b.match_score - a.match_score;
-        }
-        return new Date(b.created_at) - new Date(a.created_at);
-      });
-      
-      // 限制结果数量并移除匹配分数
-      const limitedResults = results.slice(0, limit).map(({ match_score, ...rest }) => rest);
+      const { query, limit = 10 } = params;
+      const results = searchMemories(query, limit);
       
       return {
         success: true,
-        query: query,
-        count: limitedResults.length,
-        total_matches: results.length,
-        results: limitedResults
+        data: {
+          results,
+          total_matches: results.length,
+          query: query
+        },
+        message: `找到 ${results.length} 条相关记忆`
       };
-      
     } catch (error) {
       return {
         success: false,
-        error: error.message,
-        query: query,
-        results: []
+        error: '记忆搜索失败: ' + error.message,
+        data: {
+          results: [],
+          total_matches: 0,
+          query: params.query
+        }
       };
     }
   }
 };
+
+module.exports = memory_search;
