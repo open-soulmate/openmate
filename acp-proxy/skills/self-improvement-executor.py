@@ -1,189 +1,202 @@
+#!/usr/bin/env python3
+"""
+ACP Self-Improvement Executor Skill
+作为「规划-执行-验证」闭环的自主执行引擎
+"""
+
 import json
 import os
 import ast
 import time
-from datetime import datetime
-from typing import Dict, Any, List, Optional, Callable
-import sys
+import logging
+import datetime
+from pathlib import Path
+from typing import Dict, Any, List, Optional, Tuple
+import re
 
-class self_improvement_executor:
-    """自主执行引擎技能，实现规划-执行-验证闭环"""
+class SelfImprovementExecutor:
+    """核心技能：自主改进执行器"""
     
-    # 技能元信息
-    SKILL_NAME = "self_improvement_executor"
-    SKILL_VERSION = "1.0.0"
-    SKILL_DESCRIPTION = "自主执行小型改进任务，打破规划依赖外部执行的模式"
-    
-    # 默认改进库
-    DEFAULT_IMPROVEMENT_LIBRARY = [
-        {
-            "id": "auto_mem_001",
-            "description": "优化记忆条目标签结构，添加分类标签",
-            "type": "memory_management",
-            "difficulty": "trivial",
-            "assigned_to": "self",
-            "status": "planned",
-            "verification_method": "data_consistency_check",
-            "action": "memory_tag_optimization"
-        },
-        {
-            "id": "auto_obs_002",
-            "description": "清理过时的观察记录（超过30天）",
-            "type": "memory_management",
-            "difficulty": "trivial",
-            "assigned_to": "self",
-            "status": "planned",
-            "verification_method": "data_consistency_check",
-            "action": "cleanup_old_observations"
-        },
-        {
-            "id": "auto_cfg_003",
-            "description": "优化配置文件的默认值注释",
-            "type": "config_tuning",
-            "difficulty": "trivial",
-            "assigned_to": "self",
-            "status": "planned",
-            "verification_method": "config_validity_check",
-            "action": "optimize_config_comments"
-        }
-    ]
-    
-    # 任务类型处理器和验证方法映射
-    TASK_HANDLERS: Dict[str, Dict[str, Callable]] = {
-        "memory_management": {
-            "handler": "_handle_memory_management",
-            "verifier": "_verify_memory_management"
-        },
-        "prompt_optimization": {
-            "handler": "_handle_prompt_optimization",
-            "verifier": "_verify_prompt_optimization"
-        },
-        "config_tuning": {
-            "handler": "_handle_config_tuning",
-            "verifier": "_verify_config_tuning"
-        },
-        "code_snippet_gen": {
-            "handler": "_handle_code_snippet_generation",
-            "verifier": "_verify_code_snippet_execution"
-        }
-    }
-    
-    # 安全边界配置
-    SAFE_DIRECTORIES = [
-        "memory/",
-        "config/",
-        "templates/",
-        "skills/"
-    ]
-    
-    def __init__(self, config: Dict[str, Any] = None):
+    def __init__(self, config_path: str = "acp-proxy/config/evolution_plan.json"):
         """初始化执行器"""
-        self.config = config or {}
-        self.execution_log = []
-        self.plan_path = self.config.get("plan_path", "acp-proxy/config/evolution_plan.json")
-        self.memory_path = self.config.get("memory_path", "memory/")
-        self.config_path = self.config.get("config_path", "acp-proxy/config/")
-        self.reports_path = self.config.get("reports_path", "memory/evolution_reports/")
-        self.current_task = None
+        self.config_path = config_path
+        self.reports_dir = Path("memory/evolution_reports")
+        self.reports_dir.mkdir(parents=True, exist_ok=True)
         
-        # 确保报告目录存在
-        os.makedirs(self.reports_path, exist_ok=True)
+        # 配置日志
+        logging.basicConfig(level=logging.INFO)
+        self.logger = logging.getLogger("SelfImprovementExecutor")
+        
+        # 任务类型处理器映射
+        self.task_processors = {
+            "memory_management": self._process_memory_task,
+            "prompt_optimization": self._process_prompt_task,
+            "config_tuning": self._process_config_task,
+            "code_snippet_gen": self._process_code_task,
+        }
+        
+        # 验证方法映射
+        self.verification_methods = {
+            "memory_management": self._verify_memory_task,
+            "prompt_optimization": self._verify_prompt_task,
+            "config_tuning": self._verify_config_task,
+            "code_snippet_gen": self._verify_code_task,
+        }
+        
+        # 默认改进任务库
+        self.default_tasks = [
+            {
+                "id": "default_memory_001",
+                "description": "优化记忆条目标签，提高检索效率",
+                "type": "memory_management",
+                "difficulty": "trivial",
+                "assigned_to": "self",
+                "status": "planned",
+                "verification_method": "check_data_consistency",
+                "action": {
+                    "operation": "optimize_memory_tags",
+                    "target": "memory/entries/",
+                    "criteria": {"tags_length": "max_3"}
+                }
+            },
+            {
+                "id": "default_memory_002",
+                "description": "清理过时的观察记录",
+                "type": "memory_management",
+                "difficulty": "trivial",
+                "assigned_to": "self",
+                "status": "planned",
+                "verification_method": "check_data_consistency",
+                "action": {
+                    "operation": "clean_outdated_observations",
+                    "target": "memory/observations/",
+                    "criteria": {"age_days": 90}
+                }
+            },
+            {
+                "id": "default_prompt_001",
+                "description": "优化查询提示词，增加对时间范围的敏感度",
+                "type": "prompt_optimization",
+                "difficulty": "small",
+                "assigned_to": "self",
+                "status": "planned",
+                "verification_method": "simulate_conversation",
+                "action": {
+                    "operation": "enhance_time_sensitivity",
+                    "target": "prompts/query_prompt.txt",
+                    "modification": {
+                        "add_time_range_section": True,
+                        "keywords": ["今天", "昨天", "本周", "上周", "本月", "上月"]
+                    }
+                }
+            },
+            {
+                "id": "default_config_001",
+                "description": "调整记忆检索相似度阈值",
+                "type": "config_tuning",
+                "difficulty": "trivial",
+                "assigned_to": "self",
+                "status": "planned",
+                "verification_method": "check_config_and_function",
+                "action": {
+                    "operation": "adjust_similarity_threshold",
+                    "target": "config/memory_config.json",
+                    "modification": {
+                        "field": "retrieval.similarity_threshold",
+                        "value": 0.75,
+                        "previous": 0.7
+                    }
+                }
+            }
+        ]
     
-    def run(self, **kwargs) -> Dict[str, Any]:
-        """主执行方法，实现规划-执行-验证闭环"""
-        try:
-            # 1. 加载和选择任务
-            task = self._select_task()
-            if not task:
-                return self._create_error_response("no_task_selected", "未找到可执行的任务")
+    def run(self, task_id: Optional[str] = None) -> Dict[str, Any]:
+        """
+        主运行方法：执行自改进任务
+        
+        Args:
+            task_id: 可选，指定执行的任务ID，若未指定则自动选择
             
-            self.current_task = task
-            self._log(f"开始执行任务: {task['id']} - {task['description']}")
+        Returns:
+            包含执行结果的字典
+        """
+        start_time = time.time()
+        
+        try:
+            # 1. 加载或获取任务
+            task = self._load_or_generate_task(task_id)
+            task_id = task["id"]
+            
+            self.logger.info(f"开始执行任务: {task_id} - {task['description']}")
             
             # 2. 执行任务
             execution_result = self._execute_task(task)
-            if not execution_result["success"]:
-                return self._create_task_response(
-                    task["id"], "failure", False, 
-                    f"任务执行失败: {execution_result['error']}"
-                )
             
-            # 3. 自验证
-            verification_passed = self._verify_task(task, execution_result.get("result"))
+            # 3. 验证任务
+            verification_result = self._verify_task(task, execution_result)
             
             # 4. 更新任务状态
-            task_status = "completed" if verification_passed else "failed"
-            self._update_task_status(task["id"], task_status)
+            self._update_task_status(task, verification_result["passed"])
             
             # 5. 生成执行报告
-            report = self._generate_report(task, verification_passed, execution_result)
-            self._save_report(report)
+            report = self._generate_report(
+                task, execution_result, verification_result, 
+                time.time() - start_time
+            )
             
-            # 6. 估算贡献
-            progress_update = self._estimate_progress_contribution(task, verification_passed)
+            # 6. 保存报告
+            self._save_report(report)
             
             # 7. 返回结果
             return {
-                "task_id": task["id"],
-                "status": "success" if verification_passed else "failure",
-                "verification_passed": verification_passed,
-                "log": self._get_formatted_log(),
-                "suggested_progress_update": progress_update,
-                "report_file": report.get("file_path", "")
+                "task_id": task_id,
+                "status": "success" if verification_result["passed"] else "failure",
+                "verification_passed": verification_result["passed"],
+                "log": verification_result["log"],
+                "suggested_progress_update": self._calculate_progress_update(task, verification_result)
             }
             
         except Exception as e:
-            error_msg = f"执行器运行异常: {str(e)}"
-            self._log(error_msg)
-            return self._create_error_response("executor_error", error_msg)
+            self.logger.error(f"任务执行失败: {str(e)}")
+            return {
+                "task_id": task_id if task_id else "unknown",
+                "status": "failure",
+                "verification_passed": False,
+                "log": f"执行错误: {str(e)}",
+                "suggested_progress_update": {"goal_name": "unknown", "delta": 0.0}
+            }
     
-    def _select_task(self) -> Optional[Dict[str, Any]]:
-        """根据优先级规则选择任务"""
-        try:
-            # 加载进化引擎规划
-            plan = self._load_evolution_plan()
-            pending_tasks = plan.get("pending_tasks", [])
-            
-            # 按优先级筛选
-            filtered_tasks = []
-            for task in pending_tasks:
-                # 优先级规则：planned状态，assigned_to为self，难度为trivial/small
-                if (task.get("status") == "planned" and
-                    task.get("assigned_to") == "self" and
-                    task.get("difficulty") in ["trivial", "small"]):
-                    
-                    # 计算优先级分数
-                    priority_score = self._calculate_priority_score(task)
-                    filtered_tasks.append((priority_score, task))
-            
-            # 按优先级排序
-            if filtered_tasks:
-                filtered_tasks.sort(reverse=True, key=lambda x: x[0])
-                selected_task = filtered_tasks[0][1]
-                self._log(f"从规划中选择任务: {selected_task['id']}")
-                return selected_task
-            
-            # 从默认改进库中选择
-            self._log("规划中无合适任务，使用默认改进库")
-            for task in self.DEFAULT_IMPROVEMENT_LIBRARY:
-                if task["status"] == "planned":
-                    self._log(f"从默认库选择任务: {task['id']}")
-                    return task.copy()
-            
-            return None
-            
-        except Exception as e:
-            self._log(f"任务选择失败: {str(e)}")
-            return None
-    
-    def _calculate_priority_score(self, task: Dict[str, Any]) -> float:
-        """计算任务优先级分数"""
-        score = 0.0
+    def _load_or_generate_task(self, task_id: Optional[str] = None) -> Dict[str, Any]:
+        """加载或生成任务"""
+        # 尝试从进化计划中加载任务
+        plan = self._load_evolution_plan()
         
-        # 难度权重
-        difficulty_weights = {
-            "trivial": 1.0,
-            "small": 0.8,
-            "medium": 0.5,
-            "large": 0.2
-        }
+        if task_id:
+            # 查找指定任务
+            task = self._find_task_by_id(plan, task_id)
+            if task:
+                return task
+            else:
+                raise ValueError(f"未找到指定的任务: {task_id}")
+        else:
+            # 按优先级规则选择任务
+            task = self._select_task_by_priority(plan)
+            if task:
+                return task
+            else:
+                # 使用默认任务库生成任务
+                self.logger.info("没有合适的任务，从默认库生成任务")
+                return self._generate_default_task()
+    
+    def _load_evolution_plan(self) -> Dict[str, Any]:
+        """加载进化计划文件"""
+        try:
+            config_path = Path(self.config_path)
+            if config_path.exists():
+                with open(config_path, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+            else:
+                self.logger.warning(f"进化计划文件不存在: {self.config_path}")
+                return {"current_cycle": 0, "pending_tasks": []}
+        except Exception as e:
+            self.logger.error(f"加载进化计划失败: {e}")
