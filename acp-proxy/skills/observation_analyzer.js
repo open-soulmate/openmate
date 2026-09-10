@@ -1,143 +1,127 @@
-// acp-proxy/skills/observation_analyzer.js
-const logger = require('../utils/logger');
-const memoryStore = require('../memory/memoryStore');
-const stateManager = require('../state/stateManager');
-const observationDataSource = require('../data/observationDataSource');
+const { 
+  getUnanalyzedObservations,
+  getSystemState,
+  resetObservationsCounter,
+  addMemory,
+  searchMemories,
+  logger
+} = require('../system');
 
-/**
- * 分类观察数据
- * @param {Object} observation - 观察数据对象
- * @returns {string} - 分类标签
- */
-function classifyObservation(observation) {
-  const content = observation.content || '';
-  const normalizedContent = content.toLowerCase();
-  
-  if (normalizedContent.includes('error') || 
-      normalizedContent.includes('exception') ||
-      normalizedContent.includes('failed') ||
-      normalizedContent.includes('故障') ||
-      normalizedContent.includes('错误')) {
-    return 'error';
-  }
-  
-  if (normalizedContent.includes('warning') || 
-      normalizedContent.includes('warn') ||
-      normalizedContent.includes('异常') ||
-      normalizedContent.includes('警告')) {
-    return 'warning';
-  }
-  
-  if (normalizedContent.includes('success') || 
-      normalizedContent.includes('completed') ||
-      normalizedContent.includes('完成') ||
-      normalizedContent.includes('成功')) {
-    return 'success';
-  }
-  
-  return 'info';
-}
-
-/**
- * 关联历史记忆
- * @param {Object} observation - 当前观察数据
- * @param {string} category - 分类结果
- * @returns {Promise<Array>} - 关联的记忆ID列表
- */
-async function associateWithMemories(observation, category) {
-  try {
-    const query = {
-      category: category,
-      timestamp: {
-        $gte: new Date(observation.timestamp - 24 * 60 * 60 * 1000), // 24小时内
-        $lte: new Date(observation.timestamp.getTime() + 60 * 60 * 1000) // 1小时内
-      },
-      limit: 5
-    };
-    
-    const relatedMemories = await memoryStore.search(query);
-    return relatedMemories.map(memory => memory.id);
-  } catch (error) {
-    logger.warn(`关联记忆失败: ${error.message}`);
-    return [];
-  }
-}
-
-/**
- * 生成分析摘要
- * @param {Object} observation - 观察数据
- * @param {string} category - 分类
- * @param {Array} relatedMemoryIds - 关联的记忆ID
- * @returns {string} - 分析摘要
- */
-function generateSummary(observation, category, relatedMemoryIds) {
-  const time = observation.timestamp.toISOString();
-  const relatedCount = relatedMemoryIds.length;
-  
-  return `观察分析完成 - 时间: ${time}, 类型: ${category}, 关联记忆: ${relatedCount}条, 内容摘要: ${observation.content.substring(0, 100)}`;
-}
-
-/**
- * 存储分析结果到记忆
- * @param {Object} observation - 原始观察数据
- * @param {string} category - 分类结果
- * @param {Array} relatedMemoryIds - 关联的记忆ID
- * @param {string} summary - 分析摘要
- * @returns {Promise<string>} - 存储的记忆ID
- */
-async function storeAnalysisResult(observation, category, relatedMemoryIds, summary) {
-  const memoryEntry = {
-    type: 'observation_analysis',
-    category: category,
-    timestamp: new Date(),
-    relatedTo: relatedMemoryIds,
-    content: summary,
-    metadata: {
-      sourceObservationId: observation.id,
-      originalTimestamp: observation.timestamp,
-      processedAt: new Date().toISOString()
-    }
-  };
-  
-  return await memoryStore.add(memoryEntry);
-}
-
-/**
- * 主分析函数
- * @returns {Promise<Object>} - 分析结果
- */
 async function analyzeObservations() {
   try {
-    // 获取未分析观察数量
-    const unanalyzedCount = await stateManager.get('observations_unanalyzed');
+    // 获取系统状态，检查未分析观察数据数量
+    const systemState = getSystemState();
+    const unanalyzedCount = systemState.observations_unanalyzed || 0;
     
+    // 当未分析数据小于1时，直接返回
     if (unanalyzedCount < 1) {
-      logger.debug('无未分析观察数据，跳过处理');
-      return { processed: false, reason: 'no_unanalyzed_observations' };
+      logger.debug('No unanalyzed observations to process');
+      return { success: true, processed: 0 };
     }
-    
-    logger.info(`开始处理 ${unanalyzedCount} 条未分析观察`);
+
+    logger.info(`Found ${unanalyzedCount} unanalyzed observations, starting analysis...`);
     
     // 获取未分析的观察数据
-    const observations = await observationDataSource.getUnanalyzed(unanalyzedCount);
+    const observations = await getUnanalyzedObservations();
     
     if (!observations || observations.length === 0) {
-      logger.warn('获取观察数据失败或为空');
-      return { processed: false, reason: 'fetch_failed' };
+      logger.warn('No observation data returned, skipping analysis');
+      return { success: true, processed: 0 };
     }
-    
-    const results = [];
-    
-    // 处理每条观察
+
+    let processedCount = 0;
+    const analysisResults = [];
+
+    // 分析每条观察数据
     for (const observation of observations) {
       try {
-        // 1. 分类观察
+        // 1. 分类观察类型
         const category = classifyObservation(observation);
         
         // 2. 关联历史记忆
-        const relatedMemoryIds = await associateWithMemories(observation, category);
+        const relatedMemories = await findRelatedMemories(observation, category);
         
-        // 3. 生成摘要
-        const summary = generateSummary(observation, category, relatedMemoryIds);
+        // 3. 生成分析结果摘要
+        const analysisSummary = generateAnalysisSummary(
+          observation, 
+          category, 
+          relatedMemories
+        );
         
-        // 4. 存储分析结果
+        // 4. 存储分析结果到记忆系统
+        const memoryEntry = {
+          type: 'observation_analysis',
+          timestamp: new Date().toISOString(),
+          observationId: observation.id || `obs_${Date.now()}`,
+          category: category,
+          relatedMemories: relatedMemories.map(m => m.id),
+          summary: analysisSummary,
+          originalObservation: observation,
+          analysisMetadata: {
+            analyzer: 'observation_analyzer',
+            version: '1.0.0'
+          }
+        };
+        
+        await addMemory(memoryEntry);
+        
+        analysisResults.push({
+          observationId: observation.id,
+          category: category,
+          memoryId: memoryEntry.id,
+          status: 'analyzed'
+        });
+        
+        processedCount++;
+        
+        logger.debug(`Analyzed observation: ${category} - ${analysisSummary.substring(0, 100)}...`);
+        
+      } catch (error) {
+        logger.error(`Failed to process observation: ${observation.id || 'unknown'}`, error);
+        analysisResults.push({
+          observationId: observation.id,
+          status: 'error',
+          error: error.message
+        });
+      }
+    }
+
+    // 5. 重置计数器（仅在至少有一条分析成功时）
+    if (processedCount > 0) {
+      await resetObservationsCounter(0);
+      logger.info(`Analysis completed. Processed ${processedCount}/${observations.length} observations`);
+    }
+
+    return {
+      success: true,
+      processed: processedCount,
+      total: observations.length,
+      results: analysisResults
+    };
+
+  } catch (error) {
+    logger.error('Observation analysis failed:', error);
+    return {
+      success: false,
+      error: error.message,
+      processed: 0
+    };
+  }
+}
+
+function classifyObservation(observation) {
+  if (!observation || !observation.content) {
+    return 'unknown';
+  }
+
+  const content = typeof observation.content === 'string' 
+    ? observation.content.toLowerCase() 
+    : JSON.stringify(observation.content).toLowerCase();
+  
+  const classificationRules = [
+    { category: 'error', keywords: ['error', 'fatal', 'critical', 'exception', 'failed', 'failure'] },
+    { category: 'warning', keywords: ['warning', 'warn', 'caution', 'alert', 'issue'] },
+    { category: 'info', keywords: ['info', 'information', 'notice', 'log', 'debug', 'trace'] },
+    { category: 'performance', keywords: ['slow', 'timeout', 'latency', 'performance', 'throughput'] },
+    { category: 'security', keywords: ['security', 'unauthorized', 'access', 'permission', 'authentication'] }
+  ];
