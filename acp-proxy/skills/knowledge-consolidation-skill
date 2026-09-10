@@ -1,71 +1,170 @@
-import time
-import json
-import heapq
-from datetime import datetime, timedelta
-from typing import Dict, List, Tuple, Any, Optional, Set
-import numpy as np
+import datetime
+import math
+import uuid
 from collections import defaultdict
-import threading
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import schedule
+from typing import Dict, List, Optional, Tuple, Any, Set
+from dataclasses import dataclass, field
+from enum import Enum
+import numpy as np
 
+# Constants
+SEMANTIC_SIMILARITY_THRESHOLD = 0.85
+IMPORTANCE_WEIGHTS = {
+    'usage_frequency': 0.3,
+    'emotional_intensity': 0.3,
+    'information_value': 0.4
+}
+WEEKLY_REVIEW_DAY = 6  # Sunday (0=Monday, 6=Sunday)
+WEEKLY_REVIEW_HOUR = 23  # 11 PM
+MEMORY_COMPRESSION_THRESHOLD = 5
+
+
+class MemoryType(Enum):
+    EPISODIC = "episodic"
+    SEMANTIC = "semantic"
+    PROCEDURAL = "procedural"
+    EMOTIONAL = "emotional"
+
+
+@dataclass
 class Memory:
-    """记忆数据结构"""
-    def __init__(self, memory_id: str, content: str, metadata: Dict[str, Any] = None):
-        self.id = memory_id
-        self.content = content
-        self.metadata = metadata or {}
-        self.embedding = None
-        self.usage_count = self.metadata.get('usage_count', 0)
-        self.emotion_intensity = self.metadata.get('emotion_intensity', 0.5)
-        self.information_value = self.metadata.get('information_value', 0.5)
-        self.timestamp = self.metadata.get('timestamp', datetime.now().isoformat())
-        self.last_accessed = self.metadata.get('last_accessed', datetime.now().isoformat())
-        self.importance_score = 0.0
-        self.connections: Set[str] = set()
-        
-    def update_importance_score(self):
-        """更新记忆重要性评分"""
-        self.importance_score = (
-            0.3 * min(1.0, self.usage_count / 10) +
-            0.3 * self.emotion_intensity +
-            0.4 * self.information_value
+    """Memory data structure"""
+    id: str
+    content: str
+    timestamp: datetime.datetime
+    memory_type: MemoryType
+    emotional_intensity: float = 0.5  # 0.0 - 1.0
+    information_value: float = 0.5    # 0.0 - 1.0
+    usage_count: int = 0
+    importance_score: float = 0.0
+    embeddings: Optional[np.ndarray] = None
+    tags: List[str] = field(default_factory=list)
+    context: str = ""
+    source_session: str = ""
+    related_memories: List[str] = field(default_factory=list)
+    
+    def __post_init__(self):
+        if self.importance_score == 0.0:
+            self.importance_score = self.calculate_importance()
+    
+    def calculate_importance(self) -> float:
+        """Calculate importance score based on weighted factors"""
+        frequency_score = min(1.0, self.usage_count / 10.0)
+        return (
+            IMPORTANCE_WEIGHTS['usage_frequency'] * frequency_score +
+            IMPORTANCE_WEIGHTS['emotional_intensity'] * self.emotional_intensity +
+            IMPORTANCE_WEIGHTS['information_value'] * self.information_value
         )
-        
+    
+    def update_importance(self):
+        """Update importance score with current values"""
+        self.importance_score = self.calculate_importance()
+    
+    def add_usage(self):
+        """Increment usage count and update importance"""
+        self.usage_count += 1
+        self.update_importance()
+    
     def to_dict(self) -> Dict[str, Any]:
+        """Convert memory to dictionary for serialization"""
         return {
             'id': self.id,
             'content': self.content,
-            'metadata': {
-                **self.metadata,
-                'usage_count': self.usage_count,
-                'emotion_intensity': self.emotion_intensity,
-                'information_value': self.information_value,
-                'timestamp': self.timestamp,
-                'last_accessed': self.last_accessed,
-                'connections': list(self.connections)
-            },
-            'embedding': self.embedding.tolist() if self.embedding is not None else None,
-            'importance_score': self.importance_score
+            'timestamp': self.timestamp.isoformat(),
+            'memory_type': self.memory_type.value,
+            'emotional_intensity': self.emotional_intensity,
+            'information_value': self.information_value,
+            'usage_count': self.usage_count,
+            'importance_score': self.importance_score,
+            'tags': self.tags,
+            'context': self.context,
+            'source_session': self.source_session,
+            'related_memories': self.related_memories
         }
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Memory':
+        """Create memory from dictionary"""
+        memory = cls(
+            id=data['id'],
+            content=data['content'],
+            timestamp=datetime.datetime.fromisoformat(data['timestamp']),
+            memory_type=MemoryType(data['memory_type']),
+            emotional_intensity=data.get('emotional_intensity', 0.5),
+            information_value=data.get('information_value', 0.5),
+            usage_count=data.get('usage_count', 0),
+            importance_score=data.get('importance_score', 0.0),
+            tags=data.get('tags', []),
+            context=data.get('context', ''),
+            source_session=data.get('source_session', ''),
+            related_memories=data.get('related_memories', [])
+        )
+        return memory
+
+
+@dataclass
+class KnowledgeGraphNode:
+    """Knowledge graph node"""
+    id: str
+    label: str
+    node_type: str
+    properties: Dict[str, Any] = field(default_factory=dict)
+    memory_ids: Set[str] = field(default_factory=set)
+    
+    def __hash__(self):
+        return hash(self.id)
+    
+    def __eq__(self, other):
+        return isinstance(other, KnowledgeGraphNode) and self.id == other.id
+
+
+@dataclass
+class KnowledgeGraphEdge:
+    """Knowledge graph edge"""
+    id: str
+    source_id: str
+    target_id: str
+    relationship: str
+    weight: float = 1.0
+    properties: Dict[str, Any] = field(default_factory=dict)
+    
+    def __hash__(self):
+        return hash(self.id)
+    
+    def __eq__(self, other):
+        return isinstance(other, KnowledgeGraphEdge) and self.id == other.id
+
 
 class KnowledgeGraph:
-    """知识图谱结构"""
+    """Knowledge graph implementation"""
     def __init__(self):
-        self.nodes: Dict[str, Dict[str, Any]] = {}
-        self.edges: Dict[str, List[str]] = defaultdict(list)
+        self.nodes: Dict[str, KnowledgeGraphNode] = {}
+        self.edges: Dict[str, KnowledgeGraphEdge] = {}
+        self.adjacency_list: Dict[str, Dict[str, List[str]]] = defaultdict(lambda: defaultdict(list))
+    
+    def add_node(self, node: KnowledgeGraphNode) -> str:
+        """Add a node to the graph"""
+        self.nodes[node.id] = node
+        return node.id
+    
+    def add_edge(self, edge: KnowledgeGraphEdge) -> str:
+        """Add an edge to the graph"""
+        if edge.source_id not in self.nodes or edge.target_id not in self.nodes:
+            raise ValueError("Source or target node not found")
         
-    def add_node(self, node_id: str, node_data: Dict[str, Any]):
-        self.nodes[node_id] = node_data
-        
-    def add_edge(self, from_node: str, to_node: str, relation: str = "related_to"):
-        if from_node in self.nodes and to_node in self.nodes:
-            self.edges[from_node].append(f"{relation}:{to_node}")
-            self.edges[to_node].append(f"{relation}:{from_node}")
-            
-    def query_node(self, node_id: str) -> Optional[Dict[str, Any]]:
+        self.edges[edge.id] = edge
+        self.adjacency_list[edge.source_id][edge.relationship].append(edge.id)
+        return edge.id
+    
+    def get_node(self, node_id: str) -> Optional[KnowledgeGraphNode]:
+        """Get node by ID"""
         return self.nodes.get(node_id)
     
-    def query_neighbors(self, node_id: str, relation_filter: str = None) -> List[str]:
-        neighbors = self.edges.get(node_id, [])
-        if relation_filter:
+    def get_edge(self, edge_id: str) -> Optional[KnowledgeGraphEdge]:
+        """Get edge by ID"""
+        return self.edges.get(edge_id)
+    
+    def get_edges_from_node(self, node_id: str, relationship: Optional[str] = None) -> List[KnowledgeGraphEdge]:
+        """Get all edges from a node, optionally filtered by relationship"""
+        edges = []
+        if node_id in self.adjacency_list:
