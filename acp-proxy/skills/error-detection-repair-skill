@@ -1,24 +1,36 @@
+# acp-proxy/skills/error-detection-repair-skill/error_detection_repair_skill.py
+"""
+Error Detection and Repair Skill - 实现错误自修复能力
+多维度错误监控、错误模式学习、根因分析、修复策略生成与执行
+"""
+
 import time
 import logging
+import json
+import hashlib
 import traceback
-import numpy as np
 from typing import Dict, List, Any, Optional, Tuple
+from datetime import datetime, timedelta
 from dataclasses import dataclass, asdict
 from enum import Enum
-from datetime import datetime
+import numpy as np
 from collections import defaultdict
-import psutil
+import sqlite3
+import threading
+from concurrent.futures import ThreadPoolExecutor, Future
 import pickle
 from pathlib import Path
+
+# 机器学习相关
 from sklearn.tree import DecisionTreeClassifier
-from sklearn.cluster import KMeans
-import json
+from sklearn.cluster import DBSCAN, KMeans
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import RandomForestClassifier
+import warnings
+warnings.filterwarnings('ignore')
 
 # 配置日志
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -28,171 +40,224 @@ class ErrorType(Enum):
     PERFORMANCE_ANOMALY = "performance_anomaly"
     LOGIC_ERROR = "logic_error"
     RESOURCE_LEAK = "resource_leak"
-    UNKNOWN_ERROR = "unknown_error"
+    NETWORK_ERROR = "network_error"
+    TIMEOUT_ERROR = "timeout_error"
+    MEMORY_ERROR = "memory_error"
+    UNKNOWN = "unknown"
+
+
+class ErrorSeverity(Enum):
+    """错误严重程度"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 
 @dataclass
-class ErrorMetrics:
-    """错误指标数据结构"""
+class ErrorLog:
+    """错误日志数据结构"""
     timestamp: datetime
-    error_type: str
-    stack_trace: str
-    system_logs: List[str]
-    performance_metrics: Dict[str, float]
-    resource_usage: Dict[str, float]
+    error_type: ErrorType
+    error_message: str
+    error_traceback: str
+    system_metrics: Dict[str, Any]
     context: Dict[str, Any]
+    severity: ErrorSeverity
+    occurrence_count: int = 1
+    last_occurrence: datetime = None
+    
+    def __post_init__(self):
+        if self.last_occurrence is None:
+            self.last_occurrence = self.timestamp
+        self.error_id = self._generate_error_id()
+    
+    def _generate_error_id(self) -> str:
+        """生成错误唯一标识"""
+        content = f"{self.error_type.value}:{self.error_message[:100]}"
+        return hashlib.md5(content.encode()).hexdigest()
+    
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
+        data = asdict(self)
+        data['timestamp'] = self.timestamp.isoformat()
+        data['last_occurrence'] = self.last_occurrence.isoformat()
+        data['error_type'] = self.error_type.value
+        data['severity'] = self.severity.value
+        return data
 
 
 @dataclass
 class RepairStrategy:
     """修复策略数据结构"""
     strategy_id: str
-    error_type: str
-    repair_steps: List[str]
-    estimated_time: float
-    success_rate: float
+    error_type: ErrorType
+    repair_type: str  # temporary, permanent
+    steps: List[str]
+    estimated_time: float  # 秒
+    success_probability: float
     side_effects: List[str]
-    is_temporary: bool
-    priority: int
-    metadata: Dict[str, Any]
-
-
-@dataclass
-class RepairResult:
-    """修复结果数据结构"""
-    strategy_used: str
-    success: bool
-    duration: float
-    verification_passed: bool
-    error: Optional[str]
-    metrics_before: Dict[str, float]
-    metrics_after: Dict[str, float]
-
-
-class ErrorDetectionRepairSkill:
-    """错误检测与修复技能"""
+    rollback_plan: List[str]
+    validation_checks: List[str]
+    created_at: datetime = None
     
-    def __init__(self, knowledge_base_path: str = "error_knowledge_base.pkl"):
-        self.logger = logging.getLogger(f"{__name__}.ErrorDetectionRepairSkill")
-        self.knowledge_base_path = Path(knowledge_base_path)
-        self.knowledge_base = self._load_knowledge_base()
-        
-        # 错误监控阈值
-        self.thresholds = {
-            "response_time": 2.0,  # 秒
-            "cpu_usage": 80.0,     # 百分比
-            "memory_usage": 85.0,  # 百分比
-            "disk_usage": 90.0,    # 百分比
-            "error_rate": 0.1      # 10%
-        }
-        
-        # 机器学习模型
-        self.error_classifier = DecisionTreeClassifier(max_depth=10)
-        self.error_clusterer = KMeans(n_clusters=5, random_state=42)
-        self.is_model_trained = False
-        
-        # 统计信息
-        self.repair_statistics = {
-            "total_repairs": 0,
-            "successful_repairs": 0,
-            "failed_repairs": 0,
-            "avg_repair_time": 0.0,
-            "repair_by_type": defaultdict(int),
-            "success_by_type": defaultdict(int)
-        }
-        
-        # 初始化模型
-        self._initialize_models()
+    def __post_init__(self):
+        if self.created_at is None:
+            self.created_at = datetime.now()
+
+
+class ErrorKnowledgeBase:
+    """错误知识库 - 存储和管理错误模式与解决方案"""
     
-    def _load_knowledge_base(self) -> Dict[str, Any]:
-        """加载错误知识库"""
-        if self.knowledge_base_path.exists():
-            try:
-                with open(self.knowledge_base_path, 'rb') as f:
-                    return pickle.load(f)
-            except Exception as e:
-                self.logger.warning(f"加载知识库失败: {e}")
+    def __init__(self, db_path: str = "error_knowledge.db"):
+        self.db_path = db_path
+        self._init_database()
+        self.error_patterns = defaultdict(list)
+        self.repair_strategies = {}
+        self._load_knowledge()
         
-        # 返回默认知识库结构
-        return {
-            "error_patterns": {},
-            "repair_strategies": {},
-            "historical_errors": [],
-            "success_rates": {},
-            "last_updated": datetime.now().isoformat()
-        }
+    def _init_database(self):
+        """初始化数据库"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # 创建错误日志表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS error_logs (
+                id TEXT PRIMARY KEY,
+                timestamp DATETIME,
+                error_type TEXT,
+                error_message TEXT,
+                error_traceback TEXT,
+                system_metrics TEXT,
+                context TEXT,
+                severity TEXT,
+                occurrence_count INTEGER DEFAULT 1,
+                last_occurrence DATETIME,
+                solution_applied TEXT,
+                resolution_time REAL,
+                success BOOLEAN
+            )
+        ''')
+        
+        # 创建修复策略表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS repair_strategies (
+                strategy_id TEXT PRIMARY KEY,
+                error_type TEXT,
+                repair_type TEXT,
+                steps TEXT,
+                estimated_time REAL,
+                success_probability REAL,
+                side_effects TEXT,
+                validation_checks TEXT,
+                usage_count INTEGER DEFAULT 0,
+                success_count INTEGER DEFAULT 0,
+                created_at DATETIME
+            )
+        ''')
+        
+        # 创建错误模式表
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS error_patterns (
+                pattern_id TEXT PRIMARY KEY,
+                error_type TEXT,
+                pattern_signature TEXT,
+                frequency INTEGER DEFAULT 1,
+                common_solution TEXT,
+                avg_resolution_time REAL,
+                success_rate REAL,
+                last_seen DATETIME
+            )
+        ''')
+        
+        conn.commit()
+        conn.close()
     
-    def _save_knowledge_base(self):
-        """保存错误知识库"""
+    def add_error_log(self, error_log: ErrorLog):
+        """添加错误日志到知识库"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
         try:
-            self.knowledge_base["last_updated"] = datetime.now().isoformat()
-            with open(self.knowledge_base_path, 'wb') as f:
-                pickle.dump(self.knowledge_base, f)
-        except Exception as e:
-            self.logger.error(f"保存知识库失败: {e}")
+            # 检查是否已存在相同错误
+            cursor.execute(
+                "SELECT occurrence_count, last_occurrence FROM error_logs WHERE id = ?",
+                (error_log.error_id,)
+            )
+            result = cursor.fetchone()
+            
+            if result:
+                # 更新已存在的错误
+                occurrence_count = result[0] + 1
+                cursor.execute('''
+                    UPDATE error_logs 
+                    SET occurrence_count = ?, last_occurrence = ?, 
+                        system_metrics = ?, context = ?
+                    WHERE id = ?
+                ''', (occurrence_count, datetime.now(), 
+                     json.dumps(error_log.system_metrics),
+                     json.dumps(error_log.context),
+                     error_log.error_id))
+            else:
+                # 插入新错误
+                cursor.execute('''
+                    INSERT INTO error_logs 
+                    (id, timestamp, error_type, error_message, error_traceback,
+                     system_metrics, context, severity, occurrence_count, last_occurrence)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ''', (
+                    error_log.error_id,
+                    error_log.timestamp,
+                    error_log.error_type.value,
+                    error_log.error_message,
+                    error_log.error_traceback,
+                    json.dumps(error_log.system_metrics),
+                    json.dumps(error_log.context),
+                    error_log.severity.value,
+                    error_log.occurrence_count,
+                    error_log.last_occurrence
+                ))
+            
+            conn.commit()
+        finally:
+            conn.close()
     
-    def _initialize_models(self):
-        """初始化机器学习模型"""
-        # 如果有历史数据，训练模型
-        if "historical_errors" in self.knowledge_base and len(self.knowledge_base["historical_errors"]) > 0:
-            self._train_models()
-    
-    def _train_models(self):
-        """训练错误分类模型"""
+    def add_repair_strategy(self, strategy: RepairStrategy):
+        """添加修复策略到知识库"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
         try:
-            historical_errors = self.knowledge_base["historical_errors"]
-            if len(historical_errors) < 10:  # 最少需要10个样本
-                return
+            cursor.execute('''
+                INSERT OR REPLACE INTO repair_strategies 
+                (strategy_id, error_type, repair_type, steps, estimated_time,
+                 success_probability, side_effects, validation_checks, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                strategy.strategy_id,
+                strategy.error_type.value,
+                strategy.repair_type,
+                json.dumps(strategy.steps),
+                strategy.estimated_time,
+                strategy.success_probability,
+                json.dumps(strategy.side_effects),
+                json.dumps(strategy.validation_checks),
+                strategy.created_at
+            ))
             
-            # 提取特征
-            features = []
-            labels = []
-            
-            for error in historical_errors[-100:]:  # 使用最近100个错误
-                # 从错误中提取特征
-                feature_vector = self._extract_features(error)
-                features.append(feature_vector)
-                labels.append(error.get("error_type", "unknown"))
-            
-            if len(features) > 0:
-                # 训练分类器
-                self.error_classifier.fit(features, labels)
-                
-                # 训练聚类器
-                self.error_clusterer.fit(features)
-                
-                self.is_model_trained = True
-                self.logger.info(f"模型训练完成，使用{len(features)}个样本")
-        except Exception as e:
-            self.logger.error(f"模型训练失败: {e}")
+            conn.commit()
+        finally:
+            conn.close()
     
-    def _extract_features(self, error_data: Dict[str, Any]) -> List[float]:
-        """从错误数据中提取特征向量"""
-        features = []
+    def get_error_history(self, error_type: ErrorType, limit: int = 100) -> List[Dict]:
+        """获取错误历史"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
         
-        # 时间特征
-        if "timestamp" in error_data:
-            features.append(error_data["timestamp"].hour / 24.0)
-            features.append(error_data["timestamp"].weekday() / 7.0)
-        
-        # 性能指标特征
-        perf_metrics = error_data.get("performance_metrics", {})
-        features.append(perf_metrics.get("response_time", 0) / 10.0)
-        features.append(perf_metrics.get("cpu_usage", 0) / 100.0)
-        features.append(perf_metrics.get("memory_usage", 0) / 100.0)
-        
-        # 资源使用特征
-        resource_usage = error_data.get("resource_usage", {})
-        features.append(resource_usage.get("disk_usage", 0) / 100.0)
-        features.append(resource_usage.get("network_usage", 0) / 100.0)
-        
-        # 错误堆栈特征（简化）
-        stack_trace = error_data.get("stack_trace", "")
-        features.append(min(len(stack_trace) / 1000.0, 1.0))
-        
-        # 确保特征维度一致
-        while len(features) < 10:
-            features.append(0.0)
-        
-        return features[:10]
-    
+        try:
+            cursor.execute('''
+                SELECT * FROM error_logs 
+                WHERE error_type = ? 
+                ORDER BY timestamp DESC 
+                LIMIT ?
