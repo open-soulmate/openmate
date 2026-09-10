@@ -1,179 +1,108 @@
 """
-Self-Programming Executor Skill
-Created by Xiaomi MiMo Team
-Version: 1.0.0
+self-programming-executor-skill.py
+自我编程执行技能模块
 """
 
-import ast
 import os
 import sys
+import ast
 import json
+import uuid
 import shutil
-import subprocess
 import tempfile
-import time
-import threading
-from typing import Dict, List, Any, Optional, Tuple, Union
+import subprocess
+import importlib.util
 from datetime import datetime
-from pathlib import Path
-import hashlib
-import logging
-import traceback
-from dataclasses import dataclass, asdict
+from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
+from dataclasses import dataclass
+from abc import ABC, abstractmethod
+import re
+import hashlib
 
-# Configure logging
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+# 尝试导入可选依赖
+try:
+    import git
+    GIT_AVAILABLE = True
+except ImportError:
+    GIT_AVAILABLE = False
+
+try:
+    from RestrictedPython import compile_restricted, safe_globals, limited_builtins
+    from RestrictedPython.Eval import default_guarded_getiter
+    from RestrictedPython.Guards import safer_getattr, guarded_unpack_sequence
+    RESTRICTED_PYTHON_AVAILABLE = True
+except ImportError:
+    RESTRICTED_PYTHON_AVAILABLE = False
+
 
 class TargetType(Enum):
-    """Types of improvement targets"""
+    """目标类型枚举"""
     SKILL_ENHANCEMENT = "skill_enhancement"
-    PLUGIN_OPTIMIZATION = "plugin_optimization" 
+    PLUGIN_OPTIMIZATION = "plugin_optimization"
     TOOL_CREATION = "tool_creation"
 
+
 @dataclass
-class CodeImprovement:
-    """Represents a code improvement suggestion"""
-    id: str
+class ImprovementTarget:
+    """改进目标数据结构"""
+    target_id: str
     target_type: TargetType
     description: str
+    requirements: Dict[str, Any]
+    priority: int = 5
+    created_at: datetime = None
+    
+    def __post_init__(self):
+        if self.created_at is None:
+            self.created_at = datetime.now()
+
+
+@dataclass
+class CodeModification:
+    """代码修改记录"""
+    modification_id: str
+    target_id: str
     original_code: str
     modified_code: str
-    risk_score: float
-    improvements: List[str]
-    timestamp: str
-    status: str  # pending, testing, deployed, failed, rolled_back
+    file_path: str
+    timestamp: datetime
+    status: str  # 'pending', 'tested', 'deployed', 'failed', 'rolled_back'
+    risk_assessment: Dict[str, Any] = None
+
 
 @dataclass
 class ExecutionResult:
-    """Result of code execution"""
+    """执行结果"""
     success: bool
     output: str
-    error: Optional[str]
+    error: str
     execution_time: float
-    memory_usage: Optional[int]
-    risk_assessment: Dict[str, Any]
+    memory_usage: Optional[float] = None
+    return_value: Any = None
 
-class SecuritySandbox:
-    """Isolated sandbox for safe code execution"""
+
+class SandboxEnvironment:
+    """代码沙箱环境"""
     
-    def __init__(self):
-        self.temp_dir = tempfile.mkdtemp()
-        self.allowed_modules = {
-            'math', 'json', 'datetime', 'time', 'typing', 'pathlib',
-            'os', 'sys', 'copy', 'itertools', 'functools', 'collections',
-            'random', 'hashlib', 'base64', 're', 'uuid', 'ast'
+    def __init__(self, timeout: int = 30, memory_limit_mb: int = 128):
+        self.timeout = timeout
+        self.memory_limit_mb = memory_limit_mb
+        self.temp_dir = tempfile.mkdtemp(prefix="code_sandbox_")
+        self._setup_restrictions()
+        
+    def _setup_restrictions(self):
+        """设置沙箱限制"""
+        # 禁止的系统调用
+        self.forbidden_calls = {
+            'os.system', 'os.popen', 'os.exec*', 'os.spawn*',
+            'subprocess.run', 'subprocess.call', 'subprocess.Popen',
+            'shutil.rmtree', 'shutil.copytree',
+            'open', 'file',  # 限制文件操作
         }
-        self.blocked_modules = {'subprocess', 'shutil', 'socket', 'http', 'urllib'}
-        self.max_execution_time = 30
-        self.max_memory_mb = 100
         
-    def validate_code(self, code: str) -> Tuple[bool, List[str]]:
-        """Validate code for safety before execution"""
-        issues = []
-        
-        try:
-            tree = ast.parse(code)
-        except SyntaxError as e:
-            return False, [f"Syntax error: {e}"]
-        
-        for node in ast.walk(tree):
-            # Check for system calls
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Attribute):
-                    if node.func.attr in ['system', 'popen', 'exec', 'eval']:
-                        issues.append(f"System call detected: {node.func.attr}")
-                elif isinstance(node.func, ast.Name):
-                    if node.func.id in ['eval', 'exec', 'compile']:
-                        issues.append(f"Potentially dangerous function: {node.func.id}")
-            
-            # Check for dangerous imports
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    module = alias.name.split('.')[0]
-                    if module in self.blocked_modules:
-                        issues.append(f"Blocked module import: {module}")
-            
-            if isinstance(node, ast.ImportFrom):
-                module = node.module.split('.')[0] if node.module else ""
-                if module in self.blocked_modules:
-                    issues.append(f"Blocked module import: {module}")
-        
-        return len(issues) == 0, issues
-    
-    def execute(self, code: str, timeout: Optional[int] = None) -> ExecutionResult:
-        """Execute code in sandbox with timeout and memory limits"""
-        start_time = time.time()
-        timeout = timeout or self.max_execution_time
-        
-        # Create execution environment
-        exec_globals = {'__builtins__': self._get_safe_builtins()}
-        exec_locals = {}
-        
-        try:
-            # Validate code first
-            is_safe, issues = self.validate_code(code)
-            if not is_safe:
-                return ExecutionResult(
-                    success=False,
-                    output="",
-                    error=f"Security validation failed: {', '.join(issues)}",
-                    execution_time=time.time() - start_time,
-                    memory_usage=None,
-                    risk_assessment={"security": "high", "issues": issues}
-                )
-            
-            # Execute with timeout
-            result = self._execute_with_timeout(code, exec_globals, exec_locals, timeout)
-            
-            return ExecutionResult(
-                success=result['success'],
-                output=str(result.get('output', '')),
-                error=result.get('error'),
-                execution_time=time.time() - start_time,
-                memory_usage=self._get_memory_usage(),
-                risk_assessment=self._assess_execution_risk(code)
-            )
-            
-        except Exception as e:
-            return ExecutionResult(
-                success=False,
-                output="",
-                error=str(e),
-                execution_time=time.time() - start_time,
-                memory_usage=None,
-                risk_assessment={"error": str(e)}
-            )
-    
-    def _execute_with_timeout(self, code: str, globals_dict: dict, 
-                            locals_dict: dict, timeout: int) -> dict:
-        """Execute code with timeout using threading"""
-        result = {'success': False, 'output': '', 'error': None}
-        
-        def target():
-            try:
-                exec(code, globals_dict, locals_dict)
-                if 'result' in locals_dict:
-                    result['output'] = locals_dict['result']
-                result['success'] = True
-            except Exception as e:
-                result['error'] = str(e)
-        
-        thread = threading.Thread(target=target)
-        thread.start()
-        thread.join(timeout)
-        
-        if thread.is_alive():
-            # Timeout occurred
-            thread.join(0)  # Let it clean up
-            result['error'] = "Execution timeout"
-            result['success'] = False
-        
-        return result
-    
-    def _get_safe_builtins(self) -> dict:
-        """Get safe subset of builtins for sandbox execution"""
-        safe_builtins = {}
-        allowed_builtins = {
-            'None', 'False', 'True', 'bool', 'int', 'float', 'str',
+        # 允许的安全模块
+        self.allowed_modules = {
+            'math', 'random', 'datetime', 'json', 'csv', 'hashlib',
+            'collections', 'itertools', 'functools', 'typing',
+            're', 'string', 'textwrap', 'unicodedata'
