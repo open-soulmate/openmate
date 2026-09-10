@@ -1,160 +1,237 @@
+#!/usr/bin/env python3
+"""
+CodeSynthesizer - A skill module for generating Python code from natural language descriptions.
+"""
+
 import subprocess
 import json
 import logging
 import time
 import os
 import sys
-from typing import Dict, List, Any, Optional, Tuple
+import tempfile
 import re
+from typing import Dict, List, Optional, Tuple, Any
+from pathlib import Path
 
+# Configure logging
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
 class CodeSynthesizer:
     """
-    代码合成器技能模块
+    A code generation skill that converts natural language task descriptions into executable Python code.
     
-    接收自然语言描述的简单编码任务，生成符合标准的Python代码。
-    作为实现自编程能力和工具创造进化目标的关键探针。
+    This skill is designed as a 'probe' for implementing self-programming capabilities and tool creation.
+    It features basic code generation, error detection, and iterative optimization.
     
-    使用限制：
-        - 仅限简单任务（函数定义、文件读写、简单API调用等）
-        - 生成代码可能存在安全风险，需在安全环境中运行
-        - 不支持复杂的算法或大型系统开发
-    
-    潜在风险：
-        - 生成代码可能包含语法或逻辑错误
-        - 执行环境可能受限导致功能不完整
-        - 日志记录可能包含敏感信息
+    Input Format:
+        task_description (str): A natural language description of a simple coding task.
+        Examples:
+        - "Create a function named 'add' that takes two numbers and returns their sum"
+        - "Read a file called 'input.txt' and print its contents"
+        - "Define a class 'Person' with name and age attributes"
+        
+    Output Format:
+        Dict containing:
+        - 'success': bool indicating if code executed successfully
+        - 'generated_code': The Python code that was generated
+        - 'execution_output': stdout from execution (if successful)
+        - 'error_log': stderr or error details (if failed)
+        - 'confidence': float between 0-1 indicating confidence in the solution
+        - 'refinement_applied': bool indicating if code was refined after initial failure
+        
+    Limitations:
+        - Only handles simple, well-defined coding tasks
+        - Template-based approach limits complexity of generated code
+        - Sandbox execution has timeout and memory restrictions
+        - Not suitable for complex algorithms or multi-file projects
+        
+    Potential Risks:
+        - Generated code might contain security vulnerabilities
+        - Sandbox escape could potentially harm the system
+        - Over-reliance could inhibit development of more sophisticated solutions
     """
     
-    def __init__(
-        self,
-        template_path: Optional[str] = None,
-        execution_timeout: int = 10,
-        experience_log_path: str = "acp-proxy/data/code_synthesizer_experience.jsonl"
-    ):
+    def __init__(self, 
+                 templates_path: Optional[str] = None,
+                 sandbox_timeout: int = 10,
+                 experience_log_path: str = "acp-proxy/data/code_synthesizer_experience.jsonl"):
         """
-        初始化代码合成器
+        Initialize the CodeSynthesizer skill.
         
         Args:
-            template_path: 模板库文件路径（None时使用内置模板）
-            execution_timeout: 代码执行超时时间（秒）
-            experience_log_path: 经验日志文件路径
+            templates_path: Path to external templates file (optional, uses built-in if None)
+            sandbox_timeout: Timeout in seconds for code execution in sandbox
+            experience_log_path: Path to store experience log for future learning
         """
-        self.template_path = template_path
-        self.execution_timeout = execution_timeout
+        self.sandbox_timeout = sandbox_timeout
         self.experience_log_path = experience_log_path
-        self.success_log: List[Dict[str, Any]] = []
         
-        # 确保日志目录存在
-        log_dir = os.path.dirname(experience_log_path)
+        # Load templates
+        if templates_path and os.path.exists(templates_path):
+            self.templates = self._load_templates_from_file(templates_path)
+        else:
+            self.templates = self._load_templates()
+        
+        # Initialize experience log
+        self.success_log: List[Dict] = []
+        self._ensure_log_directory()
+        
+        logger.info(f"CodeSynthesizer initialized with {len(self.templates)} templates")
+    
+    def _ensure_log_directory(self) -> None:
+        """Ensure the log directory exists."""
+        log_dir = os.path.dirname(self.experience_log_path)
         if log_dir and not os.path.exists(log_dir):
             os.makedirs(log_dir, exist_ok=True)
-        
-        logger.info("CodeSynthesizer 已初始化")
     
     def _load_templates(self) -> Dict[str, str]:
         """
-        加载代码模板库
+        Load built-in code templates.
         
         Returns:
-            包含模板名称和模板代码的字典
+            Dictionary mapping template names to code template strings.
         """
-        templates = {
-            "python_function": '''def {function_name}({parameters}):
-    """
-    {docstring}
-    """
-    # 函数实现
-    pass
-
-# 函数调用示例
-# result = {function_name}({example_args})
-''',
-            "file_operations": '''import os
-
-def read_file(file_path):
-    """读取文件内容"""
+        return {
+            'python_function': '''def {function_name}({parameters}):
+    """{docstring}"""
+    {function_body}
+    return {return_value}''',
+            
+            'class_definition': '''class {class_name}:
+    """{class_docstring}"""
+    
+    def __init__(self{init_params}):
+        {init_body}
+    
+    {methods}''',
+            
+            'file_operations': '''def read_file(file_path):
+    """Read and return contents of a file."""
     try:
-        with open(file_path, 'r', encoding='utf-8') as f:
-            content = f.read()
-        return content
+        with open(file_path, 'r') as f:
+            return f.read()
+    except FileNotFoundError:
+        print(f"Error: File '{{file_path}}' not found")
+        return None
     except Exception as e:
-        print(f"读取文件错误: {{e}}")
+        print(f"Error reading file: {{e}}")
         return None
 
 def write_file(file_path, content):
-    """写入文件内容"""
+    """Write content to a file."""
     try:
-        with open(file_path, 'w', encoding='utf-8') as f:
+        with open(file_path, 'w') as f:
             f.write(content)
         return True
     except Exception as e:
-        print(f"写入文件错误: {{e}}")
-        return False
+        print(f"Error writing file: {{e}}")
+        return False''',
+            
+            'simple_api_call': '''import requests
 
-# 使用示例
-# content = read_file("{file_path}")
-# write_file("{output_path}", content)
-''',
-            "api_request": '''import requests
-import json
-
-def make_api_request(url, method="GET", data=None, headers=None):
-    """发送API请求"""
+def call_api(url, method='GET', data=None):
+    """Make a simple API call."""
     try:
-        if headers is None:
-            headers = {{"Content-Type": "application/json"}}
-        
-        if method.upper() == "GET":
-            response = requests.get(url, headers=headers, timeout=10)
-        elif method.upper() == "POST":
-            response = requests.post(url, json=data, headers=headers, timeout=10)
+        if method.upper() == 'GET':
+            response = requests.get(url, timeout=10)
+        elif method.upper() == 'POST':
+            response = requests.post(url, json=data, timeout=10)
         else:
-            raise ValueError(f"不支持的HTTP方法: {{method}}")
+            raise ValueError(f"Unsupported HTTP method: {{method}}")
         
         response.raise_for_status()
         return response.json()
-    except Exception as e:
-        print(f"API请求错误: {{e}}")
+    except requests.exceptions.RequestException as e:
+        print(f"API call failed: {{e}}")
+        return None''',
+            
+            'data_processing': '''def process_data(data, operation='sum'):
+    """Process data with basic operations."""
+    if not data:
         return None
-
-# 使用示例
-# result = make_api_request("{api_url}")
-# print(result)
-'''
+    
+    if operation == 'sum':
+        return sum(data)
+    elif operation == 'average':
+        return sum(data) / len(data)
+    elif operation == 'max':
+        return max(data)
+    elif operation == 'min':
+        return min(data)
+    elif operation == 'count':
+        return len(data)
+    else:
+        raise ValueError(f"Unsupported operation: {{operation}}")'''
         }
+    
+    def _load_templates_from_file(self, file_path: str) -> Dict[str, str]:
+        """
+        Load templates from an external JSON file.
         
-        return templates
+        Args:
+            file_path: Path to JSON file containing templates
+            
+        Returns:
+            Dictionary of templates
+        """
+        try:
+            with open(file_path, 'r') as f:
+                return json.load(f)
+        except Exception as e:
+            logger.error(f"Failed to load templates from {file_path}: {e}")
+            return self._load_templates()  # Fall back to built-in templates
     
     def generate_from_template(self, description: str) -> str:
         """
-        根据任务描述生成代码
+        Generate code from a task description using template matching.
         
         Args:
-            description: 自然语言任务描述
-        
+            description: Natural language task description
+            
         Returns:
-            生成的Python代码
+            Generated Python code as string
         """
-        templates = self._load_templates()
         description_lower = description.lower()
         
-        # 关键词匹配选择模板
-        if "函数" in description_lower or "function" in description_lower:
-            template_name = "python_function"
-        elif "文件" in description_lower or "file" in description_lower or "读取" in description_lower or "写入" in description_lower:
-            template_name = "file_operations"
-        elif "api" in description_lower or "请求" in description_lower or "request" in description_lower or "url" in description_lower:
-            template_name = "api_request"
+        # Try to match keywords to templates
+        template_matches = []
+        
+        if any(keyword in description_lower for keyword in ['function', 'def ', 'create function', 'define function']):
+            template_matches.append(('python_function', 3))
+        
+        if any(keyword in description_lower for keyword in ['class', 'create class', 'define class']):
+            template_matches.append(('class_definition', 3))
+        
+        if any(keyword in description_lower for keyword in ['read file', 'write file', 'file', 'txt', 'json']):
+            template_matches.append(('file_operations', 2))
+        
+        if any(keyword in description_lower for keyword in ['api', 'request', 'http', 'url', 'fetch']):
+            template_matches.append(('simple_api_call', 2))
+        
+        if any(keyword in description_lower for keyword in ['data', 'sum', 'average', 'process', 'list']):
+            template_matches.append(('data_processing', 2))
+        
+        # Select best match or use function template as default
+        if template_matches:
+            # Sort by score (descending), pick first
+            template_matches.sort(key=lambda x: x[1], reverse=True)
+            template_name = template_matches[0][0]
         else:
-            # 默认使用函数模板
-            template_name = "python_function"
+            template_name = 'python_function'
         
-        template = templates[template_name]
+        template = self.templates[template_name]
         
-        # 提取或设置默认参数
-        if template_name == "python_function":
-            # 尝试从描述中提取函数名
-            func_name_match = re.search(r'函数\s*(\w+)', description, re.IGNORECASE)
+        # Fill template with extracted values
+        if template_name == 'python_function':
+            return self._fill_function_template(description, template)
+        elif template_name == 'class_definition':
+            return self._fill_class_template(description, template)
+        else:
+            # For other templates, use basic substitution
+            return self._fill_generic_template(description, template, template_name)
+    
+    def _fill_function_template(self, description: str, template: str) -> str:
+        """Fill function template with values extracted from description."""
