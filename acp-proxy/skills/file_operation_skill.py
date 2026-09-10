@@ -1,102 +1,176 @@
 import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Optional, Tuple, Union
 
+# 设置日志记录器
 logger = logging.getLogger(__name__)
 
-
 class FileOperationSkill:
-    """文件操作技能类"""
+    """文件操作技能类，处理文件相关的操作请求。"""
     
-    def _create_error_response(self, message: str, error_code: int = -1) -> Dict[str, Any]:
-        """创建标准化错误响应"""
+    def __init__(self):
+        """初始化文件操作技能。"""
+        pass
+    
+    def _create_success_response(self, data: Any = None, message: str = "操作成功") -> Dict[str, Any]:
+        """创建标准的成功响应。
+        
+        Args:
+            data: 响应数据
+            message: 成功消息
+            
+        Returns:
+            标准化的成功响应字典
+        """
         return {
-            "success": False,
-            "code": error_code,
+            "success": True,
+            "code": 0,
             "message": message,
-            "data": None
+            "data": data
         }
     
-    def parse_file_config(self, config_str: Optional[str]) -> Dict[str, Any]:
-        """解析文件配置"""
-        try:
-            # 类型检查：确保输入是字符串
-            if not isinstance(config_str, str):
-                return self._create_error_response("配置数据必须是字符串类型")
+    def _create_error_response(self, code: int, message: str, data: Any = None) -> Dict[str, Any]:
+        """创建标准的错误响应。
+        
+        Args:
+            code: 错误码
+            message: 错误消息
+            data: 可选的附加数据
             
-            # 空字符串检查
-            if not config_str.strip():
-                return self._create_error_response("配置字符串不能为空")
-            
-            try:
-                config_data = json.loads(config_str)
-                return {
-                    "success": True,
-                    "code": 0,
-                    "message": "配置解析成功",
-                    "data": config_data
-                }
-            except json.JSONDecodeError as e:
-                logger.error(f"JSON解析失败 - 原始数据: {config_str[:100]}{'...' if len(config_str) > 100 else ''}, "
-                           f"异常信息: {str(e)}, 堆栈信息: ", exc_info=True)
-                return self._create_error_response(f"输入数据格式无效，无法解析为JSON: {str(e)}")
-                
-        except Exception as e:
-            logger.error(f"配置解析过程中发生未知错误: {str(e)}", exc_info=True)
-            return self._create_error_response(f"配置解析失败: {str(e)}")
+        Returns:
+            标准化的错误响应字典
+        """
+        return {
+            "success": False,
+            "code": code,
+            "message": message,
+            "data": data
+        }
     
-    def parse_operation_params(self, params_json: Optional[str]) -> Dict[str, Any]:
-        """解析操作参数"""
+    def _safe_json_loads(self, json_str: str, context: str = "") -> Tuple[bool, Union[Dict, list, str]]:
+        """安全地解析JSON字符串，包含完整的错误处理。
+        
+        Args:
+            json_str: 需要解析的JSON字符串
+            context: 用于日志记录的上下文信息
+            
+        Returns:
+            元组：(成功标志, 解析后的数据或错误信息)
+        """
+        # 类型检查：确保输入是字符串类型
+        if json_str is None:
+            error_msg = f"JSON解析失败：输入数据为None{context}"
+            logger.error(error_msg)
+            return False, error_msg
+            
+        if not isinstance(json_str, str):
+            error_msg = f"JSON解析失败：输入数据类型为{type(json_str).__name__}，预期为字符串{context}"
+            logger.error(error_msg)
+            return False, error_msg
+        
+        # 尝试解析JSON
         try:
-            # 类型检查：确保输入是字符串
-            if not isinstance(params_json, str):
-                return self._create_error_response("操作参数必须是字符串类型")
+            result = json.loads(json_str)
+            return True, result
+        except json.JSONDecodeError as e:
+            # 记录详细的异常信息
+            error_msg = f"JSON解析失败：输入数据格式无效{context}"
             
-            # 空字符串检查
-            if not params_json.strip():
-                return self._create_error_response("操作参数字符串不能为空")
+            # 截断原始数据以避免日志过大，但保留足够的调试信息
+            truncated_input = json_str[:100] + "..." if len(json_str) > 100 else json_str
             
-            try:
-                params_data = json.loads(params_json)
-                return {
-                    "success": True,
-                    "code": 0,
-                    "message": "参数解析成功",
-                    "data": params_data
-                }
-            except json.JSONDecodeError as e:
-                logger.error(f"操作参数JSON解析失败 - 原始数据: {params_json[:100]}{'...' if len(params_json) > 100 else ''}, "
-                           f"异常信息: {str(e)}, 堆栈信息: ", exc_info=True)
-                return self._create_error_response(f"操作参数格式无效，无法解析为JSON: {str(e)}")
-                
-        except Exception as e:
-            logger.error(f"操作参数解析过程中发生未知错误: {str(e)}", exc_info=True)
-            return self._create_error_response(f"操作参数解析失败: {str(e)}")
+            logger.error(
+                f"{error_msg}\n"
+                f"原始数据(截断): {repr(truncated_input)}\n"
+                f"错误类型: {type(e).__name__}\n"
+                f"错误详情: {str(e)}\n"
+                f"错误位置: 第{e.lineno}行，第{e.colno}列"
+            )
+            
+            # 返回标准化的错误信息
+            return False, f"输入数据格式无效，无法解析为JSON: {str(e)}"
     
-    def load_user_input(self, user_input: Any) -> Dict[str, Any]:
-        """加载用户输入数据"""
-        try:
-            # 类型检查：确保输入是字符串
-            if not isinstance(user_input, str):
-                return self._create_error_response("用户输入必须是字符串类型")
+    def process_file_operation(self, request_data: Union[str, Dict]) -> Dict[str, Any]:
+        """处理文件操作请求的主方法。
+        
+        Args:
+            request_data: 请求数据，可能是JSON字符串或字典
             
-            # 空字符串检查
-            if not user_input.strip():
-                return self._create_error_response("用户输入字符串不能为空")
+        Returns:
+            标准化的操作结果响应
+        """
+        # 如果传入的是字符串，需要先解析
+        if isinstance(request_data, str):
+            success, parsed_data = self._safe_json_loads(request_data, " (处理文件操作请求)")
+            if not success:
+                return self._create_error_response(
+                    code=-1,
+                    message=f"请求数据解析失败: {parsed_data}"
+                )
+            request_data = parsed_data
+        
+        # 如果传入的既不是字符串也不是字典，返回错误
+        if not isinstance(request_data, dict):
+            return self._create_error_response(
+                code=-1,
+                message=f"请求数据格式错误: 预期为字典或JSON字符串，实际为{type(request_data).__name__}"
+            )
+        
+        # 示例：这里可以添加实际的文件操作逻辑
+        # 为了演示，我们返回一个模拟的成功响应
+        return self._create_success_response(
+            data={"operation": "processed", "request_data": request_data},
+            message="文件操作处理成功"
+        )
+    
+    def parse_file_content(self, content: str, file_path: str = "") -> Dict[str, Any]:
+        """解析文件内容（假设文件内容为JSON格式）。
+        
+        Args:
+            content: 文件内容字符串
+            file_path: 文件路径（用于日志）
             
-            try:
-                input_data = json.loads(user_input)
-                return {
-                    "success": True,
-                    "code": 0,
-                    "message": "用户输入解析成功",
-                    "data": input_data
-                }
-            except json.JSONDecodeError as e:
-                logger.error(f"用户输入JSON解析失败 - 原始数据: {user_input[:100]}{'...' if len(user_input) > 100 else ''}, "
-                           f"异常信息: {str(e)}, 堆栈信息: ", exc_info=True)
-                return self._create_error_response(f"用户输入格式无效，无法解析为JSON: {str(e)}")
-                
-        except Exception as e:
-            logger.error(f"用户输入加载过程中发生未知错误: {str(e)}", exc_info=True)
-            return self._create_error_response(f"用户输入加载失败: {str(e)}")
+        Returns:
+            解析结果或错误响应
+        """
+        context = f" (解析文件内容: {file_path})" if file_path else " (解析文件内容)"
+        success, parsed_content = self._safe_json_loads(content, context)
+        
+        if not success:
+            return self._create_error_response(
+                code=-2,
+                message=f"文件内容解析失败: {parsed_content}",
+                data={"file_path": file_path}
+            )
+        
+        return self._create_success_response(
+            data=parsed_content,
+            message="文件内容解析成功"
+        )
+    
+    def load_configuration(self, config_str: str, config_name: str = "") -> Dict[str, Any]:
+        """加载配置信息（配置通常为JSON格式）。
+        
+        Args:
+            config_str: 配置字符串
+            config_name: 配置名称（用于日志）
+            
+        Returns:
+            配置解析结果或错误响应
+        """
+        context = f" (加载配置: {config_name})" if config_name else " (加载配置)"
+        success, config_data = self._safe_json_loads(config_str, context)
+        
+        if not success:
+            return self._create_error_response(
+                code=-3,
+                message=f"配置加载失败: {config_data}",
+                data={"config_name": config_name}
+            )
+        
+        # 配置解析成功，可以进一步验证配置结构
+        # 这里简单返回，实际应用中可能需要验证配置字段
+        return self._create_success_response(
+            data=config_data,
+            message="配置加载成功"
+        )
