@@ -1,25 +1,34 @@
-"""
-错误检测与修复技能模块
-实现错误自修复能力，包含多维度监控、模式学习、自动分析和修复
-"""
-
+import json
 import time
 import logging
-import json
-import pickle
-from datetime import datetime, timedelta
+import numpy as np
 from typing import Dict, List, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
 from enum import Enum
-import numpy as np
+from datetime import datetime, timedelta
 from collections import defaultdict
+import warnings
+warnings.filterwarnings('ignore')
+
+# 机器学习模型
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.cluster import KMeans, DBSCAN
+from sklearn.preprocessing import StandardScaler
+from sklearn.ensemble import IsolationForest
+import pickle
+import hashlib
+
+# 性能监控
+import psutil
+import resource
+
+# 并发控制
+from concurrent.futures import ThreadPoolExecutor, as_completed
 import threading
-from concurrent.futures import ThreadPoolExecutor
-from abc import ABC, abstractmethod
 
 # 配置日志
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger("ErrorDetectionRepairSkill")
+logger = logging.getLogger(__name__)
 
 
 class ErrorType(Enum):
@@ -28,172 +37,197 @@ class ErrorType(Enum):
     PERFORMANCE_ANOMALY = "performance_anomaly"
     LOGIC_ERROR = "logic_error"
     RESOURCE_LEAK = "resource_leak"
-    SECURITY_BREACH = "security_breach"
-    NETWORK_ERROR = "network_error"
-    DATABASE_ERROR = "database_error"
+    SYSTEM_ERROR = "system_error"
 
 
-class ErrorSeverity(Enum):
-    """错误严重程度枚举"""
-    LOW = 1
-    MEDIUM = 2
-    HIGH = 3
-    CRITICAL = 4
+class RepairAction(Enum):
+    """修复动作枚举"""
+    QUICK_FIX = "quick_fix"
+    STABLE_FIX = "stable_fix"
+    PERMANENT_FIX = "permanent_fix"
+    ROLLBACK = "rollback"
 
 
 @dataclass
-class ErrorLog:
-    """错误日志数据结构"""
-    timestamp: str
-    error_type: str
-    message: str
-    stack_trace: str
-    system_metrics: Dict[str, Any]
-    context: Dict[str, Any]
-    severity: str
-    resource_usage: Dict[str, Any]
-    network_stats: Dict[str, Any]
-    application_state: Dict[str, Any]
+class ErrorEvent:
+    """错误事件数据结构"""
+    timestamp: datetime
+    error_type: ErrorType
+    error_message: str
+    stack_trace: Optional[str] = None
+    system_metrics: Optional[Dict] = None
+    context_info: Optional[Dict] = None
+    severity: int = 5  # 1-10, 10最严重
+
+
+@dataclass
+class ErrorPattern:
+    """错误模式数据结构"""
+    pattern_id: str
+    error_type: ErrorType
+    signature: str  # 错误特征
+    frequency: int = 0
+    success_rate: float = 0.0  # 历史修复成功率
+    solutions: List[Dict] = None
+    last_occurred: datetime = None
+    ml_features: Optional[np.ndarray] = None
 
 
 @dataclass
 class RepairStrategy:
     """修复策略数据结构"""
     strategy_id: str
-    error_type: str
-    repair_type: str  # temporary, permanent
-    steps: List[str]
-    estimated_time: float
-    success_probability: float
-    side_effects: List[str]
-    rollback_plan: List[str]
-    validation_tests: List[str]
-    confidence_score: float
+    action_type: RepairAction
+    description: str
+    target_component: str
+    repair_steps: List[Dict]
+    estimated_time: float  # 秒
+    stability_score: float  # 0-1
+    side_effects: List[str] = None
+    priority: int = 1  # 1-5, 5最高
 
 
 @dataclass
 class RepairResult:
     """修复结果数据结构"""
-    repair_id: str
-    strategy_id: str
-    start_time: str
-    end_time: str
+    strategy_used: str
     success: bool
-    metrics_before: Dict[str, Any]
-    metrics_after: Dict[str, Any]
-    logs: List[str]
-    verification_result: Dict[str, Any]
-    errors: List[str]
+    execution_time: float
+    verification_result: Dict
+    side_effects_observed: List[str] = None
+    improvements: List[str] = None
 
 
-class PerformanceMonitor:
-    """性能监控器"""
+class ErrorDetectionRepairSkill:
+    """
+    错误检测与修复技能
+    实现错误自修复能力，包括多维度监控、模式学习、根因分析、策略生成、自动修复和知识库建设
+    """
     
-    def __init__(self):
-        self.thresholds = {
-            "response_time": 2.0,  # 秒
-            "cpu_usage": 80.0,     # 百分比
-            "memory_usage": 85.0,  # 百分比
-            "disk_io": 100.0,      # MB/s
-            "network_latency": 100  # 毫秒
+    def __init__(self, config: Optional[Dict] = None):
+        """
+        初始化错误检测与修复技能
+        
+        Args:
+            config: 配置参数
+        """
+        self.config = config or {}
+        self._init_components()
+        self._load_or_create_knowledge_base()
+        
+    def _init_components(self):
+        """初始化各组件"""
+        # 错误监控配置
+        self.performance_thresholds = {
+            'response_time': self.config.get('response_time_threshold', 2.0),  # 秒
+            'cpu_usage': self.config.get('cpu_usage_threshold', 80),  # 百分比
+            'memory_usage': self.config.get('memory_usage_threshold', 85),  # 百分比
+            'error_rate': self.config.get('error_rate_threshold', 0.01)  # 1%
         }
-        self.history = defaultdict(list)
-        self.baselines = {}
-    
-    def check_performance(self, metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """检查性能指标是否超过阈值"""
-        anomalies = []
         
-        for metric_name, value in metrics.items():
-            if metric_name in self.thresholds:
-                if value > self.thresholds[metric_name]:
-                    anomalies.append({
-                        "metric": metric_name,
-                        "value": value,
-                        "threshold": self.thresholds[metric_name],
-                        "severity": self._calculate_severity(value, self.thresholds[metric_name]),
-                        "timestamp": datetime.now().isoformat()
-                    })
+        # 机器学习模型
+        self.error_classifier = None
+        self.anomaly_detector = None
+        self.scaler = StandardScaler()
         
-        return anomalies
-    
-    def _calculate_severity(self, value: float, threshold: float) -> str:
-        """计算异常严重程度"""
-        ratio = value / threshold
-        if ratio > 2.0:
-            return "CRITICAL"
-        elif ratio > 1.5:
-            return "HIGH"
-        elif ratio > 1.2:
-            return "MEDIUM"
-        else:
-            return "LOW"
-    
-    def update_baseline(self, metric_name: str, value: float):
-        """更新基线值"""
-        if metric_name not in self.history:
-            self.history[metric_name] = []
+        # 错误模式库
+        self.error_patterns = {}
+        self.pattern_counter = 0
         
-        self.history[metric_name].append(value)
+        # 修复策略库
+        self.repair_strategies = {}
+        self.strategy_counter = 0
         
-        # 保留最近1000个值
-        if len(self.history[metric_name]) > 1000:
-            self.history[metric_name].pop(0)
-        
-        # 更新基线（使用最近100个值的平均值）
-        if len(self.history[metric_name]) >= 100:
-            self.baselines[metric_name] = np.mean(self.history[metric_name][-100:])
-
-
-class ResourceMonitor:
-    """资源监控器"""
-    
-    def __init__(self):
-        self.resource_limits = {
-            "memory": {"max": 1024, "unit": "MB"},  # 最大内存使用
-            "cpu": {"max": 100, "unit": "percent"},  # 最大CPU使用
-            "connections": {"max": 1000, "unit": "count"},  # 最大连接数
-            "open_files": {"max": 1024, "unit": "count"}  # 最大打开文件数
+        # 知识库
+        self.knowledge_base = {
+            'error_history': [],
+            'repair_history': [],
+            'success_rates': {},
+            'pattern_library': {},
+            'performance_benchmarks': {}
         }
-        self.resource_usage_history = []
-        self.leak_detection_window = 60  # 秒
-    
-    def monitor_resources(self, current_usage: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """监控资源使用情况"""
-        issues = []
-        timestamp = datetime.now().isoformat()
         
-        # 检查资源超限
-        for resource, usage in current_usage.items():
-            if resource in self.resource_limits:
-                limit = self.resource_limits[resource]["max"]
-                if usage > limit:
-                    issues.append({
-                        "type": "resource_exceeded",
-                        "resource": resource,
-                        "usage": usage,
-                        "limit": limit,
-                        "timestamp": timestamp,
-                        "severity": "HIGH" if usage > limit * 1.2 else "MEDIUM"
-                    })
+        # 监控状态
+        self.monitoring_active = False
+        self.current_errors = []
+        self.monitoring_thread = None
         
-        # 检测资源泄漏
-        self.resource_usage_history.append((timestamp, current_usage))
+        # 统计信息
+        self.stats = {
+            'total_detections': 0,
+            'total_repairs': 0,
+            'successful_repairs': 0,
+            'average_repair_time': 0.0,
+            'error_trends': defaultdict(list)
+        }
         
-        # 只保留最近时间窗口的数据
-        cutoff_time = datetime.now() - timedelta(seconds=self.leak_detection_window)
-        self.resource_usage_history = [
-            (ts, usage) for ts, usage in self.resource_usage_history
-            if datetime.fromisoformat(ts) > cutoff_time
-        ]
+        # 线程锁
+        self.lock = threading.RLock()
         
-        # 如果有足够的历史数据，检测内存泄漏
-        if len(self.resource_usage_history) >= 10:
-            memory_values = [usage.get("memory", 0) for _, usage in self.resource_usage_history]
-            memory_trend = np.polyfit(range(len(memory_values)), memory_values, 1)[0]
+    def _load_or_create_knowledge_base(self, kb_path: Optional[str] = None):
+        """加载或创建知识库"""
+        self.kb_path = kb_path or f"error_knowledge_base_{datetime.now().strftime('%Y%m%d')}.pkl"
+        try:
+            with open(self.kb_path, 'rb') as f:
+                self.knowledge_base = pickle.load(f)
+                logger.info(f"已加载知识库: {len(self.knowledge_base.get('error_history', []))} 条错误记录")
+        except FileNotFoundError:
+            logger.info("创建新的知识库")
+            self._save_knowledge_base()
             
-            if memory_trend > 0.5:  # 内存持续增长
-                issues.append({
-                    "type": "memory_leak",
-                    "trend": memory_trend,
-                    "current": memory_values[-1],
+    def _save_knowledge_base(self):
+        """保存知识库到文件"""
+        try:
+            with open(self.kb_path, 'wb') as f:
+                pickle.dump(self.knowledge_base, f)
+        except Exception as e:
+            logger.error(f"保存知识库失败: {e}")
+            
+    def detect_errors(self) -> List[ErrorEvent]:
+        """
+        执行多维度错误检测
+        
+        Returns:
+            检测到的错误事件列表
+        """
+        logger.info("开始多维度错误检测")
+        detected_errors = []
+        
+        with self.lock:
+            self.stats['total_detections'] += 1
+        
+        # 1. 运行时错误检测
+        runtime_errors = self._detect_runtime_errors()
+        detected_errors.extend(runtime_errors)
+        
+        # 2. 性能异常检测
+        performance_errors = self._detect_performance_anomalies()
+        detected_errors.extend(performance_errors)
+        
+        # 3. 逻辑错误检测
+        logic_errors = self._detect_logic_errors()
+        detected_errors.extend(logic_errors)
+        
+        # 4. 资源泄漏检测
+        resource_errors = self._detect_resource_leaks()
+        detected_errors.extend(resource_errors)
+        
+        # 5. 系统错误检测
+        system_errors = self._detect_system_errors()
+        detected_errors.extend(system_errors)
+        
+        # 更新当前错误列表
+        self.current_errors = detected_errors
+        
+        # 记录到知识库
+        for error in detected_errors:
+            self._record_error(error)
+        
+        logger.info(f"检测到 {len(detected_errors)} 个错误")
+        return detected_errors
+    
+    def _detect_runtime_errors(self) -> List[ErrorEvent]:
+        """检测运行时错误"""
+        errors = []
+        
+        # 模拟异常捕获检测
