@@ -1,104 +1,98 @@
 // acp-proxy/skills/analyze-observations-skill.js
+
 const memoryPlugin = require('../plugins/memory-plugin');
 
 /**
- * 简单的统计分析工具 - 计算最近N条观察的类型分布
- * @param {Array} observations - 观察记录数组
- * @param {number} n - 取最近N条，默认20
- * @returns {Object} 类型分布统计
+ * 分析观察记录技能
+ * 自动分析记忆库中状态为'unanalyzed'的观察记录，生成结构化分析报告
  */
-function computeTypeDistribution(observations, n = 20) {
-    const recent = observations.slice(0, n);
-    const distribution = {};
+const analyzeObservationsSkill = async () => {
+  const startTime = Date.now();
+  let processedCount = 0;
+  let errorCount = 0;
+  const errors = [];
+  
+  try {
+    console.log('[analyze-observations-skill] 开始分析观察记录...');
     
-    recent.forEach(obs => {
-        const type = obs.type || 'unknown';
-        distribution[type] = (distribution[type] || 0) + 1;
+    // 1. 获取所有未分析的观察记录
+    const unanalyzedObservations = await memoryPlugin.get_observations({
+      status: 'unanalyzed'
     });
     
-    return {
-        total: recent.length,
-        distribution,
-        topTypes: Object.entries(distribution)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([type, count]) => ({ type, count, percentage: (count / recent.length * 100).toFixed(1) + '%' }))
-    };
-}
-
-/**
- * 分析单条观察记录
- * @param {Object} observation - 观察记录
- * @returns {Object} 分析结果
- */
-function analyzeSingleObservation(observation) {
-    const content = observation.content || '';
-    const type = observation.type || 'unknown';
-    const timestamp = observation.timestamp || new Date().toISOString();
+    if (!unanalyzedObservations || unanalyzedObservations.length === 0) {
+      console.log('[analyze-observations-skill] 没有找到未分析的观察记录');
+      return {
+        success: true,
+        message: '没有找到未分析的观察记录',
+        analyzedCount: 0,
+        errorCount: 0,
+        reportId: null,
+        executionTime: Date.now() - startTime
+      };
+    }
     
-    // 简单的模式识别逻辑
-    const patterns = {
-        error: /(错误|失败|异常|crash|error|fail|bug)/i,
-        performance: /(性能|慢|卡顿|延迟|performance|slow|latency)/i,
-        behavior: /(行为|模式|习惯|pattern|behavior)/i,
-        improvement: /(优化|改进|提升|improve|enhance)/i,
-        security: /(安全|漏洞|风险|security|vulnerability|risk)/i
-    };
+    console.log(`[analyze-observations-skill] 找到 ${unanalyzedObservations.length} 条未分析的观察记录`);
     
-    const identifiedProblems = [];
-    const relatedGoals = [];
-    const suggestedImprovements = [];
+    // 2. 内联统计分析功能：计算观察记录类型分布
+    const statistics = analyzeObservationDistribution(unanalyzedObservations);
+    console.log('[analyze-observations-skill] 观察记录统计:', statistics);
     
-    // 识别问题/模式
-    Object.entries(patterns).forEach(([key, regex]) => {
-        if (regex.test(content)) {
-            identifiedProblems.push({
-                pattern: key,
-                confidence: 'medium',
-                evidence: content.substring(0, 100)
-            });
-        }
+    // 3. 逐条分析观察记录
+    const analysisResults = [];
+    
+    for (const observation of unanalyzedObservations) {
+      try {
+        const analysis = await analyzeSingleObservation(observation);
+        analysisResults.push(analysis);
+        processedCount++;
+        
+        // 4. 更新观察记录状态为'analyzed'
+        await memoryPlugin.update_observation_status(
+          observation.id,
+          'analyzed',
+          {
+            analysisSummary: analysis.summary,
+            analysisTimestamp: new Date().toISOString(),
+            patternsIdentified: analysis.patterns,
+            relatedGoals: analysis.relatedGoals,
+            suggestedActions: analysis.suggestedActions
+          }
+        );
+        
+        console.log(`[analyze-observations-skill] 已分析观察记录 ${observation.id}`);
+      } catch (error) {
+        console.error(`[analyze-observations-skill] 分析观察记录 ${observation.id} 失败:`, error);
+        errorCount++;
+        errors.push({
+          observationId: observation.id,
+          error: error.message
+        });
+      }
+    }
+    
+    // 5. 生成分析报告
+    const report = generateAnalysisReport(analysisResults, statistics, unanalyzedObservations.length);
+    
+    // 6. 将分析报告存入记忆库
+    const reportId = await memoryPlugin.create_memory({
+      type: 'analysis_report',
+      content: report,
+      metadata: {
+        generatedAt: new Date().toISOString(),
+        analyzedObservationsCount: processedCount,
+        failedAnalysisCount: errorCount,
+        executionTimeMs: Date.now() - startTime
+      }
     });
     
-    // 关联进化目标
-    if (patterns.error.test(content)) {
-        relatedGoals.push({
-            goal: '错误自修复',
-            relevance: 'high',
-            description: '该观察涉及错误或失败，直接关联到系统自我修复能力的提升'
-        });
-        suggestedImprovements.push({
-            type: 'configuration',
-            suggestion: '更新错误监控配置，添加该类错误的自动检测规则',
-            priority: 'high'
-        });
-    }
+    console.log(`[analyze-observations-skill] 分析报告已保存，ID: ${reportId}`);
     
-    if (patterns.performance.test(content)) {
-        relatedGoals.push({
-            goal: '性能优化',
-            relevance: 'medium',
-            description: '该观察涉及性能问题，关联到系统效率提升'
-        });
-        suggestedImprovements.push({
-            type: 'logic',
-            suggestion: '优化相关代码路径，减少不必要的计算',
-            priority: 'medium'
-        });
-    }
-    
-    // 默认建议
-    if (suggestedImprovements.length === 0) {
-        suggestedImprovements.push({
-            type: 'tool',
-            suggestion: '基于此观察创建新的分析工具或监控脚本',
-            priority: 'low'
-        });
-    }
-    
+    // 7. 返回操作结果
     return {
-        observationId: observation.id,
-        analyzedAt: new Date().toISOString(),
-        identifiedProblems,
-        relatedGoals,
-        suggestedImprovements,
+      success: true,
+      message: `分析完成，处理了 ${processedCount} 条观察记录`,
+      analyzedCount: processedCount,
+      errorCount: errorCount,
+      errors: errors,
+      reportId: reportId,
