@@ -1,171 +1,167 @@
+"""
+结果分析与错误识别技能模块
+用于解决反思中“存在未分析的观察，信息处理不完整”和“错误自修复 (进度: 0%)”的问题
+"""
+
 import re
-from typing import Dict, Any, List, Optional
-
-
-def _extract_error_info(error_str: str) -> Dict[str, Optional[str]]:
-    """从错误字符串中提取结构化信息"""
-    error_info = {
-        "type": None,
-        "message": error_str,
-        "module": None,
-        "file": None
-    }
-    
-    # 尝试匹配常见的错误模式
-    patterns = [
-        # ImportError: No module named 'xxx'
-        (r"ImportError: No module named '(\w+)'", lambda m: {"type": "ImportError", "module": m.group(1)}),
-        # ModuleNotFoundError: No module named 'xxx'
-        (r"ModuleNotFoundError: No module named '(\w+)'", lambda m: {"type": "ModuleNotFoundError", "module": m.group(1)}),
-        # FileNotFoundError: [Errno 2] No such file or directory: 'xxx'
-        (r"FileNotFoundError:.*No such file or directory: '(.+)'", lambda m: {"type": "FileNotFoundError", "file": m.group(1)}),
-        # PermissionError: [Errno 13] Permission denied: 'xxx'
-        (r"PermissionError:.*Permission denied: '(.+)'", lambda m: {"type": "PermissionError", "file": m.group(1)}),
-        # TypeError: xxx
-        (r"TypeError: (.+)", lambda m: {"type": "TypeError", "message": m.group(1)}),
-        # SyntaxError: xxx
-        (r"SyntaxError: (.+)", lambda m: {"type": "SyntaxError", "message": m.group(1)}),
-        # ValueError: xxx
-        (r"ValueError: (.+)", lambda m: {"type": "ValueError", "message": m.group(1)}),
-        # KeyError: xxx
-        (r"KeyError: '(\w+)'", lambda m: {"type": "KeyError", "message": m.group(1)}),
-    ]
-    
-    for pattern, extractor in patterns:
-        match = re.search(pattern, error_str, re.IGNORECASE)
-        if match:
-            extracted = extractor(match)
-            error_info.update(extracted)
-            break
-    
-    return error_info
-
-
-def _generate_fix_suggestions(error_info: Dict[str, Any], context: Dict[str, Any]) -> List[str]:
-    """根据错误信息生成修复建议"""
-    suggestions = []
-    error_type = error_info.get("type")
-    
-    if error_type == "ImportError" or error_type == "ModuleNotFoundError":
-        module = error_info.get("module")
-        if module:
-            suggestions.append(f"建议安装缺失的模块: `pip install {module}`")
-            suggestions.append(f"如果模块名不同，尝试: `pip install {module.replace('-', '_')}`")
-            suggestions.append(f"检查是否拼写正确，可用 `pip search {module}` 查找")
-    
-    elif error_type == "FileNotFoundError":
-        file_path = error_info.get("file")
-        if file_path:
-            suggestions.append(f"检查文件路径是否正确: '{file_path}'")
-            # 尝试建议创建目录
-            if '/' in file_path or '\\' in file_path:
-                parent_dir = '/'.join(file_path.split('/')[:-1]) if '/' in file_path else '\\'.join(file_path.split('\\')[:-1])
-                suggestions.append(f"如目录不存在，尝试创建: `mkdir -p {parent_dir}`")
-    
-    elif error_type == "PermissionError":
-        file_path = error_info.get("file")
-        if file_path:
-            suggestions.append(f"检查文件权限: `ls -l {file_path}`")
-            suggestions.append(f"尝试修改权限: `chmod +w {file_path}` 或使用sudo")
-    
-    elif error_type == "SyntaxError":
-        suggestions.append("检查代码语法，特别注意括号、引号和缩进")
-        suggestions.append("使用Python的 `-tt` 参数检查混合制表符和空格")
-    
-    elif error_type == "KeyError":
-        key = error_info.get("message")
-        suggestions.append(f"检查字典中是否存在键 '{key}'")
-        suggestions.append("可以使用 `.get(key, default)` 方法避免KeyError")
-        suggestions.append("使用 `key in dictionary` 进行键存在性检查")
-    
-    # 通用建议
-    if not suggestions:
-        suggestions.append("请检查错误信息详情，确认问题所在")
-        suggestions.append("尝试在开发环境中重现问题进行调试")
-        suggestions.append("查看相关模块的官方文档或社区支持")
-    
-    return suggestions
+from typing import Dict, List, Any
 
 
 def analyze_and_fix(last_cycle_log: dict, context: dict) -> dict:
     """
-    结果分析与错误识别技能
+    分析上一个执行周期的结果并识别错误，生成修复建议
     
-    分析上一个执行周期的日志，识别错误模式，并生成修复建议。
-    用于解决反思中的"存在未分析的观察"和"错误自修复进度为0%"问题。
-    
-    参数:
+    Args:
         last_cycle_log: 包含上一个执行周期详细日志的字典
         context: 上下文字典，包含用户最后的对话、当前目标等
-    
-    返回:
-        包含分析结果、识别错误和修复建议的字典
+        
+    Returns:
+        包含分析结果、识别出的错误和修复建议的字典
     """
-    
-    # 初始化输出结构
+    # 初始化结果字典
     result = {
-        "analysis": "",
-        "identified_errors": [],
-        "fix_suggestions": []
+        'analysis': '',
+        'identified_errors': [],
+        'fix_suggestions': []
     }
     
-    # 从日志中提取关键信息
-    actions = last_cycle_log.get("actions", [])
-    outputs = last_cycle_log.get("outputs", [])
-    errors = last_cycle_log.get("errors", [])
+    # 提取关键信息
+    actions = last_cycle_log.get('actions', [])
+    outputs = last_cycle_log.get('outputs', [])
+    errors = last_cycle_log.get('errors', [])
+    metadata = last_cycle_log.get('metadata', {})
     
-    # 1. 分析是否有显式错误
+    # 第一部分：分析显式错误
     if errors:
-        # 处理每个错误
-        for error in errors:
-            error_str = str(error)
-            error_info = _extract_error_info(error_str)
-            
-            result["identified_errors"].append({
-                "original_error": error_str,
-                "parsed_info": error_info,
-                "context": context
-            })
-            
-            # 生成修复建议
-            suggestions = _generate_fix_suggestions(error_info, context)
-            result["fix_suggestions"].extend(suggestions)
+        result['analysis'] = "执行周期中存在明确的错误记录"
         
-        result["analysis"] = f"执行周期发现 {len(errors)} 个显式错误。"
+        for i, error in enumerate(errors):
+            error_type = _identify_error_type(error)
+            error_info = {
+                'error_index': i,
+                'error_type': error_type,
+                'error_message': str(error)[:200],  # 限制错误信息长度
+                'related_action': actions[i] if i < len(actions) else None
+            }
+            result['identified_errors'].append(error_info)
+            
+            # 尝试生成修复建议
+            fix_suggestion = _generate_fix_suggestion(error_type, error, context)
+            if fix_suggestion:
+                result['fix_suggestions'].append({
+                    'for_error_index': i,
+                    'suggestion': fix_suggestion
+                })
     
-    # 2. 检查输出是否符合预期（无显式错误时）
+    # 第二部分：检查输出质量（如果没有显式错误）
     elif outputs:
-        result["analysis"] = "执行完成，正在分析输出结果..."
+        output_issues = []
         
-        # 检查每个输出是否合理
-        problematic_outputs = []
         for i, output in enumerate(outputs):
-            output_type = type(output).__name__
-            
-            # 检查输出是否为空
-            if output is None:
-                problematic_outputs.append({
-                    "index": i,
-                    "issue": "输出为None",
-                    "suggestion": "检查该步骤的逻辑，确保返回有效结果"
-                })
-            
-            # 检查字符串输出是否为空或只包含空白
-            elif isinstance(output, str) and not output.strip():
-                problematic_outputs.append({
-                    "index": i,
-                    "issue": "输出为空字符串",
-                    "suggestion": "检查生成逻辑，确保产生有意义的输出"
-                })
-            
-            # 检查列表/字典是否为空
-            elif isinstance(output, (list, dict)) and len(output) == 0:
-                problematic_outputs.append({
-                    "index": i,
-                    "issue": f"输出{output_type}为空",
-                    "suggestion": "检查数据来源和处理逻辑"
+            if not _validate_output(output, actions[i] if i < len(actions) else None):
+                output_issues.append({
+                    'output_index': i,
+                    'issue': "输出不符合预期",
+                    'expected_pattern': _get_expected_pattern(actions[i] if i < len(actions) else None)
                 })
         
-        if problematic_outputs:
-            result["identified_errors"].extend(problematic_outputs)
+        if output_issues:
+            result['analysis'] = f"未发现明确错误，但检测到{len(output_issues)}个输出质量问题"
+            result['identified_errors'] = [
+                {
+                    'error_type': 'OUTPUT_VALIDATION',
+                    'error_message': issue['issue'],
+                    'output_index': issue['output_index']
+                }
+                for issue in output_issues
+            ]
             
+            # 为输出质量问题提供建议
+            for issue in output_issues:
+                suggestion = _generate_output_fix_suggestion(issue)
+                result['fix_suggestions'].append({
+                    'for_output_index': issue['output_index'],
+                    'suggestion': suggestion
+                })
+        else:
+            result['analysis'] = "执行周期完成，未发现明显错误或输出质量问题"
+    else:
+        result['analysis'] = "执行周期没有记录输出或错误，可能是空操作"
+    
+    # 添加元数据用于知识积累
+    result['metadata'] = {
+        'cycle_id': metadata.get('cycle_id'),
+        'skill_name': metadata.get('skill_name'),
+        'timestamp': metadata.get('timestamp'),
+        'analysis_confidence': _calculate_analysis_confidence(result)
+    }
+    
+    return result
+
+
+def _identify_error_type(error: Any) -> str:
+    """识别错误类型"""
+    error_str = str(error).lower()
+    
+    # 常见Python错误模式
+    error_patterns = {
+        'ImportError': r'importerror|module not found|no module named',
+        'FileNotFoundError': r'filenotfounderror|no such file|file not found',
+        'SyntaxError': r'syntaxerror|invalid syntax|unexpected token',
+        'TypeError': r'typeerror|unsupported operand|not callable',
+        'AttributeError': r'attributeerror|no attribute',
+        'PermissionError': r'permissionerror|permission denied',
+        'ConnectionError': r'connectionerror|connection refused|timeout',
+        'TimeoutError': r'timeouterror|timed out',
+        'MemoryError': r'memoryerror|out of memory',
+        'ValueError': r'valueerror|invalid literal',
+        'KeyError': r'keyerror|key not found',
+        'IndexError': r'indexerror|out of range|list index',
+    }
+    
+    for error_type, pattern in error_patterns.items():
+        if re.search(pattern, error_str, re.IGNORECASE):
+            return error_type
+    
+    # 尝试从错误消息中提取类型
+    if ':' in str(error):
+        return str(error).split(':')[0].strip()
+    
+    return 'UNKNOWN_ERROR'
+
+
+def _generate_fix_suggestion(error_type: str, error: Any, context: dict) -> str:
+    """根据错误类型生成修复建议"""
+    error_str = str(error).lower()
+    suggestions = []
+    
+    if error_type == 'ImportError':
+        # 尝试提取缺失的模块名
+        module_match = re.search(r'no module named [\'"]?(\w+)', error_str)
+        if module_match:
+            module_name = module_match.group(1)
+            suggestions.append(f"建议安装缺失的模块：pip install {module_name}")
+        else:
+            suggestions.append("检查是否安装了所需的依赖包")
+            suggestions.append("尝试使用 pip install <package_name> 安装缺失的包")
+    
+    elif error_type == 'FileNotFoundError':
+        # 尝试提取文件路径
+        path_match = re.search(r'[\'"]([^\'"]+)[\'"]', error_str)
+        if path_match:
+            file_path = path_match.group(1)
+            suggestions.append(f"检查文件路径是否正确：{file_path}")
+            
+            # 检查是否是目录问题
+            if '/' in file_path or '\\' in file_path:
+                dir_path = '/'.join(file_path.split('/')[:-1])
+                suggestions.append(f"尝试创建目录：mkdir -p {dir_path}")
+        else:
+            suggestions.append("检查文件或目录是否存在")
+            suggestions.append("如果是新建文件，确保父目录存在")
+    
+    elif error_type == 'SyntaxError':
+        suggestions.append("检查代码语法，特别注意括号、引号、冒号的匹配")
+        suggestions.append("使用代码编辑器的语法检查功能")
+        suggestions.append("将代码分段执行，定位错误位置")
+    
