@@ -1,175 +1,138 @@
-// acp-proxy/skills/analyze-observations-skill.js
-const memoryPlugin = require('../plugins/memory-plugin');
-
 /**
- * 观察记录分析技能
- * 自动分析记忆库中未分析的观察记录，生成结构化分析报告和行动建议
+ * 观察分析技能 - 打破进化循环停滞的核心技能
+ * 将未分析的观察记录转化为结构化分析结论和行动建议
  */
-async function analyzeObservationsSkill() {
-    const startTime = Date.now();
-    const results = {
-        success: false,
-        analyzedCount: 0,
-        reportId: null,
-        errors: [],
-        executionTime: 0
-    };
 
-    try {
-        console.log('[analyze-observations-skill] 开始执行观察分析流程...');
+const { memoryPlugin } = require('../plugins/memory-plugin');
+const { logger } = require('../utils/logger');
+const { errorHandler } = require('../utils/error-handler');
+
+class AnalyzeObservationsSkill {
+    constructor() {
+        this.name = 'analyze-observations-skill';
+        this.version = '1.0.0';
+        this.description = '分析未观察记录，生成结构化结论和行动建议';
+        this.memoryPlugin = memoryPlugin;
         
-        // 1. 获取未分析的观察记录
-        let unanalyzedObservations;
-        try {
-            unanalyzedObservations = await memoryPlugin.get_observations({
-                status: 'unanalyzed',
-                limit: 100 // 限制一次处理的数量，避免资源耗尽
-            });
-        } catch (error) {
-            throw new Error(`获取观察记录失败: ${error.message}`);
-        }
-
-        if (!unanalyzedObservations || unanalyzedObservations.length === 0) {
-            console.log('[analyze-observations-skill] 没有找到未分析的观察记录');
-            results.success = true;
-            results.message = '无未分析的观察记录';
-            return results;
-        }
-
-        console.log(`[analyze-observations-skill] 找到 ${unanalyzedObservations.length} 条未分析的观察记录`);
-
-        // 2. 内联统计分析：计算最近N条观察的类型分布
-        const recentN = 10;
-        const recentObservations = unanalyzedObservations.slice(-recentN);
-        const typeDistribution = analyzeTypeDistribution(recentObservations);
-
-        // 3. 对每条观察记录进行分析
-        const analysisResults = [];
-        let processedCount = 0;
-
-        for (const observation of unanalyzedObservations) {
-            try {
-                const analysis = await analyzeSingleObservation(observation);
-                analysisResults.push(analysis);
-                processedCount++;
-                
-                // 更新观察记录状态
-                await memoryPlugin.update_observation_status(
-                    observation.id,
-                    'analyzed',
-                    {
-                        analysis_summary: analysis.summary,
-                        analyzed_at: new Date().toISOString(),
-                        analysis_version: '1.0'
-                    }
-                );
-
-                console.log(`[analyze-observations-skill] 已分析观察记录 ${observation.id}`);
-            } catch (error) {
-                console.error(`[analyze-observations-skill] 分析观察记录 ${observation.id} 失败:`, error);
-                results.errors.push({
-                    observationId: observation.id,
-                    error: error.message
-                });
-                // 继续处理其他记录，不中断整个流程
-                continue;
-            }
-        }
-
-        // 4. 生成分析报告
-        const report = {
-            type: 'analysis_report',
-            title: `观察记录分析报告 - ${new Date().toISOString()}`,
-            created_at: new Date().toISOString(),
-            observations_analyzed: processedCount,
-            total_observations: unanalyzedObservations.length,
-            type_distribution: typeDistribution,
-            analysis_results: analysisResults,
-            insights: extractInsights(analysisResults),
-            action_suggestions: generateActionSuggestions(analysisResults)
+        // 分析配置
+        this.config = {
+            maxBatchSize: 50, // 每次分析的最大记录数
+            analysisTimeout: 30000, // 单条记录分析超时(ms)
+            minObservationsForPattern: 3, // 模式识别的最小观察数
+            analysisDepth: 3 // 分析深度级别(1-5)
         };
-
-        // 5. 存储分析报告到记忆库
-        try {
-            const reportResult = await memoryPlugin.add_memory(report);
-            results.reportId = reportResult.id;
-            console.log(`[analyze-observations-skill] 分析报告已保存，ID: ${results.reportId}`);
-        } catch (error) {
-            throw new Error(`存储分析报告失败: ${error.message}`);
-        }
-
-        // 6. 更新结果
-        results.success = true;
-        results.analyzedCount = processedCount;
-        results.executionTime = Date.now() - startTime;
-
-        console.log(`[analyze-observations-skill] 分析完成: 已处理 ${processedCount} 条记录，耗时 ${results.executionTime}ms`);
-
-        return results;
-
-    } catch (error) {
-        console.error('[analyze-observations-skill] 执行过程中发生错误:', error);
-        results.errors.push({
-            error: error.message,
-            stack: error.stack
-        });
-        results.executionTime = Date.now() - startTime;
-        return results;
+        
+        // 进化目标映射
+        this.evolutionGoals = {
+            'error_pattern': '错误自修复',
+            'performance_issue': '性能优化',
+            'behavior_anomaly': '行为规范',
+            'capability_gap': '能力扩展',
+            'knowledge_update': '知识更新',
+            'tool_creation': '工具创造'
+        };
+        
+        // 统计分析工具（内联的微小工具创造实例）
+        this.statisticsAnalyzer = this.createStatisticsAnalyzer();
     }
-}
 
-/**
- * 分析单条观察记录
- * @param {Object} observation - 观察记录对象
- * @returns {Object} 分析结果
- */
-async function analyzeSingleObservation(observation) {
-    const content = observation.content || '';
-    const observationType = observation.type || 'general';
-    
-    // 基础分析：关键词提取和模式识别
-    const keywords = extractKeywords(content);
-    const patterns = identifyPatterns(content);
-    const sentiment = analyzeSentiment(content);
-    
-    // 关联进化目标
-    const evolutionaryGoals = mapToEvolutionaryGoals(content, patterns);
-    
-    // 生成建议措施
-    const suggestions = generateMicroSuggestions(content, patterns, evolutionaryGoals);
-    
-    return {
-        observation_id: observation.id,
-        original_content: content,
-        type: observationType,
-        timestamp: observation.timestamp,
-        analysis: {
-            keywords: keywords,
-            patterns: patterns,
-            sentiment: sentiment,
-            evolutionary_goals: evolutionaryGoals,
-            suggestions: suggestions
-        },
-        summary: generateSummary(content, patterns, suggestions)
-    };
-}
+    /**
+     * 创建简单的统计分析工具
+     * @returns {Object} 统计分析工具实例
+     */
+    createStatisticsAnalyzer() {
+        return {
+            /**
+             * 计算观察类型分布
+             * @param {Array} observations - 观察记录数组
+             * @returns {Object} 类型分布统计
+             */
+            calculateTypeDistribution(observations) {
+                const distribution = {};
+                const total = observations.length;
+                
+                observations.forEach(obs => {
+                    const type = obs.type || 'unknown';
+                    distribution[type] = (distribution[type] || 0) + 1;
+                });
+                
+                // 转换为百分比
+                Object.keys(distribution).forEach(key => {
+                    distribution[key] = {
+                        count: distribution[key],
+                        percentage: (distribution[key] / total * 100).toFixed(2)
+                    };
+                });
+                
+                return {
+                    distribution,
+                    total,
+                    dominantType: this.getDominantType(distribution)
+                };
+            },
+            
+            /**
+             * 识别主导类型
+             * @param {Object} distribution - 类型分布
+             * @returns {string} 主导类型
+             */
+            getDominantType(distribution) {
+                let maxCount = 0;
+                let dominant = '';
+                
+                Object.keys(distribution).forEach(type => {
+                    if (distribution[type].count > maxCount) {
+                        maxCount = distribution[type].count;
+                        dominant = type;
+                    }
+                });
+                
+                return dominant;
+            },
+            
+            /**
+             * 计算观察频率趋势
+             * @param {Array} observations - 观察记录数组
+             * @param {number} windowSize - 窗口大小
+             * @returns {Object} 趋势分析结果
+             */
+            calculateFrequencyTrend(observations, windowSize = 5) {
+                if (observations.length < windowSize * 2) {
+                    return { trend: 'insufficient_data', direction: 'stable' };
+                }
+                
+                // 按时间排序
+                const sorted = [...observations].sort(
+                    (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+                );
+                
+                // 计算最近窗口和之前的窗口
+                const recentWindow = sorted.slice(-windowSize);
+                const previousWindow = sorted.slice(-windowSize * 2, -windowSize);
+                
+                const recentFreq = recentWindow.length / windowSize;
+                const previousFreq = previousWindow.length / windowSize;
+                
+                const changeRatio = (recentFreq - previousFreq) / previousFreq;
+                
+                let direction = 'stable';
+                if (changeRatio > 0.2) direction = 'increasing';
+                else if (changeRatio < -0.2) direction = 'decreasing';
+                
+                return {
+                    trend: changeRatio > 0.2 ? 'increasing' : 
+                           changeRatio < -0.2 ? 'decreasing' : 'stable',
+                    direction,
+                    changeRatio: changeRatio.toFixed(4),
+                    recentFrequency: recentFreq.toFixed(2),
+                    previousFrequency: previousFreq.toFixed(2)
+                };
+            }
+        };
+    }
 
-/**
- * 提取关键词
- * @param {string} text - 文本内容
- * @returns {Array} 关键词列表
- */
-function extractKeywords(text) {
-    if (!text || typeof text !== 'string') return [];
-    
-    // 简单关键词提取：去除停用词，提取高频词
-    const stopWords = new Set(['的', '了', '在', '是', '我', '有', '和', '就', '不', '人', '都', '一', '一个', '上', '也', '很', '到', '说', '要', '去', '你', '会', '着', '没有', '看', '好', '自己', '这']);
-    const words = text.replace(/[^\w\s\u4e00-\u9fa5]/g, '').split(/\s+/);
-    const wordCount = {};
-    
-    words.forEach(word => {
-        if (word.length > 1 && !stopWords.has(word)) {
-            wordCount[word] = (wordCount[word] || 0) + 1;
-        }
-    });
-    
+    /**
+     * 执行观察分析技能
+     * @returns {Promise<Object>} 操作结果
+     */
+    async execute() {
