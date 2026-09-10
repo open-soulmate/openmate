@@ -1,0 +1,199 @@
+"""
+错误检测与修复技能模块
+实现错误自修复能力，包含多维度监控、模式学习、自动分析和修复
+"""
+
+import time
+import logging
+import json
+import pickle
+from datetime import datetime, timedelta
+from typing import Dict, List, Any, Optional, Tuple
+from dataclasses import dataclass, asdict
+from enum import Enum
+import numpy as np
+from collections import defaultdict
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from abc import ABC, abstractmethod
+
+# 配置日志
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger("ErrorDetectionRepairSkill")
+
+
+class ErrorType(Enum):
+    """错误类型枚举"""
+    RUNTIME_ERROR = "runtime_error"
+    PERFORMANCE_ANOMALY = "performance_anomaly"
+    LOGIC_ERROR = "logic_error"
+    RESOURCE_LEAK = "resource_leak"
+    SECURITY_BREACH = "security_breach"
+    NETWORK_ERROR = "network_error"
+    DATABASE_ERROR = "database_error"
+
+
+class ErrorSeverity(Enum):
+    """错误严重程度枚举"""
+    LOW = 1
+    MEDIUM = 2
+    HIGH = 3
+    CRITICAL = 4
+
+
+@dataclass
+class ErrorLog:
+    """错误日志数据结构"""
+    timestamp: str
+    error_type: str
+    message: str
+    stack_trace: str
+    system_metrics: Dict[str, Any]
+    context: Dict[str, Any]
+    severity: str
+    resource_usage: Dict[str, Any]
+    network_stats: Dict[str, Any]
+    application_state: Dict[str, Any]
+
+
+@dataclass
+class RepairStrategy:
+    """修复策略数据结构"""
+    strategy_id: str
+    error_type: str
+    repair_type: str  # temporary, permanent
+    steps: List[str]
+    estimated_time: float
+    success_probability: float
+    side_effects: List[str]
+    rollback_plan: List[str]
+    validation_tests: List[str]
+    confidence_score: float
+
+
+@dataclass
+class RepairResult:
+    """修复结果数据结构"""
+    repair_id: str
+    strategy_id: str
+    start_time: str
+    end_time: str
+    success: bool
+    metrics_before: Dict[str, Any]
+    metrics_after: Dict[str, Any]
+    logs: List[str]
+    verification_result: Dict[str, Any]
+    errors: List[str]
+
+
+class PerformanceMonitor:
+    """性能监控器"""
+    
+    def __init__(self):
+        self.thresholds = {
+            "response_time": 2.0,  # 秒
+            "cpu_usage": 80.0,     # 百分比
+            "memory_usage": 85.0,  # 百分比
+            "disk_io": 100.0,      # MB/s
+            "network_latency": 100  # 毫秒
+        }
+        self.history = defaultdict(list)
+        self.baselines = {}
+    
+    def check_performance(self, metrics: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """检查性能指标是否超过阈值"""
+        anomalies = []
+        
+        for metric_name, value in metrics.items():
+            if metric_name in self.thresholds:
+                if value > self.thresholds[metric_name]:
+                    anomalies.append({
+                        "metric": metric_name,
+                        "value": value,
+                        "threshold": self.thresholds[metric_name],
+                        "severity": self._calculate_severity(value, self.thresholds[metric_name]),
+                        "timestamp": datetime.now().isoformat()
+                    })
+        
+        return anomalies
+    
+    def _calculate_severity(self, value: float, threshold: float) -> str:
+        """计算异常严重程度"""
+        ratio = value / threshold
+        if ratio > 2.0:
+            return "CRITICAL"
+        elif ratio > 1.5:
+            return "HIGH"
+        elif ratio > 1.2:
+            return "MEDIUM"
+        else:
+            return "LOW"
+    
+    def update_baseline(self, metric_name: str, value: float):
+        """更新基线值"""
+        if metric_name not in self.history:
+            self.history[metric_name] = []
+        
+        self.history[metric_name].append(value)
+        
+        # 保留最近1000个值
+        if len(self.history[metric_name]) > 1000:
+            self.history[metric_name].pop(0)
+        
+        # 更新基线（使用最近100个值的平均值）
+        if len(self.history[metric_name]) >= 100:
+            self.baselines[metric_name] = np.mean(self.history[metric_name][-100:])
+
+
+class ResourceMonitor:
+    """资源监控器"""
+    
+    def __init__(self):
+        self.resource_limits = {
+            "memory": {"max": 1024, "unit": "MB"},  # 最大内存使用
+            "cpu": {"max": 100, "unit": "percent"},  # 最大CPU使用
+            "connections": {"max": 1000, "unit": "count"},  # 最大连接数
+            "open_files": {"max": 1024, "unit": "count"}  # 最大打开文件数
+        }
+        self.resource_usage_history = []
+        self.leak_detection_window = 60  # 秒
+    
+    def monitor_resources(self, current_usage: Dict[str, Any]) -> List[Dict[str, Any]]:
+        """监控资源使用情况"""
+        issues = []
+        timestamp = datetime.now().isoformat()
+        
+        # 检查资源超限
+        for resource, usage in current_usage.items():
+            if resource in self.resource_limits:
+                limit = self.resource_limits[resource]["max"]
+                if usage > limit:
+                    issues.append({
+                        "type": "resource_exceeded",
+                        "resource": resource,
+                        "usage": usage,
+                        "limit": limit,
+                        "timestamp": timestamp,
+                        "severity": "HIGH" if usage > limit * 1.2 else "MEDIUM"
+                    })
+        
+        # 检测资源泄漏
+        self.resource_usage_history.append((timestamp, current_usage))
+        
+        # 只保留最近时间窗口的数据
+        cutoff_time = datetime.now() - timedelta(seconds=self.leak_detection_window)
+        self.resource_usage_history = [
+            (ts, usage) for ts, usage in self.resource_usage_history
+            if datetime.fromisoformat(ts) > cutoff_time
+        ]
+        
+        # 如果有足够的历史数据，检测内存泄漏
+        if len(self.resource_usage_history) >= 10:
+            memory_values = [usage.get("memory", 0) for _, usage in self.resource_usage_history]
+            memory_trend = np.polyfit(range(len(memory_values)), memory_values, 1)[0]
+            
+            if memory_trend > 0.5:  # 内存持续增长
+                issues.append({
+                    "type": "memory_leak",
+                    "trend": memory_trend,
+                    "current": memory_values[-1],
