@@ -1,126 +1,219 @@
+from .base import BaseSkill
+from ..memory.manager import MemoryManager
 import json
-from collections import Counter
-from typing import Dict, List, Any
-from acp_proxy.skills import Skill, registry
+from datetime import datetime, timedelta
+from collections import defaultdict, Counter
+import re
 
-class ObservationAnalyzerSkill(Skill):
-    """内置观察分析技能，用于处理积压的observations_unanalyzed。"""
+class ObservationAnalyzer(BaseSkill):
+    """观察分析优化技能，解决观察数据未被有效分析的问题"""
     
-    name = "observation_analyzer"
-    description = "分析观察数据，识别模式，生成洞察和建议行动。"
+    def __init__(self, memory_manager: MemoryManager):
+        super().__init__(
+            name="observation_analyzer",
+            description="观察分析优化技能，解决观察数据未被有效分析的问题"
+        )
+        self.memory = memory_manager
+        self.UNANALYZED_THRESHOLD = 2  # 可配置的分析阈值
+        self.last_analysis_time = datetime.now()
+        self.analysis_cache = {}  # 缓存分析结果
+        
+    def set_threshold(self, threshold: int):
+        """设置分析阈值"""
+        if threshold > 0:
+            self.UNANALYZED_THRESHOLD = threshold
     
-    def execute(self, data: Dict[str, Any]) -> Dict[str, Any]:
-        """执行观察分析。
+    def monitor_unanalyzed(self):
+        """阈值监控器，追踪未分析观察数量，当超过2条时标记为需要处理"""
+        observations = self.memory.get("observations", [])
+        unanalyzed_count = 0
         
-        Args:
-            data: 包含observation_text或observation_list字段的字典。
-            
-        Returns:
-            结构化分析结果，包含analysis_summary, identified_patterns, suggested_actions。
-        """
-        # 获取观察数据
-        observation_text = data.get("observation_text", "")
-        observation_list = data.get("observation_list", [])
+        for obs in observations:
+            if not obs.get("analyzed", False):
+                unanalyzed_count += 1
         
-        # 合并观察列表为文本（如果提供列表）
-        if observation_list and not observation_text:
-            observation_text = "\n".join(observation_list)
-        
-        if not observation_text:
-            return {
-                "analysis_summary": "没有提供观察数据，无法进行分析。",
-                "identified_patterns": [],
-                "suggested_actions": ["提供观察数据以开始分析。"]
-            }
-        
-        # 1. 关键词提取和频率统计
-        keywords = self._extract_keywords(observation_text)
-        keyword_freq = Counter(keywords)
-        top_keywords = keyword_freq.most_common(10)
-        
-        # 2. 模式识别（简单规则）
-        patterns = self._identify_patterns(observation_text, keyword_freq)
-        
-        # 3. 生成总结
-        summary = self._generate_summary(observation_text, top_keywords, patterns)
-        
-        # 4. 建议行动
-        actions = self._suggest_actions(patterns)
-        
-        return {
-            "analysis_summary": summary,
-            "identified_patterns": patterns,
-            "suggested_actions": actions,
-            "top_keywords": [kw for kw, count in top_keywords]  # 额外信息，可忽略或保留
+        # 更新内存中的监控状态
+        monitor_status = {
+            "unanalyzed_count": unanalyzed_count,
+            "threshold_exceeded": unanalyzed_count > self.UNANALYZED_THRESHOLD,
+            "last_check_time": datetime.now().isoformat(),
+            "needs_analysis": unanalyzed_count > self.UNANALYZED_THRESHOLD
         }
+        
+        self.memory.update("observation_monitor", monitor_status)
+        return monitor_status
     
-    def _extract_keywords(self, text: str) -> List[str]:
-        """提取关键词（简单实现：按空格分词并过滤短词）。"""
-        words = text.lower().split()
-        # 过滤长度小于2的词，可扩展为更复杂的停用词表
-        keywords = [word.strip(".,!?;:\"'()[]{}") for word in words if len(word) > 2]
-        return keywords
+    def auto_analyze(self):
+        """自动分析器，对未分析的观察进行分类"""
+        observations = self.memory.get("observations", [])
+        analysis_results = {
+            "error_patterns": [],
+            "success_patterns": [],
+            "resource_usage": [],
+            "performance_metrics": [],
+            "analysis_time": datetime.now().isoformat()
+        }
+        
+        unanalyzed_observations = []
+        for obs in observations:
+            if not obs.get("analyzed", False):
+                unanalyzed_observations.append(obs)
+        
+        for obs in unanalyzed_observations:
+            # 分类观察数据
+            category = self._categorize_observation(obs)
+            observation_entry = {
+                "observation_id": obs.get("id"),
+                "content": obs.get("content"),
+                "timestamp": obs.get("timestamp"),
+                "category": category,
+                "analysis_time": datetime.now().isoformat()
+            }
+            
+            analysis_results[category].append(observation_entry)
+            
+            # 标记为已分析
+            obs["analyzed"] = True
+            obs["category"] = category
+            obs["analysis_time"] = datetime.now().isoformat()
+        
+        # 更新内存中的观察数据
+        self.memory.update("observations", observations)
+        
+        # 缓存分析结果
+        self.analysis_cache = analysis_results
+        
+        return analysis_results
     
-    def _identify_patterns(self, text: str, keyword_freq: Counter) -> List[str]:
-        """识别模式：基于关键词频率和简单规则。"""
-        patterns = []
-        text_lower = text.lower()
+    def _categorize_observation(self, observation):
+        """对观察进行分类"""
+        content = observation.get("content", "").lower()
+        
+        # 错误模式识别
+        error_keywords = ["error", "fail", "exception", "crash", "bug", "issue"]
+        if any(keyword in content for keyword in error_keywords):
+            return "error_patterns"
         
         # 成功模式识别
-        success_words = ["成功", "实现", "完成", "突破", "胜利", "达成", "成功"]
-        if any(word in text_lower for word in success_words):
-            patterns.append("成功模式")
+        success_keywords = ["success", "complete", "pass", "ok", "success"]
+        if any(keyword in content for keyword in success_keywords):
+            return "success_patterns"
         
-        # 失败模式识别
-        failure_words = ["失败", "错误", "问题", "障碍", "挑战", "困难", "未能"]
-        if any(word in text_lower for word in failure_words):
-            patterns.append("失败模式")
+        # 资源使用识别
+        resource_keywords = ["memory", "cpu", "disk", "network", "resource", "usage", "utilization"]
+        if any(keyword in content for keyword in resource_keywords):
+            return "resource_usage"
         
-        # 趋势模式识别
-        trend_words = ["增加", "减少", "上升", "下降", "改善", "恶化"]
-        if any(word in text_lower for word in trend_words):
-            patterns.append("趋势变化")
+        # 性能指标识别
+        performance_keywords = ["time", "duration", "speed", "latency", "throughput", "performance"]
+        if any(keyword in content for keyword in performance_keywords):
+            return "performance_metrics"
         
-        # 如果没有识别到模式，返回通用模式
-        if not patterns:
-            patterns.append("常规观察")
-        
-        return patterns
+        # 默认分类
+        return "error_patterns"  # 默认为错误模式，以便进一步分析
     
-    def _generate_summary(self, text: str, top_keywords: List[tuple], patterns: List[str]) -> str:
-        """生成分析总结。"""
-        # 简单总结：基于模式和高频关键词
-        summary_parts = []
+    def extract_patterns(self, analysis_results=None):
+        """模式提取器，从分析结果中识别可复用的模式"""
+        if analysis_results is None:
+            analysis_results = self.analysis_cache
         
-        if "成功模式" in patterns:
-            summary_parts.append("观察中存在积极成果。")
-        if "失败模式" in patterns:
-            summary_parts.append("观察中存在需要改进的问题。")
-        if "趋势变化" in patterns:
-            summary_parts.append("观察到某种趋势变化。")
+        patterns = self.memory.get("patterns", [])
+        new_patterns = []
         
-        # 添加高频关键词信息
-        if top_keywords:
-            kw_str = ", ".join([kw for kw, _ in top_keywords[:5]])
-            summary_parts.append(f"主要关注点包括：{kw_str}。")
+        # 分析错误模式
+        for error in analysis_results.get("error_patterns", []):
+            pattern = self._extract_pattern_from_error(error)
+            if pattern:
+                new_patterns.append(pattern)
         
-        return " ".join(summary_parts) if summary_parts else "分析完成，未识别明显模式。"
+        # 分析成功模式
+        for success in analysis_results.get("success_patterns", []):
+            pattern = self._extract_pattern_from_success(success)
+            if pattern:
+                new_patterns.append(pattern)
+        
+        # 分析资源使用模式
+        for resource in analysis_results.get("resource_usage", []):
+            pattern = self._extract_pattern_from_resource(resource)
+            if pattern:
+                new_patterns.append(pattern)
+        
+        # 分析性能指标模式
+        for performance in analysis_results.get("performance_metrics", []):
+            pattern = self._extract_pattern_from_performance(performance)
+            if pattern:
+                new_patterns.append(pattern)
+        
+        # 更新内存中的模式
+        for pattern in new_patterns:
+            existing_pattern = self._find_existing_pattern(pattern, patterns)
+            if existing_pattern:
+                # 更新现有模式
+                existing_pattern["frequency"] = existing_pattern.get("frequency", 0) + 1
+                existing_pattern["last_seen"] = datetime.now().isoformat()
+            else:
+                # 添加新模式
+                patterns.append(pattern)
+        
+        self.memory.update("patterns", patterns)
+        
+        return new_patterns
     
-    def _suggest_actions(self, patterns: List[str]) -> List[str]:
-        """根据模式建议行动。"""
-        actions = []
+    def _extract_pattern_from_error(self, error):
+        """从错误中提取模式"""
+        content = error.get("content", "")
         
-        if "成功模式" in patterns:
-            actions.append("记录成功经验，纳入知识库以便复用。")
-        if "失败模式" in patterns:
-            actions.append("分析失败原因，制定改进计划。")
-        if "趋势变化" in patterns:
-            actions.append("监控趋势，评估影响并调整策略。")
+        # 提取错误模式的关键信息
+        error_type = self._extract_error_type(content)
+        frequency = 1
+        last_seen = datetime.now().isoformat()
         
-        # 通用行动
-        actions.append("将分析结果存入知识库，供决策参考。")
+        return {
+            "pattern_type": "error",
+            "description": f"错误模式: {error_type}",
+            "frequency": frequency,
+            "last_seen": last_seen,
+            "sample_observations": [error.get("observation_id")]
+        }
+    
+    def _extract_pattern_from_success(self, success):
+        """从成功中提取模式"""
+        content = success.get("content", "")
         
-        return actions
-
-# 注册技能
-registry.register(ObservationAnalyzerSkill)
+        # 提取成功模式的关键信息
+        success_type = self._extract_success_type(content)
+        frequency = 1
+        last_seen = datetime.now().isoformat()
+        
+        return {
+            "pattern_type": "success",
+            "description": f"成功模式: {success_type}",
+            "frequency": frequency,
+            "last_seen": last_seen,
+            "sample_observations": [success.get("observation_id")]
+        }
+    
+    def _extract_pattern_from_resource(self, resource):
+        """从资源使用中提取模式"""
+        content = resource.get("content", "")
+        
+        # 提取资源使用模式
+        resource_type = self._extract_resource_type(content)
+        frequency = 1
+        last_seen = datetime.now().isoformat()
+        
+        return {
+            "pattern_type": "resource",
+            "description": f"资源使用模式: {resource_type}",
+            "frequency": frequency,
+            "last_seen": last_seen,
+            "sample_observations": [resource.get("observation_id")]
+        }
+    
+    def _extract_pattern_from_performance(self, performance):
+        """从性能指标中提取模式"""
+        content = performance.get("content", "")
+        
+        # 提取性能模式
+        performance_type = self._extract_performance_type(content)
+        frequency = 1
