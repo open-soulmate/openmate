@@ -1,75 +1,28 @@
 import os
-import sys
+from pathlib import Path
 
-class CodeScaffolderPlugin:
+def create_code_file(file_type: str, file_path: str, class_name: str, description: str) -> bool:
     """
-    代码脚手架插件，用于自动化创建技能和插件的基础代码文件。
-    当需要新建skill或plugin时，由evolution_planner调用此插件执行文件创建。
-    """
-
-    def create_code_file(self, file_type: str, file_path: str, class_name: str, description: str) -> bool:
-        """
-        创建代码文件
-        
-        Args:
-            file_type: 字符串，'skill' 或 'plugin'，决定生成的模板类型
-            file_path: 字符串，完整的文件路径，例如 'acp-proxy/skills/new_skill.py'
-            class_name: 字符串，将要创建的类名（例如 'NewSkill'）
-            description: 字符串，该模块的简要描述，将写入文档字符串
-        
-        Returns:
-            bool: 表示文件是否创建成功
-        """
-        try:
-            # 验证参数
-            if file_type not in ['skill', 'plugin']:
-                print(f"错误: file_type必须是'skill'或'plugin'，收到: {file_type}")
-                return False
-            
-            # 确保文件路径以.py结尾
-            if not file_path.endswith('.py'):
-                file_path += '.py'
-            
-            # 根据文件类型选择模板
-            template = self._get_template(file_type, class_name, description)
-            
-            # 检查并创建目录
-            directory = os.path.dirname(file_path)
-            if directory and not os.path.exists(directory):
-                os.makedirs(directory)
-                print(f"创建目录: {directory}")
-            
-            # 写入文件
-            with open(file_path, 'w', encoding='utf-8') as f:
-                f.write(template)
-            
-            print(f"成功创建{file_type}: {file_path}")
-            return True
-            
-        except Exception as e:
-            print(f"创建文件时发生错误: {str(e)}")
-            return False
+    代码脚手架插件，用于自动化创建技能和插件的基础代码文件
     
-    def _get_template(self, file_type: str, class_name: str, description: str) -> str:
-        """
-        根据文件类型生成代码模板
-        
-        Args:
-            file_type: 'skill' 或 'plugin'
-            class_name: 类名
-            description: 描述字符串
-        
-        Returns:
-            str: 格式化后的代码模板字符串
-        """
-        if file_type == 'skill':
-            return f'''# -*- coding: utf-8 -*-
-"""
-技能: {class_name}
+    参数:
+        file_type: 字符串，'skill' 或 'plugin'，决定生成的模板类型
+        file_path: 字符串，完整的文件路径，例如 'acp-proxy/skills/new_skill.py'
+        class_name: 字符串，将要创建的类名（例如 'NewSkill'）
+        description: 字符串，该模块的简要描述，将写入文档字符串
+    
+    返回:
+        布尔值，表示文件是否创建成功
+    """
+    
+    # 根据文件类型选择模板
+    if file_type == 'skill':
+        template = f'''"""
 {description}
 """
 
-from acp_proxy.skills.base_skill import BaseSkill
+from acp_proxy.skills.base import BaseSkill
+from typing import Any, Dict
 
 
 class {class_name}(BaseSkill):
@@ -77,54 +30,43 @@ class {class_name}(BaseSkill):
     {description}
     """
     
-    def __init__(self, **kwargs):
-        """
-        初始化技能
-        
-        Args:
-            **kwargs: 可选参数
-        """
-        super().__init__(**kwargs)
+    def __init__(self, config: Dict[str, Any] = None):
+        """初始化{class_name}技能"""
+        super().__init__(config)
+        self.skill_name = "{class_name}"
         self.description = "{description}"
     
-    async def run(self, *args, **kwargs):
+    def run(self, input_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        执行技能的主要逻辑
+        技能主执行逻辑
         
-        Args:
-            *args: 位置参数
-            **kwargs: 关键字参数
-        
-        Returns:
-            Any: 技能执行结果
+        参数:
+            input_data: 输入数据字典
+            
+        返回:
+            包含执行结果的字典
         """
-        # TODO: 实现技能逻辑
-        print(f"执行技能: {class_name}")
-        return None
-    
-    def get_description(self) -> str:
-        """
-        获取技能描述
-        
-        Returns:
-            str: 技能描述
-        """
-        return self.description
-
-
-if __name__ == "__main__":
-    # 示例用法
-    skill = {class_name}()
-    print(f"技能描述: {{skill.get_description()}}")
+        try:
+            # 在这里实现技能的主要逻辑
+            result = {
+                "status": "success",
+                "message": f"{class_name}技能执行完成",
+                "data": input_data
+            }
+            return result
+        except Exception as e:
+            return {
+                "status": "error",
+                "message": f"技能执行失败: {str(e)}"
+            }
 '''
-        else:  # plugin
-            return f'''# -*- coding: utf-8 -*-
-"""
-插件: {class_name}
+    elif file_type == 'plugin':
+        template = f'''"""
 {description}
 """
 
-from acp_proxy.plugins.base_plugin import BasePlugin
+from acp_proxy.plugins.base import BasePlugin
+from typing import Any, Dict, List
 
 
 class {class_name}(BasePlugin):
@@ -132,61 +74,85 @@ class {class_name}(BasePlugin):
     {description}
     """
     
-    def __init__(self, **kwargs):
-        """
-        初始化插件
-        
-        Args:
-            **kwargs: 可选参数
-        """
-        super().__init__(**kwargs)
+    def __init__(self):
+        """初始化{class_name}插件"""
+        super().__init__()
+        self.plugin_name = "{class_name}"
         self.description = "{description}"
-        self.name = "{class_name}"
+        self.version = "1.0.0"
     
-    async def execute(self, *args, **kwargs):
+    def execute(self, command: str, **kwargs) -> Dict[str, Any]:
         """
-        执行插件功能
+        插件主执行逻辑
         
-        Args:
-            *args: 位置参数
-            **kwargs: 关键字参数
-        
-        Returns:
-            Any: 插件执行结果
+        参数:
+            command: 要执行的命令
+            **kwargs: 命令参数
+            
+        返回:
+            包含执行结果的字典
         """
-        # TODO: 实现插件逻辑
-        print(f"执行插件: {class_name}")
-        return None
+        try:
+            # 在这里实现插件的主要逻辑
+            result = {
+                "status": "success",
+                "plugin": self.plugin_name,
+                "command": command,
+                "message": f"{class_name}插件执行完成"
+            }
+            return result
+        except Exception as e:
+            return {
+                "status": "error",
+                "plugin": self.plugin_name,
+                "command": command,
+                "message": f"插件执行失败: {str(e)}"
+            }
     
-    def get_name(self) -> str:
+    def get_commands(self) -> List[str]:
         """
-        获取插件名称
+        获取插件支持的命令列表
         
-        Returns:
-            str: 插件名称
+        返回:
+            命令列表
         """
-        return self.name
+        return ["example_command"]
     
-    def get_description(self) -> str:
+    def get_help(self, command: str = None) -> str:
         """
-        获取插件描述
+        获取插件帮助信息
         
-        Returns:
-            str: 插件描述
+        参数:
+            command: 特定命令的帮助信息，如果为None则返回插件整体帮助
+            
+        返回:
+            帮助信息字符串
         """
-        return self.description
-
-
-if __name__ == "__main__":
-    # 示例用法
-    plugin = {class_name}()
-    print(f"插件名称: {{plugin.get_name()}}")
-    print(f"插件描述: {{plugin.get_description()}}")
+        if command:
+            return f"命令 '{command}' 的帮助信息"
+        return f"{self.plugin_name} 插件: {self.description}"
 '''
-
-
-# 插件元数据
-PLUGIN_NAME = "code_scaffolder"
-PLUGIN_VERSION = "1.0.0"
-PLUGIN_DESCRIPTION = "代码脚手架插件，用于自动化创建技能和插件的基础代码文件"
-PLUGIN_AUTHOR = "ACP-Proxy Team"
+    else:
+        return False
+    
+    try:
+        # 转换为Path对象并解析路径
+        path = Path(file_path)
+        
+        # 检查并创建目录（如果不存在）
+        if path.parent:
+            path.parent.mkdir(parents=True, exist_ok=True)
+        
+        # 写入模板内容
+        with open(file_path, 'w', encoding='utf-8') as f:
+            f.write(template)
+        
+        # 验证文件是否创建成功
+        if path.exists():
+            return True
+        else:
+            return False
+            
+    except Exception as e:
+        print(f"创建文件时发生错误: {str(e)}")
+        return False
