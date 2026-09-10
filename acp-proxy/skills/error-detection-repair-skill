@@ -1,33 +1,30 @@
-import json
-import time
+import asyncio
 import logging
-import numpy as np
-from typing import Dict, List, Any, Optional, Tuple
+import time
+import json
+import re
+import hashlib
+from datetime import datetime, timedelta
+from typing import Dict, List, Any, Optional, Tuple, Set
 from dataclasses import dataclass, asdict
 from enum import Enum
-from datetime import datetime, timedelta
+import numpy as np
 from collections import defaultdict
+import pickle
+from pathlib import Path
+
+# 尝试导入ML库，如果没有就使用简化的实现
+try:
+    from sklearn.tree import DecisionTreeClassifier
+    from sklearn.cluster import DBSCAN
+    from sklearn.preprocessing import StandardScaler
+    HAS_SKLEARN = True
+except ImportError:
+    HAS_SKLEARN = False
+
 import warnings
 warnings.filterwarnings('ignore')
 
-# 机器学习模型
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.cluster import KMeans, DBSCAN
-from sklearn.preprocessing import StandardScaler
-from sklearn.ensemble import IsolationForest
-import pickle
-import hashlib
-
-# 性能监控
-import psutil
-import resource
-
-# 并发控制
-from concurrent.futures import ThreadPoolExecutor, as_completed
-import threading
-
-# 配置日志
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
 
@@ -37,197 +34,146 @@ class ErrorType(Enum):
     PERFORMANCE_ANOMALY = "performance_anomaly"
     LOGIC_ERROR = "logic_error"
     RESOURCE_LEAK = "resource_leak"
-    SYSTEM_ERROR = "system_error"
+    NETWORK_ERROR = "network_error"
+    PERMISSION_ERROR = "permission_error"
+    TIMEOUT_ERROR = "timeout_error"
+    MEMORY_ERROR = "memory_error"
+    UNKNOWN = "unknown"
 
 
-class RepairAction(Enum):
-    """修复动作枚举"""
-    QUICK_FIX = "quick_fix"
-    STABLE_FIX = "stable_fix"
-    PERMANENT_FIX = "permanent_fix"
-    ROLLBACK = "rollback"
-
-
-@dataclass
-class ErrorEvent:
-    """错误事件数据结构"""
-    timestamp: datetime
-    error_type: ErrorType
-    error_message: str
-    stack_trace: Optional[str] = None
-    system_metrics: Optional[Dict] = None
-    context_info: Optional[Dict] = None
-    severity: int = 5  # 1-10, 10最严重
+class RepairStatus(Enum):
+    """修复状态枚举"""
+    PENDING = "pending"
+    TESTING = "testing"
+    DEPLOYING = "deploying"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    ROLLED_BACK = "rolled_back"
 
 
 @dataclass
 class ErrorPattern:
     """错误模式数据结构"""
-    pattern_id: str
     error_type: ErrorType
-    signature: str  # 错误特征
-    frequency: int = 0
-    success_rate: float = 0.0  # 历史修复成功率
-    solutions: List[Dict] = None
-    last_occurred: datetime = None
-    ml_features: Optional[np.ndarray] = None
+    pattern_signature: str
+    frequency: int
+    last_occurrence: datetime
+    root_causes: List[str]
+    repair_strategies: List[Dict[str, Any]]
+    success_rate: float
+    metadata: Dict[str, Any]
+
+
+@dataclass
+class ErrorLog:
+    """错误日志数据结构"""
+    error_id: str
+    timestamp: datetime
+    error_type: ErrorType
+    message: str
+    stack_trace: str
+    system_metrics: Dict[str, Any]
+    context: Dict[str, Any]
+    severity: int  # 1-10
+    resolved: bool = False
+    resolution_time: Optional[float] = None
 
 
 @dataclass
 class RepairStrategy:
     """修复策略数据结构"""
     strategy_id: str
-    action_type: RepairAction
+    error_type: ErrorType
     description: str
-    target_component: str
-    repair_steps: List[Dict]
+    steps: List[str]
     estimated_time: float  # 秒
     stability_score: float  # 0-1
-    side_effects: List[str] = None
-    priority: int = 1  # 1-5, 5最高
+    side_effects: List[str]
+    rollback_plan: List[str]
+    prerequisites: List[str]
+    success_probability: float
 
 
-@dataclass
-class RepairResult:
-    """修复结果数据结构"""
-    strategy_used: str
-    success: bool
-    execution_time: float
-    verification_result: Dict
-    side_effects_observed: List[str] = None
-    improvements: List[str] = None
-
-
-class ErrorDetectionRepairSkill:
-    """
-    错误检测与修复技能
-    实现错误自修复能力，包括多维度监控、模式学习、根因分析、策略生成、自动修复和知识库建设
-    """
+class ErrorPatternLearner:
+    """错误模式学习模块"""
     
-    def __init__(self, config: Optional[Dict] = None):
-        """
-        初始化错误检测与修复技能
-        
-        Args:
-            config: 配置参数
-        """
-        self.config = config or {}
-        self._init_components()
-        self._load_or_create_knowledge_base()
-        
-    def _init_components(self):
-        """初始化各组件"""
-        # 错误监控配置
-        self.performance_thresholds = {
-            'response_time': self.config.get('response_time_threshold', 2.0),  # 秒
-            'cpu_usage': self.config.get('cpu_usage_threshold', 80),  # 百分比
-            'memory_usage': self.config.get('memory_usage_threshold', 85),  # 百分比
-            'error_rate': self.config.get('error_rate_threshold', 0.01)  # 1%
-        }
-        
-        # 机器学习模型
-        self.error_classifier = None
-        self.anomaly_detector = None
-        self.scaler = StandardScaler()
-        
-        # 错误模式库
-        self.error_patterns = {}
-        self.pattern_counter = 0
-        
-        # 修复策略库
-        self.repair_strategies = {}
-        self.strategy_counter = 0
-        
-        # 知识库
-        self.knowledge_base = {
-            'error_history': [],
-            'repair_history': [],
-            'success_rates': {},
-            'pattern_library': {},
-            'performance_benchmarks': {}
-        }
-        
-        # 监控状态
-        self.monitoring_active = False
-        self.current_errors = []
-        self.monitoring_thread = None
-        
-        # 统计信息
-        self.stats = {
-            'total_detections': 0,
-            'total_repairs': 0,
-            'successful_repairs': 0,
-            'average_repair_time': 0.0,
-            'error_trends': defaultdict(list)
-        }
-        
-        # 线程锁
-        self.lock = threading.RLock()
-        
-    def _load_or_create_knowledge_base(self, kb_path: Optional[str] = None):
-        """加载或创建知识库"""
-        self.kb_path = kb_path or f"error_knowledge_base_{datetime.now().strftime('%Y%m%d')}.pkl"
-        try:
-            with open(self.kb_path, 'rb') as f:
-                self.knowledge_base = pickle.load(f)
-                logger.info(f"已加载知识库: {len(self.knowledge_base.get('error_history', []))} 条错误记录")
-        except FileNotFoundError:
-            logger.info("创建新的知识库")
-            self._save_knowledge_base()
-            
-    def _save_knowledge_base(self):
-        """保存知识库到文件"""
-        try:
-            with open(self.kb_path, 'wb') as f:
-                pickle.dump(self.knowledge_base, f)
-        except Exception as e:
-            logger.error(f"保存知识库失败: {e}")
-            
-    def detect_errors(self) -> List[ErrorEvent]:
-        """
-        执行多维度错误检测
-        
-        Returns:
-            检测到的错误事件列表
-        """
-        logger.info("开始多维度错误检测")
-        detected_errors = []
-        
-        with self.lock:
-            self.stats['total_detections'] += 1
-        
-        # 1. 运行时错误检测
-        runtime_errors = self._detect_runtime_errors()
-        detected_errors.extend(runtime_errors)
-        
-        # 2. 性能异常检测
-        performance_errors = self._detect_performance_anomalies()
-        detected_errors.extend(performance_errors)
-        
-        # 3. 逻辑错误检测
-        logic_errors = self._detect_logic_errors()
-        detected_errors.extend(logic_errors)
-        
-        # 4. 资源泄漏检测
-        resource_errors = self._detect_resource_leaks()
-        detected_errors.extend(resource_errors)
-        
-        # 5. 系统错误检测
-        system_errors = self._detect_system_errors()
-        detected_errors.extend(system_errors)
-        
-        # 更新当前错误列表
-        self.current_errors = detected_errors
-        
-        # 记录到知识库
-        for error in detected_errors:
-            self._record_error(error)
-        
-        logger.info(f"检测到 {len(detected_errors)} 个错误")
-        return detected_errors
+    def __init__(self, model_path: Optional[str] = None):
+        self.patterns: Dict[str, ErrorPattern] = {}
+        self.error_history: List[ErrorLog] = []
+        self.model = None
+        self.scaler = StandardScaler() if HAS_SKLEARN else None
+        self.model_path = model_path
+        self._load_model()
     
-    def _detect_runtime_errors(self) -> List[ErrorEvent]:
-        """检测运行时错误"""
-        errors = []
+    def _load_model(self):
+        """加载预训练模型"""
+        if self.model_path and Path(self.model_path).exists():
+            try:
+                with open(self.model_path, 'rb') as f:
+                    data = pickle.load(f)
+                    self.model = data.get('model')
+                    self.scaler = data.get('scaler')
+                    self.patterns = data.get('patterns', {})
+                    logger.info(f"已加载错误模式模型，包含 {len(self.patterns)} 个模式")
+            except Exception as e:
+                logger.warning(f"加载模型失败: {e}")
+                self._initialize_default_model()
+    
+    def _initialize_default_model(self):
+        """初始化默认模型"""
+        if HAS_SKLEARN:
+            self.model = DecisionTreeClassifier(
+                max_depth=10,
+                min_samples_split=5,
+                random_state=42
+            )
+            # 使用简化的聚类进行模式识别
+            self.cluster_model = DBSCAN(eps=0.3, min_samples=2)
         
-        # 模拟异常捕获检测
+        # 初始化常见错误模式
+        self._initialize_common_patterns()
+    
+    def _initialize_common_patterns(self):
+        """初始化常见错误模式"""
+        common_patterns = [
+            ErrorPattern(
+                error_type=ErrorType.RUNTIME_ERROR,
+                pattern_signature="NullPointerException",
+                frequency=0,
+                last_occurrence=datetime.now(),
+                root_causes=["空对象引用", "未初始化变量", "异步操作未完成"],
+                repair_strategies=[
+                    {"type": "临时", "action": "添加空值检查", "time": 30},
+                    {"type": "永久", "action": "重构代码添加非空断言", "time": 300}
+                ],
+                success_rate=0.85,
+                metadata={"common_in": ["Java", "Python"], "severity": 7}
+            ),
+            ErrorPattern(
+                error_type=ErrorType.PERFORMANCE_ANOMALY,
+                pattern_signature="HighCPUUsage",
+                frequency=0,
+                last_occurrence=datetime.now(),
+                root_causes=["无限循环", "资源密集型操作", "内存泄漏"],
+                repair_strategies=[
+                    {"type": "临时", "action": "增加超时限制", "time": 60},
+                    {"type": "永久", "action": "优化算法或添加缓存", "time": 1800}
+                ],
+                success_rate=0.75,
+                metadata={"threshold": ">80% CPU", "monitoring": "continuous"}
+            ),
+            ErrorPattern(
+                error_type=ErrorType.RESOURCE_LEAK,
+                pattern_signature="MemoryLeak",
+                frequency=0,
+                last_occurrence=datetime.now(),
+                root_causes=["未关闭资源", "循环引用", "缓存未清理"],
+                repair_strategies=[
+                    {"type": "临时", "action": "重启服务", "time": 120},
+                    {"type": "永久", "action": "实现资源池和定期清理", "time": 3600}
+                ],
+                success_rate=0.9,
+                metadata={"detection_method": "memory_monitoring", "leak_rate": "gradual"}
+            )
+        ]
+        
