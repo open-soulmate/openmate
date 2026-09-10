@@ -1,108 +1,82 @@
-import asyncio
-import json
+# acp-proxy/skills/knowledge-consolidation-skill/__init__.py
+"""
+知识巩固技能 - 优化记忆管理机制
+实现智能记忆去重、重要性评分、定期回顾和知识图谱构建
+"""
+
 import time
 import hashlib
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional, Tuple
-from dataclasses import dataclass, asdict
-from collections import defaultdict
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-import networkx as nx
-import heapq
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional, Tuple, Any
+from collections import defaultdict
+import json
+import threading
+from sentence_transformers import SentenceTransformer
+import faiss
+import logging
 
-@dataclass
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 class Memory:
-    id: str
-    content: str
-    embedding: Optional[np.ndarray] = None
-    timestamp: datetime = None
-    emotion_score: float = 0.0
-    frequency: int = 1
-    importance_score: float = 0.0
-    is_compressed: bool = False
-    original_memories: List[str] = None
-    topics: List[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
-        data = asdict(self)
-        if self.embedding is not None:
-            data['embedding'] = self.embedding.tolist()
-        data['timestamp'] = self.timestamp.isoformat()
-        if self.original_memories:
-            data['original_memories'] = self.original_memories
-        return data
+    """记忆数据结构"""
+    def __init__(self, 
+                 content: str,
+                 embedding: Optional[np.ndarray] = None,
+                 metadata: Optional[Dict] = None):
+        self.id = hashlib.md5(content.encode()).hexdigest()[:16]
+        self.content = content
+        self.embedding = embedding
+        self.metadata = metadata or {}
+        self.created_at = datetime.now()
+        self.last_accessed = datetime.now()
+        self.access_count = 0
+        self.importance_score = 0.0
+        self.is_compressed = False
+        self.related_memories = []  # 关联的记忆ID
+        
+    def to_dict(self) -> Dict:
+        """转换为字典格式，兼容现有存储格式"""
+        return {
+            'id': self.id,
+            'content': self.content,
+            'metadata': self.metadata,
+            'created_at': self.created_at.isoformat(),
+            'last_accessed': self.last_accessed.isoformat(),
+            'access_count': self.access_count,
+            'importance_score': self.importance_score,
+            'is_compressed': self.is_compressed,
+            'related_memories': self.related_memories
+        }
     
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'Memory':
-        if 'embedding' in data and data['embedding'] is not None:
-            data['embedding'] = np.array(data['embedding'])
-        if 'timestamp' in data:
-            data['timestamp'] = datetime.fromisoformat(data['timestamp'])
-        return cls(**data)
+    def from_dict(cls, data: Dict) -> 'Memory':
+        """从字典创建记忆，兼容旧格式"""
+        memory = cls(content=data['content'], metadata=data.get('metadata', {}))
+        memory.id = data.get('id', memory.id)
+        memory.created_at = datetime.fromisoformat(data.get('created_at', datetime.now().isoformat()))
+        memory.last_accessed = datetime.fromisoformat(data.get('last_accessed', datetime.now().isoformat()))
+        memory.access_count = data.get('access_count', 0)
+        memory.importance_score = data.get('importance_score', 0.0)
+        memory.is_compressed = data.get('is_compressed', False)
+        memory.related_memories = data.get('related_memories', [])
+        return memory
 
-class KnowledgeConsolidationSkill:
-    def __init__(self, memory_storage: Any):
-        self.storage = memory_storage
-        self.graph = nx.DiGraph()
-        self.vectorizer = TfidfVectorizer(max_features=1000)
-        self.embedding_cache = {}
+class KnowledgeGraph:
+    """知识图谱数据结构"""
+    def __init__(self):
+        self.nodes = {}  # {node_id: {'content': str, 'type': str, 'properties': dict}}
+        self.edges = {}  # {edge_id: {'source': str, 'target': str, 'relation': str, 'weight': float}}
+        self.adjacency_list = defaultdict(set)  # {node_id: set(edge_ids)}
         
-        # 配置参数
-        self.similarity_threshold = 0.85
-        self.importance_weights = {
-            'frequency': 0.3,
-            'emotion': 0.3,
-            'value': 0.4
+    def add_node(self, node_id: str, content: str, node_type: str, properties: Optional[Dict] = None):
+        """添加节点"""
+        self.nodes[node_id] = {
+            'content': content,
+            'type': node_type,
+            'properties': properties or {},
+            'created_at': datetime.now().isoformat()
         }
-        self.compression_threshold = 5
-        self.max_memories_per_consolidation = 1000
         
-        # 加载现有记忆到知识图谱
-        self._load_existing_memories()
-    
-    def _load_existing_memories(self):
-        """加载现有记忆到知识图谱"""
-        try:
-            memories = self.storage.query_all()
-            for memory in memories:
-                self._add_memory_to_graph(memory)
-        except:
-            pass
-    
-    def _generate_memory_id(self, content: str) -> str:
-        """生成记忆ID"""
-        hash_obj = hashlib.md5(content.encode())
-        return hash_obj.hexdigest()[:12]
-    
-    def _calculate_embedding(self, text: str) -> np.ndarray:
-        """计算文本的向量表示"""
-        if text in self.embedding_cache:
-            return self.embedding_cache[text]
-        
-        try:
-            # 使用TF-IDF作为向量表示
-            tfidf_matrix = self.vectorizer.fit_transform([text])
-            embedding = tfidf_matrix.toarray()[0]
-            self.embedding_cache[text] = embedding
-            return embedding
-        except:
-            # 如果vectorizer未训练，先训练
-            all_memories = [m.content for m in self.storage.query_all()[:100]]
-            if all_memories:
-                self.vectorizer.fit(all_memories)
-                tfidf_matrix = self.vectorizer.transform([text])
-                embedding = tfidf_matrix.toarray()[0]
-                self.embedding_cache[text] = embedding
-                return embedding
-            return np.zeros(100)
-    
-    def _calculate_similarity(self, emb1: np.ndarray, emb2: np.ndarray) -> float:
-        """计算两个向量之间的余弦相似度"""
-        if emb1 is None or emb2 is None:
-            return 0.0
-        try:
-            similarity = cosine_similarity(emb1.reshape(1, -1), emb2.reshape(1, -1))[0][0]
-            return float(similarity)
-        except:
