@@ -1,105 +1,155 @@
-import json
-import uuid
 import time
-import threading
-from datetime import datetime, timedelta
-from typing import List, Dict, Any, Optional, Tuple, Set
-from collections import defaultdict
+import math
+import json
 import hashlib
-import logging
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from datetime import datetime, timedelta
+from typing import Dict, List, Tuple, Set, Optional, Any
+from dataclasses import dataclass, field
+from collections import defaultdict
 import numpy as np
-from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
 import schedule
-import atexit
 
-# 配置日志
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
-
+@dataclass
 class Memory:
-    """记忆数据结构"""
-    def __init__(self, content: str, metadata: Optional[Dict] = None, memory_id: Optional[str] = None):
-        self.id = memory_id or str(uuid.uuid4())
-        self.content = content
-        self.metadata = metadata or {}
-        self.created_at = datetime.now()
-        self.updated_at = datetime.now()
-        self.access_count = 0
-        self.last_accessed = None
-        self.importance_score = 0.0
-        self.embedding = None
-        self.embedding_hash = None
-        self.tags: Set[str] = set(metadata.get('tags', []))
-        self.emotional_intensity: float = metadata.get('emotional_intensity', 0.5)
-        self.information_value: float = metadata.get('information_value', 0.5)
+    memory_id: str
+    content: str
+    embedding: np.ndarray
+    creation_time: datetime
+    last_access_time: datetime
+    access_count: int = 0
+    emotion_intensity: float = 0.5
+    information_value: float = 0.5
+    importance_score: float = 0.0
+    tags: List[str] = field(default_factory=list)
+    source_session: str = ""
+    related_memories: List[str] = field(default_factory=list)
+    
+    def update_access(self):
+        self.access_count += 1
+        self.last_access_time = datetime.now()
+
+class KnowledgeGraph:
+    def __init__(self):
+        self.nodes: Dict[str, Dict] = {}  # node_id: {type, content, properties}
+        self.edges: List[Dict] = []  # {from, to, relationship, weight}
         
-    def to_dict(self) -> Dict:
-        """转换为字典格式"""
+    def add_node(self, node_id: str, node_type: str, content: str, properties: Dict = None):
+        self.nodes[node_id] = {
+            "type": node_type,
+            "content": content,
+            "properties": properties or {}
+        }
+        
+    def add_edge(self, from_node: str, to_node: str, relationship: str, weight: float = 1.0):
+        if from_node in self.nodes and to_node in self.nodes:
+            self.edges.append({
+                "from": from_node,
+                "to": to_node,
+                "relationship": relationship,
+                "weight": weight
+            })
+            
+    def update_node(self, node_id: str, updates: Dict):
+        if node_id in self.nodes:
+            self.nodes[node_id].update(updates)
+            
+    def query_node(self, node_id: str) -> Optional[Dict]:
+        return self.nodes.get(node_id)
+    
+    def query_edges_from(self, node_id: str) -> List[Dict]:
+        return [edge for edge in self.edges if edge["from"] == node_id]
+    
+    def get_graph_data(self) -> Dict:
         return {
-            'id': self.id,
-            'content': self.content,
-            'metadata': self.metadata,
-            'created_at': self.created_at.isoformat(),
-            'updated_at': self.updated_at.isoformat(),
-            'access_count': self.access_count,
-            'last_accessed': self.last_accessed.isoformat() if self.last_accessed else None,
-            'importance_score': self.importance_score,
-            'tags': list(self.tags),
-            'emotional_intensity': self.emotional_intensity,
-            'information_value': self.information_value
+            "nodes": list(self.nodes.values()),
+            "edges": self.edges,
+            "stats": {
+                "total_nodes": len(self.nodes),
+                "total_edges": len(self.edges),
+                "node_types": self._count_node_types()
+            }
         }
     
-    @classmethod
-    def from_dict(cls, data: Dict) -> 'Memory':
-        """从字典创建记忆对象"""
-        memory = cls(
-            content=data['content'],
-            metadata=data.get('metadata', {}),
-            memory_id=data['id']
-        )
-        memory.created_at = datetime.fromisoformat(data['created_at'])
-        memory.updated_at = datetime.fromisoformat(data['updated_at'])
-        memory.access_count = data['access_count']
-        memory.last_accessed = datetime.fromisoformat(data['last_accessed']) if data['last_accessed'] else None
-        memory.importance_score = data['importance_score']
-        memory.tags = set(data.get('tags', []))
-        memory.emotional_intensity = data.get('emotional_intensity', 0.5)
-        memory.information_value = data.get('information_value', 0.5)
-        return memory
-
-class KnowledgeGraphNode:
-    """知识图谱节点"""
-    def __init__(self, node_id: str, label: str, node_type: str = "memory", properties: Dict = None):
-        self.id = node_id
-        self.label = label
-        self.type = node_type
-        self.properties = properties or {}
-        self.created_at = datetime.now()
-        self.updated_at = datetime.now()
-
-class KnowledgeGraphEdge:
-    """知识图谱边"""
-    def __init__(self, source_id: str, target_id: str, relation_type: str, weight: float = 1.0, properties: Dict = None):
-        self.id = str(uuid.uuid4())
-        self.source_id = source_id
-        self.target_id = target_id
-        self.relation_type = relation_type
-        self.weight = weight
-        self.properties = properties or {}
-        self.created_at = datetime.now()
+    def _count_node_types(self) -> Dict[str, int]:
+        type_counts = defaultdict(int)
+        for node_data in self.nodes.values():
+            type_counts[node_data["type"]] += 1
+        return dict(type_counts)
 
 class KnowledgeConsolidationSkill:
-    """知识巩固技能"""
-    
-    def __init__(self, storage_path: str = "memories.json"):
-        self.storage_path = storage_path
+    def __init__(self, embedding_dim: int = 768):
         self.memories: Dict[str, Memory] = {}
-        self.memory_embeddings: Dict[str, np.ndarray] = {}
-        self.vectorizer = TfidfVectorizer()
-        self.tfidf_matrix = None
-        self.memory_ids_for_tfidf = []
-        self.knowledge_graph = {
-            'nodes': {},
-            'edges': {}
+        self.knowledge_graph = KnowledgeGraph()
+        self.embedding_dim = embedding_dim
+        self.similarity_threshold = 0.85
+        self.importance_weights = {
+            'access_frequency': 0.3,
+            'emotion_intensity': 0.3,
+            'information_value': 0.4
+        }
+        self.schedule_setup()
+        
+    def schedule_setup(self):
+        schedule.every().sunday.at("23:00").do(self.consolidate_knowledge)
+        
+    def add_memory(self, content: str, emotion_intensity: float = 0.5, 
+                  information_value: float = 0.5, tags: List[str] = None, 
+                  source_session: str = "") -> str:
+        """
+        添加新记忆，自动执行去重和重要性评分
+        """
+        # 检查相似记忆（去重）
+        similar_memory = self._find_similar_memory(content)
+        if similar_memory:
+            similar_memory.update_access()
+            similar_memory.importance_score = self._calculate_importance(similar_memory)
+            return similar_memory.memory_id
+        
+        # 创建新记忆
+        memory_id = self._generate_memory_id(content)
+        embedding = self._generate_embedding(content)
+        now = datetime.now()
+        
+        new_memory = Memory(
+            memory_id=memory_id,
+            content=content,
+            embedding=embedding,
+            creation_time=now,
+            last_access_time=now,
+            access_count=1,
+            emotion_intensity=emotion_intensity,
+            information_value=information_value,
+            tags=tags or [],
+            source_session=source_session
+        )
+        
+        new_memory.importance_score = self._calculate_importance(new_memory)
+        self.memories[memory_id] = new_memory
+        
+        # 更新知识图谱
+        self._update_knowledge_graph(new_memory)
+        
+        return memory_id
+    
+    def _find_similar_memory(self, content: str) -> Optional[Memory]:
+        """查找相似记忆"""
+        if not self.memories:
+            return None
+            
+        query_embedding = self._generate_embedding(content)
+        
+        for memory in self.memories.values():
+            similarity = cosine_similarity(
+                query_embedding.reshape(1, -1),
+                memory.embedding.reshape(1, -1)
+            )[0][0]
+            
+            if similarity >= self.similarity_threshold:
+                return memory
+                
+        return None
+    
+    def _generate_memory_id(self, content: str) -> str:
+        """生成唯一记忆ID"""
+        timestamp = str(int(time.time() * 1000))
