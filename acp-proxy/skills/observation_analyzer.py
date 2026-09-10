@@ -1,185 +1,174 @@
-from datetime import datetime
-from typing import Dict, List, Any, Optional
-from dataclasses import dataclass
 import json
-
-from acp_proxy.skills.base import BaseSkill
-from acp_proxy.memory.manager import MemoryManager
-
-@dataclass
-class ObservationPattern:
-    """观察模式数据结构"""
-    pattern_type: str  # 错误模式、成功模式、资源使用、性能指标
-    description: str
-    frequency: int
-    last_seen: str
-    details: Dict[str, Any] = None
+import time
+from datetime import datetime
+from typing import List, Dict, Any, Optional
+from .base import BaseSkill
+from ..memory.manager import MemoryManager
 
 class ObservationAnalyzer(BaseSkill):
     """观察分析优化技能"""
     
-    def __init__(self, memory_manager: MemoryManager, **kwargs):
-        super().__init__(**kwargs)
-        self.memory_manager = memory_manager
-        self.UNANALYZED_THRESHOLD = kwargs.get('unanalyzed_threshold', 2)
-        self.patterns: List[ObservationPattern] = []
-        self.analysis_results: Dict[str, Any] = {}
-        self.errors_found: List[str] = []
+    UNANALYZED_THRESHOLD = 2  # 可配置的未分析观察阈值
     
-    async def initialize(self) -> None:
-        """初始化技能"""
-        await super().initialize()
-        self.logger.info("观察分析技能初始化完成")
-    
-    async def monitor_unanalyzed(self) -> bool:
-        """阈值监控器：追踪未分析观察数量"""
-        observations = self.memory_manager.get_memory().get('observations', [])
-        unanalyzed_count = sum(
-            1 for obs in observations 
-            if not obs.get('analyzed', False)
+    def __init__(self, memory_manager: MemoryManager, loop=None):
+        """
+        初始化观察分析器
+        
+        Args:
+            memory_manager: 内存管理器实例
+            loop: 计划执行循环实例，用于集成
+        """
+        super().__init__(
+            name="observation_analyzer",
+            description="观察分析优化技能，解决观察数据未被有效分析的问题"
         )
+        self.memory_manager = memory_manager
+        self.loop = loop  # 计划执行循环实例
         
-        needs_processing = unanalyzed_count > self.UNANALYZED_THRESHOLD
-        
-        if needs_processing:
-            self.logger.warning(
-                f"未分析观察数量 ({unanalyzed_count}) 超过阈值 ({self.UNANALYZED_THRESHOLD})，需要处理"
-            )
-            await self._notify_needs_processing(unanalyzed_count)
-        
-        return needs_processing
+    def _get_observations(self) -> List[Dict[str, Any]]:
+        """从内存中获取观察数据"""
+        memory = self.memory_manager.get_memory()
+        return memory.get("observations", [])
     
-    async def _notify_needs_processing(self, count: int) -> None:
-        """通知需要处理"""
-        notification = {
-            "type": "unanalyzed_observations",
-            "count": count,
-            "timestamp": datetime.now().isoformat(),
-            "message": f"检测到 {count} 条未分析的观察记录"
-        }
-        # 可以集成通知系统
-        self.logger.info(f"通知: {notification['message']}")
+    def _save_patterns(self, patterns: List[Dict[str, Any]]):
+        """将提取的模式保存到内存"""
+        memory = self.memory_manager.get_memory()
+        memory.setdefault("patterns", []).extend(patterns)
+        self.memory_manager.save_memory(memory)
     
-    async def auto_analyze(self) -> Dict[str, Any]:
-        """自动分析器：对未分析的观察进行分类"""
-        observations = self.memory_manager.get_memory().get('observations', [])
-        unanalyzed = [obs for obs in observations if not obs.get('analyzed', False)]
+    def monitor_unanalyzed(self) -> Dict[str, Any]:
+        """
+        阈值监控器：追踪未分析观察数量，当超过阈值时标记为需要处理
         
-        analysis_results = {
-            "error_patterns": [],
-            "success_patterns": [],
-            "resource_usage": [],
-            "performance_metrics": [],
-            "analyzed_count": len(unanalyzed),
-            "timestamp": datetime.now().isoformat()
+        Returns:
+            监控结果，包含未分析数量和是否需要处理
+        """
+        observations = self._get_observations()
+        unanalyzed = [obs for obs in observations if not obs.get("analyzed", False)]
+        unanalyzed_count = len(unanalyzed)
+        
+        result = {
+            "unanalyzed_count": unanalyzed_count,
+            "threshold": self.UNANALYZED_THRESHOLD,
+            "needs_attention": unanalyzed_count > self.UNANALYZED_THRESHOLD,
+            "unanalyzed_observations": unanalyzed[:5]  # 只返回前5条，避免数据过多
         }
         
-        for observation in unanalyzed:
-            category = self._categorize_observation(observation)
-            analysis_results[category].append({
-                "observation_id": observation.get('id'),
-                "content": observation.get('content'),
-                "category": category,
-                "analysis_time": datetime.now().isoformat()
-            })
+        # 如果超过阈值且有循环实例，触发集成
+        if result["needs_attention"] and self.loop:
+            self._integrate_with_loop(unanalyzed_count)
             
-            # 标记为已分析
-            observation['analyzed'] = True
-            observation['analysis_result'] = {
-                "category": category,
-                "analyzed_at": datetime.now().isoformat()
-            }
+        return result
+    
+    def auto_analyze(self) -> List[Dict[str, Any]]:
+        """
+        自动分析器：对未分析的观察进行分类
         
-        self.analysis_results = analysis_results
+        Returns:
+            分析结果列表
+        """
+        observations = self._get_observations()
+        analysis_results = []
+        
+        for obs in observations:
+            if obs.get("analyzed", False):
+                continue
+                
+            content = obs.get("content", "")
+            timestamp = obs.get("timestamp", datetime.now().isoformat())
+            
+            # 分类逻辑
+            category = self._classify_observation(content)
+            
+            result = {
+                "observation_id": obs.get("id"),
+                "content": content,
+                "timestamp": timestamp,
+                "category": category,
+                "analyzed_at": datetime.now().isoformat(),
+                "analysis_version": "1.0"
+            }
+            
+            analysis_results.append(result)
+            
+            # 更新原始观察为已分析
+            obs["analyzed"] = True
+            obs["analysis"] = result
+            
+        # 保存更新后的观察数据
+        memory = self.memory_manager.get_memory()
+        memory["observations"] = observations
+        self.memory_manager.save_memory(memory)
         
         # 提取模式
-        if unanalyzed:
-            await self.extract_patterns()
-        
-        # 如果发现错误模式，触发改进项生成
-        if analysis_results["error_patterns"]:
-            await self._trigger_improvements()
-        
-        # 更新内存中的观察数据
-        await self._update_observations_in_memory(observations)
-        
+        if analysis_results:
+            patterns = self.extract_patterns(analysis_results)
+            self._save_patterns(patterns)
+            
+            # 关联到知识积累目标
+            self.link_to_knowledge(analysis_results)
+            
         return analysis_results
     
-    def _categorize_observation(self, observation: Dict[str, Any]) -> str:
-        """对观察进行分类"""
-        content = observation.get('content', '').lower()
-        obs_type = observation.get('type', '').lower()
+    def _classify_observation(self, content: str) -> str:
+        """
+        对观察内容进行分类
         
-        # 简单分类逻辑
-        error_indicators = ['error', 'fail', 'exception', 'problem', 'issue', 'bug']
-        success_indicators = ['success', 'complete', 'achieve', 'goal', 'pass']
-        resource_indicators = ['memory', 'cpu', 'disk', 'network', 'resource', 'usage']
-        performance_indicators = ['performance', 'speed', 'latency', 'throughput', 'time', 'slow', 'fast']
+        Args:
+            content: 观察内容
+            
+        Returns:
+            分类结果
+        """
+        content_lower = content.lower()
         
-        if any(indicator in content or indicator in obs_type for indicator in error_indicators):
-            return "error_patterns"
-        elif any(indicator in content or indicator in obs_type for indicator in success_indicators):
-            return "success_patterns"
-        elif any(indicator in content or indicator in obs_type for indicator in resource_indicators):
+        # 错误模式
+        if any(keyword in content_lower for keyword in ["error", "错误", "失败", "异常", "故障", "失败"]):
+            return "error_pattern"
+        
+        # 成功模式
+        if any(keyword in content_lower for keyword in ["success", "成功", "完成", "正常", "通过"]):
+            return "success_pattern"
+        
+        # 资源使用
+        if any(keyword in content_lower for keyword in ["memory", "内存", "cpu", "disk", "磁盘", "资源"]):
             return "resource_usage"
-        elif any(indicator in content or indicator in obs_type for indicator in performance_indicators):
-            return "performance_metrics"
-        else:
-            return "other"
-    
-    async def extract_patterns(self) -> List[ObservationPattern]:
-        """模式提取器：从分析结果中识别可复用的模式"""
-        if not self.analysis_results:
-            return self.patterns
         
-        # 分析各类别中的模式
-        for category in ["error_patterns", "success_patterns", "resource_usage", "performance_metrics"]:
-            observations = self.analysis_results.get(category, [])
-            if not observations:
-                continue
+        # 性能指标
+        if any(keyword in content_lower for keyword in ["performance", "性能", "time", "时间", "speed", "速度"]):
+            return "performance_metric"
+        
+        return "unknown"
+    
+    def extract_patterns(self, analysis_results: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+        """
+        模式提取器：从分析结果中识别可复用的模式
+        
+        Args:
+            analysis_results: 分析结果列表
             
-            # 简单的频率统计和模式识别
-            pattern_description = self._generate_pattern_description(category, observations)
+        Returns:
+            提取的模式列表
+        """
+        patterns = []
+        pattern_map = {}  # 用于合并相似模式
+        
+        for result in analysis_results:
+            pattern_key = f"{result['category']}_{hash(result['content'][:100])}"
             
-            pattern = ObservationPattern(
-                pattern_type=category,
-                description=pattern_description,
-                frequency=len(observations),
-                last_seen=datetime.now().isoformat(),
-                details={
-                    "observation_count": len(observations),
-                    "sample_observations": [obs.get('observation_id') for obs in observations[:3]]
-                }
-            )
-            
-            # 检查是否已存在类似模式
-            existing_pattern = self._find_existing_pattern(pattern)
-            if existing_pattern:
-                existing_pattern.frequency += pattern.frequency
-                existing_pattern.last_seen = pattern.last_seen
+            if pattern_key in pattern_map:
+                # 更新现有模式
+                pattern_map[pattern_key]["frequency"] += 1
+                pattern_map[pattern_key]["last_seen"] = result["timestamp"]
+                # 更新描述（取最新内容）
+                pattern_map[pattern_key]["description"] = result["content"]
             else:
-                self.patterns.append(pattern)
-        
-        # 存入memory的patterns字段
-        await self._save_patterns_to_memory()
-        
-        return self.patterns
-    
-    def _generate_pattern_description(self, category: str, observations: List[Dict[str, Any]]) -> str:
-        """生成模式描述"""
-        descriptions = {
-            "error_patterns": f"在 {len(observations)} 个观察中发现错误模式",
-            "success_patterns": f"在 {len(observations)} 个观察中发现成功模式",
-            "resource_usage": f"在 {len(observations)} 个观察中发现资源使用模式",
-            "performance_metrics": f"在 {len(observations)} 个观察中发现性能指标模式"
-        }
-        return descriptions.get(category, f"在 {len(observations)} 个观察中发现模式")
-    
-    def _find_existing_pattern(self, new_pattern: ObservationPattern) -> Optional[ObservationPattern]:
-        """查找已存在的类似模式"""
-        for pattern in self.patterns:
-            if (pattern.pattern_type == new_pattern.pattern_type and 
-                self._patterns_similar(pattern.description, new_pattern.description)):
-                return pattern
-        return None
-    
+                # 创建新模式
+                new_pattern = {
+                    "pattern_type": result["category"],
+                    "description": result["content"],
+                    "frequency": 1,
+                    "last_seen": result["timestamp"],
+                    "first_seen": result["timestamp"],
+                    "examples": [result["observation_id"]]
+                }
