@@ -1,111 +1,106 @@
-# acp-proxy/skills/observation_analysis_skill.py
-
-import logging
-from typing import List, Any
+from acp_proxy.skills.base import BaseSkill
+import json
+from typing import Dict, List, Any, Optional
 from datetime import datetime
 
-from .base_skill import BaseSkill
-
-logger = logging.getLogger(__name__)
-
-
-class PriorityAnalysisSkill(BaseSkill):
+class ObservationAnalysisSkill(BaseSkill):
     """
-    A high-priority skill designed to process and analyze pending observations
-    in each processing cycle to prevent backlog accumulation.
+    观察分析技能 - 自动分析系统观察记录，生成见解和记忆
+    打破观察积压和周期停滞僵局，为自编程和工具创造提供基础分析
     """
     
-    def __init__(self, memory_service: Any = None, analysis_service: Any = None):
-        """
-        Initialize the PriorityAnalysisSkill.
-        
-        Args:
-            memory_service: Service for accessing observation memory/store
-            analysis_service: Service for analyzing observations
-        """
-        super().__init__()
-        self.priority = 1  # Highest priority
-        self.memory_service = memory_service
-        self.analysis_service = analysis_service
-        self.name = "priority_observation_analysis"
-        self.description = "High-priority skill to analyze pending observations"
+    name = "observation_analysis"
+    description = "分析未处理的观察记录，识别模式，生成可执行见解"
+    version = "1.0.0"
     
-    async def run(self) -> List[dict]:
-        """
-        Execute the observation analysis workflow.
+    def __init__(self, context: Dict[str, Any] = None):
+        super().__init__(context)
+        self.llm = self.context.get("llm", None)
+        self.memory_store = self.context.get("memory_store", None)
+        self.observation_queue = self.context.get("observation_queue", None)
+        self.cycle_state = self.context.get("cycle_state", {})
         
-        Returns:
-            List of processed observation results
-        """
-        processed_observations = []
-        
+    async def execute(self, **kwargs) -> Dict[str, Any]:
+        """执行观察分析任务"""
         try:
-            # Step 1: Fetch all pending or unanalyzed observations
-            observations = await self.memory_service.get_observations_by_status(
-                statuses=["pending", "unanalyzed"]
-            )
-            
+            # 获取未分析的观察记录
+            observations = await self._get_unanalyzed_observations()
             if not observations:
-                logger.info("No pending observations found")
-                return []
+                return {
+                    "status": "skipped",
+                    "message": "没有未分析的观察记录",
+                    "analyzed_count": 0
+                }
             
-            # Step 2: Sort observations by timestamp (oldest first)
-            observations.sort(key=lambda obs: obs.get("timestamp", datetime.min))
+            analyzed_insights = []
+            valuable_memories = []
             
-            logger.info(f"Processing {len(observations)} pending observations")
-            
-            # Step 3: Process each observation
+            # 分析每条观察记录
             for observation in observations:
-                try:
-                    # Analyze the observation
-                    analysis_result = await self.analysis_service.analyze(observation)
+                insight = await self._analyze_observation(observation)
+                if insight:
+                    analyzed_insights.append(insight)
                     
-                    # Update observation status to analyzed
-                    await self.memory_service.update_observation_status(
-                        observation_id=observation["id"],
-                        new_status="analyzed",
-                        analysis_result=analysis_result
-                    )
-                    
-                    processed_observations.append({
-                        "observation_id": observation["id"],
-                        "status": "analyzed",
-                        "result": analysis_result,
-                        "processed_at": datetime.now().isoformat()
-                    })
-                    
-                except Exception as e:
-                    logger.error(f"Failed to process observation {observation.get('id')}: {str(e)}")
-                    # Mark observation as failed but continue processing
-                    await self.memory_service.update_observation_status(
-                        observation_id=observation["id"],
-                        new_status="failed",
-                        error=str(e)
-                    )
+                    # 如果见解有价值，保存为长期记忆
+                    if insight.get("relevance_to_goals", 0) >= 7:
+                        memory = await self._save_as_memory(insight)
+                        valuable_memories.append(memory)
             
-            # Step 4: Log summary
-            success_count = len(processed_observations)
-            total_count = len(observations)
-            failed_count = total_count - success_count
+            # 清理已处理的观察记录
+            await self._cleanup_processed_observations(len(observations))
             
-            logger.info(
-                f"Processed {success_count}/{total_count} observations successfully. "
-                f"{failed_count} observations failed."
-            )
-            
-            return processed_observations
+            return {
+                "status": "success",
+                "analyzed_count": len(observations),
+                "insights_generated": len(analyzed_insights),
+                "memories_created": len(valuable_memories),
+                "key_insights": self._extract_key_insights(analyzed_insights),
+                "suggested_actions": self._generate_action_plan(analyzed_insights)
+            }
             
         except Exception as e:
-            logger.error(f"Critical error in PriorityAnalysisSkill: {str(e)}")
-            raise
+            return {
+                "status": "error",
+                "message": f"观察分析失败: {str(e)}",
+                "error": str(e)
+            }
     
-    def set_services(self, memory_service: Any, analysis_service: Any):
-        """
-        Set or update the required services.
-        
-        Args:
-            memory_service: Service for accessing observation memory/store
-            analysis_service: Service for analyzing observations
-        """
-        self.memory_service = memory_service
-        self.analysis_service = analysis_service
+    async def _get_unanalyzed_observations(self) -> List[Dict[str, Any]]:
+        """获取未分析的观察记录"""
+        try:
+            if self.observation_queue:
+                return await self.observation_queue.get_unprocessed()
+            
+            # 备用方案：从上下文获取
+            observations = self.context.get("observations_unanalyzed", [])
+            return observations if isinstance(observations, list) else []
+            
+        except Exception as e:
+            print(f"获取观察记录失败: {e}")
+            return []
+    
+    async def _analyze_observation(self, observation: Dict[str, Any]) -> Optional[Dict[str, Any]]:
+        """分析单条观察记录"""
+        if not self.llm:
+            return None
+            
+        try:
+            # 准备分析提示词
+            prompt = self._build_analysis_prompt(observation)
+            
+            # 调用LLM进行分析
+            analysis_text = await self.llm.generate(
+                prompt=prompt,
+                max_tokens=1000,
+                temperature=0.3  # 较低温度以确保分析一致性
+            )
+            
+            # 解析LLM响应
+            return self._parse_analysis_response(analysis_text, observation)
+            
+        except Exception as e:
+            print(f"分析观察记录失败: {e}")
+            return None
+    
+    def _build_analysis_prompt(self, observation: Dict[str, Any]) -> str:
+        """构建分析提示词"""
