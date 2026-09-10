@@ -1,98 +1,142 @@
-/**
- * auto_analyze_and_integrate.js
- * 探索-分析-内化强反馈循环技能
- */
-
 const fs = require('fs');
 const path = require('path');
 
-// 配置路径
-const OBSERVATIONS_PATH = path.join(__dirname, '../data/observations.json');
-const MEMORIES_PATH = path.join(__dirname, '../data/memories.json');
-const SKILLS_DIR = path.join(__dirname, '../skills');
-const ANALYSIS_LOG_PATH = path.join(__dirname, '../data/analysis_logs.json');
+// 数据文件路径
+const OBSERVATIONS_FILE = path.join(__dirname, '../data/observations.json');
+const MEMORIES_FILE = path.join(__dirname, '../data/memories.json');
+const SKILLS_DIR = path.join(__dirname, '.');
 
-/**
- * 读取未分析的观察记录
- * @returns {Promise<Array>} 未分析的观察记录数组
- */
-async function loadUnanalyzedObservations() {
-    try {
-        if (!fs.existsSync(OBSERVATIONS_PATH)) {
-            console.log('[auto_analyze] 观察记录文件不存在，返回空数组');
+// 假设存在推理技能，通过require获取
+let inference;
+try {
+    inference = require('./inference');
+} catch (e) {
+    // 如果不存在，使用内置的简单推理函数
+    inference = {
+        generate: async (prompt) => {
+            console.warn('Inference skill not found, using fallback');
+            return JSON.stringify({summary: "Fallback analysis", patterns: [], insights: []});
+        }
+    };
+}
+
+class AutoAnalyzeAndIntegrate {
+    constructor() {
+        this.name = 'auto_analyze_and_integrate';
+        this.description = '探索-分析-内化反馈循环核心技能';
+    }
+
+    /**
+     * 主要分析周期函数
+     * @returns {Object} 分析报告
+     */
+    async runAnalysisCycle() {
+        const report = {
+            timestamp: new Date().toISOString(),
+            observationsAnalyzed: 0,
+            newSkillsCreated: 0,
+            skillsUpdated: 0,
+            newPatterns: [],
+            errors: []
+        };
+
+        try {
+            // 1. 读取未分析观察
+            const observations = await this.loadObservations();
+            const unanalyzedObs = observations.filter(obs => obs.analyzed === false);
+
+            if (unanalyzedObs.length === 0) {
+                report.message = 'No unanalyzed observations found';
+                await this.saveReport(report);
+                return report;
+            }
+
+            // 2. 分批处理观察（每批3-5条，避免上下文过长）
+            const batchSize = 5;
+            for (let i = 0; i < unanalyzedObs.length; i += batchSize) {
+                const batch = unanalyzedObs.slice(i, i + batchSize);
+                
+                // 3. 调用分析模型
+                const analysisResult = await this.analyzeBatch(batch, report);
+                
+                // 4. 关联与内化
+                await this.integrateFindings(analysisResult, report);
+                
+                // 5. 更新观察状态
+                await this.updateObservationsStatus(batch, analysisResult.summary);
+                
+                report.observationsAnalyzed += batch.length;
+            }
+
+            // 保存最终报告
+            await this.saveReport(report);
+            
+            console.log(`Analysis cycle completed. Analyzed ${report.observationsAnalyzed} observations.`);
+            return report;
+
+        } catch (error) {
+            report.errors.push(`Analysis cycle failed: ${error.message}`);
+            await this.saveReport(report);
+            throw error;
+        }
+    }
+
+    /**
+     * 加载观察记录
+     * @returns {Array} 观察记录数组
+     */
+    async loadObservations() {
+        try {
+            if (!fs.existsSync(OBSERVATIONS_FILE)) {
+                fs.writeFileSync(OBSERVATIONS_FILE, JSON.stringify({ observations: [] }, null, 2));
+                return [];
+            }
+            
+            const data = JSON.parse(fs.readFileSync(OBSERVATIONS_FILE, 'utf8'));
+            return data.observations || [];
+        } catch (error) {
+            console.error('Failed to load observations:', error);
             return [];
         }
-
-        const data = JSON.parse(fs.readFileSync(OBSERVATIONS_PATH, 'utf-8'));
-        return Array.isArray(data) ? data.filter(obs => obs.analyzed === false) : [];
-    } catch (error) {
-        console.error('[auto_analyze] 读取观察记录失败:', error);
-        return [];
     }
-}
 
-/**
- * 调用分析模型进行分析
- * @param {Array} observations 观察记录
- * @returns {Promise<Object>} 分析结果
- */
-async function analyzeObservations(observations) {
-    try {
-        if (!observations || observations.length === 0) {
-            return { insights: [], patterns: [], recommendations: [] };
-        }
-
-        // 尝试使用系统推理能力
+    /**
+     * 分析一批观察记录
+     * @param {Array} batch - 观察记录批次
+     * @param {Object} report - 报告对象
+     * @returns {Object} 分析结果
+     */
+    async analyzeBatch(batch, report) {
         try {
-            const inferenceSkill = require('./inference');
-            const result = await inferenceSkill.analyze({
-                type: 'observation_analysis',
-                data: observations,
-                prompt: '分析以下观察记录，总结规律、提取模式、识别问题和成功因素，给出改进建议。'
-            });
-            return result;
-        } catch (inferenceError) {
-            console.warn('[auto_analyze] 推理技能不可用，使用基础分析:', inferenceError);
-            return basicAnalysis(observations);
+            const prompt = this.createAnalysisPrompt(batch);
+            const response = await inference.generate(prompt);
+            
+            try {
+                const analysis = JSON.parse(response);
+                report.newPatterns.push(...(analysis.patterns || []));
+                return analysis;
+            } catch (parseError) {
+                // 如果返回的不是JSON，创建默认结构
+                return {
+                    summary: response,
+                    patterns: [],
+                    insights: [],
+                    recommendations: []
+                };
+            }
+        } catch (error) {
+            report.errors.push(`Failed to analyze batch: ${error.message}`);
+            return {
+                summary: `Analysis failed for ${batch.length} observations`,
+                patterns: [],
+                insights: [],
+                recommendations: []
+            };
         }
-    } catch (error) {
-        console.error('[auto_analyze] 分析过程失败:', error);
-        return { insights: [], patterns: [], recommendations: [], error: error.message };
     }
-}
 
-/**
- * 基础分析（当推理技能不可用时）
- * @param {Array} observations 观察记录
- * @returns {Object} 基础分析结果
- */
-function basicAnalysis(observations) {
-    const insights = [];
-    const patterns = [];
-    const recommendations = [];
-
-    observations.forEach(obs => {
-        if (obs.type === 'success') {
-            insights.push(`成功案例: ${obs.content}`);
-            patterns.push(`成功模式: ${obs.context || '未知上下文'}`);
-        } else if (obs.type === 'failure') {
-            insights.push(`失败案例: ${obs.content}`);
-            recommendations.push(`改进点: ${obs.content}`);
-        }
-    });
-
-    return { insights, patterns, recommendations };
-}
-
-/**
- * 加载现有记忆
- * @returns {Promise<Object>} 记忆数据
- */
-async function loadMemories() {
-    try {
-        if (!fs.existsSync(MEMORIES_PATH)) {
-            return { skills: [], knowledge: [], patterns: [] };
-        }
-        return JSON.parse(fs.readFileSync(MEMORIES_PATH, 'utf-8'));
-    } catch (error) {
-        console.error('[auto_analyze] 加载记忆失败:', error);
+    /**
+     * 创建分析提示词
+     * @param {Array} observations - 观察记录
+     * @returns {string} 提示词
+     */
