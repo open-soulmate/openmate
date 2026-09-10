@@ -1,185 +1,160 @@
-# acp-proxy/skills/auto_analysis.py
 import datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 
-class AutoAnalysisSkill:
-    """
-    自动分析技能：将过量的观察（observations）转化为结构化的洞察（insights）。
-    解决信息过载与处理滞后问题，提升知识积累效率。
-    """
-
-    # 触发阈值配置
+class Skill:
     UNANALYZED_THRESHOLD = 3
-
-    def __init__(self, context: Any = None):
-        """
-        初始化技能，可传入上下文以访问记忆系统等。
-        """
+    SKILL_NAME = "auto_analysis"
+    
+    def __init__(self, context):
         self.context = context
-        self.skill_name = "auto_analysis"
-        self.description = "批量分析未处理的观察，生成洞察并写入记忆系统"
-
-    def should_trigger(self, observations_unanalyzed_count: int) -> bool:
+    
+    def execute(self, **kwargs) -> str:
         """
-        判断是否应该触发此技能。
-        当未分析的观察数量达到或超过阈值时返回True。
+        主执行函数，检查未分析观察并处理
         """
-        return observations_unanalyzed_count >= self.UNANALYZED_THRESHOLD
-
-    def execute(self, force: bool = False) -> str:
-        """
-        执行自动分析流程。
-        
-        参数:
-            force: 是否强制执行，忽略阈值检查
+        try:
+            # 获取未分析的观察
+            unanalyzed = self._get_unanalyzed_observations()
             
-        返回:
-            分析报告字符串
+            # 检查是否达到阈值
+            if len(unanalyzed) < self.UNANALYZED_THRESHOLD:
+                return f"未分析观察数量({len(unanalyzed)})未达到阈值({self.UNANALYZED_THRESHOLD})，跳过处理"
+            
+            # 执行分析
+            insights = self._analyze_observations(unanalyzed)
+            
+            # 存储洞察到记忆系统
+            stored_count = self._store_insights(insights)
+            
+            # 标记原始观察为已分析
+            self._mark_observations_as_analyzed(unanalyzed)
+            
+            # 生成分析报告
+            return self._generate_report(len(unanalyzed), stored_count)
+            
+        except Exception as e:
+            return f"自动分析技能执行失败: {str(e)}"
+    
+    def _get_unanalyzed_observations(self) -> List[Dict[str, Any]]:
+        """获取所有未分析的观察"""
+        try:
+            # 尝试使用不同的记忆系统API
+            if hasattr(self.context.memories, 'get_unanalyzed'):
+                return self.context.memories.get_unanalyzed()
+            elif hasattr(self.context.memories, 'query'):
+                # 备用查询方法
+                return self.context.memories.query(
+                    status="unanalyzed",
+                    memory_type="observation",
+                    limit=1000  # 设置上限避免内存问题
+                )
+            else:
+                # 最终回退：假设有一个通用获取方法
+                return getattr(self.context.memories, 'observations', [])
+        except Exception as e:
+            raise RuntimeError(f"获取未分析观察失败: {str(e)}")
+    
+    def _analyze_observations(self, observations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
         """
-        # 1. 检查并获取未分析的观察
-        if not force:
-            # 假设context提供了获取未分析观察数量的方法
-            # 在实际实现中，需要替换为真实的API调用
-            unanalyzed_count = self._get_unanalyzed_count()
-            if not self.should_trigger(unanalyzed_count):
-                return f"未达到触发阈值({self.UNANALYZED_THRESHOLD})，当前未分析观察数: {unanalyzed_count}"
-
-        # 获取所有未分析的观察
-        unanalyzed_observations = self._fetch_unanalyzed_observations()
-        if not unanalyzed_observations:
-            return "没有找到未分析的观察"
-
-        # 2. 批量分析
-        deduplicated = self._deduplicate_observations(unanalyzed_observations)
-        clustered = self._cluster_observations(deduplicated)
-        insights = self._extract_insights(clustered)
-
-        # 3. 格式化为记忆条目
-        memory_entries = self._format_as_memories(insights)
-
-        # 4. 存入记忆系统并标记原始观察为已分析
-        self._store_memories(memory_entries)
-        self._mark_observations_as_analyzed(unanalyzed_observations)
-
-        # 5. 生成分析报告
-        report = self._generate_report(
-            observations_processed=len(unanalyzed_observations),
-            insights_generated=len(memory_entries)
-        )
-
-        return report
-
-    def _get_unanalyzed_count(self) -> int:
-        """获取未分析观察的数量（模拟实现）"""
-        # 实际实现中应调用 context.memories.count_unanalyzed() 或类似方法
-        if hasattr(self.context, 'memories') and hasattr(self.context.memories, 'count_unanalyzed'):
-            return self.context.memories.count_unanalyzed()
+        批量分析观察并提取洞察
+        1. 去重
+        2. 按类型/标签聚类
+        3. 提取关键实体和动作
+        """
+        # 1. 去重 - 基于内容相似性（简单哈希比较）
+        unique_observations = self._deduplicate_observations(observations)
         
-        # 模拟数据：实际使用时替换为真实逻辑
-        return 0
-
-    def _fetch_unanalyzed_observations(self) -> List[Dict[str, Any]]:
-        """获取所有未分析的观察（模拟实现）"""
-        # 实际实现中应调用 context.memories.get_unanalyzed() 或类似方法
-        if hasattr(self.context, 'memories') and hasattr(self.context.memories, 'get_unanalyzed'):
-            return self.context.memories.get_unanalyzed()
+        # 2. 按类型/标签聚类
+        clustered = self._cluster_observations(unique_observations)
         
-        # 模拟数据：实际使用时替换为真实逻辑
-        return [
-            {"id": 1, "content": "用户询问了天气情况", "type": "query", "tags": ["weather"], "timestamp": "2023-01-01T10:00:00"},
-            {"id": 2, "content": "系统检测到性能下降", "type": "alert", "tags": ["performance", "system"], "timestamp": "2023-01-01T10:05:00"},
-            {"id": 3, "content": "用户询问了天气情况", "type": "query", "tags": ["weather"], "timestamp": "2023-01-01T10:10:00"},
-            {"id": 4, "content": "数据库连接超时", "type": "error", "tags": ["database", "connection"], "timestamp": "2023-01-01T10:15:00"},
-        ]
-
+        # 3. 从聚类中提取洞察
+        insights = []
+        for cluster_type, cluster_items in clustered.items():
+            # 尝试提取关键实体和动作
+            insight = self._extract_insight_from_cluster(cluster_type, cluster_items)
+            if insight:
+                insights.append(insight)
+        
+        return insights
+    
     def _deduplicate_observations(self, observations: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """去重处理：基于内容和类型去除重复观察"""
-        seen = set()
-        unique_observations = []
+        """去重观察"""
+        seen_hashes = set()
+        unique = []
         
         for obs in observations:
-            # 创建唯一标识：内容+类型
-            key = (obs.get('content', ''), obs.get('type', ''))
-            if key not in seen:
-                seen.add(key)
-                unique_observations.append(obs)
+            # 创建内容哈希（简化实现）
+            content_str = str(obs.get('content', ''))
+            content_hash = hash(content_str)
+            
+            if content_hash not in seen_hashes:
+                seen_hashes.add(content_hash)
+                unique.append(obs)
         
-        return unique_observations
-
+        return unique
+    
     def _cluster_observations(self, observations: List[Dict[str, Any]]) -> Dict[str, List[Dict[str, Any]]]:
-        """按类型/标签聚类观察"""
+        """按类型或标签聚类观察"""
         clusters = {}
         
         for obs in observations:
-            # 按类型聚类
-            obs_type = obs.get('type', 'unknown')
-            if obs_type not in clusters:
-                clusters[obs_type] = []
-            clusters[obs_type].append(obs)
+            # 确定聚类键
+            cluster_key = obs.get('type', 'unknown')
+            
+            # 如果类型未知，尝试使用第一个标签
+            if cluster_key == 'unknown':
+                tags = obs.get('tags', [])
+                if tags:
+                    cluster_key = tags[0]
+            
+            # 添加到聚类
+            if cluster_key not in clusters:
+                clusters[cluster_key] = []
+            clusters[cluster_key].append(obs)
         
         return clusters
-
-    def _extract_insights(self, clustered_observations: Dict[str, List[Dict[str, Any]]]) -> List[Dict[str, Any]]:
-        """从聚类中提取洞察（简化实现：提取关键实体和动作）"""
-        insights = []
+    
+    def _extract_insight_from_cluster(self, cluster_type: str, observations: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """从观察聚类中提取洞察"""
+        # 简单提取逻辑：聚类中的共同模式
+        common_entities = set()
+        common_actions = set()
         
-        for cluster_type, observations in clustered_observations.items():
-            # 简化实现：提取关键词作为实体
-            all_tags = set()
-            all_content = []
+        # 简单的实体和动作提取（基于标签和内容关键词）
+        for obs in observations:
+            # 提取标签作为实体候选
+            tags = obs.get('tags', [])
+            common_entities.update(tags)
             
-            for obs in observations:
-                all_content.append(obs.get('content', ''))
-                all_tags.update(obs.get('tags', []))
-            
-            # 创建洞察条目
-            insight = {
-                "type": "insight",
-                "source": "auto_analysis",
-                "cluster_type": cluster_type,
-                "observations_count": len(observations),
-                "key_entities": list(all_tags),
-                "summary": f"分析了{len(observations)}个{cluster_type}类型观察",
-                "sample_content": all_content[:3],  # 最多保留3个样本内容
-                "timestamp": datetime.datetime.now().isoformat()
+            # 简单的动作词提取（从内容中）
+            content = obs.get('content', '')
+            action_words = self._extract_action_words(content)
+            common_actions.update(action_words)
+        
+        # 创建洞察内容
+        insight_content = {
+            'cluster_type': cluster_type,
+            'observation_count': len(observations),
+            'common_entities': list(common_entities)[:5],  # 限制数量
+            'common_actions': list(common_actions)[:3],
+            'time_range': self._get_time_range(observations),
+            'summary': f"对{len(observations)}个{cluster_type}类型观察的聚类分析"
+        }
+        
+        return {
+            'type': 'insight',
+            'content': insight_content,
+            'source': 'auto_analysis',
+            'timestamp': datetime.datetime.now().isoformat(),
+            'metadata': {
+                'analysis_method': 'batch_clustering',
+                'confidence': 0.7,  # 置信度分数
+                'related_observations': [obs.get('id') for obs in observations[:5]]  # 关联的前5个观察
             }
-            insights.append(insight)
+        }
+    
+    def _extract_action_words(self, text: str) -> set:
+        """简单提取动作词（示例实现）"""
+        action_keywords = {'创建', '删除', '修改', '更新', '获取', '发送', '接收', '分析', '处理', '执行'}
+        found_actions = set()
         
-        return insights
-
-    def _format_as_memories(self, insights: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-        """将洞察格式化为记忆条目"""
-        memory_entries = []
-        
-        for i, insight in enumerate(insights):
-            memory_entry = {
-                "id": f"insight_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}_{i}",
-                "type": "insight",
-                "source": "auto_analysis",
-                "content": insight,
-                "timestamp": datetime.datetime.now().isoformat(),
-                "metadata": {
-                    "generated_by": "auto_analysis_skill",
-                    "cluster_type": insight.get("cluster_type", "unknown"),
-                    "observations_count": insight.get("observations_count", 0)
-                }
-            }
-            memory_entries.append(memory_entry)
-        
-        return memory_entries
-
-    def _store_memories(self, memory_entries: List[Dict[str, Any]]) -> bool:
-        """将记忆条目存入记忆系统（模拟实现）"""
-        # 实际实现中应调用 context.memories.store() 或类似方法
-        if hasattr(self.context, 'memories') and hasattr(self.context.memories, 'store'):
-            for entry in memory_entries:
-                self.context.memories.store(entry)
-            return True
-        
-        # 模拟存储成功
-        print(f"[AutoAnalysis] 存储了 {len(memory_entries)} 条记忆条目（模拟）")
-        return True
-
-    def _mark_observations_as_analyzed(self, observations: List[Dict[str, Any]]) -> bool:
-        """将原始观察标记为已分析（模拟实现）"""
-        # 实际实现中应调用 context.memories.mark_as_analyzed() 或类似方法
