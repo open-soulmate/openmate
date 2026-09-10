@@ -1,183 +1,172 @@
-import json
 import os
+import json
 import uuid
+import time
 from datetime import datetime
+from typing import Dict, List, Optional, Any
 from pathlib import Path
-from typing import Dict, List, Any, Optional
-from acp_proxy.core.base_plugin import BasePlugin
 
-
-class ExperimentManager(BasePlugin):
-    """
-    实验管理插件 - 系统化地进行'大胆尝试，高探索'的激进策略
-    """
-    
-    def __init__(self, experiments_dir: str = "experiments"):
+class ExperimentManager:
+    def __init__(self, base_dir: str = "experiments"):
         """
-        初始化实验管理器
+        Initialize the ExperimentManager.
         
         Args:
-            experiments_dir: 实验存储目录
+            base_dir: Base directory for storing experiments
         """
-        super().__init__()
-        self.experiments_dir = Path(experiments_dir)
-        self.experiments_dir.mkdir(exist_ok=True)
-        self.active_experiments: Dict[str, Dict] = {}
-        self._load_active_experiments()
+        self.base_dir = Path(base_dir)
+        self.base_dir.mkdir(exist_ok=True)
+        self.active_experiments = {}
+        self.experiment_registry = {}
     
-    def _load_active_experiments(self):
-        """加载所有活跃的实验"""
-        for exp_dir in self.experiments_dir.iterdir():
-            if exp_dir.is_dir() and (exp_dir / "experiment.json").exists():
-                with open(exp_dir / "experiment.json", 'r', encoding='utf-8') as f:
-                    experiment_data = json.load(f)
-                    if experiment_data.get("status") == "active":
-                        self.active_experiments[experiment_data["id"]] = experiment_data
-    
-    def _save_experiment(self, experiment_id: str, experiment_data: Dict):
-        """保存实验数据到文件"""
-        exp_dir = self.experiments_dir / experiment_id
-        exp_dir.mkdir(exist_ok=True)
-        
-        with open(exp_dir / "experiment.json", 'w', encoding='utf-8') as f:
-            json.dump(experiment_data, f, indent=2, ensure_ascii=False)
-        
-        self.active_experiments[experiment_id] = experiment_data
-    
-    def create_experiment(
-        self,
-        name: str,
-        hypothesis: str,
-        variables: Dict[str, Any],
-        metrics: List[str],
-        description: Optional[str] = None
-    ) -> str:
+    def create_experiment(self, name: str, hypothesis: str, variables: dict, metrics: list[str]) -> str:
         """
-        创建新的实验
+        Create a new experiment with structured metadata.
         
         Args:
-            name: 实验名称
-            hypothesis: 实验假设
-            variables: 实验变量字典
-            metrics: 评估指标列表
-            description: 实验描述
+            name: Human-readable name for the experiment
+            hypothesis: The hypothesis being tested
+            variables: Dictionary of variables being manipulated or observed
+            metrics: List of metrics to evaluate success
             
         Returns:
-            str: 实验ID
+            Unique experiment ID
         """
-        experiment_id = str(uuid.uuid4())[:8]
+        # Generate unique experiment ID
+        experiment_id = f"exp_{uuid.uuid4().hex[:8]}_{int(time.time())}"
+        
+        # Create experiment directory
+        experiment_dir = self.base_dir / experiment_id
+        experiment_dir.mkdir(exist_ok=True)
+        
+        # Create experiment metadata file
         experiment_data = {
             "id": experiment_id,
             "name": name,
             "hypothesis": hypothesis,
             "variables": variables,
             "metrics": metrics,
-            "description": description,
             "status": "active",
             "created_at": datetime.now().isoformat(),
-            "updated_at": datetime.now().isoformat(),
+            "last_updated": datetime.now().isoformat(),
             "steps": [],
             "conclusion": None,
-            "outcome_summary": None,
-            "learning_points": [],
-            "new_skill_suggestion": None
+            "learning_summary": None
         }
         
-        self._save_experiment(experiment_id, experiment_data)
+        # Save to file
+        with open(experiment_dir / "experiment.json", "w") as f:
+            json.dump(experiment_data, f, indent=2)
         
-        # 记录到主Agent的工作流中
-        self.log_to_workflow(f"创建新实验: {name} (ID: {experiment_id})")
-        self.log_to_memory(f"实验开始: {name} - {hypothesis}")
+        # Create empty directories for data and results
+        (experiment_dir / "data").mkdir(exist_ok=True)
+        (experiment_dir / "results").mkdir(exist_ok=True)
+        
+        # Register experiment
+        self.active_experiments[experiment_id] = {
+            "dir": experiment_dir,
+            "data": experiment_data
+        }
         
         return experiment_id
     
-    def log_step(
-        self,
-        experiment_id: str,
-        step_description: str,
-        data: Optional[Dict[str, Any]] = None,
-        observations: Optional[str] = None
-    ) -> bool:
+    def log_step(self, experiment_id: str, step_description: str, data: dict) -> None:
         """
-        记录实验步骤
+        Log a step in an experiment.
         
         Args:
-            experiment_id: 实验ID
-            step_description: 步骤描述
-            data: 步骤数据
-            observations: 观察结果
-            
-        Returns:
-            bool: 是否成功记录
+            experiment_id: ID of the experiment
+            step_description: Description of the step taken
+            data: Data collected during this step
         """
         if experiment_id not in self.active_experiments:
-            self.log_to_workflow(f"实验 {experiment_id} 不存在或已结束", level="WARNING")
-            return False
+            raise ValueError(f"Experiment {experiment_id} not found or not active")
         
+        # Load current experiment data
+        experiment_dir = self.active_experiments[experiment_id]["dir"]
+        with open(experiment_dir / "experiment.json", "r") as f:
+            experiment_data = json.load(f)
+        
+        # Create step entry
         step = {
-            "timestamp": datetime.now().isoformat(),
+            "step_number": len(experiment_data["steps"]) + 1,
             "description": step_description,
-            "data": data or {},
-            "observations": observations
+            "data": data,
+            "timestamp": datetime.now().isoformat()
         }
         
-        experiment_data = self.active_experiments[experiment_id]
+        # Update experiment data
         experiment_data["steps"].append(step)
-        experiment_data["updated_at"] = datetime.now().isoformat()
+        experiment_data["last_updated"] = datetime.now().isoformat()
         
-        self._save_experiment(experiment_id, experiment_data)
+        # Save updated data
+        with open(experiment_dir / "experiment.json", "w") as f:
+            json.dump(experiment_data, f, indent=2)
         
-        self.log_to_workflow(f"实验 {experiment_data['name']} 步骤记录: {step_description}")
-        
-        return True
+        # Update in-memory data
+        self.active_experiments[experiment_id]["data"] = experiment_data
     
-    def conclude_experiment(
-        self,
-        experiment_id: str,
-        outcome_summary: str,
-        conclusion: str,
-        learning_points: Optional[List[str]] = None,
-        success: bool = False
-    ) -> Dict[str, Any]:
+    def conclude_experiment(self, experiment_id: str, outcome_summary: str) -> dict:
         """
-        结束实验并生成总结
+        Conclude an experiment with summary and learning.
         
         Args:
-            experiment_id: 实验ID
-            outcome_summary: 结果摘要
-            conclusion: 结论
-            learning_points: 学习要点列表
-            success: 是否成功
+            experiment_id: ID of the experiment
+            outcome_summary: Summary of the experiment's outcome
             
         Returns:
-            dict: 实验结果分析
+            Dictionary with conclusion details and learning summary
         """
         if experiment_id not in self.active_experiments:
-            self.log_to_workflow(f"实验 {experiment_id} 不存在或已结束", level="WARNING")
-            return {"error": "实验不存在或已结束"}
+            raise ValueError(f"Experiment {experiment_id} not found")
         
-        experiment_data = self.active_experiments[experiment_id]
+        # Load experiment data
+        experiment_dir = self.active_experiments[experiment_id]["dir"]
+        with open(experiment_dir / "experiment.json", "r") as f:
+            experiment_data = json.load(f)
+        
+        # Generate learning summary
+        learning_summary = self._generate_learning_summary(experiment_data, outcome_summary)
+        
+        # Update experiment data
         experiment_data["status"] = "concluded"
-        experiment_data["conclusion"] = conclusion
-        experiment_data["outcome_summary"] = outcome_summary
-        experiment_data["learning_points"] = learning_points or []
-        experiment_data["success"] = success
-        experiment_data["concluded_at"] = datetime.now().isoformat()
-        experiment_data["updated_at"] = datetime.now().isoformat()
+        experiment_data["conclusion"] = {
+            "outcome_summary": outcome_summary,
+            "concluded_at": datetime.now().isoformat(),
+            "learning_summary": learning_summary
+        }
+        experiment_data["last_updated"] = datetime.now().isoformat()
         
-        # 计算实验指标
-        analysis = self._analyze_experiment(experiment_data)
-        experiment_data["analysis"] = analysis
+        # Save final data
+        with open(experiment_dir / "experiment.json", "w") as f:
+            json.dump(experiment_data, f, indent=2)
         
-        self._save_experiment(experiment_id, experiment_data)
+        # Save learning summary as separate file for easy access
+        with open(experiment_dir / "learning_summary.txt", "w") as f:
+            f.write(learning_summary)
         
-        # 从活跃实验中移除
-        del self.active_experiments[experiment_id]
+        # Move from active to registry
+        self.experiment_registry[experiment_id] = self.active_experiments.pop(experiment_id)
         
-        self.log_to_workflow(f"实验 {experiment_data['name']} 已结束: {outcome_summary}")
-        self.log_to_memory(f"实验总结: {experiment_data['name']} - {conclusion}")
+        return {
+            "experiment_id": experiment_id,
+            "outcome_summary": outcome_summary,
+            "learning_summary": learning_summary,
+            "status": "concluded"
+        }
+    
+    def suggest_new_skill_from_experiment(self, experiment_id: str) -> dict:
+        """
+        Analyze successful experiments and suggest new skills.
         
-        # 如果实验成功，建议新技能
-        if success:
-            skill_suggestion = self.suggest_new_skill_from_experiment(experiment_id)
-            experiment_data["new_skill_suggestion"] = skill_suggestion
+        Args:
+            experiment_id: ID of the experiment to analyze
+            
+        Returns:
+            Dictionary containing suggested skill definition
+        """
+        if experiment_id not in self.experiment_registry:
+            raise ValueError(f"Concluded experiment {experiment_id} not found in registry")
+        
+        # Load experiment data
+        experiment_dir = self.experiment_registry[experiment_id]["dir"]
