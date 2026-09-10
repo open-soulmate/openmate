@@ -1,159 +1,108 @@
-"""
-knowledge-consolidation-skill
-知识巩固技能 - 优化记忆管理机制
-"""
-
+import asyncio
 import json
 import time
-import datetime
-import numpy as np
-from collections import defaultdict
-from typing import Dict, List, Tuple, Any, Optional
+import hashlib
+from datetime import datetime, timedelta
+from typing import List, Dict, Any, Optional, Tuple
 from dataclasses import dataclass, asdict
-from heapq import nlargest
+from collections import defaultdict
+import numpy as np
 from sklearn.feature_extraction.text import TfidfVectorizer
 from sklearn.metrics.pairwise import cosine_similarity
-
-# Constants
-SEMANTIC_SIMILARITY_THRESHOLD = 0.85
-IMPORTANCE_WEIGHTS = {'frequency': 0.3, 'emotion': 0.3, 'information': 0.4}
-COMPRESSION_THRESHOLD = 5
-REVIEW_WEEKDAY = 6  # Sunday
-REVIEW_HOUR = 22  # 10 PM
-
+import networkx as nx
+import heapq
 
 @dataclass
 class Memory:
     id: str
     content: str
-    timestamp: float
-    emotion_intensity: float
-    information_value: float
-    usage_count: int
-    importance_score: float
-    tags: List[str]
-    source: str
-    embedding: Optional[List[float]] = None
-    metadata: Dict[str, Any] = None
+    embedding: Optional[np.ndarray] = None
+    timestamp: datetime = None
+    emotion_score: float = 0.0
+    frequency: int = 1
+    importance_score: float = 0.0
+    is_compressed: bool = False
+    original_memories: List[str] = None
+    topics: List[str] = None
     
-    def __post_init__(self):
-        if self.metadata is None:
-            self.metadata = {}
-
-
-@dataclass
-class KnowledgeGraphNode:
-    id: str
-    type: str  # 'memory', 'concept', 'entity'
-    content: str
-    properties: Dict[str, Any]
-    connections: List[str]  # Node IDs this node connects to
-    last_updated: float
-
-
-@dataclass
-class KnowledgeGraphEdge:
-    source_id: str
-    target_id: str
-    relationship: str
-    weight: float
-    properties: Dict[str, Any]
-
+    def to_dict(self) -> Dict[str, Any]:
+        data = asdict(self)
+        if self.embedding is not None:
+            data['embedding'] = self.embedding.tolist()
+        data['timestamp'] = self.timestamp.isoformat()
+        if self.original_memories:
+            data['original_memories'] = self.original_memories
+        return data
+    
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> 'Memory':
+        if 'embedding' in data and data['embedding'] is not None:
+            data['embedding'] = np.array(data['embedding'])
+        if 'timestamp' in data:
+            data['timestamp'] = datetime.fromisoformat(data['timestamp'])
+        return cls(**data)
 
 class KnowledgeConsolidationSkill:
-    def __init__(self, storage_backend=None):
-        self.memories: Dict[str, Memory] = {}
-        self.knowledge_graph_nodes: Dict[str, KnowledgeGraphNode] = {}
-        self.knowledge_graph_edges: List[KnowledgeGraphEdge] = []
-        self.embedding_cache: Dict[str, np.ndarray] = {}
-        self.vectorizer = TfidfVectorizer()
-        self.tfidf_matrix = None
-        self.memory_ids = []
-        self.last_review_time = None
+    def __init__(self, memory_storage: Any):
+        self.storage = memory_storage
+        self.graph = nx.DiGraph()
+        self.vectorizer = TfidfVectorizer(max_features=1000)
+        self.embedding_cache = {}
         
-        # Storage backend for persistence
-        self.storage = storage_backend
+        # 配置参数
+        self.similarity_threshold = 0.85
+        self.importance_weights = {
+            'frequency': 0.3,
+            'emotion': 0.3,
+            'value': 0.4
+        }
+        self.compression_threshold = 5
+        self.max_memories_per_consolidation = 1000
         
-        # Load existing data if available
-        self._load_state()
+        # 加载现有记忆到知识图谱
+        self._load_existing_memories()
     
-    def add_memory(self, content: str, emotion_intensity: float = 0.5,
-                  information_value: float = 0.5, tags: List[str] = None,
-                  source: str = "default", metadata: Dict[str, Any] = None) -> str:
-        """添加新记忆，自动去重和计算重要性"""
-        # Check for duplicates first
-        if self._is_duplicate(content):
-            # Find and update existing memory
-            existing_id = self._find_similar_memory(content)
-            if existing_id:
-                existing = self.memories[existing_id]
-                existing.usage_count += 1
-                existing.importance_score = self._calculate_importance(existing)
-                return existing_id
-        
-        # Generate unique ID
-        memory_id = f"mem_{int(time.time() * 1000)}_{len(self.memories)}"
-        
-        # Create new memory
-        new_memory = Memory(
-            id=memory_id,
-            content=content,
-            timestamp=time.time(),
-            emotion_intensity=max(0, min(1, emotion_intensity)),
-            information_value=max(0, min(1, information_value)),
-            usage_count=1,
-            importance_score=0,
-            tags=tags or [],
-            source=source,
-            metadata=metadata or {}
-        )
-        
-        # Calculate importance
-        new_memory.importance_score = self._calculate_importance(new_memory)
-        
-        # Store memory
-        self.memories[memory_id] = new_memory
-        
-        # Update TF-IDF matrix
-        self._update_tfidf_index()
-        
-        # Update knowledge graph
-        self._add_memory_to_graph(new_memory)
-        
-        # Save state
-        self._save_state()
-        
-        return memory_id
+    def _load_existing_memories(self):
+        """加载现有记忆到知识图谱"""
+        try:
+            memories = self.storage.query_all()
+            for memory in memories:
+                self._add_memory_to_graph(memory)
+        except:
+            pass
     
-    def query_memories(self, query: str, top_k: int = 10,
-                      filters: Dict[str, Any] = None) -> List[Memory]:
-        """查询相关记忆"""
-        if not self.memories:
-            return []
+    def _generate_memory_id(self, content: str) -> str:
+        """生成记忆ID"""
+        hash_obj = hashlib.md5(content.encode())
+        return hash_obj.hexdigest()[:12]
+    
+    def _calculate_embedding(self, text: str) -> np.ndarray:
+        """计算文本的向量表示"""
+        if text in self.embedding_cache:
+            return self.embedding_cache[text]
         
-        # Update TF-IDF index if needed
-        if self.tfidf_matrix is None or len(self.memories) != len(self.memory_ids):
-            self._update_tfidf_index()
-        
-        # Transform query to TF-IDF vector
-        query_vec = self.vectorizer.transform([query])
-        
-        # Calculate similarities
-        similarities = cosine_similarity(query_vec, self.tfidf_matrix)[0]
-        
-        # Get top-k indices
-        top_indices = np.argsort(similarities)[-top_k:][::-1]
-        
-        results = []
-        for idx in top_indices:
-            if similarities[idx] > 0:  # Filter non-zero similarities
-                memory_id = self.memory_ids[idx]
-                memory = self.memories[memory_id]
-                
-                # Apply filters
-                if filters:
-                    if not self._apply_filters(memory, filters):
-                        continue
-                
-                results.append(memory)
-        
+        try:
+            # 使用TF-IDF作为向量表示
+            tfidf_matrix = self.vectorizer.fit_transform([text])
+            embedding = tfidf_matrix.toarray()[0]
+            self.embedding_cache[text] = embedding
+            return embedding
+        except:
+            # 如果vectorizer未训练，先训练
+            all_memories = [m.content for m in self.storage.query_all()[:100]]
+            if all_memories:
+                self.vectorizer.fit(all_memories)
+                tfidf_matrix = self.vectorizer.transform([text])
+                embedding = tfidf_matrix.toarray()[0]
+                self.embedding_cache[text] = embedding
+                return embedding
+            return np.zeros(100)
+    
+    def _calculate_similarity(self, emb1: np.ndarray, emb2: np.ndarray) -> float:
+        """计算两个向量之间的余弦相似度"""
+        if emb1 is None or emb2 is None:
+            return 0.0
+        try:
+            similarity = cosine_similarity(emb1.reshape(1, -1), emb2.reshape(1, -1))[0][0]
+            return float(similarity)
+        except:
