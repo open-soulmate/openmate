@@ -1,0 +1,123 @@
+# File: acp-proxy/skills/self-programming-executor-skill/__init__.py
+from .self_programming_executor_skill import SelfProgrammingExecutorSkill
+
+__all__ = ["SelfProgrammingExecutorSkill"]
+```
+
+```python
+# File: acp-proxy/skills/self-programming-executor-skill/self_programming_executor_skill.py
+import ast
+import subprocess
+import tempfile
+import os
+import json
+import time
+import logging
+import hashlib
+from typing import Dict, List, Tuple, Optional, Any
+from datetime import datetime
+from dataclasses import dataclass
+from enum import Enum
+import git
+import psutil
+import resource
+
+# Configure logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+class ImprovementTarget(Enum):
+    SKILL_ENHANCEMENT = "skill_enhancement"
+    PLUGIN_OPTIMIZATION = "plugin_optimization"
+    TOOL_CREATION = "tool_creation"
+
+@dataclass
+class ImprovementTask:
+    target_type: ImprovementTarget
+    description: str
+    requirements: List[str]
+    constraints: List[str]
+
+class RiskAssessment:
+    def __init__(self):
+        self.risk_factors = {
+            "system_calls": self._check_system_calls,
+            "performance": self._check_performance_impact,
+            "compatibility": self._check_compatibility,
+            "resource_usage": self._check_resource_usage
+        }
+    
+    def _check_system_calls(self, code: str) -> Tuple[float, str]:
+        """Check for risky system calls"""
+        risky_patterns = [
+            "os.system", "subprocess.call", "exec(", "eval(",
+            "__import__", "open(", "socket.", "ctypes."
+        ]
+        
+        risk_score = 0.0
+        risk_details = []
+        
+        for pattern in risky_patterns:
+            if pattern in code:
+                risk_score += 0.3
+                risk_details.append(f"Risky pattern detected: {pattern}")
+        
+        return min(risk_score, 1.0), "; ".join(risk_details)
+    
+    def _check_performance_impact(self, code: str) -> Tuple[float, str]:
+        """Estimate performance impact"""
+        performance_risks = [
+            "while True", "for i in range(1000000)", "time.sleep(",
+            "while 1:", "for _ in range(10**6)"
+        ]
+        
+        risk_score = 0.0
+        details = []
+        
+        for pattern in performance_risks:
+            if pattern in code:
+                risk_score += 0.2
+                details.append(f"Performance risk: {pattern}")
+        
+        return min(risk_score, 1.0), "; ".join(details)
+    
+    def _check_compatibility(self, code: str) -> Tuple[float, str]:
+        """Check Python version compatibility"""
+        python38_incompatible = [
+            "match ", "case ", "-> str:", "-> int:",
+            "walrus_operator := ", "f\"\"\""
+        ]
+        
+        risk_score = 0.0
+        details = []
+        
+        for pattern in python38_incompatible:
+            if pattern in code:
+                risk_score += 0.4
+                details.append(f"Python 3.8 incompatibility: {pattern}")
+        
+        return min(risk_score, 1.0), "; ".join(details)
+    
+    def _check_resource_usage(self, code: str) -> Tuple[float, str]:
+        """Check for excessive resource usage patterns"""
+        resource_patterns = [
+            "requests.get(", "urllib.request.urlopen(",
+            "sqlite3.connect(", "threading.Thread(",
+            "multiprocessing.Process("
+        ]
+        
+        risk_score = 0.0
+        details = []
+        
+        for pattern in resource_patterns:
+            if pattern in code:
+                risk_score += 0.25
+                details.append(f"Resource usage: {pattern}")
+        
+        return min(risk_score, 1.0), "; ".join(details)
+    
+    def assess(self, code: str) -> Dict[str, Any]:
+        """Perform comprehensive risk assessment"""
+        total_risk = 0.0
+        details = {}
+        
