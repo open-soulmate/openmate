@@ -1,210 +1,114 @@
+#!/usr/bin/env python3
 """
-项目扫描技能 - 扫描项目文件并返回结构化结果
+项目扫描技能 - 优化版本
+支持扩展文件类型识别和可配置扫描路径
 """
+
 import os
 import json
-import logging
-from typing import Dict, List, Optional, Any, Set
+from typing import Dict, List, Optional, Set, Any
 from pathlib import Path
-from collections import defaultdict
+import argparse
+from dataclasses import dataclass, asdict
 
-logger = logging.getLogger(__name__)
 
-# 默认支持的文件扩展名及其对应类型
-DEFAULT_FILE_EXTENSIONS = {
-    '.py': 'python',
-    '.ts': 'typescript',
-    '.tsx': 'typescript',
-    '.js': 'javascript',
-    '.jsx': 'javascript',
-    '.json': 'json',
-    '.yaml': 'yaml',
-    '.yml': 'yaml',
-    '.md': 'markdown',
-    '.txt': 'text',
-}
-
-# 默认排除的目录
-DEFAULT_EXCLUDED_DIRS = {
-    'node_modules',
-    '.git',
-    '__pycache__',
-    '.pytest_cache',
-    '.mypy_cache',
-    '.vscode',
-    '.idea',
-    'venv',
-    'env',
-    '.env',
-    'dist',
-    'build',
-    '.next',
-    '.nuxt',
-    'coverage',
-}
+@dataclass
+class ScanResult:
+    """扫描结果数据结构"""
+    total_files: int
+    total_size: int
+    file_type_stats: Dict[str, int]
+    file_type_size_stats: Dict[str, int]
+    files: List[Dict[str, Any]]
+    scan_config: Dict[str, Any]
 
 
 class ProjectScanner:
-    """
-    项目扫描器 - 递归扫描项目目录，识别文件类型，返回结构化结果
-    """
+    """项目扫描器 - 支持多种文件类型和配置化扫描"""
     
-    def __init__(
-        self,
-        root_dir: Optional[str] = None,
-        file_extensions: Optional[Dict[str, str]] = None,
-        excluded_dirs: Optional[Set[str]] = None,
-        max_file_size: Optional[int] = None
-    ):
+    # 默认支持的文件类型及其分类
+    DEFAULT_FILE_TYPES = {
+        # Python 文件
+        '.py': 'python',
+        '.pyw': 'python',
+        
+        # TypeScript 文件
+        '.ts': 'typescript',
+        '.tsx': 'typescript-react',
+        
+        # JavaScript 文件
+        '.js': 'javascript',
+        '.jsx': 'javascript-react',
+        
+        # 其他常见开发文件
+        '.json': 'json',
+        '.md': 'markdown',
+        '.yaml': 'yaml',
+        '.yml': 'yaml',
+        '.toml': 'toml',
+        '.ini': 'config',
+        '.cfg': 'config',
+    }
+    
+    # 默认忽略的目录
+    DEFAULT_IGNORE_DIRS = {
+        'node_modules',
+        '.git',
+        '.svn',
+        '.hg',
+        '__pycache__',
+        '.pytest_cache',
+        '.mypy_cache',
+        '.tox',
+        'venv',
+        'env',
+        '.env',
+        'dist',
+        'build',
+        '.next',
+        '.nuxt',
+        'coverage',
+    }
+    
+    def __init__(self, 
+                 root_path: Optional[str] = None,
+                 file_types: Optional[Dict[str, str]] = None,
+                 ignore_dirs: Optional[Set[str]] = None,
+                 max_depth: Optional[int] = None):
         """
         初始化项目扫描器
         
         Args:
-            root_dir: 项目根目录路径，默认为当前工作目录
-            file_extensions: 文件扩展名到类型的映射，默认使用DEFAULT_FILE_EXTENSIONS
-            excluded_dirs: 排除的目录集合，默认使用DEFAULT_EXCLUDED_DIRS
-            max_file_size: 最大文件大小(字节)，None表示不限制
+            root_path: 扫描根目录路径，默认为当前工作目录
+            file_types: 自定义文件类型映射 {扩展名: 分类}
+            ignore_dirs: 自定义忽略目录集合
+            max_depth: 最大扫描深度，None表示无限制
         """
-        if root_dir is None:
-            root_dir = os.getcwd()
+        self.root_path = Path(root_path) if root_path else Path.cwd()
+        self.file_types = file_types or self.DEFAULT_FILE_TYPES
+        self.ignore_dirs = ignore_dirs or self.DEFAULT_IGNORE_DIRS
+        self.max_depth = max_depth
         
-        self.root_dir = Path(root_dir).resolve()
-        self.file_extensions = file_extensions or DEFAULT_FILE_EXTENSIONS
-        self.excluded_dirs = excluded_dirs or DEFAULT_EXCLUDED_DIRS
-        self.max_file_size = max_file_size
-        
-        # 验证根目录是否存在
-        if not self.root_dir.exists():
-            raise FileNotFoundError(f"根目录不存在: {self.root_dir}")
-        
-        if not self.root_dir.is_dir():
-            raise ValueError(f"根目录不是目录: {self.root_dir}")
-        
-        # 缓存扫描结果
-        self._scan_result = None
-        self._last_scan_time = None
+        # 验证根目录存在
+        if not self.root_path.exists():
+            raise FileNotFoundError(f"根目录不存在: {self.root_path}")
+        if not self.root_path.is_dir():
+            raise ValueError(f"根目录不是有效的目录: {self.root_path}")
     
-    def _should_exclude_dir(self, dir_name: str) -> bool:
-        """判断是否应排除该目录"""
-        # 排除隐藏目录（以.开头）
-        if dir_name.startswith('.') and dir_name not in self.excluded_dirs:
-            return True
-        return dir_name in self.excluded_dirs
+    def should_ignore(self, dir_name: str) -> bool:
+        """判断是否应该忽略该目录"""
+        return dir_name in self.ignore_dirs
     
-    def _get_file_type(self, file_path: Path) -> str:
+    def get_file_type(self, file_path: Path) -> Optional[str]:
         """获取文件类型"""
-        suffix = file_path.suffix.lower()
-        return self.file_extensions.get(suffix, 'other')
+        extension = file_path.suffix.lower()
+        return self.file_types.get(extension)
     
-    def _should_include_file(self, file_path: Path) -> bool:
-        """判断是否应包含该文件"""
-        suffix = file_path.suffix.lower()
-        
-        # 检查文件扩展名是否在支持列表中
-        if suffix not in self.file_extensions:
-            return False
-        
-        # 检查文件大小限制
-        if self.max_file_size is not None:
-            try:
-                file_size = file_path.stat().st_size
-                if file_size > self.max_file_size:
-                    return False
-            except OSError:
-                return False
-        
-        return True
-    
-    def scan(self, force_rescan: bool = False) -> Dict[str, Any]:
-        """
-        执行项目扫描
-        
-        Args:
-            force_rescan: 是否强制重新扫描，忽略缓存
-            
-        Returns:
-            结构化扫描结果
-        """
-        if self._scan_result and not force_rescan:
-            return self._scan_result
-        
-        logger.info(f"开始扫描项目: {self.root_dir}")
-        
+    def scan_directory(self) -> ScanResult:
+        """扫描目录并返回结构化结果"""
+        file_type_stats = {}
+        file_type_size_stats = {}
         files = []
-        stats = defaultdict(int)
-        type_stats = defaultdict(int)
-        dir_stats = defaultdict(int)
+        total_size = 0
         
-        try:
-            # 使用os.walk递归遍历目录
-            for dirpath, dirnames, filenames in os.walk(self.root_dir):
-                # 过滤排除的目录（原地修改dirnames以影响遍历）
-                dirnames[:] = [
-                    d for d in dirnames 
-                    if not self._should_exclude_dir(d)
-                ]
-                
-                # 统计目录信息
-                relative_dir = os.path.relpath(dirpath, self.root_dir)
-                if relative_dir == '.':
-                    dir_stats['root'] += 1
-                else:
-                    dir_stats[relative_dir] += 1
-                
-                # 处理文件
-                for filename in filenames:
-                    file_path = Path(dirpath) / filename
-                    
-                    # 检查文件是否应该包含
-                    if self._should_include_file(file_path):
-                        relative_path = file_path.relative_to(self.root_dir)
-                        file_type = self._get_file_type(file_path)
-                        
-                        file_info = {
-                            'path': str(relative_path),
-                            'absolute_path': str(file_path),
-                            'name': filename,
-                            'type': file_type,
-                            'extension': file_path.suffix.lower(),
-                            'size': file_path.stat().st_size if file_path.exists() else 0
-                        }
-                        
-                        files.append(file_info)
-                        stats['total_files'] += 1
-                        type_stats[file_type] += 1
-        
-        except Exception as e:
-            logger.error(f"扫描项目时出错: {e}")
-            raise
-        
-        # 构建结果
-        self._scan_result = {
-            'root_dir': str(self.root_dir),
-            'scan_time': os.path.getctime(str(self.root_dir)),
-            'files': files,
-            'stats': {
-                'total_files': stats['total_files'],
-                'by_type': dict(type_stats),
-                'by_directory': dict(dir_stats),
-                'unique_extensions': list(set(file['extension'] for file in files))
-            },
-            'config': {
-                'file_extensions': self.file_extensions,
-                'excluded_dirs': list(self.excluded_dirs),
-                'max_file_size': self.max_file_size
-            }
-        }
-        
-        logger.info(f"扫描完成: 共找到 {stats['total_files']} 个文件")
-        return self._scan_result
-    
-    def get_files_by_type(self, file_type: str) -> List[Dict[str, Any]]:
-        """获取指定类型的所有文件"""
-        result = self.scan()
-        return [file for file in result['files'] if file['type'] == file_type]
-    
-    def get_files_by_extension(self, extension: str) -> List[Dict[str, Any]]:
-        """获取指定扩展名的所有文件"""
-        result = self.scan()
-        return [file for file in result['files'] if file['extension'] == extension]
-    
+        # 统计所有支持的文件类型
