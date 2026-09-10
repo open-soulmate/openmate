@@ -1,233 +1,226 @@
 """
-Self Introspect Progress Reporter Skill
-Automatically compares planned improvements with actual execution results
-to establish a 'plan-execute-feedback' loop.
+Skill: self_introspect_progress_reporter
+描述：定期对比'计划改进项'与'实际执行结果'，生成结构化进度报告，
+      强制建立'规划-执行-反馈'的闭环，支撑'自编程'、'错误自修复'和'知识积累'目标。
 """
 
 import json
 import os
-import sys
+import time
 from datetime import datetime, timezone
-from typing import Dict, List, Any, Optional
+from typing import Any, Dict, List, Optional
 
-# Path constants
-PLANS_FILE = "plans/current_evolution_plan.json"
+
+# ─── 常量定义 ───────────────────────────────────────────────────────────────────
+
+SKILL_NAME = "self_introspect_progress_reporter"
+
+# 文件路径
+PLAN_FILE = "plans/current_evolution_plan.json"
 EXECUTION_LOG_FILE = "logs/execution_log.jsonl"
 PROGRESS_REPORT_FILE = "reports/evolution_progress.json"
 LONG_TERM_MEMORY_FILE = "memory/long_term_memory.json"
-LAST_REPORT_TIMESTAMP_FILE = "memory/last_report_timestamp.json"
-CYCLE_COUNT_FILE = "memory/cycle_count.json"
+
+# 默认配置
+DEFAULT_CYCLE_COUNT = 0
+DEFAULT_REPORT_INTERVAL_HOURS = 24  # 默认报告间隔（小时）
 
 
-def load_json_file(filepath: str) -> Any:
-    """Load and parse a JSON file."""
+# ─── 工具函数 ───────────────────────────────────────────────────────────────────
+
+def _ensure_directory(file_path: str) -> None:
+    """确保文件所在目录存在。"""
+    directory = os.path.dirname(file_path)
+    if directory and not os.path.exists(directory):
+        os.makedirs(directory, exist_ok=True)
+
+
+def _load_json_file(file_path: str, default: Any = None) -> Any:
+    """安全地加载 JSON 文件，文件不存在则返回 default。"""
+    if not os.path.exists(file_path):
+        return default
     try:
-        with open(filepath, 'r', encoding='utf-8') as f:
+        with open(file_path, "r", encoding="utf-8") as f:
             return json.load(f)
-    except FileNotFoundError:
-        return None
-    except json.JSONDecodeError:
-        return None
+    except (json.JSONDecodeError, IOError) as e:
+        print(f"[{SKILL_NAME}] Warning: Failed to load {file_path}: {e}")
+        return default
 
 
-def save_json_file(filepath: str, data: Any) -> bool:
-    """Save data to a JSON file."""
+def _load_jsonl_file(file_path: str) -> List[Dict[str, Any]]:
+    """安全地加载 JSONL 文件（每行一个 JSON 对象），文件不存在则返回空列表。"""
+    if not os.path.exists(file_path):
+        return []
+    records: List[Dict[str, Any]] = []
     try:
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-        with open(filepath, 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        return True
-    except Exception:
-        return False
-
-
-def load_jsonl_file(filepath: str) -> List[Dict[str, Any]]:
-    """Load and parse a JSONL file (one JSON object per line)."""
-    records = []
-    try:
-        with open(filepath, 'r', encoding='utf-8') as f:
-            for line in f:
+        with open(file_path, "r", encoding="utf-8") as f:
+            for line_number, line in enumerate(f, start=1):
                 line = line.strip()
-                if line:
-                    try:
-                        records.append(json.loads(line))
-                    except json.JSONDecodeError:
-                        continue
-    except FileNotFoundError:
-        pass
+                if not line:
+                    continue
+                try:
+                    records.append(json.loads(line))
+                except json.JSONDecodeError as e:
+                    print(f"[{SKILL_NAME}] Warning: Skipped malformed JSON at line {line_number} in {file_path}: {e}")
+    except IOError as e:
+        print(f"[{SKILL_NAME}] Warning: Failed to read {file_path}: {e}")
     return records
 
 
-def get_last_report_timestamp() -> datetime:
-    """Get the timestamp of the last report, or a very early date if none exists."""
-    data = load_json_file(LAST_REPORT_TIMESTAMP_FILE)
-    if data and "last_report_timestamp" in data:
-        try:
-            return datetime.fromisoformat(data["last_report_timestamp"])
-        except (ValueError, TypeError):
-            pass
-    # Default to a very early date (start of Unix time)
-    return datetime(1970, 1, 1, tzinfo=timezone.utc)
-
-
-def get_cycle_count() -> int:
-    """Get the current evolution cycle count."""
-    data = load_json_file(CYCLE_COUNT_FILE)
-    if data and "cycle_count" in data:
-        return data["cycle_count"]
-    return 0
-
-
-def update_cycle_count(count: int) -> bool:
-    """Update the cycle count."""
-    return save_json_file(CYCLE_COUNT_FILE, {"cycle_count": count})
-
-
-def save_last_report_timestamp(timestamp: datetime) -> bool:
-    """Save the timestamp of the last report."""
-    data = {"last_report_timestamp": timestamp.isoformat()}
-    return save_json_file(LAST_REPORT_TIMESTAMP_FILE, data)
-
-
-def parse_timestamp(timestamp_str: str) -> Optional[datetime]:
-    """Parse a timestamp string into a datetime object."""
+def _save_json_file(file_path: str, data: Any) -> None:
+    """安全地保存 JSON 文件。"""
+    _ensure_directory(file_path)
     try:
-        # Handle various timestamp formats
-        if timestamp_str.endswith('Z'):
-            timestamp_str = timestamp_str[:-1] + '+00:00'
-        return datetime.fromisoformat(timestamp_str)
-    except (ValueError, TypeError):
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2, ensure_ascii=False)
+        print(f"[{SKILL_NAME}] Successfully saved: {file_path}")
+    except IOError as e:
+        print(f"[{SKILL_NAME}] Error: Failed to save {file_path}: {e}")
+        raise
+
+
+def _get_current_timestamp() -> str:
+    """获取当前时间的 ISO8601 格式时间戳（UTC）。"""
+    return datetime.now(timezone.utc).isoformat()
+
+
+def _parse_timestamp(timestamp_str: str) -> Optional[float]:
+    """将 ISO8601 时间戳字符串解析为 Unix 时间戳（秒）。"""
+    try:
+        dt = datetime.fromisoformat(timestamp_str)
+        return dt.timestamp()
+    except (ValueError, TypeError) as e:
+        print(f"[{SKILL_NAME}] Warning: Failed to parse timestamp '{timestamp_str}': {e}")
         return None
 
 
-def filter_executions_in_window(
-    executions: List[Dict[str, Any]],
-    start_time: datetime,
-    end_time: datetime
-) -> List[Dict[str, Any]]:
-    """Filter executions within the specified time window."""
-    filtered = []
-    for exec_record in executions:
-        # Only consider executions by agent (not partner)
-        if exec_record.get("actor") != "agent":
-            continue
-        
-        # Parse execution timestamp
-        exec_time = parse_timestamp(exec_record.get("timestamp", ""))
-        if exec_time is None:
-            continue
-        
-        # Check if within time window
-        if start_time <= exec_time <= end_time:
-            filtered.append(exec_record)
-    
-    return filtered
-
-
-def match_plan_items_with_executions(
-    plan_items: List[Dict[str, Any]],
-    executions: List[Dict[str, Any]]
-) -> Dict[str, List[Dict[str, Any]]]:
-    """Match plan items with their corresponding executions."""
-    # Create a mapping from plan item ID to executions
-    plan_exec_map: Dict[str, List[Dict[str, Any]]] = {}
-    
-    for plan_item in plan_items:
-        plan_item_id = plan_item.get("id")
-        if not plan_item_id:
-            continue
-        
-        # Find matching executions
-        matching_execs = []
-        for exec_record in executions:
-            related_id = exec_record.get("related_plan_item_id")
-            if related_id == plan_item_id:
-                matching_execs.append(exec_record)
-        
-        plan_exec_map[plan_item_id] = matching_execs
-    
-    return plan_exec_map
-
-
-def classify_plan_items(
-    plan_items: List[Dict[str, Any]],
-    plan_exec_map: Dict[str, List[Dict[str, Any]]]
-) -> Dict[str, List[Dict[str, Any]]]:
-    """Classify plan items into executed and pending."""
-    executed = []
-    pending = []
-    
-    for plan_item in plan_items:
-        plan_item_id = plan_item.get("id")
-        if not plan_item_id:
-            continue
-        
-        executions = plan_exec_map.get(plan_item_id, [])
-        
-        if executions:
-            # Item has at least one execution
-            for exec_record in executions:
-                executed_item = {
-                    "plan_item_id": plan_item_id,
-                    "plan_item": plan_item,
-                    "execution": exec_record,
-                    "status": exec_record.get("outcome", "unknown"),
-                    "output_summary": exec_record.get("output_summary", "")
-                }
-                executed.append(executed_item)
-        else:
-            # Item has no executions - mark as pending
-            pending.append(plan_item)
-    
-    return {"executed": executed, "pending": pending}
-
-
-def generate_next_action(
-    pending_items: List[Dict[str, Any]],
-    executed_items: List[Dict[str, Any]],
-    current_cycle: int
-) -> str:
-    """Generate the next small, actionable improvement suggestion."""
-    if pending_items:
-        # Suggest working on the first pending item
-        item = pending_items[0]
-        item_id = item.get("id", "unknown")
-        item_type = item.get("type", "improvement")
-        item_target = item.get("target", "system")
-        item_description = item.get("description", "")
-        
-        # Keep suggestion specific and small
-        if item_type == "bugfix":
-            return f"Fix the pending bug: [{item_id}] - {item_target}"
-        elif item_type == "optimization":
-            return f"Optimize: [{item_id}] - {item_target}"
-        else:
-            return f"Implement: [{item_id}] - {item_target}"
-    
-    elif executed_items:
-        # All items executed, suggest verification or minor improvement
-        last_executed = executed_items[-1]
-        plan_item = last_executed.get("plan_item", {})
-        item_target = plan_item.get("target", "system")
-        
-        return f"Verify results of last execution on: {item_target}"
-    
-    else:
-        # No items to work on
-        return "Review evolution plan and add new improvement items"
-
-
-def run_skill(params: Dict[str, Any] = None) -> Dict[str, Any]:
+def _is_in_time_window(record_timestamp_str: str, start_timestamp_str: Optional[str]) -> bool:
     """
-    Main skill execution function.
-    
-    Args:
-        params: Optional parameters (currently unused but maintains interface)
-    
-    Returns:
-        Dictionary with execution results
+    判断记录的时间戳是否在指定时间窗口内（在 start_timestamp 之后，含等于）。
+    如果 start_timestamp 为 None，则所有记录都被认为在窗口内。
     """
-    if params is None:
-        params = {}
-    
-    # Current execution time
+    if start_timestamp_str is None:
+        return True
+
+    record_ts = _parse_timestamp(record_timestamp_str)
+    start_ts = _parse_timestamp(start_timestamp_str)
+
+    if record_ts is None:
+        return False
+    if start_ts is None:
+        return True
+
+    return record_ts >= start_ts
+
+
+# ─── 核心逻辑 ───────────────────────────────────────────────────────────────────
+
+def _load_previous_report() -> Dict[str, Any]:
+    """加载上一次的进度报告，提取关键状态信息。"""
+    previous_report = _load_json_file(PROGRESS_REPORT_FILE, default={})
+    return {
+        "last_report_timestamp": previous_report.get("report_timestamp", None),
+        "cycle_count": previous_report.get("cycle_count", DEFAULT_CYCLE_COUNT),
+    }
+
+
+def _load_evolution_plan() -> Dict[str, Any]:
+    """
+    加载进化计划文件。
+    预期结构：
+    {
+      "plan_id": str,
+      "timestamp": str,
+      "items": [
+        {
+          "id": str,
+          "type": str,              # 'optimization' | 'bugfix' | 'new_feature'
+          "target": str,
+          "description": str,
+          "expected_outcome": str,
+          "status": str             # 'planned' | 'failed' | 'completed'
+        },
+        ...
+      ]
+    }
+    """
+    plan = _load_json_file(PLAN_FILE, default=None)
+    if plan is None:
+        print(f"[{SKILL_NAME}] Warning: Evolution plan not found at {PLAN_FILE}. Returning empty plan.")
+        return {
+            "plan_id": "unknown",
+            "timestamp": _get_current_timestamp(),
+            "items": [],
+        }
+    # 确保 items 字段存在
+    if "items" not in plan:
+        plan["items"] = []
+    return plan
+
+
+def _load_execution_logs() -> List[Dict[str, Any]]:
+    """
+    加载执行日志文件。
+    每行预期结构：
+    {
+      "timestamp": str,
+      "actor": str,                 # 'agent' | 'partner'
+      "action_type": str,
+      "target": str,
+      "description": str,
+      "outcome": str,               # 'success' | 'fail' | 'partial'
+      "output_summary": str,
+      "related_plan_item_id": str   # 关联的计划项 ID
+    }
+    """
+    return _load_jsonl_file(EXECUTION_LOG_FILE)
+
+
+def _classify_improvements(
+    plan_items: List[Dict[str, Any]],
+    execution_logs: List[Dict[str, Any]],
+    last_report_timestamp: Optional[str],
+) -> tuple:
+    """
+    将计划项分类为已执行和未执行。
+
+    匹配规则：
+    1. 仅匹配 actor == 'agent' 的执行记录
+    2. 通过 related_plan_item_id 字段关联计划项
+    3. 仅考虑在 last_report_timestamp 之后的执行记录（时间窗口）
+
+    返回：
+        (executed_improvements, pending_improvements)
+    """
+    # 构建 agent 发起的、在时间窗口内的执行记录索引
+    # key: related_plan_item_id, value: list of matching execution records
+    agent_execution_index: Dict[str, List[Dict[str, Any]]] = {}
+
+    for log_entry in execution_logs:
+        # 只考虑 agent 自身发起的执行
+        actor = log_entry.get("actor", "")
+        if actor != "agent":
+            continue
+
+        # 检查时间窗口
+        log_timestamp = log_entry.get("timestamp", "")
+        if not _is_in_time_window(log_timestamp, last_report_timestamp):
+            continue
+
+        # 按 related_plan_item_id 索引
+        related_id = log_entry.get("related_plan_item_id", "")
+        if not related_id:
+            continue
+
+        if related_id not in agent_execution_index:
+            agent_execution_index[related_id] = []
+        agent_execution_index[related_id].append(log_entry)
+
+    # 分类计划项
+    executed_improvements: List[Dict[str, Any]] = []
+    pending_improvements: List[Dict[str, Any]] = []
+
+    for item in plan_items:
+        item_id = item.get("id", "")
+
+        # 检查计划项自身的状态
