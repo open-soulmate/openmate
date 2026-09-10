@@ -1,17 +1,47 @@
-#!/usr/bin/env python3
 """
-自主执行技能模块 - 实现自编程和工具创造能力的基础
+自主执行技能模块 - Autonomous Executor Skill
+
+解决核心问题：agent当前完全依赖外部partner执行，无法将规划转化为行动，核心模块为空。
+这是实现自编程能力（进度1%→目标）和工具创造能力（进度1%→目标）的基础。
+
+主要功能：
+1. 观察分析 - 分析未处理的观察数据，提取可执行任务
+2. 任务执行 - 安全执行提取的任务，支持代码生成、文件创建、技能创建
+3. 代码生成 - 生成技能和插件的代码骨架
+4. 技能管理 - 管理技能的注册、列表和状态
+5. 自主循环 - 运行完整的自主执行周期
+
+数据结构：
+- Task: 可执行任务的数据结构
+- Observation: 观察数据的数据结构  
+- SkillConfig: 技能配置的数据结构
+- ExecutionResult: 执行结果的数据结构
+
+错误处理：
+- 所有外部调用包裹在try-except中
+- 失败的任务进入retry_queue（最多重试3次）
+- 严重错误触发error_report机制
+
+接口约束：
+- 导出main()函数作为插件入口
+- 所有公开方法提供docstring
+- 类型注解覆盖所有函数签名
+
+依赖：Python 3.10+标准库
 """
 
+import logging
+import json
+import pathlib
 import ast
 import hashlib
-import json
-import logging
-import os
 import time
+import os
+import sys
+from typing import Dict, List, Optional, Any, Tuple, Union
 from dataclasses import dataclass, field
-from pathlib import Path
-from typing import Any, Dict, List, Optional, Union
+from enum import Enum
+import traceback
 
 # 配置日志
 logging.basicConfig(
@@ -21,18 +51,22 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class Task:
-    """任务数据结构"""
-    id: str
-    name: str
-    description: str
-    priority: str  # critical, high, medium, low
-    status: str = "pending"  # pending, in_progress, completed, failed
-    created_at: float = field(default_factory=time.time)
-    result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    retry_count: int = 0
+class TaskPriority(Enum):
+    """任务优先级枚举"""
+    CRITICAL = 1
+    HIGH = 2
+    MEDIUM = 3
+    LOW = 4
+
+
+class TaskType(Enum):
+    """任务类型枚举"""
+    CODE_GENERATION = "code_generation"
+    FILE_CREATION = "file_creation"
+    SKILL_CREATION = "skill_creation"
+    PLUGIN_CREATION = "plugin_creation"
+    CONFIGURATION = "configuration"
+    ANALYSIS = "analysis"
 
 
 @dataclass
@@ -42,168 +76,170 @@ class Observation:
     content: str
     source: str
     timestamp: float = field(default_factory=time.time)
-    analyzed: bool = False
-    extracted_tasks: List[str] = field(default_factory=list)
+    processed: bool = False
+    metadata: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
+class Task:
+    """可执行任务的数据结构"""
+    id: str
+    type: TaskType
+    priority: TaskPriority
+    description: str
+    parameters: Dict[str, Any] = field(default_factory=dict)
+    created_at: float = field(default_factory=time.time)
+    retry_count: int = 0
+    max_retries: int = 3
+    status: str = "pending"
+    result: Optional[Dict[str, Any]] = None
+    error: Optional[str] = None
 
 
 @dataclass
 class SkillConfig:
-    """技能配置"""
+    """技能配置的数据结构"""
     name: str
     description: str
     version: str = "1.0.0"
-    author: str = "MiMo"
-    dependencies: List[str] = field(default_factory=list)
+    author: str = "AutonomousExecutor"
     enabled: bool = True
+    dependencies: List[str] = field(default_factory=list)
+    parameters: Dict[str, Any] = field(default_factory=dict)
     created_at: float = field(default_factory=time.time)
 
 
+@dataclass
+class ExecutionResult:
+    """执行结果的数据结构"""
+    success: bool
+    output: Any = None
+    error: Optional[str] = None
+    execution_time: float = 0.0
+    warnings: List[str] = field(default_factory=list)
+
+
+@dataclass
+class ErrorReport:
+    """错误报告的数据结构"""
+    timestamp: float = field(default_factory=time.time)
+    error_type: str
+    error_message: str
+    traceback: str
+    context: Dict[str, Any] = field(default_factory=dict)
+
+
 class ObservationAnalyzer:
-    """观察分析器"""
-
-    def __init__(self):
+    """观察分析器：分析观察数据并提取可执行任务"""
+    
+    def __init__(self, observations_dir: Optional[pathlib.Path] = None):
+        """
+        初始化观察分析器
+        
+        Args:
+            observations_dir: 观察数据存储目录路径
+        """
+        self.observations_dir = observations_dir or pathlib.Path("./observations")
         self.observations: List[Observation] = []
-        self.analysis_cache: Dict[str, List[Dict[str, Any]]] = {}
-
+        self.load_observations()
+    
+    def load_observations(self) -> None:
+        """加载未分析的观察数据"""
+        try:
+            if not self.observations_dir.exists():
+                self.observations_dir.mkdir(parents=True, exist_ok=True)
+                logger.info(f"创建观察目录: {self.observations_dir}")
+                return
+            
+            observations_file = self.observations_dir / "observations_unanalyzed.json"
+            if observations_file.exists():
+                with open(observations_file, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                    for obs_data in data:
+                        obs = Observation(
+                            id=obs_data['id'],
+                            content=obs_data['content'],
+                            source=obs_data['source'],
+                            timestamp=obs_data.get('timestamp', time.time()),
+                            processed=obs_data.get('processed', False),
+                            metadata=obs_data.get('metadata', {})
+                        )
+                        self.observations.append(obs)
+                logger.info(f"加载了 {len(self.observations)} 个观察数据")
+        except Exception as e:
+            logger.error(f"加载观察数据失败: {e}")
+            self._create_error_report("observation_load_error", str(e))
+    
+    def save_observations(self) -> None:
+        """保存观察数据到文件"""
+        try:
+            observations_file = self.observations_dir / "observations_unanalyzed.json"
+            observations_data = []
+            for obs in self.observations:
+                observations_data.append({
+                    'id': obs.id,
+                    'content': obs.content,
+                    'source': obs.source,
+                    'timestamp': obs.timestamp,
+                    'processed': obs.processed,
+                    'metadata': obs.metadata
+                })
+            
+            with open(observations_file, 'w', encoding='utf-8') as f:
+                json.dump(observations_data, f, indent=2, ensure_ascii=False)
+            
+            logger.info(f"保存了 {len(observations_data)} 个观察数据")
+        except Exception as e:
+            logger.error(f"保存观察数据失败: {e}")
+            self._create_error_report("observation_save_error", str(e))
+    
     def analyze_pending(self) -> List[Observation]:
         """
-        分析未处理的观察
+        分析待处理的观察数据
         
         Returns:
-            List[Observation]: 已分析的观察列表
+            结构化后的观察数据列表
         """
-        pending_observations = [obs for obs in self.observations if not obs.analyzed]
-        
-        for obs in pending_observations:
-            try:
-                # 简单的文本分析 - 实际实现中可以使用NLP技术
-                self.analysis_cache[obs.id] = self._analyze_content(obs.content)
-                obs.analyzed = True
-                logger.info(f"已分析观察: {obs.id}")
-            except Exception as e:
-                logger.error(f"分析观察 {obs.id} 失败: {str(e)}")
-                obs.analyzed = True  # 标记为已处理，避免重复分析
-        
-        return pending_observations
-
-    def extract_action_items(self, observations: List[Observation]) -> List[Task]:
-        """
-        从观察中提取可执行的任务项
-        
-        Args:
-            observations: 已分析的观察列表
-            
-        Returns:
-            List[Task]: 提取的任务列表
-        """
-        tasks = []
-        
-        for obs in observations:
-            if obs.id in self.analysis_cache:
-                analysis = self.analysis_cache[obs.id]
-                for item in analysis.get("action_items", []):
-                    task_id = f"task_{hashlib.md5(item.encode()).hexdigest()[:8]}"
-                    task = Task(
-                        id=task_id,
-                        name=item.get("name", "未命名任务"),
-                        description=item.get("description", item.get("name", "")),
-                        priority=item.get("priority", "medium")
-                    )
-                    tasks.append(task)
-                    obs.extracted_tasks.append(task_id)
-        
-        logger.info(f"提取了 {len(tasks)} 个任务")
-        return tasks
-
-    def prioritize_tasks(self, tasks: List[Task]) -> List[Task]:
-        """
-        根据进化目标优先级排序任务
-        
-        Args:
-            tasks: 待排序的任务列表
-            
-        Returns:
-            List[Task]: 按优先级排序的任务列表
-        """
-        priority_order = {"critical": 0, "high": 1, "medium": 2, "low": 3}
-        return sorted(tasks, key=lambda t: priority_order.get(t.priority, 4))
-
-    def _analyze_content(self, content: str) -> Dict[str, Any]:
-        """分析内容，提取结构化信息"""
-        # 这是一个简化的分析实现
-        # 实际实现中可以包含更复杂的NLP处理
-        action_items = []
-        
-        # 简单关键词匹配
-        keywords = ["创建", "生成", "实现", "开发", "优化", "修复", "添加", "改进"]
-        for keyword in keywords:
-            if keyword in content:
-                action_items.append({
-                    "name": f"{keyword}任务",
-                    "description": f"根据观察内容中的'{keyword}'关键词生成的任务",
-                    "priority": "medium"
-                })
-        
-        return {
-            "summary": content[:200] + "..." if len(content) > 200 else content,
-            "action_items": action_items,
-            "entities": self._extract_entities(content)
-        }
-
-    def _extract_entities(self, content: str) -> List[str]:
-        """提取实体（简化实现）"""
-        # 这里只是一个示例，实际实现可以更复杂
-        return ["代码", "文件", "模块", "功能"]
-
-
-class TaskExecutor:
-    """任务执行器"""
-
-    def __init__(self, work_dir: Optional[str] = None):
-        self.work_dir = Path(work_dir) if work_dir else Path.cwd() / "executor_workspace"
-        self.work_dir.mkdir(exist_ok=True)
-        self.execution_log: List[Dict[str, Any]] = []
-        self.rollback_stack: List[Dict[str, Any]] = []
-
-    def execute_task(self, task: Task, context: Optional[Dict[str, Any]] = None) -> bool:
-        """
-        执行单个任务
-        
-        Args:
-            task: 要执行的任务
-            context: 执行上下文
-            
-        Returns:
-            bool: 执行是否成功
-        """
-        logger.info(f"开始执行任务: {task.id} - {task.name}")
-        task.status = "in_progress"
-        
         try:
-            # 根据任务类型执行不同操作
-            if "创建技能" in task.name or "生成技能" in task.name:
-                success = self._create_skill(task, context)
-            elif "生成代码" in task.name:
-                success = self._generate_code(task, context)
-            elif "创建文件" in task.name:
-                success = self._create_file(task, context)
-            else:
-                # 默认执行：创建一个简单的脚本
-                success = self._execute_generic_task(task, context)
+            pending_observations = []
+            for obs in self.observations:
+                if not obs.processed:
+                    # 对观察内容进行基础分析
+                    analyzed_content = self._analyze_content(obs.content)
+                    obs.metadata['analysis'] = analyzed_content
+                    obs.processed = True
+                    pending_observations.append(obs)
             
-            if success:
-                task.status = "completed"
-                task.result = {"success": True, "message": f"任务 {task.id} 执行成功"}
-                self.execution_log.append({
-                    "task_id": task.id,
-                    "status": "success",
-                    "timestamp": time.time()
-                })
-                logger.info(f"任务 {task.id} 执行成功")
-                return True
-            else:
-                raise Exception("任务执行失败")
-                
+            # 保存更新后的观察数据
+            self.save_observations()
+            
+            logger.info(f"分析了 {len(pending_observations)} 个待处理观察")
+            return pending_observations
+            
         except Exception as e:
-            task.status = "failed"
-            task.error = str(e)
+            logger.error(f"分析观察数据失败: {e}")
+            self._create_error_report("observation_analysis_error", str(e))
+            return []
+    
+    def _analyze_content(self, content: str) -> Dict[str, Any]:
+        """
+        分析观察内容
+        
+        Args:
+            content: 观察内容文本
+            
+        Returns:
+            分析结果字典
+        """
+        analysis = {
+            'length': len(content),
+            'keywords': self._extract_keywords(content),
+            'sentiment': self._analyze_sentiment(content),
+            'potential_actions': self._identify_actions(content)
+        }
+        return analysis
+    
+    def _extract_keywords(self, text: str) -> List[str]:
+        """从文本中提取关键词"""
+        # 简单的关键词提取（实际应用中可以使用更复杂的NLP方法）
+        keywords = []
