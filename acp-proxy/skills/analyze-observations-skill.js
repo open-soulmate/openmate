@@ -1,233 +1,261 @@
-/**
- * analyze-observations-skill.js
- * 核心技能：自动分析未处理的观察记录，建立观察-分析-行动闭环
- * 
- * @module analyze-observations-skill
- * @requires memory-plugin
- */
-
 const memoryPlugin = require('../plugins/memory-plugin');
 
-// 配置常量
-const SKILL_NAME = 'analyze-observations-skill';
-const BATCH_SIZE = 10; // 每次分析的最大记录数，避免内存溢出
-const ANALYSIS_STATUS = 'analyzed';
-const OBSERVATION_TYPE_PATTERN = /\b(?:error|warning|anomaly|pattern|trend|issue)\b/i;
-
 /**
- * 主分析函数 - 技能的入口点
- * @async
- * @function analyzeObservations
- * @returns {Promise<Object>} 操作结果对象
+ * analyze-observations-skill - 核心技能：自动分析未处理的观察记录
+ * 
+ * 执行流程：
+ * 1. 从记忆库获取状态为 'unanalyzed' 的观察记录
+ * 2. 对每条记录进行语义分析和模式识别
+ * 3. 生成结构化分析报告
+ * 4. 更新已分析记录的状态和元数据
+ * 5. 将分析报告作为新记忆存入记忆库
+ * 
+ * 返回：包含操作结果的结构化对象
  */
-const analyzeObservations = async () => {
-  const startTime = Date.now();
-  const results = {
-    skill: SKILL_NAME,
+async function analyzeObservationsSkill() {
+  const result = {
     success: false,
     analyzedCount: 0,
-    skippedCount: 0,
+    reportId: null,
     errors: [],
-    reportIds: [],
-    executionTime: 0
+    stats: {}
   };
 
   try {
+    console.log('[analyze-observations-skill] 开始分析未处理的观察记录...');
+
     // 1. 获取未分析的观察记录
-    const unanalyzedRecords = await memoryPlugin.get_observations({
-      status: 'unanalyzed',
-      limit: BATCH_SIZE
+    const unanalyzedObservations = await memoryPlugin.get_observations({
+      status: 'unanalyzed'
     });
 
-    if (!unanalyzedRecords || unanalyzedRecords.length === 0) {
-      results.success = true;
-      results.message = '没有发现未分析的观察记录';
-      return results;
+    if (!unanalyzedObservations || unanalyzedObservations.length === 0) {
+      console.log('[analyze-observations-skill] 没有找到未分析的观察记录');
+      result.success = true;
+      result.message = '没有待分析的观察记录';
+      return result;
     }
 
-    // 2. 对每条记录进行分析
+    console.log(`[analyze-observations-skill] 找到 ${unanalyzedObservations.length} 条未分析的观察记录`);
+
+    // 内联统计分析功能：计算观察类型分布
+    const typeDistribution = {};
+    const recentObservations = unanalyzedObservations.slice(0, 20); // 最近20条记录
+    
+    for (const obs of recentObservations) {
+      const type = obs.type || 'unknown';
+      typeDistribution[type] = (typeDistribution[type] || 0) + 1;
+    }
+
+    result.stats.typeDistribution = typeDistribution;
+
     const analysisResults = [];
-    const processedIds = [];
-    const skippedIds = [];
+    let processedCount = 0;
 
-    for (const observation of unanalyzedRecords) {
+    // 2. 分析每条观察记录
+    for (const observation of unanalyzedObservations) {
       try {
-        // 验证记录格式
-        if (!isValidObservation(observation)) {
-          skippedIds.push(observation.id);
-          results.skippedCount++;
-          results.errors.push({
-            observationId: observation.id,
-            error: '观察记录格式无效',
-            severity: 'warning'
-          });
-          continue;
-        }
-
-        // 执行分析
-        const analysis = analyzeSingleObservation(observation);
+        const analysis = await analyzeSingleObservation(observation);
         
-        // 更新观察记录状态
-        await memoryPlugin.update_observation_status({
-          id: observation.id,
-          status: ANALYSIS_STATUS,
-          metadata: {
-            analyzedAt: new Date().toISOString(),
-            analysisSummary: analysis.summary,
-            analysisType: analysis.type,
-            skill: SKILL_NAME
-          }
+        // 3. 更新观察记录状态
+        await memoryPlugin.update_observation_status(observation.id, {
+          status: 'analyzed',
+          analyzed_at: new Date().toISOString(),
+          analysis_summary: analysis.summary,
+          identified_patterns: analysis.patterns,
+          related_goals: analysis.relatedGoals,
+          suggested_actions: analysis.suggestedActions
         });
 
         analysisResults.push({
           observationId: observation.id,
-          analysis: analysis
+          analysis
         });
-        processedIds.push(observation.id);
-        results.analyzedCount++;
+
+        processedCount++;
+        console.log(`[analyze-observations-skill] 成功分析记录 ${observation.id} (${processedCount}/${unanalyzedObservations.length})`);
 
       } catch (error) {
-        skippedIds.push(observation.id);
-        results.skippedCount++;
-        results.errors.push({
+        console.error(`[analyze-observations-skill] 分析记录 ${observation.id} 时出错:`, error.message);
+        result.errors.push({
           observationId: observation.id,
-          error: error.message,
-          severity: 'error'
+          error: error.message
         });
-        // 继续处理下一条记录，实现容错
+        
+        // 继续处理下一条记录，避免中断
         continue;
       }
     }
 
-    // 3. 生成分析报告并存储为新记忆
-    if (analysisResults.length > 0) {
-      const report = generateAnalysisReport(analysisResults);
-      
-      // 存储分析报告
-      const reportId = await memoryPlugin.add_memory({
-        type: 'analysis_report',
-        content: report,
-        metadata: {
-          generatedBy: SKILL_NAME,
-          sourceObservations: processedIds,
-          generatedAt: new Date().toISOString(),
-          summary: `分析了${processedIds.length}条观察记录`
-        }
-      });
-
-      results.reportIds.push(reportId);
-    }
-
-    // 4. 计算简单的统计分析（内联工具创造的实例）
-    if (processedIds.length > 0) {
-      const typeDistribution = computeTypeDistribution(unanalyzedRecords);
-      
-      // 存储统计信息作为额外报告
-      const statsReportId = await memoryPlugin.add_memory({
-        type: 'analysis_report',
-        content: {
-          title: '观察记录类型分布统计',
-          distribution: typeDistribution,
-          sampleSize: unanalyzedRecords.length,
-          analysisDate: new Date().toISOString()
+    // 4. 生成分析报告并存入记忆库
+    const analysisReport = {
+      type: 'analysis_report',
+      content: {
+        timestamp: new Date().toISOString(),
+        totalObservations: unanalyzedObservations.length,
+        analyzedSuccessfully: processedCount,
+        failedAnalysis: unanalyzedObservations.length - processedCount,
+        analysisResults,
+        statistics: {
+          typeDistribution,
+          overallInsights: generateOverallInsights(analysisResults)
         },
-        metadata: {
-          generatedBy: `${SKILL_NAME}_statistics`,
-          reportType: 'type_distribution',
-          generatedAt: new Date().toISOString()
+        meta: {
+          skill: 'analyze-observations-skill',
+          version: '1.0.0'
         }
-      });
+      },
+      timestamp: new Date().toISOString()
+    };
 
-      results.reportIds.push(statsReportId);
-    }
+    // 存储分析报告
+    const reportMemory = await memoryPlugin.add_memory(analysisReport);
+    result.reportId = reportMemory.id;
 
-    results.success = true;
-    results.executionTime = Date.now() - startTime;
-    
-    return results;
+    // 更新结果
+    result.success = true;
+    result.analyzedCount = processedCount;
+    result.message = `成功分析 ${processedCount} 条观察记录，生成报告 ${reportMemory.id}`;
+
+    console.log(`[analyze-observations-skill] 分析完成: ${result.message}`);
+
+    return result;
 
   } catch (error) {
-    results.errors.push({
-      error: `技能执行失败: ${error.message}`,
-      severity: 'critical',
-      stack: error.stack
-    });
-    results.executionTime = Date.now() - startTime;
-    return results;
+    console.error('[analyze-observations-skill] 主流程出错:', error.message);
+    result.success = false;
+    result.message = `分析流程失败: ${error.message}`;
+    result.errors.push({ phase: 'main', error: error.message });
+    
+    return result;
   }
-};
-
-/**
- * 验证观察记录格式是否有效
- * @param {Object} observation 观察记录对象
- * @returns {boolean} 是否有效
- */
-const isValidObservation = (observation) => {
-  const requiredFields = ['id', 'content', 'timestamp'];
-  return observation && 
-         requiredFields.every(field => observation[field] !== undefined) &&
-         typeof observation.content === 'string' &&
-         observation.content.length > 0;
-};
+}
 
 /**
  * 分析单条观察记录
- * @param {Object} observation 观察记录
+ * @param {Object} observation - 观察记录对象
  * @returns {Object} 分析结果
  */
-const analyzeSingleObservation = (observation) => {
-  // 提取内容中的关键信息
-  const content = observation.content;
+async function analyzeSingleObservation(observation) {
   const analysis = {
-    summary: '',
-    type: 'general',
     patterns: [],
-    suggestedActions: [],
     relatedGoals: [],
-    severity: 'low'
+    suggestedActions: [],
+    summary: ''
   };
 
-  // 模式识别
-  if (content.match(/error|exception|failure|bug/i)) {
-    analysis.type = 'error_analysis';
-    analysis.patterns.push('错误相关模式');
-    analysis.relatedGoals.push('error-self-repair', 'system-stability');
-    analysis.suggestedActions.push('创建错误处理工具', '优化错误恢复逻辑');
-    analysis.severity = 'high';
-  } else if (content.match(/performance|slow|timeout|resource/i)) {
-    analysis.type = 'performance_analysis';
-    analysis.patterns.push('性能相关模式');
-    analysis.relatedGoals.push('performance-optimization', 'resource-management');
-    analysis.suggestedActions.push('创建性能监控工具', '优化资源使用');
-    analysis.severity = 'medium';
-  } else if (content.match(/pattern|trend|anomaly|unexpected/i)) {
-    analysis.type = 'pattern_analysis';
-    analysis.patterns.push('模式异常');
-    analysis.relatedGoals.push('pattern-recognition', 'anomaly-detection');
-    analysis.suggestedActions.push('增强模式识别算法', '创建异常检测工具');
-    analysis.severity = 'medium';
+  try {
+    const content = observation.content || '';
+    const tags = observation.tags || [];
+    const source = observation.source || 'unknown';
+
+    // 模式识别：提取关键词和模式
+    const patterns = extractPatterns(content, tags);
+    analysis.patterns = patterns;
+
+    // 关联进化目标
+    analysis.relatedGoals = identifyRelatedGoals(content, patterns);
+
+    // 生成改进建议
+    analysis.suggestedActions = generateSuggestions(content, patterns, observation);
+
+    // 生成分析摘要
+    analysis.summary = generateSummary(content, patterns, analysis.relatedGoals, analysis.suggestedActions);
+
+    return analysis;
+
+  } catch (error) {
+    throw new Error(`观察分析失败: ${error.message}`);
   }
-
-  // 生成摘要
-  const timeInfo = observation.timestamp ? 
-    `在${new Date(observation.timestamp).toLocaleString()}发现的` : '';
-  const typeLabel = analysis.type.replace('_', ' ');
-  analysis.summary = `${timeInfo}${typeLabel}: ${content.substring(0, 100)}...`;
-
-  // 如果是系统观察，添加元数据分析
-  if (observation.metadata) {
-    if (observation.metadata.source === 'system-monitor') {
-      analysis.patterns.push('系统监控数据');
-      analysis.suggestedActions.push('优化系统监控频率');
-    } else if (observation.metadata.source === 'user-interaction') {
-      analysis.patterns.push('用户交互模式');
-      analysis.relatedGoals.push('user-experience', 'interaction-optimization');
-    }
-  }
-
-  return analysis;
-};
+}
 
 /**
- * 生成完整的分析报告
- * @param {Array} analysisResults 分析结果数组
+ * 提取模式和关键词
+ */
+function extractPatterns(content, tags) {
+  const patterns = [];
+  
+  // 简单关键词匹配（可扩展为更复杂的NLP处理）
+  const errorKeywords = ['错误', '失败', '异常', '崩溃', 'bug', 'error', 'fail'];
+  const performanceKeywords = ['性能', '延迟', '缓慢', '优化', 'performance', 'latency'];
+  const behaviorKeywords = ['行为', '模式', '习惯', '重复', 'behavior', 'pattern'];
+  
+  const contentLower = content.toLowerCase();
+  
+  if (errorKeywords.some(kw => contentLower.includes(kw))) {
+    patterns.push('error_pattern');
+  }
+  
+  if (performanceKeywords.some(kw => contentLower.includes(kw))) {
+    patterns.push('performance_pattern');
+  }
+  
+  if (behaviorKeywords.some(kw => contentLower.includes(kw))) {
+    patterns.push('behavior_pattern');
+  }
+
+  // 基于标签的模式识别
+  if (tags.includes('auto-generated')) {
+    patterns.push('auto_generated');
+  }
+  
+  if (tags.includes('user-feedback')) {
+    patterns.push('user_feedback');
+  }
+
+  return patterns;
+}
+
+/**
+ * 识别相关进化目标
+ */
+function identifyRelatedGoals(content, patterns) {
+  const goals = [];
+  const contentLower = content.toLowerCase();
+
+  // 基于模式关联目标
+  if (patterns.includes('error_pattern')) {
+    goals.push('错误自修复');
+  }
+  
+  if (patterns.includes('performance_pattern')) {
+    goals.push('性能优化');
+  }
+  
+  if (patterns.includes('behavior_pattern')) {
+    goals.push('行为模式识别');
+  }
+
+  // 基于内容关键词关联目标
+  if (contentLower.includes('配置') || contentLower.includes('config')) {
+    goals.push('配置优化');
+  }
+  
+  if (contentLower.includes('工具') || contentLower.includes('tool')) {
+    goals.push('工具创造');
+  }
+
+  // 去重
+  return [...new Set(goals)];
+}
+
+/**
+ * 生成改进建议
+ */
+function generateSuggestions(content, patterns, observation) {
+  const suggestions = [];
+
+  if (patterns.includes('error_pattern')) {
+    suggestions.push({
+      type: 'logic_fix',
+      description: '添加错误处理逻辑，包含重试机制',
+      priority: 'high'
+    });
+  }
+
+  if (patterns.includes('performance_pattern')) {
+    suggestions.push({
+      type: 'optimization',
+      description: '实现缓存机制或异步处理',
+      priority: 'medium'
+    });
