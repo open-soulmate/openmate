@@ -1,238 +1,237 @@
-#!/usr/bin/env python3
-"""
-Self-Programming Executor Skill - Enables agent to write and execute code improvements
-"""
-
 import ast
 import os
-import sys
-import json
-import time
-import shutil
-import tempfile
 import subprocess
-import hashlib
+import sys
+import tempfile
 import logging
-from typing import Dict, List, Optional, Any, Tuple
-from dataclasses import dataclass, asdict
+import hashlib
+import time
+import json
+import shutil
 from datetime import datetime
-from pathlib import Path
+from typing import Dict, List, Optional, Any, Tuple
 from enum import Enum
-import threading
 from contextlib import contextmanager
-import importlib.util
+from dataclasses import dataclass, asdict
+import git
 
 # Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class TargetType(Enum):
-    """Types of improvement targets"""
+class ImprovementTarget(Enum):
     SKILL_ENHANCEMENT = "skill_enhancement"
     PLUGIN_OPTIMIZATION = "plugin_optimization"
     TOOL_CREATION = "tool_creation"
 
 
-class RiskLevel(Enum):
-    """Risk assessment levels"""
-    LOW = "low"
-    MEDIUM = "medium"
-    HIGH = "high"
-    CRITICAL = "critical"
-
-
 @dataclass
-class CodeImprovement:
-    """Represents a code improvement proposal"""
-    id: str
-    target_type: TargetType
-    target_name: str
+class CodeModification:
+    target: ImprovementTarget
     description: str
-    original_code: Optional[str] = None
-    proposed_code: str = ""
-    pseudocode: str = ""
-    file_path: str = ""
-    risk_assessment: Optional[Dict] = None
-    timestamp: datetime = None
-    
-    def __post_init__(self):
-        if self.timestamp is None:
-            self.timestamp = datetime.now()
-
-
-@dataclass
-class SandboxResult:
-    """Result of sandbox execution"""
-    success: bool
-    output: str
-    error: Optional[str] = None
-    execution_time: float = 0.0
-    memory_usage: Optional[int] = None
-    return_value: Any = None
-
-
-@dataclass
-class ExecutionLog:
-    """Log of self-modification operations"""
-    operation: str
-    timestamp: datetime
-    details: Dict[str, Any]
-    success: bool
-    error: Optional[str] = None
+    original_code: str
+    modified_code: str
+    test_results: Dict
+    risk_assessment: Dict
+    timestamp: str
+    commit_hash: Optional[str] = None
 
 
 class SandboxEnvironment:
-    """Sandbox environment for safe code execution"""
+    """安全沙箱环境，支持Python 3.8+代码执行"""
     
-    def __init__(self, temp_dir: Optional[str] = None):
-        self.temp_dir = temp_dir or tempfile.mkdtemp(prefix="self_programming_")
-        self.restricted_imports = [
-            'os', 'sys', 'subprocess', 'shutil', 'pathlib',
-            'socket', 'http', 'urllib', 'ftplib', 'smtplib'
-        ]
-        self.allowed_modules = [
-            'math', 'datetime', 'json', 'collections', 'itertools',
-            'functools', 'typing', 'dataclasses', 'logging'
-        ]
-        
-    def validate_code(self, code: str) -> Tuple[bool, List[str]]:
-        """Validate code for safety"""
-        issues = []
-        
-        try:
-            tree = ast.parse(code)
-        except SyntaxError as e:
-            return False, [f"Syntax error: {e}"]
-        
-        # Check for dangerous system calls
-        for node in ast.walk(tree):
-            if isinstance(node, ast.Call):
-                if isinstance(node.func, ast.Attribute):
-                    if node.func.attr in ['system', 'popen', 'exec', 'eval']:
-                        issues.append(f"Dangerous function call: {node.func.attr}")
-                elif isinstance(node.func, ast.Name):
-                    if node.func.id in ['exec', 'eval', 'compile']:
-                        issues.append(f"Dangerous function call: {node.func.id}")
-            
-            # Check for file operations
-            if isinstance(node, ast.Name) and node.id in ['open', 'file']:
-                issues.append("File operation detected")
-            
-            # Check for network operations
-            if isinstance(node, ast.Import):
-                for alias in node.names:
-                    if alias.name.split('.')[0] in self.restricted_imports:
-                        issues.append(f"Restricted import: {alias.name}")
-        
-        return len(issues) == 0, issues
-    
-    @contextmanager
-    def execution_context(self):
-        """Create isolated execution context"""
-        original_dir = os.getcwd()
-        os.chdir(self.temp_dir)
-        
-        # Create restricted Python environment
-        restricted_globals = {
-            '__builtins__': {
-                'print': print,
-                'range': range,
-                'len': len,
-                'type': type,
-                'isinstance': isinstance,
-                'int': int,
-                'float': float,
-                'str': str,
-                'bool': bool,
-                'list': list,
-                'dict': dict,
-                'tuple': tuple,
-                'set': set,
-                'map': map,
-                'filter': filter,
-                'zip': zip,
-                'sum': sum,
-                'min': min,
-                'max': max,
-                'sorted': sorted,
-                'reversed': reversed,
-                'enumerate': enumerate,
-                'any': any,
-                'all': all,
-                'abs': abs,
-                'round': round,
-                'pow': pow,
-                'divmod': divmod,
-                'hash': hash,
-                'id': id,
-                'chr': chr,
-                'ord': ord,
-                'hex': hex,
-                'oct': oct,
-                'bin': bin,
-            }
+    def __init__(self, timeout: int = 30):
+        self.timeout = timeout
+        self.restricted_modules = {
+            'os', 'sys', 'subprocess', 'shutil', 'socket', 'http',
+            'urllib', 'requests', 'paramiko', 'ftplib', 'smtplib'
         }
         
+    def validate_code(self, code: str) -> Tuple[bool, str]:
+        """验证代码安全性"""
         try:
-            yield restricted_globals
-        finally:
-            os.chdir(original_dir)
+            tree = ast.parse(code)
+            
+            # 检查危险系统调用
+            dangerous_calls = [
+                'os.system', 'os.popen', 'subprocess.run', 'subprocess.call',
+                'subprocess.Popen', 'exec', 'eval', 'compile',
+                '__import__', 'open', 'file', 'input'
+            ]
+            
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Call):
+                    if isinstance(node.func, ast.Name):
+                        if node.func.id in dangerous_calls:
+                            return False, f"禁止调用: {node.func.id}"
+                    elif isinstance(node.func, ast.Attribute):
+                        if node.func.attr in ['system', 'popen', 'run', 'call']:
+                            return False, f"禁止系统调用: {node.func.attr}"
+            
+            # 检查文件系统访问
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name in self.restricted_modules:
+                            return False, f"禁止导入模块: {alias.name}"
+                elif isinstance(node, ast.ImportFrom):
+                    if node.module in self.restricted_modules:
+                        return False, f"禁止从模块导入: {node.module}"
+            
+            return True, "代码安全检查通过"
+        except SyntaxError as e:
+            return False, f"语法错误: {str(e)}"
     
-    def execute(self, code: str, timeout: int = 30) -> SandboxResult:
-        """Execute code in sandbox environment"""
-        start_time = time.time()
+    def execute_code(self, code: str) -> Dict[str, Any]:
+        """在沙箱中执行代码"""
+        # 验证代码安全性
+        is_safe, message = self.validate_code(code)
+        if not is_safe:
+            return {
+                "success": False,
+                "error": f"安全检查失败: {message}",
+                "output": "",
+                "execution_time": 0
+            }
         
-        # Validate code first
-        is_valid, issues = self.validate_code(code)
-        if not is_valid:
-            return SandboxResult(
-                success=False,
-                output="",
-                error=f"Code validation failed: {'; '.join(issues)}",
-                execution_time=time.time() - start_time
-            )
-        
-        try:
-            with self.execution_context() as globals_dict:
-                # Add safe imports
-                for module_name in self.allowed_modules:
-                    try:
-                        module = importlib.import_module(module_name)
-                        globals_dict[module_name] = module
-                    except ImportError:
-                        pass
-                
-                # Compile and execute
-                compiled_code = compile(code, '<sandbox>', 'exec')
-                exec(compiled_code, globals_dict)
-                
-                return SandboxResult(
-                    success=True,
-                    output="Execution completed successfully",
-                    execution_time=time.time() - start_time
+        # 创建临时目录作为隔离环境
+        with tempfile.TemporaryDirectory() as temp_dir:
+            script_path = os.path.join(temp_dir, "test_script.py")
+            
+            with open(script_path, 'w', encoding='utf-8') as f:
+                f.write(code)
+            
+            start_time = time.time()
+            
+            try:
+                # 使用subprocess在隔离环境中执行
+                result = subprocess.run(
+                    [sys.executable, script_path],
+                    capture_output=True,
+                    text=True,
+                    timeout=self.timeout,
+                    cwd=temp_dir,
+                    env={"PATH": os.environ.get("PATH", "")}
                 )
                 
-        except Exception as e:
-            return SandboxResult(
-                success=False,
-                output="",
-                error=str(e),
-                execution_time=time.time() - start_time
-            )
-    
-    def cleanup(self):
-        """Clean up sandbox environment"""
-        if os.path.exists(self.temp_dir):
-            shutil.rmtree(self.temp_dir, ignore_errors=True)
+                execution_time = time.time() - start_time
+                
+                return {
+                    "success": result.returncode == 0,
+                    "output": result.stdout,
+                    "error": result.stderr,
+                    "execution_time": execution_time,
+                    "return_code": result.returncode
+                }
+                
+            except subprocess.TimeoutExpired:
+                return {
+                    "success": False,
+                    "error": f"执行超时 (>{self.timeout}秒)",
+                    "output": "",
+                    "execution_time": self.timeout
+                }
+            except Exception as e:
+                return {
+                    "success": False,
+                    "error": f"执行异常: {str(e)}",
+                    "output": "",
+                    "execution_time": time.time() - start_time
+                }
 
 
 class CodeGenerator:
-    """Generates code based on improvement targets"""
+    """基于目标的代码生成模块"""
     
     def __init__(self):
-        self.templates = self._load_templates()
-        
+        self.target_templates = {
+            ImprovementTarget.SKILL_ENHANCEMENT: self._enhance_skill_template,
+            ImprovementTarget.PLUGIN_OPTIMIZATION: self._optimize_plugin_template,
+            ImprovementTarget.TOOL_CREATION: self._create_tool_template
+        }
+    
+    def decompose_target(self, target: str, target_type: ImprovementTarget) -> List[str]:
+        """分解目标为子任务"""
+        decomposition_map = {
+            ImprovementTarget.SKILL_ENHANCEMENT: [
+                "分析现有技能接口",
+                "识别性能瓶颈",
+                "设计优化方案",
+                "实现优化代码",
+                "编写测试用例"
+            ],
+            ImprovementTarget.PLUGIN_OPTIMIZATION: [
+                "分析插件架构",
+                "识别优化点",
+                "重构核心逻辑",
+                "改进错误处理",
+                "优化资源使用"
+            ],
+            ImprovementTarget.TOOL_CREATION: [
+                "需求分析",
+                "接口设计",
+                "核心算法实现",
+                "错误处理机制",
+                "使用示例编写"
+            ]
+        }
+        return decomposition_map.get(target_type, ["分析目标", "设计方案", "实现代码"])
+    
+    def generate_pseudocode(self, target: str, target_type: ImprovementTarget) -> str:
+        """生成伪代码"""
+        pseudocode_templates = {
+            ImprovementTarget.SKILL_ENHANCEMENT: f"""
+# 伪代码: {target}
+# 1. 初始化优化环境
+setup_optimization_context()
+
+# 2. 分析现有性能
+performance_metrics = analyze_current_performance()
+
+# 3. 识别优化点
+bottlenecks = identify_bottlenecks(performance_metrics)
+
+# 4. 应用优化策略
+optimized_code = apply_optimizations(bottlenecks)
+
+# 5. 验证优化效果
+verify_optimization(optimized_code, performance_metrics)
+""",
+            ImprovementTarget.PLUGIN_OPTIMIZATION: f"""
+# 伪代码: {target}
+# 1. 加载插件配置
+plugin_config = load_plugin_config()
+
+# 2. 分析执行流程
+execution_flow = analyze_execution_flow()
+
+# 3. 优化关键路径
+optimized_flow = optimize_critical_path(execution_flow)
+
+# 4. 重构核心逻辑
+refactored_code = refactor_core_logic(optimized_flow)
+
+# 5. 测试兼容性
+test_compatibility(refactored_code, plugin_config)
+""",
+            ImprovementTarget.TOOL_CREATION: f"""
+# 伪代码: {target}
+# 1. 定义工具接口
+interface = define_tool_interface()
+
+# 2. 实现核心功能
+core_functionality = implement_core_feature()
+
+# 3. 添加错误处理
+error_handling = add_error_handling()
+
+# 4. 创建使用示例
+examples = create_usage_examples()
+
+# 5. 编写文档
+documentation = write_documentation()
+"""
+        }
+        return pseudocode_templates.get(target_type, f"# 伪代码: {target}\n实现功能...")
+    
