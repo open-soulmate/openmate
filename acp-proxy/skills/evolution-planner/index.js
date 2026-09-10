@@ -1,245 +1,207 @@
 /**
  * Evolution Planner Skill
- * 自我进化规划技能 - 智能分析进化目标并生成可执行的改进计划
- * 
- * @module evolution-planner
- * @version 1.0.0
+ * Self-evolution planning system with goal decomposition, progress tracking,
+ * and conservative execution strategy.
  */
 
 const fs = require('fs').promises;
 const path = require('path');
-const crypto = require('crypto');
+const EventEmitter = require('events');
 
-/**
- * 进化规划器配置
- */
+// Default configuration
 const DEFAULT_CONFIG = {
-  // 规划频率（毫秒）
-  planningInterval: 3600000, // 1小时
-  // 确认等待超时时间（毫秒）
-  confirmationTimeout: 86400000, // 24小时
-  // 最大子目标数量
-  maxSubGoalsPerTarget: 5,
-  // 目标分解深度
-  maxDecompositionDepth: 3,
-  // 零进度阈值
-  zeroProgressThreshold: 0,
-  // 低进度阈值（百分比）
-  lowProgressThreshold: 20,
-  // 存储路径
-  storagePath: './evolution-plans',
-  knowledgePath: './knowledge/evolution',
-  // 优先级权重
-  priorityWeights: {
-    selfProgramming: 1.0,
-    toolCreation: 0.9,
-    errorSelfRepair: 0.95,
-    default: 0.7
-  },
-  // 安全级别
-  safetyLevel: 'conservative', // conservative, moderate, aggressive
-  // 自动触发观察分析的阈值
-  unanalyzedObservationThreshold: 0
+  planningIntervalMs: 3600000, // 1 hour
+  confirmationTimeoutMs: 86400000, // 24 hours
+  maxSubGoalsPerTarget: 10,
+  progressCheckIntervalMs: 1800000, // 30 minutes
+  observationCheckIntervalMs: 60000, // 1 minute
+  plansDirectory: path.join(process.cwd(), 'evolution-plans'),
+  knowledgeBasePath: path.join(process.cwd(), 'knowledge-base', 'evolution-plans.json'),
+  roadmapOutputPath: path.join(process.cwd(), 'evolution-roadmap.md'),
+  pendingConfirmationsPath: path.join(process.cwd(), 'evolution-plans', 'pending-confirmations.json'),
+  requireHumanConfirmation: true,
+  autoAnalyzeObservations: true,
+  maxRetriesPerGoal: 3,
+  goalDecompositionDepth: 3,
+  zeroProgressThreshold: 0.05,
+  criticalProgressThreshold: 0.3,
+  failurePatternThreshold: 3
 };
 
-/**
- * 目标状态枚举
- */
-const GoalStatus = {
-  PENDING: 'pending',
-  IN_PROGRESS: 'in_progress',
-  PLANNED: 'planned',
-  CONFIRMED: 'confirmed',
-  EXECUTING: 'executing',
-  COMPLETED: 'completed',
-  BLOCKED: 'blocked',
-  FAILED: 'failed',
-  CANCELLED: 'cancelled'
-};
-
-/**
- * 计划优先级枚举
- */
-const PlanPriority = {
+// Priority levels for goals
+const Priority = {
   CRITICAL: 'critical',
   HIGH: 'high',
   MEDIUM: 'medium',
   LOW: 'low'
 };
 
+// Goal status
+const GoalStatus = {
+  NOT_STARTED: 'not_started',
+  IN_PROGRESS: 'in_progress',
+  BLOCKED: 'blocked',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+  PENDING_CONFIRMATION: 'pending_confirmation'
+};
+
+// Zero progress target domains
+const ZERO_PROGRESS_DOMAINS = [
+  'self_programming',
+  'tool_creation',
+  'error_self_repair'
+];
+
 /**
- * 进化规划器主类
+ * Goal Decomposition Algorithm
+ * Breaks down high-level goals into manageable sub-tasks
  */
-class EvolutionPlanner {
-  /**
-   * @param {Object} options - 配置选项
-   * @param {Object} options.introspector - self_introspect实例
-   * @param {Object} options.skillRegistry - 技能注册表
-   * @param {Object} options.knowledgeBase - 知识库实例
-   * @param {Object} options.logger - 日志实例
-   */
-  constructor(options = {}) {
-    this.config = { ...DEFAULT_CONFIG, ...options.config };
-    this.introspector = options.introspector || null;
-    this.skillRegistry = options.skillRegistry || {};
-    this.knowledgeBase = options.knowledgeBase || null;
-    this.logger = options.logger || console;
-    
-    // 内部状态
-    this.state = {
-      isRunning: false,
-      lastPlannedAt: null,
-      pendingConfirmations: new Map(),
-      activePlans: new Map(),
-      goalProgress: new Map(),
-      failurePatterns: new Map(),
-      observations: [],
-      evolutionHistory: []
-    };
-    
-    // 定时器
-    this._planningTimer = null;
-    this._observationWatcher = null;
-    
-    // 绑定方法
-    this._onObservationReceived = this._onObservationReceived.bind(this);
+class GoalDecomposer {
+  constructor(config = {}) {
+    this.maxDepth = config.goalDecompositionDepth || DEFAULT_CONFIG.goalDecompositionDepth;
+    this.maxSubGoals = config.maxSubGoalsPerTarget || DEFAULT_CONFIG.maxSubGoalsPerTarget;
   }
 
   /**
-   * 初始化规划器
+   * Decompose a goal into sub-goals based on domain and failure patterns
    */
-  async initialize() {
-    this.logger.info('[EvolutionPlanner] Initializing evolution planner...');
-    
-    try {
-      // 确保存储目录存在
-      await this._ensureDirectories();
-      
-      // 加载现有状态
-      await this._loadState();
-      
-      // 初始化与introspector的集成
-      await this._initializeIntrospectorIntegration();
-      
-      // 启动定时规划
-      this._startPlanningCycle();
-      
-      // 启动观察监听器
-      this._startObservationWatcher();
-      
-      this.state.isRunning = true;
-      this.logger.info('[EvolutionPlanner] Evolution planner initialized successfully');
-      
-      return { success: true, message: 'Evolution planner initialized' };
-    } catch (error) {
-      this.logger.error('[EvolutionPlanner] Initialization failed:', error);
-      throw error;
+  decompose(goal, failurePatterns = [], depth = 0) {
+    if (depth >= this.maxDepth) {
+      return this.createLeafTask(goal);
     }
+
+    const domainStrategies = {
+      self_programming: () => this.decomposeSelfProgramming(goal, failurePatterns, depth),
+      tool_creation: () => this.decomposeToolCreation(goal, failurePatterns, depth),
+      error_self_repair: () => this.decomposeErrorSelfRepair(goal, failurePatterns, depth)
+    };
+
+    const strategy = domainStrategies[goal.domain];
+    if (strategy) {
+      return strategy();
+    }
+
+    return this.decomposeGeneric(goal, failurePatterns, depth);
   }
 
-  /**
-   * 确保存储目录存在
-   */
-  async _ensureDirectories() {
-    const directories = [
-      this.config.storagePath,
-      this.config.knowledgePath,
-      path.join(this.config.storagePath, 'pending'),
-      path.join(this.config.storagePath, 'confirmed'),
-      path.join(this.config.storagePath, 'completed'),
-      path.join(this.config.storagePath, 'reports')
+  decomposeSelfProgramming(goal, failurePatterns, depth) {
+    const subGoals = [
+      {
+        id: `${goal.id}_code_analysis`,
+        title: '代码分析能力构建',
+        description: '建立代码理解和分析的基础能力',
+        domain: 'self_programming',
+        priority: Priority.CRITICAL,
+        expectedBenefit: '能够理解和分析现有代码库，为自主编程奠定基础',
+        implementationSteps: [
+          '实现AST解析器，能够解析JavaScript/TypeScript代码',
+          '建立代码依赖关系图谱',
+          '实现代码复杂度分析功能',
+          '创建代码模式识别器'
+        ],
+        testMethods: [
+          '单元测试：解析各种代码结构的正确性',
+          '集成测试：分析完整项目的依赖关系',
+          '性能测试：大文件解析速度基准测试'
+        ],
+        rollbackPlan: '如果解析失败，回退到基于正则表达式的简单分析',
+        estimatedEffort: '2-3天',
+        dependencies: [],
+        failurePatterns: failurePatterns.filter(p => p.domain === 'self_programming')
+      },
+      {
+        id: `${goal.id}_code_generation`,
+        title: '代码生成能力构建',
+        description: '基于模板和规则的代码生成系统',
+        domain: 'self_programming',
+        priority: Priority.HIGH,
+        expectedBenefit: '能够生成符合规范的代码片段和模块',
+        implementationSteps: [
+          '建立代码模板库',
+          '实现代码片段生成器',
+          '添加代码风格检查器',
+          '集成测试代码自动生成'
+        ],
+        testMethods: [
+          '生成代码的语法正确性验证',
+          '生成代码的功能正确性测试',
+          '与现有代码风格的一致性检查'
+        ],
+        rollbackPlan: '回退到预定义模板库，禁止动态生成',
+        estimatedEffort: '3-4天',
+        dependencies: [`${goal.id}_code_analysis`],
+        failurePatterns: []
+      },
+      {
+        id: `${goal.id}_code_modification`,
+        title: '代码修改能力构建',
+        description: '安全地修改现有代码',
+        domain: 'self_programming',
+        priority: Priority.HIGH,
+        expectedBenefit: '能够对现有代码进行增量修改而不破坏功能',
+        implementationSteps: [
+          '实现代码diff分析器',
+          '建立修改影响范围评估器',
+          '创建修改前快照机制',
+          '实现自动回滚功能'
+        ],
+        testMethods: [
+          '修改后代码功能回归测试',
+          '影响范围评估准确性测试',
+          '回滚机制可靠性测试'
+        ],
+        rollbackPlan: '禁用自动修改，所有修改转为人工审核',
+        estimatedEffort: '3-4天',
+        dependencies: [`${goal.id}_code_analysis`, `${goal.id}_code_generation`],
+        failurePatterns: []
+      },
+      {
+        id: `${goal.id}_safety_validation`,
+        title: '安全验证机制',
+        description: '确保自编程操作的安全性',
+        domain: 'self_programming',
+        priority: Priority.CRITICAL,
+        expectedBenefit: '防止有害或错误的代码修改',
+        implementationSteps: [
+          '实现沙箱执行环境',
+          '建立代码变更安全评分系统',
+          '创建多级审核机制',
+          '实现变更影响模拟器'
+        ],
+        testMethods: [
+          '沙箱逃逸防护测试',
+          '安全评分准确性验证',
+          '审核流程完整性测试'
+        ],
+        rollbackPlan: '禁用所有自编程功能，转为纯人工模式',
+        estimatedEffort: '2-3天',
+        dependencies: [],
+        failurePatterns: failurePatterns.filter(p => p.type === 'safety')
+      }
     ];
-    
-    for (const dir of directories) {
-      try {
-        await fs.mkdir(dir, { recursive: true });
-      } catch (error) {
-        if (error.code !== 'EEXIST') throw error;
-      }
-    }
+
+    return this.buildGoalTree(goal, subGoals.slice(0, this.maxSubGoals), depth);
   }
 
-  /**
-   * 加载现有状态
-   */
-  async _loadState() {
-    try {
-      const statePath = path.join(this.config.storagePath, 'planner-state.json');
-      const stateData = await fs.readFile(statePath, 'utf-8');
-      const savedState = JSON.parse(stateData);
-      
-      // 恢复状态
-      this.state.goalProgress = new Map(savedState.goalProgress || []);
-      this.state.failurePatterns = new Map(savedState.failurePatterns || []);
-      this.state.evolutionHistory = savedState.evolutionHistory || [];
-      this.state.lastPlannedAt = savedState.lastPlannedAt;
-      
-      this.logger.info('[EvolutionPlanner] State loaded from storage');
-    } catch (error) {
-      if (error.code !== 'ENOENT') {
-        this.logger.warn('[EvolutionPlanner] Could not load state:', error.message);
-      }
-    }
-  }
-
-  /**
-   * 保存状态到存储
-   */
-  async _saveState() {
-    const statePath = path.join(this.config.storagePath, 'planner-state.json');
-    const stateData = {
-      goalProgress: Array.from(this.state.goalProgress.entries()),
-      failurePatterns: Array.from(this.state.failurePatterns.entries()),
-      evolutionHistory: this.state.evolutionHistory,
-      lastPlannedAt: this.state.lastPlannedAt,
-      savedAt: new Date().toISOString()
-    };
-    
-    await fs.writeFile(statePath, JSON.stringify(stateData, null, 2));
-  }
-
-  /**
-   * 初始化与introspector的集成
-   */
-  async _initializeIntrospectorIntegration() {
-    if (!this.introspector) {
-      this.logger.warn('[EvolutionPlanner] No introspector provided, running in standalone mode');
-      return;
-    }
-    
-    // 注册为introspector的观察者
-    if (typeof this.introspector.addObserver === 'function') {
-      this.introspector.addObserver('evolution-planner', {
-        onObservation: this._onObservationReceived,
-        onGoalUpdate: this._onGoalUpdate.bind(this),
-        onFailurePattern: this._onFailurePattern.bind(this)
-      });
-    }
-    
-    // 获取当前自省数据
-    await this._syncWithIntrospector();
-  }
-
-  /**
-   * 与introspector同步数据
-   */
-  async _syncWithIntrospector() {
-    if (!this.introspector) return;
-    
-    try {
-      // 获取进化目标
-      const goals = await this.introspector.getEvolutionGoals?.() || [];
-      goals.forEach(goal => {
-        if (!this.state.goalProgress.has(goal.id)) {
-          this.state.goalProgress.set(goal.id, {
-            ...goal,
-            lastChecked: new Date().toISOString(),
-            subGoals: []
-          });
-        }
-      });
-      
-      // 获取失败模式
-      const patterns = await this.introspector.getFailurePatterns?.() || [];
-      patterns.forEach(pattern => {
-        this.state.failurePatterns.set(pattern.id, pattern);
+  decomposeToolCreation(goal, failurePatterns, depth) {
+    const subGoals = [
+      {
+        id: `${goal.id}_tool_needs_analysis`,
+        title: '工具需求分析系统',
+        description: '识别和分析工具创建需求',
+        domain: 'tool_creation',
+        priority: Priority.CRITICAL,
+        expectedBenefit: '能够自动识别系统中的重复任务和可自动化操作',
+        implementationSteps: [
+          '实现任务频率分析器',
+          '建立重复操作检测器',
+          '创建工具需求优先级排序器',
+          '构建工具可行性评估框架'
+        ],
+        testMethods: [
+          '需求识别准确率测试',
+          '优先级排序合理性验证',
+          '可行性评估准确性测试'
+        ],
+        rollbackPlan: '回退到人工指定工具需求',
