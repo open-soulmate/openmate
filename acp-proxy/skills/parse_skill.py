@@ -1,193 +1,190 @@
+# acp-proxy/skills/parse_skill.py
+"""
+JSON解析包装工具模块
+统一处理所有技能中的JSON解析逻辑，提供健壮的解析能力
+"""
+
 import json
 import re
 import logging
-from typing import Tuple, Any, Optional, Dict
-from functools import lru_cache
-import asyncio
-from contextlib import contextmanager
+from typing import Tuple, Optional, Any, Dict
+from dataclasses import dataclass
+from enum import Enum
 
-# 尝试导入第三方宽容解析库
-try:
-    import json5
-    HAS_JSON5 = True
-except ImportError:
-    HAS_JSON5 = False
-
-try:
-    import demjson3
-    HAS_DEMJSON = True
-except ImportError:
-    HAS_DEMJSON = False
-
+# 设置日志
 logger = logging.getLogger(__name__)
 
 
-class JSONParseError(Exception):
-    """自定义JSON解析异常，包含详细上下文信息"""
-    
-    def __init__(self, message: str, original_error: Exception = None, 
-                 json_string: str = None, strategy: str = None):
-        self.original_error = original_error
-        self.json_string = json_string
-        self.strategy = strategy
-        super().__init__(message)
+class ParseStrategy(Enum):
+    """解析策略枚举"""
+    STANDARD = "standard"
+    CLEANED = "cleaned"
+    LENIENT = "lenient"
 
 
-class JsonParseResult:
-    """JSON解析结果包装器"""
-    
-    def __init__(self, data: Any = None, error: Exception = None, 
-                 success: bool = True, strategy_used: str = None):
-        self.data = data
-        self.error = error
-        self.success = success
-        self.strategy_used = strategy_used
-    
-    def __bool__(self):
-        return self.success
-    
-    def get(self, default=None):
-        """获取解析数据，失败时返回默认值"""
-        return self.data if self.success else default
+@dataclass
+class ParseResult:
+    """解析结果包装类"""
+    data: Optional[Any] = None
+    error: Optional[str] = None
+    success: bool = False
+    strategy_used: Optional[ParseStrategy] = None
+    raw_error: Optional[Exception] = None
 
 
-def clean_json_string(json_string: str) -> str:
-    """清理常见JSON格式问题"""
-    if not isinstance(json_string, str):
-        return json_string
+class SafeJSONParser:
+    """
+    安全的JSON解析器
     
-    cleaned = json_string.strip()
+    支持多种解析策略：
+    1. 标准解析
+    2. 格式清理后解析
+    3. 宽容解析器（json5或demjson3）
+    """
     
-    # 处理注释（单行和多行）
-    cleaned = re.sub(r'//.*?\n|/\*.*?\*/', '', cleaned, flags=re.DOTALL)
+    def __init__(self):
+        self._lenient_parser = None
+        self._initialize_lenient_parser()
     
-    # 处理多余逗号（对象或数组末尾的逗号）
-    cleaned = re.sub(r',\s*([}\]])', r'\1', cleaned)
-    
-    # 处理未转义的字符
-    cleaned = cleaned.replace('\n', '\\n').replace('\t', '\\t').replace('\r', '\\r')
-    
-    # 处理单引号替换为双引号（谨慎使用，可能影响内容）
-    # cleaned = cleaned.replace("'", '"')
-    
-    # 处理没有引号的键名
-    cleaned = re.sub(r'([{,])\s*([a-zA-Z_][a-zA-Z0-9_]*)\s*:', r'\1"\2":', cleaned)
-    
-    return cleaned
-
-
-@contextmanager
-def parse_attempts_context(json_string: str, max_attempts: int = 3):
-    """解析重试上下文管理器"""
-    attempts = 0
-    last_error = None
-    
-    while attempts < max_attempts:
+    def _initialize_lenient_parser(self):
+        """初始化宽容解析器"""
         try:
-            yield attempts
-            break
-        except Exception as e:
-            attempts += 1
-            last_error = e
-            if attempts >= max_attempts:
-                raise last_error
-
-
-def safe_json_parse(json_string: str, context: str = None, 
-                   max_attempts: int = 2, allow_none: bool = False) -> Tuple[Any, Optional[str]]:
-    """
-    安全JSON解析包装函数
-    
-    Args:
-        json_string: 要解析的JSON字符串
-        context: 上下文信息，用于错误报告
-        max_attempts: 最大重试次数
-        allow_none: 是否允许None输入
-    
-    Returns:
-        Tuple[data, error]: 解析数据和错误信息，成功时error为None
-    """
-    if json_string is None and allow_none:
-        return None, None
-    
-    if not isinstance(json_string, str):
-        return None, f"输入类型错误: 期望str, 得到{type(json_string)}"
-    
-    strategies = [
-        ('标准json.loads', lambda s: json.loads(s)),
-        ('清理后解析', lambda s: json.loads(clean_json_string(s))),
-    ]
-    
-    # 添加第三方解析器
-    if HAS_JSON5:
-        strategies.append(('json5解析', lambda s: json5.loads(s)))
-    
-    if HAS_DEMJSON:
-        strategies.append(('demjson3解析', lambda s: demjson3.decode(s)))
-    
-    errors = []
-    context_info = f"上下文: {context}" if context else ""
-    
-    for attempt in range(max_attempts):
-        for strategy_name, parser in strategies:
+            import json5
+            self._lenient_parser = json5.loads
+            logger.info("Successfully imported json5 as lenient parser")
+        except ImportError:
             try:
-                result = parser(json_string)
-                return result, None
-            except Exception as e:
-                error_msg = f"尝试{strategy_name}失败 (第{attempt + 1}次): {str(e)}"
-                errors.append(error_msg)
-                logger.debug(f"{error_msg} {context_info}")
-                continue
+                import demjson3
+                self._lenient_parser = demjson3.decode
+                logger.info("Successfully imported demjson3 as lenient parser")
+            except ImportError:
+                logger.warning("No lenient JSON parser available (json5/demjson3)")
+                self._lenient_parser = None
     
-    # 所有策略都失败
-    error_summary = "; ".join(errors)
-    full_error = f"JSON解析失败 {context_info}. 错误详情: {error_summary}"
-    logger.warning(full_error)
-    return None, full_error
-
-
-async def async_safe_json_parse(json_string: str, context: str = None,
-                               max_attempts: int = 2) -> Tuple[Any, Optional[str]]:
-    """异步版本的安全JSON解析"""
-    # 在异步环境中运行同步解析函数
-    loop = asyncio.get_event_loop()
-    return await loop.run_in_executor(
-        None, 
-        lambda: safe_json_parse(json_string, context, max_attempts)
-    )
-
-
-def parse_json_response(response_data: Any, context: str = None) -> JsonParseResult:
-    """
-    解析API响应中的JSON数据
+    def _clean_json_string(self, json_string: str) -> str:
+        """
+        清理常见的JSON格式问题
+        
+        Args:
+            json_string: 原始JSON字符串
+            
+        Returns:
+            清理后的JSON字符串
+        """
+        # 1. 移除BOM标记
+        if json_string.startswith('\ufeff'):
+            json_string = json_string[1:]
+        
+        # 2. 移除注释（行注释和块注释）
+        json_string = re.sub(r'//.*?$', '', json_string, flags=re.MULTILINE)
+        json_string = re.sub(r'/\*.*?\*/', '', json_string, flags=re.DOTALL)
+        
+        # 3. 修复尾随逗号
+        json_string = re.sub(r',\s*([}\]])', r'\1', json_string)
+        
+        # 4. 修复单引号为双引号（简单情况）
+        # 注意：这可能会在字符串内部替换引号，所以需要更复杂的处理
+        # 这里只处理对象键值对的单引号
+        json_string = re.sub(r"(:\s*)'([^']*?)'(\s*[,}\]])", r'\1"\2"\3', json_string)
+        
+        # 5. 修复未加引号的键
+        json_string = re.sub(r'(\{|\,)\s*(\w+)\s*:', r'\1"\2":', json_string)
+        
+        # 6. 修复换行符和制表符
+        json_string = json_string.replace('\n', '\\n').replace('\t', '\\t')
+        
+        return json_string.strip()
     
-    Args:
-        response_data: 响应数据（字符串或字典）
-        context: 上下文信息
+    def _try_parse(self, json_string: str, strategy: ParseStrategy) -> Tuple[Any, Optional[Exception]]:
+        """
+        尝试使用指定策略解析JSON
+        
+        Args:
+            json_string: JSON字符串
+            strategy: 解析策略
+            
+        Returns:
+            (解析结果, 错误)
+        """
+        try:
+            if strategy == ParseStrategy.STANDARD:
+                return json.loads(json_string), None
+            
+            elif strategy == ParseStrategy.CLEANED:
+                cleaned_string = self._clean_json_string(json_string)
+                return json.loads(cleaned_string), None
+            
+            elif strategy == ParseStrategy.LENIENT:
+                if self._lenient_parser:
+                    return self._lenient_parser(json_string), None
+                else:
+                    return None, ValueError("No lenient parser available")
+            
+            return None, ValueError(f"Unknown strategy: {strategy}")
+            
+        except Exception as e:
+            return None, e
     
-    Returns:
-        JsonParseResult: 解析结果包装
-    """
-    if isinstance(response_data, dict):
-        return JsonParseResult(data=response_data, success=True)
-    
-    if isinstance(response_data, str):
-        data, error = safe_json_parse(response_data, context)
-        if data is not None:
-            return JsonParseResult(data=data, success=True)
-        return JsonParseResult(error=JSONParseError(
-            message=error,
-            json_string=response_data,
-            strategy="all_failed"
-        ), success=False)
-    
-    return JsonParseResult(
-        error=JSONParseError(
-            message=f"不支持的响应类型: {type(response_data)}",
-            json_string=str(response_data)
-        ),
-        success=False
-    )
-
-
-# 缓存常用解析结果
+    def safe_json_parse(
+        self, 
+        json_string: str, 
+        context: Optional[str] = None,
+        max_retries: int = 3
+    ) -> ParseResult:
+        """
+        安全地解析JSON字符串
+        
+        Args:
+            json_string: 要解析的JSON字符串
+            context: 解析上下文（用于错误信息）
+            max_retries: 最大重试次数
+            
+        Returns:
+            ParseResult对象，包含解析结果和错误信息
+        """
+        if not json_string or not json_string.strip():
+            return ParseResult(
+                error="Empty or null JSON string",
+                success=False,
+                context=context
+            )
+        
+        # 确保输入是字符串
+        if not isinstance(json_string, str):
+            return ParseResult(
+                error=f"Expected string, got {type(json_string).__name__}",
+                success=False,
+                context=context
+            )
+        
+        # 按顺序尝试不同策略
+        strategies = [
+            ParseStrategy.STANDARD,
+            ParseStrategy.CLEANED,
+            ParseStrategy.LENIENT
+        ]
+        
+        last_error = None
+        
+        for attempt in range(max_retries):
+            for strategy in strategies:
+                try:
+                    data, error = self._try_parse(json_string, strategy)
+                    
+                    if error is None:
+                        logger.debug(f"Successfully parsed JSON using {strategy.value} strategy")
+                        return ParseResult(
+                            data=data,
+                            success=True,
+                            strategy_used=strategy,
+                            context=context
+                        )
+                    else:
+                        last_error = error
+                        logger.debug(f"Strategy {strategy.value} failed: {error}")
+                
+                except Exception as e:
+                    last_error = e
+                    logger.debug(f"Unexpected error with {strategy.value}: {e}")
+        
+        # 所有尝试都失败
