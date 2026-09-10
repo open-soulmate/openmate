@@ -1,170 +1,241 @@
-import datetime
-import math
-import uuid
+"""
+Knowledge Consolidation Skill for ACP Proxy
+Implements intelligent memory management with deduplication, scoring, 
+review scheduling, knowledge graph, and compression capabilities.
+"""
+
+import asyncio
+import hashlib
+import json
+import logging
+import os
+import pickle
+import time
 from collections import defaultdict
-from typing import Dict, List, Optional, Tuple, Any, Set
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, asdict
+from datetime import datetime, timedelta
 from enum import Enum
+from pathlib import Path
+from typing import Any, Callable, Dict, List, Optional, Set, Tuple, Union
+import threading
+import schedule
 import numpy as np
+from difflib import SequenceMatcher
 
-# Constants
-SEMANTIC_SIMILARITY_THRESHOLD = 0.85
-IMPORTANCE_WEIGHTS = {
-    'usage_frequency': 0.3,
-    'emotional_intensity': 0.3,
-    'information_value': 0.4
-}
-WEEKLY_REVIEW_DAY = 6  # Sunday (0=Monday, 6=Sunday)
-WEEKLY_REVIEW_HOUR = 23  # 11 PM
-MEMORY_COMPRESSION_THRESHOLD = 5
+# Configure logging
+logger = logging.getLogger(__name__)
 
+
+# ============================================================================
+# Data Models
+# ============================================================================
 
 class MemoryType(Enum):
+    """Memory type classification."""
     EPISODIC = "episodic"
     SEMANTIC = "semantic"
     PROCEDURAL = "procedural"
     EMOTIONAL = "emotional"
 
 
+class ConsolidationStatus(Enum):
+    """Memory consolidation status."""
+    ACTIVE = "active"
+    CONSOLIDATED = "consolidated"
+    ARCHIVED = "archived"
+    COMPRESSED = "compressed"
+
+
 @dataclass
 class Memory:
-    """Memory data structure"""
+    """Individual memory unit with metadata."""
     id: str
     content: str
-    timestamp: datetime.datetime
-    memory_type: MemoryType
-    emotional_intensity: float = 0.5  # 0.0 - 1.0
-    information_value: float = 0.5    # 0.0 - 1.0
-    usage_count: int = 0
+    content_embedding: Optional[np.ndarray] = None
+    memory_type: MemoryType = MemoryType.SEMANTIC
+    creation_time: datetime = field(default_factory=datetime.now)
+    last_accessed: datetime = field(default_factory=datetime.now)
+    access_count: int = 0
+    emotional_intensity: float = 0.5
+    information_value: float = 0.5
     importance_score: float = 0.0
-    embeddings: Optional[np.ndarray] = None
+    status: ConsolidationStatus = ConsolidationStatus.ACTIVE
     tags: List[str] = field(default_factory=list)
-    context: str = ""
     source_session: str = ""
+    metadata: Dict[str, Any] = field(default_factory=dict)
     related_memories: List[str] = field(default_factory=list)
-    
-    def __post_init__(self):
-        if self.importance_score == 0.0:
-            self.importance_score = self.calculate_importance()
-    
-    def calculate_importance(self) -> float:
-        """Calculate importance score based on weighted factors"""
-        frequency_score = min(1.0, self.usage_count / 10.0)
-        return (
-            IMPORTANCE_WEIGHTS['usage_frequency'] * frequency_score +
-            IMPORTANCE_WEIGHTS['emotional_intensity'] * self.emotional_intensity +
-            IMPORTANCE_WEIGHTS['information_value'] * self.information_value
-        )
-    
-    def update_importance(self):
-        """Update importance score with current values"""
-        self.importance_score = self.calculate_importance()
-    
-    def add_usage(self):
-        """Increment usage count and update importance"""
-        self.usage_count += 1
-        self.update_importance()
+    compression_level: int = 0
     
     def to_dict(self) -> Dict[str, Any]:
-        """Convert memory to dictionary for serialization"""
-        return {
+        """Serialize memory to dictionary (backward compatible)."""
+        data = {
             'id': self.id,
             'content': self.content,
-            'timestamp': self.timestamp.isoformat(),
             'memory_type': self.memory_type.value,
+            'creation_time': self.creation_time.isoformat(),
+            'last_accessed': self.last_accessed.isoformat(),
+            'access_count': self.access_count,
             'emotional_intensity': self.emotional_intensity,
             'information_value': self.information_value,
-            'usage_count': self.usage_count,
             'importance_score': self.importance_score,
+            'status': self.status.value,
             'tags': self.tags,
-            'context': self.context,
             'source_session': self.source_session,
-            'related_memories': self.related_memories
+            'metadata': self.metadata,
+            'related_memories': self.related_memories,
+            'compression_level': self.compression_level,
         }
+        if self.content_embedding is not None:
+            data['content_embedding'] = self.content_embedding.tolist()
+        return data
     
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> 'Memory':
-        """Create memory from dictionary"""
-        memory = cls(
-            id=data['id'],
-            content=data['content'],
-            timestamp=datetime.datetime.fromisoformat(data['timestamp']),
-            memory_type=MemoryType(data['memory_type']),
+        """Deserialize memory from dictionary (backward compatible)."""
+        embedding = None
+        if 'content_embedding' in data and data['content_embedding']:
+            embedding = np.array(data['content_embedding'])
+        
+        return cls(
+            id=data.get('id', ''),
+            content=data.get('content', ''),
+            content_embedding=embedding,
+            memory_type=MemoryType(data.get('memory_type', 'semantic')),
+            creation_time=datetime.fromisoformat(data.get('creation_time', datetime.now().isoformat())),
+            last_accessed=datetime.fromisoformat(data.get('last_accessed', datetime.now().isoformat())),
+            access_count=data.get('access_count', 0),
             emotional_intensity=data.get('emotional_intensity', 0.5),
             information_value=data.get('information_value', 0.5),
-            usage_count=data.get('usage_count', 0),
             importance_score=data.get('importance_score', 0.0),
+            status=ConsolidationStatus(data.get('status', 'active')),
             tags=data.get('tags', []),
-            context=data.get('context', ''),
             source_session=data.get('source_session', ''),
-            related_memories=data.get('related_memories', [])
+            metadata=data.get('metadata', {}),
+            related_memories=data.get('related_memories', []),
+            compression_level=data.get('compression_level', 0),
         )
-        return memory
 
 
 @dataclass
-class KnowledgeGraphNode:
-    """Knowledge graph node"""
+class KnowledgeNode:
+    """Node in the knowledge graph."""
     id: str
     label: str
-    node_type: str
+    node_type: str = "concept"
     properties: Dict[str, Any] = field(default_factory=dict)
-    memory_ids: Set[str] = field(default_factory=set)
+    memory_ids: List[str] = field(default_factory=list)
+    created_at: datetime = field(default_factory=datetime.now)
+    updated_at: datetime = field(default_factory=datetime.now)
     
-    def __hash__(self):
-        return hash(self.id)
-    
-    def __eq__(self, other):
-        return isinstance(other, KnowledgeGraphNode) and self.id == other.id
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': self.id,
+            'label': self.label,
+            'node_type': self.node_type,
+            'properties': self.properties,
+            'memory_ids': self.memory_ids,
+            'created_at': self.created_at.isoformat(),
+            'updated_at': self.updated_at.isoformat(),
+        }
 
 
 @dataclass
-class KnowledgeGraphEdge:
-    """Knowledge graph edge"""
+class KnowledgeEdge:
+    """Edge in the knowledge graph."""
     id: str
     source_id: str
     target_id: str
-    relationship: str
+    relation_type: str = "related_to"
     weight: float = 1.0
     properties: Dict[str, Any] = field(default_factory=dict)
+    created_at: datetime = field(default_factory=datetime.now)
     
-    def __hash__(self):
-        return hash(self.id)
-    
-    def __eq__(self, other):
-        return isinstance(other, KnowledgeGraphEdge) and self.id == other.id
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'id': self.id,
+            'source_id': self.source_id,
+            'target_id': self.target_id,
+            'relation_type': self.relation_type,
+            'weight': self.weight,
+            'properties': self.properties,
+            'created_at': self.created_at.isoformat(),
+        }
 
 
+@dataclass
 class KnowledgeGraph:
-    """Knowledge graph implementation"""
-    def __init__(self):
-        self.nodes: Dict[str, KnowledgeGraphNode] = {}
-        self.edges: Dict[str, KnowledgeGraphEdge] = {}
-        self.adjacency_list: Dict[str, Dict[str, List[str]]] = defaultdict(lambda: defaultdict(list))
+    """Knowledge graph structure for organizing memories."""
+    nodes: Dict[str, KnowledgeNode] = field(default_factory=dict)
+    edges: Dict[str, KnowledgeEdge] = field(default_factory=dict)
+    adjacency: Dict[str, Set[str]] = field(default_factory=lambda: defaultdict(set))
     
-    def add_node(self, node: KnowledgeGraphNode) -> str:
-        """Add a node to the graph"""
-        self.nodes[node.id] = node
-        return node.id
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'nodes': {k: v.to_dict() for k, v in self.nodes.items()},
+            'edges': {k: v.to_dict() for k, v in self.edges.items()},
+        }
+
+
+# ============================================================================
+# Embedding Utilities (lightweight, no external dependencies)
+# ============================================================================
+
+class SimpleEmbedder:
+    """Simple text embedding using character-level and word-level features.
+    For production use, replace with a proper sentence transformer."""
     
-    def add_edge(self, edge: KnowledgeGraphEdge) -> str:
-        """Add an edge to the graph"""
-        if edge.source_id not in self.nodes or edge.target_id not in self.nodes:
-            raise ValueError("Source or target node not found")
+    def __init__(self, dim: int = 128):
+        self.dim = dim
+        self._vocab: Dict[str, int] = {}
+    
+    def encode(self, text: str) -> np.ndarray:
+        """Generate a simple embedding vector for text."""
+        # Normalize text
+        text = text.lower().strip()
+        words = text.split()
         
-        self.edges[edge.id] = edge
-        self.adjacency_list[edge.source_id][edge.relationship].append(edge.id)
-        return edge.id
+        # Create feature vector
+        features = np.zeros(self.dim, dtype=np.float32)
+        
+        # Word-level features (hashed)
+        for word in words:
+            hash_val = int(hashlib.md5(word.encode()).hexdigest(), 16)
+            idx = hash_val % self.dim
+            features[idx] += 1.0
+        
+        # Character n-gram features
+        for i in range(len(text) - 1):
+            bigram = text[i:i+2]
+            hash_val = int(hashlib.md5(bigram.encode()).hexdigest(), 16)
+            idx = hash_val % self.dim
+            features[idx] += 0.5
+        
+        # Normalize
+        norm = np.linalg.norm(features)
+        if norm > 0:
+            features = features / norm
+        
+        return features
     
-    def get_node(self, node_id: str) -> Optional[KnowledgeGraphNode]:
-        """Get node by ID"""
-        return self.nodes.get(node_id)
+    def batch_encode(self, texts: List[str]) -> np.ndarray:
+        """Encode multiple texts."""
+        return np.array([self.encode(t) for t in texts])
+
+
+# ============================================================================
+# Similarity Calculator
+# ============================================================================
+
+class SimilarityCalculator:
+    """Calculate semantic similarity between texts."""
     
-    def get_edge(self, edge_id: str) -> Optional[KnowledgeGraphEdge]:
-        """Get edge by ID"""
-        return self.edges.get(edge_id)
+    def __init__(self, embedder: SimpleEmbedder):
+        self.embedder = embedder
     
-    def get_edges_from_node(self, node_id: str, relationship: Optional[str] = None) -> List[KnowledgeGraphEdge]:
-        """Get all edges from a node, optionally filtered by relationship"""
-        edges = []
-        if node_id in self.adjacency_list:
+    def cosine_similarity(self, vec_a: np.ndarray, vec_b: np.ndarray) -> float:
+        """Calculate cosine similarity between two vectors."""
+        dot_product = np.dot(vec_a, vec_b)
+        norm_a = np.linalg.norm(vec_a)
+        norm_b = np.linalg.norm(vec_b)
+        if norm_a == 0 or norm_b == 0:
+            return 0.0
