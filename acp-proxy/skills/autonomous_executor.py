@@ -1,23 +1,23 @@
+#!/usr/bin/env python3
 """
-自主执行技能模块 (Autonomous Executor Skill Module)
+Autonomous Executor Skill Module
 
 解决核心问题：agent当前完全依赖外部partner执行，无法将规划转化为行动。
-这是实现自编程能力和工具创造能力的基础。
+实现自编程能力和工具创造能力的基础模块。
 
-作者: MiMo-v2.5-pro
-版本: 0.1.0
+Author: ACP Proxy Team
+Version: 0.1.0
 """
 
 import ast
 import hashlib
 import json
 import logging
-import os
 import time
-import traceback
+import uuid
 from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
-from enum import Enum
+from datetime import datetime
+from enum import Enum, auto
 from pathlib import Path
 from typing import (
     Any,
@@ -31,64 +31,38 @@ from typing import (
     Union,
 )
 
-# 配置日志
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%d %H:%M:%S",
 )
-logger = logging.getLogger("autonomous_executor")
+logger = logging.getLogger(__name__)
 
 
-# =============================================================================
-# 配置常量
-# =============================================================================
+# ============================================================================
+# Constants
+# ============================================================================
 
-class Config:
-    """模块配置，支持环境变量覆盖"""
-    
-    # 路径配置
-    SKILLS_DIR: str = os.getenv("ACP_SKILLS_DIR", "acp-proxy/skills")
-    OBSERVATIONS_DIR: str = os.getenv("ACP_OBSERVATIONS_DIR", "acp-proxy/observations")
-    WORKSPACE_DIR: str = os.getenv("ACP_WORKSPACE_DIR", "acp-proxy/workspace")
-    ERROR_LOG_PATH: str = os.getenv("ACP_ERROR_LOG", "acp-proxy/logs/error.json")
-    
-    # 执行配置
-    MAX_RETRY_COUNT: int = int(os.getenv("ACP_MAX_RETRY_COUNT", "3"))
-    MAX_CONCURRENT_TASKS: int = int(os.getenv("ACP_MAX_CONCURRENT_TASKS", "5"))
-    CYCLE_INTERVAL: int = int(os.getenv("ACP_CYCLE_INTERVAL", "60"))
-    
-    # 安全配置
-    ENABLED_OPERATIONS: Set[str] = {
-        "file_create",
-        "file_modify",
-        "skill_create",
-        "plugin_create",
-        "code_generate",
-    }
-    RESTRICTED_MODULES: Set[str] = {"subprocess", "os.system", "eval", "exec"}
-    
-    @classmethod
-    def ensure_directories(cls) -> None:
-        """确保所有必要的目录存在"""
-        for dir_path in [cls.SKILLS_DIR, cls.OBSERVATIONS_DIR, cls.WORKSPACE_DIR]:
-            Path(dir_path).mkdir(parents=True, exist_ok=True)
+MAX_RETRY_COUNT: int = 3
+DEFAULT_SKILLS_DIR: str = "acp-proxy/skills"
+DEFAULT_OBSERVATIONS_FILE: str = "observations_unanalyzed.json"
+DEFAULT_CONFIG_FILE: str = "autonomous_executor_config.json"
 
 
-# =============================================================================
-# 数据结构定义
-# =============================================================================
+# ============================================================================
+# Enums
+# ============================================================================
 
 
-class Priority(str, Enum):
+class TaskPriority(Enum):
     """任务优先级枚举"""
-    CRITICAL = "critical"
-    HIGH = "high"
-    MEDIUM = "medium"
-    LOW = "low"
+    CRITICAL = auto()
+    HIGH = auto()
+    MEDIUM = auto()
+    LOW = auto()
 
 
-class TaskStatus(str, Enum):
+class TaskStatus(Enum):
     """任务状态枚举"""
     PENDING = "pending"
     IN_PROGRESS = "in_progress"
@@ -98,163 +72,212 @@ class TaskStatus(str, Enum):
     ROLLED_BACK = "rolled_back"
 
 
-class OperationType(str, Enum):
-    """操作类型枚举"""
-    FILE_CREATE = "file_create"
-    FILE_MODIFY = "file_modify"
-    FILE_DELETE = "file_delete"
-    SKILL_CREATE = "skill_create"
-    PLUGIN_CREATE = "plugin_create"
-    CODE_GENERATE = "code_generate"
-    UNKNOWN = "unknown"
+class SkillStatus(Enum):
+    """技能状态枚举"""
+    ACTIVE = "active"
+    INACTIVE = "inactive"
+    ERROR = "error"
+    LOADING = "loading"
+    DRAFT = "draft"
+
+
+class ObservationType(Enum):
+    """观察类型枚举"""
+    CODE_GENERATION = "code_generation"
+    FILE_CREATION = "file_creation"
+    SKILL_CREATION = "skill_creation"
+    PLUGIN_CREATION = "plugin_creation"
+    SYSTEM_EVENT = "system_event"
+    USER_REQUEST = "user_request"
+    ERROR_REPORT = "error_report"
+    GENERAL = "general"
+
+
+# ============================================================================
+# Data Structures
+# ============================================================================
 
 
 @dataclass
 class Observation:
     """观察数据结构"""
-    id: str
-    timestamp: str
-    content: str
-    source: str = "unknown"
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    content: str = ""
+    observation_type: ObservationType = ObservationType.GENERAL
+    timestamp: float = field(default_factory=time.time)
+    source: str = ""
     metadata: Dict[str, Any] = field(default_factory=dict)
     analyzed: bool = False
-    
+
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
-        return asdict(self)
-    
+        data = asdict(self)
+        data["observation_type"] = self.observation_type.value
+        return data
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Observation":
-        """从字典创建实例"""
-        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
-
-
-@dataclass
-class ActionItem:
-    """可执行任务项"""
-    id: str
-    description: str
-    operation_type: OperationType
-    parameters: Dict[str, Any] = field(default_factory=dict)
-    source_observation_id: Optional[str] = None
-    
-    def to_dict(self) -> Dict[str, Any]:
-        """转换为字典"""
-        result = asdict(self)
-        result["operation_type"] = self.operation_type.value
-        return result
+        """从字典创建"""
+        if "observation_type" in data:
+            data["observation_type"] = ObservationType(data["observation_type"])
+        return cls(**data)
 
 
 @dataclass
 class Task:
-    """执行任务数据结构"""
-    id: str
-    name: str
-    description: str
-    priority: Priority = Priority.MEDIUM
+    """任务数据结构"""
+    id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    name: str = ""
+    description: str = ""
+    task_type: str = "general"
+    priority: TaskPriority = TaskPriority.MEDIUM
     status: TaskStatus = TaskStatus.PENDING
-    operation_type: OperationType = OperationType.UNKNOWN
     parameters: Dict[str, Any] = field(default_factory=dict)
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    updated_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    dependencies: List[str] = field(default_factory=list)
+    observation_id: Optional[str] = None
+    created_at: float = field(default_factory=time.time)
+    started_at: Optional[float] = None
+    completed_at: Optional[float] = None
     retry_count: int = 0
-    max_retries: int = 3
+    error_message: Optional[str] = None
     result: Optional[Dict[str, Any]] = None
-    error: Optional[str] = None
-    rollback_info: Optional[Dict[str, Any]] = None
-    
+    rollback_data: Optional[Dict[str, Any]] = None
+
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
-        result = asdict(self)
-        result["priority"] = self.priority.value
-        result["status"] = self.status.value
-        result["operation_type"] = self.operation_type.value
-        return result
-    
+        data = asdict(self)
+        data["priority"] = self.priority.name
+        data["status"] = self.status.value
+        return data
+
     @classmethod
     def from_dict(cls, data: Dict[str, Any]) -> "Task":
-        """从字典创建实例"""
-        data = data.copy()
+        """从字典创建"""
         if "priority" in data:
-            data["priority"] = Priority(data["priority"])
+            data["priority"] = TaskPriority[data["priority"]]
         if "status" in data:
             data["status"] = TaskStatus(data["status"])
-        if "operation_type" in data:
-            data["operation_type"] = OperationType(data["operation_type"])
-        return cls(**{k: v for k, v in data.items() if k in cls.__dataclass_fields__})
+        return cls(**data)
+
+    def mark_started(self) -> None:
+        """标记任务开始"""
+        self.status = TaskStatus.IN_PROGRESS
+        self.started_at = time.time()
+
+    def mark_completed(self, result: Optional[Dict[str, Any]] = None) -> None:
+        """标记任务完成"""
+        self.status = TaskStatus.COMPLETED
+        self.completed_at = time.time()
+        self.result = result
+
+    def mark_failed(self, error: str) -> None:
+        """标记任务失败"""
+        self.status = TaskStatus.FAILED
+        self.error_message = error
+        self.completed_at = time.time()
 
 
 @dataclass
 class SkillConfig:
     """技能配置数据结构"""
-    name: str
-    description: str
+    name: str = ""
+    description: str = ""
     version: str = "0.1.0"
     author: str = "autonomous_executor"
+    module_path: str = ""
     entry_point: str = "main"
-    dependencies: List[str] = field(default_factory=list)
+    requirements: List[str] = field(default_factory=list)
     parameters: Dict[str, Any] = field(default_factory=dict)
-    status: str = "active"
-    created_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
-    
+    status: SkillStatus = SkillStatus.DRAFT
+    created_at: float = field(default_factory=time.time)
+    updated_at: float = field(default_factory=time.time)
+    dependencies: List[str] = field(default_factory=list)
+    tags: List[str] = field(default_factory=list)
+
+    def to_dict(self) -> Dict[str, Any]:
+        """转换为字典"""
+        data = asdict(self)
+        data["status"] = self.status.value
+        return data
+
+    @classmethod
+    def from_dict(cls, data: Dict[str, Any]) -> "SkillConfig":
+        """从字典创建"""
+        if "status" in data:
+            data["status"] = SkillStatus(data["status"])
+        return cls(**data)
+
+
+@dataclass
+class ExecutionReport:
+    """执行报告数据结构"""
+    cycle_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp: float = field(default_factory=time.time)
+    observations_analyzed: int = 0
+    tasks_extracted: int = 0
+    tasks_executed: int = 0
+    tasks_completed: int = 0
+    tasks_failed: int = 0
+    tasks_retried: int = 0
+    execution_time: float = 0.0
+    errors: List[Dict[str, Any]] = field(default_factory=list)
+    summary: str = ""
+
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return asdict(self)
 
 
 @dataclass
-class ExecutionReport:
-    """执行状态报告"""
-    cycle_id: str
-    start_time: str
-    end_time: Optional[str] = None
-    observations_analyzed: int = 0
-    tasks_extracted: int = 0
-    tasks_executed: int = 0
-    tasks_succeeded: int = 0
-    tasks_failed: int = 0
-    tasks_retried: int = 0
-    errors: List[str] = field(default_factory=list)
-    details: List[Dict[str, Any]] = field(default_factory=list)
-    
+class ErrorReport:
+    """错误报告数据结构"""
+    error_id: str = field(default_factory=lambda: str(uuid.uuid4()))
+    timestamp: float = field(default_factory=time.time)
+    task_id: Optional[str] = None
+    error_type: str = ""
+    error_message: str = ""
+    stack_trace: str = ""
+    context: Dict[str, Any] = field(default_factory=dict)
+    severity: str = "medium"
+    resolved: bool = False
+
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
         return asdict(self)
 
 
-# =============================================================================
-# ObservationAnalyzer 类
-# =============================================================================
+# ============================================================================
+# ObservationAnalyzer
+# ============================================================================
 
 
 class ObservationAnalyzer:
     """
     观察分析器
     
-    负责读取、分析观察内容，提取可执行的任务项，
-    并根据进化目标对任务进行优先级排序。
+    负责读取、分析未处理的观察数据，从中提取结构化信息和可执行任务。
     """
-    
-    def __init__(self, observations_dir: Optional[str] = None) -> None:
-        """
-        初始化观察分析器
-        
-        Args:
-            observations_dir: 观察数据目录路径
-        """
-        self.observations_dir = Path(observations_dir or Config.OBSERVATIONS_DIR)
-        self.observations_dir.mkdir(parents=True, exist_ok=True)
-        self._unanalyzed_file = self.observations_dir / "observations_unanalyzed.json"
-        self._analyzed_file = self.observations_dir / "observations_analyzed.json"
-        logger.info(f"ObservationAnalyzer 初始化完成，目录: {self.observations_dir}")
-    
-    def _load_observations(self, file_path: Path) -> List[Observation]:
-        """
-        从文件加载观察数据
-        
-        Args:
-            file_path: 观察数据文件路径
-            
-        Returns:
-            观察列表
-        """
+
+    # 关键词到任务类型的映射
+    KEYWORD_TASK_MAP: Dict[str, str] = {
+        "创建技能": "skill_creation",
+        "create skill": "skill_creation",
+        "新建插件": "plugin_creation",
+        "create plugin": "plugin_creation",
+        "生成代码": "code_generation",
+        "generate code": "code_generation",
+        "创建文件": "file_creation",
+        "create file": "file_creation",
+        "修复错误": "error_fix",
+        "fix error": "error_fix",
+        "修复bug": "error_fix",
+        "fix bug": "error_fix",
+        "优化": "optimization",
+        "optimize": "optimization",
+        "测试": "testing",
+        "test": "testing",
+        "重构": "refactor",
+        "refactor": "refactor",
+    }
+
+    # 优先级关键词映射
