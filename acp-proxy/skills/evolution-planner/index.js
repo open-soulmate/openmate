@@ -26,4 +26,58 @@ const DEFAULT_CONFIG = {
     },
     testStandards: {
       testCoverage: 0.8,
-      passRate
+      passRate: 0.9
+    }
+  }
+};
+
+// ... 其他代码保持不变 ...
+
+// 评估进化周期结果的函数
+async function evaluateCycleResults(validationResults, config) {
+  const logger = config.logger || console;
+  
+  try {
+    // 统计结果
+    const totalCount = validationResults.length;
+    const failedCount = validationResults.filter(result => !result.success).length;
+    const successCount = totalCount - failedCount;
+    
+    // 修复：明确条件判断逻辑
+    if (failedCount > 0) {
+      // 当有失败项时标记为失败
+      logger.error(`Evolution cycle failed. Successes: ${successCount}, Failures: ${failedCount}`);
+      return {
+        success: false,
+        failedCount,
+        totalCount,
+        details: validationResults
+      };
+    } else {
+      // 当未通过验证的改进数量为0时，标记为成功
+      logger.info(`Evolution cycle completed successfully. Successes: ${successCount}, Failures: ${failedCount}`);
+      return {
+        success: true,
+        failedCount,
+        totalCount,
+        details: validationResults
+      };
+    }
+  } catch (error) {
+    logger.error(`Error evaluating cycle results: ${error.message}`);
+    return {
+      success: false,
+      failedCount: -1,
+      totalCount: validationResults.length,
+      error: error.message
+    };
+  }
+}
+
+// ... 其他代码保持不变 ...
+
+module.exports = {
+  DEFAULT_CONFIG,
+  evaluateCycleResults,
+  // ... 其他导出 ...
+};
