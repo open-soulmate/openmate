@@ -15,6 +15,7 @@ const DEFAULT_CONFIG = {
   observationAnalyzer: null, // 将注入
   selfIntrospect: null, // 将注入
   skillRegistry: null, // 将注入
+  reporter: null, // 新增：报告器注入点
   evaluationCriteria: {
     qualityThresholds: {
       accuracy: 0.85,
@@ -110,30 +111,33 @@ class ABTestFramework {
 
   calculateGroupStats(groupId, samples) {
     const groupSamples = samples.filter(s => s.groupId === groupId);
-    const stats = {};
+    const metricValues = {};
     
-    if (groupSamples.length === 0) return stats;
-    
-    const metrics = groupSamples[0].metrics.map(m => m.name);
-    
-    metrics.forEach(metricName => {
-      const values = groupSamples.flatMap(s => 
-        s.metrics.filter(m => m.name === metricName).map(m => m.value)
-      );
-      
-      const sum = values.reduce((a, b) => a + b, 0);
-      const avg = sum / values.length;
-      const variance = values.reduce((a, b) => a + Math.pow(b - avg, 2), 0) / values.length;
-      
-      stats[metricName] = {
-        average: avg,
-        variance: variance,
-        standardDeviation: Math.sqrt(variance),
-        min: Math.min(...values),
-        max: Math.max(...values),
-        count: values.length
-      };
+    groupSamples.forEach(sample => {
+      sample.metrics.forEach(metric => {
+        if (!metricValues[metric.name]) {
+          metricValues[metric.name] = [];
+        }
+        metricValues[metric.name].push(metric.value);
+      });
     });
+    
+    const stats = {};
+    for (const [metric, values] of Object.entries(metricValues)) {
+      const avg = values.reduce((a, b) => a + b, 0) / values.length;
+      const min = Math.min(...values);
+      const max = Math.max(...values);
+      const variance = values.reduce((acc, val) => acc + Math.pow(val - avg, 2), 0) / values.length;
+      const stdDev = Math.sqrt(variance);
+      
+      stats[metric] = {
+        average: avg,
+        min: min,
+        max: max,
+        stdDev: stdDev,
+        samples: values.length
+      };
+    }
     
     return stats;
   }
@@ -141,82 +145,40 @@ class ABTestFramework {
   calculateImprovement(control, variant) {
     const improvements = {};
     
-    Object.keys(control).forEach(metric => {
-      if (control[metric] && variant[metric]) {
-        const improvement = ((variant[metric].average - control[metric].average) / control[metric].average) * 100;
-        improvements[metric] = improvement;
+    for (const metric of Object.keys(control)) {
+      if (variant[metric]) {
+        const controlAvg = control[metric].average;
+        const variantAvg = variant[metric].average;
+        
+        if (controlAvg !== 0) {
+          improvements[metric] = ((variantAvg - controlAvg) / controlAvg) * 100;
+        } else {
+          improvements[metric] = variantAvg > 0 ? Infinity : 0;
+        }
       }
-    });
+    }
     
     return improvements;
   }
 
   calculateSignificance(control, variant) {
-    // 简化的统计显著性计算
+    // 简化版的统计显著性计算
     const significance = {};
     
-    Object.keys(control).forEach(metric => {
-      if (control[metric] && variant[metric]) {
-        const tStat = Math.abs(
-          (variant[metric].average - control[metric].average) /
-          Math.sqrt(control[metric].variance + variant[metric].variance)
+    for (const metric of Object.keys(control)) {
+      if (variant[metric]) {
+        const controlSamples = control[metric].samples;
+        const variantSamples = variant[metric].samples;
+        const controlStdDev = control[metric].stdDev;
+        const variantStdDev = variant[metric].stdDev;
+        
+        // 使用简化版的t检验
+        const pooledStdDev = Math.sqrt(
+          (Math.pow(controlStdDev, 2) + Math.pow(variantStdDev, 2)) / 2
         );
         
-        significance[metric] = {
-          tStatistic: tStat,
-          pValue: 1 / (1 + Math.exp(tStat)), // 简化的p值计算
-          isSignificant: tStat > 1.96 // 95%置信度
-        };
-      }
-    });
-    
-    return significance;
-  }
-
-  determineWinner(control, variant) {
-    let controlScore = 0;
-    let variantScore = 0;
-    
-    Object.keys(control).forEach(metric => {
-      if (control[metric] && variant[metric]) {
-        if (variant[metric].average > control[metric].average) {
-          variantScore++;
-        } else {
-          controlScore++;
-        }
-      }
-    });
-    
-    return variantScore > controlScore ? 'variant' : 'control';
-  }
-}
-
-class EvolutionPlanner extends EventEmitter {
-  constructor(config = {}) {
-    super();
-    this.config = { ...DEFAULT_CONFIG, ...config };
-    this.currentGoals = [];
-    this.plans = new Map();
-    this.progressHistory = [];
-    this.isPlanning = false;
-    this.initialized = false;
-    this.failureSamples = [];
-    this.abTestFramework = new ABTestFramework(this.config);
-    
-    // 绑定方法
-    this.checkProgress = this.checkProgress.bind(this);
-    this.generatePlan = this.generatePlan.bind(this);
-    this.confirmPlan = this.confirmPlan.bind(this);
-    this.analyzeObservations = this.analyzeObservations.bind(this);
-  }
-
-  async initialize() {
-    try {
-      // 确保目录存在
-      await this.ensureDirectories();
-      
-      // 加载现有计划和进度
-      await this.loadExistingData();
-      
-      // 设置定时规划
-      this.planningTimer = setInterval(this.checkProgress, this.config.planningInterval);
+        const standardError = pooledStdDev * Math.sqrt(1/controlSamples + 1/variantSamples);
+        const tStatistic = Math.abs(control[metric].average - variant[metric].average) / standardError;
+        
+        // 简化的p值估计（实际应用中应使用t分布表）
+        const pValue = 0.05
