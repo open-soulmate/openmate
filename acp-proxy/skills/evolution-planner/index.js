@@ -28,72 +28,107 @@ const DEFAULT_CONFIG = {
       testCoverage: 0.8,
       passRate: 0.9
     }
+  },
+  // 新增：兜底配置
+  fallbackConfig: {
+    healthCheckImprovement: {
+      name: '系统健康检查',
+      description: '执行一次全面的系统健康检查',
+      type: 'maintenance',
+      priority: 'high',
+      riskLevel: 'low',
+      estimatedTime: '30分钟',
+      requiredResources: ['system-monitor', 'diagnostic-tools']
+    },
+    historicalSuccessLimit: 5,
+    parameterAdjustmentRange: {
+      min: 0.1,
+      max: 0.3
+    }
   }
 };
 
 // ... 其他代码保持不变 ...
 
-// 评估进化周期结果的函数
-async function evaluateCycleResults(validationResults, config) {
+// 新增：输入数据验证函数
+function validateInputData(inputData) {
+  const logger = console; // 可以从配置中获取，这里先使用默认值
+  
+  const requiredFields = ['performanceMetrics', 'systemLogs'];
+  const missingFields = [];
+  
+  for (const field of requiredFields) {
+    if (!inputData || !inputData[field]) {
+      missingFields.push(field);
+    }
+  }
+  
+  if (missingFields.length > 0) {
+    const errorMessage = `输入数据无效：缺少必要字段 [${missingFields.join(', ')}]`;
+    logger.error(errorMessage, { inputData });
+    throw new Error(errorMessage);
+  }
+  
+  // 可以添加更详细的验证逻辑
+  return true;
+}
+
+// 新增：从历史成功改进中选取并微调
+async function getHistoricalSuccessImprovement(config) {
   const logger = config.logger || console;
   
   try {
-    // 首先检查validationResults数组是否为空
-    if (!validationResults || validationResults.length === 0) {
-      // 无改进项的情况，返回已跳过状态
-      logger.info('Evolution cycle skipped - no improvements to validate');
-      return {
-        success: true,
-        status: 'skipped',
-        failedCount: 0,
-        totalCount: 0,
-        message: 'No evolution improvements to validate in this cycle'
-      };
+    // 读取历史改进记录
+    const historyPath = config.knowledgeBasePath || DEFAULT_CONFIG.knowledgeBasePath;
+    let historicalData = [];
+    
+    try {
+      const historyData = await fs.readFile(historyPath, 'utf8');
+      historicalData = JSON.parse(historyData).filter(item => 
+        item.status === 'success' && item.improvement
+      );
+    } catch (readError) {
+      logger.warn(`读取历史记录失败: ${readError.message}`);
+      return null;
     }
     
-    // 统计结果
-    const totalCount = validationResults.length;
-    const failedCount = validationResults.filter(result => !result.success).length;
-    const successCount = totalCount - failedCount;
-    
-    // 根据失败项数量判定成功或失败
-    if (failedCount > 0) {
-      // 当有失败项时标记为失败
-      logger.error(`Evolution cycle failed. Successes: ${successCount}, Failures: ${failedCount}`);
-      return {
-        success: false,
-        status: 'failed',
-        failedCount,
-        totalCount,
-        details: validationResults
-      };
-    } else {
-      // 当未通过验证的改进数量为0时，标记为成功
-      logger.info(`Evolution cycle completed successfully. Successes: ${successCount}, Failures: ${failedCount}`);
-      return {
-        success: true,
-        status: 'completed',
-        failedCount,
-        totalCount,
-        details: validationResults
-      };
+    if (historicalData.length === 0) {
+      logger.warn('没有找到历史成功改进');
+      return null;
     }
-  } catch (error) {
-    logger.error(`Error evaluating cycle results: ${error.message}`);
-    return {
-      success: false,
-      status: 'error',
-      failedCount: -1,
-      totalCount: validationResults ? validationResults.length : 0,
-      error: error.message
+    
+    // 选取最近的一个成功改进
+    const recentSuccess = historicalData[historicalData.length - 1].improvement;
+    
+    // 参数微调：随机调整一些参数
+    const adjustmentRange = config.fallbackConfig?.parameterAdjustmentRange || 
+                           DEFAULT_CONFIG.fallbackConfig.parameterAdjustmentRange;
+    const adjustmentFactor = adjustmentRange.min + 
+      Math.random() * (adjustmentRange.max - adjustmentRange.min);
+    
+    // 创建微调后的改进提案
+    const adjustedImprovement = {
+      ...recentSuccess,
+      name: `${recentSuccess.name} (微调版)`,
+      description: `基于历史成功改进的参数微调，调整系数: ${adjustmentFactor.toFixed(2)}`,
+      parameters: {
+        ...recentSuccess.parameters,
+        adjustmentFactor,
+        lastSuccessfulDate: new Date().toISOString()
+      },
+      origin: 'historical_fallback'
     };
+    
+    logger.info('使用历史成功改进作为兜底策略');
+    return adjustedImprovement;
+  } catch (error) {
+    logger.error(`获取历史成功改进失败: ${error.message}`);
+    return null;
   }
 }
 
-// ... 其他代码保持不变 ...
-
-module.exports = {
-  DEFAULT_CONFIG,
-  evaluateCycleResults,
-  // ... 其他导出 ...
-};
+// 新增：生成预设低风险改进提案
+function generateLowRiskImprovement(config) {
+  const logger = config.logger || console;
+  
+  const fallbackConfig = config
