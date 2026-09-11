@@ -54,7 +54,17 @@ const DEFAULT_CONFIG = {
 function validateInputData(inputData) {
   const logger = console; // 可以从配置中获取，这里先使用默认值
   
-  const requiredFields = ['performanceMetrics', 'systemLogs'];
+  // 修复：扩展关键输入数据的验证字段列表，确保下游逻辑所需字段都被检查
+  const requiredFields = [
+    'performanceMetrics', 
+    'systemLogs', 
+    'currentGoals', 
+    'knowledgeBase',
+    'contextData',
+    'skillRegistry',
+    'historicalPlans'
+  ];
+  
   const missingFields = [];
   
   if (!inputData || typeof inputData !== 'object') {
@@ -99,71 +109,58 @@ async function getHistoricalSuccessImprovement(config) {
     
     if (historicalData.length === 0) {
       logger.warn('[getHistoricalSuccessImprovement] 没有找到历史成功改进记录，将返回兜底方案');
-      // 返回配置中的兜底方案
-      const fallbackImprovement = config.fallbackConfig?.healthCheckImprovement || DEFAULT_CONFIG.fallbackConfig.healthCheckImprovement;
-      return {
-        ...fallbackImprovement,
-        isFallback: true,
-        reason: '无历史成功改进记录'
-      };
+      
+      // 返回兜底方案
+      return config.fallbackConfig?.healthCheckImprovement || DEFAULT_CONFIG.fallbackConfig.healthCheckImprovement;
     }
     
-    // 选取最近的一个成功改进
-    const recentSuccess = historicalData[historicalData.length - 1].improvement;
+    // 取最近的成功改进记录
+    const recentSuccess = historicalData.slice(0, config.fallbackConfig?.historicalSuccessLimit || DEFAULT_CONFIG.fallbackConfig.historicalSuccessLimit);
     
-    // 参数微调：随机调整一些参数
-    const adjustmentRange = config.fallbackConfig?.parameterAdjustmentRange || 
-                           DEFAULT_CONFIG.fallbackConfig.parameterAdjustmentRange;
-    const adjustmentFactor = adjustmentRange.min + 
-      Math.random() * (adjustmentRange.max - adjustmentRange.min);
+    // 随机选择一个进行微调
+    const selected = recentSuccess[Math.floor(Math.random() * recentSuccess.length)];
     
-    // 创建微调后的改进提案
-    const adjustedImprovement = {
-      ...recentSuccess,
-      name: `${recentSuccess.name} (微调版)`,
-      // ... 其他微调逻辑保持不变 ...
-    };
+    // 微调参数
+    const adjustmentRange = config.fallbackConfig?.parameterAdjustmentRange || DEFAULT_CONFIG.fallbackConfig.parameterAdjustmentRange;
+    const adjustedImprovement = { ...selected.improvement };
     
-    logger.info(`[getHistoricalSuccessImprovement] 从历史记录中选取并微调了改进方案: ${adjustedImprovement.name}`);
+    // 对数值参数进行微调
+    if (adjustedImprovement.estimatedTime) {
+      const timeValue = parseFloat(adjustedImprovement.estimatedTime);
+      if (!isNaN(timeValue)) {
+        const adjustment = 1 + (Math.random() * (adjustmentRange.max - adjustmentRange.min) + adjustmentRange.min) * (Math.random() > 0.5 ? 1 : -1);
+        adjustedImprovement.estimatedTime = `${Math.round(timeValue * adjustment)}分钟`;
+      }
+    }
+    
+    logger.info('[getHistoricalSuccessImprovement] 从历史记录中选择改进方案进行微调', { 
+      originalId: selected.id,
+      adjustedName: adjustedImprovement.name 
+    });
+    
     return adjustedImprovement;
   } catch (error) {
-    logger.error(`[getHistoricalSuccessImprovement] 获取历史改进方案时发生未知错误: ${error.message}`, { error });
-    // 返回兜底方案
-    const fallbackImprovement = config.fallbackConfig?.healthCheckImprovement || DEFAULT_CONFIG.fallbackConfig.healthCheckImprovement;
-    return {
-      ...fallbackImprovement,
-      isFallback: true,
-      reason: '获取历史方案时发生错误'
-    };
+    logger.error(`[getHistoricalSuccessImprovement] 获取历史成功改进失败: ${error.message}`, { error });
+    return null;
   }
 }
 
-// 新增：代码改进评估函数 (修改后)
-async function evaluateCodeImprovement(improvementProposal, config) {
-  const logger = config.logger || console;
-  
-  logger.info('[evaluateCodeImprovement] 开始评估代码改进提案', { proposalName: improvementProposal?.name });
-  
-  // 1. 输入验证
-  const validationResult = validateInputData(improvementProposal);
-  if (!validationResult.valid) {
-    logger.error(`[evaluateCodeImprovement] 输入验证失败: ${validationResult.message}`, { proposal: improvementProposal });
-    // 返回失败状态，而非抛出异常
-    return {
-      success: false,
-      status: 'input_validation_failed',
-      message: validationResult.message,
-      missingFields: validationResult.missingFields,
-      details: { proposal: improvementProposal }
-    };
+// 新增：创建数据摘要函数
+function createDataSummary(data) {
+  if (!data || typeof data !== 'object') {
+    return '数据为空或无效';
   }
   
-  // 2. 执行评估逻辑 (原有逻辑的简化占位)
   try {
-    // ... 原有评估逻辑 ...
+    const summary = {};
+    const keys = Object.keys(data);
     
-    // 假设评估逻辑可能因为没有有效改进方案而需要特殊处理
-    const hasValidImprovements = true; // 替换为实际评估结果
-    
-    if (!hasValidImprovements) {
-      logger.warn('[evaluateCodeImpro
+    for (const key of keys) {
+      const value = data[key];
+      if (value === null || value === undefined) {
+        summary[key] = 'null/undefined';
+      } else if (Array.isArray(value)) {
+        summary[key] = `Array(${value.length})`;
+      } else if (typeof value === 'object') {
+        summary[key] = `Object(${Object.keys(value).length}个属性)`;
+      } else {
