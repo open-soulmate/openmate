@@ -25,3 +25,5 @@ const DEFAULT_CONFIG = {
       efficiency: 0.8
     },
     testStandards: {
+      testCoverage: 0.8,
+      passRate
