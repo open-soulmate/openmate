@@ -45,7 +45,9 @@ const DEFAULT_CONFIG = {
       min: 0.1,
       max: 0.3
     }
-  }
+  },
+  // 新增：无进展迭代计数器配置
+  noProgressIterationLimit: 3
 };
 
 // ... 其他代码保持不变 ...
@@ -84,6 +86,19 @@ function validateInputData(inputData) {
     return { valid: false, message: errorMessage, missingFields };
   }
   
+  // 增加对 skillRegistry 和 historicalPlans 字段的类型校验
+  if (typeof inputData.skillRegistry !== 'object' || inputData.skillRegistry === null) {
+    const errorMessage = '输入数据无效：skillRegistry 必须是一个非空对象';
+    logger.error(errorMessage, { skillRegistry: inputData.skillRegistry });
+    return { valid: false, message: errorMessage, missingFields: [] };
+  }
+  
+  if (!Array.isArray(inputData.historicalPlans)) {
+    const errorMessage = '输入数据无效：historicalPlans 必须是一个数组';
+    logger.error(errorMessage, { historicalPlans: inputData.historicalPlans });
+    return { valid: false, message: errorMessage, missingFields: [] };
+  }
+  
   // 可以添加更详细的验证逻辑
   return { valid: true, message: '验证通过', missingFields: [] };
 }
@@ -103,4 +118,8 @@ async function getHistoricalSuccessImprovement(config) {
         item.status === 'success' && item.improvement
       );
     } catch (readError) {
-      logger.error(`[getHistoricalSuccessImprovement] 读取历史记录失败: ${readError.message}`, { path: historyPath, error
+      logger.error(`[getHistoricalSuccessImprovement] 读取历史记录失败: ${readError.message}`, { path: historyPath, error: readError });
+      return null;
+    }
+    
+    if (historicalData.length === 0) {
