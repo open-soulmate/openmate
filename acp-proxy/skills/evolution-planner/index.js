@@ -59,18 +59,50 @@ class EvolutionPlanner extends EventEmitter {
     this.logger = this.config.logger || console;
   }
 
-  // 验证输入数据是否为非空有效对象
+  // 验证输入数据是否为非空有效对象或数组
   _validateInputData(data, fieldName) {
-    if (!data || typeof data !== 'object' || Object.keys(data).length === 0) {
-      const error = new Error(`输入数据 ${fieldName} 为空或无效对象`);
+    this.logger.debug(`开始验证输入数据: ${fieldName}。数据类型: ${typeof data}`);
+    
+    // 处理null/undefined
+    if (data === null || data === undefined) {
+      const error = new Error(`输入数据 ${fieldName} 为null或undefined`);
       this.logger.error(`数据验证失败: ${error.message}`);
       throw error;
     }
-    return true;
+
+    // 验证对象（排除数组和null）
+    if (typeof data === 'object' && !Array.isArray(data)) {
+      if (Object.keys(data).length === 0) {
+        const error = new Error(`输入数据 ${fieldName} 为空对象`);
+        this.logger.error(`数据验证失败: ${error.message}`);
+        throw error;
+      }
+      this.logger.debug(`输入数据 ${fieldName} 验证通过: 非空对象，包含 ${Object.keys(data).length} 个键`);
+      return true;
+    }
+
+    // 验证数组
+    if (Array.isArray(data)) {
+      if (data.length === 0) {
+        const error = new Error(`输入数据 ${fieldName} 为空数组`);
+        this.logger.error(`数据验证失败: ${error.message}`);
+        throw error;
+      }
+      this.logger.debug(`输入数据 ${fieldName} 验证通过: 非空数组，长度 ${data.length}`);
+      return true;
+    }
+
+    // 其他类型（字符串、数字、布尔值等）
+    const error = new Error(`输入数据 ${fieldName} 类型无效: ${typeof data}`);
+    this.logger.error(`数据验证失败: ${error.message}`);
+    throw error;
   }
 
   // 验证配置完整性
   _validateConfig() {
+    this.logger.debug('开始验证配置完整性');
+    
+    // 验证必需的函数配置
     const requiredConfigs = ['observationAnalyzer', 'codeSynthesizer'];
     for (const configKey of requiredConfigs) {
       if (!this.config[configKey] || typeof this.config[configKey] !== 'function') {
@@ -78,54 +110,42 @@ class EvolutionPlanner extends EventEmitter {
         this.logger.error(`配置验证失败: ${error.message}`);
         throw error;
       }
-    }
-  }
-
-  // 生成兜底改进项
-  _generateFallbackImprovement() {
-    this.logger.warn('触发兜底机制：生成系统健康检查改进');
-    
-    const healthCheckImprovement = {
-      ...this.config.fallbackConfig.healthCheckImprovement,
-      id: `health-check-${Date.now()}`,
-      timestamp: new Date().toISOString(),
-      isFallback: true,
-      generatedAt: new Date().toISOString(),
-      estimatedCompletion: new Date(Date.now() + 30 * 60 * 1000).toISOString() // 30分钟后
-    };
-    
-    return healthCheckImprovement;
-  }
-
-  // 验证代码合成器返回结果
-  _validateSynthesizerResult(result) {
-    if (!result || typeof result !== 'object' || Object.keys(result).length === 0) {
-      return false;
+      this.logger.debug(`配置 ${configKey} 验证通过: 已定义且为函数`);
     }
     
-    // 检查基本结构
-    const requiredFields = ['name', 'description', 'type', 'changes'];
-    for (const field of requiredFields) {
-      if (!(field in result)) {
-        return false;
+    // 验证evaluationCriteria结构完整性
+    this.logger.debug('开始验证evaluationCriteria配置结构');
+    if (!this.config.evaluationCriteria || typeof this.config.evaluationCriteria !== 'object') {
+      const error = new Error('evaluationCriteria配置缺失或不是对象');
+      this.logger.error(`配置验证失败: ${error.message}`);
+      throw error;
+    }
+    
+    const requiredCriteria = ['qualityThresholds', 'testStandards'];
+    for (const criteria of requiredCriteria) {
+      if (!this.config.evaluationCriteria[criteria] || typeof this.config.evaluationCriteria[criteria] !== 'object') {
+        const error = new Error(`evaluationCriteria.${criteria} 缺失或不是对象`);
+        this.logger.error(`配置验证失败: ${error.message}`);
+        throw error;
+      }
+    }
+    this.logger.debug('evaluationCriteria配置结构验证通过');
+    
+    // 验证fallbackConfig结构完整性
+    this.logger.debug('开始验证fallbackConfig配置结构');
+    if (!this.config.fallbackConfig || typeof this.config.fallbackConfig !== 'object') {
+      const error = new Error('fallbackConfig配置缺失或不是对象');
+      this.logger.error(`配置验证失败: ${error.message}`);
+      throw error;
+    }
+    
+    const requiredFallback = ['healthCheckImprovement', 'historicalSuccessLimit', 'parameterAdjustmentRange'];
+    for (const fallback of requiredFallback) {
+      if (!(fallback in this.config.fallbackConfig)) {
+        const error = new Error(`fallbackConfig.${fallback} 缺失`);
+        this.logger.error(`配置验证失败: ${error.message}`);
+        throw error;
       }
     }
     
-    return true;
-  }
-
-  async generateImprovements(currentCode, analysisReport, context = {}) {
-    const startTime = Date.now();
-    this.logger.info(`开始生成改进 | 函数: generateImprovements | 输入数据大小: code=${JSON.stringify(currentCode).length}, report=${JSON.stringify(analysisReport).length}`);
-    
-    try {
-      // 验证输入数据
-      this._validateInputData(currentCode, 'currentCode');
-      this._validateInputData(analysisReport, 'analysisReport');
-      
-      // 验证配置
-      this._validateConfig();
-      
-      this.logger.info('输入数据和配置验证通过，开始生成改进');
-
-      let improvements = [];
+    // 验证health
