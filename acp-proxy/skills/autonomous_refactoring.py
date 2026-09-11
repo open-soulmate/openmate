@@ -1,121 +1,160 @@
 import json
 import os
-import importlib
 import ast
-import traceback
+import re
+from typing import Dict, List, Any, Optional
 from pathlib import Path
-from typing import Dict, Any, List, Optional
-import sys
-
-# 确保技能模块可以正确导入
-current_dir = Path(__file__).parent
-project_root = current_dir.parent.parent
-sys.path.insert(0, str(project_root))
+import difflib
+from datetime import datetime
 
 class AutonomousRefactoring:
-    """
-    自主重构器技能
-    能够定期分析代码库状态、观察记录和目标进度，生成并实施小的、安全的代码改进任务
-    """
+    """自主重构器：分析代码库状态并生成安全的代码改进"""
     
     def __init__(self, state: Dict[str, Any]):
         """
         初始化自主重构器
         
         Args:
-            state: 状态字典，包含周期数、观察记录等信息
+            state: 包含系统状态的字典
         """
         self.state = state
-        self.state_file_path = Path("acp-proxy/state.json")
-        self.improvement_history = []
+        self.cycle = state.get("cycle", 0)
+        self.observations = state.get("observations", [])
+        self.history = state.get("history", [])
+        self.goals = state.get("goals", {})
+        self.base_path = Path("acp-proxy")
+        self.skills_path = self.base_path / "skills"
+        self.plugins_path = self.base_path / "plugins"
         
-    def analyze_and_plan(self) -> Optional[Dict[str, Any]]:
-        """
-        基于反思模式和目标优先级，分析当前状态并生成代码改进计划
-        
-        Returns:
-            改进计划字典，包含目标文件、修改内容等信息
-        """
+    def _load_state(self) -> Dict[str, Any]:
+        """从state.json文件重新加载状态"""
         try:
-            # 解析当前状态
-            cycle_count = self.state.get("cycle_count", 0)
-            observations = self.state.get("observations", [])
-            goals = self.state.get("goals", {})
-            history = self.state.get("history", [])
+            state_file = self.base_path / "state.json"
+            if state_file.exists():
+                with open(state_file, 'r', encoding='utf-8') as f:
+                    return json.load(f)
+        except Exception as e:
+            print(f"重新加载状态失败: {e}")
+        return self.state
+    
+    def _save_state(self, state: Dict[str, Any]) -> bool:
+        """保存状态到state.json文件"""
+        try:
+            state_file = self.base_path / "state.json"
+            with open(state_file, 'w', encoding='utf-8') as f:
+                json.dump(state, f, ensure_ascii=False, indent=2)
+            return True
+        except Exception as e:
+            print(f"保存状态失败: {e}")
+            return False
+    
+    def _should_run_refactoring(self) -> bool:
+        """判断是否应该运行自主重构（每10个运行周期）"""
+        return self.cycle % 10 == 0
+    
+    def _analyze_observations(self) -> Dict[str, Any]:
+        """分析观察记录，识别失败/成功模式"""
+        analysis = {
+            "failure_patterns": [],
+            "success_patterns": [],
+            "delay_observations": [],
+            "performance_issues": []
+        }
+        
+        for obs in self.observations:
+            if isinstance(obs, dict):
+                # 分析延迟观察
+                if "delay" in obs.get("type", "").lower():
+                    analysis["delay_observations"].append(obs)
+                # 分析失败模式
+                if obs.get("status") == "failure":
+                    analysis["failure_patterns"].append(obs)
+                # 分析性能问题
+                if "performance" in obs.get("description", "").lower():
+                    analysis["performance_issues"].append(obs)
+        
+        return analysis
+    
+    def _analyze_goals_progress(self) -> Dict[str, Any]:
+        """分析目标进度，识别需要优先改进的领域"""
+        goal_analysis = {
+            "low_progress_goals": [],
+            "critical_goals": []
+        }
+        
+        for goal_name, goal_info in self.goals.items():
+            if isinstance(goal_info, dict):
+                progress = goal_info.get("progress", 0)
+                priority = goal_info.get("priority", "medium")
+                
+                if progress < 30:  # 进度低于30%的目标
+                    goal_analysis["low_progress_goals"].append({
+                        "name": goal_name,
+                        "progress": progress,
+                        "priority": priority,
+                        "description": goal_info.get("description", "")
+                    })
+                
+                # 优先关注自编程和错误自修复目标
+                if priority == "high" or "自编程" in goal_name or "自修复" in goal_name:
+                    goal_analysis["critical_goals"].append({
+                        "name": goal_name,
+                        "progress": progress,
+                        "priority": priority,
+                        "description": goal_info.get("description", "")
+                    })
+        
+        return goal_analysis
+    
+    def _find_target_files(self) -> List[Path]:
+        """查找skills/和plugins/目录下的可修改文件"""
+        target_files = []
+        
+        # 查找skills目录下的Python文件
+        if self.skills_path.exists():
+            for file in self.skills_path.glob("*.py"):
+                if file.name != "autonomous_refactoring.py":  # 排除自身
+                    target_files.append(file)
+        
+        # 查找plugins目录下的Python文件
+        if self.plugins_path.exists():
+            for file in self.plugins_path.glob("*.py"):
+                target_files.append(file)
+        
+        return target_files
+    
+    def _analyze_code_structure(self, file_path: Path) -> Dict[str, Any]:
+        """分析代码文件的结构"""
+        try:
+            with open(file_path, 'r', encoding='utf-8') as f:
+                code = f.read()
             
-            # 分析反思模式
-            patterns = self._analyze_patterns(observations)
+            tree = ast.parse(code)
             
-            # 检查目标进度
-            target_goals = self._prioritize_goals(goals)
-            
-            # 只有每10个周期执行一次
-            if cycle_count % 10 != 0:
-                return None
-            
-            # 基于分析结果生成改进计划
-            plan = {
-                "target_file": None,
-                "target_function": None,
-                "modification_logic": "",
-                "verification_method": "",
-                "priority": 0,
-                "patterns_addressed": []
+            analysis = {
+                "functions": [],
+                "classes": [],
+                "imports": [],
+                "complexity": 0
             }
             
-            # 策略1：处理观察记录分析延迟
-            if "analysis_delay" in patterns:
-                plan["target_file"] = "acp-proxy/plugins/analysis_plugin.py"
-                plan["target_function"] = "analyze_observation"
-                plan["modification_logic"] = "添加异步处理和缓存机制，减少重复分析"
-                plan["verification_method"] = "验证分析延迟是否降低50%"
-                plan["priority"] = 3
-                plan["patterns_addressed"].append("analysis_delay")
+            for node in ast.walk(tree):
+                if isinstance(node, ast.FunctionDef):
+                    analysis["functions"].append({
+                        "name": node.name,
+                        "line": node.lineno,
+                        "args": [arg.arg for arg in node.args.args]
+                    })
+                elif isinstance(node, ast.ClassDef):
+                    analysis["classes"].append(node.name)
+                elif isinstance(node, (ast.Import, ast.ImportFrom)):
+                    analysis["imports"].append(ast.dump(node))
             
-            # 策略2：改进自编程能力（优先级最高）
-            elif goals.get("self_programming", {}).get("progress", 0) < 50:
-                plan["target_file"] = "acp-proxy/skills/autonomous_refactoring.py"
-                plan["target_function"] = "analyze_and_plan"
-                plan["modification_logic"] = "增强模式识别能力，添加机器学习模型进行代码分析"
-                plan["verification_method"] = "验证改进计划生成成功率提高20%"
-                plan["priority"] = 5
-                plan["patterns_addressed"].append("self_programming")
+            # 简单复杂度估计（基于函数和类的数量）
+            analysis["complexity"] = len(analysis["functions"]) + len(analysis["classes"]) * 2
             
-            # 策略3：处理错误修复模式
-            elif "error_pattern" in patterns:
-                plan["target_file"] = "acp-proxy/plugins/error_handler.py"
-                plan["target_function"] = "handle_error"
-                plan["modification_logic"] = "添加更详细的错误分类和修复建议"
-                plan["verification_method"] = "验证错误修复成功率提高30%"
-                plan["priority"] = 4
-                plan["patterns_addressed"].append("error_pattern")
-            
-            # 默认策略：通用代码优化
-            else:
-                plan["target_file"] = "acp-proxy/skills/base_skill.py"
-                plan["target_function"] = "execute"
-                plan["modification_logic"] = "添加性能监控和日志记录，优化执行流程"
-                plan["verification_method"] = "验证执行时间减少10%"
-                plan["priority"] = 2
-                plan["patterns_addressed"].append("general_optimization")
-            
-            return plan
-            
+            return analysis
         except Exception as e:
-            print(f"分析计划生成失败: {e}")
-            traceback.print_exc()
-            return None
+            print(f"分析文件 {file_path} 失败: {e}")
+            return {"functions": [], "classes": [], "imports": [], "complexity": 0}
     
-    def _analyze_patterns(self, observations: List[Dict]) -> Dict[str, Any]:
-        """
-        分析观察记录中的模式
-        
-        Args:
-            observations: 观察记录列表
-            
-        Returns:
-            检测到的模式字典
-        """
-        patterns = {}
-        
-        # 分析延迟模式
