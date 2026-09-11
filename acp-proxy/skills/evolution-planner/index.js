@@ -25,12 +25,3 @@ const DEFAULT_CONFIG = {
       efficiency: 0.8
     },
     testStandards: {
-      edgeCases: 10,
-      failureModes: 5,
-      loadTesting: true
-    },
-    synthesisValidation: { // 新增：合成代码验证配置
-      minConfidence: 0.7,
-      requiredFields: ['code', 'language', 'confidence', 'metadata'],
-      metadataRequiredFields: ['goal', 'timestamp', 'synthesizerVersion']
-    }
