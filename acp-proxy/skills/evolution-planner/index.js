@@ -38,17 +38,31 @@ async function evaluateCycleResults(validationResults, config) {
   const logger = config.logger || console;
   
   try {
+    // 首先检查validationResults数组是否为空
+    if (!validationResults || validationResults.length === 0) {
+      // 无改进项的情况，返回已跳过状态
+      logger.info('Evolution cycle skipped - no improvements to validate');
+      return {
+        success: true,
+        status: 'skipped',
+        failedCount: 0,
+        totalCount: 0,
+        message: 'No evolution improvements to validate in this cycle'
+      };
+    }
+    
     // 统计结果
     const totalCount = validationResults.length;
     const failedCount = validationResults.filter(result => !result.success).length;
     const successCount = totalCount - failedCount;
     
-    // 修复：明确条件判断逻辑
+    // 根据失败项数量判定成功或失败
     if (failedCount > 0) {
       // 当有失败项时标记为失败
       logger.error(`Evolution cycle failed. Successes: ${successCount}, Failures: ${failedCount}`);
       return {
         success: false,
+        status: 'failed',
         failedCount,
         totalCount,
         details: validationResults
@@ -58,6 +72,7 @@ async function evaluateCycleResults(validationResults, config) {
       logger.info(`Evolution cycle completed successfully. Successes: ${successCount}, Failures: ${failedCount}`);
       return {
         success: true,
+        status: 'completed',
         failedCount,
         totalCount,
         details: validationResults
@@ -67,8 +82,9 @@ async function evaluateCycleResults(validationResults, config) {
     logger.error(`Error evaluating cycle results: ${error.message}`);
     return {
       success: false,
+      status: 'error',
       failedCount: -1,
-      totalCount: validationResults.length,
+      totalCount: validationResults ? validationResults.length : 0,
       error: error.message
     };
   }
