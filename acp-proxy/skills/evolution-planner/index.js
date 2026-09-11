@@ -55,94 +55,16 @@ const DEFAULT_CONFIG = {
       min: 0.1,
       max: 0.3
     }
-  }
-};
-
-class EvolutionPlanner extends EventEmitter {
-  constructor(config = {}) {
-    super();
-    this.config = { ...DEFAULT_CONFIG, ...config };
-    this.currentPlan = null;
-    this.progress = new Map();
-    this.knowledgeBase = [];
-    this.validationHistory = new Map();
-    
-    this.logger = this.config.logger || console;
-  }
-
-  // 验证输入数据是否为非空有效对象或数组
-  async _validateInputData(data, fieldName, retryCount = 0) {
-    const startTime = Date.now();
-    const validationId = `${fieldName}_${Date.now()}`;
-    
-    this.logger.debug(`[验证开始] 字段: ${fieldName}, 开始时间: ${new Date(startTime).toISOString()}`);
-    this.logger.debug(`[验证详情] 字段: ${fieldName}, 数据类型: ${typeof data}, 数据值: ${JSON.stringify(data, null, 2).substring(0, 200)}`);
-    
-    try {
-      // 处理null/undefined
-      if (data === null || data === undefined) {
-        const error = new Error(`输入数据 ${fieldName} 为null或undefined`);
-        const duration = Date.now() - startTime;
-        this.logger.error(`[验证失败] 字段: ${fieldName}, 原因: ${error.message}, 耗时: ${duration}ms`);
-        this._recordValidationResult(validationId, fieldName, false, duration, error.message);
-        throw error;
-      }
-
-      // 验证对象（排除数组和null）
-      if (typeof data === 'object' && !Array.isArray(data)) {
-        if (Object.keys(data).length === 0) {
-          const error = new Error(`输入数据 ${fieldName} 为空对象`);
-          const duration = Date.now() - startTime;
-          this.logger.error(`[验证失败] 字段: ${fieldName}, 原因: ${error.message}, 耗时: ${duration}ms, 键数: 0`);
-          this._recordValidationResult(validationId, fieldName, false, duration, error.message);
-          throw error;
-        }
-        
-        // 验证evaluationCriteria的阈值配置
-        if (fieldName === 'evaluationCriteria') {
-          await this._validateEvaluationCriteria(data, validationId);
-        }
-        
-        this.logger.debug(`[验证详情] 字段: ${fieldName}, 对象验证通过, 键数: ${Object.keys(data).length}, 键列表: ${Object.keys(data).join(', ')}`);
-        const duration = Date.now() - startTime;
-        this.logger.debug(`[验证成功] 字段: ${fieldName}, 耗时: ${duration}ms`);
-        this._recordValidationResult(validationId, fieldName, true, duration);
-        return true;
-      }
-
-      // 验证数组
-      if (Array.isArray(data)) {
-        if (data.length === 0) {
-          const error = new Error(`输入数据 ${fieldName} 为空数组`);
-          const duration = Date.now() - startTime;
-          this.logger.error(`[验证失败] 字段: ${fieldName}, 原因: ${error.message}, 耗时: ${duration}ms, 长度: 0`);
-          this._recordValidationResult(validationId, fieldName, false, duration, error.message);
-          throw error;
-        }
-        this.logger.debug(`[验证详情] 字段: ${fieldName}, 数组验证通过, 长度: ${data.length}`);
-        const duration = Date.now() - startTime;
-        this.logger.debug(`[验证成功] 字段: ${fieldName}, 耗时: ${duration}ms`);
-        this._recordValidationResult(validationId, fieldName, true, duration);
-        return true;
-      }
-
-      // 验证其他类型
-      this.logger.debug(`[验证详情] 字段: ${fieldName}, 类型验证通过: ${typeof data}`);
-      const duration = Date.now() - startTime;
-      this.logger.debug(`[验证成功] 字段: ${fieldName}, 耗时: ${duration}ms`);
-      this._recordValidationResult(validationId, fieldName, true, duration);
-      return true;
-
-    } catch (error) {
-      return this._handleValidationFailure(error, fieldName, data, retryCount, validationId, startTime);
-    }
-  }
-
-  // 验证evaluationCriteria的阈值配置
-  async _validateEvaluationCriteria(criteria, validationId) {
-    const validateThreshold = (thresholdName, threshold) => {
-      if (!threshold || typeof threshold !== 'object') {
-        throw new Error(`阈值 ${thresholdName} 配置无效，应为对象`);
-      }
-      
-      if (typeof threshold.value !== 'number') {
+  },
+  // 新增：生成策略配置
+  generationStrategy: {
+    explorationRate: 0.7, // 探索率：0-1之间，越高越倾向于探索新方案
+    mutationStrength: 0.3, // 变异强度：0-1之间，控制变异幅度
+    diversityThreshold: 0.4, // 多样性阈值：0-1之间，低于此值会增加多样性
+    qualityThreshold: 0.6, // 质量阈值：0-1之间，候选改进的最低质量要求
+    adaptiveEnabled: true, // 是否启用自适应调整
+    maxConsecutiveFailures: 3, // 最大连续失败次数后触发自适应调整
+    presetStrategies: [
+      { name: '随机探索', weight: 0.2, explorationRate: 0.9 },
+      { name: '历史模式模仿', weight: 0.3, explorationRate: 0.3 },
+      { name: '系统优化', weight: 0.5, explorationRate: 0.5 }
