@@ -191,7 +191,7 @@ class LLMEngine:
                                 content = delta.get("content")
                                 if content:
                                     yield content
-                                if choices[0].get("finish_reason") == "stop":
+                                if choices[0].get("finish_reason") in ("stop", "tool_calls", "length"):
                                     return
                             except json.JSONDecodeError:
                                 continue
@@ -312,7 +312,7 @@ class LLMEngine:
                                         accumulated_tool_calls[idx]["function"]["name"] += func_delta["name"]
                                     if func_delta.get("arguments"):
                                         accumulated_tool_calls[idx]["function"]["arguments"] += func_delta["arguments"]
-                                if choice.get("finish_reason") == "stop":
+                                if choice.get("finish_reason") in ("stop", "tool_calls", "length"):
                                     if accumulated_tool_calls:
                                         yield {"tool_calls": [
                                             accumulated_tool_calls[i]
