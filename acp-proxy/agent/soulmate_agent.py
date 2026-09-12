@@ -229,7 +229,7 @@ class SoulMateAgent:
         Returns:
             (最终文本回答, 工具调用记录列表)
         """
-        MAX_DEPTH = 5
+        MAX_DEPTH = 15
         system_prompt = "你是SoulMate，OpenMate内置的AI助手。请用简洁清晰的中文回答。当有可用工具时，根据需要调用工具来更好地回答问题。"
 
         # 注入匹配的技能上下文
