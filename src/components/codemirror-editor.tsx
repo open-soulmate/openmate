@@ -78,6 +78,8 @@ export function CodeMirrorEditor({
   const viewRef = useRef<EditorView | null>(null);
   const onChangeRef = useRef(onChange);
   const onKeyDownRef = useRef(onKeyDown);
+  // Track whether the last doc change was from user typing (so we skip the value sync)
+  const userEditingRef = useRef(false);
 
   onChangeRef.current = onChange;
   onKeyDownRef.current = onKeyDown;
@@ -171,7 +173,10 @@ export function CodeMirrorEditor({
         ...extensions,
         EditorView.updateListener.of((update) => {
           if (update.docChanged) {
+            userEditingRef.current = true;
             onChangeRef.current(update.state.doc.toString());
+            // Reset flag after React has time to process the state update
+            requestAnimationFrame(() => { userEditingRef.current = false; });
           }
         }),
         EditorView.domEventHandlers({ keydown: handleKeyDown }),
@@ -190,6 +195,8 @@ export function CodeMirrorEditor({
   useEffect(() => {
     const view = viewRef.current;
     if (!view) return;
+    // Skip if the change came from user typing (avoids cursor jump race condition)
+    if (userEditingRef.current) return;
     const current = view.state.doc.toString();
     if (current !== value) {
       view.dispatch({
