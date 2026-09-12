@@ -337,10 +337,19 @@ class SoulMateAgent:
                                 metadata={"source": "agent_tool", "priority": priority},
                             )
                             result = f"⚠️ 立即执行失败({e})，已注入进化队列等待下次周期处理。"
-                    elif func_name == "check_evolution_status" and self._evolution_engine:
-                        status = self._evolution_engine.get_status()
-                        skills = self._evolution_engine.get_created_skills()
-                        quality = self._evolution_engine.get_evolution_quality()
+                    elif func_name == "check_evolution_status":
+                        if self._evolution_engine:
+                            status = self._evolution_engine.get_status()
+                            skills = self._evolution_engine.get_created_skills()
+                            quality = self._evolution_engine.get_evolution_quality()
+                        elif hasattr(self, '_evolution_api_url'):
+                            import httpx
+                            resp = httpx.get(f"{self._evolution_api_url}/api/evolution/status", timeout=10.0)
+                            status = resp.json() if resp.status_code == 200 else {}
+                            skills = []
+                            quality = {}
+                        else:
+                            status, skills, quality = {}, [], {}
                         result = json.dumps({"status": status, "skills": skills, "quality": quality}, ensure_ascii=False, indent=2)
                     else:
                         result = await self._call_mcp_tool(func_name, func_args)
