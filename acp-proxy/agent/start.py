@@ -23,7 +23,7 @@ from agent.llm_engine import LLMEngine
 logger = logging.getLogger("acp-agent")
 
 logging.basicConfig(
-    level=logging.INFO,
+    level=logging.DEBUG,
     format="%(asctime)s [%(name)s] %(levelname)s: %(message)s",
     handlers=[logging.StreamHandler(sys.stderr)],
 )

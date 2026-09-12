@@ -725,16 +725,16 @@ class SoulMateAgent:
 
                     # 工具执行完毕，跳出内层async for，继续外层for循环
                     break
-            else:
-                # 纯文本 chunk
-                chunk_text = str(chunk) if not isinstance(chunk, str) else chunk
-                if chunk_text:
-                    full_response += chunk_text
-                    if self._client is not None:
-                        await self._client.session_update(
-                            session_id=session_id,
-                            update=acp.update_agent_message_text(chunk_text),
-                        )
+                else:
+                    # 纯文本 chunk
+                    chunk_text = str(chunk) if not isinstance(chunk, str) else chunk
+                    if chunk_text:
+                        full_response += chunk_text
+                        if self._client is not None:
+                            await self._client.session_update(
+                                session_id=session_id,
+                                update=acp.update_agent_message_text(chunk_text),
+                            )
 
             # 如果没有工具调用，模型返回了纯文本，结束循环
             if not got_tool_call:

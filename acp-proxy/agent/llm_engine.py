@@ -190,6 +190,7 @@ class LLMEngine:
                                     continue
                                 content = delta.get("content")
                                 if content:
+                                    logger.debug(f"[LLM RAW] content='{content}'")
                                     yield content
                                 if choices[0].get("finish_reason") in ("stop", "tool_calls", "length"):
                                     return
@@ -292,6 +293,7 @@ class LLMEngine:
                                     continue
                                 content = delta.get("content")
                                 if content:
+                                    logger.debug(f"[LLM RAW] content='{content}'")
                                     yield content
                                 tool_calls_delta = delta.get("tool_calls") or []
                                 for tc_delta in tool_calls_delta:
@@ -370,6 +372,13 @@ class LLMEngine:
         """
         result = [{"role": "system", "content": system_prompt or self.system_prompt}]
         result.extend(history)
+        # Debug: log message roles and content preview
+        for i, m in enumerate(result):
+            role = m.get("role", "?")
+            content = m.get("content", "")
+            tc = m.get("tool_calls")
+            preview = str(content)[:100] if content else "None"
+            logger.info(f"[MSG {i}] role={role} content={preview} tool_calls={'yes' if tc else 'no'}")
         return result
 
     def _truncate_context(self, messages: list[dict], max_tokens: int = 32000) -> list[dict]:
