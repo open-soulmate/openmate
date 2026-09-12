@@ -182,10 +182,9 @@ export function SkirtTabs({
                   <path
                     d={genTabPath((tabWidths[tab.id] ?? 0)!, tabHeight)}
                     fill="none"
-                    stroke={isActive ? strokeColor : 'transparent'}
                     strokeWidth={1}
                     strokeLinejoin="round"
-                    style={{ transition: 'stroke 0.15s' }}
+                    style={{ stroke: isActive ? 'var(--color-border, var(--border))' : 'transparent', transition: 'stroke 0.15s' }}
                   />
                 </svg>
               )}
