@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
+import dynamic from "next/dynamic";
 import {
   Dna, Target, History, BarChart3, RefreshCw,
   CheckCircle2, XCircle, Clock, Zap, Brain,
@@ -10,6 +11,8 @@ import {
 import { PageLayout } from "@/components/page-layout";
 import { LeftPanel } from "@/components/left-panel";
 import { useAppStore } from "@/stores/app-store";
+
+const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
 
 const API_BASE =
   typeof window !== "undefined"
@@ -54,10 +57,13 @@ interface EvolutionGoal {
 
 interface EvolutionCycle {
   strand_id: string;
-  cycle_count: number;
-  improvements: number;
+  cycle_id?: string;
+  cycle_count?: number;
+  improvements_count?: number;
+  improvements?: number;
   success: boolean;
   timestamp: string;
+  executed_by?: string;
 }
 
 interface LogEntry {
@@ -147,179 +153,147 @@ function GanttChart({
   selectedId: string | null;
   onSelect: (id: string) => void;
 }) {
-  const chartRef = useRef<HTMLDivElement>(null);
-  const instRef = useRef<any>(null);
+  const categories = tasks.map(t => `${t.strand === "strand_a" ? "螺旋A" : "螺旋B"} #${t.cycle}`);
+  const now = Date.now();
+  const statusColors: Record<string, string> = { running: "#3b82f6", success: "#22c55e", error: "#ef4444" };
 
-  useEffect(() => {
-    if (!chartRef.current || tasks.length === 0) return;
-    const echarts = (window as any).echarts;
-    if (!echarts) return;
-
-    if (instRef.current) instRef.current.dispose();
-    const chart = echarts.init(chartRef.current, null, { renderer: "canvas" });
-    instRef.current = chart;
-
-    const categories = tasks.map(t => `${t.strand === "strand_a" ? "螺旋A" : "螺旋B"} #${t.cycle}`);
-    const now = Date.now();
-    const statusColors: Record<string, string> = { running: "#3b82f6", success: "#22c55e", error: "#ef4444" };
-
-    const barData = tasks.map((t, i) => ({
-      name: t.id,
-      value: [i, new Date(t.startTime).getTime(), t.endTime ? new Date(t.endTime).getTime() : now],
-      itemStyle: {
-        color: {
-          type: "linear", x: 0, y: 0, x2: 1, y2: 0,
-          colorStops: [
-            { offset: 0, color: statusColors[t.status] + "cc" },
-            { offset: 1, color: statusColors[t.status] },
-          ],
-        },
-        borderRadius: [0, 4, 4, 0],
+  const barData = tasks.map((t, i) => ({
+    name: t.id,
+    value: [i, new Date(t.startTime).getTime(), t.endTime ? new Date(t.endTime).getTime() : now],
+    itemStyle: {
+      color: {
+        type: "linear" as const, x: 0, y: 0, x2: 1, y2: 0,
+        colorStops: [
+          { offset: 0, color: statusColors[t.status] + "cc" },
+          { offset: 1, color: statusColors[t.status] },
+        ],
       },
-      task: t,
-    }));
+      borderRadius: [0, 4, 4, 0],
+    },
+  }));
 
-    const scatterData: any[] = [];
-    tasks.forEach((t, i) => {
-      t.steps.forEach(s => {
-        if (["plan", "implement", "evaluate", "reflect", "verdict", "error"].includes(s.stage)) {
-          scatterData.push({
-            value: [i, new Date(s.ts).getTime()],
-            itemStyle: { color: STAGE_COLORS[s.stage] || "#6b7280" },
-            step: s,
-          });
+  const scatterData: any[] = [];
+  tasks.forEach((t, i) => {
+    t.steps.forEach(s => {
+      if (["plan", "implement", "evaluate", "reflect", "verdict", "error"].includes(s.stage)) {
+        scatterData.push({
+          value: [i, new Date(s.ts).getTime()],
+          itemStyle: { color: STAGE_COLORS[s.stage] || "#6b7280" },
+        });
+      }
+    });
+  });
+
+  const option = {
+    backgroundColor: "transparent",
+    animation: true,
+    tooltip: {
+      trigger: "item" as const,
+      backgroundColor: "rgba(15,20,30,0.95)",
+      borderColor: "rgba(148,163,184,0.15)",
+      textStyle: { color: "#e8eef7", fontSize: 12 },
+      formatter: (params: any) => {
+        if (params.seriesIndex === 0) {
+          const idx = params.value[0];
+          const t = tasks[idx];
+          if (!t) return "";
+          const ms = t.endTime ? new Date(t.endTime).getTime() - new Date(t.startTime).getTime() : 0;
+          return `<div style="max-width:280px"><div style="font-weight:600;margin-bottom:4px">${t.strand === "strand_a" ? "螺旋A" : "螺旋B"} #${t.cycle}</div><div style="color:#93a0b4;font-size:11px">${t.summary || "无摘要"}</div><div style="margin-top:6px;font-size:11px"><span style="color:${statusColors[t.status]}">● ${t.status}</span> · ${formatDuration(ms)} · ${t.steps.length} 步骤</div></div>`;
         }
-      });
-    });
-
-    chart.setOption({
-      backgroundColor: "transparent",
-      animation: true,
-      tooltip: {
-        trigger: "item",
-        backgroundColor: "rgba(15,20,30,0.95)",
-        borderColor: "rgba(148,163,184,0.15)",
-        textStyle: { color: "#e8eef7", fontSize: 12 },
-        formatter: (params: any) => {
-          if (params.seriesIndex === 0) {
-            const t = params.data.task as GanttTask;
-            const ms = t.endTime ? new Date(t.endTime).getTime() - new Date(t.startTime).getTime() : 0;
-            return `<div style="max-width:280px"><div style="font-weight:600;margin-bottom:4px">${t.strand === "strand_a" ? "螺旋A" : "螺旋B"} #${t.cycle}</div><div style="color:#93a0b4;font-size:11px">${t.summary || "无摘要"}</div><div style="margin-top:6px;font-size:11px"><span style="color:${statusColors[t.status]}">● ${t.status}</span> · ${formatDuration(ms)} · ${t.steps.length} 步骤</div></div>`;
-          }
-          const s = params.data.step;
-          return `<div><div style="font-weight:600;color:${STAGE_COLORS[s.stage] || "#93a0b4"}">${STAGE_LABELS[s.stage] || s.stage}</div><div style="color:#93a0b4;font-size:11px;margin-top:2px">${s.msg.slice(0, 100)}</div></div>`;
-        },
+        return "";
       },
-      dataZoom: [
-        { type: "inside", xAxisIndex: 0, filterMode: "none" },
-        { type: "inside", yAxisIndex: 0, filterMode: "none" },
-      ],
-      grid: { left: 80, right: 16, top: 12, bottom: 24 },
-      xAxis: {
-        type: "time",
-        axisLine: { lineStyle: { color: "rgba(148,163,184,0.15)" } },
-        axisTick: { show: false },
-        axisLabel: { color: "#6b7a90", fontSize: 10 },
-        splitLine: { show: true, lineStyle: { color: "rgba(148,163,184,0.05)" } },
-      },
-      yAxis: {
-        type: "category",
-        data: categories,
-        inverse: true,
-        axisLine: { show: false },
-        axisTick: { show: false },
-        axisLabel: { color: "#93a0b4", fontSize: 11 },
-      },
-      series: [
-        { name: "进化任务", type: "bar", barWidth: 16, encode: { x: [1, 2], y: 0 }, data: barData },
-        { name: "进化节点", type: "scatter", symbolSize: 7, data: scatterData },
-      ],
-    });
+    },
+    dataZoom: [
+      { type: "inside" as const, xAxisIndex: 0, filterMode: "none" as const },
+      { type: "inside" as const, yAxisIndex: 0, filterMode: "none" as const },
+    ],
+    grid: { left: 80, right: 16, top: 12, bottom: 24 },
+    xAxis: {
+      type: "time" as const,
+      axisLine: { lineStyle: { color: "rgba(148,163,184,0.15)" } },
+      axisTick: { show: false },
+      axisLabel: { color: "#6b7a90", fontSize: 10 },
+      splitLine: { show: true, lineStyle: { color: "rgba(148,163,184,0.05)" } },
+    },
+    yAxis: {
+      type: "category" as const,
+      data: categories,
+      inverse: true,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: "#93a0b4", fontSize: 11 },
+    },
+    series: [
+      { name: "进化任务", type: "bar" as const, barWidth: 16, encode: { x: [1, 2], y: 0 }, data: barData },
+      { name: "进化节点", type: "scatter" as const, symbolSize: 7, data: scatterData },
+    ],
+  };
 
-    chart.on("click", (params: any) => {
-      if (params.seriesIndex === 0 && params.data?.task) onSelect(params.data.task.id);
-    });
+  const onEvents = {
+    click: (params: any) => {
+      if (params.seriesIndex === 0 && params.value?.[0] !== undefined) {
+        const t = tasks[params.value[0]];
+        if (t) onSelect(t.id);
+      }
+    },
+  };
 
-    const ro = new ResizeObserver(() => chart.resize());
-    ro.observe(chartRef.current);
-    return () => { ro.disconnect(); chart.dispose(); };
-  }, [tasks, onSelect]);
-
-  return <div ref={chartRef} style={{ width: "100%", height: Math.max(200, tasks.length * 34 + 50) }} />;
+  return (
+    <ReactECharts
+      option={option}
+      style={{ width: "100%", height: Math.max(200, tasks.length * 34 + 50) }}
+      onEvents={onEvents}
+      opts={{ renderer: "canvas" }}
+    />
+  );
 }
 
 /* ── Overview Chart ── */
 
 function OverviewChart({ tasks }: { tasks: GanttTask[] }) {
-  const chartRef = useRef<HTMLDivElement>(null);
-  const instRef = useRef<any>(null);
+  const dayMap = new Map<string, { success: number; error: number; running: number }>();
+  tasks.forEach(t => {
+    const dk = t.startTime.slice(0, 10);
+    if (!dayMap.has(dk)) dayMap.set(dk, { success: 0, error: 0, running: 0 });
+    const d = dayMap.get(dk)!;
+    d[t.status as keyof typeof d]++;
+  });
+  const days = [...dayMap.keys()].sort();
 
-  useEffect(() => {
-    if (!chartRef.current || tasks.length === 0) return;
-    const echarts = (window as any).echarts;
-    if (!echarts) return;
+  let level = 42;
+  const levelSeries = days.map(d => {
+    const dayTasks = tasks.filter(t => t.startTime.slice(0, 10) === d);
+    level = Math.min(100, level + dayTasks.filter(t => t.status === "success").length * 2);
+    return Number(level.toFixed(1));
+  });
 
-    if (instRef.current) instRef.current.dispose();
-    const chart = echarts.init(chartRef.current, null, { renderer: "canvas" });
-    instRef.current = chart;
-
-    // 按日聚合
-    const dayMap = new Map<string, { success: number; error: number; running: number }>();
-    tasks.forEach(t => {
-      const dk = t.startTime.slice(0, 10);
-      if (!dayMap.has(dk)) dayMap.set(dk, { success: 0, error: 0, running: 0 });
-      const d = dayMap.get(dk)!;
-      d[t.status as keyof typeof d]++;
-    });
-    const days = [...dayMap.keys()].sort();
-
-    let level = 42;
-    const levelSeries = days.map(d => {
-      const dayTasks = tasks.filter(t => t.startTime.slice(0, 10) === d);
-      level = Math.min(100, level + dayTasks.filter(t => t.status === "success").length * 2);
-      return Number(level.toFixed(1));
-    });
-
-    chart.setOption({
-      backgroundColor: "transparent",
-      animationDuration: 700,
-      tooltip: {
-        trigger: "axis",
-        backgroundColor: "rgba(15,20,30,0.95)",
-        borderColor: "rgba(148,163,184,0.15)",
-        textStyle: { color: "#e8eef7", fontSize: 12 },
+  const option = {
+    backgroundColor: "transparent",
+    animationDuration: 700,
+    tooltip: { trigger: "axis" as const, backgroundColor: "rgba(15,20,30,0.95)", borderColor: "rgba(148,163,184,0.15)", textStyle: { color: "#e8eef7", fontSize: 12 } },
+    grid: { left: 40, right: 40, top: 16, bottom: 24 },
+    xAxis: {
+      type: "category" as const, data: days.map(d => d.slice(5)),
+      axisLine: { lineStyle: { color: "rgba(148,163,184,0.15)" } }, axisTick: { show: false }, axisLabel: { color: "#6b7a90", fontSize: 10 },
+    },
+    yAxis: [
+      { type: "value" as const, splitLine: { lineStyle: { color: "rgba(148,163,184,0.06)" } }, axisLabel: { color: "#6b7a90", fontSize: 10 } },
+      { type: "value" as const, min: 0, max: 100, splitLine: { show: false }, axisLabel: { color: "#6b7a90", fontSize: 10 } },
+    ],
+    series: [
+      { name: "成功", type: "bar" as const, stack: "total", barWidth: 14, itemStyle: { color: "#22c55e" }, data: days.map(d => dayMap.get(d)?.success || 0) },
+      { name: "失败", type: "bar" as const, stack: "total", barWidth: 14, itemStyle: { color: "#ef4444" }, data: days.map(d => dayMap.get(d)?.error || 0) },
+      { name: "进行中", type: "bar" as const, stack: "total", barWidth: 14, itemStyle: { color: "#3b82f6", borderRadius: [4, 4, 0, 0] }, data: days.map(d => dayMap.get(d)?.running || 0) },
+      {
+        name: "能力指数", type: "line" as const, yAxisIndex: 1, smooth: true, symbol: "circle", symbolSize: 6,
+        lineStyle: { width: 2.5, color: "#5b8cff" }, itemStyle: { color: "#5b8cff", borderColor: "#0b0f14", borderWidth: 2 },
+        areaStyle: { color: { type: "linear" as const, x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(91,140,255,0.25)" }, { offset: 1, color: "rgba(91,140,255,0)" }] } },
+        data: levelSeries, z: 3,
       },
-      grid: { left: 40, right: 40, top: 16, bottom: 24 },
-      xAxis: {
-        type: "category",
-        data: days.map(d => d.slice(5)),
-        axisLine: { lineStyle: { color: "rgba(148,163,184,0.15)" } },
-        axisTick: { show: false },
-        axisLabel: { color: "#6b7a90", fontSize: 10 },
-      },
-      yAxis: [
-        { type: "value", splitLine: { lineStyle: { color: "rgba(148,163,184,0.06)" } }, axisLabel: { color: "#6b7a90", fontSize: 10 } },
-        { type: "value", min: 0, max: 100, splitLine: { show: false }, axisLabel: { color: "#6b7a90", fontSize: 10 } },
-      ],
-      series: [
-        { name: "成功", type: "bar", stack: "total", barWidth: 14, itemStyle: { color: "#22c55e" }, data: days.map(d => dayMap.get(d)?.success || 0) },
-        { name: "失败", type: "bar", stack: "total", barWidth: 14, itemStyle: { color: "#ef4444" }, data: days.map(d => dayMap.get(d)?.error || 0) },
-        { name: "进行中", type: "bar", stack: "total", barWidth: 14, itemStyle: { color: "#3b82f6", borderRadius: [4, 4, 0, 0] }, data: days.map(d => dayMap.get(d)?.running || 0) },
-        {
-          name: "能力指数", type: "line", yAxisIndex: 1, smooth: true, symbol: "circle", symbolSize: 6,
-          lineStyle: { width: 2.5, color: "#5b8cff" }, itemStyle: { color: "#5b8cff", borderColor: "#0b0f14", borderWidth: 2 },
-          areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(91,140,255,0.25)" }, { offset: 1, color: "rgba(91,140,255,0)" }] } },
-          data: levelSeries, z: 3,
-        },
-      ],
-    });
+    ],
+  };
 
-    const ro = new ResizeObserver(() => chart.resize());
-    ro.observe(chartRef.current);
-    return () => { ro.disconnect(); chart.dispose(); };
-  }, [tasks]);
-
-  return <div ref={chartRef} style={{ width: "100%", height: 200 }} />;
+  return <ReactECharts option={option} style={{ width: "100%", height: 200 }} opts={{ renderer: "canvas" }} />;
 }
 
 /* ── Detail Panel ── */
@@ -570,7 +544,7 @@ export default function EvolutionPage() {
     for (const h of history) {
       const key = `${h.strand_id}_c${h.cycle_count}`;
       if (!map.has(key)) {
-        map.set(key, { id: key, strand: h.strand_id, cycle: h.cycle_count, startTime: h.timestamp, endTime: h.timestamp, status: h.success ? "success" : "error", steps: [], summary: `${h.improvements} 项改进` });
+        map.set(key, { id: key, strand: h.strand_id, cycle: h.cycle_count ?? 0, startTime: h.timestamp, endTime: h.timestamp, status: h.success ? "success" : "error", steps: [], summary: `${h.improvements_count ?? h.improvements ?? 0} 项改进` });
       }
     }
     return [...map.values()].sort((a, b) => a.startTime.localeCompare(b.startTime));
