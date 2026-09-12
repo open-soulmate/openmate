@@ -25,48 +25,163 @@ def handle_signal(sig, frame):
 OBSERVE_INTERVAL = 120  # 自省/观察频率（秒），可通过API动态修改
 
 
+# ── 外部学习配置 ──────────────────────────────────
+GITHUB_LEARN_INTERVAL = 3600  # 每小时学习一次GitHub
+_last_github_learn = 0
+
+async def _learn_github_trending(strand, repo_root: Path):
+    """从GitHub Top AI Agent项目学习架构和最佳实践"""
+    import time
+    global _last_github_learn
+    now = time.time()
+    if now - _last_github_learn < GITHUB_LEARN_INTERVAL:
+        return
+    _last_github_learn = now
+
+    try:
+        # 搜索GitHub上最热门的AI Agent项目
+        result = subprocess.run(
+            ["curl", "-s", "-H", "Accept: application/vnd.github.v3+json",
+             "https://api.github.com/search/repositories?q=ai+agent+framework&sort=stars&order=desc&per_page=10"],
+            capture_output=True, text=True, timeout=30
+        )
+        if result.returncode == 0:
+            data = json.loads(result.stdout)
+            repos = data.get("items", [])[:10]
+            summaries = []
+            for r in repos:
+                summaries.append(f"- {r['full_name']} ({r['stargazers_count']}★): {r.get('description', 'N/A')[:80]}")
+            if summaries:
+                strand.observe("github_learn", f"Top AI Agent repos today:\n" + "\n".join(summaries))
+                logger.info(f"[GitHub] Learned {len(summaries)} trending repos")
+
+                # 对top3深入学习：读README摘要
+                for r in repos[:3]:
+                    try:
+                        readme = subprocess.run(
+                            ["curl", "-s", f"https://raw.githubusercontent.com/{r['full_name']}/main/README.md"],
+                            capture_output=True, text=True, timeout=15
+                        )
+                        if readme.returncode == 0 and len(readme.stdout) > 100:
+                            # 提取前500字符作为摘要
+                            summary = readme.stdout[:500].replace("\n", " ").strip()
+                            strand.observe("github_learn", f"[{r['full_name']}] README摘要: {summary}...")
+                    except Exception:
+                        pass
+    except Exception as e:
+        logger.warning(f"[GitHub learn error] {e}")
+
+
+def _learn_user_feedback(strand, repo_root: Path):
+    """从最近的用户对话中提取反馈"""
+    try:
+        # 读取最近的hermes session记录
+        sessions_dir = Path.home() / ".hermes" / "sessions"
+        if not sessions_dir.exists():
+            return
+
+        # 找最近的session文件
+        session_files = sorted(sessions_dir.glob("*.jsonl"), key=lambda f: f.stat().st_mtime, reverse=True)[:3]
+        feedbacks = []
+        for sf in session_files:
+            try:
+                with open(sf) as f:
+                    lines = f.readlines()[-20:]  # 最后20条
+                for line in lines:
+                    try:
+                        msg = json.loads(line)
+                        if msg.get("role") == "user":
+                            text = str(msg.get("content", ""))[:200]
+                            # 过滤出有价值的反馈
+                            keywords = ["不好", "不对", "垃圾", "很好", "不错", "改", "加", "删", "优化", "bug", "错误", "漂亮", "喜欢", "讨厌", "烦"]
+                            if any(kw in text for kw in keywords):
+                                feedbacks.append(text)
+                    except Exception:
+                        pass
+            except Exception:
+                pass
+
+        if feedbacks:
+            # 去重，最多5条
+            unique = list(dict.fromkeys(feedbacks))[:5]
+            strand.observe("user_feedback", f"Recent user feedback ({len(unique)} items):\n" + "\n".join(f"- {f}" for f in unique))
+    except Exception as e:
+        logger.warning(f"[User feedback error] {e}")
+
+
+def _learn_build_results(strand, repo_root: Path):
+    """从最近的构建结果中学习"""
+    try:
+        # 检查next.js构建日志
+        build_log = repo_root / ".next" / "trace"
+        if build_log.exists():
+            mtime = build_log.stat().st_mtime
+            import time
+            age_hours = (time.time() - mtime) / 3600
+            if age_hours < 24:
+                strand.observe("build_result", f"Next.js build: last build {age_hours:.1f}h ago, trace exists")
+
+        # 检查是否有构建错误日志
+        error_log = repo_root / ".next" / "server" / "app-build-manifest.json"
+        if error_log.exists():
+            strand.observe("build_result", f"Build manifest present, size={error_log.stat().st_size}")
+
+        # 检查git status是否有未提交的改动
+        result = subprocess.run(["git", "status", "--porcelain"], capture_output=True, text=True, cwd=str(repo_root))
+        if result.returncode == 0 and result.stdout.strip():
+            changed = result.stdout.strip().split("\n")
+            strand.observe("build_result", f"Uncommitted changes: {len(changed)} files modified")
+    except Exception as e:
+        logger.warning(f"[Build result error] {e}")
+
+
+def _learn_code_diffs(strand, repo_root: Path):
+    """从最近的代码改动中学习"""
+    try:
+        # 最近3个commit的diff
+        result = subprocess.run(
+            ["git", "log", "--oneline", "-3", "--stat"],
+            capture_output=True, text=True, cwd=str(repo_root)
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            strand.observe("code_diff", f"Recent commits:\n{result.stdout.strip()}")
+
+        # 最近commit的详细diff（只看关键文件）
+        result2 = subprocess.run(
+            ["git", "diff", "HEAD~1..HEAD", "--stat"],
+            capture_output=True, text=True, cwd=str(repo_root)
+        )
+        if result2.returncode == 0 and result2.stdout.strip():
+            strand.observe("code_diff", f"Latest commit diff summary:\n{result2.stdout.strip()[:500]}")
+    except Exception as e:
+        logger.warning(f"[Code diff error] {e}")
+
+
 async def self_observe(strand, loop_interval):
-    """自观察：每loop_interval秒扫描系统状态，生成观察数据注入进化引擎"""
+    """自观察+外部学习：每loop_interval秒扫描系统状态和外部知识"""
     import dna_strand_runner as _self
     while True:
-        # 每次循环读取最新配置（支持API动态修改）
         await asyncio.sleep(_self.OBSERVE_INTERVAL)
         try:
             repo_root = Path(__file__).parent.parent.parent
             acp_dir = repo_root / "acp-proxy"
 
-            # 观察1: 文件数量变化
-            py_files = list(acp_dir.rglob("*.py"))
-            ts_files = list((repo_root / "src").rglob("*.ts")) if (repo_root / "src").exists() else []
-            strand.observe("self_scan", f"System scan: {len(py_files)} Python files, {len(ts_files)} TypeScript files in project")
-
-            # 观察2: 技能目录状态
-            skills_dir = acp_dir / "skills"
-            if skills_dir.exists():
-                skill_files = list(skills_dir.glob("*.json"))
-                strand.observe("self_scan", f"Skills directory has {len(skill_files)} registered skills: {[f.stem for f in skill_files]}")
-
-            # 观察3: 最近git变更
-            try:
-                result = subprocess.run(["git", "log", "--oneline", "-5"], capture_output=True, text=True, cwd=str(acp_dir))
-                if result.returncode == 0 and result.stdout.strip():
-                    strand.observe("self_scan", f"Recent git changes:\n{result.stdout.strip()}")
-            except Exception:
-                pass
-
-            # 观察4: 项目结构感知
-            try:
-                main_files = []
-                for f in acp_dir.glob("*.py"):
-                    if f.stat().st_size > 500:
-                        main_files.append(f"{f.name} ({f.stat().st_size} bytes)")
-                strand.observe("self_scan", f"Core modules: {', '.join(main_files[:10])}")
-            except Exception:
-                pass
-
-            # 观察5: 进化引擎自身的状态自省
+            # ── 内部状态（精简）──
             status = strand.get_status()
-            strand.observe("self_introspect", f"My status: cycle_count={status['cycle_count']}, memories={status['memories']}, observations_unanalyzed={status['observations_unanalyzed']}")
+            strand.observe("self_introspect", f"Status: cycle={status['cycle_count']}, mem={status['memories']}, unanalyzed={status['observations_unanalyzed']}")
+
+            # ── 外部学习 ──
+            # 1. GitHub Top项目学习（每小时）
+            await _learn_github_trending(strand, repo_root)
+
+            # 2. 用户反馈学习
+            _learn_user_feedback(strand, repo_root)
+
+            # 3. 构建结果学习
+            _learn_build_results(strand, repo_root)
+
+            # 4. 代码diff学习
+            _learn_code_diffs(strand, repo_root)
 
         except Exception as e:
             logger.warning(f"[{strand.strand_id}] Self-observe error: {e}")
