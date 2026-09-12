@@ -247,6 +247,7 @@ class SoulMateAgent:
         
         # 添加进化引擎工具
         evolution_tools = []
+        logger.info(f"[TOOLS] _evolution_engine exists: {self._evolution_engine is not None}")
         if self._evolution_engine:
             evolution_tools = [{
                 "type": "function",
