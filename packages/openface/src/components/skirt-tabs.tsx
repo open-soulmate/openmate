@@ -140,7 +140,7 @@ export function SkirtTabs({
   );
 
   return (
-    <div className={className}>
+    <div className={className} style={{ transform: 'translateY(-0.5px)' }}>
       {/* Tab bar */}
       <div
         ref={tabBarRef}
@@ -219,7 +219,7 @@ export function SkirtTabs({
         />
         <div
           className="absolute top-0 right-0"
-          style={{ height: 1, background: underlineColor, right: -extraRight, top: 1, width: Math.max(0, barRight - activeTabLeft - activeTabWidth - SKIRT + extraRight) }}
+          style={{ height: 1, background: underlineColor, right: -extraRight, width: Math.max(0, barRight - activeTabLeft - activeTabWidth - SKIRT + extraRight) }}
         />
       </div>
     </div>
