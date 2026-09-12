@@ -6,7 +6,10 @@
 
 import logging
 import json
+import os
+import subprocess
 import sqlite3
+import tempfile
 import time
 import uuid
 from pathlib import Path
@@ -469,7 +472,6 @@ class SoulMateAgent:
 
                     # ── 基础工具执行 ───────────────────────────────
                     if func_name == "read_file":
-                        import subprocess
                         try:
                             path = func_args.get("path", "")
                             offset = func_args.get("offset", 1)
@@ -487,7 +489,6 @@ class SoulMateAgent:
                             result = f"读取失败: {e}"
 
                     elif func_name == "write_file":
-                        import subprocess
                         try:
                             path = func_args.get("path", "")
                             file_content = func_args.get("content", "")
@@ -500,7 +501,6 @@ class SoulMateAgent:
                             result = f"写入失败: {e}"
 
                     elif func_name == "terminal":
-                        import subprocess
                         try:
                             cmd = func_args.get("command", "")
                             proc = subprocess.run(
@@ -516,7 +516,6 @@ class SoulMateAgent:
                             result = f"执行失败: {e}"
 
                     elif func_name == "search_files":
-                        import subprocess
                         try:
                             pattern = func_args.get("pattern", "")
                             path = func_args.get("path", ".")
@@ -549,7 +548,6 @@ class SoulMateAgent:
                             result = f"修改失败: {e}"
 
                     elif func_name == "execute_code":
-                        import subprocess, tempfile, os
                         try:
                             code = func_args.get("code", "")
                             with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, dir="/tmp") as f:
@@ -570,7 +568,6 @@ class SoulMateAgent:
                             result = f"执行失败: {e}"
 
                     elif func_name == "web_search":
-                        import subprocess
                         try:
                             query = func_args.get("query", "")
                             limit = func_args.get("limit", 5)
@@ -580,7 +577,6 @@ class SoulMateAgent:
                                 capture_output=True, text=True, timeout=15,
                             )
                             if proc.returncode == 0 and proc.stdout:
-                                import json
                                 data = json.loads(proc.stdout)
                                 results = data.get("results", [])[:limit]
                                 lines = []
@@ -594,7 +590,6 @@ class SoulMateAgent:
                             result = f"搜索失败: {e}"
 
                     elif func_name == "web_extract":
-                        import subprocess
                         try:
                             url = func_args.get("url", "")
                             proc = subprocess.run(
