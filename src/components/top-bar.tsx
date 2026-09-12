@@ -41,6 +41,7 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
 
   const navItems = [
     { id: "notifications", icon: Bell, label: t("nav.notifications", "通知"), href: "/notifications", ...(eventCount > 0 ? { badge: eventCount } : {}) },
+    { id: "dashboard", icon: Gauge, label: t("nav.dashboard", "仪表盘"), href: "/dashboard" },
     { id: "download", icon: Download, label: t("nav.download", "下载"), href: "/download" },
     { id: "evolution", icon: Dna, label: t("nav.evolution", "进化"), href: "/evolution" },
     { id: "plugins", icon: Plug, label: t("nav.plugins", "插件"), href: "/plugins" },

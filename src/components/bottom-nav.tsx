@@ -40,7 +40,6 @@ const DEFAULT_ICON = FileText;
 // Settings is NOT in scrollable items — it's fixed on the right
 const baseNavItems: BottomNavItem[] = [
   { href: "/chat", label: "nav.chat", icon: MessageSquare },
-  { href: "/dashboard", label: "nav.dashboard", icon: LayoutDashboard },
   { href: "/ai-groups", label: "nav.aiGroups", icon: Users },
   { href: "/agents", label: "nav.agents", icon: Server },
   { href: "/knowledge", label: "nav.knowledge", icon: BookOpen },
