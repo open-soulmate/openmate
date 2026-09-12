@@ -352,54 +352,88 @@ function DetailPanel({ task }: { task: GanttTask | null }) {
 
 /* ── Evolution Config ── */
 
+interface ConfigItem {
+  key: string;
+  label: string;
+  desc: string;
+  min: number;
+  step: number;
+  fmt: (s: number) => string;
+}
+
+const CONFIG_ITEMS: ConfigItem[] = [
+  { key: "evolution_interval", label: "进化周期", desc: "主进化循环间隔", min: 1800, step: 600,
+    fmt: s => s >= 3600 ? `${(s/3600).toFixed(1)}小时` : `${Math.round(s/60)}分钟` },
+  { key: "observe_interval", label: "自省频率", desc: "观察/自省扫描间隔", min: 30, step: 30,
+    fmt: s => s >= 3600 ? `${(s/3600).toFixed(1)}小时` : `${Math.round(s/60)}分钟` },
+  { key: "reflection_interval", label: "反思间隔", desc: "深度反思触发间隔", min: 120, step: 60,
+    fmt: s => s >= 3600 ? `${(s/3600).toFixed(1)}小时` : `${Math.round(s/60)}分钟` },
+  { key: "batch_analysis_interval", label: "批量分析", desc: "批量分析间隔", min: 600, step: 300,
+    fmt: s => s >= 3600 ? `${(s/3600).toFixed(1)}小时` : `${Math.round(s/60)}分钟` },
+  { key: "heartbeat_interval", label: "心跳间隔", desc: "伙伴心跳间隔", min: 3, step: 1,
+    fmt: s => `${s}秒` },
+];
+
 function EvolutionConfig() {
-  const [interval, setInterval] = useState<number | null>(null);
-  const [inputVal, setInputVal] = useState("");
-  const [saving, setSaving] = useState(false);
-  const [msg, setMsg] = useState("");
+  const [config, setConfig] = useState<Record<string, number>>({});
+  const [inputs, setInputs] = useState<Record<string, string>>({});
+  const [saving, setSaving] = useState<string | null>(null);
+  const [msg, setMsg] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch(`${API_BASE}/api/evolution/config`).then(r => r.json()).then(d => {
-      setInterval(d.evolution_interval);
-      setInputVal(String(d.evolution_interval));
+      const c: Record<string, number> = {};
+      const i: Record<string, string> = {};
+      for (const item of CONFIG_ITEMS) {
+        if (d[item.key] != null) { c[item.key] = d[item.key]; i[item.key] = String(d[item.key]); }
+      }
+      setConfig(c);
+      setInputs(i);
     }).catch(() => {});
   }, []);
 
-  const save = async () => {
-    const val = parseInt(inputVal);
-    if (isNaN(val) || val < 1800) { setMsg("⚠️ 最短30分钟"); return; }
-    setSaving(true);
+  const save = async (item: ConfigItem) => {
+    const val = parseInt(inputs[item.key]);
+    if (isNaN(val) || val < item.min) {
+      setMsg(p => ({ ...p, [item.key]: `⚠️ 最短${item.fmt(item.min)}` }));
+      return;
+    }
+    setSaving(item.key);
     try {
       const r = await fetch(`${API_BASE}/api/evolution/config`, {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ evolution_interval: val }),
+        body: JSON.stringify({ [item.key]: val }),
       });
       const d = await r.json();
-      if (d.error) setMsg(`❌ ${d.error}`);
-      else { setInterval(val); setMsg(`✅ ${val >= 3600 ? (val / 3600) + "小时" : (val / 60) + "分钟"}`); }
-    } catch { setMsg("❌ 保存失败"); }
-    setSaving(false);
-    setTimeout(() => setMsg(""), 3000);
+      if (d.error) setMsg(p => ({ ...p, [item.key]: `❌ ${d.error}` }));
+      else { setConfig(p => ({ ...p, [item.key]: val })); setMsg(p => ({ ...p, [item.key]: `✅ ${item.fmt(val)}` })); }
+    } catch { setMsg(p => ({ ...p, [item.key]: "❌ 保存失败" })); }
+    setSaving(null);
+    setTimeout(() => setMsg(p => { const n = { ...p }; delete n[item.key]; return n; }), 3000);
   };
-
-  const fmt = (s: number) => s >= 3600 ? `${s / 3600}小时` : `${s / 60}分钟`;
 
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="flex items-center gap-2 mb-3">
         <Clock size={14} className="text-primary" />
         <span className="text-xs font-semibold">进化配置</span>
-        {interval && <span className="text-[10px] text-muted-foreground ml-auto">当前: {fmt(interval)}</span>}
       </div>
-      <div className="flex items-center gap-2">
-        <label className="text-[11px] text-muted-foreground">周期:</label>
-        <input type="number" min={1800} step={600} value={inputVal} onChange={e => setInputVal(e.target.value)}
-          className="w-20 rounded-lg border border-border bg-background px-2 py-1 text-xs" />
-        <button onClick={save} disabled={saving}
-          className="rounded-lg bg-primary px-3 py-1 text-xs text-primary-foreground hover:opacity-80 disabled:opacity-50">
-          {saving ? "…" : "保存"}
-        </button>
-        {msg && <span className="text-[10px]">{msg}</span>}
+      <div className="space-y-2">
+        {CONFIG_ITEMS.map(item => (
+          <div key={item.key} className="flex items-center gap-2">
+            <div className="flex-1 min-w-0">
+              <div className="text-[11px] font-medium">{item.label}</div>
+              <div className="text-[10px] text-muted-foreground truncate">{item.desc}{config[item.key] != null && ` · 当前: ${item.fmt(config[item.key])}`}</div>
+            </div>
+            <input type="number" min={item.min} step={item.step} value={inputs[item.key] || ""} onChange={e => setInputs(p => ({ ...p, [item.key]: e.target.value }))}
+              className="w-20 rounded-lg border border-border bg-background px-2 py-1 text-xs" />
+            <button onClick={() => save(item)} disabled={saving === item.key}
+              className="rounded-lg bg-primary px-2.5 py-1 text-[10px] text-primary-foreground hover:opacity-80 disabled:opacity-50 shrink-0">
+              {saving === item.key ? "…" : "保存"}
+            </button>
+            {msg[item.key] && <span className="text-[10px] shrink-0">{msg[item.key]}</span>}
+          </div>
+        ))}
       </div>
     </div>
   );

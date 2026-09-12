@@ -417,25 +417,56 @@ async def get_timeline(days: int = 7):
 async def get_evolution_config():
     """获取进化引擎配置"""
     import dna_evolution
+    import evolution
+    import dna_strand_runner
     return {
         "evolution_interval": dna_evolution.EVOLUTION_INTERVAL,
         "heartbeat_interval": dna_evolution.HEARTBEAT_INTERVAL,
         "heartbeat_timeout": dna_evolution.HEARTBEAT_TIMEOUT,
+        "observe_interval": dna_strand_runner.OBSERVE_INTERVAL,
+        "reflection_interval": evolution.REFLECTION_INTERVAL,
+        "batch_analysis_interval": evolution.BATCH_ANALYSIS_INTERVAL,
     }
 
 
 class UpdateConfigRequest(BaseModel):
     evolution_interval: Optional[int] = None
+    heartbeat_interval: Optional[int] = None
+    observe_interval: Optional[int] = None
+    reflection_interval: Optional[int] = None
+    batch_analysis_interval: Optional[int] = None
 
 
 @router.post("/config")
 async def update_evolution_config(req: UpdateConfigRequest):
     """动态修改进化引擎配置"""
     import dna_evolution
+    import evolution
+    import dna_strand_runner
     changes = {}
     if req.evolution_interval is not None:
         if req.evolution_interval < 1800:
             return {"error": "进化间隔不能小于30分钟（1800秒）"}
         dna_evolution.EVOLUTION_INTERVAL = req.evolution_interval
         changes["evolution_interval"] = req.evolution_interval
+    if req.heartbeat_interval is not None:
+        if req.heartbeat_interval < 3:
+            return {"error": "心跳间隔不能小于3秒"}
+        dna_evolution.HEARTBEAT_INTERVAL = req.heartbeat_interval
+        changes["heartbeat_interval"] = req.heartbeat_interval
+    if req.observe_interval is not None:
+        if req.observe_interval < 30:
+            return {"error": "自省间隔不能小于30秒"}
+        dna_strand_runner.OBSERVE_INTERVAL = req.observe_interval
+        changes["observe_interval"] = req.observe_interval
+    if req.reflection_interval is not None:
+        if req.reflection_interval < 120:
+            return {"error": "反思间隔不能小于2分钟"}
+        evolution.REFLECTION_INTERVAL = req.reflection_interval
+        changes["reflection_interval"] = req.reflection_interval
+    if req.batch_analysis_interval is not None:
+        if req.batch_analysis_interval < 600:
+            return {"error": "批量分析间隔不能小于10分钟"}
+        evolution.BATCH_ANALYSIS_INTERVAL = req.batch_analysis_interval
+        changes["batch_analysis_interval"] = req.batch_analysis_interval
     return {"ok": True, "changes": changes}

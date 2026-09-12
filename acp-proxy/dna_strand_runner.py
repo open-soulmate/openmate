@@ -21,11 +21,16 @@ def handle_signal(sig, frame):
     logger.info(f"Received signal {sig}, shutting down...")
     shutdown_event.set()
 
+# ── 可配置周期参数 ──────────────────────────────────
+OBSERVE_INTERVAL = 120  # 自省/观察频率（秒），可通过API动态修改
+
 
 async def self_observe(strand, loop_interval):
     """自观察：每loop_interval秒扫描系统状态，生成观察数据注入进化引擎"""
+    import dna_strand_runner as _self
     while True:
-        await asyncio.sleep(loop_interval)
+        # 每次循环读取最新配置（支持API动态修改）
+        await asyncio.sleep(_self.OBSERVE_INTERVAL)
         try:
             repo_root = Path(__file__).parent.parent.parent
             acp_dir = repo_root / "acp-proxy"
@@ -97,8 +102,8 @@ async def run_strand(strand_id: str, strategy: str):
         # 启动进化循环
         evo_task = asyncio.create_task(strand.run(partner_id))
 
-        # 启动自观察循环（每120秒扫描一次）
-        observe_task = asyncio.create_task(self_observe(strand, 120))
+        # 启动自观察循环（使用OBSERVE_INTERVAL，可通过API动态修改）
+        observe_task = asyncio.create_task(self_observe(strand, OBSERVE_INTERVAL))
 
         # 等待关闭信号
         await shutdown_event.wait()
