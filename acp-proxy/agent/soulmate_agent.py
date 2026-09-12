@@ -245,6 +245,66 @@ class SoulMateAgent:
         # 获取 MCP 工具 + 进化引擎工具
         mcp_tools = await self._fetch_mcp_tools()
         
+        # ── 基础工具（文件读写、终端执行、搜索）──────────────
+        builtin_tools = [{
+            "type": "function",
+            "function": {
+                "name": "read_file",
+                "description": "读取文件内容，支持行号范围。用于查看代码、配置文件、日志等。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "文件路径（绝对或相对路径）"},
+                        "offset": {"type": "integer", "description": "起始行号（从1开始）", "default": 1},
+                        "limit": {"type": "integer", "description": "最大读取行数", "default": 100},
+                    },
+                    "required": ["path"],
+                },
+            },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "write_file",
+                "description": "写入文件（覆盖模式）。用于创建或修改代码、配置文件。注意：会完全覆盖原有内容。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "文件路径"},
+                        "content": {"type": "string", "description": "要写入的完整内容"},
+                    },
+                    "required": ["path", "content"],
+                },
+            },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "terminal",
+                "description": "执行终端命令。用于运行脚本、查看系统状态、安装依赖、git操作等。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "command": {"type": "string", "description": "要执行的shell命令"},
+                    },
+                    "required": ["command"],
+                },
+            },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "search_files",
+                "description": "搜索文件内容或按文件名查找文件。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "pattern": {"type": "string", "description": "搜索模式（正则表达式或glob）"},
+                        "path": {"type": "string", "description": "搜索目录", "default": "."},
+                        "target": {"type": "string", "enum": ["content", "files"], "description": "搜索内容还是搜索文件名", "default": "content"},
+                    },
+                    "required": ["pattern"],
+                },
+            },
+        }]
+
         # 添加进化引擎工具（支持直接对象或HTTP API两种模式）
         evolution_tools = []
         has_evolution = self._evolution_engine is not None or hasattr(self, '_evolution_api_url')
@@ -283,7 +343,7 @@ class SoulMateAgent:
                 },
             }]
         
-        all_tools = (mcp_tools or []) + evolution_tools
+        all_tools = builtin_tools + (mcp_tools or []) + evolution_tools
 
         async for chunk in self.llm_engine.chat_stream_with_tools(
             messages=messages,
@@ -312,8 +372,72 @@ class SoulMateAgent:
                     except json.JSONDecodeError:
                         func_args = {}
 
-                    # 内置进化引擎工具（支持直接对象或HTTP API）
-                    if func_name == "request_evolution":
+                    # ── 基础工具执行 ───────────────────────────────
+                    if func_name == "read_file":
+                        import subprocess
+                        try:
+                            path = func_args.get("path", "")
+                            offset = func_args.get("offset", 1)
+                            limit = func_args.get("limit", 100)
+                            proc = subprocess.run(
+                                ["sed", "-n", f"{offset},{offset + limit - 1}p", path],
+                                capture_output=True, text=True, timeout=10,
+                            )
+                            if proc.returncode == 0 and proc.stdout:
+                                lines = proc.stdout.split("\\n")
+                                result = "\\n".join(f"{offset + i}|{line}" for i, line in enumerate(lines))
+                            else:
+                                result = f"错误: {proc.stderr or '文件不存在或为空'}"
+                        except Exception as e:
+                            result = f"读取失败: {e}"
+
+                    elif func_name == "write_file":
+                        import subprocess
+                        try:
+                            path = func_args.get("path", "")
+                            file_content = func_args.get("content", "")
+                            # 创建目录
+                            subprocess.run(["mkdir", "-p", str(Path(path).parent)], timeout=5)
+                            with open(path, "w", encoding="utf-8") as f:
+                                f.write(file_content)
+                            result = f"已写入 {path} ({len(file_content)} 字节)"
+                        except Exception as e:
+                            result = f"写入失败: {e}"
+
+                    elif func_name == "terminal":
+                        import subprocess
+                        try:
+                            cmd = func_args.get("command", "")
+                            proc = subprocess.run(
+                                cmd, shell=True, capture_output=True, text=True, timeout=30,
+                            )
+                            output = proc.stdout + proc.stderr
+                            result = output[:3000] if output else "(无输出)"
+                            if proc.returncode != 0:
+                                result += f"\\n[exit code: {proc.returncode}]"
+                        except subprocess.TimeoutExpired:
+                            result = "命令超时（30秒）"
+                        except Exception as e:
+                            result = f"执行失败: {e}"
+
+                    elif func_name == "search_files":
+                        import subprocess
+                        try:
+                            pattern = func_args.get("pattern", "")
+                            path = func_args.get("path", ".")
+                            target = func_args.get("target", "content")
+                            if target == "files":
+                                cmd = ["find", path, "-name", pattern, "-type", "f"]
+                            else:
+                                cmd = ["grep", "-rn", "--include=*.py", "--include=*.ts", "--include=*.tsx", "--include=*.js", pattern, path]
+                            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                            output = proc.stdout[:3000] if proc.stdout else "(无结果)"
+                            result = output
+                        except Exception as e:
+                            result = f"搜索失败: {e}"
+
+                    # ── 进化引擎工具 ─────────────────────────────────
+                    elif func_name == "request_evolution":
                         feature = func_args.get("feature", "")
                         priority = func_args.get("priority", "normal")
                         try:
