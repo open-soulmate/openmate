@@ -215,7 +215,7 @@ async def ws_acp_endpoint(client_ws: WebSocket):
                 if "cwd" not in p:
                     p["cwd"] = route.get("cwd", "/home/climbing")
                 if "mcpServers" not in p:
-                    p["mcpServers"] = {}
+                    p["mcpServers"] = []
             _msg = json.dumps(msg, ensure_ascii=False)
             if use_pty:
                 os.write(master_fd, (_msg + "\n").encode())
@@ -234,6 +234,7 @@ async def ws_acp_endpoint(client_ws: WebSocket):
         try:
             while True:
                 raw = await client_ws.receive_text()
+                logger.info(f"[{user_id}] ws_to_stdin: forwarding {len(raw)} chars")
                 if use_pty:
                     os.write(master_fd, (raw + "\n").encode())
                 else:
@@ -242,7 +243,7 @@ async def ws_acp_endpoint(client_ws: WebSocket):
         except (WebSocketDisconnect, ConnectionError):
             pass
         except Exception as e:
-            logger.debug(f"[{user_id}] ws_to_stdin: {e}")
+            logger.info(f"[{user_id}] ws_to_stdin ERROR: {e}")
         finally:
             try:
                 if use_pty:
@@ -317,7 +318,7 @@ async def ws_acp_endpoint(client_ws: WebSocket):
                 line = await proc.stderr.readline()
                 if not line:
                     break
-                logger.debug(f"[{agent_id}] {line.decode().strip()}")
+                logger.info(f"[{agent_id}] stderr: {line.decode().strip()}")
         except Exception:
             pass
 

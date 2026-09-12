@@ -810,6 +810,7 @@ class SoulMateAgent:
         流式推送：通过 AgentSideConnection.session_update() 发送 AgentMessageChunk，
         客户端收到 session_update 通知即可实时显示生成内容。
         """
+        logger.info(f"[prompt] CALLED! session={session_id}, parts={len(prompt)}")
         session = self.sessions.get(session_id)
         if not session:
             logger.error(f"Session not found: {session_id}")
@@ -830,6 +831,7 @@ class SoulMateAgent:
         session["messages"].append({"role": "user", "content": user_text})
         self._save_message(session_id, "user", user_text)
         logger.info(f"Prompt [{session_id}]: {user_text[:100]}")
+        logger.info(f"[_run_llm_with_tools] starting, client={self._client is not None}")
 
         # ── 技能匹配 ──────────────────────────────────────
         matched_skills = self._skill_manager.search_skills(user_text, limit=3)
@@ -887,6 +889,7 @@ class SoulMateAgent:
         session["messages"].append({"role": "assistant", "content": full_response})
         self._save_message(session_id, "assistant", full_response)
         logger.info(f"Response [{session_id}]: {full_response[:100]}")
+        logger.info(f"[prompt] done, response_len={len(full_response)}, tools={tool_calls_log}")
 
         # ── 记录技能使用 ──────────────────────────────────
         for skill in matched_skills:
