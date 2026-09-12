@@ -452,272 +452,272 @@ class SoulMateAgent:
                     tool_calls = chunk["tool_calls"]
                     got_tool_call = True
 
-                # 推送工具调用状态给前端
-                for tc in tool_calls:
-                    func_name = tc["function"]["name"]
-                    if self._client is not None:
-                        await self._client.session_update(
-                            session_id=session_id,
-                            update=acp.update_agent_message_text(f"\n🔧 调用工具: {func_name}...\n"),
-                        )
-
-                # 执行所有工具调用并收集结果
-                tool_results = []
-                for tc in tool_calls:
-                    func_name = tc["function"]["name"]
-                    try:
-                        func_args = json.loads(tc["function"]["arguments"]) if tc["function"]["arguments"] else {}
-                    except json.JSONDecodeError:
-                        func_args = {}
-
-                    # ── 基础工具执行 ───────────────────────────────
-                    if func_name == "read_file":
-                        try:
-                            path = func_args.get("path", "")
-                            offset = func_args.get("offset", 1)
-                            limit = func_args.get("limit", 100)
-                            proc = subprocess.run(
-                                ["sed", "-n", f"{offset},{offset + limit - 1}p", path],
-                                capture_output=True, text=True, timeout=10,
+                    # 推送工具调用状态给前端
+                    for tc in tool_calls:
+                        func_name = tc["function"]["name"]
+                        if self._client is not None:
+                            await self._client.session_update(
+                                session_id=session_id,
+                                update=acp.update_agent_message_text(f"\n🔧 调用工具: {func_name}...\n"),
                             )
-                            if proc.returncode == 0 and proc.stdout:
-                                lines = proc.stdout.split("\\n")
-                                result = "\\n".join(f"{offset + i}|{line}" for i, line in enumerate(lines))
-                            else:
-                                result = f"错误: {proc.stderr or '文件不存在或为空'}"
-                        except Exception as e:
-                            result = f"读取失败: {e}"
 
-                    elif func_name == "write_file":
+                    # 执行所有工具调用并收集结果
+                    tool_results = []
+                    for tc in tool_calls:
+                        func_name = tc["function"]["name"]
                         try:
-                            path = func_args.get("path", "")
-                            file_content = func_args.get("content", "")
-                            # 创建目录
-                            subprocess.run(["mkdir", "-p", str(Path(path).parent)], timeout=5)
-                            with open(path, "w", encoding="utf-8") as f:
-                                f.write(file_content)
-                            result = f"已写入 {path} ({len(file_content)} 字节)"
-                        except Exception as e:
-                            result = f"写入失败: {e}"
+                            func_args = json.loads(tc["function"]["arguments"]) if tc["function"]["arguments"] else {}
+                        except json.JSONDecodeError:
+                            func_args = {}
 
-                    elif func_name == "terminal":
-                        try:
-                            cmd = func_args.get("command", "")
-                            proc = subprocess.run(
-                                cmd, shell=True, capture_output=True, text=True, timeout=30,
-                            )
-                            output = proc.stdout + proc.stderr
-                            result = output[:3000] if output else "(无输出)"
-                            if proc.returncode != 0:
-                                result += f"\\n[exit code: {proc.returncode}]"
-                        except subprocess.TimeoutExpired:
-                            result = "命令超时（30秒）"
-                        except Exception as e:
-                            result = f"执行失败: {e}"
+                        # ── 基础工具执行 ───────────────────────────────
+                        if func_name == "read_file":
+                            try:
+                                path = func_args.get("path", "")
+                                offset = func_args.get("offset", 1)
+                                limit = func_args.get("limit", 100)
+                                proc = subprocess.run(
+                                    ["sed", "-n", f"{offset},{offset + limit - 1}p", path],
+                                    capture_output=True, text=True, timeout=10,
+                                )
+                                if proc.returncode == 0 and proc.stdout:
+                                    lines = proc.stdout.split("\\n")
+                                    result = "\\n".join(f"{offset + i}|{line}" for i, line in enumerate(lines))
+                                else:
+                                    result = f"错误: {proc.stderr or '文件不存在或为空'}"
+                            except Exception as e:
+                                result = f"读取失败: {e}"
 
-                    elif func_name == "search_files":
-                        try:
-                            pattern = func_args.get("pattern", "")
-                            path = func_args.get("path", ".")
-                            target = func_args.get("target", "content")
-                            if target == "files":
-                                cmd = ["find", path, "-name", pattern, "-type", "f"]
-                            else:
-                                cmd = ["grep", "-rn", "--include=*.py", "--include=*.ts", "--include=*.tsx", "--include=*.js", pattern, path]
-                            proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
-                            output = proc.stdout[:3000] if proc.stdout else "(无结果)"
-                            result = output
-                        except Exception as e:
-                            result = f"搜索失败: {e}"
-
-                    elif func_name == "patch":
-                        try:
-                            path = func_args.get("path", "")
-                            old_string = func_args.get("old_string", "")
-                            new_string = func_args.get("new_string", "")
-                            with open(path, "r", encoding="utf-8") as f:
-                                file_content = f.read()
-                            if old_string not in file_content:
-                                result = f"错误: 在 {path} 中未找到匹配文本"
-                            else:
-                                file_content = file_content.replace(old_string, new_string, 1)
+                        elif func_name == "write_file":
+                            try:
+                                path = func_args.get("path", "")
+                                file_content = func_args.get("content", "")
+                                # 创建目录
+                                subprocess.run(["mkdir", "-p", str(Path(path).parent)], timeout=5)
                                 with open(path, "w", encoding="utf-8") as f:
                                     f.write(file_content)
-                                result = f"已修改 {path}"
-                        except Exception as e:
-                            result = f"修改失败: {e}"
+                                result = f"已写入 {path} ({len(file_content)} 字节)"
+                            except Exception as e:
+                                result = f"写入失败: {e}"
 
-                    elif func_name == "execute_code":
-                        try:
-                            code = func_args.get("code", "")
-                            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, dir="/tmp") as f:
-                                f.write(code)
-                                tmp_path = f.name
-                            proc = subprocess.run(
-                                ["python3", tmp_path],
-                                capture_output=True, text=True, timeout=60,
-                            )
-                            os.unlink(tmp_path)
-                            output = proc.stdout + proc.stderr
-                            result = output[:5000] if output else "(无输出)"
-                            if proc.returncode != 0:
-                                result += f"\n[exit code: {proc.returncode}]"
-                        except subprocess.TimeoutExpired:
-                            result = "执行超时（60秒）"
-                        except Exception as e:
-                            result = f"执行失败: {e}"
-
-                    elif func_name == "web_search":
-                        try:
-                            query = func_args.get("query", "")
-                            limit = func_args.get("limit", 5)
-                            # 用 curl 调用 searxng 或直接返回提示
-                            proc = subprocess.run(
-                                ["curl", "-s", f"http://localhost:8888/search?q={query}&format=json&pageno=1"],
-                                capture_output=True, text=True, timeout=15,
-                            )
-                            if proc.returncode == 0 and proc.stdout:
-                                data = json.loads(proc.stdout)
-                                results = data.get("results", [])[:limit]
-                                lines = []
-                                for r in results:
-                                    lines.append(f"- {r.get('title', '')}: {r.get('url', '')}")
-                                    lines.append(f"  {r.get('content', '')[:100]}")
-                                result = "\n".join(lines) if lines else "无搜索结果"
-                            else:
-                                result = f"搜索不可用: {proc.stderr or 'SearXNG未启动'}"
-                        except Exception as e:
-                            result = f"搜索失败: {e}"
-
-                    elif func_name == "web_extract":
-                        try:
-                            url = func_args.get("url", "")
-                            proc = subprocess.run(
-                                ["curl", "-sL", "--max-time", "15", "-H", "User-Agent: Mozilla/5.0", url],
-                                capture_output=True, text=True, timeout=20,
-                            )
-                            if proc.returncode == 0:
-                                # 简单HTML标签清理
-                                import re
-                                text = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', proc.stdout)
-                                text = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', text)
-                                text = re.sub(r'<[^>]+>', ' ', text)
-                                text = re.sub(r'\s+', ' ', text).strip()
-                                result = text[:5000]
-                            else:
-                                result = f"抓取失败: {proc.stderr}"
-                        except Exception as e:
-                            result = f"抓取失败: {e}"
-
-                    elif func_name == "vision_analyze":
-                        import base64, subprocess
-                        try:
-                            path = func_args.get("path", "")
-                            question = func_args.get("question", "描述这张图片")
-                            with open(path, "rb") as f:
-                                img_b64 = base64.b64encode(f.read()).decode()
-                            result = f"[图片已读取: {path}, base64长度={len(img_b64)}]\n问题: {question}\n注意: 需要视觉模型支持才能分析图片内容。"
-                        except Exception as e:
-                            result = f"读取图片失败: {e}"
-
-                    elif func_name == "todo":
-                        # 简单的内存任务列表
-                        if not hasattr(self, '_todo_list'):
-                            self._todo_list = []
-                            self._todo_counter = 0
-                        action = func_args.get("action", "list")
-                        if action == "add":
-                            self._todo_counter += 1
-                            task = {"id": self._todo_counter, "content": func_args.get("content", ""), "status": "pending"}
-                            self._todo_list.append(task)
-                            result = f"已添加任务 #{task['id']}: {task['content']}"
-                        elif action == "complete":
-                            tid = func_args.get("task_id", "")
-                            for t in self._todo_list:
-                                if str(t["id"]) == str(tid):
-                                    t["status"] = "done"
-                                    result = f"已完成任务 #{tid}"
-                                    break
-                            else:
-                                result = f"未找到任务 #{tid}"
-                        else:
-                            if self._todo_list:
-                                lines = [f"#{t['id']} [{t['status']}] {t['content']}" for t in self._todo_list]
-                                result = "\n".join(lines)
-                            else:
-                                result = "任务列表为空"
-
-                    elif func_name == "read_image":
-                        import base64
-                        try:
-                            path = func_args.get("path", "")
-                            with open(path, "rb") as f:
-                                img_b64 = base64.b64encode(f.read()).decode()
-                            result = f"data:image/png;base64,{img_b64[:100]}...(截断，总长{len(img_b64)})"
-                        except Exception as e:
-                            result = f"读取失败: {e}"
-
-                    # ── 进化引擎工具 ─────────────────────────────────
-                    elif func_name == "request_evolution":
-                        feature = func_args.get("feature", "")
-                        priority = func_args.get("priority", "normal")
-                        try:
-                            import httpx
-                            async with httpx.AsyncClient(timeout=120.0) as client:
-                                resp = await client.post(
-                                    "http://127.0.0.1:8092/api/evolution/improve",
-                                    json={"description": feature, "requirements": f"优先级: {priority}"},
+                        elif func_name == "terminal":
+                            try:
+                                cmd = func_args.get("command", "")
+                                proc = subprocess.run(
+                                    cmd, shell=True, capture_output=True, text=True, timeout=30,
                                 )
-                                data = resp.json()
-                                if data.get("ok"):
-                                    result = f"✅ 已完成自我改进: {feature}\n文件: {data.get('file', 'N/A')}\n已提交: {data.get('committed', False)}\n代码预览:\n{data.get('code_preview', '')[:300]}"
+                                output = proc.stdout + proc.stderr
+                                result = output[:3000] if output else "(无输出)"
+                                if proc.returncode != 0:
+                                    result += f"\\n[exit code: {proc.returncode}]"
+                            except subprocess.TimeoutExpired:
+                                result = "命令超时（30秒）"
+                            except Exception as e:
+                                result = f"执行失败: {e}"
+
+                        elif func_name == "search_files":
+                            try:
+                                pattern = func_args.get("pattern", "")
+                                path = func_args.get("path", ".")
+                                target = func_args.get("target", "content")
+                                if target == "files":
+                                    cmd = ["find", path, "-name", pattern, "-type", "f"]
                                 else:
-                                    result = f"❌ 改进失败: {data.get('error', '未知错误')}"
-                        except Exception as e:
-                            result = f"⚠️ 进化引擎不可用: {e}"
-                    elif func_name == "check_evolution_status":
-                        if self._evolution_engine:
-                            status = self._evolution_engine.get_status()
-                            skills = self._evolution_engine.get_created_skills()
-                            quality = self._evolution_engine.get_evolution_quality()
-                        elif hasattr(self, '_evolution_api_url'):
-                            import httpx
-                            resp = httpx.get(f"{self._evolution_api_url}/api/evolution/status", timeout=10.0)
-                            status = resp.json() if resp.status_code == 200 else {}
-                            skills = []
-                            quality = {}
+                                    cmd = ["grep", "-rn", "--include=*.py", "--include=*.ts", "--include=*.tsx", "--include=*.js", pattern, path]
+                                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                                output = proc.stdout[:3000] if proc.stdout else "(无结果)"
+                                result = output
+                            except Exception as e:
+                                result = f"搜索失败: {e}"
+
+                        elif func_name == "patch":
+                            try:
+                                path = func_args.get("path", "")
+                                old_string = func_args.get("old_string", "")
+                                new_string = func_args.get("new_string", "")
+                                with open(path, "r", encoding="utf-8") as f:
+                                    file_content = f.read()
+                                if old_string not in file_content:
+                                    result = f"错误: 在 {path} 中未找到匹配文本"
+                                else:
+                                    file_content = file_content.replace(old_string, new_string, 1)
+                                    with open(path, "w", encoding="utf-8") as f:
+                                        f.write(file_content)
+                                    result = f"已修改 {path}"
+                            except Exception as e:
+                                result = f"修改失败: {e}"
+
+                        elif func_name == "execute_code":
+                            try:
+                                code = func_args.get("code", "")
+                                with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, dir="/tmp") as f:
+                                    f.write(code)
+                                    tmp_path = f.name
+                                proc = subprocess.run(
+                                    ["python3", tmp_path],
+                                    capture_output=True, text=True, timeout=60,
+                                )
+                                os.unlink(tmp_path)
+                                output = proc.stdout + proc.stderr
+                                result = output[:5000] if output else "(无输出)"
+                                if proc.returncode != 0:
+                                    result += f"\n[exit code: {proc.returncode}]"
+                            except subprocess.TimeoutExpired:
+                                result = "执行超时（60秒）"
+                            except Exception as e:
+                                result = f"执行失败: {e}"
+
+                        elif func_name == "web_search":
+                            try:
+                                query = func_args.get("query", "")
+                                limit = func_args.get("limit", 5)
+                                # 用 curl 调用 searxng 或直接返回提示
+                                proc = subprocess.run(
+                                    ["curl", "-s", f"http://localhost:8888/search?q={query}&format=json&pageno=1"],
+                                    capture_output=True, text=True, timeout=15,
+                                )
+                                if proc.returncode == 0 and proc.stdout:
+                                    data = json.loads(proc.stdout)
+                                    results = data.get("results", [])[:limit]
+                                    lines = []
+                                    for r in results:
+                                        lines.append(f"- {r.get('title', '')}: {r.get('url', '')}")
+                                        lines.append(f"  {r.get('content', '')[:100]}")
+                                    result = "\n".join(lines) if lines else "无搜索结果"
+                                else:
+                                    result = f"搜索不可用: {proc.stderr or 'SearXNG未启动'}"
+                            except Exception as e:
+                                result = f"搜索失败: {e}"
+
+                        elif func_name == "web_extract":
+                            try:
+                                url = func_args.get("url", "")
+                                proc = subprocess.run(
+                                    ["curl", "-sL", "--max-time", "15", "-H", "User-Agent: Mozilla/5.0", url],
+                                    capture_output=True, text=True, timeout=20,
+                                )
+                                if proc.returncode == 0:
+                                    # 简单HTML标签清理
+                                    import re
+                                    text = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', proc.stdout)
+                                    text = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', text)
+                                    text = re.sub(r'<[^>]+>', ' ', text)
+                                    text = re.sub(r'\s+', ' ', text).strip()
+                                    result = text[:5000]
+                                else:
+                                    result = f"抓取失败: {proc.stderr}"
+                            except Exception as e:
+                                result = f"抓取失败: {e}"
+
+                        elif func_name == "vision_analyze":
+                            import base64, subprocess
+                            try:
+                                path = func_args.get("path", "")
+                                question = func_args.get("question", "描述这张图片")
+                                with open(path, "rb") as f:
+                                    img_b64 = base64.b64encode(f.read()).decode()
+                                result = f"[图片已读取: {path}, base64长度={len(img_b64)}]\n问题: {question}\n注意: 需要视觉模型支持才能分析图片内容。"
+                            except Exception as e:
+                                result = f"读取图片失败: {e}"
+
+                        elif func_name == "todo":
+                            # 简单的内存任务列表
+                            if not hasattr(self, '_todo_list'):
+                                self._todo_list = []
+                                self._todo_counter = 0
+                            action = func_args.get("action", "list")
+                            if action == "add":
+                                self._todo_counter += 1
+                                task = {"id": self._todo_counter, "content": func_args.get("content", ""), "status": "pending"}
+                                self._todo_list.append(task)
+                                result = f"已添加任务 #{task['id']}: {task['content']}"
+                            elif action == "complete":
+                                tid = func_args.get("task_id", "")
+                                for t in self._todo_list:
+                                    if str(t["id"]) == str(tid):
+                                        t["status"] = "done"
+                                        result = f"已完成任务 #{tid}"
+                                        break
+                                else:
+                                    result = f"未找到任务 #{tid}"
+                            else:
+                                if self._todo_list:
+                                    lines = [f"#{t['id']} [{t['status']}] {t['content']}" for t in self._todo_list]
+                                    result = "\n".join(lines)
+                                else:
+                                    result = "任务列表为空"
+
+                        elif func_name == "read_image":
+                            import base64
+                            try:
+                                path = func_args.get("path", "")
+                                with open(path, "rb") as f:
+                                    img_b64 = base64.b64encode(f.read()).decode()
+                                result = f"data:image/png;base64,{img_b64[:100]}...(截断，总长{len(img_b64)})"
+                            except Exception as e:
+                                result = f"读取失败: {e}"
+
+                        # ── 进化引擎工具 ─────────────────────────────────
+                        elif func_name == "request_evolution":
+                            feature = func_args.get("feature", "")
+                            priority = func_args.get("priority", "normal")
+                            try:
+                                import httpx
+                                async with httpx.AsyncClient(timeout=120.0) as client:
+                                    resp = await client.post(
+                                        "http://127.0.0.1:8092/api/evolution/improve",
+                                        json={"description": feature, "requirements": f"优先级: {priority}"},
+                                    )
+                                    data = resp.json()
+                                    if data.get("ok"):
+                                        result = f"✅ 已完成自我改进: {feature}\n文件: {data.get('file', 'N/A')}\n已提交: {data.get('committed', False)}\n代码预览:\n{data.get('code_preview', '')[:300]}"
+                                    else:
+                                        result = f"❌ 改进失败: {data.get('error', '未知错误')}"
+                            except Exception as e:
+                                result = f"⚠️ 进化引擎不可用: {e}"
+                        elif func_name == "check_evolution_status":
+                            if self._evolution_engine:
+                                status = self._evolution_engine.get_status()
+                                skills = self._evolution_engine.get_created_skills()
+                                quality = self._evolution_engine.get_evolution_quality()
+                            elif hasattr(self, '_evolution_api_url'):
+                                import httpx
+                                resp = httpx.get(f"{self._evolution_api_url}/api/evolution/status", timeout=10.0)
+                                status = resp.json() if resp.status_code == 200 else {}
+                                skills = []
+                                quality = {}
+                            else:
+                                status, skills, quality = {}, [], {}
+                            result = json.dumps({"status": status, "skills": skills, "quality": quality}, ensure_ascii=False, indent=2)
                         else:
-                            status, skills, quality = {}, [], {}
-                        result = json.dumps({"status": status, "skills": skills, "quality": quality}, ensure_ascii=False, indent=2)
-                    else:
-                        result = await self._call_mcp_tool(func_name, func_args)
-                    tool_results.append({
-                        "tool_call_id": tc["id"],
-                        "role": "tool",
-                        "content": result,
-                    })
+                            result = await self._call_mcp_tool(func_name, func_args)
+                        tool_results.append({
+                            "tool_call_id": tc["id"],
+                            "role": "tool",
+                            "content": result,
+                        })
 
-                    # 记录工具调用
-                    all_tool_calls.append({
-                        "name": func_name,
-                        "arguments": func_args,
-                        "result_preview": result[:200] if result else "",
-                    })
+                        # 记录工具调用
+                        all_tool_calls.append({
+                            "name": func_name,
+                            "arguments": func_args,
+                            "result_preview": result[:200] if result else "",
+                        })
 
-                    # 推送工具调用结果摘要
-                    if self._client is not None:
-                        result_preview = result[:200] + "..." if len(result) > 200 else result
-                        await self._client.session_update(
-                            session_id=session_id,
-                            update=acp.update_agent_message_text(f"📎 工具结果: {result_preview}\n"),
-                        )
+                        # 推送工具调用结果摘要
+                        if self._client is not None:
+                            result_preview = result[:200] + "..." if len(result) > 200 else result
+                            await self._client.session_update(
+                                session_id=session_id,
+                                update=acp.update_agent_message_text(f"📎 工具结果: {result_preview}\n"),
+                            )
 
-                # 将 assistant 的 tool_calls 消息和工具结果加入消息历史
-                messages.append({"role": "assistant", "tool_calls": tool_calls})
-                messages.extend(tool_results)
+                    # 将 assistant 的 tool_calls 消息和工具结果加入消息历史
+                    messages.append({"role": "assistant", "tool_calls": tool_calls})
+                    messages.extend(tool_results)
 
-                # 工具执行完毕，跳出内层async for，继续外层for循环
-                break
+                    # 工具执行完毕，跳出内层async for，继续外层for循环
+                    break
             else:
                 # 纯文本 chunk
                 chunk_text = str(chunk) if not isinstance(chunk, str) else chunk
