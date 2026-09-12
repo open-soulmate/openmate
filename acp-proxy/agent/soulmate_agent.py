@@ -67,6 +67,7 @@ class SoulMateAgent:
         self._mcp_tools_cache_time: float = 0
         self._mcp_base_url = "http://127.0.0.1:8094"
         self._mcp_tool_call_id_map: dict[str, dict] = {}  # func_name -> {server_id, tool_name}
+        self._session_cwds: dict[str, str] = {}  # session_id -> cwd
 
     def _get_db(self) -> sqlite3.Connection:
         db = sqlite3.connect(str(self._db_path))
@@ -231,7 +232,12 @@ class SoulMateAgent:
     ) -> tuple[str, list[dict]]:
         """LLM推理 + 工具调用循环。模型返回tool_calls就执行，纯文本就结束。"""
         MAX_ROUNDS = 15
-        system_prompt = """你是SoulMate，OpenMate内置的AI助手。请用简洁清晰的中文回答。
+        cwd = self._session_cwds.get(session_id, "/home/climbing/openmate")
+        system_prompt = f"""你是SoulMate，OpenMate内置的AI助手。请用简洁清晰的中文回答。
+
+## 环境
+当前工作目录: {cwd}
+使用 read_file/terminal/search_files 等工具时，可以用绝对路径或相对于此目录的路径。
 
 ## 输入格式说明
 用户的消息可能包含结构化标签（如 ## 任务、## 角色、## 背景、## 约束、## 输出格式）。
@@ -240,7 +246,12 @@ class SoulMateAgent:
 
 ## 工具使用
 当有可用工具时，根据需要调用工具来更好地回答问题。
-需要查看系统状态、执行命令、读写文件时，优先使用工具。"""
+需要查看系统状态、执行命令、读写文件时，优先使用工具。
+- read_file: 读取文件，path 参数必填
+- write_file: 写入文件，path 和 content 参数必填
+- search_files: 搜索文件，pattern 参数必填，path 默认为当前目录
+- terminal: 执行命令，command 参数必填
+- execute_code: 执行 Python 代码，code 参数必填"""
 
         # 注入匹配的技能上下文
         if matched_skills:
@@ -503,12 +514,15 @@ class SoulMateAgent:
                         elif func_name == "write_file":
                             try:
                                 path = func_args.get("path", "")
-                                file_content = func_args.get("content", "")
-                                # 创建目录
-                                subprocess.run(["mkdir", "-p", str(Path(path).parent)], timeout=5)
-                                with open(path, "w", encoding="utf-8") as f:
-                                    f.write(file_content)
-                                result = f"已写入 {path} ({len(file_content)} 字节)"
+                                if not path:
+                                    result = "错误: path 参数不能为空"
+                                else:
+                                    file_content = func_args.get("content", "")
+                                    # 创建目录
+                                    subprocess.run(["mkdir", "-p", str(Path(path).parent)], timeout=5)
+                                    with open(path, "w", encoding="utf-8") as f:
+                                        f.write(file_content)
+                                    result = f"已写入 {path} ({len(file_content)} 字节)"
                             except Exception as e:
                                 result = f"写入失败: {e}"
 
@@ -535,7 +549,7 @@ class SoulMateAgent:
                                 if target == "files":
                                     cmd = ["find", path, "-name", pattern, "-type", "f"]
                                 else:
-                                    cmd = ["grep", "-rn", "--include=*.py", "--include=*.ts", "--include=*.tsx", "--include=*.js", pattern, path]
+                                    cmd = ["grep", "-rn", "-i", "--include=*.py", "--include=*.ts", "--include=*.tsx", "--include=*.js", "--include=*.json", "--include=*.yaml", "--include=*.yml", "--include=*.md", "--include=*.sh", "--include=*.css", "--include=*.html", pattern, path]
                                 proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
                                 output = proc.stdout[:3000] if proc.stdout else "(无结果)"
                                 result = output
@@ -786,6 +800,7 @@ class SoulMateAgent:
                     "state": "active",
                 }
                 logger.info(f"Reconnect (DB): {session_id}, loaded {len(messages)} messages")
+                self._session_cwds[session_id] = cwd
                 return acp.NewSessionResponse(session_id=session_id)
         sid = f"om-{uuid.uuid4().hex[:12]}"
         self.sessions[sid] = {
@@ -796,6 +811,7 @@ class SoulMateAgent:
             "state": "active",
         }
         logger.info(f"New session: {sid}, cwd={cwd}")
+        self._session_cwds[sid] = cwd
         return acp.NewSessionResponse(session_id=sid)
 
     async def prompt(
