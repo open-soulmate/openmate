@@ -102,7 +102,7 @@ class SoulMateAgent:
     ]
 
     async def _try_intercept_evolution(self, user_text: str) -> str | None:
-        """检测用户消息是否是进化请求，如果是则直接执行，绕过LLM"""
+        """检测用户消息是否是进化请求，注入双螺旋引擎（不直接执行，由引擎自动走完plan→implement→test→verdict→重启流程）"""
         text_lower = user_text.lower()
 
         # 检查危险操作
@@ -126,34 +126,31 @@ class SoulMateAgent:
         if not description or len(description) < 3:
             description = user_text
 
-        logger.info(f"[EVO INTERCEPT] Triggered: {description[:100]}")
+        logger.info(f"[EVO INTERCEPT] Injecting to evolution engine: {description[:100]}")
 
-        # 调用 improve API
-        try:
-            import httpx
-            async with httpx.AsyncClient(timeout=120.0) as client:
-                resp = await client.post(
-                    "http://127.0.0.1:8092/api/evolution/improve",
-                    json={"description": description, "requirements": ""},
+        # 注入进化引擎观察队列，双螺旋会自动走完：observe→plan→implement→sandbox→verdict→重启
+        if self._evolution_engine:
+            try:
+                self._evolution_engine.observe(
+                    obs_type="user_evolution_request",
+                    content=f"[用户需求] {description}",
+                    metadata={"source": "intercept", "priority": "high"},
                 )
-                data = resp.json()
-                if data.get("ok"):
-                    file_info = data.get("file", "N/A")
-                    committed = data.get("committed", False)
-                    preview = data.get("code_preview", "")[:300]
-                    return (
-                        f"✅ 自我进化完成！\n\n"
-                        f"**需求**: {description}\n"
-                        f"**文件**: `{file_info}`\n"
-                        f"**已提交**: {'是' if committed else '否'}\n"
-                        f"**代码预览**:\n```\n{preview}\n```\n\n"
-                        f"代码已自动提交到仓库。如有问题请告诉我，我可以继续调整。"
-                    )
-                else:
-                    error = data.get("error", "未知错误")
-                    return f"❌ 自我进化失败: {error}\n\n请尝试更具体地描述你的需求，或者指定目标文件路径。"
-        except Exception as e:
-            return f"⚠️ 进化系统暂时不可用: {e}\n请稍后再试。"
+                return (
+                    f"🧬 已注入进化引擎！\n\n"
+                    f"**需求**: {description}\n\n"
+                    f"双螺旋进化引擎将自动处理：\n"
+                    f"1. 📝 生成改进方案（plan）\n"
+                    f"2. 💻 生成代码（implement）\n"
+                    f"3. 🧪 沙箱测试（sandbox）\n"
+                    f"4. ✅ 代码审查（verdict）\n"
+                    f"5. 🔄 自动重启服务\n\n"
+                    f"预计 1-3 分钟完成。你可以在 http://100.76.2.155:3002/evolution 查看进度。"
+                )
+            except Exception as e:
+                return f"⚠️ 注入进化引擎失败: {e}"
+        else:
+            return "⚠️ 进化引擎未连接，请稍后再试。"
 
     def _load_messages_from_db(self, session_id: str) -> list[dict]:
         """从 DB 加载历史消息"""
