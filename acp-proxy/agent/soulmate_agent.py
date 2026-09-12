@@ -222,14 +222,9 @@ class SoulMateAgent:
         messages: list[dict],
         session_id: str,
         matched_skills: list[dict] | None = None,
-        depth: int = 0,
     ) -> tuple[str, list[dict]]:
-        """带工具调用的 LLM 推理循环（最多 5 层嵌套）。
-
-        Returns:
-            (最终文本回答, 工具调用记录列表)
-        """
-        MAX_DEPTH = 15
+        """LLM推理 + 工具调用循环。模型返回tool_calls就执行，纯文本就结束。"""
+        MAX_ROUNDS = 15
         system_prompt = "你是SoulMate，OpenMate内置的AI助手。请用简洁清晰的中文回答。当有可用工具时，根据需要调用工具来更好地回答问题。"
 
         # 注入匹配的技能上下文
@@ -442,14 +437,17 @@ class SoulMateAgent:
         
         all_tools = builtin_tools + (mcp_tools or []) + evolution_tools
 
-        async for chunk in self.llm_engine.chat_stream_with_tools(
-            messages=messages,
-            tools=all_tools if all_tools else None,
-            system_prompt=system_prompt,
-        ):
-            if isinstance(chunk, dict) and "tool_calls" in chunk:
-                # LLM 请求调用工具
-                tool_calls = chunk["tool_calls"]
+        for _round in range(MAX_ROUNDS):
+            got_tool_call = False
+            async for chunk in self.llm_engine.chat_stream_with_tools(
+                messages=messages,
+                tools=all_tools if all_tools else None,
+                system_prompt=system_prompt,
+            ):
+                if isinstance(chunk, dict) and "tool_calls" in chunk:
+                    # LLM 请求调用工具
+                    tool_calls = chunk["tool_calls"]
+                    got_tool_call = True
 
                 # 推送工具调用状态给前端
                 for tc in tool_calls:
@@ -723,25 +721,22 @@ class SoulMateAgent:
                 messages.append({"role": "assistant", "tool_calls": tool_calls})
                 messages.extend(tool_results)
 
-                # 递归调用（带深度限制）
-                if depth < MAX_DEPTH:
-                    final_text, sub_calls = await self._run_llm_with_tools(messages, session_id, depth=depth + 1)
-                    full_response += final_text
-                    all_tool_calls.extend(sub_calls)
-                else:
-                    full_response += "\n[已达到工具调用深度限制]\n"
-                return full_response, all_tool_calls
+                # 工具执行完毕，跳出内层async for，继续外层for循环
+                break
             else:
-                # 普通文本 chunk（经过上面的 isinstance check，此处 chunk 一定是 str）
+                # 纯文本 chunk
                 chunk_text = str(chunk) if not isinstance(chunk, str) else chunk
-                if not chunk_text:
-                    continue
-                full_response += chunk_text
-                if self._client is not None:
-                    await self._client.session_update(
-                        session_id=session_id,
-                        update=acp.update_agent_message_text(chunk_text),
-                    )
+                if chunk_text:
+                    full_response += chunk_text
+                    if self._client is not None:
+                        await self._client.session_update(
+                            session_id=session_id,
+                            update=acp.update_agent_message_text(chunk_text),
+                        )
+
+            # 如果没有工具调用，模型返回了纯文本，结束循环
+            if not got_tool_call:
+                break
 
         return full_response, all_tool_calls
 

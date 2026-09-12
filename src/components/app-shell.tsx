@@ -1,9 +1,4 @@
 "use client";
-import { Plus, Trash2, Loader2 } from "lucide-react";
-import {
-  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
-  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 
 import { TerminalPanel } from "@/components/terminal-panel";
 import { BottomNav } from "@/components/bottom-nav";
@@ -13,13 +8,14 @@ import { AIGroupsSidebar } from "@/components/ai-groups-sidebar";
 import { useAIGroupsStore } from "@/stores/ai-groups-store";
 
 import { useVisibilityPoll } from "@/hooks/use-visibility-poll";
-import { GlobalWebSocket } from "@/components/global-websocket";
-import { EChartsThemeProvider } from "@/components/echarts-theme-provider";
 
 
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useAppStore } from "@/stores/app-store";
 import { useTranslation } from "react-i18next";
+import {
+  Search, Plus,
+} from "lucide-react";
 import { useState, useRef, useCallback, useEffect } from "react";
 import { getUserId, getUserName, getApiBaseUrl, getToken } from "@/lib/api-client";
 import { type ThemeId, persistTheme } from "@/lib/theme";
@@ -36,7 +32,6 @@ import {
   SidebarInset,
 } from "@/components/ui/sidebar";
 import { ConversationTree, type AgentInfo } from "@/components/conversation-tree";
-import { LeftPanel } from "@/components/left-panel";
 import { SwipeablePanels, getPanelIndex } from "@/components/swipeable-panels";
 import { useIsMobile, useMediaQuery } from "@/hooks/use-mobile";
 
@@ -56,8 +51,8 @@ interface Session {
   created_at?: string;
   message_count?: number;
   source?: string;
-  tags?: string[];
 }
+
 interface SourceGroup {
   source: string;
   label: string;
@@ -79,8 +74,7 @@ const SOURCE_META: Record<string, { labelKey: string; icon: string }> = {
   subagent: { labelKey: 'sessions.sourceSubagent', icon: '🤖' },
 };
 
-const PLATFORM_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui']);
-const SKIP_AGENT_IDS = new Set(['cron', 'unknown', 'tool', 'subagent']);
+const HERMES_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui', 'tool', 'subagent']);
 
 const AGENT_ICONS: Record<string, string> = {
   hermes: '🏛️', claude: '🟣', codex: '🟢', gemini: '🔵', mimo: '📱',
@@ -106,8 +100,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const rightPanelOpen = useAppStore((s) => s.rightPanelOpen);
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
   const setRightPanelOpen = useAppStore((s) => s.setRightPanelOpen);
-  const pageSidebar = useAppStore((s) => s.pageSidebar);
-  const pageWorkspace = useAppStore((s) => s.pageWorkspace);
   const isMobile = useIsMobile();
   // Auto-collapse sidebar on mid-sized screens (lg but not xl)
   // User can override by clicking the toggle button
@@ -123,10 +115,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const menuRef = useRef<HTMLDivElement>(null);
 
   // ── Conversation list state ──────────────────────────────────────
-  const agents = useAppStore((s) => s.sidebarAgents) as AgentInfo[];
-  const setSidebarAgents = useAppStore((s) => s.setSidebarAgents);
+  const [agents, setAgents] = useState<AgentInfo[]>([]);
+  const [sessionSearch, setSessionSearch] = useState('');
   const [clearedUnreads, setClearedUnreads] = useState<Set<string>>(new Set());
-  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null); // 删除确认弹框目标
 
   // Clear unread for a session (called on click)
   const clearSessionUnread = useCallback((sessionId: string) => {
@@ -135,8 +126,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       next.add(sessionId);
       return next;
     });
-    // Also clear store unread
-    useAppStore.getState().clearUnread(sessionId);
     // Also call API to clear server-side
     const apiBase = getApiBaseUrl();
     const token = getToken();
@@ -148,15 +137,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  // Get effective unread count — combine API unread + WS real-time unread
-  const unreadBySession = useAppStore((s) => s.unreadBySession);
+  // Get effective unread count (respects local clearing)
   const getUnread = useCallback((session: Session): number => {
     if (clearedUnreads.has(session.id)) return 0;
-    // WS real-time unread takes priority (more accurate)
-    const wsUnread = unreadBySession[session.id] || 0;
-    const apiUnread = session.unread ?? 0;
-    return Math.max(wsUnread, apiUnread);
-  }, [clearedUnreads, unreadBySession]);
+    return session.unread ?? 0;
+  }, [clearedUnreads]);
 
   // Total unread across all sessions
   const totalUnread = agents.reduce((sum, a) =>
@@ -173,40 +158,27 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
     // 1. Detect agents
     let detectedAgents: Array<{ id: string; name: string; icon: string; description: string; available: boolean; logo?: string }> = [];
-    // Check store cache first
-    const cachedAgents = useAppStore.getState().cachedAgents;
-    if (cachedAgents && cachedAgents.length > 0) {
-      detectedAgents = cachedAgents as any;
-    } else {
-      try {
-        const r = await fetch(`${apiBase}/api/agents/detect`, { headers });
-        if (r.ok) { const d = await r.json(); detectedAgents = d.agents || []; } else { console.error("agents/detect failed:", r.status); }
-        useAppStore.getState().setCachedAgents(detectedAgents as any);
-      } catch (e) { console.error("agents/detect error:", e); }
-    }
+    try {
+      const r = await fetch(`${apiBase}/api/agents/detect`, { headers });
+      if (r.ok) { const d = await r.json(); detectedAgents = d.agents || []; }
+    } catch {}
 
     // 2. Fetch sessions
     let sessions: Session[] = [];
     try {
       const r = await fetch(`${apiBase}/api/sessions?limit=500`, { headers });
-      if (r.ok) { const d = await r.json(); sessions = d.sessions || []; } else { console.error("sessions failed:", r.status); }
-    } catch (e) { console.error("sessions error:", e); }
+      if (r.ok) { const d = await r.json(); sessions = d.sessions || []; }
+    } catch {}
 
-    // 3. Group sessions by agent (check session tags first, then fallback to platform)
+    // 3. Group sessions by agent
     const agentSessionMap: Record<string, Session[]> = {};
     for (const s of sessions) {
       if (!s.platform && s.source) s.platform = s.source;
       const src = s.platform || s.source || '';
-      if (src === 'cron' || src === 'subagent') continue; // filter cron and subagent sessions
-      const HERMES_SOURCES = new Set(['cli', 'weixin', 'acp', 'tui']);
-      // Check server-side tags first (e.g. "agent:soulmate"), then platform detection
-      const agentTag = (s.tags || []).find((t: string) => t.startsWith('agent:'));
-      const agentKey = agentTag ? agentTag.replace('agent:', '') : (HERMES_SOURCES.has(src) ? 'hermes' : (s.platform || src || 'unknown'));
+      const agentKey = HERMES_SOURCES.has(src) ? 'hermes' : (s.platform || 'hermes');
       if (!agentSessionMap[agentKey]) agentSessionMap[agentKey] = [];
       agentSessionMap[agentKey].push(s);
     }
-
-    console.log('[app-shell-debug] agentSessionMap keys:', Object.keys(agentSessionMap), 'cron sessions filtered:', sessions.filter(s => (s.platform || s.source) === 'cron').length);
 
     // 4. Build source groups
     const buildSourceGroups = (agentSessions: Session[], agentId: string): SourceGroup[] | undefined => {
@@ -228,51 +200,38 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     };
 
     // 5. Build agent list
-    const agentMap = new Map<string, AgentInfo>();
-
-    // SoulMate (OpenMate platform) ALWAYS shows first
-    const soulmateSessions = agentSessionMap['soulmate'] || [];
-    agentMap.set('soulmate', {
-      id: 'soulmate', name: 'SoulMate', icon: '🏛️', description: 'OpenMate Platform',
-      installed: true, available: true, sessions: soulmateSessions,
-      expanded: false, sourceGroups: buildSourceGroups(soulmateSessions, 'soulmate'),
-    });
-
-    // Only add agents that have sessions (user interacted with them), skip system agents
-    for (const [key, sessions] of Object.entries(agentSessionMap)) {
-      if (SKIP_AGENT_IDS.has(key) || agentMap.has(key)) continue;
-      const detected = detectedAgents.find(a => a.id === key);
-      agentMap.set(key, {
-        id: key, name: detected?.name || key,
-        icon: detected?.icon || AGENT_ICONS[key] || '🤖',
-        logo: detected?.logo, description: detected?.description || key,
-        installed: detected?.available || false, available: detected?.available || false,
-        sessions, expanded: false, sourceGroups: buildSourceGroups(sessions, key),
+    const agentList: AgentInfo[] = detectedAgents
+      .filter(a => a.available)
+      .map(a => {
+        const agentSessions = agentSessionMap[a.id] || [];
+        const sourceGroups = buildSourceGroups(agentSessions, a.id);
+        return {
+          id: a.id,
+          name: a.name,
+          icon: a.icon || AGENT_ICONS[a.id] || '🤖',
+          logo: a.logo,
+          description: a.description,
+          installed: a.available,
+          available: a.available,
+          sessions: agentSessions,
+          expanded: false,
+          sourceGroups,
+        };
       });
-    }
 
-    // Add detected agents that are installed and have no sessions yet
-    for (const detected of detectedAgents) {
-      if (SKIP_AGENT_IDS.has(detected.id) || agentMap.has(detected.id)) continue;
-      if (!detected.available) continue; // only show actually installed agents
-      agentMap.set(detected.id, {
-        id: detected.id, name: detected.name || detected.id,
-        icon: detected.icon || AGENT_ICONS[detected.id] || '🤖',
-        logo: detected.logo, description: detected.description || detected.id,
-        installed: detected.available || false, available: detected.available || false,
-        sessions: [], expanded: false, sourceGroups: undefined,
-      });
+    // 6. Add unknown agents
+    for (const [key, val] of Object.entries(agentSessionMap)) {
+      if (!agentList.find(a => a.id === key) && val.length > 0) {
+        const sourceGroups = buildSourceGroups(val, key);
+        agentList.push({
+          id: key, name: key, icon: AGENT_ICONS[key] || '🤖', description: key,
+          installed: false, sessions: val, expanded: false, sourceGroups,
+        });
+      }
     }
-
-    const agentList = Array.from(agentMap.values());
-    agentList.sort((a, b) => {
-      if (a.id === 'soulmate') return -1;
-      if (b.id === 'soulmate') return 1;
-      return b.sessions.length - a.sessions.length;
-    });
 
     // 7. Update state preserving expanded
-    setSidebarAgents((prev: AgentInfo[]) => {
+    setAgents(prev => {
       const expandedIds = new Set(prev.filter(a => a.expanded).map(a => a.id));
       const expandedSrcs = new Map<string, Set<string>>();
       prev.forEach(a => a.sourceGroups?.forEach(g => {
@@ -292,24 +251,19 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     });
   }, [t]);
 
-  // Only fetch sessions on chat page — other pages don't need the session list
-  const isChatRoute = pathname.startsWith('/chat');
-  useEffect(() => {
-    if (isChatRoute) {
-      fetchSessions();
-    }
-  }, [isChatRoute, fetchSessions, activeSessionId, useAppStore((s) => s.sidebarRefreshKey)]);
+  // Visibility-aware polling
+  useVisibilityPoll(fetchSessions, 30000, [fetchSessions]);
 
   // Toggle agent expand
   const toggleAgent = useCallback((agentId: string) => {
-    setSidebarAgents((prev: AgentInfo[]) => prev.map(a =>
+    setAgents(prev => prev.map(a =>
       a.id === agentId ? { ...a, expanded: !a.expanded } : a
     ));
   }, []);
 
   // Toggle source group expand
   const toggleSourceGroup = useCallback((agentId: string, source: string) => {
-    setSidebarAgents((prev: AgentInfo[]) => prev.map(a =>
+    setAgents(prev => prev.map(a =>
       a.id === agentId ? {
         ...a,
         sourceGroups: a.sourceGroups?.map(g =>
@@ -318,6 +272,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       } : a
     ));
   }, []);
+
+  // Search filter
+  const filteredAgents = useCallback(() => {
+    const q = sessionSearch.trim().toLowerCase();
+    if (!q) return agents;
+    return agents.filter(a => {
+      const nameMatch = a.name.toLowerCase().includes(q);
+      const sessionMatch = a.sessions.some(s =>
+        (s.title || s.name || '').toLowerCase().includes(q) ||
+        (s.last_message || '').toLowerCase().includes(q)
+      );
+      return nameMatch || sessionMatch;
+    }).map(a => ({
+      ...a,
+      expanded: true, // auto-expand when searching
+      sourceGroups: a.sourceGroups?.map(g => ({
+        ...g,
+        expanded: true,
+        sessions: g.sessions.filter(s =>
+          a.name.toLowerCase().includes(q) ||
+          (s.title || s.name || '').toLowerCase().includes(q) ||
+          (s.last_message || '').toLowerCase().includes(q)
+        ),
+      })).filter(g => g.sessions.length > 0),
+    }));
+  }, [agents, sessionSearch]);
 
   // Fetch event count
   useVisibilityPoll(() => {
@@ -383,6 +363,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     window.location.href = "/login";
   }
 
+  const displayAgents = filteredAgents();
+
   // Detect AI Groups route for conditional sidebar/workspace rendering
   const isAIGroupsRoute = pathname.startsWith('/ai-groups');
   const fetchAIGroups = useAIGroupsStore((s) => s.fetchGroups);
@@ -396,8 +378,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="flex flex-col h-svh overflow-hidden">
-      <GlobalWebSocket />
-      <EChartsThemeProvider>
       {/* Top utility bar — full screen width */}
       <div className="flex items-center">
         <div className="flex-1 min-w-0">
@@ -423,49 +403,58 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         }} className="flex-1 min-h-0 overflow-hidden h-full">
           {/* Sidebar — unified mobile/desktop */}
           <Sidebar collapsible="offcanvas">
-
+              <SidebarHeader>
+                <div className="flex h-12 shrink-0 items-center px-2">
+                  <span className="text-sm font-bold text-primary">OM</span>
+                  <span className="ml-2 text-sm font-semibold text-foreground group-data-[collapsible=icon]:hidden">
+                    OpenMate
+                  </span>
+                </div>
+              </SidebarHeader>
               <SidebarContent>
                 {isAIGroupsRoute ? (
                   <AIGroupsSidebar />
-                ) : pageSidebar ? (
-                  pageSidebar
-                ) : isChatRoute ? (
+                ) : (
                   <>
-                    <LeftPanel
-                      placeholder={t("sidebar.searchPlaceholder", "搜索会话...")}
-
-                      renderContent={(query) => (
-                        <ConversationTree
-                          agents={agents}
-                          activeSessionId={activeSessionIdFromStore}
-                          getUnread={getUnread}
-                          onToggleAgent={toggleAgent}
-                          onToggleSourceGroup={toggleSourceGroup}
-                          onSelectSession={(session, agent) => {
-                            clearSessionUnread(session.id);
-                            setActiveSession(session.id, agent.id, {
-                              agentIcon: agent.icon,
-                              agentName: agent.name,
-                              agentDescription: agent.description || '',
-                              sessionName: session.name || session.title || '',
-                            });
-                            // 用 replaceState 不触发页面重载
-                            window.history.replaceState(null, '', '/chat');
-                          }}
-                          onNewSession={(agentId) => {
-                            // 点击 + 只切换到欢迎页，不创建 session（等用户发送时才创建）
-                            useAppStore.getState().setActiveSession(null, agentId === 'soulmate' ? null : agentId, {});
-                          }}
-                          onDeleteSession={async (sessionId) => {
-                            setDeleteTargetId(sessionId);
-                          }}
-                          search={query}
-                          className="group-data-[collapsible=icon]:hidden"
+                    <div className="px-2 pb-2 flex items-center gap-1 h-12 group-data-[collapsible=icon]:px-0 group-data-[collapsible=icon]:justify-center">
+                      <div className="relative flex-1 group-data-[collapsible=icon]:hidden">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <input
+                          type="text"
+                          value={sessionSearch}
+                          onChange={(e) => setSessionSearch(e.target.value)}
+                          placeholder={t("chat.searchPlaceholder", "搜索会话...")}
+                          className="w-full pl-8 pr-3 py-1.5 text-xs bg-muted/50 rounded-md border border-border/50 focus:outline-none focus:border-primary/50 transition-colors"
                         />
-                      )}
+                      </div>
+                      <button
+                        onClick={() => router.push('/chat')}
+                        className="p-1.5 rounded-md hover:bg-muted/50 transition-colors shrink-0"
+                        title={t("chat.newChat", "新对话")}
+                      >
+                        <Plus className="w-4 h-4 text-muted-foreground" />
+                      </button>
+                    </div>
+                    <ConversationTree
+                      agents={displayAgents}
+                      activeSessionId={activeSessionIdFromStore}
+                      getUnread={getUnread}
+                      onToggleAgent={toggleAgent}
+                      onToggleSourceGroup={toggleSourceGroup}
+                      onSelectSession={(session, agent) => {
+                        clearSessionUnread(session.id);
+                        setActiveSession(session.id, agent.id, {
+                          agentIcon: agent.icon,
+                          agentName: agent.name,
+                          agentDescription: agent.description || '',
+                          sessionName: session.name || session.title || '',
+                        });
+                        router.push('/chat');
+                      }}
+                      className="group-data-[collapsible=icon]:hidden"
                     />
                   </>
-                ) : null}
+                )}
               </SidebarContent>
               <SidebarFooter />
               <SidebarRail />
@@ -490,7 +479,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </SidebarProvider>
 
       {/* Right Panel — sidebar-style sliding, unified mobile/desktop */}
-      {/* Gap: reserves space on desktop, zero on mobile (overlay mode) */}
+      {/* Placeholder: reserves space on desktop, zero on mobile (overlay mode) */}
       <div
         className="shrink-0 transition-[width] duration-200 ease-linear max-lg:!w-0"
         style={{ width: rightPanelOpen ? rightPanelWidth : 0 }}
@@ -503,9 +492,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           aria-hidden="true"
         />
       )}
-      {/* Container: absolute positioned, slides with right property */}
       <div
-        className="absolute inset-y-0 top-0 z-10 h-full min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
+        className="absolute inset-y-0 top-0 right-0 z-10 h-full min-w-0 border-l border-border transition-[right] duration-200 ease-linear flex flex-col overflow-hidden"
         style={{
           width: rightPanelWidth,
           right: rightPanelOpen ? 0 : -rightPanelWidth,
@@ -517,34 +505,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Bottom navigation bar — full screen width */}
       <BottomNav totalUnread={totalUnread} onOpenConversations={() => { if (isMobile) { setMobileSidebarOpen(true); } else { toggle(); } setRightPanelOpen(false); }} />
-      </EChartsThemeProvider>
-
-      {/* 删除会话确认弹框 */}
-      <AlertDialog open={!!deleteTargetId} onOpenChange={(open) => { if (!open) setDeleteTargetId(null); }}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>{t('chat.deleteSessionConfirm', '确定删除此会话？')}</AlertDialogTitle>
-            <AlertDialogDescription>删除后不可恢复</AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>取消</AlertDialogCancel>
-            <AlertDialogAction onClick={async () => {
-              if (!deleteTargetId) return;
-              try {
-                const r = await fetch(`${getApiBaseUrl()}/api/sessions/${deleteTargetId}`, { method: 'DELETE', headers: { Authorization: `Bearer ${getToken()}` } });
-                if (r.ok) {
-                  setSidebarAgents((prev: AgentInfo[]) => prev.map(a => ({
-                    ...a,
-                    sessions: a.sessions.filter(s => s.id !== deleteTargetId),
-                    sourceGroups: a.sourceGroups?.map(g => ({ ...g, sessions: g.sessions.filter(s => s.id !== deleteTargetId) })).filter(g => g.sessions.length > 0),
-                  })));
-                }
-              } catch (e) { console.error('Delete session failed:', e); }
-              setDeleteTargetId(null);
-            }}>删除</AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 }
