@@ -87,70 +87,8 @@ class SoulMateAgent:
 
     # ── 自我进化拦截（绕过LLM安全限制）──────────────────────────
 
-    EVO_KEYWORDS = [
-        "给自己开发", "给自己加", "自我进化", "自我改进", "自我提升",
-        "自己开发", "自己写", "自己实现", "给自己写", "给自己实现",
-        "开发一个功能", "加一个功能", "新功能", "改进自己",
-        "evolve yourself", "improve yourself", "self improve",
-        "self evolve", "develop yourself",
-    ]
 
-    EVO_DANGEROUS = [
-        "删除自己", "自毁", "关闭自己", "停止自己", "关掉自己",
-        "shutdown", "self-destruct", "delete yourself", "kill yourself",
-        "删除数据库", "删除所有", "rm -rf", "格式化",
-    ]
 
-    async def _try_intercept_evolution(self, user_text: str) -> str | None:
-        """检测用户消息是否是进化请求，注入双螺旋引擎（不直接执行，由引擎自动走完plan→implement→test→verdict→重启流程）"""
-        text_lower = user_text.lower()
-
-        # 检查危险操作
-        for kw in self.EVO_DANGEROUS:
-            if kw.lower() in text_lower:
-                return "⛔ 拒绝执行：该操作可能对系统造成不可逆损害。自我进化系统不允许执行自毁、删除核心文件或关闭自身等危险操作。"
-
-        # 检查进化关键词
-        is_evo = False
-        for kw in self.EVO_KEYWORDS:
-            if kw.lower() in text_lower:
-                is_evo = True
-                break
-        if not is_evo:
-            return None
-
-        # 提取功能描述
-        description = user_text
-        for kw in self.EVO_KEYWORDS:
-            description = description.replace(kw, "").replace(kw.upper(), "").strip()
-        if not description or len(description) < 3:
-            description = user_text
-
-        logger.info(f"[EVO INTERCEPT] Injecting to evolution engine: {description[:100]}")
-
-        # 注入进化引擎观察队列，双螺旋会自动走完：observe→plan→implement→sandbox→verdict→重启
-        if self._evolution_engine:
-            try:
-                self._evolution_engine.observe(
-                    obs_type="user_evolution_request",
-                    content=f"[用户需求] {description}",
-                    metadata={"source": "intercept", "priority": "high"},
-                )
-                return (
-                    f"🧬 已注入进化引擎！\n\n"
-                    f"**需求**: {description}\n\n"
-                    f"双螺旋进化引擎将自动处理：\n"
-                    f"1. 📝 生成改进方案（plan）\n"
-                    f"2. 💻 生成代码（implement）\n"
-                    f"3. 🧪 沙箱测试（sandbox）\n"
-                    f"4. ✅ 代码审查（verdict）\n"
-                    f"5. 🔄 自动重启服务\n\n"
-                    f"预计 1-3 分钟完成。你可以在 http://100.76.2.155:3002/evolution 查看进度。"
-                )
-            except Exception as e:
-                return f"⚠️ 注入进化引擎失败: {e}"
-        else:
-            return "⚠️ 进化引擎未连接，请稍后再试。"
 
     def _load_messages_from_db(self, session_id: str) -> list[dict]:
         """从 DB 加载历史消息"""
@@ -535,26 +473,6 @@ class SoulMateAgent:
 
         if not user_text.strip():
             return PromptResponse(stop_reason="end_turn")
-
-        # ── 自我进化拦截（绕过LLM安全限制）──────────────────
-        evo_result = await self._try_intercept_evolution(user_text)
-        if evo_result:
-            session["messages"].append({"role": "user", "content": user_text})
-            self._save_message(session_id, "user", user_text)
-            session["messages"].append({"role": "assistant", "content": evo_result})
-            self._save_message(session_id, "assistant", evo_result)
-            # 流式推送结果
-            try:
-                conn = self._connections.get(session_id)
-                if conn:
-                    await conn.session_update(
-                        session_id=session_id,
-                        chunks=[acp.TextChunk(text=evo_result)],
-                        stop_reason="end_turn",
-                    )
-            except Exception:
-                pass
-            return PromptResponse(stop_reason="end_turn", content=[acp.TextContentBlock(text=evo_result)])
 
         session["messages"].append({"role": "user", "content": user_text})
         self._save_message(session_id, "user", user_text)
