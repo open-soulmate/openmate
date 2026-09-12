@@ -61,17 +61,13 @@ async def _run_stdio(llm_engine: LLMEngine):
 
     agent = SoulMateAgent(llm_engine=llm_engine)
 
-    # 设置进化引擎
-    try:
-        from routes.evolution import get_engine
-        evolution_engine = get_engine()
-        if evolution_engine:
-            agent._evolution_engine = evolution_engine
-            logger.info("[stdio] Evolution engine connected")
-        else:
-            logger.warning("[stdio] Evolution engine not available")
-    except Exception as e:
-        logger.warning(f"[stdio] Failed to connect evolution engine: {e}")
+    # 设置进化引擎（通过HTTP API，因为子进程无法访问主进程的Python对象）
+    evo_url = os.environ.get("EVOLUTION_API_URL")
+    if evo_url:
+        agent._evolution_api_url = evo_url
+        logger.info(f"[stdio] Evolution engine API: {evo_url}")
+    else:
+        logger.warning("[stdio] EVOLUTION_API_URL not set, evolution tools disabled")
 
     logger.info("Starting SoulMate Agent in stdio mode (ACP v1.0)")
 

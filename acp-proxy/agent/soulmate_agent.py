@@ -245,10 +245,11 @@ class SoulMateAgent:
         # 获取 MCP 工具 + 进化引擎工具
         mcp_tools = await self._fetch_mcp_tools()
         
-        # 添加进化引擎工具
+        # 添加进化引擎工具（支持直接对象或HTTP API两种模式）
         evolution_tools = []
-        logger.info(f"[TOOLS] _evolution_engine exists: {self._evolution_engine is not None}")
-        if self._evolution_engine:
+        has_evolution = self._evolution_engine is not None or hasattr(self, '_evolution_api_url')
+        logger.info(f"[TOOLS] has_evolution={has_evolution}, engine={self._evolution_engine is not None}, api_url={getattr(self, '_evolution_api_url', None)}")
+        if has_evolution:
             evolution_tools = [{
                 "type": "function",
                 "function": {

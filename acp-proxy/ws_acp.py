@@ -179,12 +179,17 @@ async def ws_acp_endpoint(client_ws: WebSocket):
             )
             os.close(slave_fd)  # 子进程已fork，关闭slave端
         else:
+            # 传递进化引擎API地址给子进程
+            import os
+            env = dict(os.environ)
+            env["EVOLUTION_API_URL"] = "http://127.0.0.1:8092"
             proc = await asyncio.create_subprocess_exec(
                 *route["cmd"],
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
                 cwd=route.get("cwd"),
+                env=env,
             )
             # 增大 readline 限制（某些 agent 输出超长单行，如 opencode）
             proc.stdout._limit = 1024 * 1024  # 1MB
