@@ -125,7 +125,7 @@ export function SettingsClient() {
   const [customColors, setCustomColors] = useState<CustomColors>(loadCustomColors);
 
   const [settings, setSettings] = useState<SettingsState>({
-    theme: "dark", fontSize: "medium", language: "zh", sidebarPosition: "left", animationEnabled: true,
+    theme: "dark", fontSize: "medium", language: "system", sidebarPosition: "left", animationEnabled: true,
     defaultAgent: "auto", agentTimeout: 30, retryStrategy: "exponential", logLevel: "info",
     llmProvider: "mimo", apiKey: "", url: "", model: "mimo-v2.5-pro",
     temperature: 0.7, maxTokens: 4096,
@@ -233,21 +233,26 @@ export function SettingsClient() {
   }, [active, sections, backendVersion, setPageSidebar, t]);
 
   const update = useCallback(<K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
+    // Side effects 先执行（在setState外面）
+    if (key === "language") {
+      if (value === "system") {
+        detectLanguage();
+      } else {
+        i18n.changeLanguage(value as string);
+      }
+    }
+    if (key === "fontSize") {
+      const sizes: Record<string, string> = { small: "14px", medium: "16px", large: "18px" };
+      document.documentElement.style.fontSize = sizes[value as string] || "16px";
+      const scale = parseInt(sizes[value as string]) / 16;
+      document.documentElement.style.setProperty("--sidebar-group-font", `${Math.round(11 * scale)}px`);
+    }
+    if (key === "animationEnabled") {
+      document.documentElement.classList.toggle("no-animations", !value);
+    }
+    if (key === "theme") { persistTheme(String(value) as ThemeId); setStoreTheme(String(value) as ThemeId); }
     setSettings((s) => {
       const next = { ...s, [key]: value };
-      // Instant preview for all appearance settings
-      if (key === "language") i18n.changeLanguage(value as string);
-      if (key === "theme") { persistTheme(next.theme); setStoreTheme(next.theme); }
-      if (key === "fontSize") {
-        const sizes: Record<string, string> = { small: "14px", medium: "16px", large: "18px" };
-        document.documentElement.style.fontSize = sizes[value as string] || "16px";
-        /* 同步更新 sidebar 的固定字号，使其跟随全局字号设置 */
-        const scale = parseInt(sizes[value as string]) / 16;
-        document.documentElement.style.setProperty("--sidebar-group-font", `${Math.round(11 * scale)}px`);
-      }
-      if (key === "animationEnabled") {
-        document.documentElement.classList.toggle("no-animations", !value);
-      }
       return next;
     });
   }, [setStoreTheme]);

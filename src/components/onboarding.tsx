@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import i18n, { detectLanguage } from "@/lib/i18n";
 import {
   Rocket,
   Globe,
@@ -90,6 +91,7 @@ function WelcomeStep({ onNext }: { onNext: () => void }) {
 // ─── Step 2: Language Selection ───────────────────────────────────────────────
 
 const languages = [
+  { code: "system", label: "跟随系统", flag: "🌐" },
   { code: "zh", label: "中文", flag: "🇨🇳" },
   { code: "en", label: "English", flag: "🇺🇸" },
   { code: "ja", label: "日本語", flag: "🇯🇵" },
@@ -451,8 +453,12 @@ export function Onboarding() {
 
   const handleLanguageSelect = (lang: string) => {
     setLanguage(lang);
-    i18n.changeLanguage(lang);
     localStorage.setItem("openmate-language", lang);
+    if (lang === "system") {
+      detectLanguage();
+    } else {
+      i18n.changeLanguage(lang);
+    }
   };
 
   const handleThemeSelect = (theme: ThemeId) => {

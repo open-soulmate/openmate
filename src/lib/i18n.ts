@@ -15,9 +15,9 @@ i18n.use(initReactI18next).init({
     en: { translation: en },
     ja: { translation: ja },
   },
-  lng: "zh",
+  lng: "system",
   fallbackLng: "zh",
-  supportedLngs: ["zh", "en", "ja"],
+  supportedLngs: ["zh", "en", "ja", "system"],
   interpolation: {
     escapeValue: false,
   },
@@ -26,21 +26,22 @@ i18n.use(initReactI18next).init({
 export function detectLanguage() {
   if (typeof window === "undefined") return;
   const saved = localStorage.getItem(STORAGE_KEY);
-  if (saved && ["zh", "en", "ja"].includes(saved)) {
-    // 用户手动设置过语言，优先使用
-    i18n.changeLanguage(saved);
+  // "system" 或未设置 → 跟随系统语言
+  if (!saved || saved === "system") {
+    const langs = navigator.languages || [navigator.language];
+    for (const lang of langs) {
+      const code = lang.split("-")[0].toLowerCase();
+      if (["zh", "en", "ja"].includes(code)) {
+        i18n.changeLanguage(code);
+        return;
+      }
+    }
+    i18n.changeLanguage("zh");
     return;
   }
-  // 自适应操作系统语言
-  const langs = navigator.languages || [navigator.language];
-  for (const lang of langs) {
-    const code = lang.split("-")[0].toLowerCase();
-    if (["zh", "en", "ja"].includes(code)) {
-      i18n.changeLanguage(code);
-      return;
-    }
+  if (["zh", "en", "ja"].includes(saved)) {
+    i18n.changeLanguage(saved);
   }
-  // 系统语言不在支持列表，保持默认zh
 }
 
 export default i18n;
