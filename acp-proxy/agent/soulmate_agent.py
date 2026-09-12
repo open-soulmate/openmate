@@ -68,6 +68,10 @@ class SoulMateAgent:
         self._mcp_base_url = "http://127.0.0.1:8094"
         self._mcp_tool_call_id_map: dict[str, dict] = {}  # func_name -> {server_id, tool_name}
         self._session_cwds: dict[str, str] = {}  # session_id -> cwd
+        # 任务规划与自省引擎
+        from agent.task_engine import TaskPlanner, SelfReflector
+        self._task_planner = TaskPlanner(llm_call_fn=self._llm_plan_call)
+        self._self_reflector = SelfReflector(llm_call_fn=self._llm_plan_call)
 
     def _get_db(self) -> sqlite3.Connection:
         db = sqlite3.connect(str(self._db_path))
@@ -223,6 +227,10 @@ class SoulMateAgent:
         except Exception as e:
             logger.error(f"MCP tool call error: {e}", exc_info=True)
             return f"[MCP 工具调用异常] {e}"
+
+    async def _llm_plan_call(self, messages: list[dict]) -> str:
+        """轻量 LLM 调用，只返回文本（不带工具），用于规划和自省"""
+        return await self.llm_engine.chat(messages)
 
     async def _run_llm_with_tools(
         self,
@@ -888,19 +896,116 @@ class SoulMateAgent:
             except Exception:
                 pass
 
-        # 调用带工具的 LLM 推理
-        full_response = ""
-        tool_calls_log = []
-        try:
-            full_response, tool_calls_log = await self._run_llm_with_tools(messages, session_id, matched_skills=matched_skills)
-        except Exception as e:
-            logger.error(f"LLM error: {e}", exc_info=True)
-            full_response = f"推理错误: {e}"
+        # ── 任务规划 ──────────────────────────────────────
+        from agent.task_engine import StepStatus
+        plan = await self._task_planner.plan(user_text, session_id)
+        tool_calls_log = []  # 初始化，两条路径都会用到
+
+        if plan.subtasks and plan.status == "active":
+            # 复杂任务：逐步执行子任务 + 自省
+            logger.info(f"[task] Complex task detected, {len(plan.subtasks)} subtasks")
+            if self._client is not None:
+                step_list = "\n".join([f"  {i+1}. {s.description}" for i, s in enumerate(plan.subtasks)])
+                await self._client.session_update(
+                    session_id=session_id,
+                    update=acp.update_agent_message_text(f"📋 任务拆解：\n{step_list}\n\n开始执行...\n"),
+                )
+
+            all_results = []
+            for idx, step in enumerate(plan.subtasks):
+                if step.status in (StepStatus.SUCCESS, StepStatus.SKIPPED):
+                    continue
+
+                plan.current_step_idx = idx
+                self._task_planner.store.save_plan(plan)
+
+                # 推送当前步骤
+                if self._client is not None:
+                    await self._client.session_update(
+                        session_id=session_id,
+                        update=acp.update_agent_message_text(f"\n🔧 步骤 {idx+1}/{len(plan.subtasks)}: {step.description}\n"),
+                    )
+
+                # 用 LLM+工具执行当前子任务
+                step_messages = messages.copy()
+                step_messages.append({
+                    "role": "system",
+                    "content": f"当前子任务：{step.description}\n建议工具：{step.tool_hint or '无'}\n请专注完成这一个子任务。",
+                })
+
+                step.status = StepStatus.RUNNING
+                try:
+                    step_result, _ = await self._run_llm_with_tools(step_messages, session_id, matched_skills=matched_skills)
+                    step.result = step_result
+                    step.completed_at = time.time()
+                except Exception as e:
+                    step.result = f"执行异常: {e}"
+                    step.error = str(e)
+
+                # 自省校验
+                reflection = await self._self_reflector.reflect(step)
+                step.reflection = reflection.get("summary", "")
+                step.error_type = reflection.get("error_type", "") or ""
+
+                if reflection.get("passed"):
+                    step.status = StepStatus.SUCCESS
+                    all_results.append(f"✅ 步骤{idx+1}: {step.description}\n   结果: {step.result[:200]}")
+                    logger.info(f"[task] Step {idx+1} passed: {reflection.get('summary', '')}")
+                else:
+                    step.status = StepStatus.FAILED
+                    logger.warning(f"[task] Step {idx+1} failed: {reflection.get('summary', '')}")
+
+                    # 动态重规划
+                    plan = await self._task_planner.replan(plan, step, step.error or step.result)
+                    if plan.status == "failed":
+                        break
+
+                    # 如果是 retry，重置步骤状态继续循环
+                    if step.status == StepStatus.PENDING:
+                        idx -= 1  # 重试当前步骤
+                        continue
+
+                self._task_planner.store.save_plan(plan)
+
+            # 生成最终报告
+            if plan.status != "failed":
+                plan.status = "completed"
+                plan.completed_at = time.time()
+                self._task_planner.store.save_plan(plan)
+
+            report = f"## 任务执行报告\n\n**目标**: {plan.goal}\n\n"
+            for i, step in enumerate(plan.subtasks):
+                icon = {"success": "✅", "failed": "❌", "skipped": "⏭️", "pending": "⏳"}.get(step.status.value, "❓")
+                report += f"{icon} **步骤{i+1}**: {step.description}\n"
+                if step.result:
+                    report += f"   结果: {step.result[:150]}\n"
+                if step.reflection:
+                    report += f"   自省: {step.reflection}\n"
+                report += "\n"
+
+            if plan.status == "failed":
+                report += f"\n❌ **任务终止**: {plan.reflection_report}\n"
+
+            full_response = report
             if self._client is not None:
                 await self._client.session_update(
                     session_id=session_id,
                     update=acp.update_agent_message_text(full_response),
                 )
+        else:
+            # 简单任务：直接调用 LLM（原有逻辑）
+            full_response = ""
+            tool_calls_log = []
+            try:
+                full_response, tool_calls_log = await self._run_llm_with_tools(messages, session_id, matched_skills=matched_skills)
+            except Exception as e:
+                logger.error(f"LLM error: {e}", exc_info=True)
+                full_response = f"推理错误: {e}"
+                if self._client is not None:
+                    await self._client.session_update(
+                        session_id=session_id,
+                        update=acp.update_agent_message_text(full_response),
+                    )
 
         session["messages"].append({"role": "assistant", "content": full_response})
         self._save_message(session_id, "assistant", full_response)
