@@ -177,7 +177,7 @@ export function SkirtTabs({
                 <svg
                   className="absolute pointer-events-none"
                   style={{ left: -MARGIN, width: (tabWidths[tab.id] ?? 0)! + MARGIN * 2, height: tabHeight, overflow: 'visible' }}
-                  viewBox={`${-MARGIN} 0 ${(tabWidths[tab.id] ?? 0)! + MARGIN * 2} ${tabHeight}`}
+                  viewBox={`${-MARGIN} -1 ${(tabWidths[tab.id] ?? 0)! + MARGIN * 2} ${tabHeight + 1}`}
                 >
                   <path
                     d={genTabPath((tabWidths[tab.id] ?? 0)!, tabHeight)}
