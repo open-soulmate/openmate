@@ -535,6 +535,129 @@ function GoalItem({ goal, onUpdate, onDelete }: { goal: EvolutionGoal; onUpdate:
   );
 }
 
+/* ── Evolution Cycle Feed ── */
+
+function EvolutionCycleFeed({ logEntries, logEndRef, autoScroll, setAutoScroll }: {
+  logEntries: any[];
+  logEndRef: React.RefObject<HTMLDivElement | null>;
+  autoScroll: boolean;
+  setAutoScroll: (v: boolean) => void;
+}) {
+  const [expandedCycles, setExpandedCycles] = useState<Set<string>>(new Set());
+  const [expandedEntries, setExpandedEntries] = useState<Set<number>>(new Set());
+
+  // Group entries by cycle
+  const cycles = useMemo(() => {
+    const map = new Map<string, { strand: string; cycle: number; entries: any[] }>();
+    for (const entry of logEntries) {
+      const key = `${entry.strand}_c${entry.cycle}`;
+      if (!map.has(key)) map.set(key, { strand: entry.strand, cycle: entry.cycle ?? 0, entries: [] });
+      map.get(key)!.entries.push(entry);
+    }
+    return [...map.values()].reverse(); // newest first
+  }, [logEntries]);
+
+  const toggleCycle = (key: string) => {
+    setExpandedCycles(prev => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  };
+
+  const toggleEntry = (idx: number) => {
+    setExpandedEntries(prev => {
+      const next = new Set(prev);
+      next.has(idx) ? next.delete(idx) : next.add(idx);
+      return next;
+    });
+  };
+
+  const statusColors: Record<string, string> = { success: "#22c55e", error: "#ef4444", running: "#3b82f6" };
+  const stageIcons: Record<string, string> = { observe: "👁", plan: "📋", implement: "🔧", evaluate: "📊", reflect: "🤔", verdict: "✅", error: "❌", code_review: "🔍", self_scan: "📡", self_introspect: "🧠" };
+
+  return (
+    <div className="rounded-xl border border-border bg-card">
+      <div className="flex items-center justify-between px-4 pt-3 pb-2">
+        <h3 className="text-xs font-semibold flex items-center gap-2">
+          <BarChart3 size={14} className="text-primary" /> 进化详情
+        </h3>
+        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+          <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> SSE实时流 · {cycles.length} 个周期
+        </span>
+      </div>
+      <div className="max-h-[500px] overflow-y-auto px-3 pb-3 space-y-2"
+        onScroll={e => { const el = e.currentTarget; setAutoScroll(el.scrollHeight - el.scrollTop - el.clientHeight < 50); }}>
+        {cycles.length === 0 && <div className="text-center py-8 text-muted-foreground text-xs">等待第一次进化周期...</div>}
+        {cycles.map((cycle) => {
+          const key = `${cycle.strand}_c${cycle.cycle}`;
+          const isExpanded = expandedCycles.has(key);
+          const lastEntry = cycle.entries[cycle.entries.length - 1];
+          const hasVerdict = cycle.entries.some(e => e.stage === "verdict");
+          const hasError = cycle.entries.some(e => e.stage === "error");
+          const cycleStatus = hasError ? "error" : hasVerdict ? "success" : "running";
+          const statusColor = statusColors[cycleStatus] || "#6b7280";
+          const strandLabel = cycle.strand === "strand_a" ? "螺旋A" : "螺旋B";
+          const startTime = cycle.entries[0]?.ts?.slice(11, 19) || "??:??";
+          const endTime = lastEntry?.ts?.slice(11, 19) || "";
+
+          // Key content summary
+          const planEntry = cycle.entries.find(e => e.stage === "plan" && e.details);
+          const implementEntry = cycle.entries.find(e => e.stage === "implement");
+          const verdictEntry = cycle.entries.find(e => e.stage === "verdict");
+          const planSummary = planEntry?.details ? (typeof planEntry.details === "string" ? planEntry.details : JSON.stringify(planEntry.details)) : "";
+
+          return (
+            <div key={key} className="rounded-lg border border-border/50 overflow-hidden" style={{ borderLeftColor: statusColor, borderLeftWidth: 3 }}>
+              <button onClick={() => toggleCycle(key)} className="w-full text-left px-3 py-2 hover:bg-muted/30 transition-colors">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium">{stageIcons[cycleStatus] || "•"} {strandLabel} #{cycle.cycle}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded" style={{ color: statusColor, background: `${statusColor}1a` }}>{cycleStatus}</span>
+                  <span className="text-[10px] text-muted-foreground flex-1">{startTime}{endTime && endTime !== startTime ? ` → ${endTime}` : ""}</span>
+                  <span className="text-[10px] text-muted-foreground">{cycle.entries.length} 步</span>
+                  {isExpanded ? <ChevronDown size={12} className="text-muted-foreground" /> : <ChevronRight size={12} className="text-muted-foreground" />}
+                </div>
+                {!isExpanded && planSummary && (
+                  <div className="text-[10px] text-muted-foreground mt-1 line-clamp-1">{planSummary.slice(0, 120)}</div>
+                )}
+              </button>
+              {isExpanded && (
+                <div className="border-t border-border/30 px-3 py-2 space-y-1.5">
+                  {cycle.entries.map((entry, ei) => {
+                    const globalIdx = logEntries.indexOf(entry);
+                    const hasDetails = entry.details && (typeof entry.details === "string" ? entry.details.length > 10 : Object.keys(entry.details).length > 0);
+                    const detailExpanded = expandedEntries.has(globalIdx);
+                    const detailStr = entry.details ? (typeof entry.details === "string" ? entry.details : JSON.stringify(entry.details, null, 2)) : "";
+
+                    return (
+                      <div key={ei} className="flex gap-2 text-[11px]">
+                        <span className="text-muted-foreground shrink-0 w-14">{entry.ts?.slice(11, 19)}</span>
+                        <span style={{ color: STAGE_COLORS[entry.stage] || "#9ca3af" }} className="shrink-0 w-16">{stageIcons[entry.stage] || "•"} {entry.stage}</span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-gray-300">{entry.msg}</span>
+                          {hasDetails && (
+                            <button onClick={(e) => { e.stopPropagation(); toggleEntry(globalIdx); }} className="ml-1 text-primary text-[10px] hover:underline">
+                              {detailExpanded ? "收起" : "展开详情"}
+                            </button>
+                          )}
+                          {hasDetails && detailExpanded && (
+                            <pre className="mt-1 p-2 rounded bg-black/50 text-[10px] text-gray-400 whitespace-pre-wrap break-words max-h-[200px] overflow-y-auto">{detailStr}</pre>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+        <div ref={logEndRef} />
+      </div>
+    </div>
+  );
+}
+
 /* ── Main Component ── */
 
 export default function EvolutionPage() {
@@ -733,31 +856,8 @@ export default function EvolutionPage() {
           )}
         </div>
 
-        {/* ── Real-time Log ── */}
-        <div className="rounded-xl border border-border bg-card p-4">
-          <div className="flex items-center justify-between mb-3">
-            <h3 className="text-xs font-semibold flex items-center gap-2">
-              <BarChart3 size={14} className="text-primary" /> 实时进化日志
-            </h3>
-            <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" /> SSE实时流
-            </span>
-          </div>
-          <div className="rounded-lg bg-black/80 p-3 font-mono text-[11px] max-h-[300px] overflow-y-auto"
-            onScroll={e => { const el = e.currentTarget; setAutoScroll(el.scrollHeight - el.scrollTop - el.clientHeight < 50); }}>
-            {logEntries.length === 0 && <div className="text-muted-foreground">等待进化日志...</div>}
-            {logEntries.map((entry, i) => (
-              <div key={i} className="py-0.5 leading-relaxed hover:bg-white/5 px-1 rounded">
-                <span className="text-gray-500">{entry.ts?.slice(11, 19)}</span>{" "}
-                <span className={entry.strand === "strand_a" ? "text-blue-400" : "text-purple-400"}>[{entry.strand === "strand_a" ? "螺旋A" : "螺旋B"}]</span>{" "}
-                <span style={{ color: STAGE_COLORS[entry.stage] || "#9ca3af" }}>{STAGE_ICON[entry.stage] || "•"} {entry.stage}</span>{" "}
-                <span className="text-gray-300">{entry.msg}</span>
-                {entry.details && <span className="text-gray-500"> | {(entry.details as string).slice(0, 60)}</span>}
-              </div>
-            ))}
-            <div ref={logEndRef} />
-          </div>
-        </div>
+        {/* ── Evolution Cycles Detail ── */}
+        <EvolutionCycleFeed logEntries={logEntries} logEndRef={logEndRef} autoScroll={autoScroll} setAutoScroll={setAutoScroll} />
       </div>
     </PageLayout>
   );
