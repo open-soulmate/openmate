@@ -119,9 +119,11 @@ class SkillManager:
             # trigger 匹配（权重最高）
             for trigger in skill.get("triggers", []):
                 t_lower = trigger.lower()
-                if t_lower in query_lower or query_lower in t_lower:
+                if t_lower == query_lower:
+                    score += 15.0
+                elif len(t_lower) > 4 and (t_lower in query_lower or query_lower in t_lower):
                     score += 10.0
-                elif t_lower in query_tokens:
+                elif len(t_lower) > 4 and t_lower in query_tokens:
                     score += 5.0
 
             # tags 匹配
@@ -132,7 +134,7 @@ class SkillManager:
             # description 匹配
             desc_lower = skill.get("description", "").lower()
             for token in query_tokens:
-                if token in desc_lower:
+                if len(token) > 2 and token in desc_lower:
                     score += 1.0
 
             if score > 0:
