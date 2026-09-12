@@ -926,11 +926,24 @@ class SoulMateAgent:
                         update=acp.update_agent_message_text(f"\n🔧 步骤 {idx+1}/{len(plan.subtasks)}: {step.description}\n"),
                     )
 
-                # 用 LLM+工具执行当前子任务
+                # 用 LLM+工具执行当前子任务，注入前面步骤的结果
                 step_messages = messages.copy()
+                prev_context = ""
+                if all_results:
+                    prev_context = "\n\n## 前面步骤的执行结果（直接使用这些数据，不要重复执行）\n" + "\n".join(all_results)
+
                 step_messages.append({
                     "role": "system",
-                    "content": f"当前子任务：{step.description}\n建议工具：{step.tool_hint or '无'}\n请专注完成这一个子任务。",
+                    "content": (
+                        f"当前子任务：{step.description}\n"
+                        f"建议工具：{step.tool_hint or '无'}\n"
+                        f"请专注完成这一个子任务。{prev_context}\n\n"
+                        "重要规则：\n"
+                        "1. 如果前面步骤已经获取了数据，直接使用，不要重复执行\n"
+                        "2. 生成报告时直接用文本格式输出结果，绝对不要写代码文件\n"
+                        "3. 不要创建新的Python脚本来生成报告\n"
+                        "4. 直接用文字总结和格式化已有数据即可"
+                    ),
                 })
 
                 step.status = StepStatus.RUNNING
@@ -960,9 +973,22 @@ class SoulMateAgent:
                     if plan.status == "failed":
                         break
 
-                    # 如果是 retry，重置步骤状态继续循环
+                    # 如果是 retry，重置步骤状态并加强约束
                     if step.status == StepStatus.PENDING:
-                        idx -= 1  # 重试当前步骤
+                        # 重试时注入更强的约束
+                        step_messages.append({
+                            "role": "system",
+                            "content": "⚠️ 上次执行失败了。注意：不要创建新文件、不要写代码脚本。直接用已有数据以文本形式输出结果。",
+                        })
+                        try:
+                            retry_result, _ = await self._run_llm_with_tools(step_messages, session_id, matched_skills=matched_skills)
+                            step.result = retry_result
+                            step.completed_at = time.time()
+                            step.status = StepStatus.SUCCESS
+                            all_results.append(f"✅ 步骤{idx+1}(重试): {step.description}\n   结果: {step.result[:200]}")
+                        except Exception as e2:
+                            step.result = f"重试执行异常: {e2}"
+                            step.status = StepStatus.FAILED
                         continue
 
                 self._task_planner.store.save_plan(plan)
