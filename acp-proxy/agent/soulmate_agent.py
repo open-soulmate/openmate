@@ -5,12 +5,14 @@
 """
 
 import logging
+import json
 import sqlite3
 import time
 import uuid
 from pathlib import Path
 from typing import Any
 
+import httpx
 import acp
 from acp.schema import (
     AgentCapabilities,
@@ -31,6 +33,9 @@ from acp.schema import (
 )
 
 from agent.llm_engine import LLMEngine
+from skill_manager import SkillManager
+from evolution import EvolutionEngine
+from dna_evolution import DNAEvolutionEngine
 
 logger = logging.getLogger("acp-agent.soulmate")
 
@@ -47,6 +52,15 @@ class SoulMateAgent:
         self.sessions: dict[str, dict] = {}  # session_id -> session state
         self._client = None  # AgentSideConnection，由 on_connect 设置
         self._db_path = Path("/home/climbing/opensoul/data/opensoul.db")
+        # 技能系统
+        self._skill_manager = SkillManager()
+        # 进化引擎（延迟初始化，由 app.py 注入）
+        self._evolution_engine: DNAEvolutionEngine | None = None
+        # MCP 工具调用支持
+        self._mcp_tools_cache: list[dict] | None = None
+        self._mcp_tools_cache_time: float = 0
+        self._mcp_base_url = "http://127.0.0.1:8094"
+        self._mcp_tool_call_id_map: dict[str, dict] = {}  # func_name -> {server_id, tool_name}
 
     def _get_db(self) -> sqlite3.Connection:
         db = sqlite3.connect(str(self._db_path))
@@ -98,6 +112,262 @@ class SoulMateAgent:
         except Exception as e:
             logger.error(f"Failed to check session: {e}")
             return False
+
+    # ── MCP 工具支持 ──────────────────────────────────────────────
+
+    async def _fetch_mcp_tools(self) -> list[dict]:
+        """从 MCP Client 获取所有可用工具，转换为 OpenAI function calling 格式。
+
+        缓存 60 秒，避免每次请求都调用 MCP Client。
+        MCP Client 不可用时返回空列表（不影响正常对话）。
+        """
+        now = time.time()
+        if self._mcp_tools_cache is not None and (now - self._mcp_tools_cache_time) < 60:
+            return self._mcp_tools_cache
+
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(10.0)) as client:
+                resp = await client.get(f"{self._mcp_base_url}/api/mcp/tools/all")
+                if resp.status_code != 200:
+                    logger.warning(f"MCP tools API returned {resp.status_code}")
+                    return self._mcp_tools_cache or []
+                data = resp.json()
+
+            tools = []
+            self._mcp_tool_call_id_map = {}
+            for item in data if isinstance(data, list) else data.get("tools", []):
+                server_id = item.get("server_id", "")
+                tool_name = item.get("name", "")
+                description = item.get("description", "")
+                input_schema = item.get("inputSchema") or item.get("input_schema") or {"type": "object", "properties": {}}
+
+                # 唯一函数名：server__tool（避免不同 server 同名 tool 冲突）
+                func_name = f"{server_id}__{tool_name}" if server_id else tool_name
+                self._mcp_tool_call_id_map[func_name] = {
+                    "server_id": server_id,
+                    "tool_name": tool_name,
+                }
+
+                tools.append({
+                    "type": "function",
+                    "function": {
+                        "name": func_name,
+                        "description": description,
+                        "parameters": input_schema,
+                    },
+                })
+
+            self._mcp_tools_cache = tools
+            self._mcp_tools_cache_time = now
+            logger.info(f"MCP tools refreshed: {len(tools)} tools")
+            return tools
+
+        except Exception as e:
+            logger.warning(f"MCP tools fetch failed (graceful degradation): {e}")
+            return self._mcp_tools_cache or []
+
+    async def _call_mcp_tool(self, func_name: str, arguments: dict) -> str:
+        """调用 MCP Client 的工具执行接口。
+
+        Args:
+            func_name: 唯一函数名（server__tool 格式）
+            arguments: 工具参数
+
+        Returns:
+            工具执行结果文本
+        """
+        mapping = self._mcp_tool_call_id_map.get(func_name)
+        if not mapping:
+            return f"[错误] 未知工具: {func_name}"
+
+        server_id = mapping["server_id"]
+        tool_name = mapping["tool_name"]
+
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
+                resp = await client.post(
+                    f"{self._mcp_base_url}/api/mcp/tools/call",
+                    json={
+                        "server_id": server_id,
+                        "tool_name": tool_name,
+                        "arguments": arguments,
+                    },
+                )
+                if resp.status_code != 200:
+                    return f"[MCP 工具调用失败] HTTP {resp.status_code}: {resp.text[:200]}"
+                result = resp.json()
+                # 提取 content 文本（MCP 结果格式可能有 content 列表或直接字符串）
+                if isinstance(result, dict):
+                    content = result.get("content", result)
+                    if isinstance(content, list):
+                        # MCP 标准格式: [{"type": "text", "text": "..."}]
+                        texts = [c.get("text", str(c)) for c in content if isinstance(c, dict)]
+                        return "\n".join(texts) if texts else str(content)
+                    return str(content)
+                return str(result)
+
+        except httpx.ReadTimeout:
+            return f"[MCP 工具调用超时] {tool_name}"
+        except Exception as e:
+            logger.error(f"MCP tool call error: {e}", exc_info=True)
+            return f"[MCP 工具调用异常] {e}"
+
+    async def _run_llm_with_tools(
+        self,
+        messages: list[dict],
+        session_id: str,
+        matched_skills: list[dict] | None = None,
+        depth: int = 0,
+    ) -> tuple[str, list[dict]]:
+        """带工具调用的 LLM 推理循环（最多 5 层嵌套）。
+
+        Returns:
+            (最终文本回答, 工具调用记录列表)
+        """
+        MAX_DEPTH = 5
+        system_prompt = "你是SoulMate，OpenMate内置的AI助手。请用简洁清晰的中文回答。当有可用工具时，根据需要调用工具来更好地回答问题。"
+
+        # 注入匹配的技能上下文
+        if matched_skills:
+            system_prompt += "\n\n## 相关技能（参考以下经验执行任务）\n"
+            for skill in matched_skills[:3]:
+                system_prompt += f"\n### {skill['name']}\n{skill['content']}\n"
+                if skill.get("code_template"):
+                    system_prompt += f"```\n{skill['code_template']}\n```\n"
+        full_response = ""
+        all_tool_calls = []  # 收集所有工具调用
+
+        # 获取 MCP 工具 + 进化引擎工具
+        mcp_tools = await self._fetch_mcp_tools()
+        
+        # 添加进化引擎工具
+        evolution_tools = []
+        if self._evolution_engine:
+            evolution_tools = [{
+                "type": "function",
+                "function": {
+                    "name": "request_evolution",
+                    "description": "请求进化引擎创建新技能或改进现有技能。当用户要求新功能、或者你发现自己缺少某种能力时调用此工具。",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "feature": {
+                                "type": "string",
+                                "description": "需要创建或改进的功能描述",
+                            },
+                            "priority": {
+                                "type": "string",
+                                "enum": ["low", "normal", "high"],
+                                "description": "优先级: low=建议改进, normal=用户需求, high=紧急缺陷",
+                            },
+                        },
+                        "required": ["feature"],
+                    },
+                },
+            }, {
+                "type": "function",
+                "function": {
+                    "name": "check_evolution_status",
+                    "description": "查看进化引擎状态和最近创建的技能。",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {},
+                    },
+                },
+            }]
+        
+        all_tools = (mcp_tools or []) + evolution_tools
+
+        async for chunk in self.llm_engine.chat_stream_with_tools(
+            messages=messages,
+            tools=all_tools if all_tools else None,
+            system_prompt=system_prompt,
+        ):
+            if isinstance(chunk, dict) and "tool_calls" in chunk:
+                # LLM 请求调用工具
+                tool_calls = chunk["tool_calls"]
+
+                # 推送工具调用状态给前端
+                for tc in tool_calls:
+                    func_name = tc["function"]["name"]
+                    if self._client is not None:
+                        await self._client.session_update(
+                            session_id=session_id,
+                            update=acp.update_agent_message_text(f"\n🔧 调用工具: {func_name}...\n"),
+                        )
+
+                # 执行所有工具调用并收集结果
+                tool_results = []
+                for tc in tool_calls:
+                    func_name = tc["function"]["name"]
+                    try:
+                        func_args = json.loads(tc["function"]["arguments"]) if tc["function"]["arguments"] else {}
+                    except json.JSONDecodeError:
+                        func_args = {}
+
+                    # 内置进化引擎工具
+                    if func_name == "request_evolution" and self._evolution_engine:
+                        feature = func_args.get("feature", "")
+                        priority = func_args.get("priority", "normal")
+                        self._evolution_engine.observe(
+                            obs_type="evolution_request",
+                            content=f"[{priority.upper()}] {feature}",
+                            metadata={"source": "agent_tool", "priority": priority},
+                        )
+                        result = f"✅ 已注入进化引擎: {feature} (优先级: {priority})\n进化引擎将在下次周期自动处理此需求。"
+                    elif func_name == "check_evolution_status" and self._evolution_engine:
+                        status = self._evolution_engine.get_status()
+                        skills = self._evolution_engine.get_created_skills()
+                        quality = self._evolution_engine.get_evolution_quality()
+                        result = json.dumps({"status": status, "skills": skills, "quality": quality}, ensure_ascii=False, indent=2)
+                    else:
+                        result = await self._call_mcp_tool(func_name, func_args)
+                    tool_results.append({
+                        "tool_call_id": tc["id"],
+                        "role": "tool",
+                        "content": result,
+                    })
+
+                    # 记录工具调用
+                    all_tool_calls.append({
+                        "name": func_name,
+                        "arguments": func_args,
+                        "result_preview": result[:200] if result else "",
+                    })
+
+                    # 推送工具调用结果摘要
+                    if self._client is not None:
+                        result_preview = result[:200] + "..." if len(result) > 200 else result
+                        await self._client.session_update(
+                            session_id=session_id,
+                            update=acp.update_agent_message_text(f"📎 工具结果: {result_preview}\n"),
+                        )
+
+                # 将 assistant 的 tool_calls 消息和工具结果加入消息历史
+                messages.append({"role": "assistant", "tool_calls": tool_calls})
+                messages.extend(tool_results)
+
+                # 递归调用（带深度限制）
+                if depth < MAX_DEPTH:
+                    final_text, sub_calls = await self._run_llm_with_tools(messages, session_id, depth=depth + 1)
+                    full_response += final_text
+                    all_tool_calls.extend(sub_calls)
+                else:
+                    full_response += "\n[已达到工具调用深度限制]\n"
+                return full_response, all_tool_calls
+            else:
+                # 普通文本 chunk（经过上面的 isinstance check，此处 chunk 一定是 str）
+                chunk_text = str(chunk) if not isinstance(chunk, str) else chunk
+                if not chunk_text:
+                    continue
+                full_response += chunk_text
+                if self._client is not None:
+                    await self._client.session_update(
+                        session_id=session_id,
+                        update=acp.update_agent_message_text(chunk_text),
+                    )
+
+        return full_response, all_tool_calls
 
     # ── ACP 协议方法 ──────────────────────────────────────────────
 
@@ -162,7 +432,7 @@ class SoulMateAgent:
         message_id: str | None = None,
         **kwargs,
     ) -> PromptResponse:
-        """处理用户 prompt — 调用 LLM 推理并流式返回结果
+        """处理用户 prompt — 支持 MCP 工具调用的 LLM 推理
 
         流式推送：通过 AgentSideConnection.session_update() 发送 AgentMessageChunk，
         客户端收到 session_update 通知即可实时显示生成内容。
@@ -188,33 +458,48 @@ class SoulMateAgent:
         self._save_message(session_id, "user", user_text)
         logger.info(f"Prompt [{session_id}]: {user_text[:100]}")
 
+        # ── 技能匹配 ──────────────────────────────────────
+        matched_skills = self._skill_manager.search_skills(user_text, limit=3)
+        if matched_skills:
+            skill_names = [s["name"] for s in matched_skills]
+            logger.info(f"Matched skills: {skill_names}")
+            # 推送技能匹配状态
+            if self._client is not None:
+                await self._client.session_update(
+                    session_id=session_id,
+                    update=acp.update_agent_message_text(
+                        f"💡 找到相关技能: {', '.join(skill_names)}\n"
+                    ),
+                )
+
         # 构建上下文消息
         messages = session["messages"].copy()
 
-        # 调用 LLM 推理并流式推送
+        # 注入进化引擎创建的技能到系统提示
+        if self._evolution_engine:
+            try:
+                evo_skills = self._evolution_engine.get_created_skills()
+                skill_info = ""
+                if evo_skills:
+                    skill_names = ", ".join([s["name"] for s in evo_skills])
+                    skill_info = f"\n[进化引擎已创建的技能: {skill_names}]"
+                evo_context = (
+                    f"{skill_info}\n"
+                    "你拥有自我进化能力。当用户要求新功能时，使用 request_evolution 工具。"
+                    "不要自己写代码或查找文件，直接调用 request_evolution。"
+                )
+                messages.insert(0, {"role": "system", "content": evo_context})
+            except Exception:
+                pass
+
+        # 调用带工具的 LLM 推理
         full_response = ""
+        tool_calls_log = []
         try:
-            async for chunk_text in self.llm_engine.chat_stream(
-                messages=messages,
-                system_prompt="你是SoulMate，OpenMate内置的AI助手。请用简洁清晰的中文回答。",
-            ):
-                # chat_stream 直接 yield 纯文本 delta
-                if not chunk_text:
-                    continue
-                full_response += chunk_text
-
-                # 通过 AgentSideConnection.session_update 推送流式内容
-                # content 必须是 TextContentBlock（不是裸字符串）
-                if self._client is not None:
-                    await self._client.session_update(
-                        session_id=session_id,
-                        update=acp.update_agent_message_text(chunk_text),
-                    )
-
+            full_response, tool_calls_log = await self._run_llm_with_tools(messages, session_id, matched_skills=matched_skills)
         except Exception as e:
             logger.error(f"LLM error: {e}", exc_info=True)
             full_response = f"推理错误: {e}"
-            # 推送错误信息
             if self._client is not None:
                 await self._client.session_update(
                     session_id=session_id,
@@ -224,6 +509,48 @@ class SoulMateAgent:
         session["messages"].append({"role": "assistant", "content": full_response})
         self._save_message(session_id, "assistant", full_response)
         logger.info(f"Response [{session_id}]: {full_response[:100]}")
+
+        # ── 记录技能使用 ──────────────────────────────────
+        for skill in matched_skills:
+            self._skill_manager.record_usage(skill["id"])
+
+        # ── 自动学习 ──────────────────────────────────────
+        try:
+            await self._skill_manager.try_learn_skill(
+                user_text=user_text,
+                assistant_response=full_response,
+                tool_calls=tool_calls_log,
+            )
+        except Exception as e:
+            logger.debug(f"Auto-learn skipped: {e}")
+
+        # ── 进化引擎观察 ──────────────────────────────────
+        if self._evolution_engine:
+            try:
+                # 细分观察类型
+                obs_type = "conversation"
+                if tool_calls_log:
+                    obs_type = "conversation_with_tools"
+                if "错误" in full_response or "error" in full_response.lower():
+                    obs_type = "conversation_error"
+                if len(user_text) < 10:
+                    obs_type = "conversation_short"
+
+                self._evolution_engine.observe(
+                    obs_type=obs_type,
+                    content=f"User: {user_text[:200]}\nAssistant: {full_response[:200]}",
+                    metadata={
+                        "session_id": session_id,
+                        "user_text": user_text,
+                        "assistant_response": full_response,
+                        "tool_calls": tool_calls_log,
+                        "tool_count": len(tool_calls_log),
+                        "response_length": len(full_response),
+                        "has_error": "错误" in full_response or "error" in full_response.lower(),
+                    },
+                )
+            except Exception as e:
+                logger.debug(f"Evolution observe skipped: {e}")
 
         return PromptResponse(stop_reason="end_turn")
 

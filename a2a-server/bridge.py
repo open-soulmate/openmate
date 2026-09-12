@@ -24,17 +24,17 @@ from typing import Any
 
 import websockets
 
-from a2a.models import Message, TaskState, TextPart
-from a2a.sse_events import (
+from models import Message, TaskState, TextPart
+from sse_events import (
     A2ACompletedEvent,
     A2AErrorEvent,
     MessageAppendedEvent,
     TaskStatusChangedEvent,
 )
-from a2a.stream_manager import StreamManager
-from a2a.task_store import TaskStore
-from a2a.push_notify import push_task_event, remove_push_config
-from a2a.logger import log_error, log_task_event
+from stream_manager import StreamManager
+from task_store import TaskStore
+from push_notify import push_task_event, remove_push_config
+from logger import log_error, log_task_event
 
 logger = logging.getLogger("a2a.bridge")
 

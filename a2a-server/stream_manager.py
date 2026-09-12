@@ -10,7 +10,7 @@ import asyncio
 import logging
 from typing import Any
 
-from a2a.sse_events import SSEEvent
+from sse_events import SSEEvent
 
 logger = logging.getLogger("a2a.stream_manager")
 
@@ -49,6 +49,21 @@ class StreamManager:
         for queue in subs:
             await queue.put(event)
         logger.debug(f"broadcast: task_id={task_id}, event_type={event.type}, subscribers={len(subs)}")
+
+    async def broadcast_event(self, event_type: str, data: dict[str, Any]) -> None:
+        """向所有订阅者广播事件（不限 task_id）。
+
+        用于全局事件如 artifact.update、agent.status 等。
+        """
+        # 构造SSE数据，不直接实例化Union类型
+        event_data = {"type": event_type, **data}
+        count = 0
+        for task_id, subs in self._subscriptions.items():
+            for queue in subs:
+                # 用字典直接推送，SSEEvent是Union不能直接实例化
+                await queue.put(event_data)  # type: ignore[arg-type]
+                count += 1
+        logger.debug(f"broadcast_event: event_type={event_type}, total_subscribers={count}")
 
     async def close(self, task_id: str) -> None:
         """关闭指定 task_id 的所有订阅（发送 None 哨兵）。"""

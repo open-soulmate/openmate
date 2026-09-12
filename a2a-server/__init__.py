@@ -3,7 +3,7 @@
 提供数据模型、AgentCard、Task生命周期管理、JSON-RPC通信等核心能力。
 """
 
-from a2a.models import (
+from models import (
     TaskState,
     TextPart,
     FilePart,
@@ -33,10 +33,10 @@ from a2a.models import (
     A2A_UNSUPPORTED_OPERATION,
 )
 
-from a2a.task_store import TaskStore
-from a2a.agent_card import get_agent_card, list_agent_cards, AGENT_CARD_REGISTRY
-from a2a.client import A2AClient
-from a2a.sse_events import (
+from task_store import TaskStore
+from agent_card import get_agent_card, list_agent_cards, refresh_cache as refresh_agent_cards
+from client import A2AClient
+from sse_events import (
     TaskStatusChangedEvent,
     MessageAppendedEvent,
     NewArtifactEvent,
@@ -44,7 +44,7 @@ from a2a.sse_events import (
     A2AErrorEvent,
     SSEEvent,
 )
-from a2a.stream_manager import StreamManager, get_stream_manager
+from stream_manager import StreamManager, get_stream_manager
 
 __all__ = [
     # 状态枚举
@@ -82,6 +82,6 @@ __all__ = [
     "TaskStore",
     "get_agent_card",
     "list_agent_cards",
-    "AGENT_CARD_REGISTRY",
+    "refresh_agent_cards",
     "A2AClient",
 ]

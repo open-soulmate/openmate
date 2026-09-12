@@ -1,10 +1,9 @@
 'use client';
 import { useMemo } from 'react';
-import dynamic from 'next/dynamic';
 import { assembleECharts } from 'flint-chart';
 import { TrendingUp, BarChart3, Calendar, PieChart } from 'lucide-react';
 
-const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
+import { EChart } from '@/components/echart';
 
 interface Course {
   id: string;
@@ -66,7 +65,7 @@ function LearningCurve({ courses }: { courses: Course[] }) {
         <TrendingUp size={14} className="text-primary" />
         <h4 className="text-xs font-medium">学习曲线（30天）</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -100,7 +99,7 @@ function CourseComparison({ courses }: { courses: Course[] }) {
         <BarChart3 size={14} className="text-blue-500" />
         <h4 className="text-xs font-medium">课程完成率对比</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -146,7 +145,7 @@ function LearningHeatmap({ courses }: { courses: Course[] }) {
         <Calendar size={14} className="text-green-500" />
         <h4 className="text-xs font-medium">学习热力图（90天）</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 120 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 120 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -183,7 +182,7 @@ function StatusPie({ courses }: { courses: Course[] }) {
         <PieChart size={14} className="text-amber-500" />
         <h4 className="text-xs font-medium">课程状态分布</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }

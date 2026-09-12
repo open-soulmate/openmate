@@ -12,14 +12,14 @@ from typing import Any, AsyncGenerator, Optional
 
 import httpx
 
-from a2a.models import (
+from models import (
     JSONRPCError,
     JSONRPCRequest,
     JSONRPCResponse,
     Message,
     Task,
 )
-from a2a.sse_events import SSEEvent
+from sse_events import SSEEvent
 
 logger = logging.getLogger("a2a.client")
 

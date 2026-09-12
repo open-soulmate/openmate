@@ -138,6 +138,15 @@ class ACPServer:
 
         agent = SoulMateAgent(llm_engine=self.llm_engine)
 
+        # 设置进化引擎
+        try:
+            from routes.evolution import get_engine
+            evolution_engine = get_engine()
+            if evolution_engine:
+                agent._evolution_engine = evolution_engine
+        except Exception:
+            pass
+
         reader, writer, transport = await _create_ws_streams(ws)
 
         # 启动消息喂入任务：WebSocket → StreamReader

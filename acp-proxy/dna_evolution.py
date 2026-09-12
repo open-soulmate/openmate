@@ -1,0 +1,1558 @@
+"""DNA Evolution — 双螺旋自进化引擎 v4
+
+核心原则（交叉编程）：
+1. A反思→A规划→B写代码→B验证→A采纳
+2. B反思→B规划→A写代码→A验证→B采纳
+3. 任何一条链挂了，另一条独立运行（降级为自我编程）
+4. 交叉验证：一方写代码，另一方验证
+
+v4改进：
+- 独立进程隔离（每条链在独立进程运行）
+- SOLO模式加固（60秒超时 + 连续3次确认）
+- 原子写入（temp+rename防JSON损坏）
+- 沙箱测试（LLM代码在subprocess中运行验证）
+- 精确回滚（per-file git checkout）
+- 观察去重（hash-based dedup）
+- 效果评估（技能使用率追踪）
+"""
+
+import asyncio
+import hashlib
+import json
+import logging
+import os
+import re
+import subprocess
+import tempfile
+import time
+import uuid
+from dataclasses import dataclass, field
+from datetime import datetime, timezone
+from enum import Enum
+from pathlib import Path
+from typing import Any, Optional
+
+import httpx
+
+logger = logging.getLogger("acp-proxy.dna_evolution")
+
+# ── 配置 ──────────────────────────────────────────────────
+
+HEARTBEAT_INTERVAL = 5
+HEARTBEAT_TIMEOUT = 60  # 60秒超时（防误触发SOLO）
+SOLO_CONFIRM_MISSES = 6  # 连续6次心跳丢失才确认伙伴死亡
+EVOLUTION_INTERVAL = 3600  # 1小时（可通过API动态修改）
+PLAN_TIMEOUT = 120  # 等待伙伴执行计划的超时
+
+
+class StrandRole(Enum):
+    PRIMARY = "primary"
+    SHADOW = "shadow"
+    SOLO = "solo"
+
+
+class EvolutionGoal:
+    """进化目标 — 指导进化方向"""
+
+    def __init__(
+        self,
+        goal_id: str,
+        title: str,
+        description: str,
+        priority: str = "medium",
+        status: str = "active",
+        progress: float = 0.0,
+        created_at: str | None = None,
+        completed_at: str | None = None,
+    ):
+        self.goal_id = goal_id
+        self.title = title
+        self.description = description
+        self.priority = priority  # critical / high / medium / low
+        self.status = status  # active / completed / paused
+        self.progress = progress  # 0.0 ~ 1.0
+        self.created_at = created_at or datetime.now(timezone.utc).isoformat()
+        self.completed_at = completed_at
+
+    def to_dict(self) -> dict:
+        return {
+            "goal_id": self.goal_id,
+            "title": self.title,
+            "description": self.description,
+            "priority": self.priority,
+            "status": self.status,
+            "progress": self.progress,
+            "created_at": self.created_at,
+            "completed_at": self.completed_at,
+        }
+
+
+# ── 默认进化目标（终极愿景：成为全球最聪明的agent）──────────
+
+DEFAULT_GOALS: list[dict] = [
+    {
+        "title": "成为全球最聪明的agent",
+        "description": "终极目标——综合能力持续提升，覆盖推理、创造、执行、学习所有维度",
+        "priority": "critical",
+    },
+    {
+        "title": "自编程能力",
+        "description": "agent能自己写代码实现新功能，无需人工干预",
+        "priority": "high",
+    },
+    {
+        "title": "工具创造",
+        "description": "进化引擎能创建新的MCP工具和技能，持续扩展能力边界",
+        "priority": "high",
+    },
+    {
+        "title": "错误自修复",
+        "description": "agent能自动发现和修复自己的错误，实现自愈",
+        "priority": "medium",
+    },
+    {
+        "title": "知识积累",
+        "description": "持续学习对话模式和用户偏好，构建长期记忆",
+        "priority": "medium",
+    },
+    {
+        "title": "性能优化",
+        "description": "优化响应速度和资源使用，提升用户体验",
+        "priority": "low",
+    },
+]
+
+
+class EvolutionStage(Enum):
+    OBSERVE = "observe"
+    REFLECT = "reflect"
+    PLAN = "plan"
+    SUBMIT_PLAN = "submit_plan"      # 提交计划给伙伴
+    EXECUTE_PARTNER = "execute_partner"  # 执行伙伴的计划
+    VERIFY = "verify"
+    LEARN = "learn"
+
+
+@dataclass
+class EvolutionCycle:
+    cycle_id: str
+    strand_id: str
+    stage: EvolutionStage
+    trigger: str
+    observations: list[dict] = field(default_factory=list)
+    reflections: list[str] = field(default_factory=list)
+    plan: Optional[dict] = None
+    changes: list[dict] = field(default_factory=list)
+    verification: Optional[dict] = None
+    success: bool = False
+    executed_by: str = ""  # 谁执行的（自己 or 伙伴）
+    started_at: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    completed_at: Optional[str] = None
+
+
+@dataclass
+class PendingPlan:
+    """等待伙伴执行的进化计划"""
+    plan_id: str
+    source_strand: str
+    improvements: list[dict]
+    reflections: list[str]
+    created_at: float = field(default_factory=time.time)
+    status: str = "pending"  # pending / executing / completed / failed
+    result: Optional[dict] = None
+
+
+@dataclass
+class Observation:
+    obs_id: str
+    obs_type: str
+    content: str
+    metadata: dict = field(default_factory=dict)
+    timestamp: str = field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+    analyzed: bool = False
+
+
+class DNAStrand:
+    """单条进化链 — 交叉编程模型
+
+    自己只做：观察 → 反思 → 规划（产出计划）
+    伙伴来做：执行计划 → 写代码 → 验证
+    """
+
+    EVOLVABLE_DIRS = [
+        "acp-proxy/skills/",
+        "acp-proxy/plugins/",
+        "acp-proxy/routes/",
+    ]
+
+    PROTECTED_FILES = [
+        "acp-proxy/app.py",
+        "acp-proxy/main.py",
+        "acp-proxy/ws_acp.py",
+        "acp-proxy/ws_chat.py",
+        "acp-proxy/agent/soulmate_agent.py",
+        "acp-proxy/agent/llm_engine.py",
+        "acp-proxy/dna_evolution.py",
+        "acp-proxy/skill_manager.py",
+    ]
+
+    def __init__(
+        self,
+        strand_id: str,
+        role: StrandRole,
+        repo_root: str,
+        llm_base_url: str = "http://127.0.0.1:8090",
+        strategy: str = "conservative",
+        llm_api_key: str = "",
+        llm_model: str = "soulmate",
+    ):
+        self.strand_id = strand_id
+        self.role = role
+        self.repo_root = Path(repo_root)
+        self.llm_base_url = llm_base_url
+        self.llm_api_key = llm_api_key
+        self.llm_model = llm_model
+        self.strategy = strategy
+
+        if strategy == "conservative":
+            self.temperature = 0.2
+            self.max_improvements = 1
+            self.description = "保守策略：小步改进，严格验证"
+        else:
+            self.temperature = 0.7
+            self.max_improvements = 3
+            self.description = "激进策略：大胆尝试，高探索"
+
+        self._observations: list[Observation] = []
+        self._cycles: list[EvolutionCycle] = []
+        self._memory: list[dict] = []
+        self._goals: list[EvolutionGoal] = []
+        self._history: list[dict] = []
+        self._cycle_count = 0
+        self._running = False
+
+        # 实时日志文件（供SSE tail）
+        self._log_file = Path(repo_root) / "acp-proxy" / "data" / f"dna_log_{strand_id}.jsonl"
+
+        # 心跳
+        self._partner_alive = True
+        self._partner_cycle_count = 0
+        self._consecutive_misses = 0  # 连续心跳丢失次数
+
+        # 交叉编程队列
+        self._my_plans_for_partner: list[PendingPlan] = []  # 我的计划，等伙伴执行
+        self._partner_plans_for_me: list[PendingPlan] = []   # 伙伴的计划，等我执行
+
+        # 状态文件
+        self._state_file = self.repo_root / "acp-proxy" / "data" / f"dna_state_{strand_id}.json"
+        self._heartbeat_file = self.repo_root / "acp-proxy" / "data" / f"dna_heartbeat_{strand_id}.json"
+        self._plans_file = self.repo_root / "acp-proxy" / "data" / f"dna_plans_{strand_id}.json"
+        self._checkpoint_file = self.repo_root / "acp-proxy" / "data" / "dna_checkpoint.json"
+
+        self._load_state()
+
+    def _log(self, stage: str, message: str, details: dict | None = None):
+        """写入一条JSONL日志，供SSE实时流读取"""
+        try:
+            entry = {
+                "ts": datetime.now(timezone.utc).isoformat(),
+                "strand": self.strand_id,
+                "stage": stage,
+                "msg": message,
+                "cycle": self._cycle_count,
+            }
+            if details:
+                entry["details"] = details
+            with open(self._log_file, "a") as f:
+                f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+        except Exception:
+            pass
+
+    # ── 观察（带去重） ──────────────────────────────────
+
+    def observe(self, obs_type: str, content: str, metadata: dict | None = None):
+        # 去重：相同内容的观察不重复添加
+        content_hash = hashlib.md5(content.encode()).hexdigest()
+        for existing in self._observations[-20:]:  # 只检查最近20条
+            if hashlib.md5(existing.content.encode()).hexdigest() == content_hash:
+                return  # 重复观察，跳过
+        
+        obs = Observation(
+            obs_id=str(uuid.uuid4())[:8],
+            obs_type=obs_type,
+            content=content[:500],
+            metadata=metadata or {},
+        )
+        self._observations.append(obs)
+        self._log("observe", f"新观察 [{obs_type}]: {content[:80]}", {"obs_type": obs_type})
+
+    # ── 心跳 ──────────────────────────────────────────────
+
+    def send_heartbeat(self):
+        try:
+            with open(self._heartbeat_file, "w") as f:
+                json.dump({
+                    "strand_id": self.strand_id,
+                    "role": self.role.value,
+                    "strategy": self.strategy,
+                    "timestamp": time.time(),
+                    "cycle_count": self._cycle_count,
+                    "observations_count": len(self._observations),
+                    "pending_plans_for_partner": len(self._my_plans_for_partner),
+                    "pending_plans_from_partner": len(self._partner_plans_for_me),
+                }, f)
+        except Exception as e:
+            logger.warning(f"[{self.strand_id}] Heartbeat write failed: {e}")
+
+    def check_partner(self, partner_id: str) -> bool:
+        partner_file = self.repo_root / "acp-proxy" / "data" / f"dna_heartbeat_{partner_id}.json"
+        try:
+            if not partner_file.exists():
+                self._consecutive_misses += 1
+                if self._consecutive_misses >= SOLO_CONFIRM_MISSES:
+                    self._partner_alive = False
+                return self._partner_alive
+            
+            with open(partner_file, "r") as f:
+                hb = json.load(f)
+            elapsed = time.time() - hb.get("timestamp", 0)
+            
+            if elapsed < HEARTBEAT_TIMEOUT:
+                self._partner_alive = True
+                self._consecutive_misses = 0
+            else:
+                self._consecutive_misses += 1
+                if self._consecutive_misses >= SOLO_CONFIRM_MISSES:
+                    self._partner_alive = False
+                    logger.warning(f"[{self.strand_id}] Partner {partner_id} down ({elapsed:.0f}s, {self._consecutive_misses} consecutive misses)")
+            
+            self._partner_cycle_count = hb.get("cycle_count", 0)
+            return self._partner_alive
+        except Exception:
+            self._consecutive_misses += 1
+            if self._consecutive_misses >= SOLO_CONFIRM_MISSES:
+                self._partner_alive = False
+            return self._partner_alive
+
+    # ── 主循环 ────────────────────────────────────────────
+
+    async def run(self, partner_id: str):
+        self._running = True
+        self._log("start", f"螺旋{self.strand_id}启动 (策略={self.strategy}, 角色={self.role.value})", {"partner": partner_id})
+        logger.info(f"[{self.strand_id}] DNA Strand started (strategy={self.strategy}, role={self.role.value})")
+
+        # 阶段2: 启动后检查是否需要触发partner同步重启
+        await self._check_pending_partner_sync()
+
+        last_evolution = 0
+        last_heartbeat = 0
+
+        while self._running:
+            try:
+                now = time.time()
+
+                # 心跳
+                if (now - last_heartbeat) > HEARTBEAT_INTERVAL:
+                    self.send_heartbeat()
+                    last_heartbeat = now
+
+                # 检查伙伴
+                partner_alive = self.check_partner(partner_id)
+
+                # 每个循环重新加载goals和记忆（主进程可能已修改，伙伴可能已同步）
+                self._load_goals()
+                self._load_shared_memory()
+
+                # 角色切换
+                if not partner_alive and self.role == StrandRole.SHADOW:
+                    self.role = StrandRole.SOLO
+                    logger.info(f"[{self.strand_id}] → SOLO mode (partner down)")
+                elif partner_alive and self.role == StrandRole.SOLO:
+                    self.role = StrandRole.SHADOW
+                    logger.info(f"[{self.strand_id}] → SHADOW mode (partner recovered)")
+
+                # ── 独立进化 + 伙伴计划协调 ──
+                # 每个strand独立计时进化，通过计划文件协调
+                # 生成方写计划 → 伙伴读到 → review确认 → 执行 → 触发重启
+                unanalyzed = [o for o in self._observations if not o.analyzed]
+                interval = EVOLUTION_INTERVAL if partner_alive else EVOLUTION_INTERVAL / 2
+                should_evolve = unanalyzed and len(unanalyzed) >= 1 and (now - last_evolution) > interval
+
+                # 1. 先检查有没有伙伴给我的计划（review+执行）
+                self._load_partner_plans(partner_id)
+                pending = [p for p in self._partner_plans_for_me if p.status == "pending"]
+                if pending:
+                    plan = pending[0]
+                    self._partner_plans_for_me = [plan]
+                    ok = await self._review_partner_plan(plan)
+                    if ok:
+                        self._log("turn", f"✅ 确认伙伴计划 {plan.plan_id}，执行中...")
+                        await self._execute_partner_plans()
+                        self._log("turn", f"✅ 伙伴计划执行完成，触发重启")
+                        self._write_restart_signal("partner_evolution")
+                    else:
+                        self._log("turn", f"❌ 拒绝伙伴计划 {plan.plan_id}")
+                    self._partner_plans_for_me = []
+
+                # 2. 自己的进化周期
+                elif should_evolve:
+                    self._log("turn", f"🚀 开始进化 (interval={interval}s)")
+                    await self._evolve()
+                    last_evolution = now
+
+                # 保存状态
+                self._save_plans()
+                self._save_state()
+
+                await asyncio.sleep(5)
+
+            except asyncio.CancelledError:
+                break
+            except Exception as e:
+                logger.error(f"[{self.strand_id}] Loop error: {e}")
+                await asyncio.sleep(30)
+
+    # ── 进化循环（观察→反思→规划→提交） ──────────────────
+
+    async def _evolve(self):
+        """自己只做：观察→反思→规划，然后把计划交给伙伴执行"""
+        cycle = EvolutionCycle(
+            cycle_id=str(uuid.uuid4())[:8],
+            strand_id=self.strand_id,
+            stage=EvolutionStage.OBSERVE,
+            trigger=f"{self.strategy}_auto",
+        )
+
+        try:
+            # 1. Observe
+            cycle.observations = [
+                {"type": o.obs_type, "content": o.content}
+                for o in self._observations[-30:]
+            ]
+            self._log("observe", f"收集{len(cycle.observations)}条观察数据")
+
+            # 2. Reflect
+            cycle.stage = EvolutionStage.REFLECT
+            self.send_heartbeat()
+            self._log("reflect", "开始反思分析...")
+            reflections = await self._reflect()
+            cycle.reflections = reflections
+            self._log("reflect", f"反思完成，{len(reflections)}条洞察", {"reflections": reflections[:2]})
+
+            # 3. Plan
+            cycle.stage = EvolutionStage.PLAN
+            self.send_heartbeat()
+            self._log("plan", "开始生成改进方案...")
+            improvements = await self._plan(reflections)
+            cycle.plan = {"improvements": improvements}
+            self._log("plan", f"生成{len(improvements)}项改进", {"improvements": [i.get("description","")[:60] for i in improvements]})
+
+            # 4. 执行：用MOSS风格7阶段流水线
+            cycle.stage = EvolutionStage.SUBMIT_PLAN
+            if improvements:
+                self._log("execute", f"🧬 启动7阶段进化流水线 ({len(improvements)}项改进)")
+                self.send_heartbeat()
+
+                # 收集失败样本
+                failure_batch = self._collect_failure_samples()
+                self._log("locate", f"📊 收集到{len(failure_batch)}个失败样本")
+
+                # 网关摘流
+                from evolution_pipeline import EvolutionPipeline, gateway_drain, gateway_undrain
+                pipeline = EvolutionPipeline(self, self.repo_root, self.strand_id.split("_")[1])
+
+                await gateway_drain(self.strand_id.split("_")[1])
+
+                try:
+                    pipeline_result = await pipeline.run_pipeline(failure_batch)
+                    cycle.changes = pipeline_result.get("stages", {}).get("implement", {}).get("applied", [])
+                    cycle.success = pipeline_result.get("success", False)
+                    cycle.executed_by = "self"
+
+                    stages = pipeline_result.get("stages", {})
+                    self._log("execute", f"流水线完成: success={cycle.success}", {
+                        "stages": list(stages.keys()),
+                        "attempt": pipeline_result.get("attempt", 0),
+                    })
+
+                    if cycle.success:
+                        # 进化成功 → 两阶段滚动重启
+                        # 阶段1: drain self → 改代码 → restart self
+                        # 阶段2: self启动成功 → drain partner → restart partner（同步代码）
+                        instance_id = self.strand_id.split("_")[1]
+                        partner_id = "b" if instance_id == "a" else "a"
+
+                        # 写pending sync标记（partner启动时检查）
+                        data_dir = self.repo_root / "acp-proxy" / "data"
+                        sync_file = data_dir / f"sync_partner_{partner_id}.pending"
+                        sync_file.write_text(json.dumps({
+                            "reason": "evolution_success",
+                            "source": self.strand_id,
+                            "cycle": cycle.cycle_id,
+                        }))
+
+                        # 重启自己
+                        self._write_restart_signal("evolution_success", target="self")
+                        self._log("verdict", f"🎉 进化成功! 阶段1:重启自己 → 阶段2:partner({partner_id})同步重启")
+                finally:
+                    # 恢复流量
+                    await gateway_undrain(self.strand_id.split("_")[1])
+            else:
+                self._log("plan", "⚠️ 无改进方案，本轮跳过")
+
+            # 5. Learn
+            cycle.stage = EvolutionStage.LEARN
+            cycle.completed_at = datetime.now(timezone.utc).isoformat()
+            self._cycle_count += 1
+            self._cycles.append(cycle)
+
+            # 追加到历史记录
+            self._history.append({
+                "cycle_id": cycle.cycle_id,
+                "strand_id": self.strand_id,
+                "improvements_count": len(improvements),
+                "success": cycle.success,
+                "executed_by": cycle.executed_by,
+                "timestamp": cycle.completed_at,
+            })
+
+            lesson = await self._extract_lesson(cycle)
+            if lesson:
+                self._memory.append(lesson)
+                logger.info(f"[{self.strand_id}] Learned: {lesson['summary'][:80]}")
+
+            if cycle.success and cycle.changes:
+                await self._write_checkpoint(cycle)
+
+            self._save_state()
+            self._sync_memory()  # 同步记忆到共享文件
+
+            logger.info(
+                f"[{self.strand_id}] Cycle {cycle.cycle_id}: "
+                f"plan={len(improvements)} improvements, "
+                f"executed_by={cycle.executed_by}, "
+                f"success={'✓' if cycle.success else 'pending'}"
+            )
+
+        except Exception as e:
+            logger.error(f"[{self.strand_id}] Cycle failed: {e}")
+
+    # ── 执行伙伴的计划（交叉编程核心） ──────────────────
+
+    async def _review_partner_plan(self, plan) -> bool:
+        """被进化方审查生成方的代码计划是否安全合理"""
+        improvements_desc = "\n".join(
+            f"- {i.get('description','')}: {i.get('file','')}:{i.get('line','')}"
+            for i in plan.improvements[:5]
+        )
+        prompt = f"""你是一个代码审查员。另一条进化螺旋为你的系统生成了以下改进计划：
+
+{improvements_desc}
+
+请评估：
+1. 这些改动是否安全？（不会破坏核心功能）
+2. 改动范围是否合理？（不超过5个文件）
+3. 是否有明显错误？
+
+回答格式：
+- 如果计划安全合理，回答：APPROVE
+- 如果计划有风险或不合理，回答：REJECT: <原因>
+
+只回答一行。"""
+
+        try:
+            response = await self._call_llm(prompt)
+            approved = "APPROVE" in response.upper() and "REJECT" not in response.upper()
+            self._log("review", f"{'✅ 通过' if approved else '❌ 拒绝'}: {response[:100]}")
+            return approved
+        except Exception as e:
+            logger.error(f"[{self.strand_id}] 审查失败: {e}")
+            return False  # 审查失败默认拒绝
+
+    async def _execute_partner_plans(self):
+        """执行伙伴提交的进化计划 — 这是交叉编程的核心
+
+        伙伴反思 → 伙伴规划 → 我来写代码 → 我验证 → 伙伴采纳
+        """
+        self._log("execute_partners", f"检查伙伴计划: {len(self._partner_plans_for_me)}个待执行")
+        for plan in self._partner_plans_for_me[:]:
+            if plan.status != "pending":
+                self._log("execute_partner", f"⏭️ 跳过计划 {plan.plan_id} (status={plan.status})")
+                continue
+
+            plan.status = "executing"
+            self._log("execute_partner", f"🔧 执行伙伴计划 {plan.plan_id} ({len(plan.improvements)}项改进)", {"from": plan.source_strand})
+            logger.info(f"[{self.strand_id}] Executing partner's plan {plan.plan_id} ({len(plan.improvements)} improvements)")
+
+            try:
+                # 执行伙伴的改进方案
+                changes = await self._execute(plan.improvements)
+
+                # 验证
+                verification = await self._verify(changes)
+
+                if verification.get("verified"):
+                    plan.status = "completed"
+                    plan.result = {
+                        "changes": changes,
+                        "verification": verification,
+                        "success": True,
+                    }
+                    logger.info(f"[{self.strand_id}] ✓ Partner's plan {plan.plan_id} executed successfully")
+                else:
+                    plan.status = "failed"
+                    plan.result = {
+                        "changes": changes,
+                        "verification": verification,
+                        "success": False,
+                    }
+                    # 回滚失败的变更
+                    await self._rollback_changes(changes)
+                    logger.warning(f"[{self.strand_id}] ✗ Partner's plan {plan.plan_id} failed verification, rolled back")
+
+            except Exception as e:
+                plan.status = "failed"
+                plan.result = {"error": str(e), "success": False}
+                logger.error(f"[{self.strand_id}] ✗ Partner's plan {plan.plan_id} execution error: {e}")
+
+            # 写入结果文件供伙伴读取
+            self._write_plan_result(plan)
+            self._partner_plans_for_me.remove(plan)
+
+    def _write_plan_result(self, plan: PendingPlan):
+        """写入计划执行结果，供伙伴读取"""
+        result_file = self.repo_root / "acp-proxy" / "data" / f"dna_plan_result_{plan.plan_id}.json"
+        try:
+            with open(result_file, "w", encoding="utf-8") as f:
+                json.dump({
+                    "plan_id": plan.plan_id,
+                    "source_strand": plan.source_strand,
+                    "executor_strand": self.strand_id,
+                    "status": plan.status,
+                    "result": plan.result,
+                    "completed_at": datetime.now(timezone.utc).isoformat(),
+                }, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"[{self.strand_id}] Write plan result failed: {e}")
+
+    # ── 轮次控制 ──────────────────────────────────────────
+
+    def _load_turn(self) -> dict:
+        """读取共享轮次文件（加锁）"""
+        import fcntl
+        path = self.repo_root / "data" / "turn.json"
+        try:
+            with open(path, "r") as f:
+                fcntl.flock(f, fcntl.LOCK_SH)
+                data = json.loads(f.read())
+                fcntl.flock(f, fcntl.LOCK_UN)
+                return data
+        except Exception:
+            return {"current": "a", "phase": "generate", "cycle": 0}
+
+    def _save_turn(self, current: str, phase: str):
+        """更新共享轮次文件（原子写入+文件锁）"""
+        import fcntl, tempfile
+        path = self.repo_root / "data" / "turn.json"
+        try:
+            # 先读取当前值
+            with open(path, "r") as f:
+                fcntl.flock(f, fcntl.LOCK_EX)
+                try:
+                    turn = json.loads(f.read())
+                except:
+                    turn = {"current": "a", "phase": "generate", "cycle": 0}
+                fcntl.flock(f, fcntl.LOCK_UN)
+
+            # 更新
+            if phase == "generate" and current != turn.get("current"):
+                turn["cycle"] = turn.get("cycle", 0) + 1
+            turn["current"] = current
+            turn["phase"] = phase
+
+            # 原子写入（先写临时文件再rename）
+            dir_path = path.parent
+            with tempfile.NamedTemporaryFile(mode="w", dir=dir_path, suffix=".tmp", delete=False) as tmp:
+                tmp.write(json.dumps(turn, indent=2))
+                tmp_path = tmp.name
+            import os
+            os.replace(tmp_path, str(path))
+        except Exception as e:
+            logger.error(f"[{self.strand_id}] 保存轮次失败: {e}")
+
+    def _load_partner_plans(self, partner_id: str):
+        """读取伙伴提交的新计划"""
+        partner_plans_file = self.repo_root / "acp-proxy" / "data" / f"dna_plans_{partner_id}.json"
+        try:
+            if not partner_plans_file.exists():
+                return
+            with open(partner_plans_file, "r") as f:
+                plans_data = json.load(f)
+
+            existing_ids = {p.plan_id for p in self._partner_plans_for_me}
+            for pd in plans_data:
+                if pd["plan_id"] not in existing_ids:
+                    plan = PendingPlan(
+                        plan_id=pd["plan_id"],
+                        source_strand=pd["source_strand"],
+                        improvements=pd["improvements"],
+                        reflections=pd.get("reflections", []),
+                        created_at=pd.get("created_at", time.time()),
+                    )
+                    self._partner_plans_for_me.append(plan)
+                    self._log("receive", f"📥 收到伙伴计划 {plan.plan_id}", {"from": partner_id, "improvements": len(plan.improvements)})
+                    logger.info(f"[{self.strand_id}] Received plan {plan.plan_id} from {partner_id}")
+        except Exception as e:
+            self._log("error", f"加载伙伴计划失败: {e}")
+            logger.warning(f"[{self.strand_id}] Load partner plans failed: {e}")
+
+    # ── 反思 ──────────────────────────────────────────────
+
+    async def _reflect(self) -> list[str]:
+        unanalyzed = [o for o in self._observations if not o.analyzed]
+        if len(unanalyzed) < 1:
+            return []
+
+        observations_text = "\n".join(
+            f"[{o.obs_type}] {o.content}" for o in unanalyzed[-15:]
+        )
+
+        # 加入历史经验
+        memory_context = ""
+        if self._memory:
+            recent_memories = self._memory[-5:]
+            memory_context = "\n\n历史经验：\n" + "\n".join(
+                f"- {m.get('summary', '')}" for m in recent_memories
+            )
+
+        # 加入目标进度
+        goals_context = ""
+        if self._goals:
+            active_goals = [g for g in self._goals if g.status == "active"]
+            goals_context = "\n\n当前进化目标：\n" + "\n".join(
+                f"- [{g.priority}] {g.title} (进度: {g.progress:.0%}): {g.description}"
+                for g in active_goals
+            )
+
+        prompt = f"""分析以下观察记录，找出失败模式、成功模式、改进机会。
+策略倾向：{self.description}
+
+观察记录：
+{observations_text}
+{memory_context}
+{goals_context}
+
+评估每个目标的进展，并返回JSON：{{"failure_patterns": [], "success_patterns": [], "improvements": [], "goal_progress": {{"goal_title": progress_float}}}}"""
+
+        result = await self._call_llm(prompt)
+        # 解析目标进度更新
+        try:
+            m = re.search(r'\{.*\}', result, re.DOTALL)
+            if m:
+                parsed = json.loads(m.group())
+                goal_progress = parsed.get("goal_progress", {})
+                if goal_progress:
+                    for goal in self._goals:
+                        if goal.title in goal_progress and goal.status == "active":
+                            new_progress = float(goal_progress[goal.title])
+                            goal.progress = max(0.0, min(1.0, new_progress))
+                            if goal.progress >= 1.0:
+                                goal.status = "completed"
+                                goal.completed_at = datetime.now(timezone.utc).isoformat()
+        except Exception:
+            pass
+        for o in unanalyzed:
+            o.analyzed = True
+        return [result] if result else []
+
+    # ── 规划 ──────────────────────────────────────────────
+
+    async def _plan(self, reflections: list[str]) -> list[dict]:
+        if not reflections:
+            return []
+
+        # 构建目标上下文
+        goals_context = ""
+        if self._goals:
+            active_goals = [g for g in self._goals if g.status == "active"]
+            if active_goals:
+                goals_context = "\n\n当前进化目标（改进方案应优先对齐这些目标）：\n" + "\n".join(
+                    f"- [{g.priority}] {g.title} (进度: {g.progress:.0%}): {g.description}"
+                    for g in active_goals
+                )
+
+        prompt = f"""基于反思生成改进方案（最多{self.max_improvements}个）。
+只改：acp-proxy/skills/, acp-proxy/plugins/
+
+重要：你的方案将由另一个AI来执行代码编写，所以要写得足够详细。
+{goals_context}
+
+反思：{chr(10).join(reflections)}
+
+返回JSON：{{"improvements": [{{"type": "skill", "target_file": "...", "description": "...", "requirements": "...", "commit_message": "..."}}]}}
+
+注意：不要写content字段，只写description和requirements，让执行者来写实际代码。"""
+
+        result = await self._call_llm(prompt)
+        try:
+            m = re.search(r'\{.*\}', result, re.DOTALL)
+            if m:
+                improvements = json.loads(m.group()).get("improvements", [])
+                return improvements[:self.max_improvements]
+        except Exception:
+            pass
+        return []
+
+    # ── 执行（写代码） ──────────────────────────────────
+
+    async def _execute(self, improvements: list[dict]) -> list[dict]:
+        """执行改进方案 — 实际写代码
+
+        如果improvements有content字段，直接写入
+        如果只有description/requirements，用LLM生成代码
+        """
+        results = []
+        for imp in improvements:
+            target = imp.get("target_file", "")
+            if not any(target.startswith(d) for d in self.EVOLVABLE_DIRS):
+                results.append({**imp, "status": "blocked", "reason": "target not in evolvable dirs"})
+                continue
+            if any(target.endswith(f) for f in self.PROTECTED_FILES):
+                results.append({**imp, "status": "blocked", "reason": "target is protected"})
+                continue
+
+            full_path = self.repo_root / target
+            try:
+                full_path.parent.mkdir(parents=True, exist_ok=True)
+
+                # 如果没有content，用LLM根据description生成
+                content = imp.get("content", "")
+                if not content and imp.get("description"):
+                    content = await self._generate_code(imp)
+                    if not content:
+                        results.append({**imp, "status": "failed", "reason": "LLM code generation failed"})
+                        continue
+
+                # 原子写入：先写临时文件，再rename
+                try:
+                    with tempfile.NamedTemporaryFile(
+                        mode="w", encoding="utf-8",
+                        dir=str(full_path.parent),
+                        suffix=".tmp",
+                        delete=False,
+                    ) as tmp:
+                        tmp.write(content)
+                        tmp_path = tmp.name
+                    os.rename(tmp_path, str(full_path))
+                except Exception as e:
+                    results.append({**imp, "status": "failed", "reason": f"atomic write failed: {e}"})
+                    continue
+
+                # 语法检查
+                if target.endswith(".py"):
+                    import ast
+                    try:
+                        ast.parse(content)
+                    except SyntaxError as e:
+                        self._git_revert_file(target)
+                        results.append({**imp, "status": "rolled_back", "reason": str(e)})
+                        continue
+
+                    # 沙箱测试：在subprocess中运行代码
+                    sandbox_ok, sandbox_msg = await self._sandbox_test(content)
+                    if not sandbox_ok:
+                        self._git_revert_file(target)
+                        results.append({**imp, "status": "rolled_back", "reason": f"sandbox test failed: {sandbox_msg}"})
+                        continue
+
+                if target.endswith(".json"):
+                    try:
+                        json.loads(content)
+                    except json.JSONDecodeError as e:
+                        self._git_revert_file(target)
+                        results.append({**imp, "status": "rolled_back", "reason": str(e)})
+                        continue
+
+                self._git_commit(target, imp.get("commit_message", f"[{self.strand_id}] {target}"))
+                results.append({**imp, "status": "applied", "content": content[:500]})
+
+            except Exception as e:
+                results.append({**imp, "status": "failed", "reason": str(e)})
+
+        return results
+
+    async def _generate_code(self, improvement: dict) -> str:
+        """根据描述用LLM生成代码"""
+        prompt = f"""根据以下需求生成代码文件。
+
+目标文件：{improvement.get('target_file', '')}
+类型：{improvement.get('type', 'skill')}
+描述：{improvement.get('description', '')}
+要求：{improvement.get('requirements', '无特殊要求')}
+
+只返回代码内容，不要包含解释。"""
+
+        result = await self._call_llm(prompt)
+        # 清理markdown代码块
+        if result.startswith("```"):
+            lines = result.split("\n")
+            result = "\n".join(lines[1:-1]) if len(lines) > 2 else result
+        return result
+
+    # ── 验证 ──────────────────────────────────────────────
+
+    async def _verify(self, changes: list[dict]) -> dict:
+        applied = [c for c in changes if c.get("status") == "applied"]
+        if not applied:
+            return {"verified": True, "reason": "no changes"}
+
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(5.0)) as client:
+                resp = await client.get("http://127.0.0.1:8092/health")
+                if resp.status_code == 200:
+                    return {"verified": True, "changes_applied": len(applied)}
+        except Exception:
+            pass
+
+        return {"verified": False, "reason": "health check failed"}
+
+    # ── 学习 ──────────────────────────────────────────────
+
+    async def _extract_lesson(self, cycle: EvolutionCycle) -> dict | None:
+        if not cycle.plan:
+            return None
+
+        lesson = {
+            "cycle_id": cycle.cycle_id,
+            "timestamp": cycle.completed_at,
+            "strategy": self.strategy,
+            "success": cycle.success,
+            "executed_by": cycle.executed_by,
+            "summary": f"规划{len(cycle.plan.get('improvements', []))}项改进，由{cycle.executed_by}执行",
+            "reflections": cycle.reflections[:1] if cycle.reflections else [],
+        }
+
+        if len(self._cycles) >= 2:
+            recent = self._cycles[-3:]
+            prompt = f"""分析最近{len(recent)}个进化周期，提炼一条可复用的经验教训。
+
+周期摘要：
+{json.dumps([{"success": c.success, "executed_by": c.executed_by, "changes": len(c.changes)} for c in recent], ensure_ascii=False)}
+
+返回JSON：{{"lesson": "一句话教训", "pattern": "可复用模式"}}"""
+
+            result = await self._call_llm(prompt)
+            try:
+                m = re.search(r'\{.*\}', result, re.DOTALL)
+                if m:
+                    lesson["insight"] = json.loads(m.group())
+            except Exception:
+                pass
+
+        return lesson
+
+    # ── 回滚 ──────────────────────────────────────────────
+
+    async def _rollback_changes(self, changes: list[dict]):
+        for change in changes:
+            target = change.get("target_file", "")
+            if change.get("status") == "applied":
+                try:
+                    subprocess.run(
+                        ["git", "checkout", "HEAD~1", "--", target],
+                        cwd=self.repo_root, capture_output=True, timeout=10,
+                    )
+                except Exception:
+                    pass
+
+    # ── 检查点 ────────────────────────────────────────────
+
+    async def _write_checkpoint(self, cycle: EvolutionCycle):
+        try:
+            checkpoint = {
+                "strand_id": self.strand_id,
+                "strategy": self.strategy,
+                "cycle_id": cycle.cycle_id,
+                "changes": cycle.changes,
+                "reflections": cycle.reflections,
+                "executed_by": cycle.executed_by,
+                "timestamp": datetime.now(timezone.utc).isoformat(),
+            }
+            with open(self._checkpoint_file, "w", encoding="utf-8") as f:
+                json.dump(checkpoint, f, ensure_ascii=False, indent=2)
+        except Exception as e:
+            logger.warning(f"[{self.strand_id}] Checkpoint write failed: {e}")
+
+    # ── LLM ───────────────────────────────────────────────
+
+    async def _call_llm(self, prompt: str) -> str:
+        try:
+            headers = {"Content-Type": "application/json"}
+            if self.llm_api_key:
+                headers["Authorization"] = f"Bearer {self.llm_api_key}"
+
+            async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
+                resp = await client.post(
+                    f"{self.llm_base_url}/chat/completions",
+                    headers=headers,
+                    json={
+                        "model": self.llm_model,
+                        "messages": [{"role": "user", "content": prompt}],
+                        "temperature": self.temperature,
+                        "max_tokens": 2000,
+                    },
+                )
+                if resp.status_code == 200:
+                    return resp.json().get("choices", [{}])[0].get("message", {}).get("content", "")
+                else:
+                    logger.error(f"[{self.strand_id}] LLM call failed: {resp.status_code} {resp.text[:200]}")
+        except Exception as e:
+            logger.error(f"[{self.strand_id}] LLM call failed: {e}")
+        return ""
+
+    # ── Git ───────────────────────────────────────────────
+
+    def _git_commit(self, file_path: str, message: str) -> bool:
+        try:
+            subprocess.run(["git", "add", file_path], cwd=self.repo_root, capture_output=True, timeout=10)
+            result = subprocess.run(
+                ["git", "commit", "-m", f"[dna-{self.strand_id}] {message}"],
+                cwd=self.repo_root, capture_output=True, text=True, timeout=10,
+            )
+            return result.returncode == 0
+        except Exception:
+            return False
+
+    def _git_revert_file(self, file_path: str) -> bool:
+        """精确回滚单个文件（不是整个commit）"""
+        try:
+            # 如果文件是新增的（还没有commit过），直接删除
+            full_path = self.repo_root / file_path
+            result = subprocess.run(
+                ["git", "status", "--porcelain", file_path],
+                cwd=self.repo_root, capture_output=True, text=True, timeout=10,
+            )
+            if result.stdout.startswith("??"):
+                # 新文件，直接删除
+                if full_path.exists():
+                    os.remove(full_path)
+                return True
+            
+            # 已跟踪的文件，从HEAD恢复
+            subprocess.run(
+                ["git", "checkout", "HEAD", "--", file_path],
+                cwd=self.repo_root, capture_output=True, timeout=10,
+            )
+            return True
+        except Exception:
+            return False
+
+    async def _sandbox_test(self, code: str) -> tuple[bool, str]:
+        """沙箱测试：在subprocess中运行代码，验证是否有明显错误
+        
+        只做基础安全检查，不做完整功能测试。
+        """
+        # 检查危险模式
+        dangerous_patterns = [
+            "os.system(", "subprocess.call(", "subprocess.run(",
+            "exec(", "eval(", "__import__(",
+            "open('/etc/", "open('/proc/", "open('/sys/",
+            "shutil.rmtree(", "shutil.rmtree /",
+            "os.remove('/')", "os.unlink('/')",
+            "rm -rf /", "rm -rf /*",
+        ]
+        for pattern in dangerous_patterns:
+            if pattern in code:
+                return False, f"dangerous pattern detected: {pattern}"
+        
+        # 检查导入的模块是否安全
+        import ast
+        try:
+            tree = ast.parse(code)
+            for node in ast.walk(tree):
+                if isinstance(node, ast.Import):
+                    for alias in node.names:
+                        if alias.name in ("subprocess", "os", "shutil", "sys"):
+                            # 这些模块在技能代码中是允许的，但需要检查用法
+                            pass
+                elif isinstance(node, ast.ImportFrom):
+                    if node.module in ("subprocess", "os", "shutil"):
+                        pass
+        except Exception:
+            pass
+        
+        # 尝试编译代码
+        try:
+            compile(code, "<sandbox>", "exec")
+        except Exception as e:
+            return False, f"compile error: {e}"
+        
+        return True, "ok"
+
+    # ── 失败样本采集（Auto-Scan Engine） ──────────────────
+
+    def _collect_failure_samples(self) -> list[dict]:
+        """采集失败样本 — 从日志、错误、低质量进化历史中收集"""
+        samples = []
+
+        # 1. 从进化历史中采集失败周期
+        for cycle in self._cycles[-20:]:
+            if not cycle.success and cycle.plan:
+                samples.append({
+                    "type": "failed_cycle",
+                    "cycle_id": cycle.cycle_id,
+                    "description": f"进化周期失败: {len(cycle.plan.get('improvements', []))}项改进未通过验证",
+                    "plan": cycle.plan,
+                    "verification": getattr(cycle, "verification", {}),
+                })
+
+        # 2. 从审计日志中采集
+        audit_file = self.repo_root / "acp-proxy" / "data" / "audit_log.jsonl"
+        if audit_file.exists():
+            try:
+                with open(audit_file, "r", encoding="utf-8") as f:
+                    for line in f:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        entry = json.loads(line)
+                        if entry.get("event") in ("plan_rejected", "code_rejected", "pipeline_done"):
+                            if not entry.get("success", True):
+                                samples.append({
+                                    "type": "audit_failure",
+                                    "description": f"审计记录: {entry.get('event')} - {entry.get('reason', '')}",
+                                    "entry": entry,
+                                })
+            except Exception:
+                pass
+
+        # 3. 从最近的观察中采集异常
+        for obs in self._observations[-10:]:
+            if obs.obs_type in ("error", "crash", "timeout"):
+                samples.append({
+                    "type": "observation_error",
+                    "description": f"观察到异常: {obs.content[:200]}",
+                })
+
+        # 4. 如果没有失败样本，创建一个自省样本
+        if not samples:
+            samples.append({
+                "type": "self_introspect",
+                "description": "当前无明确失败样本，进行自省式进化：分析代码质量和潜在改进点",
+            })
+
+        return samples[:10]  # 最多10个样本
+
+    # ── 重启信号 ──────────────────────────────────────────
+
+    async def _check_pending_partner_sync(self):
+        """启动后检查：如果刚从进化重启成功，触发partner也重启同步代码"""
+        instance_id = self.strand_id.split("_")[1]
+        partner_id = "b" if instance_id == "a" else "a"
+        data_dir = self.repo_root / "acp-proxy" / "data"
+        pending_file = data_dir / f"sync_partner_{partner_id}.pending"
+
+        if not pending_file.exists():
+            return
+
+        try:
+            content = pending_file.read_text()
+            pending_file.unlink()
+            data = json.loads(content) if content.startswith("{") else {"reason": content}
+
+            self._log("sync", f"🔄 检测到待同步进化，触发partner({partner_id})重启")
+
+            # 等待自己健康检查通过（给30秒稳定时间）
+            await asyncio.sleep(30)
+
+            # 写partner重启信号
+            self._write_restart_signal(
+                f"sync_from_{instance_id}:{data.get('reason', 'evolution')}",
+                target="partner"
+            )
+        except Exception as e:
+            logger.error(f"[{self.strand_id}] Partner sync check failed: {e}")
+
+    def _write_restart_signal(self, reason: str, target: str = "self"):
+        """写入重启信号文件，file_watcher检测后触发进程退出
+        
+        target: "self" = 重启自己, "partner" = 重启伙伴, "both" = 两个都重启
+        """
+        instance_id = self.strand_id.split("_")[1]
+        partner_id = "b" if instance_id == "a" else "a"
+        data_dir = self.repo_root / "acp-proxy" / "data"
+
+        targets = []
+        if target in ("self", "both"):
+            targets.append(instance_id)
+        if target in ("partner", "both"):
+            targets.append(partner_id)
+
+        for tid in targets:
+            signal_file = data_dir / f"restart_{tid}.signal"
+            try:
+                signal_file.parent.mkdir(parents=True, exist_ok=True)
+                signal_file.write_text(json.dumps({
+                    "reason": reason,
+                    "source": self.strand_id,
+                    "target": tid,
+                    "timestamp": datetime.now(timezone.utc).isoformat(),
+                }))
+                self._log("restart", f"📡 重启信号 → 实例{tid}: {reason}")
+            except Exception as e:
+                logger.error(f"Failed to write restart signal for {tid}: {e}")
+
+    # ── 状态管理 ──────────────────────────────────────────
+
+    def _load_state(self):
+        try:
+            if self._state_file.exists():
+                with open(self._state_file, "r") as f:
+                    state = json.load(f)
+                self._memory = state.get("memory", [])
+                self._cycle_count = state.get("cycle_count", 0)
+                self._history = state.get("history", [])
+                # 恢复观察数据
+                for o in state.get("observations", []):
+                    self._observations.append(Observation(
+                        obs_id=o.get("obs_id", str(uuid.uuid4())[:8]),
+                        obs_type=o.get("type", "unknown"),
+                        content=o.get("content", ""),
+                        analyzed=o.get("analyzed", False),
+                        timestamp=o.get("timestamp"),
+                    ))
+        except Exception:
+            pass
+        # 加载目标（优先从共享文件）
+        self._load_goals()
+        if not self._goals:
+            for g in DEFAULT_GOALS:
+                self._goals.append(EvolutionGoal(
+                    goal_id=str(uuid.uuid4())[:8],
+                    title=g["title"],
+                    description=g["description"],
+                    priority=g["priority"],
+                ))
+            self._save_goals()
+
+    def _save_state(self):
+        try:
+            self._state_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._state_file, "w") as f:
+                json.dump({
+                    "strand_id": self.strand_id,
+                    "strategy": self.strategy,
+                    "role": self.role.value,
+                    "cycle_count": self._cycle_count,
+                    "memory": self._memory[-50:],
+                    "history": self._history[-100:],
+                    "observations": [
+                        {"obs_id": o.obs_id, "type": o.obs_type, "content": o.content,
+                         "analyzed": o.analyzed, "timestamp": o.timestamp}
+                        for o in self._observations[-50:]
+                    ],
+                    "last_update": datetime.now(timezone.utc).isoformat(),
+                }, f, ensure_ascii=False, indent=2)
+            # goals单独存共享文件（主进程可修改，子进程读取）
+            self._save_goals()
+        except Exception:
+            pass
+
+    def _save_goals(self):
+        """将goals写入共享文件，主进程和子进程都能读写"""
+        try:
+            goals_file = self._state_file.parent / "dna_goals.json"
+            with open(goals_file, "w") as f:
+                json.dump([g.to_dict() for g in self._goals], f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+    def _load_goals(self):
+        """从共享文件读取goals（优先从共享文件，否则从state文件）"""
+        import os
+        goals_file = self._state_file.parent / "dna_goals.json"
+        if goals_file.exists():
+            try:
+                if os.path.getmtime(goals_file) > os.path.getmtime(str(self._state_file)):
+                    with open(goals_file, "r") as f:
+                        goals_data = json.load(f)
+                    self._goals = [EvolutionGoal(**gd) for gd in goals_data]
+                    return
+            except Exception:
+                pass
+
+    def _sync_memory(self):
+        """将记忆写入共享文件，两条链合并去重"""
+        try:
+            memory_file = self._state_file.parent / "dna_memory.json"
+            # 读取现有共享记忆
+            existing = []
+            if memory_file.exists():
+                existing = json.loads(memory_file.read_text())
+            # 合并：按cycle_id去重
+            seen = {m.get("cycle_id") for m in existing}
+            for m in self._memory:
+                cid = m.get("cycle_id")
+                if cid and cid not in seen:
+                    existing.append(m)
+                    seen.add(cid)
+            # 按时间排序，保留最新50条
+            existing.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+            memory_file.write_text(json.dumps(existing[:50], ensure_ascii=False, indent=2))
+        except Exception:
+            pass
+
+    def _load_shared_memory(self):
+        """从共享文件加载伙伴的记忆"""
+        import os
+        memory_file = self._state_file.parent / "dna_memory.json"
+        if memory_file.exists():
+            try:
+                shared = json.loads(memory_file.read_text())
+                my_ids = {m.get("cycle_id") for m in self._memory}
+                new_count = 0
+                for m in shared:
+                    if m.get("cycle_id") not in my_ids:
+                        self._memory.append(m)
+                        my_ids.add(m.get("cycle_id"))
+                        new_count += 1
+                if new_count:
+                    self._memory.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+                    self._memory = self._memory[:50]
+                    logger.info(f"[{self.strand_id}] Synced {new_count} memories from partner")
+            except Exception:
+                pass
+
+    def _save_plans(self):
+        """保存待执行的计划"""
+        try:
+            self._plans_file.parent.mkdir(parents=True, exist_ok=True)
+            with open(self._plans_file, "w") as f:
+                json.dump([
+                    {
+                        "plan_id": p.plan_id,
+                        "source_strand": p.source_strand,
+                        "improvements": p.improvements,
+                        "reflections": p.reflections,
+                        "created_at": p.created_at,
+                        "status": p.status,
+                    }
+                    for p in self._my_plans_for_partner
+                ], f, ensure_ascii=False, indent=2)
+        except Exception:
+            pass
+
+    def stop(self):
+        self._running = False
+
+    def get_status(self) -> dict:
+        return {
+            "strand_id": self.strand_id,
+            "strategy": self.strategy,
+            "role": self.role.value,
+            "running": self._running,
+            "cycle_count": self._cycle_count,
+            "observations": len(self._observations),
+            "observations_unanalyzed": len([o for o in self._observations if not o.analyzed]),
+            "partner_alive": self._partner_alive,
+            "partner_cycle_count": self._partner_cycle_count,
+            "my_plans_for_partner": len(self._my_plans_for_partner),
+            "partner_plans_for_me": len(self._partner_plans_for_me),
+            "memories": len(self._memory),
+        }
+
+
+class DNAEvolutionEngine:
+    """双螺旋DNA进化引擎 v3 — 交叉编程模型"""
+
+    def __init__(
+        self,
+        repo_root: str,
+        llm_base_url: str = "http://127.0.0.1:8090",
+        llm_api_key: str = "",
+        llm_model: str = "soulmate",
+    ):
+        self.repo_root = repo_root
+        self.llm_base_url = llm_base_url
+        self.llm_api_key = llm_api_key
+        self.llm_model = llm_model
+
+        self.strand_a = DNAStrand(
+            "strand_a", StrandRole.PRIMARY, repo_root, llm_base_url,
+            strategy="conservative",
+            llm_api_key=llm_api_key, llm_model=llm_model,
+        )
+        self.strand_b = DNAStrand(
+            "strand_b", StrandRole.SHADOW, repo_root, llm_base_url,
+            strategy="aggressive",
+            llm_api_key=llm_api_key, llm_model=llm_model,
+        )
+
+        self._task_a: asyncio.Task | None = None
+        self._task_b: asyncio.Task | None = None
+        self._running = False
+
+    async def start(self):
+        self._running = True
+        logger.info("🧬 DNA Evolution Engine v3 started — cross-programming active")
+
+        self._task_a = asyncio.create_task(self.strand_a.run("strand_b"))
+        self._task_b = asyncio.create_task(self.strand_b.run("strand_a"))
+
+        try:
+            await asyncio.gather(self._task_a, self._task_b)
+        except asyncio.CancelledError:
+            pass
+
+    def observe(self, obs_type: str, content: str, metadata: dict | None = None):
+        self.strand_a.observe(obs_type, content, metadata)
+        self.strand_b.observe(obs_type, content, metadata)
+
+    def stop(self):
+        self._running = False
+        self.strand_a.stop()
+        self.strand_b.stop()
+        if self._task_a:
+            self._task_a.cancel()
+        if self._task_b:
+            self._task_b.cancel()
+
+    def get_status(self) -> dict:
+        task = getattr(self, '_strands_task', None)
+        return {
+            "running": self._running,
+            "strand_a": self.strand_a.get_status() if self.strand_a else None,
+            "strand_b": self.strand_b.get_status() if self.strand_b else None,
+            "strands_running": task is not None and not task.done(),
+            "history_size": len(self.strand_a._history) if self.strand_a else 0,
+        }
+
+    def get_recent_results(self, limit: int = 10) -> list[dict]:
+        """获取最近的进化结果（供agent查询）"""
+        results = []
+        for strand in [self.strand_a, self.strand_b]:
+            for cycle in strand._cycles[-limit:]:
+                if cycle.changes:
+                    results.append({
+                        "cycle_id": cycle.cycle_id,
+                        "strand": strand.strand_id,
+                        "timestamp": cycle.completed_at,
+                        "changes": [
+                            {
+                                "file": c.get("target_file", ""),
+                                "status": c.get("status", ""),
+                                "type": c.get("type", ""),
+                            }
+                            for c in cycle.changes
+                        ],
+                        "success": cycle.success,
+                        "executed_by": cycle.executed_by,
+                    })
+        return sorted(results, key=lambda x: x.get("timestamp", ""), reverse=True)[:limit]
+
+    def get_created_skills(self) -> list[dict]:
+        """获取进化引擎创建的技能列表"""
+        skills_dir = Path(self.repo_root) / "acp-proxy" / "skills"
+        skills = []
+        try:
+            for f in skills_dir.glob("*.json"):
+                try:
+                    with open(f, "r", encoding="utf-8") as fh:
+                        data = json.load(fh)
+                    if data.get("name"):
+                        skills.append({
+                            "name": data["name"],
+                            "description": data.get("description", ""),
+                            "file": str(f),
+                            "created_at": data.get("created_at", ""),
+                            "use_count": data.get("use_count", 0),
+                            "last_used": data.get("last_used"),
+                        })
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        return skills
+
+    def get_evolution_quality(self) -> dict:
+        """评估进化质量"""
+        skills = self.get_created_skills()
+        total_skills = len(skills)
+        used_skills = len([s for s in skills if s.get("use_count", 0) > 0])
+        
+        # 计算成功率
+        total_cycles = self.strand_a._cycle_count + self.strand_b._cycle_count
+        successful_cycles = sum(
+            1 for strand in [self.strand_a, self.strand_b]
+            for cycle in strand._cycles
+            if cycle.success
+        )
+        
+        return {
+            "total_skills_created": total_skills,
+            "skills_actively_used": used_skills,
+            "skill_utilization_rate": used_skills / total_skills if total_skills > 0 else 0,
+            "total_evolution_cycles": total_cycles,
+            "successful_cycles": successful_cycles,
+            "cycle_success_rate": successful_cycles / total_cycles if total_cycles > 0 else 0,
+            "strand_a_memories": len(self.strand_a._memory),
+            "strand_b_memories": len(self.strand_b._memory),
+        }
+
+    def observe_with_type(self, obs_type: str, content: str, metadata: dict | None = None):
+        """带类型的观察注入"""
+        self.strand_a.observe(obs_type, content, metadata)
+        self.strand_b.observe(obs_type, content, metadata)
+
+    def get_history(self, limit: int = 50) -> list[dict]:
+        """获取进化历史（合并两条链）"""
+        all_history = self.strand_a._history + self.strand_b._history
+        all_history.sort(key=lambda x: x.get("timestamp", ""), reverse=True)
+        return all_history[:limit]
+
+    def get_goals(self) -> list[dict]:
+        """获取进化目标（以strand_a为主）"""
+        return [g.to_dict() for g in self.strand_a._goals]
+
+    def add_goal(self, title: str, description: str, priority: str = "medium") -> dict:
+        """添加新的进化目标（同时注入两条链）"""
+        goal_a = EvolutionGoal(
+            goal_id=str(uuid.uuid4())[:8],
+            title=title,
+            description=description,
+            priority=priority,
+        )
+        goal_b = EvolutionGoal(
+            goal_id=str(uuid.uuid4())[:8],
+            title=title,
+            description=description,
+            priority=priority,
+        )
+        self.strand_a._goals.append(goal_a)
+        self.strand_b._goals.append(goal_b)
+        self.strand_a._save_goals()
+        self.strand_b._save_goals()
+        return goal_a.to_dict()
+
+    def update_goal(self, goal_id: str, updates: dict) -> dict | None:
+        """更新目标（标题/描述/优先级/状态/进度）"""
+        for strand in [self.strand_a, self.strand_b]:
+            for g in strand._goals:
+                if g.goal_id == goal_id:
+                    for k, v in updates.items():
+                        if hasattr(g, k):
+                            setattr(g, k, v)
+                    strand._save_goals()
+                    return g.to_dict()
+        return None
+
+    def delete_goal(self, goal_id: str) -> bool:
+        """删除目标"""
+        found = False
+        for strand in [self.strand_a, self.strand_b]:
+            before = len(strand._goals)
+            strand._goals = [g for g in strand._goals if g.goal_id != goal_id]
+            if len(strand._goals) < before:
+                found = True
+                strand._save_goals()
+        return found

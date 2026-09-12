@@ -19,7 +19,7 @@ from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 from sse_starlette.sse import EventSourceResponse
 
-from a2a.models import (
+from models import (
     A2A_INVALID_TASK_STATE,
     A2A_TASK_NOT_CANCELABLE,
     A2A_TASK_NOT_FOUND,
@@ -36,25 +36,25 @@ from a2a.models import (
     TaskState,
     TextPart,
 )
-from a2a.sse_events import (
+from sse_events import (
     A2ACompletedEvent,
     A2AErrorEvent,
     MessageAppendedEvent,
     NewArtifactEvent,
     TaskStatusChangedEvent,
 )
-from a2a.stream_manager import get_stream_manager
-from a2a.bridge import get_bridge
-from a2a.task_store import TaskStore
-from a2a.agent_card import get_agent_card, list_agent_cards
-from a2a.security import verify_auth
-from a2a.push_notify import (
+from stream_manager import get_stream_manager
+from bridge import get_bridge
+from task_store import TaskStore
+from agent_card import get_agent_card, list_agent_cards
+from security import verify_auth
+from push_notify import (
     get_push_config,
     push_task_event,
     register_push_config,
     remove_push_config,
 )
-from a2a.logger import log_error, log_request, log_response, log_task_event
+from logger import log_error, log_request, log_response, log_task_event
 
 logger = logging.getLogger("a2a.server")
 
@@ -111,7 +111,12 @@ async def _handle_task_delegate(params: dict[str, Any], request_id: Any) -> JSON
 
     session_id = params.get("sessionId")
     metadata = params.get("metadata") or {}
-    msg = Message(**message_data)
+
+    # 兼容字符串和对象格式
+    if isinstance(message_data, str):
+        msg = Message(role="user", parts=[TextPart(text=message_data)])
+    else:
+        msg = Message(**message_data)
 
     # 注入A2A v1.0规范字段到metadata
     metadata["task_id"] = params.get("task_id", metadata.get("task_id"))
@@ -252,6 +257,7 @@ async def _handle_agent_heartbeat(params: dict[str, Any], request_id: Any) -> JS
     """处理 a2a/agent/heartbeat 方法：节点心跳保活（A2A v1.0）。
 
     集群在线感知、负载探测、异常节点剔除。
+    支持自注册：新Agent发心跳自动注册AgentCard。
     """
     agent_id = params.get("agent_id")
     if not agent_id:
@@ -260,6 +266,41 @@ async def _handle_agent_heartbeat(params: dict[str, Any], request_id: Any) -> JS
     status = params.get("status", "online")
     load = params.get("load", 0.0)
     support_methods = params.get("support_methods", [])
+    agent_name = params.get("name", agent_id)
+    agent_description = params.get("description", f"{agent_name} Agent")
+    agent_skills = params.get("skills", [])
+
+    # 自注册：如果AgentCard不存在，自动创建
+    from agent_card import get_agent_card, _CARD_CACHE, _build_card, _build_skill
+    if not get_agent_card(agent_id):
+        logger.info(f"Auto-registering new agent: {agent_id}")
+        skills = []
+        for s in agent_skills:
+            if isinstance(s, dict):
+                skills.append(_build_skill(
+                    s.get("id", "general"),
+                    s.get("name", "通用能力"),
+                    s.get("description", ""),
+                    s.get("tags", []),
+                ))
+        if not skills:
+            skills = [_build_skill("general", "通用能力", f"{agent_name} 的通用任务处理能力", ["general"])]
+
+        from models import AgentCard, AgentCapabilities
+        _CARD_CACHE[agent_id] = AgentCard(
+            name=agent_name,
+            description=agent_description,
+            version=params.get("version", "1.0.0"),
+            url=f"/a2a/{agent_id}",
+            capabilities=AgentCapabilities(
+                streaming=True,
+                pushNotifications=False,
+                stateTransitionHistory=True,
+            ),
+            skills=skills,
+            defaultInputModes=["text/plain", "application/json"],
+            defaultOutputModes=["text/plain", "application/json"],
+        )
 
     # 广播agent状态事件
     stream = get_stream_manager()
@@ -556,14 +597,17 @@ well_known_router = APIRouter(tags=["A2A-WellKnown"])
 
 
 @well_known_router.get("/.well-known/agent.json")
-async def well_known_agent_card() -> JSONResponse:
+async def well_known_agent_card(agent: str | None = None) -> JSONResponse:
     """标准 well-known AgentCard 端点。
 
-    默认返回 SoulMate 的AgentCard（主入口Agent）。
-    可通过 ?agent=xxx 查询参数指定其他Agent。
+    不带参数：返回所有已注册AgentCard列表。
+    ?agent=xxx：返回指定Agent的AgentCard。
     """
-    # 默认返回soulmate（主Agent）
-    card = get_agent_card("soulmate")
-    if not card:
-        return JSONResponse(content={"error": "AgentCard注册表为空"}, status_code=500)
-    return JSONResponse(content=card.model_dump())
+    if agent:
+        card = get_agent_card(agent)
+        if not card:
+            return JSONResponse(content={"error": f"Agent '{agent}' not found"}, status_code=404)
+        return JSONResponse(content=card.model_dump())
+    # 返回所有
+    cards = list_agent_cards()
+    return JSONResponse(content=[c.model_dump() for c in cards])

@@ -7,5 +7,5 @@ export default defineConfig({
   splitting: false,
   sourcemap: true,
   clean: true,
-  external: ['react', 'react-dom', 'next', 'react-i18next', 'echarts', 'echarts-for-react', 'zustand'],
+  external: ['react', 'react-dom', 'next', 'react-i18next', 'echarts', 'zustand'],
 });

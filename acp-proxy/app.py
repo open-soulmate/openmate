@@ -1,8 +1,10 @@
-"""FastAPI app for ACP Proxy service — 支持插件动态加载
+"""FastAPI app for ACP Proxy service — 双实例交叉进化架构
 
-集成ModelRouter智能路由REST API，提供模型选择、模式切换、统计查询等端点。
+每个实例运行一个进化strand作为asyncio task（不是子进程）。
+实例A = strand_a (conservative), 实例B = strand_b (aggressive)
+代码变更后通过exit code 42请求supervisor重启。
 """
-
+import asyncio
 import logging
 import os
 import sys
@@ -12,96 +14,179 @@ from fastapi import FastAPI, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from proxy import get_acp_process
 from ws_chat import router as ws_router
-from ws_group import router as ws_group_router  # 群组讨论 WebSocket 端点
-from ws_acp import ws_acp_endpoint  # ACP JSON-RPC 2.0纯透传端点
-from a2a.server import router as a2a_router, rpc_router as a2a_rpc_router, well_known_router
+from ws_group import router as ws_group_router
+from ws_acp import ws_acp_endpoint
 from mcp.server import router as mcp_router
 from gateway.router import router as gateway_router
-from model_router import get_model_router  # 智能模型路由
+from model_router import get_model_router
+from routes.skills import router as skills_router
+from routes.evolution import router as evolution_router
 
 logger = logging.getLogger("acp-proxy.app")
 
-# 插件目录 — 与OpenMate核心代码分离
 PLUGINS_DIR = Path(__file__).parent.parent / "plugins"
+
+# 重启退出码（与supervisor.sh一致）
+RESTART_EXIT_CODE = 42
 
 
 def load_plugins(app: FastAPI) -> list[str]:
-    """
-    动态加载所有插件
-    
-    扫描plugins目录，加载每个插件的：
-    1. plugin.json（元数据）
-    2. __init__.py（register_routes函数）
-    
-    返回:
-        已加载的插件名称列表
-    """
+    """动态加载所有插件"""
     loaded = []
-    
     if not PLUGINS_DIR.exists():
-        logger.warning("插件目录不存在: %s", PLUGINS_DIR)
         return loaded
-    
-    # 将plugins目录加入Python路径
     plugins_str = str(PLUGINS_DIR)
     if plugins_str not in sys.path:
         sys.path.insert(0, plugins_str)
-    
     for plugin_dir in sorted(PLUGINS_DIR.iterdir()):
         if not plugin_dir.is_dir():
             continue
-        
         plugin_json = plugin_dir / "plugin.json"
         init_py = plugin_dir / "__init__.py"
-        
         if not plugin_json.exists() or not init_py.exists():
             continue
-        
         plugin_name = plugin_dir.name
-        
         try:
-            # 读取插件清单
             import json
             with open(plugin_json, "r", encoding="utf-8") as f:
                 manifest = json.load(f)
-            
-            # 动态导入插件模块
             plugin_module = __import__(plugin_name)
-            
-            # 调用register_routes注册API
             if hasattr(plugin_module, "register_routes"):
                 plugin_module.register_routes(app)
-                logger.info("✅ 插件已加载: %s v%s - %s", 
+                logger.info("✅ 插件已加载: %s v%s - %s",
                     manifest.get("name", plugin_name),
                     manifest.get("version", "0.0.0"),
-                    manifest.get("description", "")
-                )
+                    manifest.get("description", ""))
                 loaded.append(plugin_name)
-            else:
-                logger.warning("⚠️ 插件 %s 缺少 register_routes 函数", plugin_name)
-                
         except Exception as e:
             logger.error("❌ 插件 %s 加载失败: %s", plugin_name, e)
-    
     return loaded
+
+
+async def _run_evolution_strand(instance_id: str, repo_root: str):
+    """在主进程中运行一个进化strand（asyncio task，不是子进程）"""
+    from dna_evolution import DNAStrand, StrandRole
+
+    strand_id = f"strand_{instance_id}"
+    strategy = "conservative" if instance_id == "a" else "aggressive"
+    partner_id = "strand_b" if instance_id == "a" else "strand_a"
+
+    logger.info(f"🧬 Starting evolution strand {strand_id} ({strategy})")
+
+    strand = DNAStrand(
+        strand_id=strand_id,
+        role=StrandRole.PRIMARY if instance_id == "a" else StrandRole.SHADOW,
+        repo_root=repo_root,
+        llm_base_url="https://token-plan-cn.xiaomimimo.com/v1",
+        strategy=strategy,
+        llm_api_key=os.environ.get("MIMO_API_KEY", "REDACTED"),
+        llm_model="xiaomi/mimo-v2.5-pro",
+    )
+
+    # 自观察循环
+    async def self_observe():
+        import subprocess
+        while True:
+            await asyncio.sleep(120)
+            try:
+                acp_dir = Path(repo_root) / "acp-proxy"
+                py_files = list(acp_dir.rglob("*.py"))
+                ts_files = list((Path(repo_root) / "src").rglob("*.ts")) if (Path(repo_root) / "src").exists() else []
+                strand.observe("self_scan", f"System: {len(py_files)} Python, {len(ts_files)} TypeScript files")
+
+                skills_dir = acp_dir / "skills"
+                if skills_dir.exists():
+                    skill_files = list(skills_dir.glob("*.json"))
+                    strand.observe("self_scan", f"Skills: {len(skill_files)} registered")
+
+                try:
+                    result = subprocess.run(["git", "log", "--oneline", "-5"],
+                        capture_output=True, text=True, cwd=str(acp_dir))
+                    if result.returncode == 0 and result.stdout.strip():
+                        strand.observe("self_scan", f"Recent git:\n{result.stdout.strip()}")
+                except Exception:
+                    pass
+
+                status = strand.get_status()
+                strand.observe("self_introspect",
+                    f"Status: cycle={status['cycle_count']}, mem={status['memories']}, "
+                    f"unanalyzed={status['observations_unanalyzed']}")
+            except Exception as e:
+                logger.warning(f"[{strand_id}] Self-observe error: {e}")
+
+    # 文件变更监控
+    async def file_watcher():
+        from file_watcher import FileWatcher
+        data_dir = Path(repo_root) / "acp-proxy" / "data"
+        watcher = FileWatcher(data_dir, instance_id)
+        await watcher.start()
+
+    # 启动所有任务
+    evo_task = asyncio.create_task(strand.run(partner_id))
+    observe_task = asyncio.create_task(self_observe())
+    watcher_task = asyncio.create_task(file_watcher())
+
+    # 设置engine供API使用
+    from routes.evolution import set_engine
+    from dna_evolution import DNAEvolutionEngine
+    engine = DNAEvolutionEngine(
+        repo_root=repo_root,
+        llm_base_url="https://token-plan-cn.xiaomimimo.com/v1",
+        llm_api_key=os.environ.get("MIMO_API_KEY", "REDACTED"),
+        llm_model="xiaomi/mimo-v2.5-pro",
+    )
+    engine._running = True
+    # 替换本实例的strand为真实的运行strand
+    if instance_id == "a":
+        engine.strand_a = strand
+    else:
+        engine.strand_b = strand
+    set_engine(engine)
+
+    logger.info(f"🧬 Evolution strand {strand_id} active in main process")
+
+    # 永远等待（直到进程被杀或收到重启信号）
+    try:
+        await asyncio.gather(evo_task, observe_task, watcher_task)
+    except asyncio.CancelledError:
+        pass
+    except Exception as e:
+        logger.error(f"Evolution strand error: {e}")
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """ACP Proxy生命周期 — 启动FastAPI服务并加载插件"""
-    logger.info("ACP Proxy starting (Agent Engine managed separately)")
-    
-    # 加载所有插件
+    """ACP Proxy生命周期"""
+    instance_id = os.environ.get("INSTANCE_ID", "a")
+    logger.info(f"ACP Proxy instance {instance_id} starting")
+
     loaded_plugins = load_plugins(app)
     if loaded_plugins:
         logger.info("已加载 %d 个插件: %s", len(loaded_plugins), ", ".join(loaded_plugins))
-    
+
+    # 启动进化strand（主进程asyncio task，不是子进程）
+    evolution_task = None
+    try:
+        repo_root = str(Path(__file__).parent.parent)
+        evolution_task = asyncio.create_task(
+            _run_evolution_strand(instance_id, repo_root)
+        )
+    except Exception as e:
+        logger.warning(f"Evolution strand failed to start: {e}")
+
     yield
-    
-    logger.info("ACP Proxy stopped")
+
+    if evolution_task:
+        evolution_task.cancel()
+        try:
+            await evolution_task
+        except asyncio.CancelledError:
+            pass
+
+    logger.info(f"ACP Proxy instance {instance_id} stopped")
 
 
-app = FastAPI(title="ACP Proxy", version="2.0.0", lifespan=lifespan)
+app = FastAPI(title="ACP Proxy", version="3.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -111,48 +196,40 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# 核心路由（OpenMate内置）
+# 核心路由
 app.include_router(ws_router)
-app.include_router(ws_group_router)  # 群组讨论 WebSocket 路由
-app.include_router(a2a_router)
-app.include_router(a2a_rpc_router)  # /rpc/a2a 规范路径
-app.include_router(well_known_router)
-app.include_router(mcp_router)  # /admin/mcp 管控端点
-app.include_router(gateway_router)  # /rpc 统一入口
-
-# 注意: 插件路由（如/bidding）在lifespan中动态加载
+app.include_router(ws_group_router)
+app.include_router(mcp_router)
+app.include_router(gateway_router)
+app.include_router(skills_router)
+app.include_router(evolution_router)
 
 
-# ACP JSON-RPC 2.0纯透传端点 — 所有agent统一走此端点
 @app.websocket("/ws/acp")
 async def ws_acp_route(websocket: WebSocket):
     await ws_acp_endpoint(websocket)
 
 
-# A2A JSON-RPC 2.0 WebSocket长连接端点
 @app.websocket("/ws/a2a")
 async def ws_a2a_route(websocket: WebSocket):
-    """A2A WebSocket长连接 — Agent间双向通信。"""
     from ws_a2a import ws_a2a_endpoint
     await ws_a2a_endpoint(websocket)
 
 
-# MCP WebSocket长连接端点
 @app.websocket("/ws/mcp")
 async def ws_mcp_route(websocket: WebSocket):
-    """MCP WebSocket长连接 — 底层管控通道。"""
     from ws_mcp import ws_mcp_endpoint
     await ws_mcp_endpoint(websocket)
 
 
 @app.get("/health")
 async def health():
-    return {"status": "ok", "service": "acp-proxy"}
+    instance_id = os.environ.get("INSTANCE_ID", "a")
+    return {"status": "ok", "service": "acp-proxy", "instance": instance_id}
 
 
 @app.get("/plugins")
 async def list_plugins():
-    """列出所有已加载的插件（包含完整manifest）"""
     plugins = []
     if PLUGINS_DIR.exists():
         for plugin_dir in sorted(PLUGINS_DIR.iterdir()):
@@ -166,45 +243,30 @@ async def list_plugins():
                     "version": manifest.get("version", "0.0.0"),
                     "description": manifest.get("description", ""),
                     "status": "loaded",
-                    "manifest": manifest  # 返回完整manifest供前端读取nav配置
+                    "manifest": manifest
                 })
     return {"plugins": plugins, "count": len(plugins)}
 
 
-# ============================================================
-# ModelRouter 智能路由 REST API 端点
-# ============================================================
-
-from pydantic import BaseModel as PydanticBaseModel  # 请求体校验
-
+from pydantic import BaseModel as PydanticBaseModel
 
 class SetModeRequest(PydanticBaseModel):
-    """设置路由模式的请求体"""
-    mode: str  # auto / cost / balance / intelligence
-
+    mode: str
 
 @app.get("/api/model-router/config")
 async def model_router_config():
-    """获取当前路由配置 — 包含所有tier的模型列表和连接信息"""
     router = get_model_router()
     return router.get_config()
 
-
 @app.post("/api/model-router/mode")
 async def model_router_set_mode(req: SetModeRequest):
-    """设置路由模式 — 支持热切换，无需重启服务
-
-    请求体: {"mode": "auto"} / {"mode": "cost"} / {"mode": "balance"} / {"mode": "intelligence"}
-    """
     router = get_model_router()
     success = router.set_mode(req.mode)
     if not success:
-        return {"success": False, "error": f"未知模式: {req.mode}，可选: auto/cost/balance/intelligence"}
+        return {"success": False, "error": f"未知模式: {req.mode}"}
     return {"success": True, "mode": req.mode, "status": router.get_status()}
-
 
 @app.get("/api/model-router/status")
 async def model_router_status():
-    """获取路由状态和统计 — 包含请求计数、模型使用分布、平均复杂度等"""
     router = get_model_router()
     return router.get_status()

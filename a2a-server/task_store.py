@@ -13,7 +13,7 @@ from typing import Optional
 
 import aiosqlite
 
-from a2a.models import (
+from models import (
     Artifact,
     Message,
     Task,

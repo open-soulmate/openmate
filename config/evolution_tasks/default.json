@@ -1,0 +1,44 @@
+{
+  "id": "task-001",
+  "name": "API响应时间优化",
+  "description": "一个低风险的自省进化任务，专注于优化一个模拟API端点的P95响应时间，使其低于200毫秒。该任务不涉及真实生产数据或关键业务系统。",
+  "objective": {
+    "target": {
+      "metric": "api_response_time_p95",
+      "operator": "<",
+      "value": 200
+    },
+    "context": "优化应在不改变API功能或返回数据结构的前提下进行，重点关注代码效率、缓存策略或简单的算法改进。"
+  },
+  "baseline": {
+    "api_response_time_p95": 250,
+    "api_throughput_per_second": 120,
+    "error_rate_percent": 0.5,
+    "data_source": "过去24小时的模拟监控数据"
+  },
+  "mock_api_endpoint": {
+    "description": "一个用于无害实验的模拟API端点，返回静态生成的业务数据。重构器可修改其底层实现代码以寻求优化。",
+    "path": "/api/simulate-data",
+    "method": "GET",
+    "parameters": {
+      "date_range": "string (e.g., 'last_7_days')",
+      "format": "string ('json' or 'summary')"
+    },
+    "sample_response": {
+      "status": "success",
+      "data": {
+        "user_statistics": {
+          "active_users": 15000,
+          "new_registrations": 230,
+          "avg_session_duration_minutes": 12.5
+        },
+        "revenue": {
+          "total": 45890.50,
+          "currency": "USD"
+        }
+      },
+      "timestamp": "2023-10-27T10:30:00Z"
+    },
+    "implementation_notes": "此端点的逻辑可在 `src/api/simulate_data.py` 中找到。允许重构器修改该文件中的计算逻辑、缓存添加或数据序列化过程。"
+  }
+}

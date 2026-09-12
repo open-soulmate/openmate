@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import dynamic from 'next/dynamic';
 import { assembleECharts } from 'flint-chart';
 import { getApiBaseUrl } from '@/lib/api-client';
 import { cn } from '@/lib/utils';
@@ -20,7 +19,7 @@ import {
   ChevronUp, Trash2,
 } from 'lucide-react';
 
-const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
+import { EChart } from '@/components/echart';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -351,7 +350,7 @@ function ResponseTimeChart({ organs }: { organs: OrganResult[] }) {
         <TrendingUp size={14} className="text-orange-500" />
         <h4 className="text-xs font-medium">Response Time Distribution</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -383,7 +382,7 @@ function OrganStatusPieChart({ organs }: { organs: OrganResult[] }) {
         <BarChart3 size={14} className="text-emerald-500" />
         <h4 className="text-xs font-medium">Organ Status</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -412,7 +411,7 @@ function HttpRequestRateChart({ httpRequests }: { httpRequests: { path: string; 
         <TrendingUp size={14} className="text-blue-500" />
         <h4 className="text-xs font-medium">HTTP Request Rate</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -439,7 +438,7 @@ function ErrorRateChart({ httpErrors }: { httpErrors: { status: string; count: n
         <BarChart3 size={14} className="text-red-500" />
         <h4 className="text-xs font-medium">Error Rate</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -466,7 +465,7 @@ function BenchmarkLatencyChart({ results }: { results: BenchmarkResultItem[] }) 
         <BarChart3 size={14} className="text-primary" />
         <h4 className="text-xs font-medium">Latency Comparison</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 250 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 250 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }

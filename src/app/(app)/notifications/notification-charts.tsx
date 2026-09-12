@@ -1,10 +1,9 @@
 'use client';
 import { useMemo } from 'react';
-import dynamic from 'next/dynamic';
 import { assembleECharts } from 'flint-chart';
 import { PieChart, TrendingUp, BarChart3, Layers } from 'lucide-react';
 
-const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
+import { EChart } from '@/components/echart';
 
 interface Notification {
   id: string;
@@ -61,7 +60,7 @@ function SeverityPie({ notifications }: { notifications: Notification[] }) {
         <PieChart size={14} className="text-amber-500" />
         <h4 className="text-xs font-medium">Type Distribution</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -107,7 +106,7 @@ function NotificationTimeline({ notifications }: { notifications: Notification[]
         <TrendingUp size={14} className="text-primary" />
         <h4 className="text-xs font-medium">Timeline (7 days)</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -147,7 +146,7 @@ function PriorityBar({ notifications }: { notifications: Notification[] }) {
         <BarChart3 size={14} className="text-blue-500" />
         <h4 className="text-xs font-medium">Priority Distribution</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -199,7 +198,7 @@ function SourceBar({ notifications }: { notifications: Notification[] }) {
         <Layers size={14} className="text-green-500" />
         <h4 className="text-xs font-medium">Source Distribution</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }

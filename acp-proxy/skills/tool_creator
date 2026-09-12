@@ -1,0 +1,143 @@
+// acp-proxy/skills/tool_creator/index.js
+const fs = require('fs');
+const path = require('path');
+
+/**
+ * 工具创建器技能
+ * 自动根据自然语言需求创建新的MCP工具定义和技能实现
+ */
+module.exports = async function toolCreator(context) {
+  const { description } = context;
+  
+  if (!description || typeof description !== 'string') {
+    throw new Error('必须提供工具功能描述字符串');
+  }
+  
+  console.log(`[工具创建器] 开始创建工具，需求描述: "${description}"`);
+  
+  // 1. 生成工具名称
+  const toolName = generateToolName(description);
+  console.log(`[工具创建器] 生成工具名称: "${toolName}"`);
+  
+  // 2. 生成工具定义JSON
+  const toolDefinition = {
+    name: toolName,
+    description: description,
+    inputSchema: {
+      type: 'object',
+      properties: {
+        input_text: {
+          type: 'string',
+          description: '需要处理的输入文本'
+        }
+      },
+      required: ['input_text']
+    }
+  };
+  
+  // 3. 确定路径
+  const pluginsDir = path.join(__dirname, '../../plugins');
+  const skillsDir = path.join(__dirname, '..');
+  const toolDefPath = path.join(pluginsDir, `${toolName}.json`);
+  const skillDirPath = path.join(skillsDir, toolName);
+  const skillFilePath = path.join(skillDirPath, 'index.js');
+  
+  // 4. 创建目录
+  if (!fs.existsSync(pluginsDir)) {
+    fs.mkdirSync(pluginsDir, { recursive: true });
+  }
+  if (!fs.existsSync(skillDirPath)) {
+    fs.mkdirSync(skillDirPath, { recursive: true });
+  }
+  
+  // 5. 生成工具定义文件
+  fs.writeFileSync(
+    toolDefPath,
+    JSON.stringify(toolDefinition, null, 2),
+    'utf8'
+  );
+  console.log(`[工具创建器] 已创建工具定义文件: ${toolDefPath}`);
+  
+  // 6. 生成技能实现文件
+  const skillCode = generateSkillCode(toolName);
+  fs.writeFileSync(skillFilePath, skillCode, 'utf8');
+  console.log(`[工具创建器] 已创建技能实现文件: ${skillFilePath}`);
+  
+  // 7. 验证文件创建
+  const results = {
+    success: true,
+    toolName,
+    files: {
+      toolDefinition: toolDefPath,
+      skillImplementation: skillFilePath
+    },
+    metadata: {
+      description,
+      inputSchema: toolDefinition.inputSchema
+    }
+  };
+  
+  // 简单验证文件是否写入成功
+  try {
+    const testRead1 = fs.readFileSync(toolDefPath, 'utf8');
+    const testRead2 = fs.readFileSync(skillFilePath, 'utf8');
+    
+    if (testRead1 && testRead2) {
+      results.verification = '文件写入验证成功';
+    }
+  } catch (error) {
+    results.verification = `文件验证失败: ${error.message}`;
+    results.success = false;
+  }
+  
+  console.log('[工具创建器] 工具创建完成，结果:', JSON.stringify(results, null, 2));
+  
+  return results;
+};
+
+/**
+ * 根据描述生成简洁的snake_case工具名称
+ */
+function generateToolName(description) {
+  // 提取关键词：移除标点符号，分割单词，取前3个关键词
+  const keywords = description
+    .replace(/[，。！？、；：""''【】《》（）\.,!?;:'"()\[\]{}]/g, '')
+    .split(/\s+/)
+    .filter(word => word.length > 0)
+    .slice(0, 3);
+  
+  // 转换为snake_case
+  const name = keywords
+    .map(word => word.toLowerCase())
+    .join('_')
+    .replace(/[^a-z0-9_]/g, '')
+    .substring(0, 50); // 限制长度
+  
+  // 添加前缀避免名称冲突
+  return `custom_${name || 'tool'}_${Date.now().toString(36)}`;
+}
+
+/**
+ * 生成技能实现代码
+ */
+function generateSkillCode(toolName) {
+  return `// 自动生成的技能实现 - ${toolName}
+// 创建时间: ${new Date().toISOString()}
+
+const { useTool } = require('../../global/useTool');
+
+/**
+ * 技能: ${toolName}
+ * 自动创建的技能实现，用于调用对应的MCP工具
+ */
+module.exports = async function ${toPascalCase(toolName)}(context) {
+  const { input_text } = context;
+  
+  if (!input_text) {
+    throw new Error('输入参数 input_text 是必需的');
+  }
+  
+  console.log('调用工具: ${toolName}，输入:', input_text.substring(0, 100) + '...');
+  
+  try {
+    // 调

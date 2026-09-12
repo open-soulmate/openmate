@@ -1,8 +1,7 @@
 'use client';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import dynamic from 'next/dynamic';
 
-const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
+import { EChart } from '@/components/echart';
 
 interface CronJob {
   id: string;
@@ -269,14 +268,11 @@ export function ClockFace({ jobs, selectedJobId, onSelectJob }: ClockFaceProps) 
 
   return (
     <div ref={containerRef} className="flex-1 min-h-0 w-full flex items-center justify-center">
-      <ReactECharts
+      <EChart
         option={option}
         style={{ width: size, height: size }}
         opts={{ renderer: 'canvas' }}
         onChartReady={onChartReady}
-        notMerge={false}
-        lazyUpdate={true}
-        autoResize={true}
       />
     </div>
   );

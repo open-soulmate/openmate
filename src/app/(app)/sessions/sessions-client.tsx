@@ -17,7 +17,7 @@ import {
 import { useIsMobile } from "@/hooks/use-mobile"
 import { PageLayout } from '@/components/page-layout';
 
-const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
+import { EChart } from '@/components/echart';
 
 interface Session {
   session_id: string
@@ -108,7 +108,7 @@ function SessionTrendChart({ sessions }: { sessions: Session[] }) {
         <TrendingUp size={14} className="text-cyan-400" />
         <h4 className="text-xs font-medium">Session Trend (30 days)</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -139,7 +139,7 @@ function TokenUsageChart({ sessions }: { sessions: Session[] }) {
         <BarChart3 size={14} className="text-blue-400" />
         <h4 className="text-xs font-medium">Top Sessions by Messages</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -176,7 +176,7 @@ function ResponseTimeChart({ sessions }: { sessions: Session[] }) {
         <Activity size={14} className="text-green-400" />
         <h4 className="text-xs font-medium">Session Duration Distribution</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -206,7 +206,7 @@ function StatusPieChart({ sessions }: { sessions: Session[] }) {
         <PieChartIcon size={14} className="text-amber-400" />
         <h4 className="text-xs font-medium">Status Distribution</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }

@@ -10,7 +10,7 @@ from typing import Any, Literal, Optional, Union
 
 from pydantic import BaseModel, Field
 
-from a2a.models import Artifact, Message, Task, TaskState
+from models import Artifact, Message, Task, TaskState
 
 
 class TaskStatusChangedEvent(BaseModel):

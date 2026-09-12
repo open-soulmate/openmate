@@ -220,3 +220,28 @@ body {
 .safe-area-right {
   padding-right: env(safe-area-inset-right);
 }
+
+/* ── 裙摆按钮 ── */
+.skirt-tab {
+  --skirt-tab-stroke: var(--border);
+  --skirt-tab-underline: var(--border);
+  --skirt-tab-divider: var(--border);
+}
+.skirt-path-active,
+.skirt-path-inactive {
+  fill: none;
+  stroke-width: 1;
+  stroke-linejoin: round;
+  stroke: transparent;
+  transition: stroke 0.15s ease;
+}
+.skirt-path-active {
+  stroke: var(--skirt-tab-stroke);
+}
+.skirt-underline {
+  background: var(--skirt-tab-underline);
+}
+.skirt-divider {
+  background: var(--skirt-tab-divider);
+}
+

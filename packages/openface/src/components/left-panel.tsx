@@ -40,7 +40,7 @@ export function LeftPanel<T>({
   }, [items, query, filter]);
 
   return (
-    <div className={cn('flex flex-col h-full min-w-0 border-r border-border', className)}>
+    <div className={cn('flex flex-col h-full min-w-0', className)}>
       {/* Search bar */}
       <div className="px-2 flex items-center justify-center h-12 shrink-0">
         <div className="relative flex-1 ">

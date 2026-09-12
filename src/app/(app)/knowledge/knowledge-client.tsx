@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import dynamic from 'next/dynamic';
 import { assembleECharts } from 'flint-chart';
 import { getApiBaseUrl } from '@/lib/api-client';
 import { api } from '@/lib/api-client';
@@ -22,7 +21,7 @@ import {
 } from 'lucide-react';
 import { SharingTab } from './tabs/sharing-tab';
 
-const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
+import { EChart } from '@/components/echart';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -110,7 +109,7 @@ function TagDistributionChart({ items }: { items: KnowledgeItem[] }) {
         <BarChart3 size={14} className="text-violet-500" />
         <h4 className="text-xs font-medium">标签分布</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -147,7 +146,7 @@ function RequestStatusChart({ requests }: { requests: KbRequest[] }) {
         <PieChart size={14} className="text-amber-500" />
         <h4 className="text-xs font-medium">请求状态分布</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }
@@ -200,7 +199,7 @@ function ActivityTimelineChart({ items }: { items: KnowledgeItem[] }) {
         <TrendingUp size={14} className="text-primary" />
         <h4 className="text-xs font-medium">知识增长趋势（30天）</h4>
       </div>
-      <ReactECharts option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
+      <EChart option={option as any} style={{ height: 200 }} opts={{ renderer: 'svg' }} />
     </div>
   );
 }

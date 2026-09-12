@@ -20,6 +20,7 @@ import {
   ChevronRight,
   Server,
   Settings,
+  Play,
 } from "lucide-react";
 import { getApiBaseUrl, getToken } from "@/lib/api-client";
 import { useTranslation } from "react-i18next";
@@ -50,6 +51,15 @@ interface McpServer {
   error: string | null;
 }
 
+interface ToolTestState {
+  server: McpServer;
+  tool: McpTool;
+  args: string;
+  result: any;
+  loading: boolean;
+  error: string | null;
+}
+
 export function McpClient() {
   const { t } = useTranslation();
   const [query, setQuery] = useState("");
@@ -61,6 +71,7 @@ export function McpClient() {
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [stats, setStats] = useState({ total_servers: 0, connected: 0, disconnected: 0, total_tools: 0 });
   const [selectedServer, setSelectedServer] = useState<McpServer | null>(null);
+  const [selectedTool, setSelectedTool] = useState<ToolTestState | null>(null);
 
   const setPageSidebar = useAppStore((s) => s.setPageSidebar);
   const setPageWorkspace = useAppStore((s) => s.setPageWorkspace);
@@ -216,6 +227,40 @@ export function McpClient() {
       }
     } catch {
       showToast(t("mcp.operationFailed") || "Operation failed", "error");
+    }
+  };
+
+  const handleTestTool = (server: McpServer, tool: McpTool) => {
+    setSelectedTool({ server, tool, args: "{}", result: null, loading: false, error: null });
+  };
+
+  const handleExecuteTool = async () => {
+    if (!selectedTool) return;
+    setSelectedTool(prev => prev ? { ...prev, loading: true, error: null } : null);
+    try {
+      const args = JSON.parse(selectedTool.args);
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      const res = await fetch(`${apiBase}/api/mcp/tools/call`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          server_id: selectedTool.server.id,
+          tool_name: selectedTool.tool.name,
+          arguments: args,
+        }),
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const data = await res.json();
+      if (res.ok) {
+        setSelectedTool(prev => prev ? { ...prev, result: data, loading: false } : null);
+      } else {
+        setSelectedTool(prev => prev ? { ...prev, error: data.detail || "执行失败", loading: false } : null);
+      }
+    } catch (e: any) {
+      const msg = e?.name === "AbortError" ? "执行超时（30秒）" : "JSON 格式错误或网络异常";
+      setSelectedTool(prev => prev ? { ...prev, error: msg, loading: false } : null);
     }
   };
 
@@ -382,7 +427,18 @@ export function McpClient() {
               ? [{ label: "", value: <span className="text-xs text-muted-foreground">{t("mcp.noToolsMessage") || "No registered tools. Tools will be auto-discovered after connecting."}</span> }]
               : selectedServer.tools.map((tool) => ({
                   label: tool.name,
-                  value: tool.description || <span className="text-muted-foreground">—</span>,
+                  value: (
+                    <div className="flex items-center justify-between gap-2">
+                      <span>{tool.description || <span className="text-muted-foreground">—</span>}</span>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); handleTestTool(selectedServer, tool); }}
+                        disabled={!selectedServer.connected}
+                        className="rounded-md bg-primary/10 px-2 py-1 text-[10px] text-primary hover:bg-primary/20 disabled:opacity-30 shrink-0"
+                      >
+                        {t("mcp.test") || "测试"}
+                      </button>
+                    </div>
+                  ),
                   icon: <Wrench className="w-3.5 h-3.5 text-primary" />,
                 })),
           },
@@ -576,8 +632,17 @@ export function McpClient() {
                               {server.tools.map((tool) => (
                                 <div key={tool.name} className="flex items-start gap-2 rounded-lg border border-border bg-background px-3 py-2">
                                   <Wrench size={12} className="text-primary mt-0.5 shrink-0" />
-                                  <div>
-                                    <span className="text-xs font-medium">{tool.name}</span>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="flex items-center justify-between gap-2">
+                                      <span className="text-xs font-medium">{tool.name}</span>
+                                      <button
+                                        onClick={(e) => { e.stopPropagation(); handleTestTool(server, tool); }}
+                                        disabled={!server.connected}
+                                        className="rounded-md bg-primary/10 px-2 py-1 text-[10px] text-primary hover:bg-primary/20 disabled:opacity-30 shrink-0"
+                                      >
+                                        {t("mcp.test") || "测试"}
+                                      </button>
+                                    </div>
                                     {tool.description && (
                                       <p className="text-[10px] text-muted-foreground mt-0.5">{tool.description}</p>
                                     )}
@@ -596,6 +661,72 @@ export function McpClient() {
           )}
         </div>
       </div>
+
+      {/* Tool Test Modal */}
+      {selectedTool && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setSelectedTool(null)}>
+          <div className="w-full max-w-2xl max-h-[80vh] overflow-auto rounded-xl bg-background border border-border shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-border px-5 py-3">
+              <div>
+                <h3 className="text-sm font-medium flex items-center gap-2">
+                  <Wrench size={14} className="text-primary" />
+                  {selectedTool.tool.name}
+                </h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{selectedTool.tool.description}</p>
+              </div>
+              <button onClick={() => setSelectedTool(null)} className="rounded-lg p-1.5 hover:bg-muted">
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-5 space-y-4">
+              {/* 参数输入 */}
+              <div>
+                <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                  {t("mcp.arguments") || "参数"} (JSON)
+                </label>
+                <textarea
+                  value={selectedTool.args}
+                  onChange={(e) => setSelectedTool(prev => prev ? { ...prev, args: e.target.value } : null)}
+                  placeholder={'{"key": "value"}'}
+                  className="w-full h-32 rounded-lg border border-border bg-muted/30 px-3 py-2 font-mono text-xs outline-none focus:ring-2 focus:ring-primary/30"
+                />
+              </div>
+
+              {/* 执行按钮 */}
+              <button
+                onClick={handleExecuteTool}
+                disabled={selectedTool.loading}
+                className="flex items-center gap-2 rounded-lg bg-primary px-4 py-2 text-sm text-primary-foreground hover:bg-primary/90 disabled:opacity-50"
+              >
+                {selectedTool.loading ? <Loader2 size={14} className="animate-spin" /> : <Play size={14} />}
+                {t("mcp.execute") || "执行"}
+              </button>
+
+              {/* 错误 */}
+              {selectedTool.error && (
+                <div className="rounded-lg bg-red-500/10 px-3 py-2 text-xs text-red-400 flex items-center gap-2">
+                  <AlertCircle size={12} /> {selectedTool.error}
+                </div>
+              )}
+
+              {/* 结果 */}
+              {selectedTool.result && (
+                <div>
+                  <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
+                    {t("mcp.result") || "执行结果"}
+                  </label>
+                  <pre className="rounded-lg bg-muted/50 border border-border p-3 text-xs overflow-auto max-h-60 font-mono">
+                    {JSON.stringify(selectedTool.result, null, 2)}
+                  </pre>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </PageLayout>
   );
 }

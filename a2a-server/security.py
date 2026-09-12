@@ -15,7 +15,7 @@ from typing import Optional
 from fastapi import Request
 from fastapi.responses import JSONResponse
 
-from a2a.models import JSONRPC_INVALID_REQUEST
+from models import JSONRPC_INVALID_REQUEST
 
 logger = logging.getLogger("a2a.security")
 
@@ -31,7 +31,7 @@ if _tokens_env:
 
 def _unauthorized(request_id: object, message: str) -> JSONResponse:
     """构造鉴权失败的 JSON-RPC 错误响应。"""
-    from a2a.server import _error_response
+    from server import _error_response
     return _error_response(request_id, JSONRPC_INVALID_REQUEST, message)
 
 

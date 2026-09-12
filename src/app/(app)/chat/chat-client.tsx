@@ -114,6 +114,7 @@ const SOURCE_META: Record<string, { labelKey: string; icon: string }> = {
   tui:    { labelKey: 'sessions.sourceTui', icon: '🖥️' },
   tool:   { labelKey: 'sessions.sourceTool', icon: '🔧' },
   subagent: { labelKey: 'sessions.sourceSubagent', icon: '🤖' },
+  hermes: { labelKey: 'sessions.sourceAcp', icon: '🔗' },
 };
 
 // Known agent icons (fallback for detect API)
@@ -464,6 +465,8 @@ function useAcpWebSocket(params: {
         return prev;
       });
     }
+    // 无论 selectedSessionRef 是否为空，都刷新 sidebar
+    useAppStore.getState().refreshSidebar();
   }, [updateSessionMessages, setSelectedSession]);
 
   // Connect a single session with its own WebSocket
@@ -660,7 +663,8 @@ function useAcpWebSocket(params: {
             if (eventType === 'agent.message') {
               // Use common handler for incremental chunks
               const delta = (p.payload?.chunk || p.payload?.content_delta) as string | undefined;
-              if (delta) handleAgentChunk(sessionId, delta);
+              const effectiveSessionId = state?.acpSessionId || useAppStore.getState().activeSessionId || sessionId;
+              if (delta) handleAgentChunk(effectiveSessionId, delta);
             }
             else if (eventType === 'session.completed') {
               const completedSessionId = p.session_id || sessionId;
@@ -672,7 +676,8 @@ function useAcpWebSocket(params: {
               setLoading(false);
               streamingSessionIdRef.current = null;
               const errorMsg = p.payload?.msg || p.payload?.error || '未知错误';
-              updateSessionMessages(sessionId, prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${errorMsg}` }], timestamp: new Date() }]);
+              const effectiveSessionIdErr = state?.acpSessionId || useAppStore.getState().activeSessionId || sessionId;
+              updateSessionMessages(effectiveSessionIdErr, prev => [...prev, { id: Date.now().toString(), role: 'agent', parts: [{ type: 'text', text: `${t("chat.error")}: ${errorMsg}` }], timestamp: new Date() }]);
             }
             else if (eventType === 'human.approval.required') {
               const payload = p.payload || {};
@@ -1104,7 +1109,7 @@ export function ChatClient() {
   }, [updateSessionMessages]);
 
   const clearCurrentSessionMessages = useCallback(() => {
-    const sessionId = useAppStore.getState().activeSessionId || selectedSessionRef.current?.id;
+    const sessionId = selectedSessionRef.current?.id || useAppStore.getState().activeSessionId;
     if (!sessionId) return; // No active session, skip clear
     updateSessionMessages(sessionId, () => []);
   }, [updateSessionMessages]);
@@ -1120,10 +1125,7 @@ export function ChatClient() {
       useAppStore.getState().setActiveSession(newId, currentAgentId);
     }
     // 更新 sidebarAgents 列表中的 session ID（temp → real）
-    useAppStore.getState().setSidebarAgents((prev: AgentInfo[]) => prev.map(a => ({
-      ...a,
-      sessions: a.sessions.map(s => s.id === oldId ? { ...s, id: newId } : s),
-    })));
+    // 不再直接修改 sidebarAgents，由 refreshSidebar → fetchSessions 统一管理
     setSessionDataMap(prev => {
       const data = prev.get(oldId);
       if (!data) return prev;
@@ -1132,7 +1134,12 @@ export function ChatClient() {
       next.set(newId, data);
       return next;
     });
+    // Sync refs so they point to the migrated ID
+    if (pendingSessionIdRef.current === oldId) pendingSessionIdRef.current = newId;
+    if (selectedSessionRef.current?.id === oldId) selectedSessionRef.current = { ...selectedSessionRef.current, id: newId };
     // Note: sessionStateMapRef and wsMapRef migration happens in hook's performHandshake
+    // Trigger sidebar refresh so fetchSessions picks up the real session from server
+    useAppStore.getState().refreshSidebar();
   }, []);
 
   // Derived messages for active session (read from store — single source of truth)
@@ -1348,6 +1355,12 @@ export function ChatClient() {
   const loadHistory = useCallback(async (sessionId: string) => {
     // 新建的 temp session 不需要加载历史，也不要清空（消息已经在 onSend 里写入了）
     if (sessionId.startsWith('temp-')) return;
+    // 如果本地已有消息（流式写入的），先显示本地数据，不等服务端
+    const localMsgs = sessionDataMap.get(sessionId);
+    if (localMsgs && localMsgs.messages.length > 0) {
+      updateCurrentSessionMessages(() => localMsgs.messages);
+      return;
+    }
     // 所有会话（包括 soulmate）都从 DB 加载历史
     try {
       const r = await fetch(`${getApiUrl()}/api/sessions/${sessionId}/messages`, { headers: { Authorization: `Bearer ${getToken()}` } });
@@ -1391,11 +1404,13 @@ export function ChatClient() {
     if (!activeSessionIdFromStore) {
       // SoulMate new session: clear session but keep WS alive (don't return early)
       const isSoulMate = !activeAgentIdFromStore || activeAgentIdFromStore === 'soulmate';
+      // 先清除旧session的messages，再清ref
+      if (!isSoulMate) {
+        clearCurrentSessionMessages();
+      }
       setSelectedSession(null);
       selectedSessionRef.current = null;
       if (!isSoulMate) {
-        // Non-SoulMate agent: clear messages and stop here
-        clearCurrentSessionMessages();
         return;
       }
       // SoulMate: don't clear messages, let WS useEffect handle connection
@@ -1687,6 +1702,10 @@ export function ChatClient() {
                 className={`max-w-[85%] lg:max-w-[70%] rounded-xl px-3 lg:px-4 py-2 lg:py-2.5 text-sm ${msg.role === 'user' ? 'text-foreground' : 'bg-card text-card-foreground border border-border'}`}
                 style={msg.role === 'user' ? { backgroundColor: 'color-mix(in srgb, var(--color-thinking-border) 15%, transparent)', borderColor: 'color-mix(in srgb, var(--color-thinking-border) 25%, transparent)', borderWidth: '1px', borderStyle: 'solid' } : undefined}
               >
+                {/* ── 时间戳（消息内容上方）── */}
+                <div className="text-[10px] text-muted-foreground/40 mb-1">
+                  {msg.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}
+                </div>
                 {/* ── 思考过程区块（仅 agent 消息，有 thinking 数据时渲染）── */}
                 {showThinking && msg.role === 'agent' && msg.thinking && msg.thinking.length > 0 && (
                   <ThinkingBlockComponent
@@ -1767,7 +1786,6 @@ export function ChatClient() {
                     <button className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-muted-foreground transition-colors" title="更多">
                       <MoreHorizontal className="w-3.5 h-3.5" />
                     </button>
-                    <span className="text-[10px] text-muted-foreground/40 ml-1 shrink-0">{msg.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}</span>
                   </div>
                 )}
                 {/* User message action bar */}
@@ -1788,7 +1806,6 @@ export function ChatClient() {
                     <button onClick={() => handleDeleteMessage(msg.id)} className="p-1.5 rounded hover:bg-muted-foreground/10 text-muted-foreground/60 hover:text-red-500 transition-colors" title="删除">
                       <X className="w-3.5 h-3.5" />
                     </button>
-                    <span className="text-[10px] text-muted-foreground/40 ml-1 shrink-0">{msg.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })}</span>
                   </div>
                 )}
               </div>
@@ -1852,7 +1869,7 @@ export function ChatClient() {
                 if ((!assembled.trim() && attachments.length === 0) || loading) return;
                 const text = assembled.trim();
                 const userMsg: Message = { id: Date.now().toString(), role: 'user', parts: [{ type: 'text', text }, ...attachments], timestamp: new Date() };
-                let currentSessionId = activeSessionIdFromStore || selectedSession?.id;
+                let currentSessionId = activeSessionIdFromStore;
                 // 没有活跃 session 时，自动创建新会话并跳转
                 if (!currentSessionId) {
                   // 直接从 store 取 agentId，不依赖 ref（ref 可能还没更新）
@@ -1863,10 +1880,6 @@ export function ChatClient() {
                   const newSession = { id: newId, name: text.slice(0, 30) || '新会话', platform: 'hermes', agentId: spAgentId, createdAt: new Date().toISOString() } as Session;
                   // 更新 store：setActiveSession 是唯一的 activeSessionId 来源
                   useAppStore.getState().setActiveSession(newId, spAgentId === 'soulmate' ? null : spAgentId, { agentName: agent?.name || spAgentId, sessionName: text.slice(0, 30) || '新会话' });
-                  // 把新 session 加到侧边栏的 agent sessions 列表里
-                  useAppStore.getState().setSidebarAgents((prev: AgentInfo[]) => prev.map(a =>
-                    a.id === spAgentId ? { ...a, sessions: [newSession, ...a.sessions] } : a
-                  ));
                   currentSessionId = newId;
                   // 同步设置 selectedSession，让 header 标题立即更新
                   setSelectedSession(newSession);

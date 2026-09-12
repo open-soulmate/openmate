@@ -43,6 +43,7 @@ AGENT_ROUTES = {
     "hermes": {"cmd": ["hermes", "acp"], "cwd": "/home/climbing"},
     "openclaw": {"cmd": ["openclaw", "acp"], "cwd": "/home/climbing"},
     "opencode": {"cmd": ["opencode", "acp"], "cwd": "/home/climbing"},
+    "mimo": {"cmd": ["mimo", "acp"], "cwd": "/home/climbing"},
 }
 
 # 默认路由
@@ -146,7 +147,16 @@ async def ws_acp_endpoint(client_ws: WebSocket):
     params = session_msg.get("params", {})
     logger.info(f"[ACP] session/new raw params: {json.dumps(params, ensure_ascii=False)[:200]}")
     agent_id = params.get("agent_id") or params.get("agentId") or "soulmate"
-    route = AGENT_ROUTES.get(agent_id, DEFAULT_ROUTE)
+    route = AGENT_ROUTES.get(agent_id)
+    if route is None:
+        # 未知agent自动尝试 {agent_id} acp，fallback到soulmate
+        import shutil
+        if shutil.which(agent_id):
+            route = {"cmd": [agent_id, "acp"], "cwd": "/home/climbing"}
+            logger.info(f"Dynamic route for '{agent_id}': {route['cmd']}")
+        else:
+            route = DEFAULT_ROUTE
+            logger.warning(f"Agent '{agent_id}' not found, falling back to soulmate")
     logger.info(f"[ACP] user {user_id} → agent {agent_id} → {route['cmd']}")
 
     # 启动Agent子进程（Hermes需要用pty模式，因为hermes acp的asyncio不支持非TTY stdin）
@@ -191,6 +201,16 @@ async def ws_acp_endpoint(client_ws: WebSocket):
         for msg in buffered_msgs:
             if msg.get("method") == "initialize":
                 msg.setdefault("params", {})["protocolVersion"] = 1
+            # session/new 的 agent_id 是给proxy路由用的，子进程不认识，去掉
+            if msg.get("method") == "session/new":
+                msg.setdefault("params", {}).pop("agent_id", None)
+                msg.get("params", {}).pop("agentId", None)
+                # 注入子进程需要的必填字段（cwd, mcpServers）
+                p = msg["params"]
+                if "cwd" not in p:
+                    p["cwd"] = route.get("cwd", "/home/climbing")
+                if "mcpServers" not in p:
+                    p["mcpServers"] = {}
             _msg = json.dumps(msg, ensure_ascii=False)
             if use_pty:
                 os.write(master_fd, (_msg + "\n").encode())

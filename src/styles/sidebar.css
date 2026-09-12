@@ -35,7 +35,7 @@
 .shared-sidebar {
   width: var(--sidebar-w-collapsed);
   background: var(--sidebar-bg);
-  border-right: 1px solid var(--sidebar-border);
+  /* border-right 已移除，与滚动条重叠导致视觉过粗 */
   display: flex;
   flex-direction: column;
   position: fixed;

@@ -1,0 +1,17 @@
+{
+  "id": "09e5d90d-b434-4217-8394-ec494acc1cca",
+  "name": "## 任务 我如何查看你是否自我进化了",
+  "description": "从交互中自动学习: ## 任务\n我如何查看你是否自我进化了",
+  "triggers": [
+    "任务",
+    "我如何查看你是否自我进化了"
+  ],
+  "content": "## 使用的工具\n- \n- \n- \n- \n\n## 步骤\n1. **部署监控系统**：在测试环境安装进化追踪器\n2. **运行基准测试**：记录初始性能指标\n3. **执行学习任务**：让系统处理多样化任务\n4. **收集进化数据**：监控关键指标变化\n5. **分析耦合度**：验证双螺旋协同工作\n6. **生成验证报告**：评估是否达到自我进化标准",
+  "code_template": "class EvolutionTracker:\n    def __init__(self):\n        self.performance_log = []\n        self.knowledge_snapshots = []\n        \n    def log_generation(self, metrics):\n        \"\"\"记录每代进化指标\"\"\"\n        generation = {\n            \"timestamp\": datetime.now(),\n            \"performance\": metrics[\"accuracy\"],\n            \"knowledge_size\": metrics[\"kb_size\"],\n            \"parameters\": self._capture_params()\n        }\n        self.performance_log.append(generation)\n        \n    def calculate_evolution_rate(self):\n        \"\"\"计算进化速率\"\"\"\n        if len(self.performance_log) < 2:\n            return 0.0\n            \n        recent = self.performance_log[-1][\"performance\"]\n        baseline = self.performance_log[0][\"performance\"]\n        \n        return (recent - baseline) / baseline * 100",
+  "tags": [
+    "auto-learned"
+  ],
+  "created_at": "2026-09-10T15:30:51.439557+00:00",
+  "last_used": "2026-09-10T15:35:48.694642+00:00",
+  "use_count": 1
+}

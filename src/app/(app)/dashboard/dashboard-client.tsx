@@ -14,10 +14,9 @@ import Link from "next/link";
 import { PageLayout } from '@/components/page-layout';
 import { LeftPanel } from '@/components/left-panel';
 import { DetailPanel } from '@/components/detail-panel';
-import dynamic from 'next/dynamic';
 import { COLORS, LINE_THEME, PIE_THEME, GAUGE_THEME, COLOR_PALETTE, BASE_CHART } from '@/lib/echarts-theme';
 
-const ReactECharts = dynamic(() => import('echarts-for-react'), { ssr: false });
+import { EChart } from '@/components/echart';
 
 // ── Interfaces ──────────────────────────────────────────────────
 
@@ -614,13 +613,13 @@ export function DashboardClient() {
             <div className="rounded-lg border border-border bg-card p-3">
               <h4 className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.tokenUsageTrend", "Token Usage Trend")}</h4>
               <div className="h-48">
-                <ReactECharts option={tokenTrendOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                <EChart option={tokenTrendOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
               </div>
             </div>
             <div className="rounded-lg border border-border bg-card p-3">
               <h4 className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.modelBreakdown", "Model Breakdown")}</h4>
               <div className="h-48">
-                <ReactECharts option={modelPieOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                <EChart option={modelPieOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
               </div>
             </div>
           </div>
@@ -680,14 +679,14 @@ export function DashboardClient() {
             <div className="rounded-lg border border-border bg-card p-3">
               <h4 className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.costTrend", "Cost Trend")}</h4>
               <div className="h-48">
-                <ReactECharts option={costTrendOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                <EChart option={costTrendOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
               </div>
             </div>
             <div className="rounded-lg border border-border bg-card p-3">
               <h4 className="text-xs font-medium text-muted-foreground mb-2">{t("dashboard.systemHealth", "System Health")}</h4>
               <div className="h-48">
                 {sysMetrics && (
-                  <ReactECharts option={sysGaugeOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
+                  <EChart option={sysGaugeOption} style={{ height: "100%", width: "100%" }} opts={{ renderer: "svg" }} />
                 )}
               </div>
             </div>

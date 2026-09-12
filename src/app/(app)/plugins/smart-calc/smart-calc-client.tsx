@@ -161,7 +161,7 @@ export function SmartCalcClient() {
   const formatTime = (ts: number) => {
     return new Date(ts * 1000).toLocaleString('zh-CN', {
       hour: "2-digit", minute: "2-digit", second: "2-digit",
-    , fractionalSecondDigits: 3 });
+      fractionalSecondDigits: 3 });
   };
 
   const currentUnits = units?.categories?.[unitCategory] || [];
