@@ -215,11 +215,11 @@ export function SkirtTabs({
       <div className="relative shrink-0" style={{ height: 1, marginTop: -1 }}>
         <div
           className="absolute top-0 left-0"
-          style={{ height: 1, background: underlineColor, width: Math.max(0, activeTabLeft - barLeft - SKIRT - 1) }}
+          style={{ height: 1, background: underlineColor, width: Math.max(0, activeTabLeft - barLeft - SKIRT) }}
         />
         <div
           className="absolute top-0 right-0"
-          style={{ height: 1, background: underlineColor, right: -extraRight, width: Math.max(0, barRight - activeTabLeft - activeTabWidth - SKIRT - 1 + extraRight) }}
+          style={{ height: 1, background: underlineColor, right: -extraRight, width: Math.max(0, barRight - activeTabLeft - activeTabWidth - SKIRT + extraRight) }}
         />
       </div>
     </div>
