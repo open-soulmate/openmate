@@ -4,6 +4,9 @@
 通过 acp.run_agent() 在 stdio 上传输 ACP v1.0 标准协议。
 """
 
+import base64
+import httpx
+import re
 import logging
 import json
 import os
@@ -598,7 +601,6 @@ class SoulMateAgent:
                                 )
                                 if proc.returncode == 0:
                                     # 简单HTML标签清理
-                                    import re
                                     text = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', proc.stdout)
                                     text = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', text)
                                     text = re.sub(r'<[^>]+>', ' ', text)
@@ -610,7 +612,6 @@ class SoulMateAgent:
                                 result = f"抓取失败: {e}"
 
                         elif func_name == "vision_analyze":
-                            import base64, subprocess
                             try:
                                 path = func_args.get("path", "")
                                 question = func_args.get("question", "描述这张图片")
@@ -648,7 +649,6 @@ class SoulMateAgent:
                                     result = "任务列表为空"
 
                         elif func_name == "read_image":
-                            import base64
                             try:
                                 path = func_args.get("path", "")
                                 with open(path, "rb") as f:
@@ -662,7 +662,6 @@ class SoulMateAgent:
                             feature = func_args.get("feature", "")
                             priority = func_args.get("priority", "normal")
                             try:
-                                import httpx
                                 async with httpx.AsyncClient(timeout=120.0) as client:
                                     resp = await client.post(
                                         "http://127.0.0.1:8092/api/evolution/improve",
@@ -681,7 +680,6 @@ class SoulMateAgent:
                                 skills = self._evolution_engine.get_created_skills()
                                 quality = self._evolution_engine.get_evolution_quality()
                             elif hasattr(self, '_evolution_api_url'):
-                                import httpx
                                 resp = httpx.get(f"{self._evolution_api_url}/api/evolution/status", timeout=10.0)
                                 status = resp.json() if resp.status_code == 200 else {}
                                 skills = []
