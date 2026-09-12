@@ -68,3 +68,97 @@ const DEFAULT_CONFIG = {
       { name: '随机探索', weight: 0.2, explorationRate: 0.9 },
       { name: '历史模式模仿', weight: 0.3, explorationRate: 0.3 },
       { name: '系统优化', weight: 0.5, explorationRate: 0.5 }
+    ]
+  },
+  // 新增：停滞检测配置
+  stagnationDetection: {
+    consecutiveZeroImprovementsThreshold: 3, // 连续0改进次数阈值
+    resetCooldownPeriod: 3600000, // 重置后冷却期（1小时）
+    lastResetTimestamp: 0, // 上次重置时间戳
+    resetAttempts: 0, // 重置尝试次数（用于边界检查）
+    maxResetAttempts: 5 // 最大重置尝试次数
+  }
+};
+
+class EvolutionPlanner extends EventEmitter {
+  constructor(config = {}) {
+    super();
+    
+    // 合并配置
+    this.config = { ...DEFAULT_CONFIG, ...config };
+    this.logger = this.config.logger;
+    
+    // 进化状态
+    this.currentPlan = null;
+    this.improvementHistory = [];
+    this.consecutiveZeroImprovements = 0;
+    this.lastImprovementValue = 0;
+    this.isInResetCooldown = false;
+    this.resetCooldownTimeout = null;
+    
+    // 初始化
+    this.initialize();
+  }
+
+  async initialize() {
+    try {
+      this.logger.info('[EvolutionPlanner] 初始化进化规划器...');
+      
+      // 加载历史数据
+      await this.loadHistory();
+      
+      // 设置定期规划任务
+      this.setupPeriodicPlanning();
+      
+      this.logger.info('[EvolutionPlanner] 初始化完成');
+    } catch (error) {
+      this.logger.error('[EvolutionPlanner] 初始化失败:', error);
+      throw error;
+    }
+  }
+
+  async loadHistory() {
+    try {
+      // 加载历史改进记录
+      const historyPath = this.config.knowledgeBasePath;
+      const historyData = await fs.readFile(historyPath, 'utf8');
+      const history = JSON.parse(historyData);
+      
+      this.improvementHistory = history.improvements || [];
+      this.consecutiveZeroImprovements = history.consecutiveZeroImprovements || 0;
+      this.lastImprovementValue = history.lastImprovementValue || 0;
+      
+      this.logger.info(`[EvolutionPlanner] 加载了 ${this.improvementHistory.length} 条历史记录`);
+    } catch (error) {
+      this.logger.warn('[EvolutionPlanner] 加载历史记录失败，将使用空记录:', error.message);
+      this.improvementHistory = [];
+    }
+  }
+
+  async saveHistory() {
+    try {
+      const historyPath = this.config.knowledgeBasePath;
+      const historyData = {
+        improvements: this.improvementHistory,
+        consecutiveZeroImprovements: this.consecutiveZeroImprovements,
+        lastImprovementValue: this.lastImprovementValue,
+        lastUpdated: new Date().toISOString()
+      };
+      
+      // 确保目录存在
+      const dir = path.dirname(historyPath);
+      await fs.mkdir(dir, { recursive: true });
+      
+      await fs.writeFile(historyPath, JSON.stringify(historyData, null, 2));
+      this.logger.info('[EvolutionPlanner] 历史记录已保存');
+    } catch (error) {
+      this.logger.error('[EvolutionPlanner] 保存历史记录失败:', error);
+    }
+  }
+
+  setupPeriodicPlanning() {
+    // 设置定期规划任务
+    this.planningInterval = setInterval(async () => {
+      await this.planImprovement();
+    }, this.config.planningInterval);
+  }
