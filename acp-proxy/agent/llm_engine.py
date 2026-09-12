@@ -246,6 +246,9 @@ class LLMEngine:
         # 如果提供了工具定义，加入payload
         if tools:
             payload["tools"] = tools
+            logger.info(f"[LLM] Sending {len(tools)} tools to {resolved_model}")
+        else:
+            logger.info(f"[LLM] No tools provided to {resolved_model}")
 
         # 按index累积tool_calls的arguments（SSE中arguments是增量拼接的）
         accumulated_tool_calls: dict[int, dict] = {}  # index → {id, type, function: {name, arguments}}

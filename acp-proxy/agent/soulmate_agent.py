@@ -312,11 +312,10 @@ class SoulMateAgent:
                     except json.JSONDecodeError:
                         func_args = {}
 
-                    # 内置进化引擎工具
-                    if func_name == "request_evolution" and self._evolution_engine:
+                    # 内置进化引擎工具（支持直接对象或HTTP API）
+                    if func_name == "request_evolution":
                         feature = func_args.get("feature", "")
                         priority = func_args.get("priority", "normal")
-                        # 立即调用improve API执行，而不是排队等
                         try:
                             import httpx
                             async with httpx.AsyncClient(timeout=120.0) as client:
@@ -330,13 +329,7 @@ class SoulMateAgent:
                                 else:
                                     result = f"❌ 改进失败: {data.get('error', '未知错误')}"
                         except Exception as e:
-                            # fallback: 注入观察队列
-                            self._evolution_engine.observe(
-                                obs_type="evolution_request",
-                                content=f"[{priority.upper()}] {feature}",
-                                metadata={"source": "agent_tool", "priority": priority},
-                            )
-                            result = f"⚠️ 立即执行失败({e})，已注入进化队列等待下次周期处理。"
+                            result = f"⚠️ 进化引擎不可用: {e}"
                     elif func_name == "check_evolution_status":
                         if self._evolution_engine:
                             status = self._evolution_engine.get_status()
