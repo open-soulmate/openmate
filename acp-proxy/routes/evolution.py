@@ -551,29 +551,29 @@ async def request_improvement(req: ImproveRequest):
             if not sandbox_ok:
                 return {"ok": False, "error": f"沙箱测试失败: {sandbox_msg}"}
 
+        # 自动生成目标文件名（如果未指定）
+        if not req.target_file:
+            # 根据描述生成文件名
+            import re
+            slug = re.sub(r'[^a-zA-Z0-9\u4e00-\u9fff]+', '_', req.description[:30]).strip('_').lower()
+            req.target_file = f"src/lib/soulmate_{slug}.py"
+
         # 写入文件
-        if req.target_file:
-            from pathlib import Path
-            target_path = Path(engine.repo_root) / req.target_file
-            target_path.parent.mkdir(parents=True, exist_ok=True)
-            target_path.write_text(code, encoding="utf-8")
+        from pathlib import Path
+        target_path = Path(engine.repo_root) / req.target_file
+        target_path.parent.mkdir(parents=True, exist_ok=True)
+        target_path.write_text(code, encoding="utf-8")
 
-            # Git commit + push
-            commit_msg = f"feat(soulmate): {req.description[:60]}"
-            committed = strand._git_commit(req.target_file, commit_msg)
+        # Git commit + push
+        commit_msg = f"feat(soulmate): {req.description[:60]}"
+        committed = strand._git_commit(req.target_file, commit_msg)
 
-            return {
-                "ok": True,
-                "file": req.target_file,
-                "committed": committed,
-                "code_preview": code[:500],
-            }
-        else:
-            return {
-                "ok": True,
-                "code": code,
-                "note": "未指定目标文件，代码已生成但未写入",
-            }
+        return {
+            "ok": True,
+            "file": req.target_file,
+            "committed": committed,
+            "code_preview": code[:500],
+        }
 
     except Exception as e:
         return {"ok": False, "error": str(e)}
