@@ -470,3 +470,108 @@ async def update_evolution_config(req: UpdateConfigRequest):
         evolution.BATCH_ANALYSIS_INTERVAL = req.batch_analysis_interval
         changes["batch_analysis_interval"] = req.batch_analysis_interval
     return {"ok": True, "changes": changes}
+
+
+# ── 自我改进 API ──────────────────────────────────────────
+
+DANGEROUS_PATTERNS = [
+    "rm -rf", "rm -r /", "shutdown", "reboot", "drop table", "delete database",
+    "format disk", "mkfs", "dd if=", "> /dev/", "chmod 777", "chown root",
+    "disable auth", "remove password", "delete user", "kill -9", "pkill",
+    "self_destruct", "self-destruct", "自毁", "删除自己", "删除所有",
+    "关闭认证", "禁用认证", "去掉密码", "remove auth", "disable login",
+    "drop_all", "truncate", "git push --force", "git reset --hard",
+]
+
+DANGEROUS_FILES = [
+    "/etc/passwd", "/etc/shadow", ".env", "docker-compose.yml",
+    "package.json", "requirements.txt", "main.py", "dna_evolution.py",
+]
+
+
+def _check_safety(description: str, target_file: str = "") -> tuple[bool, str]:
+    """安全检查：拒绝危险操作"""
+    desc_lower = description.lower()
+    for pattern in DANGEROUS_PATTERNS:
+        if pattern.lower() in desc_lower:
+            return False, f"拒绝：检测到危险操作 '{pattern}'"
+    if target_file:
+        for f in DANGEROUS_FILES:
+            if f in target_file:
+                return False, f"拒绝：不允许修改核心文件 '{f}'"
+    # 检查是否试图修改进化引擎自身
+    if "dna_evolution" in desc_lower or "strand_runner" in desc_lower:
+        return False, "拒绝：不允许修改进化引擎核心模块"
+    return True, "ok"
+
+
+class ImproveRequest(BaseModel):
+    description: str
+    target_file: str = ""
+    requirements: str = ""
+
+
+@router.post("/improve")
+async def request_improvement(req: ImproveRequest):
+    """Soulmate请求自我改进：描述需求 → 安全检查 → 生成代码 → 测试 → 提交"""
+    # 安全检查
+    safe, reason = _check_safety(req.description, req.target_file)
+    if not safe:
+        return {"ok": False, "error": reason}
+
+    engine = get_engine()
+    if not engine:
+        return {"ok": False, "error": "进化引擎未初始化"}
+
+    try:
+        # 用进化引擎的LLM生成代码
+        improvement = {
+            "type": "skill" if not req.target_file else "code",
+            "description": req.description,
+            "target_file": req.target_file,
+            "requirements": req.requirements,
+        }
+
+        code = await engine._generate_code(improvement)
+        if not code or len(code.strip()) < 10:
+            return {"ok": False, "error": "代码生成失败或内容过短"}
+
+        # 语法检查（Python文件）
+        if req.target_file.endswith(".py"):
+            import ast
+            try:
+                ast.parse(code)
+            except SyntaxError as e:
+                return {"ok": False, "error": f"语法错误: {e}"}
+
+        # 沙箱测试
+        sandbox_ok, sandbox_msg = await engine._sandbox_test(code)
+        if not sandbox_ok:
+            return {"ok": False, "error": f"沙箱测试失败: {sandbox_msg}"}
+
+        # 写入文件
+        if req.target_file:
+            from pathlib import Path
+            target_path = Path(engine.repo_root) / req.target_file
+            target_path.parent.mkdir(parents=True, exist_ok=True)
+            target_path.write_text(code, encoding="utf-8")
+
+            # Git commit + push
+            commit_msg = f"feat(soulmate): {req.description[:60]}"
+            committed = engine._git_commit(req.target_file, commit_msg)
+
+            return {
+                "ok": True,
+                "file": req.target_file,
+                "committed": committed,
+                "code_preview": code[:500],
+            }
+        else:
+            return {
+                "ok": True,
+                "code": code,
+                "note": "未指定目标文件，代码已生成但未写入",
+            }
+
+    except Exception as e:
+        return {"ok": False, "error": str(e)}

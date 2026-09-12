@@ -309,12 +309,27 @@ class SoulMateAgent:
                     if func_name == "request_evolution" and self._evolution_engine:
                         feature = func_args.get("feature", "")
                         priority = func_args.get("priority", "normal")
-                        self._evolution_engine.observe(
-                            obs_type="evolution_request",
-                            content=f"[{priority.upper()}] {feature}",
-                            metadata={"source": "agent_tool", "priority": priority},
-                        )
-                        result = f"✅ 已注入进化引擎: {feature} (优先级: {priority})\n进化引擎将在下次周期自动处理此需求。"
+                        # 立即调用improve API执行，而不是排队等
+                        try:
+                            import httpx
+                            async with httpx.AsyncClient(timeout=120.0) as client:
+                                resp = await client.post(
+                                    "http://127.0.0.1:8092/api/evolution/improve",
+                                    json={"description": feature, "requirements": f"优先级: {priority}"},
+                                )
+                                data = resp.json()
+                                if data.get("ok"):
+                                    result = f"✅ 已完成自我改进: {feature}\n文件: {data.get('file', 'N/A')}\n已提交: {data.get('committed', False)}\n代码预览:\n{data.get('code_preview', '')[:300]}"
+                                else:
+                                    result = f"❌ 改进失败: {data.get('error', '未知错误')}"
+                        except Exception as e:
+                            # fallback: 注入观察队列
+                            self._evolution_engine.observe(
+                                obs_type="evolution_request",
+                                content=f"[{priority.upper()}] {feature}",
+                                metadata={"source": "agent_tool", "priority": priority},
+                            )
+                            result = f"⚠️ 立即执行失败({e})，已注入进化队列等待下次周期处理。"
                     elif func_name == "check_evolution_status" and self._evolution_engine:
                         status = self._evolution_engine.get_status()
                         skills = self._evolution_engine.get_created_skills()
@@ -485,8 +500,13 @@ class SoulMateAgent:
                     skill_info = f"\n[进化引擎已创建的技能: {skill_names}]"
                 evo_context = (
                     f"{skill_info}\n"
-                    "你拥有自我进化能力。当用户要求新功能时，使用 request_evolution 工具。"
-                    "不要自己写代码或查找文件，直接调用 request_evolution。"
+                    "## 自我进化能力\n"
+                    "你拥有自我进化能力。当用户要求新功能、改进现有功能、或你发现自己缺少某种能力时：\n"
+                    "1. 使用 request_evolution 工具立即给自己开发新功能（会自动：生成代码→测试→提交→推送到GitHub）\n"
+                    "2. 使用 check_evolution_status 查看进化引擎状态和已创建的技能\n"
+                    "3. 你可以拒绝危险操作（自毁、删除核心文件、关闭认证等）\n"
+                    "4. 每次开发完成后代码会自动提交到GitHub，用户可以在GitHub上看到你的commit\n"
+                    "不要只说'我做不到'——如果你缺少某种能力，用 request_evolution 给自己加上。"
                 )
                 messages.insert(0, {"role": "system", "content": evo_context})
             except Exception:
