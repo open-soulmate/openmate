@@ -1019,6 +1019,20 @@ class DNAStrand:
                 ["git", "commit", "-m", f"[dna-{self.strand_id}] {message}"],
                 cwd=self.repo_root, capture_output=True, text=True, timeout=10,
             )
+            if result.returncode == 0:
+                logger.info(f"[{self.strand_id}] Committed: {file_path}")
+                # 推到远程（如果配置了的话）
+                try:
+                    push = subprocess.run(
+                        ["git", "push"],
+                        cwd=self.repo_root, capture_output=True, text=True, timeout=30,
+                    )
+                    if push.returncode == 0:
+                        logger.info(f"[{self.strand_id}] Pushed to remote")
+                    else:
+                        logger.warning(f"[{self.strand_id}] Push failed: {push.stderr[:200]}")
+                except Exception as e:
+                    logger.warning(f"[{self.strand_id}] Push error: {e}")
             return result.returncode == 0
         except Exception:
             return False
