@@ -524,7 +524,8 @@ async def request_improvement(req: ImproveRequest):
         return {"ok": False, "error": "进化引擎未初始化"}
 
     try:
-        # 用进化引擎的LLM生成代码
+        # 用进化引擎strand_a的LLM生成代码
+        strand = engine.strand_a
         improvement = {
             "type": "skill" if not req.target_file else "code",
             "description": req.description,
@@ -532,7 +533,7 @@ async def request_improvement(req: ImproveRequest):
             "requirements": req.requirements,
         }
 
-        code = await engine._generate_code(improvement)
+        code = await strand._generate_code(improvement)
         if not code or len(code.strip()) < 10:
             return {"ok": False, "error": "代码生成失败或内容过短"}
 
@@ -544,10 +545,11 @@ async def request_improvement(req: ImproveRequest):
             except SyntaxError as e:
                 return {"ok": False, "error": f"语法错误: {e}"}
 
-        # 沙箱测试
-        sandbox_ok, sandbox_msg = await engine._sandbox_test(code)
-        if not sandbox_ok:
-            return {"ok": False, "error": f"沙箱测试失败: {sandbox_msg}"}
+        # 沙箱测试（仅Python文件）
+        if req.target_file.endswith(".py"):
+            sandbox_ok, sandbox_msg = await strand._sandbox_test(code)
+            if not sandbox_ok:
+                return {"ok": False, "error": f"沙箱测试失败: {sandbox_msg}"}
 
         # 写入文件
         if req.target_file:
@@ -558,7 +560,7 @@ async def request_improvement(req: ImproveRequest):
 
             # Git commit + push
             commit_msg = f"feat(soulmate): {req.description[:60]}"
-            committed = engine._git_commit(req.target_file, commit_msg)
+            committed = strand._git_commit(req.target_file, commit_msg)
 
             return {
                 "ok": True,
