@@ -1,6 +1,8 @@
 "use client";
 import dynamic from "next/dynamic";
-const TrajectoryClient = dynamic(() => import("./trajectory-client").then((m) => m.TrajectoryClient), { ssr: false });
+
+const EvolutionTimeline = dynamic(() => import("./evolution-timeline").then((m) => m.EvolutionTimeline), { ssr: false });
+
 export default function TrajectoryPage() {
-  return <TrajectoryClient />;
+  return <EvolutionTimeline />;
 }
