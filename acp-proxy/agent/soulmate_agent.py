@@ -720,7 +720,7 @@ class SoulMateAgent:
                             )
 
                     # 将 assistant 的 tool_calls 消息和工具结果加入消息历史
-                    messages.append({"role": "assistant", "tool_calls": tool_calls})
+                    messages.append({"role": "assistant", "content": None, "tool_calls": tool_calls})
                     messages.extend(tool_results)
 
                     # 工具执行完毕，跳出内层async for，继续外层for循环
