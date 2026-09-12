@@ -1,7 +1,6 @@
 "use client";
 
 import { useState, useEffect, useCallback, useRef, useMemo } from "react";
-import dynamic from "next/dynamic";
 import {
   Dna, Target, History, BarChart3, RefreshCw,
   CheckCircle2, XCircle, Clock, Zap, Brain,
@@ -12,7 +11,7 @@ import { PageLayout } from "@/components/page-layout";
 import { LeftPanel } from "@/components/left-panel";
 import { useAppStore } from "@/stores/app-store";
 
-const ReactECharts = dynamic(() => import("echarts-for-react"), { ssr: false });
+import { EChart } from "@/components/echart";
 
 const API_BASE =
   typeof window !== "undefined"
@@ -239,7 +238,7 @@ function GanttChart({
   };
 
   return (
-    <ReactECharts
+    <EChart
       option={option}
       style={{ width: "100%", height: Math.max(200, tasks.length * 34 + 50) }}
       onEvents={onEvents}
@@ -293,7 +292,7 @@ function OverviewChart({ tasks }: { tasks: GanttTask[] }) {
     ],
   };
 
-  return <ReactECharts option={option} style={{ width: "100%", height: 200 }} opts={{ renderer: "canvas" }} />;
+  return <EChart option={option} style={{ width: "100%", height: 200 }} opts={{ renderer: "canvas" }} />;
 }
 
 /* ── Detail Panel ── */
@@ -481,6 +480,61 @@ function StrandCard({ strand, label, color }: { strand: StrandStatus; label: str
   );
 }
 
+
+/* ── Goal Item (sidebar) ── */
+
+function GoalItem({ goal, onUpdate, onDelete }: { goal: EvolutionGoal; onUpdate: (id: string, data: any) => void; onDelete: (id: string) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const [editing, setEditing] = useState(false);
+  const [form, setForm] = useState({ title: goal.title, description: goal.description || "", priority: goal.priority, progress: goal.progress });
+  const Icon = GOAL_ICONS[goal.title] || Target;
+  const save = () => { onUpdate(goal.goal_id, { title: form.title, description: form.description, priority: form.priority, progress: form.progress }); setEditing(false); };
+  return (
+    <div className="px-3 py-1.5">
+      <button onClick={() => setExpanded(!expanded)} className="w-full text-left hover:bg-muted/50 rounded-lg px-1.5 py-1.5 transition-colors">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Icon size={12} className="text-primary shrink-0" />
+          <span className="text-xs font-medium truncate flex-1">{goal.title}</span>
+          <span className="text-[9px] px-1 py-0.5 rounded shrink-0" style={{ color: PRIORITY_COLORS[goal.priority] || "#6b7280", background: `${PRIORITY_COLORS[goal.priority] || "#6b7280"}1a` }}>{goal.priority}</span>
+          {expanded ? <ChevronDown size={10} className="text-muted-foreground shrink-0" /> : <ChevronRight size={10} className="text-muted-foreground shrink-0" />}
+        </div>
+        <div className="h-1 rounded-full bg-muted overflow-hidden mt-1">
+          <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${Math.round(goal.progress * 100)}%` }} />
+        </div>
+      </button>
+      {expanded && (
+        <div className="mt-1 ml-5 space-y-1.5 text-[10px]">
+          {editing ? (
+            <>
+              <input value={form.title} onChange={e => setForm(p => ({ ...p, title: e.target.value }))} className="w-full rounded border border-border bg-background px-1.5 py-0.5 text-[11px]" placeholder="标题" />
+              <input value={form.description} onChange={e => setForm(p => ({ ...p, description: e.target.value }))} className="w-full rounded border border-border bg-background px-1.5 py-0.5 text-[11px]" placeholder="描述" />
+              <div className="flex items-center gap-1.5">
+                <select value={form.priority} onChange={e => setForm(p => ({ ...p, priority: e.target.value }))} className="rounded border border-border bg-background px-1 py-0.5 text-[11px]">
+                  <option value="high">high</option><option value="medium">medium</option><option value="low">low</option>
+                </select>
+                <input type="number" min={0} max={1} step={0.1} value={form.progress} onChange={e => setForm(p => ({ ...p, progress: parseFloat(e.target.value) || 0 }))} className="w-14 rounded border border-border bg-background px-1 py-0.5 text-[11px]" />
+              </div>
+              <div className="flex gap-1">
+                <button onClick={save} className="rounded bg-primary px-2 py-0.5 text-[10px] text-primary-foreground">保存</button>
+                <button onClick={() => setEditing(false)} className="rounded bg-muted px-2 py-0.5 text-[10px]">取消</button>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="text-muted-foreground">{goal.description || "无描述"}</div>
+              <div className="text-muted-foreground">进度: {Math.round(goal.progress * 100)}%</div>
+              <div className="flex gap-1">
+                <button onClick={() => setEditing(true)} className="rounded bg-muted px-2 py-0.5 text-[10px] hover:bg-accent">编辑</button>
+                <button onClick={() => { if (confirm("删除此目标?")) onDelete(goal.goal_id); }} className="rounded bg-red-500/10 text-red-400 px-2 py-0.5 text-[10px] hover:bg-red-500/20">删除</button>
+              </div>
+            </>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Main Component ── */
 
 export default function EvolutionPage() {
@@ -527,34 +581,39 @@ export default function EvolutionPage() {
 
   useEffect(() => { if (autoScroll && logEndRef.current) logEndRef.current.scrollIntoView({ behavior: "smooth" }); }, [logEntries, autoScroll]);
 
-  // 左侧 sidebar
+  // Goal CRUD
+  const addGoal = useCallback(async () => {
+    try { await fetch(`${API_BASE}/api/evolution/goals`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: "新目标", description: "", priority: "medium" }) }); fetchAll(); } catch {}
+  }, [fetchAll]);
+  const updateGoal = useCallback(async (id: string, data: any) => {
+    try { await fetch(`${API_BASE}/api/evolution/goals/${id}`, { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(data) }); fetchAll(); } catch {}
+  }, [fetchAll]);
+  const deleteGoal = useCallback(async (id: string) => {
+    try { await fetch(`${API_BASE}/api/evolution/goals/${id}`, { method: "DELETE" }); fetchAll(); } catch {}
+  }, [fetchAll]);
+
+  // 左侧 sidebar: goals + config
   const setPageSidebar = useAppStore((s) => s.setPageSidebar);
   useEffect(() => {
     setPageSidebar(
-      <LeftPanel
-        items={goals}
-        filter={(g, q) => g.title.toLowerCase().includes(q.toLowerCase())}
-        renderItem={(goal) => {
-          const Icon = GOAL_ICONS[goal.title] || Target;
-          return (
-            <button key={goal.goal_id} className="w-full text-left px-2 py-2 rounded-lg hover:bg-muted/50 transition-colors">
-              <div className="flex items-center gap-1.5 min-w-0">
-                <Icon size={12} className="text-primary shrink-0" />
-                <span className="text-xs font-medium truncate flex-1">{goal.title}</span>
-                <span className="text-[9px] px-1 py-0.5 rounded shrink-0" style={{ color: PRIORITY_COLORS[goal.priority] || "#6b7280", background: `${PRIORITY_COLORS[goal.priority] || "#6b7280"}1a` }}>{goal.priority}</span>
-              </div>
-              <div className="text-[10px] text-muted-foreground truncate mt-0.5">{goal.description || "无描述"}</div>
-              <div className="h-1 rounded-full bg-muted overflow-hidden mt-1">
-                <div className="h-full bg-primary rounded-full" style={{ width: `${Math.round(goal.progress * 100)}%` }} />
-              </div>
-            </button>
-          );
-        }}
-        placeholder="搜索进化目标..."
-      />
+      <div className="flex flex-col h-full">
+        <div className="flex-1 overflow-y-auto">
+          <div className="px-3 py-2 flex items-center justify-between">
+            <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">进化目标</h3>
+            <button onClick={addGoal} className="text-[10px] text-primary hover:opacity-80">+ 新增</button>
+          </div>
+          {goals.map((goal) => (
+            <GoalItem key={goal.goal_id} goal={goal} onUpdate={updateGoal} onDelete={deleteGoal} />
+          ))}
+        </div>
+        <div className="border-t border-border p-3 space-y-2 shrink-0">
+          <h3 className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1.5">⚙️ 配置</h3>
+          <EvolutionConfig />
+        </div>
+      </div>
     );
     return () => setPageSidebar(null);
-  }, [goals, setPageSidebar]);
+  }, [goals, setPageSidebar, addGoal, updateGoal, deleteGoal]);
 
   // 甘特图任务数据
   const tasks = useMemo(() => {
@@ -624,9 +683,6 @@ export default function EvolutionPage() {
           {sa && <StrandCard strand={sa} label="螺旋 A" color="#3b82f6" />}
           {sb && <StrandCard strand={sb} label="螺旋 B" color="#a855f7" />}
         </div>
-
-        {/* ── Config ── */}
-        <EvolutionConfig />
 
         {/* ── Overview Chart ── */}
         {tasks.length > 0 && (
