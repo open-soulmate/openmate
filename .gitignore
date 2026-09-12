@@ -6,5 +6,13 @@ dist/
 .env.local
 *.log
 src-tauri/target/
-src-tauri/target/
 *.tsbuildinfo
+
+# 运行时状态与数据文件
+acp-proxy/data/dna_*.json
+acp-proxy/data/dna_*.jsonl
+acp-proxy/data/data/audit_log.jsonl
+acp-proxy/data/dna_goals.json
+acp-proxy/skills/*.json
+# 如果 skills 目录下只有此类运行时生成的配置文件，也可以直接忽略整个目录
+# acp-proxy/skills/
