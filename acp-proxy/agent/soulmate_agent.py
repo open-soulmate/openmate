@@ -303,6 +303,103 @@ class SoulMateAgent:
                     "required": ["pattern"],
                 },
             },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "patch",
+                "description": "精确查找替换编辑文件。用于修改代码中的特定行，不会覆盖整个文件。old_string必须在文件中唯一匹配。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "文件路径"},
+                        "old_string": {"type": "string", "description": "要查找的原文（必须唯一）"},
+                        "new_string": {"type": "string", "description": "替换为的新文本"},
+                    },
+                    "required": ["path", "old_string", "new_string"],
+                },
+            },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "execute_code",
+                "description": "执行Python脚本。用于数据处理、复杂计算、调用API等需要编程逻辑的任务。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "code": {"type": "string", "description": "要执行的Python代码"},
+                    },
+                    "required": ["code"],
+                },
+            },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "web_search",
+                "description": "搜索网页。用于查找技术文档、API参考、解决方案等。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "query": {"type": "string", "description": "搜索关键词"},
+                        "limit": {"type": "integer", "description": "返回结果数量", "default": 5},
+                    },
+                    "required": ["query"],
+                },
+            },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "web_extract",
+                "description": "抓取网页内容转为文本。用于读取文档、博客、API页面等。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "url": {"type": "string", "description": "要抓取的网页URL"},
+                    },
+                    "required": ["url"],
+                },
+            },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "vision_analyze",
+                "description": "分析图片内容。用于识别截图、读取图片中的文字、理解UI设计等。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "image_path": {"type": "string", "description": "图片文件路径"},
+                        "question": {"type": "string", "description": "关于图片的问题"},
+                    },
+                    "required": ["image_path"],
+                },
+            },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "todo",
+                "description": "管理任务列表。用于拆解复杂任务、跟踪进度。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "action": {"type": "string", "enum": ["add", "list", "complete"], "description": "操作类型"},
+                        "content": {"type": "string", "description": "任务内容（add时必填）"},
+                        "task_id": {"type": "string", "description": "任务ID（complete时必填）"},
+                    },
+                    "required": ["action"],
+                },
+            },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "read_image",
+                "description": "读取图片文件并返回base64编码。用于让视觉模型分析图片。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "图片文件路径"},
+                    },
+                    "required": ["path"],
+                },
+            },
         }]
 
         # 添加进化引擎工具（支持直接对象或HTTP API两种模式）
@@ -435,6 +532,137 @@ class SoulMateAgent:
                             result = output
                         except Exception as e:
                             result = f"搜索失败: {e}"
+
+                    elif func_name == "patch":
+                        try:
+                            path = func_args.get("path", "")
+                            old_string = func_args.get("old_string", "")
+                            new_string = func_args.get("new_string", "")
+                            with open(path, "r", encoding="utf-8") as f:
+                                file_content = f.read()
+                            if old_string not in file_content:
+                                result = f"错误: 在 {path} 中未找到匹配文本"
+                            else:
+                                file_content = file_content.replace(old_string, new_string, 1)
+                                with open(path, "w", encoding="utf-8") as f:
+                                    f.write(file_content)
+                                result = f"已修改 {path}"
+                        except Exception as e:
+                            result = f"修改失败: {e}"
+
+                    elif func_name == "execute_code":
+                        import subprocess, tempfile, os
+                        try:
+                            code = func_args.get("code", "")
+                            with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, dir="/tmp") as f:
+                                f.write(code)
+                                tmp_path = f.name
+                            proc = subprocess.run(
+                                ["python3", tmp_path],
+                                capture_output=True, text=True, timeout=60,
+                            )
+                            os.unlink(tmp_path)
+                            output = proc.stdout + proc.stderr
+                            result = output[:5000] if output else "(无输出)"
+                            if proc.returncode != 0:
+                                result += f"\n[exit code: {proc.returncode}]"
+                        except subprocess.TimeoutExpired:
+                            result = "执行超时（60秒）"
+                        except Exception as e:
+                            result = f"执行失败: {e}"
+
+                    elif func_name == "web_search":
+                        import subprocess
+                        try:
+                            query = func_args.get("query", "")
+                            limit = func_args.get("limit", 5)
+                            # 用 curl 调用 searxng 或直接返回提示
+                            proc = subprocess.run(
+                                ["curl", "-s", f"http://localhost:8888/search?q={query}&format=json&pageno=1"],
+                                capture_output=True, text=True, timeout=15,
+                            )
+                            if proc.returncode == 0 and proc.stdout:
+                                import json
+                                data = json.loads(proc.stdout)
+                                results = data.get("results", [])[:limit]
+                                lines = []
+                                for r in results:
+                                    lines.append(f"- {r.get('title', '')}: {r.get('url', '')}")
+                                    lines.append(f"  {r.get('content', '')[:100]}")
+                                result = "\n".join(lines) if lines else "无搜索结果"
+                            else:
+                                result = f"搜索不可用: {proc.stderr or 'SearXNG未启动'}"
+                        except Exception as e:
+                            result = f"搜索失败: {e}"
+
+                    elif func_name == "web_extract":
+                        import subprocess
+                        try:
+                            url = func_args.get("url", "")
+                            proc = subprocess.run(
+                                ["curl", "-sL", "--max-time", "15", "-H", "User-Agent: Mozilla/5.0", url],
+                                capture_output=True, text=True, timeout=20,
+                            )
+                            if proc.returncode == 0:
+                                # 简单HTML标签清理
+                                import re
+                                text = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', proc.stdout)
+                                text = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', text)
+                                text = re.sub(r'<[^>]+>', ' ', text)
+                                text = re.sub(r'\s+', ' ', text).strip()
+                                result = text[:5000]
+                            else:
+                                result = f"抓取失败: {proc.stderr}"
+                        except Exception as e:
+                            result = f"抓取失败: {e}"
+
+                    elif func_name == "vision_analyze":
+                        import base64, subprocess
+                        try:
+                            path = func_args.get("path", "")
+                            question = func_args.get("question", "描述这张图片")
+                            with open(path, "rb") as f:
+                                img_b64 = base64.b64encode(f.read()).decode()
+                            result = f"[图片已读取: {path}, base64长度={len(img_b64)}]\n问题: {question}\n注意: 需要视觉模型支持才能分析图片内容。"
+                        except Exception as e:
+                            result = f"读取图片失败: {e}"
+
+                    elif func_name == "todo":
+                        # 简单的内存任务列表
+                        if not hasattr(self, '_todo_list'):
+                            self._todo_list = []
+                            self._todo_counter = 0
+                        action = func_args.get("action", "list")
+                        if action == "add":
+                            self._todo_counter += 1
+                            task = {"id": self._todo_counter, "content": func_args.get("content", ""), "status": "pending"}
+                            self._todo_list.append(task)
+                            result = f"已添加任务 #{task['id']}: {task['content']}"
+                        elif action == "complete":
+                            tid = func_args.get("task_id", "")
+                            for t in self._todo_list:
+                                if str(t["id"]) == str(tid):
+                                    t["status"] = "done"
+                                    result = f"已完成任务 #{tid}"
+                                    break
+                            else:
+                                result = f"未找到任务 #{tid}"
+                        else:
+                            if self._todo_list:
+                                lines = [f"#{t['id']} [{t['status']}] {t['content']}" for t in self._todo_list]
+                                result = "\n".join(lines)
+                            else:
+                                result = "任务列表为空"
+
+                    elif func_name == "read_image":
+                        import base64
+                        try:
+                            path = func_args.get("path", "")
+                            with open(path, "rb") as f:
+                                img_b64 = base64.b64encode(f.read()).decode()
+                            result = f"data:image/png;base64,{img_b64[:100]}...(截断，总长{len(img_b64)})"
+                        except Exception as e:
+                            result = f"读取失败: {e}"
 
                     # ── 进化引擎工具 ─────────────────────────────────
                     elif func_name == "request_evolution":
