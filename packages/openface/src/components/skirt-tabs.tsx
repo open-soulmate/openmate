@@ -140,7 +140,7 @@ export function SkirtTabs({
   );
 
   return (
-    <div className={className} style={{ transform: 'translateY(-0.5px)' }}>
+    <div className={className}>
       {/* Tab bar */}
       <div
         ref={tabBarRef}
