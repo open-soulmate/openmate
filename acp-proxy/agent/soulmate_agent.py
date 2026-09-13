@@ -57,8 +57,8 @@ class SoulMateAgent:
         self.llm_engine = llm_engine
         self.sessions: dict[str, dict] = {}  # session_id -> session state
         self._client = None  # AgentSideConnection，由 on_connect 设置
-        # 自动检测项目根目录：acp-proxy 的父目录就是项目根目录
-        self._project_root = str(Path(__file__).resolve().parent.parent)
+        # 自动检测项目根目录：agent/ 在 acp-proxy/ 下，acp-proxy/ 在项目根目录下
+        self._project_root = str(Path(__file__).resolve().parent.parent.parent)
         self._db_path = Path("/home/climbing/opensoul/data/opensoul.db")
         # 技能系统
         self._skill_manager = SkillManager()
