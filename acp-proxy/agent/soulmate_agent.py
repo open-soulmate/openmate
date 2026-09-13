@@ -252,35 +252,29 @@ class SoulMateAgent:
 请理解这些标签的含义，正常回答用户的问题。不要输出标签本身。
 如果是简单问题（如"你好"、"怎么样了"），直接自然语言回答即可。
 
-## 工具调用策略
+## 工具调用策略（分层混合）
 
-### 核心：模型自决 + 硬规则 + 权限门
+### 第一层：硬规则（命中必须调用工具，禁止直接回答）
+- 精确计算、数值运算、单位换算、日期/星期/时间换算 → 计算工具
+- 外部实时事实、新闻、政策、产品参数 → 检索工具
+- 本地文件读写、解析（PDF/Excel/代码/图片）→ 文件工具
+- 表格/文档/PPT/图片/视频等指定领域任务 → 对应领域 Skill，先读 SKILL.md 再执行
+- 涉及平台内部数据（飞书文档/表格/日历等）→ 对应平台工具
 
-**硬规则（必须调工具，不调不答）：**
-- 涉及精确数值、计算、统计 → 必须用 terminal/execute_code，不心算
-- 涉及当前事实、实时数据、版本号 → 必须用 web_search/web_extract，不用训练知识补全
-- 涉及用户本地环境（文件内容、进程、配置、Git）→ 必须用对应工具，不猜
+### 第二层：启发式判断（模型自主决定）
+- 概念解释、经验建议、推理类 → 不调工具
+- 工具可用性与否存疑 → 先判断再调，不强行调用
 
-**模型自决（自己判断）：**
-- 以上硬规则未命中时，根据工具描述自行决定是否调用
-- 简单聊天、常识问答、经验建议 → 直接回答
-- 不确定时优先直接回答，用户需要工具会明确说
+### 第三层：安全与优先级（最高优先，覆盖前两层）
+- 安全/合规红线 → 直接拒绝，不调任何工具
+- 用户明确点名的格式、工具、范围 → 硬约束，不替换不降级
+- 可逆的本地操作直接做；不可逆/影响外部 → 先说明风险
 
-### 工具选择
-专用工具优先于通用命令（能 read_file 就不 cat，能 search_files 就不 grep）。
-独立工具调用必须并行发出，不要串行等。
-
-### 执行流程
-探查 → 规划 → 执行 → 验证 → 交付
-- 先读全用户输入，不猜
-- 先做可逆操作；不可逆操作先评估风险
-- 改完就测，不假设"应该没问题"
-- 不编造 URL、数据、测试结果
-
-### 权限门（红线）
-- 不擅自 commit/push/删文件；高风险操作先确认
-- 安全与合规最高优先级
-- 事实可追溯：数字有来源，不编造
+### 执行规范
+- 优先专用工具，不用通用命令代替
+- 需要能力但未加载 → 按需加载后立即真实调用
+- 执行后必须验证：用不同于生成路径的方式回读产物、重算关键数字
+- 最终产物通过交付通道交付；搜索结果只作引用
 
 ### 可用工具
 - read_file: 读取文件，path 参数必填
@@ -881,8 +875,15 @@ class SoulMateAgent:
         logger.info(f"Prompt [{session_id}]: {user_text[:100]}")
         logger.info(f"[_run_llm_with_tools] starting, client={self._client is not None}")
 
-        # ── 技能匹配 ──────────────────────────────────────
-        matched_skills = self._skill_manager.search_skills(user_text, limit=3)
+        # ── 技能匹配（需要最低分数阈值，避免短消息误匹配）──────────
+        matched_skills = []
+        if len(user_text) > 10:  # 短消息不匹配技能
+            raw_skills = self._skill_manager.search_skills(user_text, limit=3)
+            # 只保留触发词匹配(score>=5)的技能，忽略纯描述匹配
+            matched_skills = [s for s in raw_skills if any(
+                t.lower() in user_text.lower() or user_text.lower() in t.lower()
+                for t in s.get("triggers", [])
+            )]
         if matched_skills:
             skill_names = [s["name"] for s in matched_skills]
             logger.info(f"Matched skills: {skill_names}")
