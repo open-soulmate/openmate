@@ -1,0 +1,4 @@
+protected_patterns:
+  - file_pattern: 'src/app/(app)/chat/chat-client.tsx'
+    commit_tag: 'BUGFIX-ATTACH-20240520'
+    code_pattern: 'handleSendWithAttachment|validateFileSize|attachment\.upload'
