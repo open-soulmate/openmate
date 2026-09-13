@@ -135,25 +135,77 @@ export interface Team {
   name: string;
   description: string;
   members: TeamMember[];
-  activities: TeamActivity[];
   tasks: TeamTask[];
+  activities: TeamActivity[];
+  createdAt: number;
 }
 
-// ─── State snapshot and validation types ─────────────────────────────────────
+// ─── Self Diagnosis types ───────────────────────────────────────────────────
 
-export interface StateSnapshot {
+export type SelfDiagnosisStatus = 'idle' | 'running' | 'completed' | 'failed';
+export type DiagnosisSeverity = 'info' | 'warning' | 'error' | 'critical';
+
+export interface IDiagnosisFinding {
   id: string;
-  timestamp: number;
-  state: Partial<AppState>;
-  checksum: string;
+  severity: DiagnosisSeverity;
+  message: string;
+  component?: string;
+  details?: Record<string, unknown>;
+  timestamp: string;
 }
 
-export interface StateValidationResult {
-  isValid: boolean;
-  errors: string[];
-  warnings: string[];
+export interface ISelfDiagnosisState {
+  status: SelfDiagnosisStatus;
+  lastRun: string;
+  findings: IDiagnosisFinding[];
 }
 
-export interface StateChangeEvent {
-  id: string;
-  timestamp: number;
+// ─── App State ──────────────────────────────────────────────────────────────
+
+export interface IAppState {
+  // ... existing state properties (conversations, activeId, agents, theme, etc.)
+  agents: AgentInfo[];
+  conversations: Conversation[];
+  activeConversationId: string | null;
+  knowledgeBase: KnowledgeItem[];
+  skills: Skill[];
+  llmConfig: LLMConfig;
+  nodes: AgentNode[];
+  theme: Theme;
+  groupDispatchMode: GroupDispatchMode;
+  sidebarOpen: boolean;
+  currentTeamId: string | null;
+  teams: Team[];
+  selfDiagnosisState: ISelfDiagnosisState; // New state for self-diagnosis
+
+  // ... existing actions (createConversation, sendMessage, setActiveConversation, etc.)
+  createConversation: () => void;
+  setActiveConversation: (id: string | null) => void;
+  sendMessage: (content: string) => Promise<void>;
+  updateLLMConfig: (config: Partial<LLMConfig>) => void;
+  toggleAgent: (id: string) => void;
+  setTheme: (theme: Theme) => void;
+  toggleSidebar: () => void;
+  setCurrentTeam: (teamId: string | null) => void;
+  addTeamMember: (teamId: string, member: Omit<TeamMember, "id" | "joinedAt">) => void;
+  removeTeamMember: (teamId: string, memberId: string) => void;
+  createTeamTask: (teamId: string, task: Omit<TeamTask, "id" | "createdAt" | "updatedAt">) => void;
+  updateTeamTask: (teamId: string, taskId: string, updates: Partial<TeamTask>) => void;
+  addTeamActivity: (teamId: string, activity: Omit<TeamActivity, "id" | "timestamp">) => void;
+  fetchAgents: () => Promise<void>;
+
+  // New action for self-diagnosis
+  triggerSelfDiagnosis: () => Promise<void>;
+}
+
+// Helper to generate a simple ID
+const generateId = () => Math.random().toString(36).substring(2, 9);
+
+export const useAppStore = create<IAppState>((set, get) => ({
+  // Initial state values
+  agents: [],
+  conversations: [],
+  activeConversationId: null,
+  knowledgeBase: [
+    { id: "k1", title: "项目架构文档", type: "document", tags: ["架构", "设计"], updatedAt: "2024-01-15", excerpt: "本文档描述了项目的整体架构...", starred: true },
+    { id: "k2", title: "API 设计规范", type: "document", tags: ["API", "规范"], updatedAt: "2024-01-20", excerpt: "RESTful API 设计指南...", pinned: true },
