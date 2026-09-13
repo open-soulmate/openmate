@@ -263,7 +263,8 @@ interface AppState {
   activeAgentName: string | null;
   activeAgentDescription: string | null;
   activeSessionName: string | null;
-  setActiveSession: (sessionId: string | null, agentId: string | null, meta?: { agentIcon?: string; agentName?: string; agentDescription?: string; sessionName?: string }) => void;
+  _isNewSessionFlow: boolean;
+  setActiveSession: (sessionId: string | null, agentId: string | null, meta?: { agentIcon?: string; agentName?: string; agentDescription?: string; sessionName?: string; _isNewSessionFlow?: boolean }) => void;
   // 只设置 activeAgentId，不影响 activeSessionId（用于 toggleAgent 展开/折叠侧边栏）
   setActiveAgentId: (agentId: string | null) => void;
 
@@ -439,6 +440,7 @@ export const useAppStore = create<AppState>((set, get) => ({
   activeAgentName: null,
   activeAgentDescription: null,
   activeSessionName: null,
+  _isNewSessionFlow: false,
   setActiveSession: (sessionId, agentId, meta) =>
     set((state) => ({
       activeSessionId: sessionId,
@@ -447,6 +449,7 @@ export const useAppStore = create<AppState>((set, get) => ({
       ...(meta?.agentName !== undefined && { activeAgentName: meta.agentName }),
       ...(meta?.agentDescription !== undefined && { activeAgentDescription: meta.agentDescription }),
       ...(meta?.sessionName !== undefined && { activeSessionName: meta.sessionName }),
+      ...(meta?._isNewSessionFlow !== undefined && { _isNewSessionFlow: meta._isNewSessionFlow }),
     })),
   // 只设置 activeAgentId，不触碰 activeSessionId（toggleAgent 专用）
   setActiveAgentId: (agentId) =>
