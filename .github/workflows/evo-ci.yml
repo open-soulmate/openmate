@@ -1,0 +1,81 @@
+name: E2E Test on Core Chat Changes
+
+on:
+  pull_request:
+    paths:
+      - 'src/app/(app)/chat/chat-client.tsx'
+      - 'src/app/(app)/chat/**'
+      - 'src/components/chat/**'
+      - 'src/hooks/use-chat.ts'
+      - 'src/lib/chat-utils.ts'
+      - 'src/app/(app)/chat/page.tsx'
+      - 'src/providers/chat-provider.tsx'
+    types:
+      - opened
+      - synchronize
+      - reopened
+
+jobs:
+  chat-e2e-test:
+    name: Core Chat E2E Test Suite
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Build application
+        run: npm run build
+
+      - name: Run chat E2E tests
+        run: npx playwright test tests/e2e/chat
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:3000/api
+          DATABASE_URL: postgres://postgres:postgres@localhost:5432/test
+          OPENAI_API_KEY: test-key
+
+      - name: Upload test results
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-test-results
+          path: test-results/
+          retention-days: 30
+
+  require-e2e-tests:
+    name: E2E Test Gate
+    needs: chat-e2e-test
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check E2E test status
+        run: |
+          if [ "${{ needs.chat-e2e-test.result }}" != "success" ]; then
+            echo "E2E tests failed or were cancelled. PR cannot be merged."
+            exit 1
+          fi
+          echo "All E2E tests passed. PR is eligible for merge."
+
+      - name: Create status check
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.repos.createCommitStatus({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              sha: context.sha,
+              state: 'success',
+              target_url: context.payload.pull_request.html_url,
+              description: 'Chat E2E tests passed',
+              context: 'e2e-tests/chat-tests'
