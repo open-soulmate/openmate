@@ -370,8 +370,8 @@ function useAcpWebSocket(params: {
       if (last?.role === 'agent' && last?.source === 'streaming') {
         const toolCalls = [...(last.toolCalls || [])];
         const callId = toolData.toolCallId || `tc-${Date.now()}`;
-        // 检查是否已存在相同 ID 的工具调用（避免重复）
-        const existing = toolCalls.find(tc => tc.toolCallId === callId);
+        // 检查是否已存在相同 ID 或同名同参数的工具调用（避免重复）
+        const existing = toolCalls.find(tc => tc.toolCallId === callId || (tc.toolName === (toolData.name || 'unknown') && tc.args === toolData.arguments));
         if (!existing) {
           toolCalls.push({
             toolCallId: callId,
