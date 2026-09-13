@@ -589,6 +589,7 @@ function useAcpWebSocket(params: {
         }
         state.pendingRequests.clear();
 
+        // 服务端主动关闭(1000)且无token才跳登录；有token就重连
         if (event.code === 1000 && !state.unmounted) {
           const storedToken = localStorage.getItem('openmate-token');
           if (!storedToken) {
@@ -596,7 +597,8 @@ function useAcpWebSocket(params: {
             window.location.href = '/login';
             return;
           }
-          console.warn('[ACP] 连接被服务端关闭，可能是token过期');
+          // 有token，可能是服务端重启，直接重连
+          console.warn('[ACP] 连接被服务端关闭，有token，尝试重连');
         }
         wsMapRef.current.delete(sessionId);
         if (!state.unmounted) {
