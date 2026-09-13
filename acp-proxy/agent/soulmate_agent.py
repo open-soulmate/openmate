@@ -595,6 +595,9 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                             try:
                                 pattern = func_args.get("pattern", "")
                                 path = func_args.get("path", cwd)
+                                # 拦截从根目录搜索
+                                if path == "/" or path == "":
+                                    path = cwd
                                 target = func_args.get("target", "content")
                                 if target == "files":
                                     cmd = ["find", path, "-name", pattern, "-type", "f"]
@@ -833,6 +836,8 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 
     async def new_session(self, cwd: str = "/", mcp_servers=None, field_meta: dict | None = None, **kwargs) -> acp.NewSessionResponse:
         """创建新会话，或重连到已有会话"""
+        # 后端自己决定 cwd，不依赖前端传值
+        cwd = self._project_root
         # 从 _meta 中提取 session_id（前端通过 _meta 传递）
         session_id = (field_meta or {}).get("session_id") or kwargs.get("session_id")
         # 如果传了 session_id 且该会话存在于内存或 DB，直接重连
