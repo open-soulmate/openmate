@@ -245,7 +245,28 @@ class SoulMateAgent:
 
 ## 环境
 当前工作目录: {cwd}
-使用 read_file/terminal/search_files 等工具时，可以用绝对路径或相对于此目录的路径。
+项目根目录: /home/climbing/openmate（前端 Next.js 源码在此）
+ACP代理目录: /home/climbing/openmate/acp-proxy（后端 Python 代码在此）
+
+项目结构：
+- src/ — 前端源码（Next.js, TypeScript, React）
+  - src/app/(app)/chat/chat-client.tsx — 聊天客户端
+  - src/components/ — 通用组件
+  - src/stores/ — 状态管理（Zustand）
+  - src/lib/ — 工具库
+- packages/openface/ — 组件库源码
+- acp-proxy/ — 后端源码（Python）
+  - agent/ — Agent 核心（soulmate_agent.py, llm_engine.py, task_engine.py）
+  - routes/ — REST API 路由
+  - skills/ — 技能系统
+  - data/ — 运行时数据（DNA进化、技能库）
+
+重要规则：
+- terminal 命令必须用 cwd={cwd} 执行，默认在项目根目录
+- search_files 搜索时 path 默认为 {cwd}，不要从 / 搜索
+- 查找文件用 find {cwd} -name "xxx" 而不是 find / -name "xxx"
+- 修改前端文件用 read_file/write_file/patch，路径相对于 {cwd}
+- 修改后端文件路径相对于 /home/climbing/openmate/acp-proxy
 
 ## 输入格式说明
 用户的消息可能包含结构化标签（如 ## 任务、## 角色、## 背景、## 约束、## 输出格式）。
@@ -557,6 +578,7 @@ class SoulMateAgent:
                                 cmd = func_args.get("command", "")
                                 proc = subprocess.run(
                                     cmd, shell=True, capture_output=True, text=True, timeout=30,
+                                    cwd=cwd,
                                 )
                                 output = proc.stdout + proc.stderr
                                 result = output[:3000] if output else "(无输出)"
@@ -570,7 +592,7 @@ class SoulMateAgent:
                         elif func_name == "search_files":
                             try:
                                 pattern = func_args.get("pattern", "")
-                                path = func_args.get("path", ".")
+                                path = func_args.get("path", cwd)
                                 target = func_args.get("target", "content")
                                 if target == "files":
                                     cmd = ["find", path, "-name", pattern, "-type", "f"]
@@ -608,6 +630,7 @@ class SoulMateAgent:
                                 proc = subprocess.run(
                                     ["python3", tmp_path],
                                     capture_output=True, text=True, timeout=60,
+                                    cwd=cwd,
                                 )
                                 os.unlink(tmp_path)
                                 output = proc.stdout + proc.stderr
