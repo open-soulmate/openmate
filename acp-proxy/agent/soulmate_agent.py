@@ -486,11 +486,7 @@ class SoulMateAgent:
                     # 推送工具调用状态给前端
                     for tc in tool_calls:
                         func_name = tc["function"]["name"]
-                        if self._client is not None:
-                            await self._client.session_update(
-                                session_id=session_id,
-                                update=acp.update_agent_message_text(f"\n🔧 调用工具: {func_name}...\n"),
-                            )
+                    # 工具调用状态已通过 tool_call 事件推送给前端，无需重复发文字
 
                     # 执行所有工具调用并收集结果
                     tool_results = []
