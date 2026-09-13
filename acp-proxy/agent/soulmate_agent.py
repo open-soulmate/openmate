@@ -493,6 +493,38 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
         # 添加进化引擎工具（支持直接对象或HTTP API两种模式）
         evolution_tools = []
         has_evolution = self._evolution_engine is not None or hasattr(self, '_evolution_api_url')
+
+        # clarify 工具 — 弹出选择菜单让用户确认方向
+        clarify_tool = {
+            "type": "function",
+            "function": {
+                "name": "clarify",
+                "description": "当任务复杂、有多种可能的理解方式时，弹出选择菜单让用户确认方向。用户选择后你会收到选择结果作为下一条消息。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "question": {
+                            "type": "string",
+                            "description": "要问用户的问题",
+                        },
+                        "options": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {"type": "string"},
+                                    "label": {"type": "string"},
+                                    "description": {"type": "string"},
+                                },
+                                "required": ["id", "label"],
+                            },
+                            "description": "2-8个选项",
+                        },
+                    },
+                    "required": ["question", "options"],
+                },
+            },
+        }
         logger.info(f"[TOOLS] has_evolution={has_evolution}, engine={self._evolution_engine is not None}, api_url={getattr(self, '_evolution_api_url', None)}")
         if has_evolution:
             evolution_tools = [{
@@ -528,7 +560,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                 },
             }]
         
-        all_tools = builtin_tools + (mcp_tools or []) + evolution_tools
+        all_tools = builtin_tools + (mcp_tools or []) + evolution_tools + [clarify_tool]
 
         for _round in range(MAX_ROUNDS):
             got_tool_call = False
@@ -720,6 +752,25 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                 result = f"[图片已读取: {path}, base64长度={len(img_b64)}]\n问题: {question}\n注意: 需要视觉模型支持才能分析图片内容。"
                             except Exception as e:
                                 result = f"读取图片失败: {e}"
+
+                        elif func_name == "clarify":
+                            try:
+                                question = func_args.get("question", "")
+                                options = func_args.get("options", [])
+                                # 通过 session_update 推送 choice 类型消息给前端
+                                if self._client is not None:
+                                    choice_payload = {
+                                        "type": "choice",
+                                        "text": question,
+                                        "choices": [{"id": o.get("id", ""), "label": o.get("label", ""), "description": o.get("description", "")} for o in options]
+                                    }
+                                    await self._client.session_update(
+                                        session_id=session_id,
+                                        update=acp.update_agent_message_text(json.dumps(choice_payload)),
+                                    )
+                                result = f"已向用户展示选择菜单: {question} (共{len(options)}个选项，等待用户选择)"
+                            except Exception as e:
+                                result = f"clarify失败: {e}"
 
                         elif func_name == "send_file":
                             try:

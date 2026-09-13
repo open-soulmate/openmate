@@ -1,6 +1,7 @@
 'use client';
 import { MarkdownContent } from "@/components/markdown-content";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
+import { TaskChoiceMenu, type ChoiceOption } from "@/components/task-choice-menu";
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/stores/app-store';
 import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, Copy, ThumbsUp, ThumbsDown, Share2, RefreshCw, MoreHorizontal, Volume2 } from "lucide-react";
@@ -38,7 +39,7 @@ const getAcpProxyUrl = () => {
 };
 const getAcpWsUrl = () => getAcpProxyUrl().replace('http', 'ws');
 
-interface MessagePart { type: string; text?: string; data?: string; name?: string; mime_type?: string; url?: string; }
+interface MessagePart { type: string; text?: string; data?: string; name?: string; mime_type?: string; url?: string; choices?: ChoiceOption[]; }
 interface TokenUsage { input: number; output: number; }
 
 /** 思考过程块 —— 用于存储 Agent 推理链/内心独白的流式文本 */
@@ -314,6 +315,22 @@ function useAcpWebSocket(params: {
   // ── Common message handlers (shared by session.event and session/update) ──
   // Handle incremental agent message chunk: append to streaming message or create new one
   const handleAgentChunk = useCallback((targetSessionId: string, text: string) => {
+    // 检测 choice 类型的结构化消息
+    try {
+      const parsed = JSON.parse(text);
+      if (parsed.type === 'choice' && parsed.choices) {
+        updateSessionMessages(targetSessionId, prev => {
+          return [...prev, {
+            id: Date.now().toString(),
+            role: 'agent',
+            parts: [{ type: 'choice', text: parsed.text, choices: parsed.choices }],
+            timestamp: new Date(),
+          }];
+        });
+        return;
+      }
+    } catch { /* not JSON, normal text */ }
+
     updateSessionMessages(targetSessionId, prev => {
       const last = prev[prev.length - 1];
       if (last?.role === 'agent' && last?.source === 'streaming') {
@@ -1457,6 +1474,15 @@ export function ChatClient() {
   }, [activeSessionIdFromStore, agents]);
 
   // Auto-select session from URL param ?session=SESSION_ID (fallback)
+  // Expose sendAcpPrompt to window for TaskChoiceMenu
+  useEffect(() => {
+    (window as any).__openmate_send__ = (text: string) => {
+      const sid = useAppStore.getState().activeSessionId;
+      if (sid) sendAcpPrompt(sid, text);
+    };
+    return () => { delete (window as any).__openmate_send__; };
+  }, [sendAcpPrompt]);
+
   useEffect(() => {
     const sid = new URLSearchParams(window.location.search).get('session');
     if (!sid) return;
@@ -1739,6 +1765,21 @@ export function ChatClient() {
                       copyToClipboard(code);
                     }} />}
                     {p.type === 'image' && p.data && <img src={`data:${p.mime_type || 'image/png'};base64,${p.data}`} alt={p.name || 'image'} className="max-w-xs w-auto max-h-64 rounded-lg mt-1 object-contain" />}
+                    {p.type === 'choice' && p.choices && (
+                      <TaskChoiceMenu
+                        question={p.text || "请选择："}
+                        options={p.choices}
+                        onSelect={(id, label) => {
+                          const send = (window as any).__openmate_send__;
+                          if (send) send(label);
+                        }}
+                        onCustomSubmit={(text) => {
+                          const send = (window as any).__openmate_send__;
+                          if (send) send(text);
+                        }}
+                        disabled={false}
+                      />
+                    )}
                     {p.type === 'file' && <button onClick={() => {
                       const store = useAppStore.getState();
                       const sessionId = selectedSession?.id || '__default__';
