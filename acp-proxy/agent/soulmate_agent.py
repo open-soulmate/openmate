@@ -550,7 +550,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                 limit = func_args.get("limit", 100)
                                 proc = subprocess.run(
                                     ["sed", "-n", f"{offset},{offset + limit - 1}p", path],
-                                    capture_output=True, text=True, timeout=10,
+                                    capture_output=True, text=True, errors="replace", timeout=10,
                                 )
                                 if proc.returncode == 0 and proc.stdout:
                                     lines = proc.stdout.split("\\n")
@@ -587,7 +587,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                         return shlex.quote(m.group(0))
                                     cmd = _re.sub(r'(/[\w/.\-]*[()][\w/.\-()]*)', _quote_p, cmd)
                                     proc = subprocess.run(
-                                        cmd, shell=True, capture_output=True, text=True, timeout=30,
+                                        cmd, shell=True, capture_output=True, text=True, errors="replace", timeout=30,
                                         cwd=cwd,
                                     )
                                     output = proc.stdout + proc.stderr
@@ -612,7 +612,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                     cmd = f"find {shlex.quote(path)} -name {shlex.quote(pattern)} -type f"
                                 else:
                                     cmd = f"grep -rn -i --include='*.py' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.json' --include='*.md' {shlex.quote(pattern)} {shlex.quote(path)}"
-                                proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
+                                proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, errors="replace", timeout=10)
                                 output = proc.stdout[:3000] if proc.stdout else "(无结果)"
                                 result = output
                             except Exception as e:
@@ -643,7 +643,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                     tmp_path = f.name
                                 proc = subprocess.run(
                                     ["python3", tmp_path],
-                                    capture_output=True, text=True, timeout=60,
+                                    capture_output=True, text=True, errors="replace", timeout=60,
                                     cwd=cwd,
                                 )
                                 os.unlink(tmp_path)
@@ -663,7 +663,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                 # 用 curl 调用 searxng 或直接返回提示
                                 proc = subprocess.run(
                                     ["curl", "-s", f"http://localhost:8888/search?q={query}&format=json&pageno=1"],
-                                    capture_output=True, text=True, timeout=15,
+                                    capture_output=True, text=True, errors="replace", timeout=15,
                                 )
                                 if proc.returncode == 0 and proc.stdout:
                                     data = json.loads(proc.stdout)
@@ -683,7 +683,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                 url = func_args.get("url", "")
                                 proc = subprocess.run(
                                     ["curl", "-sL", "--max-time", "15", "-H", "User-Agent: Mozilla/5.0", url],
-                                    capture_output=True, text=True, timeout=20,
+                                    capture_output=True, text=True, errors="replace", timeout=20,
                                 )
                                 if proc.returncode == 0:
                                     # 简单HTML标签清理
