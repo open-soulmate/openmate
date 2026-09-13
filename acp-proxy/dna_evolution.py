@@ -897,6 +897,17 @@ class DNAStrand:
                     results.append({**imp, "status": "blocked", "reason": reason})
                     continue
 
+                # 编辑历史保存（OpenHands方案）— 保存编辑前内容，支持undo
+                if old_content:
+                    history_dir = self.repo_root / ".evolution_history"
+                    history_dir.mkdir(exist_ok=True)
+                    history_file = history_dir / f"{target.replace('/', '_')}_{int(time.time())}.bak"
+                    try:
+                        history_file.write_text(old_content, encoding="utf-8")
+                        logger.info(f"[{self.strand_id}] Edit history saved: {history_file}")
+                    except Exception as e:
+                        logger.warning(f"[{self.strand_id}] Failed to save edit history: {e}")
+
                 # 原子写入：先写临时文件，再rename
                 try:
                     with tempfile.NamedTemporaryFile(
@@ -971,12 +982,12 @@ class DNAStrand:
         target_file = improvement.get('target_file', '')
         full_path = self.repo_root / target_file
         
-        # 如果文件已存在且行数较多，使用增量编辑模式
+        # 如果文件已存在，一律使用增量编辑模式（MOSS/RooCode方案：存量文件禁止全量覆盖）
         old_content = ""
         if full_path.exists():
             old_content = full_path.read_text(encoding="utf-8", errors="replace")
         
-        if old_content and len(old_content.splitlines()) > 30:
+        if old_content:
             # ===== 增量编辑模式：LLM只输出变更片段 =====
             # 截取相关上下文（需求相关的代码段），而非整个文件
             context_lines = old_content.splitlines()
@@ -1057,26 +1068,44 @@ new_string是替换后的文本。
         return result
     
     def _apply_edits(self, old_content: str, edits: list[dict]) -> str:
-        """应用old_string/new_string编辑到文件内容，支持closest-match hints"""
-        content = old_content
-        for edit in edits:
+        """应用old_string/new_string编辑到文件内容
+
+        采用Aider方案：先dry-run验证所有编辑，再实际替换。
+        支持closest-match hints（MiMo Code方案）。
+        """
+        # ===== Phase 1: Dry-run（Aider方案）=====
+        # 在内存中验证所有编辑都匹配，一个失败则整个批次作废
+        dry_content = old_content
+        for i, edit in enumerate(edits):
             old_str = edit["old_string"]
             new_str = edit["new_string"]
-            if old_str in content:
-                content = content.replace(old_str, new_str, 1)
-                continue
             
-            # ===== Closest-match hint：找最相似的文本 =====
-            hint = self._find_closest_match(content, old_str)
-            if hint:
-                raise ValueError(
-                    f"old_string not found exactly. Did you mean:\n"
-                    f"  FOUND: {hint[:200]}\n"
-                    f"  WANTED: {old_str[:200]}\n"
-                    f"Please use the exact text from the file."
-                )
-            raise ValueError(f"old_string not found and no close match: {old_str[:100]}...")
-        return content
+            if not old_str:
+                raise ValueError(f"Edit {i}: old_string is empty")
+            if old_str == new_str:
+                raise ValueError(f"Edit {i}: old_string equals new_string (no-op)")
+            
+            count = dry_content.count(old_str)
+            if count == 0:
+                # 查找最相似的文本
+                hint = self._find_closest_match(dry_content, old_str)
+                if hint:
+                    raise ValueError(
+                        f"Edit {i}: old_string not found exactly. Did you mean:\n"
+                        f"  FOUND: {hint[:200]}\n"
+                        f"  WANTED: {old_str[:200]}\n"
+                        f"Please use the exact text from the file."
+                    )
+                raise ValueError(f"Edit {i}: old_string not found and no close match: {old_str[:100]}...")
+            if count > 1:
+                raise ValueError(f"Edit {i}: old_string matched {count} times. Provide more context to make it unique.")
+            
+            # dry-run替换（不实际写盘）
+            dry_content = dry_content.replace(old_str, new_str, 1)
+        
+        # ===== Phase 2: 所有验证通过，实际替换 =====
+        # Phase 1已经验证过，直接用dry_content（已完成所有替换）
+        return dry_content
     
     def _find_closest_match(self, content: str, target: str) -> str | None:
         """7种策略查找最相似的文本片段（MiMo Code方案）"""
@@ -1264,27 +1293,72 @@ new_string是替换后的文本。
 
     # ── LLM ───────────────────────────────────────────────
 
+    # omission占位符模式（Gemini CLI方案）
+    _OMISSION_PATTERNS = [
+        re.compile(r"\(rest of methods \.\.\.\)"),
+        re.compile(r"# \.\.\. existing code \.\.\."),
+        re.compile(r"// \.\.\. rest of the function"),
+        re.compile(r"\[\.\.\.\]"),
+        re.compile(r"\(truncated\)"),
+        re.compile(r"// \.\.\. remaining code"),
+        re.compile(r"# \.\.\. rest of"),
+    ]
+
     async def _call_llm(self, prompt: str) -> str:
+        """调用LLM，支持finish_reason检测+自动续写（Aider方案）+ omission检测（Gemini CLI方案）"""
         try:
             headers = {"Content-Type": "application/json"}
             if self.llm_api_key:
                 headers["Authorization"] = f"Bearer {self.llm_api_key}"
 
-            async with httpx.AsyncClient(timeout=httpx.Timeout(60.0)) as client:
-                resp = await client.post(
-                    f"{self.llm_base_url}/chat/completions",
-                    headers=headers,
-                    json={
-                        "model": self.llm_model,
-                        "messages": [{"role": "user", "content": prompt}],
-                        "temperature": self.temperature,
-                        "max_tokens": 2000,
-                    },
-                )
-                if resp.status_code == 200:
-                    return resp.json().get("choices", [{}])[0].get("message", {}).get("content", "")
-                else:
-                    logger.error(f"[{self.strand_id}] LLM call failed: {resp.status_code} {resp.text[:200]}")
+            full_content = ""
+            messages = [{"role": "user", "content": prompt}]
+            max_continuation = 3  # 最多续写3次
+
+            async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
+                for attempt in range(max_continuation):
+                    resp = await client.post(
+                        f"{self.llm_base_url}/chat/completions",
+                        headers=headers,
+                        json={
+                            "model": self.llm_model,
+                            "messages": messages,
+                            "temperature": self.temperature,
+                            "max_tokens": 4096,  # 从2000提升到4096
+                        },
+                    )
+                    if resp.status_code != 200:
+                        logger.error(f"[{self.strand_id}] LLM call failed: {resp.status_code} {resp.text[:200]}")
+                        return full_content
+
+                    data = resp.json()
+                    choice = data.get("choices", [{}])[0]
+                    content = choice.get("message", {}).get("content", "")
+                    finish_reason = choice.get("finish_reason", "stop")
+                    full_content += content
+
+                    # omission占位符检测（Gemini CLI方案）
+                    for pattern in self._OMISSION_PATTERNS:
+                        if pattern.search(full_content):
+                            logger.warning(f"[{self.strand_id}] Omission placeholder detected: {pattern.pattern}")
+                            # 用"请继续"回退
+                            messages.append({"role": "assistant", "content": full_content})
+                            messages.append({"role": "user", "content": "Output contains omission placeholder. Please provide the COMPLETE code without any shortcuts or placeholders. Continue from where you left off."})
+                            full_content = ""  # 重置，让LLM重新完整输出
+                            continue
+
+                    # finish_reason检测（Aider方案）
+                    if finish_reason == "length":
+                        logger.warning(f"[{self.strand_id}] LLM output truncated (finish_reason=length), attempt {attempt+1}/{max_continuation}")
+                        # 把已生成内容作为assistant prefix续接
+                        messages.append({"role": "assistant", "content": full_content})
+                        messages.append({"role": "user", "content": "Continue from where you left off. Do not repeat any content already provided."})
+                        continue
+                    else:
+                        # 正常结束
+                        break
+
+            return full_content
         except Exception as e:
             logger.error(f"[{self.strand_id}] LLM call failed: {e}")
         return ""
