@@ -811,6 +811,24 @@ class DNAStrand:
         如果improvements有content字段，直接写入
         如果只有description/requirements，用LLM生成代码
         """
+        # ===== Git快照前置：记录所有待修改文件的当前状态 =====
+        snapshot_targets = [imp.get("target_file", "") for imp in improvements if imp.get("target_file")]
+        for st in snapshot_targets:
+            full = self.repo_root / st
+            if full.exists():
+                try:
+                    subprocess.run(["git", "add", st], cwd=self.repo_root, capture_output=True, timeout=10)
+                except Exception:
+                    pass
+        if snapshot_targets:
+            try:
+                subprocess.run(
+                    ["git", "commit", "--allow-empty", "-m", f"[dna-{self.strand_id}] PRE-EXECUTE snapshot"],
+                    cwd=self.repo_root, capture_output=True, timeout=10,
+                )
+            except Exception:
+                pass
+
         results = []
         for imp in improvements:
             target = imp.get("target_file", "")
@@ -832,6 +850,33 @@ class DNAStrand:
                     if not content:
                         results.append({**imp, "status": "failed", "reason": "LLM code generation failed"})
                         continue
+
+                # ===== 安全校验：行数变更阈值拦截 =====
+                LINE_REDUCE_THRESHOLD = 0.3  # 新文件行数 < 原文件30% 则阻断
+                old_content = ""
+                old_lines = 0
+                if full_path.exists():
+                    old_content = full_path.read_text(encoding="utf-8", errors="replace")
+                    old_lines = len(old_content.splitlines())
+                new_lines = len(content.splitlines())
+
+                # 审计日志
+                logger.info(
+                    f"[{self.strand_id}] FILE_AUDIT target={target} "
+                    f"old_lines={old_lines} new_lines={new_lines} "
+                    f"old_bytes={len(old_content.encode('utf-8'))} new_bytes={len(content.encode('utf-8'))} "
+                    f"llm_content_bytes={len(content.encode('utf-8'))} ratio={new_lines/max(old_lines,1):.2f}"
+                )
+
+                # 行数锐减拦截：仅当文件已存在且不是新建文件时检查
+                if old_lines > 50 and new_lines < old_lines * LINE_REDUCE_THRESHOLD:
+                    reason = (
+                        f"BLOCKED: 文件行数锐减 {old_lines}→{new_lines} "
+                        f"({new_lines/max(old_lines,1):.0%}), 疑似LLM输出截断"
+                    )
+                    logger.warning(f"[{self.strand_id}] {reason}")
+                    results.append({**imp, "status": "blocked", "reason": reason})
+                    continue
 
                 # 原子写入：先写临时文件，再rename
                 try:
@@ -873,6 +918,22 @@ class DNAStrand:
                         results.append({**imp, "status": "rolled_back", "reason": str(e)})
                         continue
 
+                # TS/JS语法检查：用node --check验证（如果有node）
+                if target.endswith((".ts", ".tsx", ".js", ".jsx")):
+                    try:
+                        result = subprocess.run(
+                            ["node", "--check", str(full_path)],
+                            capture_output=True, text=True, timeout=10,
+                        )
+                        if result.returncode != 0:
+                            self._git_revert_file(target)
+                            results.append({**imp, "status": "rolled_back", "reason": f"TS/JS syntax error: {result.stderr[:200]}"})
+                            continue
+                    except FileNotFoundError:
+                        pass  # node not available, skip
+                    except Exception:
+                        pass
+
                 self._git_commit(target, imp.get("commit_message", f"[{self.strand_id}] {target}"))
                 results.append({**imp, "status": "applied", "content": content[:500]})
 
@@ -882,10 +943,56 @@ class DNAStrand:
         return results
 
     async def _generate_code(self, improvement: dict) -> str:
-        """根据描述用LLM生成代码"""
+        """根据描述用LLM生成代码 — 优先使用diff补丁模式"""
+        target_file = improvement.get('target_file', '')
+        full_path = self.repo_root / target_file
+        
+        # 如果文件已存在且行数较多，使用diff模式
+        old_content = ""
+        if full_path.exists():
+            old_content = full_path.read_text(encoding="utf-8", errors="replace")
+        
+        if old_content and len(old_content.splitlines()) > 50:
+            # ===== Diff补丁模式：只让LLM输出修改片段 =====
+            prompt = f"""你是一个代码修改专家。请根据需求修改以下文件。
+
+目标文件：{target_file}
+当前文件内容（前200行）：
+```
+{chr(10).join(old_content.splitlines()[:200])}
+```
+
+需求：{improvement.get('description', '')}
+要求：{improvement.get('requirements', '无特殊要求')}
+
+请输出unified diff格式的补丁，只包含需要修改的部分。
+格式：
+--- a/{target_file}
++++ b/{target_file}
+@@ -行号,行数 +行号,行数 @@
+ 上下文行
+-删除行
++添加行
+ 上下文行
+
+注意：
+1. 只输出diff补丁，不要输出完整文件
+2. 确保上下文行与原文件完全匹配
+3. 如果文件太大，只修改需要改的部分"""
+            
+            result = await self._call_llm(prompt)
+            
+            # 解析diff并应用
+            if result.startswith("---") and "+++" in result:
+                return self._apply_diff_patch(old_content, result, target_file)
+            else:
+                # LLM没有返回有效diff，回退到全量模式
+                logger.warning(f"[{self.strand_id}] LLM未返回有效diff，回退到全量模式")
+        
+        # ===== 全量模式：文件较小或新建文件 =====
         prompt = f"""根据以下需求生成代码文件。
 
-目标文件：{improvement.get('target_file', '')}
+目标文件：{target_file}
 类型：{improvement.get('type', 'skill')}
 描述：{improvement.get('description', '')}
 要求：{improvement.get('requirements', '无特殊要求')}
@@ -898,6 +1005,60 @@ class DNAStrand:
             lines = result.split("\n")
             result = "\n".join(lines[1:-1]) if len(lines) > 2 else result
         return result
+    
+    def _apply_diff_patch(self, old_content: str, diff_text: str, target_file: str) -> str:
+        """应用unified diff补丁到原文件内容"""
+        import tempfile
+        import subprocess
+        
+        diff_path = None
+        orig_path = None
+        
+        try:
+            # 将diff写入临时文件
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.diff', delete=False) as f:
+                f.write(diff_text)
+                diff_path = f.name
+            
+            # 将原文件写入临时文件
+            with tempfile.NamedTemporaryFile(mode='w', suffix='.orig', delete=False) as f:
+                f.write(old_content)
+                orig_path = f.name
+            
+            # 用git apply应用补丁
+            result = subprocess.run(
+                ["git", "apply", "--check", diff_path],
+                input=old_content,
+                capture_output=True,
+                text=True,
+                timeout=10,
+            )
+            
+            if result.returncode == 0:
+                # 补丁有效，实际应用
+                result = subprocess.run(
+                    ["git", "apply", diff_path],
+                    input=old_content,
+                    capture_output=True,
+                    text=True,
+                    timeout=10,
+                )
+                if result.returncode == 0:
+                    # 读取应用后的文件
+                    return self.repo_root.joinpath(target_file).read_text(encoding="utf-8")
+            
+            # 补丁应用失败，回退到全量模式
+            logger.warning(f"[{self.strand_id}] diff patch应用失败，回退全量模式: {result.stderr[:200]}")
+            return old_content  # 返回原内容，不会截断
+            
+        finally:
+            # 清理临时文件
+            if diff_path:
+                try: os.unlink(diff_path)
+                except Exception: pass
+            if orig_path:
+                try: os.unlink(orig_path)
+                except Exception: pass
 
     # ── 验证 ──────────────────────────────────────────────
 
