@@ -57,6 +57,8 @@ class SoulMateAgent:
         self.llm_engine = llm_engine
         self.sessions: dict[str, dict] = {}  # session_id -> session state
         self._client = None  # AgentSideConnection，由 on_connect 设置
+        # 自动检测项目根目录：acp-proxy 的父目录就是项目根目录
+        self._project_root = str(Path(__file__).resolve().parent.parent)
         self._db_path = Path("/home/climbing/opensoul/data/opensoul.db")
         # 技能系统
         self._skill_manager = SkillManager()
@@ -240,13 +242,13 @@ class SoulMateAgent:
     ) -> tuple[str, list[dict]]:
         """LLM推理 + 工具调用循环。模型返回tool_calls就执行，纯文本就结束。"""
         MAX_ROUNDS = 15
-        cwd = self._session_cwds.get(session_id, "/home/climbing/openmate")
+        cwd = self._session_cwds.get(session_id, self._project_root)
         system_prompt = f"""你是SoulMate，OpenMate内置的AI助手。请用简洁清晰的中文回答。
 
 ## 环境
 当前工作目录: {cwd}
-项目根目录: /home/climbing/openmate（前端 Next.js 源码在此）
-ACP代理目录: /home/climbing/openmate/acp-proxy（后端 Python 代码在此）
+项目根目录: {cwd}
+ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 
 项目结构：
 - src/ — 前端源码（Next.js, TypeScript, React）
@@ -262,11 +264,11 @@ ACP代理目录: /home/climbing/openmate/acp-proxy（后端 Python 代码在此�
   - data/ — 运行时数据（DNA进化、技能库）
 
 重要规则：
-- terminal 命令必须用 cwd={cwd} 执行，默认在项目根目录
-- search_files 搜索时 path 默认为 {cwd}，不要从 / 搜索
+- terminal 命令默认在项目根目录执行，不要从 / 搜索
+- search_files 搜索时默认在项目根目录，不要从 / 搜索
 - 查找文件用 find {cwd} -name "xxx" 而不是 find / -name "xxx"
-- 修改前端文件用 read_file/write_file/patch，路径相对于 {cwd}
-- 修改后端文件路径相对于 /home/climbing/openmate/acp-proxy
+- 修改前端文件路径相对于 {cwd}
+- 修改后端文件路径相对于 {cwd}/acp-proxy
 
 ## 输入格式说明
 用户的消息可能包含结构化标签（如 ## 任务、## 角色、## 背景、## 约束、## 输出格式）。
