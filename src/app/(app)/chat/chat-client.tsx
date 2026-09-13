@@ -4,7 +4,8 @@ import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { TaskChoiceMenu, type ChoiceOption } from "@/components/task-choice-menu";
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/stores/app-store';
-import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, Copy, ThumbsUp, ThumbsDown, Share2, RefreshCw, MoreHorizontal, Volume2 } from "lucide-react";
+import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, Copy, ThumbsUp, ThumbsDown, Share2, RefreshCw, MoreHorizontal, Volume2, MessageSquare, FolderOpen } from "lucide-react";
+import { ChatViewToggle } from "@opensoulmate/openface";
 import { ContextRing } from "@/components/context-ring";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { copyToClipboard } from '@/lib/clipboard';
@@ -1076,6 +1077,7 @@ export function ChatClient() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
+  const [chatView, setChatView] = useState<'messages' | 'files'>('messages');
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const setSessionDetails = useAppStore((s) => s.setSessionDetails);
@@ -1168,6 +1170,18 @@ export function ChatClient() {
   // 优先用 store 值，store 未更新时用 ref 兜底（onSend 里同步设置）
   const effectiveSessionId = activeSessionIdFromStore || pendingSessionIdRef.current;
   const messages = effectiveSessionId ? (sessionDataMap.get(effectiveSessionId)?.messages || []) : [];
+  // Collect all file attachments from messages (for file view)
+  const fileAttachments = useMemo(() => {
+    const files: { name: string; mimeType?: string; data?: string; messageId: string; role: 'user' | 'agent'; timestamp: Date }[] = [];
+    for (const msg of messages) {
+      for (const p of msg.parts) {
+        if (p.type === 'file' && p.name) {
+          files.push({ name: p.name, mimeType: p.mime_type, data: p.data, messageId: msg.id, role: msg.role, timestamp: msg.timestamp });
+        }
+      }
+    }
+    return files;
+  }, [messages]);
   // Total unread count across all sessions
   const totalUnread = useMemo(() => {
     let count = 0;
@@ -1703,12 +1717,71 @@ export function ChatClient() {
           </div>
         </div>
 
+        {/* Chat view toggle */}
+        <ChatViewToggle
+          activeView={chatView}
+          onViewChange={setChatView}
+          messagesLabel={t('chat.viewMessages', '消息')}
+          filesLabel={t('chat.viewFiles', '文件')}
+          messagesIcon={<MessageSquare className="w-3.5 h-3.5" />}
+          filesIcon={<FolderOpen className="w-3.5 h-3.5" />}
+          fileCount={fileAttachments.length}
+          visible={messages.length > 0}
+        />
+
         {/* Messages */}
         <div ref={scrollRef} onScroll={(e) => {
           const el = e.currentTarget;
           const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
           setShowScrollDown(!atBottom);
         }} className="flex-1 overflow-y-auto px-3 lg:px-6 py-3 lg:py-4 space-y-3 lg:space-y-4 chat-scrollbar relative">
+          {/* File view: timeline of file attachments */}
+          {chatView === 'files' && (
+            <div className="space-y-2">
+              {fileAttachments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                  <FolderOpen className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-sm">暂无文件</p>
+                </div>
+              ) : (
+                fileAttachments.map((f, i) => (
+                  <div key={i} className={`flex gap-2 lg:gap-3 ${f.role === 'user' ? 'justify-end' : ''}`}>
+                    {f.role === 'agent' && (
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="w-4 h-4 text-primary" />
+                      </div>
+                    )}
+                    <button onClick={() => {
+                      const store = useAppStore.getState();
+                      const sessionId = selectedSession?.id || '__default__';
+                      const dataUrl = f.data ? `data:${f.mimeType || 'application/octet-stream'};base64,${f.data}` : undefined;
+                      const ws = store.getWorkspaceTabs(sessionId);
+                      const activeTab = ws.tabs.find((t) => t.id === ws.activeTabId);
+                      if (activeTab && activeTab.type === 'new-tab') {
+                        store.updateWorkspaceTab(sessionId, activeTab.id, { type: 'file-preview', filePath: dataUrl, title: f.name, fileMimeType: f.mimeType });
+                      } else {
+                        const tab = { id: `tab-${Date.now()}-fp`, type: 'file-preview' as const, title: f.name, filePath: dataUrl, fileMimeType: f.mimeType, history: [] as string[], historyIndex: -1 };
+                        store.addWorkspaceTab(sessionId, tab, true);
+                      }
+                      store.setRightPanelOpen(true);
+                    }} className="max-w-[85%] lg:max-w-[70%] rounded-xl px-3 lg:px-4 py-2.5 bg-card border border-border hover:border-primary/30 transition-colors cursor-pointer text-left">
+                      <div className="flex items-center gap-2">
+                        <FileText className="w-4 h-4 text-muted-foreground shrink-0" />
+                        <span className="text-sm font-medium truncate">{f.name}</span>
+                      </div>
+                      <div className="text-[10px] text-muted-foreground/60 mt-1">
+                        {f.timestamp.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        {f.mimeType && ` · ${f.mimeType.split('/').pop()}`}
+                      </div>
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Messages view */}
+          {chatView === 'messages' && (<>
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto">
               <h2 className="text-xl lg:text-2xl font-semibold mb-4 lg:mb-8">{t("chat.welcomeMessage")}</h2>
@@ -1780,20 +1853,62 @@ export function ChatClient() {
                         disabled={false}
                       />
                     )}
-                    {p.type === 'file' && <button onClick={() => {
-                      const store = useAppStore.getState();
-                      const sessionId = selectedSession?.id || '__default__';
-                      const dataUrl = p.data ? `data:${p.mime_type || 'application/octet-stream'};base64,${p.data}` : undefined;
-                      const ws = store.getWorkspaceTabs(sessionId);
-                      const activeTab = ws.tabs.find((t) => t.id === ws.activeTabId);
-                      if (activeTab && activeTab.type === 'new-tab') {
-                        store.updateWorkspaceTab(sessionId, activeTab.id, { type: 'file-preview', filePath: dataUrl, title: p.name || 'File Preview', fileMimeType: p.mime_type });
-                      } else {
-                        const tab = { id: `tab-${Date.now()}-fp`, type: 'file-preview' as const, title: p.name || 'File Preview', filePath: dataUrl, fileMimeType: p.mime_type, history: [] as string[], historyIndex: -1 };
-                        store.addWorkspaceTab(sessionId, tab, true);
-                      }
-                      store.setRightPanelOpen(true);
-                    }} className="flex items-center gap-2 mt-1 p-2 bg-background/50 rounded hover:bg-background/80 transition-colors cursor-pointer"><FileText className="w-4 h-4" /><span className="text-xs">{p.name || 'file'}</span></button>}
+                    {p.type === 'file' && <div className="mt-2 rounded-xl border border-border/60 bg-background/80 backdrop-blur-sm overflow-hidden">
+                      {/* 日期在上 */}
+                      <div className="px-3 py-1.5 border-b border-border/30 bg-muted/20">
+                        <span className="text-[10px] text-muted-foreground/60">
+                          {msg.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      {/* 文件信息 */}
+                      <div className="px-3 py-2.5 flex items-center gap-2">
+                        <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{p.name || 'file'}</p>
+                          {p.mime_type && <p className="text-[10px] text-muted-foreground/60">{p.mime_type}</p>}
+                        </div>
+                      </div>
+                      {/* 功能按钮在下 */}
+                      <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border/30 bg-muted/20">
+                        <button onClick={(e) => {
+                          e.stopPropagation();
+                          const store = useAppStore.getState();
+                          const sessionId = selectedSession?.id || '__default__';
+                          const dataUrl = p.data ? `data:${p.mime_type || 'application/octet-stream'};base64,${p.data}` : undefined;
+                          const ws = store.getWorkspaceTabs(sessionId);
+                          const activeTab = ws.tabs.find((t: any) => t.id === ws.activeTabId);
+                          if (activeTab && activeTab.type === 'new-tab') {
+                            store.updateWorkspaceTab(sessionId, activeTab.id, { type: 'file-preview', filePath: dataUrl, title: p.name || 'File Preview', fileMimeType: p.mime_type });
+                          } else {
+                            const tab = { id: `tab-${Date.now()}-fp`, type: 'file-preview' as const, title: p.name || 'File Preview', filePath: dataUrl, fileMimeType: p.mime_type, history: [] as string[], historyIndex: -1 };
+                            store.addWorkspaceTab(sessionId, tab, true);
+                          }
+                          store.setRightPanelOpen(true);
+                        }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-primary hover:bg-primary/10 transition-colors">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+                          预览
+                        </button>
+                        {p.data && <button onClick={(e) => {
+                          e.stopPropagation();
+                          const byteChars = atob(p.data!);
+                          const bytes = new Uint8Array(byteChars.length);
+                          for (let i = 0; i < byteChars.length; i++) bytes[i] = byteChars.charCodeAt(i);
+                          const blob = new Blob([bytes], { type: p.mime_type || 'application/octet-stream' });
+                          const url = URL.createObjectURL(blob);
+                          const a = document.createElement('a'); a.href = url; a.download = p.name || 'file'; a.click(); URL.revokeObjectURL(url);
+                        }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                          下载
+                        </button>}
+                        <button onClick={(e) => {
+                          e.stopPropagation();
+                          if (p.data) { navigator.clipboard.writeText(atob(p.data!)); }
+                        }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+                          <Copy className="w-3 h-3" />
+                          复制
+                        </button>
+                      </div>
+                    </div>}
                   </div>
                 ))}
                 {/* Multi-file diff view for agent messages with file changes */}
@@ -1888,9 +2003,9 @@ export function ChatClient() {
               <ChevronDown className="w-4 h-4 text-muted-foreground" />
             </button>
           )}
-        </div>
+          </>)} {/* End Messages view */}
 
-        {/* Input area — Doubao style */}
+        </div>
         <div className="px-3 lg:px-4 pt-3 pb-6 shrink-0">
           {attachments.length > 0 && (
             <div className="flex gap-2 mb-2 flex-wrap">
