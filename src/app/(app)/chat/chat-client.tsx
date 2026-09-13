@@ -1403,6 +1403,18 @@ export function ChatClient() {
 
   useEffect(() => {
     console.log(`[SESSION_EFFECT] activeSessionIdFromStore=${activeSessionIdFromStore}, selectedSession?.id=${selectedSession?.id}, activeAgentIdFromStore=${activeAgentIdFromStore}`);
+    // 清除跨页面刷新残留的 temp session（temp ID 不应持久化到下次刷新）
+    // 用 sessionStorage 标记：如果是当前页面会话中创建的 temp，不清除
+    if (activeSessionIdFromStore && activeSessionIdFromStore.startsWith('temp-')) {
+      const isNewFlow = sessionStorage.getItem('openmate_new_session') === activeSessionIdFromStore;
+      if (!isNewFlow) {
+        // 页面刷新导致的残留 temp，清除
+        useAppStore.getState().setActiveSession(null, null);
+        return;
+      }
+      // 当前新建流程中的 temp，清除标记（只用一次）
+      sessionStorage.removeItem('openmate_new_session');
+    }
     if (!activeSessionIdFromStore) {
       // SoulMate new session: clear session but keep WS alive (don't return early)
       const isSoulMate = !activeAgentIdFromStore || activeAgentIdFromStore === 'soulmate';

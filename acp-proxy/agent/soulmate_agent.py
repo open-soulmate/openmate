@@ -474,6 +474,20 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                     "required": ["path"],
                 },
             },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "send_file",
+                "description": "发送文件给用户。直接提供文件下载路径，不需要启动HTTP服务器。支持任何类型文件。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "要发送的文件绝对路径"},
+                        "message": {"type": "string", "description": "附带的说明消息", "default": ""},
+                    },
+                    "required": ["path"],
+                },
+            },
         }]
 
         # 添加进化引擎工具（支持直接对象或HTTP API两种模式）
@@ -706,6 +720,21 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                 result = f"[图片已读取: {path}, base64长度={len(img_b64)}]\n问题: {question}\n注意: 需要视觉模型支持才能分析图片内容。"
                             except Exception as e:
                                 result = f"读取图片失败: {e}"
+
+                        elif func_name == "send_file":
+                            try:
+                                path = func_args.get("path", "")
+                                message = func_args.get("message", "")
+                                if not path or not os.path.exists(path):
+                                    result = f"错误: 文件不存在: {path}"
+                                else:
+                                    size = os.path.getsize(path)
+                                    name = os.path.basename(path)
+                                    result = f"📎 文件已准备好: {name} ({size} 字节)\n路径: {path}"
+                                    if message:
+                                        result = f"{message}\n{result}"
+                            except Exception as e:
+                                result = f"发送文件失败: {e}"
 
                         elif func_name == "todo":
                             # 简单的内存任务列表
