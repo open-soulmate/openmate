@@ -956,8 +956,8 @@ function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
   };
   const cfg = statusConfig[tc.state] || statusConfig.running;
 
-  // 是否有详情可展开（参数或结果）
-  const hasDetail = !!(tc.args || tc.content);
+  // 是否有详情可展开（参数、结果、或仍在运行中）
+  const hasDetail = !!(tc.args || tc.content || tc.state === 'running');
 
   return (
     <div className="rounded-lg bg-[var(--color-tool-bg)] border-l-2 border-[var(--color-tool-border)] overflow-hidden">
