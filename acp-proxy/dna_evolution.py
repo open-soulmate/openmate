@@ -851,6 +851,19 @@ class DNAStrand:
                         results.append({**imp, "status": "failed", "reason": "LLM code generation failed"})
                         continue
 
+                # 处理增量编辑模式（dict返回值）
+                if isinstance(content, dict) and "edits" in content:
+                    edits = content["edits"]
+                    old_file_content = full_path.read_text(encoding="utf-8", errors="replace") if full_path.exists() else ""
+                    try:
+                        new_content = self._apply_edits(old_file_content, edits)
+                        content = new_content
+                    except ValueError as e:
+                        results.append({**imp, "status": "failed", "reason": f"Edit application failed: {e}"})
+                        continue
+                
+                assert isinstance(content, str), f"content must be str after edit application, got {type(content)}"
+
                 # ===== 安全校验：行数变更阈值拦截 =====
                 LINE_REDUCE_THRESHOLD = 0.3  # 新文件行数 < 原文件30% 则阻断
                 old_content = ""
@@ -942,54 +955,85 @@ class DNAStrand:
 
         return results
 
-    async def _generate_code(self, improvement: dict) -> str:
-        """根据描述用LLM生成代码 — 优先使用diff补丁模式"""
+    async def _generate_code(self, improvement: dict) -> str | dict:
+        """根据描述用LLM生成代码 — 优先使用old_string/new_string增量编辑
+
+        返回值：
+          - str: 全量内容（新建文件或小文件）
+          - dict: {"edits": [{"old_string": "...", "new_string": "..."}, ...]} 增量编辑
+        """
         target_file = improvement.get('target_file', '')
         full_path = self.repo_root / target_file
         
-        # 如果文件已存在且行数较多，使用diff模式
+        # 如果文件已存在且行数较多，使用增量编辑模式
         old_content = ""
         if full_path.exists():
             old_content = full_path.read_text(encoding="utf-8", errors="replace")
         
-        if old_content and len(old_content.splitlines()) > 50:
-            # ===== Diff补丁模式：只让LLM输出修改片段 =====
+        if old_content and len(old_content.splitlines()) > 30:
+            # ===== 增量编辑模式：LLM只输出变更片段 =====
+            # 截取相关上下文（需求相关的代码段），而非整个文件
+            context_lines = old_content.splitlines()
+            context_sample = "\n".join(context_lines[:300])  # 前300行作为上下文
+            
             prompt = f"""你是一个代码修改专家。请根据需求修改以下文件。
 
 目标文件：{target_file}
-当前文件内容（前200行）：
+当前文件内容：
 ```
-{chr(10).join(old_content.splitlines()[:200])}
+{context_sample}
 ```
 
 需求：{improvement.get('description', '')}
 要求：{improvement.get('requirements', '无特殊要求')}
 
-请输出unified diff格式的补丁，只包含需要修改的部分。
-格式：
---- a/{target_file}
-+++ b/{target_file}
-@@ -行号,行数 +行号,行数 @@
- 上下文行
--删除行
-+添加行
- 上下文行
+请输出JSON格式的编辑指令，每个编辑包含old_string和new_string。
+old_string必须是文件中已存在的精确文本（包含足够上下文确保唯一匹配）。
+new_string是替换后的文本。
+
+输出格式（严格JSON数组）：
+[
+  {{
+    "old_string": "要查找的精确文本（含3-5行上下文）",
+    "new_string": "替换后的文本"
+  }}
+]
 
 注意：
-1. 只输出diff补丁，不要输出完整文件
-2. 确保上下文行与原文件完全匹配
-3. 如果文件太大，只修改需要改的部分"""
-            
+1. old_string必须与文件内容完全匹配（包括空格、缩进）
+2. 每个old_string应包含足够上下文（3-5行）确保唯一性
+3. 如果需要多处修改，输出多个编辑对象
+4. 只输出JSON数组，不要有其他内容
+5. 不要输出完整文件，只输出需要修改的部分"""
+
             result = await self._call_llm(prompt)
             
-            # 解析diff并应用
-            if result.startswith("---") and "+++" in result:
-                return self._apply_diff_patch(old_content, result, target_file)
-            else:
-                # LLM没有返回有效diff，回退到全量模式
-                logger.warning(f"[{self.strand_id}] LLM未返回有效diff，回退到全量模式")
+            # 解析JSON编辑指令
+            try:
+                # 清理markdown代码块
+                if result.startswith("```"):
+                    lines = result.split("\n")
+                    result = "\n".join(lines[1:-1]) if len(lines) > 2 else result
+                
+                edits = json.loads(result)
+                if isinstance(edits, list) and all("old_string" in e and "new_string" in e for e in edits):
+                    # 验证每个old_string在文件中存在且唯一
+                    for edit in edits:
+                        old_str = edit["old_string"]
+                        count = old_content.count(old_str)
+                        if count == 0:
+                            logger.warning(f"[{self.strand_id}] old_string not found in file, falling back to full mode")
+                            break
+                        if count > 1:
+                            logger.warning(f"[{self.strand_id}] old_string matches {count} times, need more context")
+                            break
+                    else:
+                        # 所有编辑都有效，返回编辑指令
+                        return {"edits": edits}
+            except (json.JSONDecodeError, KeyError, TypeError) as e:
+                logger.warning(f"[{self.strand_id}] Failed to parse edits: {e}, falling back to full mode")
         
-        # ===== 全量模式：文件较小或新建文件 =====
+        # ===== 全量模式：新建文件或小文件 =====
         prompt = f"""根据以下需求生成代码文件。
 
 目标文件：{target_file}
@@ -1006,59 +1050,16 @@ class DNAStrand:
             result = "\n".join(lines[1:-1]) if len(lines) > 2 else result
         return result
     
-    def _apply_diff_patch(self, old_content: str, diff_text: str, target_file: str) -> str:
-        """应用unified diff补丁到原文件内容"""
-        import tempfile
-        import subprocess
-        
-        diff_path = None
-        orig_path = None
-        
-        try:
-            # 将diff写入临时文件
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.diff', delete=False) as f:
-                f.write(diff_text)
-                diff_path = f.name
-            
-            # 将原文件写入临时文件
-            with tempfile.NamedTemporaryFile(mode='w', suffix='.orig', delete=False) as f:
-                f.write(old_content)
-                orig_path = f.name
-            
-            # 用git apply应用补丁
-            result = subprocess.run(
-                ["git", "apply", "--check", diff_path],
-                input=old_content,
-                capture_output=True,
-                text=True,
-                timeout=10,
-            )
-            
-            if result.returncode == 0:
-                # 补丁有效，实际应用
-                result = subprocess.run(
-                    ["git", "apply", diff_path],
-                    input=old_content,
-                    capture_output=True,
-                    text=True,
-                    timeout=10,
-                )
-                if result.returncode == 0:
-                    # 读取应用后的文件
-                    return self.repo_root.joinpath(target_file).read_text(encoding="utf-8")
-            
-            # 补丁应用失败，回退到全量模式
-            logger.warning(f"[{self.strand_id}] diff patch应用失败，回退全量模式: {result.stderr[:200]}")
-            return old_content  # 返回原内容，不会截断
-            
-        finally:
-            # 清理临时文件
-            if diff_path:
-                try: os.unlink(diff_path)
-                except Exception: pass
-            if orig_path:
-                try: os.unlink(orig_path)
-                except Exception: pass
+    def _apply_edits(self, old_content: str, edits: list[dict]) -> str:
+        """应用old_string/new_string编辑到文件内容"""
+        content = old_content
+        for edit in edits:
+            old_str = edit["old_string"]
+            new_str = edit["new_string"]
+            if old_str not in content:
+                raise ValueError(f"old_string not found: {old_str[:50]}...")
+            content = content.replace(old_str, new_str, 1)
+        return content
 
     # ── 验证 ──────────────────────────────────────────────
 
