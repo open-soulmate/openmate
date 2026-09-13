@@ -1,0 +1,136 @@
+#!/usr/bin/env python3
+"""
+DNA Verification Script for ACP Proxy
+Validates code improvements by comparing before/after states
+while filtering out metadata noise for idempotent verification
+"""
+
+import json
+import hashlib
+from datetime import datetime
+from typing import Dict, Any, List, Optional, Tuple
+import re
+from pathlib import Path
+import sys
+
+# Fields to ignore during comparison to focus on actual improvements
+METADATA_FIELDS = {
+    'timestamp', 'version', 'last_validated_version', 'operation_id',
+    'heartbeat_timestamp', 'heartbeat_version', 'heartbeat_last_check',
+    'created_at', 'updated_at', 'last_modified', 'sync_timestamp'
+}
+
+class VerificationResult:
+    """Structured verification result with clear failure reasons"""
+    
+    def __init__(self):
+        self.passed: bool = False
+        self.failure_category: Optional[str] = None  # 'code_improvement' or 'metadata_conflict'
+        self.failure_reason: Optional[str] = None
+        self.improvement_details: Dict[str, Any] = {}
+        self.metadata_stripped: Dict[str, Any] = {}
+        self.verification_hash: Optional[str] = None
+        
+    def to_dict(self) -> Dict[str, Any]:
+        return {
+            'verification_passed': self.passed,
+            'failure_category': self.failure_category,
+            'failure_reason': self.failure_reason,
+            'improvement_details': self.improvement_details,
+            'verification_hash': self.verification_hash,
+            'timestamp': datetime.utcnow().isoformat()
+        }
+
+def load_state_file(file_path: Path) -> Dict[str, Any]:
+    """Load and return state file as dictionary"""
+    try:
+        with open(file_path, 'r', encoding='utf-8') as f:
+            return json.load(f)
+    except Exception as e:
+        raise ValueError(f"Failed to load state file {file_path}: {str(e)}")
+
+def strip_metadata(state: Dict[str, Any], metadata_fields: set = METADATA_FIELDS) -> Dict[str, Any]:
+    """
+    Remove metadata fields recursively from state dictionary
+    to enable fair comparison of actual improvements
+    """
+    def _strip_metadata_recursive(data: Any) -> Any:
+        if isinstance(data, dict):
+            return {
+                key: _strip_metadata_recursive(value) 
+                for key, value in data.items() 
+                if key.lower() not in metadata_fields and 
+                   not any(field in key.lower() for field in ['timestamp', 'version'])
+            }
+        elif isinstance(data, list):
+            return [_strip_metadata_recursive(item) for item in data]
+        else:
+            return data
+    
+    return _strip_metadata_recursive(state)
+
+def calculate_content_hash(state: Dict[str, Any]) -> str:
+    """Calculate deterministic hash of state content after metadata stripping"""
+    stripped_state = strip_metadata(state)
+    normalized_json = json.dumps(stripped_state, sort_keys=True, ensure_ascii=False)
+    return hashlib.sha256(normalized_json.encode('utf-8')).hexdigest()
+
+def analyze_success_transitions(memory_array: List[Dict[str, Any]]) -> Tuple[bool, List[str]]:
+    """Analyze success state transitions in memory array"""
+    if not memory_array or len(memory_array) < 2:
+        return False, ["Insufficient memory entries for analysis"]
+    
+    success_changes = []
+    last_entry = memory_array[-1]
+    previous_success_states = [entry.get('success', False) for entry in memory_array[:-1]]
+    
+    # Check if final entry shows success improvement
+    final_success = last_entry.get('success', False)
+    if not final_success:
+        return False, ["Final memory entry indicates failure"]
+    
+    # Check for success transition pattern
+    false_to_true_transitions = 0
+    for i in range(1, len(memory_array)):
+        prev_success = memory_array[i-1].get('success', False)
+        curr_success = memory_array[i].get('success', False)
+        if not prev_success and curr_success:
+            false_to_true_transitions += 1
+    
+    if false_to_true_transitions == 0:
+        return False, ["No false-to-true success transitions found in memory"]
+    
+    return True, [f"Found {false_to_true_transitions} success transitions"]
+
+def analyze_reflections_quality(reflections: List[str]) -> Tuple[bool, List[str]]:
+    """Analyze quality of reflections content"""
+    if not reflections:
+        return False, ["No reflections found"]
+    
+    quality_indicators = []
+    issue_indicators = []
+    
+    for reflection in reflections:
+        reflection_lower = reflection.lower()
+        
+        # Positive indicators of quality reflections
+        if any(indicator in reflection_lower for indicator in [
+            'improved', 'fixed', 'resolved', 'optimized', 'enhanced',
+            'better', 'progress', 'solved', 'corrected', 'upgraded'
+        ]):
+            quality_indicators.append(reflection[:50] + "...")
+        
+        # Negative indicators
+        if any(indicator in reflection_lower for indicator in [
+            'failed', 'broken', 'worse', 'regression', 'error',
+            'problem', 'issue', 'difficulty', 'challenge'
+        ]):
+            issue_indicators.append(reflection[:50] + "...")
+    
+    if len(issue_indicators) > len(quality_indicators):
+        return False, ["Reflections indicate more issues than improvements"]
+    
+    if not quality_indicators:
+        return False, ["No quality improvement indicators in reflections"]
+    
+    return True, [f"Found {len(quality_indicators)} quality improvement indicators"]

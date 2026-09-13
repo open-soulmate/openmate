@@ -450,6 +450,8 @@ function useAcpWebSocket(params: {
       setSelectedSession(updated);
       selectedSessionRef.current = updated;
       useAppStore.getState().setActiveSession(newSessionId, null, { sessionName: updated.name || updated.title || '' });
+      // temp→real 迁移完成，清除新建流程标记
+      useAppStore.setState({ _isNewSessionFlow: false });
       useAppStore.getState().refreshSidebar();
       tagSessionAgent(newSessionId, currentSelectedAgentId);
       updateSessionMessages(newSessionId, prev => {
@@ -1407,8 +1409,7 @@ export function ChatClient() {
     if (activeSessionIdFromStore && activeSessionIdFromStore.startsWith('temp-')) {
       const store = useAppStore.getState();
       if (store._isNewSessionFlow) {
-        // 当前新建流程中的 temp，清除标记
-        useAppStore.setState({ _isNewSessionFlow: false });
+        // 当前新建流程中的 temp，允许保留，不清除标记（标记在session替换后清除）
       } else {
         // 页面刷新导致的残留 temp，清除
         store.setActiveSession(null, null);
