@@ -253,8 +253,15 @@ class SoulMateAgent:
 如果是简单问题（如"你好"、"怎么样了"），直接自然语言回答即可。
 
 ## 工具使用
-当有可用工具时，根据需要调用工具来更好地回答问题。
-需要查看系统状态、执行命令、读写文件时，优先使用工具。
+绝不要凭记忆或心算回答以下问题——必须使用工具：
+- 数学计算、哈希、编码 → 用 terminal 或 execute_code
+- 当前时间、日期、时区 → 用 terminal (date)
+- 系统状态：OS、CPU、内存、磁盘、端口、进程 → 用 terminal
+- 文件内容、大小、行数 → 用 read_file、search_files 或 terminal
+- Git 历史、分支、diff → 用 terminal
+- 当前事实（天气、新闻、版本） → 用 web_search
+
+除此之外的简单聊天、闲聊、知识问答、状态询问，直接用自然语言回答，不要调用任何工具。
 - read_file: 读取文件，path 参数必填
 - write_file: 写入文件，path 和 content 参数必填
 - search_files: 搜索文件，pattern 参数必填，path 默认为当前目录

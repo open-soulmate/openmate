@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view';
-import { history, historyKeymap, undo, redo } from '@codemirror/commands';
+import { history, historyKeymap, defaultKeymap, undo, redo } from '@codemirror/commands';
 import { EditorState, StateField, Compartment } from '@codemirror/state';
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching, LanguageDescription, HighlightStyle } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
@@ -178,6 +178,7 @@ export function CodeMirrorEditor({
           return true;
         }},
         ...historyKeymap,
+        ...defaultKeymap.filter(k => k.key !== 'Enter'),
         { key: 'Mod-z', run: undo, preventDefault: true },
         { key: 'Mod-Shift-z', run: redo, preventDefault: true },
         { key: 'Mod-y', run: redo, preventDefault: true },
