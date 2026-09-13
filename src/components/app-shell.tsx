@@ -450,6 +450,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       onToggleAgent={toggleAgent}
                       onToggleSourceGroup={toggleSourceGroup}
                       onDeleteSession={deleteSession}
+                      onNewSession={(agentId) => {
+                        setActiveSession(null, agentId);
+                        router.push('/chat');
+                      }}
                       onSelectSession={(session, agent) => {
                         clearSessionUnread(session.id);
                         setActiveSession(session.id, agent.id, {
