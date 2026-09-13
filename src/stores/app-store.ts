@@ -397,6 +397,7 @@ interface AppState {
   setSidebarAgents: (agents: any[] | ((prev: any[]) => any[])) => void;
   sidebarRefreshKey: number;  // Increment to trigger app-shell re-fetch
   refreshSidebar: () => void;
+  deleteSession: (sessionId: string) => Promise<void>;
 }
 
 export const useAppStore = create<AppState>((set, get) => ({
@@ -987,6 +988,27 @@ export const useAppStore = create<AppState>((set, get) => ({
     })),
   sidebarRefreshKey: 0,
   refreshSidebar: () => set((s) => ({ sidebarRefreshKey: s.sidebarRefreshKey + 1 })),
+  deleteSession: async (sessionId: string) => {
+    try {
+      const { getApiBaseUrl, getToken } = await import('@/lib/api-client');
+      const res = await fetch(`${getApiBaseUrl()}/api/sessions/${sessionId}`, {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      });
+      if (res.ok) {
+        set((s) => ({
+          sidebarAgents: s.sidebarAgents.map((a: any) => ({
+            ...a,
+            sessions: a.sessions.filter((ses: any) => ses.id !== sessionId),
+            sourceGroups: a.sourceGroups?.map((g: any) => ({
+              ...g,
+              sessions: g.sessions.filter((ses: any) => ses.id !== sessionId),
+            })).filter((g: any) => g.sessions.length > 0),
+          })).filter((a: any) => a.sessions.length > 0),
+        }));
+      }
+    } catch (e) { console.error('deleteSession failed:', e); }
+  },
 }));
 
 // ─── localStorage persistence for conversations ────────────────────────────

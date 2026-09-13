@@ -109,6 +109,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const effectiveCollapsed = isMobile ? !mobileSidebarOpen : (collapsed || (isMidScreen && !midScreenExpanded));
   const currentPanel = useAppStore((s) => s.currentPanel);
   const setCurrentPanel = useAppStore((s) => s.setCurrentPanel);
+  const deleteSession = useAppStore((s) => s.deleteSession);
   const { t } = useTranslation();
   const [eventCount, setEventCount] = useState(0);
   const [rightPanelWidth, setRightPanelWidth] = useState(0);
@@ -448,6 +449,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       getUnread={getUnread}
                       onToggleAgent={toggleAgent}
                       onToggleSourceGroup={toggleSourceGroup}
+                      onDeleteSession={deleteSession}
                       onSelectSession={(session, agent) => {
                         clearSessionUnread(session.id);
                         setActiveSession(session.id, agent.id, {
