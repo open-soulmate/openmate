@@ -578,14 +578,22 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                         elif func_name == "terminal":
                             try:
                                 cmd = func_args.get("command", "")
-                                proc = subprocess.run(
-                                    cmd, shell=True, capture_output=True, text=True, timeout=30,
-                                    cwd=cwd,
-                                )
-                                output = proc.stdout + proc.stderr
-                                result = output[:3000] if output else "(无输出)"
-                                if proc.returncode != 0:
-                                    result += f"\\n[exit code: {proc.returncode}]"
+                                if not cmd:
+                                    result = "错误: command 不能为空"
+                                else:
+                                    import shlex, re as _re
+                                    # 自动转义路径中的括号（Next.js 的 (app) 目录）
+                                    def _quote_p(m):
+                                        return shlex.quote(m.group(0))
+                                    cmd = _re.sub(r'(/[\w/.\-]*[()][\w/.\-()]*)', _quote_p, cmd)
+                                    proc = subprocess.run(
+                                        cmd, shell=True, capture_output=True, text=True, timeout=30,
+                                        cwd=cwd,
+                                    )
+                                    output = proc.stdout + proc.stderr
+                                    result = output[:3000] if output else "(无输出)"
+                                    if proc.returncode != 0:
+                                        result += f"\\n[exit code: {proc.returncode}]"
                             except subprocess.TimeoutExpired:
                                 result = "命令超时（30秒）"
                             except Exception as e:
@@ -599,11 +607,12 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                 if path == "/" or path == "":
                                     path = cwd
                                 target = func_args.get("target", "content")
+                                import shlex
                                 if target == "files":
-                                    cmd = ["find", path, "-name", pattern, "-type", "f"]
+                                    cmd = f"find {shlex.quote(path)} -name {shlex.quote(pattern)} -type f"
                                 else:
-                                    cmd = ["grep", "-rn", "-i", "--include=*.py", "--include=*.ts", "--include=*.tsx", "--include=*.js", "--include=*.json", "--include=*.yaml", "--include=*.yml", "--include=*.md", "--include=*.sh", "--include=*.css", "--include=*.html", pattern, path]
-                                proc = subprocess.run(cmd, capture_output=True, text=True, timeout=10)
+                                    cmd = f"grep -rn -i --include='*.py' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.json' --include='*.md' {shlex.quote(pattern)} {shlex.quote(path)}"
+                                proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, timeout=10)
                                 output = proc.stdout[:3000] if proc.stdout else "(无结果)"
                                 result = output
                             except Exception as e:
