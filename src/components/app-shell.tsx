@@ -8,7 +8,7 @@ import {
 import { TerminalPanel } from "@/components/terminal-panel";
 import { BottomNav } from "@/components/bottom-nav";
 import { TopBar } from "@/components/top-bar";
-import { RightPanel } from "@/components/right-panel";
+import { WorkspacePanel } from '@opensoulmate/openface';
 import { AIGroupsSidebar } from "@/components/ai-groups-sidebar";
 import { useAIGroupsStore } from "@/stores/ai-groups-store";
 
@@ -433,7 +433,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   pageSidebar
                 ) : isChatRoute ? (
                   <>
-                    {agents.length === 0 && <div className="px-3 py-1 text-[10px] text-muted-foreground">Loading...</div>}
                     <LeftPanel
                       placeholder={t("sidebar.searchPlaceholder", "搜索会话...")}
 
@@ -515,7 +514,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           right: rightPanelOpen ? 0 : -rightPanelWidth,
         }}
       >
-        <RightPanel open={rightPanelOpen} onToggle={() => toggleRightPanel()} />
+        <WorkspacePanel sessionId={activeSessionIdFromStore || '__default__'} className="h-full" />
       </div>
       </div>
 

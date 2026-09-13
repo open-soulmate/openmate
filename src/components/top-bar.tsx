@@ -2,15 +2,15 @@
 
 import { cn } from "@/lib/utils";
 import { useTranslation } from "react-i18next";
-import { useRef, useEffect } from "react";
 import {
   Bell, Search, Download, Settings,
-  Activity, BarChart3, Stethoscope, Gauge, Shield, Plug, Dna,
+  BarChart3, Gauge, Shield, Plug, Dna,
 } from "lucide-react";
 import { usePathname } from "next/navigation";
 import Link from "next/link";
 import { HealthWidget } from "@/components/health-widget";
 import { SuperEllipse } from "@/components/ui/super-ellipse";
+import { TopBar as OpenFaceTopBar } from "@opensoulmate/openface";
 
 interface TopBarProps {
   eventCount?: number;
@@ -19,21 +19,6 @@ interface TopBarProps {
 export function TopBar({ eventCount = 0 }: TopBarProps) {
   const { t } = useTranslation();
   const pathname = usePathname();
-  const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Mouse wheel → horizontal scroll
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const handler = (e: WheelEvent) => {
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY;
-      }
-    };
-    el.addEventListener("wheel", handler, { passive: false });
-    return () => el.removeEventListener("wheel", handler);
-  }, []);
 
   const statusItems = [
     { id: "metrics", icon: BarChart3, label: t("nav.metrics", "指标"), href: "/metrics" },
@@ -80,53 +65,49 @@ export function TopBar({ eventCount = 0 }: TopBarProps) {
   };
 
   return (
-    <div className="flex h-12 shrink-0 items-center border-b border-border bg-background safe-area-top">
-      {/* Fixed left: logo + name + context ring */}
-      <Link href="/chat" className="flex items-center gap-1.5 shrink-0 px-3 hover:opacity-80 transition-opacity">
-        <img src="/logo.svg" alt="OpenMate" className="w-7 h-7" />
-        <span className="text-sm font-semibold text-foreground hidden sm:inline">OpenMate</span>
-      </Link>
-
-      {/* Scrollable middle area: health + status + nav + search */}
-      <div
-        ref={scrollRef}
-        className="flex-1 flex items-center gap-1 overflow-x-auto"
-        style={{ scrollbarWidth: "none" }}
-      >
-        <HealthWidget />
-        {statusItems.map(renderItem)}
-        {/* Divider */}
-        <div className="w-px h-4 bg-border shrink-0 mx-1" />
-        {navItems.map(renderItem)}
-        <button
-          onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true }))}
-          className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-accent"
-          title={t("nav.search", "搜索")}
+    <OpenFaceTopBar
+      left={
+        <Link href="/chat" className="flex items-center gap-1.5 shrink-0 px-3 hover:opacity-80 transition-opacity">
+          <img src="/logo.svg" alt="OpenMate" className="w-7 h-7" />
+          <span className="text-sm font-semibold text-foreground hidden sm:inline">OpenMate</span>
+        </Link>
+      }
+      middle={
+        <>
+          <HealthWidget />
+          {statusItems.map(renderItem)}
+          <div className="w-px h-4 bg-border shrink-0 mx-1" />
+          {navItems.map(renderItem)}
+          <button
+            onClick={() => document.dispatchEvent(new KeyboardEvent("keydown", { key: "k", metaKey: true, ctrlKey: true }))}
+            className="flex shrink-0 items-center gap-1 rounded-md px-2 py-1.5 text-[10px] font-medium transition-colors text-muted-foreground hover:text-foreground hover:bg-accent"
+            title={t("nav.search", "搜索")}
+          >
+            <Search size={14} />
+            <span className="hidden lg:inline truncate">{t("nav.search", "搜索")}</span>
+            <kbd className="hidden lg:inline pointer-events-none select-none rounded border border-border bg-muted px-1 text-[9px] font-mono text-muted-foreground">⌘K</kbd>
+          </button>
+        </>
+      }
+      right={
+        <Link
+          href="/settings"
+          className={cn(
+            "flex shrink-0 items-center justify-center h-full px-3 transition-colors",
+            pathname.startsWith("/settings")
+              ? "text-primary"
+              : "text-muted-foreground hover:text-foreground"
+          )}
+          title={t("nav.settings", "设置")}
         >
-          <Search size={14} />
-          <span className="hidden lg:inline truncate">{t("nav.search", "搜索")}</span>
-          <kbd className="hidden lg:inline pointer-events-none select-none rounded border border-border bg-muted px-1 text-[9px] font-mono text-muted-foreground">⌘K</kbd>
-        </button>
-      </div>
-
-      {/* Fixed settings button on far right — 小米 Alive 超椭圆 */}
-      <Link
-        href="/settings"
-        className={cn(
-          "flex shrink-0 items-center justify-center h-full px-3 transition-colors",
-          pathname.startsWith("/settings")
-            ? "text-primary"
-            : "text-muted-foreground hover:text-foreground"
-        )}
-        title={t("nav.settings", "设置")}
-      >
-        <SuperEllipse
-          size={36}
-          fill={pathname.startsWith("/settings") ? "var(--color-primary)" : "var(--color-muted)"}
-        >
-          <Settings size={18} className={pathname.startsWith("/settings") ? "text-primary-foreground" : "text-muted-foreground"} />
-        </SuperEllipse>
-      </Link>
-    </div>
+          <SuperEllipse
+            size={36}
+            fill={pathname.startsWith("/settings") ? "var(--color-primary)" : "var(--color-muted)"}
+          >
+            <Settings size={18} className={pathname.startsWith("/settings") ? "text-primary-foreground" : "text-muted-foreground"} />
+          </SuperEllipse>
+        </Link>
+      }
+    />
   );
 }

@@ -13,9 +13,10 @@ import {
   Camera, Download, Tag, User, Bot, Droplets, Dna, Eye, Shield, Bone,
   Volume2, Layers, Link2, Home, MousePointer, Mic, ImageIcon, Smile,
   Stethoscope, Cpu, Bolt, Heart, Gauge, BarChart3, Package, ScrollText,
-  History, Store, Pill, LogOut, Moon, Sun, DollarSign,
+  History, Store, Pill, LogOut, DollarSign,
 } from "lucide-react";
 import { fetchPluginNavItems, getCachedPluginNavItems, mergePluginNavItems, PluginNavItem } from "@/lib/plugin-nav";
+import { BottomBar as OpenFaceBottomBar } from "@opensoulmate/openface";
 
 interface BottomNavItem {
   href: string;
@@ -31,10 +32,9 @@ const ICON_MAP: Record<string, React.ElementType> = {
   Camera, Download, Tag, User, Bot, Droplets, Dna, Eye, Shield, Bone,
   Volume2, Layers, Link2, Home, MousePointer, Mic, ImageIcon, Smile,
   Stethoscope, Cpu, Bolt, Heart, Gauge, BarChart3, Package, ScrollText,
-  History, Store, Pill, LogOut, Moon, Sun, DollarSign,
+  History, Store, Pill, LogOut, DollarSign,
 };
 
-// 默认图标（当插件指定的图标不存在时使用）
 const DEFAULT_ICON = FileText;
 
 // Settings is NOT in scrollable items — it's fixed on the right
@@ -46,10 +46,8 @@ const baseNavItems: BottomNavItem[] = [
   { href: "/learn", label: "nav.learn", icon: GraduationCap },
   { href: "/graph", label: "nav.graph", icon: Network },
   { href: "/knowledge-requests", label: "nav.kbSharing", icon: Share2 },
-
   { href: "/cron", label: "nav.cron", icon: Clock },
   { href: "/workflow", label: "nav.workflow", icon: Workflow },
-
   { href: "/pipeline", label: "nav.pipeline", icon: Zap },
   { href: "/skills", label: "nav.skills", icon: Puzzle },
   { href: "/mcp", label: "nav.mcp", icon: Plug },
@@ -109,13 +107,12 @@ export function BottomNav({ totalUnread = 0, onOpenConversations }: BottomNavPro
   const pathname = usePathname();
   const router = useRouter();
   const { t } = useTranslation();
-  const scrollRef = useRef<HTMLDivElement>(null);
   const activeRef = useRef<HTMLAnchorElement>(null);
   const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isLongPress = useRef(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const userMenuRef = useRef<HTMLDivElement>(null);
-  
+
   // 插件导航项状态
   const [pluginNavItems, setPluginNavItems] = useState<PluginNavItem[]>([]);
 
@@ -126,7 +123,6 @@ export function BottomNav({ totalUnread = 0, onOpenConversations }: BottomNavPro
     fetchPluginNavItems().then(items => {
       setPluginNavItems(items);
     }).catch(() => {
-      // 静默失败，使用缓存
       setPluginNavItems(getCachedPluginNavItems());
     });
   }, []);
@@ -141,25 +137,10 @@ export function BottomNav({ totalUnread = 0, onOpenConversations }: BottomNavPro
     })),
   ];
 
+  // Auto-scroll to active item
   useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const handler = (e: WheelEvent) => {
-      if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) {
-        e.preventDefault();
-        el.scrollLeft += e.deltaY;
-      }
-    };
-    el.addEventListener("wheel", handler, { passive: false });
-    return () => el.removeEventListener("wheel", handler);
-  }, []);
-
-  useEffect(() => {
-    if (activeRef.current && scrollRef.current) {
-      const container = scrollRef.current;
-      const active = activeRef.current;
-      const left = active.offsetLeft - container.clientWidth / 2 + active.clientWidth / 2;
-      container.scrollTo({ left: Math.max(0, left), behavior: "smooth" });
+    if (activeRef.current) {
+      activeRef.current.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
     }
   }, [pathname]);
 
@@ -202,28 +183,10 @@ export function BottomNav({ totalUnread = 0, onOpenConversations }: BottomNavPro
   }
 
   return (
-    <nav className="nav-wave relative z-20 shrink-0 h-12 bg-background border-t border-border safe-area-bottom">
-      {/* CSS wave bump */}
-      <div className="nav-wave-bump" />
-      <div className="nav-wave-border" />
-
-      {/* Center voice button in the bump */}
-      <div className="nav-wave-btn">
-        <button
-          onPointerDown={handlePointerDown}
-          onPointerUp={handlePointerUp}
-          onPointerLeave={handlePointerLeave}
-          onContextMenu={(e) => e.preventDefault()}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-background border border-border transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
-          title="Hold: Voice"
-        >
-          <Mic size={18} className="text-muted-foreground" />
-        </button>
-      </div>
-
-      <div className="flex h-full items-center">
-        {/* Fixed left: User avatar button */}
-        <div className="relative shrink-0 flex items-center justify-center w-12 h-full" ref={userMenuRef}>
+    <OpenFaceBottomBar
+      showBump={true}
+      left={
+        <div className="relative w-12 h-full flex items-center justify-center" ref={userMenuRef}>
           <button
             onClick={() => setUserMenuOpen(!userMenuOpen)}
             className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-[11px] font-semibold text-primary-foreground transition-transform hover:scale-105"
@@ -267,18 +230,9 @@ export function BottomNav({ totalUnread = 0, onOpenConversations }: BottomNavPro
             </div>
           )}
         </div>
-
-        {/* Scrollable middle items */}
-        <div
-          ref={scrollRef}
-          className="flex-1 flex h-full items-center gap-0.5 overflow-x-auto"
-          style={{
-            scrollbarWidth: "none",
-            WebkitOverflowScrolling: "touch",
-            paddingLeft: "4px",
-            paddingRight: "4px",
-          }}
-        >
+      }
+      middle={
+        <>
           {navItems.map((item) => {
             const active = pathname.startsWith(item.href);
             const Icon = item.icon;
@@ -327,47 +281,20 @@ export function BottomNav({ totalUnread = 0, onOpenConversations }: BottomNavPro
               </Link>
             );
           })}
-        </div>
-
-
-      </div>
-
-      <style jsx global>{`
-        .nav-wave {
-          overflow: visible;
-        }
-        .nav-wave-bump {
-          position: absolute;
-          left: 50%;
-          transform: translateX(-50%);
-          bottom: 100%;
-          width: 80px;
-          height: 40px;
-          border-radius: 80px 80px 0 0;
-          background: hsl(var(--background));
-          z-index: 5;
-        }
-        .nav-wave-border {
-          position: absolute;
-          left: 50%;
-          transform: translateX(-50%);
-          bottom: 100%;
-          width: 80px;
-          height: 40px;
-          border-radius: 80px 80px 0 0;
-          border: 1px solid hsl(var(--border));
-          border-bottom: none;
-          z-index: 6;
-          pointer-events: none;
-        }
-        .nav-wave-btn {
-          position: absolute;
-          left: 50%;
-          transform: translateX(-50%);
-          bottom: calc(100% + 4px);
-          z-index: 10;
-        }
-      `}</style>
-    </nav>
+        </>
+      }
+      centerButton={
+        <button
+          onPointerDown={handlePointerDown}
+          onPointerUp={handlePointerUp}
+          onPointerLeave={handlePointerLeave}
+          onContextMenu={(e) => e.preventDefault()}
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-background border border-border transition-transform hover:scale-105 active:scale-95 cursor-pointer shadow-sm"
+          title="Hold: Voice"
+        >
+          <Mic size={18} className="text-muted-foreground" />
+        </button>
+      }
+    />
   );
 }
