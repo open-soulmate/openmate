@@ -977,14 +977,45 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
             logger.error(f"Session not found: {session_id}")
             return PromptResponse(stop_reason="refusal")
 
-        # 提取文本内容 — prompt 是 TextContentBlock | ImageContentBlock | ... 列表
+        # 提取文本内容 — prompt 是 TextContentBlock | ImageContentBlock | FileContentBlock 列表
         user_text = ""
+        file_parts = []
         for block in prompt:
             if hasattr(block, "text"):
                 user_text += block.text
             elif isinstance(block, dict):
                 if block.get("type") == "text":
                     user_text += block.get("text", "")
+                elif block.get("type") == "file" and block.get("data"):
+                    file_parts.append(block)
+                elif block.get("type") == "image" and block.get("data"):
+                    file_parts.append(block)
+
+        # 保存附件到临时文件，把路径拼到prompt文本里
+        if file_parts:
+            import base64 as b64mod, tempfile
+            for f in file_parts:
+                try:
+                    b64_data = f.get("data", "")
+                    if "," in b64_data:
+                        b64_data = b64_data.split(",")[-1]
+                    file_bytes = b64mod.b64decode(b64_data)
+                    fname = f.get("name", "file")
+                    mime = f.get("mimeType", "application/octet-stream")
+                    ext = ""
+                    if "." in fname:
+                        ext = "." + fname.rsplit(".", 1)[-1]
+                    elif "/" in mime:
+                        ext = "." + mime.split("/")[-1].split(";")[0]
+                    tmp_dir = tempfile.mkdtemp(prefix="openmate_file_")
+                    safe_name = fname.replace("/", "_").replace("\\", "_") or "file"
+                    tmp_path = os.path.join(tmp_dir, safe_name if "." in safe_name else safe_name + ext)
+                    with open(tmp_path, "wb") as fp:
+                        fp.write(file_bytes)
+                    user_text += f"\n[附件已保存到: {tmp_path}]"
+                    logger.info(f"[prompt] File saved: {tmp_path} ({len(file_bytes)} bytes)")
+                except Exception as e:
+                    logger.error(f"[prompt] File save error: {e}")
 
         if not user_text.strip():
             return PromptResponse(stop_reason="end_turn")

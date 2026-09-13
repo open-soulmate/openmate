@@ -270,10 +270,37 @@ async def forward_to_agent_engine(
 
             # Step 3: session.prompt (fire, then stream notifications)
             prompt_text = text
+            saved_files = []
             if attachments:
+                import base64, tempfile
                 file_parts = [a for a in attachments if a.get("type") == "file"]
                 for f in file_parts:
-                    prompt_text += f"\n[附件: {f.get('name', 'file')}]"
+                    try:
+                        b64_data = f.get("data", "")
+                        if "," in b64_data:
+                            b64_data = b64_data.split(",")[-1]
+                        file_bytes = base64.b64decode(b64_data)
+                        fname = f.get("name", "file")
+                        mime = f.get("mimeType", f.get("mime_type", "application/octet-stream"))
+                        ext = ""
+                        if "." in fname:
+                            ext = "." + fname.rsplit(".", 1)[-1]
+                        elif "/" in mime:
+                            ext = "." + mime.split("/")[-1].split(";")[0]
+                        tmp_dir = tempfile.mkdtemp(prefix="openmate_file_")
+                        safe_name = fname.replace("/", "_").replace("\\", "_") or "file"
+                        tmp_path = os.path.join(tmp_dir, safe_name if "." in safe_name else safe_name + ext)
+                        with open(tmp_path, "wb") as fp:
+                            fp.write(file_bytes)
+                        saved_files.append(tmp_path)
+                        prompt_text += f"\n[附件已保存到: {tmp_path}]"
+                        logger.info(f"File saved: {tmp_path} ({len(file_bytes)} bytes)")
+                    except Exception as e:
+                        logger.error(f"File save error: {e}")
+                        prompt_text += f"\n[附件: {f.get('name', 'file')} - 保存失败]"
+                image_parts = [a for a in attachments if a.get("type") == "image"]
+                for img in image_parts:
+                    prompt_text += f"\n[图片附件: {img.get('mimeType', 'image/png')}]"
 
             rid = next_id()
             req = {
