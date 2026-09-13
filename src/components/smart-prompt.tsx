@@ -73,6 +73,13 @@ const FIELD_DEFS = [
 // ── Prompt Assembly ──────────────────────────────────────────────
 
 function assemblePrompt(fields: SmartPromptFields): string {
+  const hasMeta = fields.role.trim() || fields.background.trim() || fields.constraints.trim() || fields.format.trim();
+
+  // 纯task没有其他字段 → 直接返回原文，不做结构化
+  if (!hasMeta) {
+    return fields.task.trim();
+  }
+
   const parts: string[] = [];
 
   if (fields.role.trim()) {
@@ -99,7 +106,7 @@ function assemblePrompt(fields: SmartPromptFields): string {
 export function SmartPrompt({
   onSend,
   isLoading = false,
-  placeholder = '输入任务，点 ✨ 展开字段（Enter 发送，Shift+Enter 换行）',
+  placeholder = '输入任务直接发送，点 ✨ 自动生成扩展提示词（Enter 发送，Shift+Enter 换行）',
   context,
   className,
   footer,
@@ -181,9 +188,9 @@ export function SmartPrompt({
   const [generating, setGenerating] = useState(false);
   const [generated, setGenerated] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  let generateTimerRef: ReturnType<typeof setTimeout> | null = null;
+  const generateTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-generate other fields when task changes (debounced)
+  // Manual generate: user clicks ✨ button to generate fields
   const autoGenerate = useCallback(
     async (task: string) => {
       if (!task.trim() || task.trim().length < 5) return;
@@ -216,20 +223,7 @@ export function SmartPrompt({
     [context],
   );
 
-  // Debounced auto-generate on task change
-  useEffect(() => {
-    if (generateTimerRef) {
-      clearTimeout(generateTimerRef);
-    }
-    if (fields.task.trim().length >= 10) {
-      generateTimerRef = setTimeout(() => {
-        autoGenerate(fields.task);
-      }, 300); // 1.5s debounce
-    }
-    return () => {
-      if (generateTimerRef) clearTimeout(generateTimerRef);
-    };
-  }, [fields.task, autoGenerate]);
+  // No auto-generate — user sends immediately, or clicks ✨ to generate fields
 
   const updateField = (key: keyof SmartPromptFields, value: string) => {
     internalUpdateRef.current = true;
@@ -279,7 +273,6 @@ export function SmartPrompt({
     const empty = { task: '', role: '', background: '', constraints: '', format: '' };
     setFields(empty);
     setGenerated(false);
-    setExpanded(false);
     if (onFieldsChange) onFieldsChange(empty);
   };
 
@@ -383,16 +376,42 @@ export function SmartPrompt({
         <button className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors" title="语音输入">
           <Mic className="w-4 h-4" />
         </button>
-        <button
-          onClick={() => {
-            if (!expanded) { setExpanded(true); if (fields.task.trim().length >= 5) autoGenerate(fields.task); }
-            else setExpanded(false);
-          }}
-          className={cn("p-1.5 rounded transition-colors", expanded ? "bg-primary/10 text-primary hover:bg-primary/20" : "hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground")}
-          title={expanded ? '折叠字段' : '展开AI字段'}
-        >
-          {expanded ? <ChevronUp className="w-4 h-4" /> : <Sparkles className="w-4 h-4" />}
-        </button>
+        {/* ✨ Generate button */}
+        {!expanded && (
+          <button
+            onClick={() => {
+              setExpanded(true);
+              if (fields.task.trim().length >= 5) autoGenerate(fields.task);
+            }}
+            className="p-1.5 rounded hover:bg-muted/30 text-muted-foreground/40 hover:text-muted-foreground transition-colors"
+            title="展开AI字段"
+          >
+            <Sparkles className="w-4 h-4" />
+          </button>
+        )}
+        {/* Regenerate button (only when expanded) */}
+        {expanded && (
+          <button
+            onClick={() => {
+              if (fields.task.trim().length >= 5) autoGenerate(fields.task);
+            }}
+            className="p-1.5 rounded bg-amber-500/10 text-amber-500 hover:bg-amber-500/20 transition-colors"
+            title="重新生成扩展字段"
+            disabled={generating}
+          >
+            <Sparkles className="w-4 h-4" />
+          </button>
+        )}
+        {/* Collapse button (only when expanded) */}
+        {expanded && (
+          <button
+            onClick={() => setExpanded(false)}
+            className="p-1.5 rounded bg-primary/10 text-primary hover:bg-primary/20 transition-colors"
+            title="折叠字段"
+          >
+            <ChevronUp className="w-4 h-4" />
+          </button>
+        )}
 
         {/* Spacer */}
         <div className="flex-1" />

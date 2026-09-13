@@ -1847,7 +1847,7 @@ export function ChatClient() {
               ))}
             </div>
           )}
-          <div className="space-y-2 h-64">
+          <div className="space-y-2 min-h-[80px]">
             <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
             <SmartPrompt
               initialTask={smartPromptTask}

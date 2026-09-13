@@ -1,7 +1,8 @@
 'use client';
 
 import { useEffect, useRef, useCallback, useMemo } from 'react';
-import { EditorView, keymap, lineNumbers } from '@codemirror/view';
+import { EditorView, keymap, lineNumbers, drawSelection, highlightActiveLine, highlightActiveLineGutter } from '@codemirror/view';
+import { history, historyKeymap, undo, redo } from '@codemirror/commands';
 import { EditorState, StateField, Compartment } from '@codemirror/state';
 import { syntaxHighlighting, defaultHighlightStyle, bracketMatching, LanguageDescription, HighlightStyle } from '@codemirror/language';
 import { tags } from '@lezer/highlight';
@@ -87,6 +88,7 @@ export function CodeMirrorEditor({
   const theme = useMemo(() => EditorView.theme({
     '&': {
       height: 'auto',
+      maxHeight: '12rem',
       fontSize: '14px',
     },
     '&.cm-focused': { outline: 'none' },
@@ -101,6 +103,8 @@ export function CodeMirrorEditor({
       color: 'hsl(var(--foreground))',
       caretColor: 'hsl(var(--foreground))',
       position: 'relative',
+      overflowWrap: 'break-word',
+      wordBreak: 'break-word',
     },
     '&.cm-focused .cm-cursor': { borderLeftColor: 'hsl(var(--foreground))' },
     '.cm-gutters': {
@@ -119,6 +123,8 @@ export function CodeMirrorEditor({
       margin: 0,
       lineHeight: '1.6 !important',
       fontSize: '14px !important',
+      overflowWrap: 'break-word',
+      wordBreak: 'break-word',
     },
     '.cm-activeLineGutter': { backgroundColor: 'hsl(var(--accent))', color: 'hsl(var(--foreground))' },
     '.cm-activeLine': { backgroundColor: 'hsl(var(--accent) / 0.3)' },
@@ -137,14 +143,44 @@ export function CodeMirrorEditor({
   const extensions = useMemo(() => {
     const exts: Extension[] = [
       lineNumbers(),
+      highlightActiveLineGutter(),
+      highlightActiveLine(),
+      drawSelection(),
       bracketMatching(),
       syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
       openmateHighlight,
       markdownLang,
       theme,
-
+      history(),
       EditorView.lineWrapping,
+      // Enter/Shift-Enter must NOT be in keymap — domEventHandlers handles send logic
+      // But CodeMirror's built-in keymap intercepts Enter first.
+      // Solution: add Enter handler that calls onKeyDown callback and returns true if handled.
       keymap.of([
+        { key: 'Enter', run: (view) => {
+          // Build a synthetic KeyboardEvent for the onKeyDown callback
+          const e = new KeyboardEvent('keydown', { key: 'Enter', shiftKey: false, bubbles: true });
+          if (onKeyDownRef.current && onKeyDownRef.current(e, view)) return true;
+          // If not handled (e.g. ctrl-enter mode), insert newline
+          view.dispatch(view.state.replaceSelection('\n'));
+          return true;
+        }},
+        { key: 'Shift-Enter', run: (view) => {
+          const e = new KeyboardEvent('keydown', { key: 'Enter', shiftKey: true, bubbles: true });
+          if (onKeyDownRef.current && onKeyDownRef.current(e, view)) return true;
+          view.dispatch(view.state.replaceSelection('\n'));
+          return true;
+        }},
+        { key: 'Mod-Enter', run: (view) => {
+          const e = new KeyboardEvent('keydown', { key: 'Enter', ctrlKey: true, bubbles: true });
+          if (onKeyDownRef.current && onKeyDownRef.current(e, view)) return true;
+          view.dispatch(view.state.replaceSelection('\n'));
+          return true;
+        }},
+        ...historyKeymap,
+        { key: 'Mod-z', run: undo, preventDefault: true },
+        { key: 'Mod-Shift-z', run: redo, preventDefault: true },
+        { key: 'Mod-y', run: redo, preventDefault: true },
         { key: 'Tab', run: (view) => {
           view.dispatch(view.state.replaceSelection('  '));
           return true;
