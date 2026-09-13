@@ -859,8 +859,14 @@ class DNAStrand:
                         new_content = self._apply_edits(old_file_content, edits)
                         content = new_content
                     except ValueError as e:
-                        results.append({**imp, "status": "failed", "reason": f"Edit application failed: {e}"})
-                        continue
+                        # Closest-match hint失败，带hint重试一次
+                        logger.warning(f"[{self.strand_id}] Edit failed, retrying with hint: {e}")
+                        retry_content = await self._retry_with_hint(imp, old_file_content, str(e))
+                        if retry_content:
+                            content = retry_content
+                        else:
+                            results.append({**imp, "status": "failed", "reason": f"Edit application failed: {e}"})
+                            continue
                 
                 assert isinstance(content, str), f"content must be str after edit application, got {type(content)}"
 
@@ -1051,15 +1057,126 @@ new_string是替换后的文本。
         return result
     
     def _apply_edits(self, old_content: str, edits: list[dict]) -> str:
-        """应用old_string/new_string编辑到文件内容"""
+        """应用old_string/new_string编辑到文件内容，支持closest-match hints"""
         content = old_content
         for edit in edits:
             old_str = edit["old_string"]
             new_str = edit["new_string"]
-            if old_str not in content:
-                raise ValueError(f"old_string not found: {old_str[:50]}...")
-            content = content.replace(old_str, new_str, 1)
+            if old_str in content:
+                content = content.replace(old_str, new_str, 1)
+                continue
+            
+            # ===== Closest-match hint：找最相似的文本 =====
+            hint = self._find_closest_match(content, old_str)
+            if hint:
+                raise ValueError(
+                    f"old_string not found exactly. Did you mean:\n"
+                    f"  FOUND: {hint[:200]}\n"
+                    f"  WANTED: {old_str[:200]}\n"
+                    f"Please use the exact text from the file."
+                )
+            raise ValueError(f"old_string not found and no close match: {old_str[:100]}...")
         return content
+    
+    def _find_closest_match(self, content: str, target: str) -> str | None:
+        """7种策略查找最相似的文本片段（MiMo Code方案）"""
+        content_lines = content.splitlines()
+        target_lines = target.splitlines()
+        
+        if not target_lines:
+            return None
+        
+        # 策略1: 行级trim匹配 — 忽略首尾空格
+        target_trimmed = "\n".join(l.strip() for l in target_lines)
+        for i in range(len(content_lines)):
+            for j in range(i + 1, min(i + len(target_lines) + 5, len(content_lines) + 1)):
+                candidate = "\n".join(l.strip() for l in content_lines[i:j])
+                if candidate == target_trimmed:
+                    return "\n".join(content_lines[i:j])
+        
+        # 策略2: 缩进灵活匹配 — 忽略缩进差异
+        import re
+        target_dedented = "\n".join(re.sub(r'^\s+', '', l) for l in target_lines)
+        for i in range(len(content_lines)):
+            for j in range(i + 1, min(i + len(target_lines) + 5, len(content_lines) + 1)):
+                candidate = "\n".join(re.sub(r'^\s+', '', l) for l in content_lines[i:j])
+                if candidate == target_dedented:
+                    return "\n".join(content_lines[i:j])
+        
+        # 策略3: 空白归一化 — 将连续空白替换为单空格
+        def normalize_ws(s):
+            return re.sub(r'\s+', ' ', s).strip()
+        
+        target_norm = normalize_ws(target)
+        for i in range(len(content_lines)):
+            for j in range(i + 1, min(i + len(target_lines) + 5, len(content_lines) + 1)):
+                candidate = normalize_ws("\n".join(content_lines[i:j]))
+                if candidate == target_norm:
+                    return "\n".join(content_lines[i:j])
+        
+        # 策略4: 块锚点匹配 — 用第一行和最后一行作为锚点
+        if len(target_lines) >= 2:
+            first_line = target_lines[0].strip()
+            last_line = target_lines[-1].strip()
+            for i, line in enumerate(content_lines):
+                if line.strip() == first_line:
+                    for j in range(i + 1, min(i + len(target_lines) + 10, len(content_lines))):
+                        if content_lines[j].strip() == last_line:
+                            return "\n".join(content_lines[i:j+1])
+        
+        # 策略5: 部分匹配 — 找target的前3行或后3行
+        if len(target_lines) >= 3:
+            prefix = "\n".join(l.strip() for l in target_lines[:3])
+            for i in range(len(content_lines) - 2):
+                candidate = "\n".join(l.strip() for l in content_lines[i:i+3])
+                if candidate == prefix:
+                    # 找到前缀，返回完整匹配
+                    end = min(i + len(target_lines), len(content_lines))
+                    return "\n".join(content_lines[i:end])
+        
+        return None
+    
+    async def _retry_with_hint(self, improvement: dict, old_content: str, error_msg: str) -> str | None:
+        """带closest-match hint重试LLM编辑"""
+        target_file = improvement.get('target_file', '')
+        context_sample = "\n".join(old_content.splitlines()[:300])
+        
+        prompt = f"""你的上一次编辑指令匹配失败。错误信息：
+{error_msg}
+
+目标文件：{target_file}
+当前文件内容：
+```
+{context_sample}
+```
+
+需求：{improvement.get('description', '')}
+
+请重新输出编辑指令，使用文件中已存在的精确文本作为old_string。
+注意：old_string必须与文件内容完全一致（包括空格、缩进）。
+
+输出格式（严格JSON数组）：
+[
+  {{
+    "old_string": "文件中已存在的精确文本",
+    "new_string": "替换后的文本"
+  }}
+]"""
+
+        result = await self._call_llm(prompt)
+        
+        try:
+            if result.startswith("```"):
+                lines = result.split("\n")
+                result = "\n".join(lines[1:-1]) if len(lines) > 2 else result
+            
+            edits = json.loads(result)
+            if isinstance(edits, list) and all("old_string" in e and "new_string" in e for e in edits):
+                return self._apply_edits(old_content, edits)
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+            logger.warning(f"[{self.strand_id}] Retry with hint also failed: {e}")
+        
+        return None
 
     # ── 验证 ──────────────────────────────────────────────
 
