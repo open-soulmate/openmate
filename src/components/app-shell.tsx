@@ -219,9 +219,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         };
       });
 
-    // 6. Add unknown agents
+    // 6. Add unknown agents (filter out cron and unknown - not conversational)
     for (const [key, val] of Object.entries(agentSessionMap)) {
-      if (!agentList.find(a => a.id === key) && val.length > 0) {
+      if (!agentList.find(a => a.id === key) && val.length > 0 && key !== 'cron' && key !== 'unknown') {
         const sourceGroups = buildSourceGroups(val, key);
         agentList.push({
           id: key, name: key, icon: AGENT_ICONS[key] || '🤖', description: key,
@@ -229,6 +229,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         });
       }
     }
+
+    // 6.5 Sort: soulmate always first, then by session count desc
+    agentList.sort((a, b) => {
+      if (a.id === 'soulmate') return -1;
+      if (b.id === 'soulmate') return 1;
+      return (b.sessions?.length || 0) - (a.sessions?.length || 0);
+    });
 
     // 7. Update state preserving expanded
     setAgents(prev => {
