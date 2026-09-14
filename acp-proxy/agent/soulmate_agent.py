@@ -798,10 +798,14 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                             # 直接通过ACP发送完整文件内容给前端（不走截断路径）
                                             if self._client is not None:
                                                 file_msg = f"📎 文件: {name} ({size} 字节)\n{message}\n\n--- 文件内容开始 ---\n{file_content}\n--- 文件内容结束 ---"
+                                                logger.info(f"[send_file] sending {len(file_msg)} chars to frontend via session_update")
                                                 await self._client.session_update(
                                                     session_id=session_id,
                                                     update=acp.update_agent_message_text(file_msg),
                                                 )
+                                                logger.info(f"[send_file] session_update sent successfully")
+                                            else:
+                                                logger.warning(f"[send_file] self._client is None, cannot send file to frontend")
                                             # 工具结果只返回简短摘要给LLM
                                             result = f"已发送文件 {name} ({size} 字节) 给用户"
                                         else:
