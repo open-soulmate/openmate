@@ -302,7 +302,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 
 ### 可用工具
 - read_file: 读取文件，path 参数必填
-- write_file: 写入文件，path 和 content 参数必填
+- write_file: 写入文件，path 和 content 参数必填。path必须是完整路径+文件名+扩展名（如 /home/climbing/openmate/index.html）。根据用户意图推断文件名和扩展名——用户说"网页"→.html，"脚本"→.py，"配置"→.yaml，"样式"→.css。不确定时先用read_file确认目录结构。
 - search_files: 搜索文件，pattern 参数必填，path 默认为当前目录
 - terminal: 执行命令，command 参数必填
 - execute_code: 执行 Python 代码，code 参数必填"""
