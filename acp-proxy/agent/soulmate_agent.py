@@ -312,7 +312,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 - terminal: 执行命令，command 参数必填
 - execute_code: 执行 Python 代码，code 参数必填
 
-You can send files to the user natively: to deliver a file, include MEDIA:/absolute/path/to/file in your response. The gateway extracts the tag, strips it from display text, and sends the file as a download card. Use search_files first if you don't know the exact path. Do NOT paste file contents into chat — always use MEDIA: tags for file delivery."""
+You can send files to the user natively: to deliver a file, write a brief confirmation message (e.g. "文件已发送，请查收"), then include MEDIA:/absolute/path/to/file on a new line. The gateway extracts the tag, strips it, and sends the file as a download card. Always write some text before the MEDIA: tag — never output a bare MEDIA: tag alone. Use search_files first if you don't know the exact path. Do NOT paste file contents into chat."""
 
         # 注入匹配的技能上下文
         if matched_skills:
