@@ -211,7 +211,7 @@ def judge_task_continuation(
         return {"action": "new", "reason": "无活跃任务"}
 
     # ── 规则A：显式指令 ──
-    new_keywords = ["新任务", "换个话题", "忽略上面", "重新开始", "清空上下文", "new task", "start over"]
+    new_keywords = ["新任务", "新建任务", "换个话题", "忽略上面", "重新开始", "清空上下文", "new task", "start over"]
     if any(k in user_message for k in new_keywords):
         return {"action": "new", "reason": "用户显式要求新任务"}
 
