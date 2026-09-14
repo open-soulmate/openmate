@@ -254,83 +254,97 @@ class LLMEngine:
         # 按index累积tool_calls的arguments（SSE中arguments是增量拼接的）
         accumulated_tool_calls: dict[int, dict] = {}  # index → {id, type, function: {name, arguments}}
 
-        try:
-            async with client:
-                req = client.build_request("POST", "/chat/completions", json=payload)
-                response = await client.send(req, stream=True)
-                try:
-                    if response.status_code != 200:
-                        body = await response.aread()
-                        raise RuntimeError(f"LLM API error {response.status_code}: {body.decode()[:200]}")
-                    buffer = ""
-                    async for chunk in response.aiter_bytes():
-                        if cancel_event and cancel_event.is_set():
-                            logger.info("LLM stream cancelled by event")
-                            return
-                        buffer += chunk.decode("utf-8", errors="replace")
-                        while "\n" in buffer:
-                            line, buffer = buffer.split("\n", 1)
-                            line = line.strip()
-                            if not line.startswith("data: "):
-                                continue
-                            data_str = line[6:].strip()
-                            if data_str == "[DONE]":
-                                # 流结束，如果有累积的tool_calls则yield
-                                if accumulated_tool_calls:
-                                    yield {"tool_calls": [
-                                        accumulated_tool_calls[i]
-                                        for i in sorted(accumulated_tool_calls.keys())
-                                    ]}
+        for _retry in range(3):
+            try:
+                async with client:
+                    req = client.build_request("POST", "/chat/completions", json=payload)
+                    response = await client.send(req, stream=True)
+                    try:
+                        if response.status_code != 200:
+                            body = await response.aread()
+                            error_msg = body.decode()[:300]
+                            if _retry < 2 and response.status_code in (400, 429, 500, 502, 503):
+                                logger.warning(f"[LLM] API {response.status_code}, retry {_retry+1}/3: {error_msg[:100]}")
+                                await asyncio.sleep(2 ** _retry)
+                                break  # 跳出内层try，回到for重试
+                            raise RuntimeError(f"LLM API error {response.status_code}: {error_msg}")
+                        buffer = ""
+                        async for chunk in response.aiter_bytes():
+                            if cancel_event and cancel_event.is_set():
+                                logger.info("LLM stream cancelled by event")
                                 return
-                            try:
-                                obj = json.loads(data_str)
-                                choices = obj.get("choices", [])
-                                if not choices:
+                            buffer += chunk.decode("utf-8", errors="replace")
+                            while "\n" in buffer:
+                                line, buffer = buffer.split("\n", 1)
+                                line = line.strip()
+                                if not line.startswith("data: "):
                                     continue
-                                choice = choices[0]
-                                delta = choice.get("delta", {})
-                                if delta.get("reasoning_content"):
-                                    continue
-                                content = delta.get("content")
-                                if content:
-                                    logger.debug(f"[LLM RAW] content='{content}'")
-                                    yield content
-                                tool_calls_delta = delta.get("tool_calls") or []
-                                for tc_delta in tool_calls_delta:
-                                    idx = tc_delta.get("index", 0)
-                                    if idx not in accumulated_tool_calls:
-                                        accumulated_tool_calls[idx] = {
-                                            "id": tc_delta.get("id", ""),
-                                            "type": tc_delta.get("type", "function"),
-                                            "function": {
-                                                "name": "",
-                                                "arguments": "",
-                                            },
-                                        }
-                                    if tc_delta.get("id"):
-                                        accumulated_tool_calls[idx]["id"] = tc_delta["id"]
-                                    func_delta = tc_delta.get("function", {})
-                                    if func_delta.get("name"):
-                                        accumulated_tool_calls[idx]["function"]["name"] += func_delta["name"]
-                                    if func_delta.get("arguments"):
-                                        accumulated_tool_calls[idx]["function"]["arguments"] += func_delta["arguments"]
-                                if choice.get("finish_reason") in ("stop", "tool_calls", "length"):
+                                data_str = line[6:].strip()
+                                if data_str == "[DONE]":
                                     if accumulated_tool_calls:
                                         yield {"tool_calls": [
                                             accumulated_tool_calls[i]
                                             for i in sorted(accumulated_tool_calls.keys())
                                         ]}
                                     return
-                            except json.JSONDecodeError:
-                                continue
-                finally:
-                    await response.aclose()
-        except httpx.ReadTimeout:
-            logger.warning("LLM stream read timeout")
-            yield "\n[LLM响应超时]"
-        except Exception as e:
-            logger.error(f"LLM stream error: {e}", exc_info=True)
-            yield f"\n[LLM错误: {e}]"
+                                try:
+                                    obj = json.loads(data_str)
+                                    choices = obj.get("choices", [])
+                                    if not choices:
+                                        continue
+                                    choice = choices[0]
+                                    delta = choice.get("delta", {})
+                                    if delta.get("reasoning_content"):
+                                        continue
+                                    content = delta.get("content")
+                                    if content:
+                                        logger.debug(f"[LLM RAW] content='{content}'")
+                                        yield content
+                                    tool_calls_delta = delta.get("tool_calls") or []
+                                    for tc_delta in tool_calls_delta:
+                                        idx = tc_delta.get("index", 0)
+                                        if idx not in accumulated_tool_calls:
+                                            accumulated_tool_calls[idx] = {
+                                                "id": tc_delta.get("id", ""),
+                                                "type": tc_delta.get("type", "function"),
+                                                "function": {
+                                                    "name": "",
+                                                    "arguments": "",
+                                                },
+                                            }
+                                        if tc_delta.get("id"):
+                                            accumulated_tool_calls[idx]["id"] = tc_delta["id"]
+                                        func_delta = tc_delta.get("function", {})
+                                        if func_delta.get("name"):
+                                            accumulated_tool_calls[idx]["function"]["name"] += func_delta["name"]
+                                        if func_delta.get("arguments"):
+                                            accumulated_tool_calls[idx]["function"]["arguments"] += func_delta["arguments"]
+                                    if choice.get("finish_reason") in ("stop", "tool_calls", "length"):
+                                        if accumulated_tool_calls:
+                                            yield {"tool_calls": [
+                                                accumulated_tool_calls[i]
+                                                for i in sorted(accumulated_tool_calls.keys())
+                                            ]}
+                                        return
+                                except json.JSONDecodeError:
+                                    continue
+                    finally:
+                        await response.aclose()
+                break  # 成功，退出重试循环
+            except httpx.ReadTimeout:
+                logger.warning("LLM stream read timeout")
+                yield "\n[LLM响应超时]"
+                return
+            except RuntimeError as e:
+                if "LLM API error" in str(e) and _retry < 2:
+                    logger.warning(f"[LLM] Retry {_retry+1}/3: {e}")
+                    continue
+                logger.error(f"LLM stream error: {e}", exc_info=True)
+                yield f"\n[LLM错误: {e}]"
+                return
+            except Exception as e:
+                logger.error(f"LLM stream error: {e}", exc_info=True)
+                yield f"\n[LLM错误: {e}]"
 
     async def chat(self, messages: list[dict]) -> str:
         """非流式完整输出 — 等待完整响应后返回
