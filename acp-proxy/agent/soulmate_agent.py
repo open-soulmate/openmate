@@ -1267,9 +1267,30 @@ You can send files to the user natively: to deliver a file, write a brief confir
             self._task_state_manager.create_task(session_id, goal=user_text, entities=entities[:10])
 
 
-        # ── 任务规划 ──────────────────────────────────────
+        # ── 任务规划（OpenSoul DAG + 本地规划器）────────────
         plan = await self._task_planner.plan(user_text, session_id)
         tool_calls_log = []  # 初始化，两条路径都会用到
+
+        # 尝试用OpenSoul DAG规划器增强任务拆解
+        if plan.subtasks and len(plan.subtasks) > 2:
+            try:
+                import httpx as _httpx
+                async with _httpx.AsyncClient() as _client:
+                    dag_resp = await _client.post(
+                        "http://127.0.0.1:8090/api/will/dag/plan",
+                        json={
+                            "goal": user_text,
+                            "llm_response": "\n".join([s.description for s in plan.subtasks]),
+                        },
+                        timeout=3,
+                    )
+                    if dag_resp.status_code == 200:
+                        dag_data = dag_resp.json()
+                        logger.info(f"[dag] OpenSoul DAG规划成功: {dag_data.get('plan_id')}")
+                        # 将DAG计划ID存入session，后续可视化用
+                        session["dag_plan_id"] = dag_data.get("plan_id")
+            except Exception as e:
+                logger.debug(f"[dag] OpenSoul DAG规划失败(非致命): {e}")
 
         if plan.subtasks and plan.status == "active":
             # 复杂任务：逐步执行子任务 + 自省
