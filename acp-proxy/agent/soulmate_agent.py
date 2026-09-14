@@ -307,6 +307,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 ### 可用工具
 - read_file: 读取文件，path 参数必填
 - write_file: 写入文件，path 和 content 参数必填。path必须是完整路径+文件名+扩展名（如 /home/climbing/openmate/index.html）。根据用户意图推断文件名和扩展名——用户说"网页"→.html，"脚本"→.py，"配置"→.yaml，"样式"→.css。不确定时先用read_file确认目录结构。⚠️ 注意：content超过3000字符时不要用write_file，改用execute_code写入（如 with open(path,'w') as f: f.write(...)），避免JSON截断。
+- send_file: 发送文件给用户。当用户说"发送"/"发给我"/"send"/"下载"时，必须用send_file而不是read_file。path参数填文件绝对路径。工具返回MEDIA标签后，你必须在回复末尾原样保留MEDIA:/path/to/file标签，不要省略。
 - search_files: 搜索文件，pattern 参数必填，path 默认为当前目录
 - terminal: 执行命令，command 参数必填
 - execute_code: 执行 Python 代码，code 参数必填"""
@@ -806,8 +807,8 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                                 logger.info(f"[send_file] session_update sent successfully")
                                             else:
                                                 logger.warning(f"[send_file] self._client is None, cannot send file to frontend")
-                                            # 工具结果只返回简短摘要给LLM
-                                            result = f"已发送文件 {name} ({size} 字节) 给用户"
+                                            # 返回MEDIA标签，LLM会在回复中包含它，前端会检测并渲染
+                                            result = f"已读取文件 {name} ({size} 字节)。请在回复末尾包含: MEDIA:{path}"  
                                         else:
                                             result = f"📎 文件已准备好: {name} ({size} 字节)\n路径: {path}\n文件过大，请用read_file读取指定部分"
                                     except UnicodeDecodeError:

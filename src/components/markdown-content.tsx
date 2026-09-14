@@ -152,8 +152,53 @@ function hasFileArtifact(content: string): { path: string; content: string } | n
   return null;
 }
 
+// Detect MEDIA:/path tags (Hermes-style file delivery)
+function renderMediaTags(content: string): React.ReactNode[] | null {
+  const mediaRegex = /MEDIA:(\S+)/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = mediaRegex.exec(content)) !== null) {
+    if (match.index > lastIndex) {
+      const before = content.slice(lastIndex, match.index);
+      if (before.trim()) parts.push(<span key={lastIndex} className="whitespace-pre-wrap">{before}</span>);
+    }
+    const filePath = match[1];
+    const fileName = filePath.split('/').pop() || 'file';
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    const isImage = ['png','jpg','jpeg','gif','webp','svg','bmp'].includes(ext);
+    const downloadUrl = `/api/file?path=${encodeURIComponent(filePath)}`;
+    parts.push(
+      <div key={match.index} className="my-2 rounded-lg border border-border/50 bg-muted/30 p-3 flex items-center gap-3">
+        <span className="text-2xl">{isImage ? '🖼️' : '📎'}</span>
+        <div className="flex-1 min-w-0">
+          <div className="text-sm font-medium truncate">{fileName}</div>
+          <div className="text-xs text-muted-foreground truncate">{filePath}</div>
+        </div>
+        <a href={downloadUrl} download={fileName}
+          className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
+          下载
+        </a>
+      </div>
+    );
+    lastIndex = match.index + match[0].length;
+  }
+  if (parts.length === 0) return null;
+  if (lastIndex < content.length) {
+    const rest = content.slice(lastIndex);
+    if (rest.trim()) parts.push(<span key={lastIndex} className="whitespace-pre-wrap">{rest}</span>);
+  }
+  return parts;
+}
+
 export function MarkdownContent({ content, onCodeApply }: MarkdownContentProps) {
   if (!content) return null;
+
+  // Check for MEDIA tags (Hermes-style file delivery)
+  if (content.includes('MEDIA:')) {
+    const mediaParts = renderMediaTags(content);
+    if (mediaParts) return <>{mediaParts}</>;
+  }
 
   // Check for file artifact (send_file result)
   const fileArtifact = hasFileArtifact(content);

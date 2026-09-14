@@ -239,6 +239,21 @@ async def health():
     return {"status": "ok", "service": "acp-proxy", "instance": instance_id}
 
 
+@app.get("/api/file")
+async def serve_file(path: str):
+    """Serve a local file for download (used by MEDIA: tag in chat messages)."""
+    import mimetypes
+    from fastapi.responses import FileResponse
+    if not path or not os.path.exists(path):
+        return {"error": "File not found"}
+    # Security: only allow files under /home/climbing
+    real_path = os.path.realpath(path)
+    if not real_path.startswith("/home/climbing"):
+        return {"error": "Access denied"}
+    mime_type = mimetypes.guess_type(real_path)[0] or "application/octet-stream"
+    return FileResponse(real_path, media_type=mime_type, filename=os.path.basename(real_path))
+
+
 @app.get("/plugins")
 async def list_plugins():
     plugins = []
