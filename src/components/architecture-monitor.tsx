@@ -101,6 +101,54 @@ interface ArchStats {
     total_evaluations: number
     recent_pass_rate: number
   }
+  context_budget?: {
+    total_tokens: number
+    usage_percent: number
+  }
+  tool_cache?: {
+    hit_rate: string
+    total_hits: number
+  }
+  checkpoints?: {
+    total_checkpoints: number
+    tracked_sessions: number
+  }
+  tracer?: {
+    total_traces: number
+    total_events: number
+  }
+  cost_tracker?: {
+    daily_cost: string
+    monthly_cost: string
+  }
+  retry_manager?: {
+    success_rate: string
+    retries_performed: number
+  }
+  event_bus?: {
+    total_events: number
+    total_subscribers: number
+  }
+  session_fsm?: {
+    active_sessions: number
+    total_transitions: number
+  }
+  output_validator?: {
+    pass_rate: string
+    total_validations: number
+  }
+  memory_engine?: {
+    total_memories: number
+    avg_importance: string
+  }
+  stream_manager?: {
+    active_streams: number
+    total_streams: number
+  }
+  parallel_executor?: {
+    parallel_calls: number
+    total_calls: number
+  }
 }
 
 interface HealthStatus {
@@ -420,6 +468,108 @@ export function ArchitectureMonitor() {
             </div>
           )}
         </ComponentCard>
+
+        {/* P1 Components - Compact Grid */}
+        <P1Components stats={stats} />
+      </div>
+    </div>
+  )
+}
+
+function P1Components({ stats }: { stats: ArchStats | null }) {
+  if (!stats) return null
+
+  const p1Items = [
+    {
+      name: "上下文预算",
+      value: `${stats.context_budget?.usage_percent ?? 0}%`,
+      detail: `${stats.context_budget?.total_tokens ?? 0} tokens`,
+      color: "text-blue-400",
+    },
+    {
+      name: "工具缓存",
+      value: stats.tool_cache?.hit_rate ?? "0%",
+      detail: `${stats.tool_cache?.total_hits ?? 0} hits`,
+      color: "text-green-400",
+    },
+    {
+      name: "Checkpoint",
+      value: `${stats.checkpoints?.total_checkpoints ?? 0}`,
+      detail: `${stats.checkpoints?.tracked_sessions ?? 0} sessions`,
+      color: "text-purple-400",
+    },
+    {
+      name: "行为追踪",
+      value: `${stats.tracer?.total_traces ?? 0}`,
+      detail: `${stats.tracer?.total_events ?? 0} events`,
+      color: "text-cyan-400",
+    },
+    {
+      name: "成本追踪",
+      value: stats.cost_tracker?.daily_cost ?? "$0",
+      detail: `月: ${stats.cost_tracker?.monthly_cost ?? "$0"}`,
+      color: "text-yellow-400",
+    },
+    {
+      name: "重试管理",
+      value: stats.retry_manager?.success_rate ?? "N/A",
+      detail: `${stats.retry_manager?.retries_performed ?? 0} retries`,
+      color: "text-orange-400",
+    },
+    {
+      name: "事件总线",
+      value: `${stats.event_bus?.total_events ?? 0}`,
+      detail: `${stats.event_bus?.total_subscribers ?? 0} subscribers`,
+      color: "text-pink-400",
+    },
+    {
+      name: "状态机",
+      value: `${stats.session_fsm?.active_sessions ?? 0}`,
+      detail: `${stats.session_fsm?.total_transitions ?? 0} transitions`,
+      color: "text-indigo-400",
+    },
+    {
+      name: "输出验证",
+      value: stats.output_validator?.pass_rate ?? "N/A",
+      detail: `${stats.output_validator?.total_validations ?? 0} checks`,
+      color: "text-emerald-400",
+    },
+    {
+      name: "记忆引擎",
+      value: `${stats.memory_engine?.total_memories ?? 0}`,
+      detail: `avg: ${stats.memory_engine?.avg_importance ?? "0"}`,
+      color: "text-rose-400",
+    },
+    {
+      name: "流式管理",
+      value: `${stats.stream_manager?.active_streams ?? 0}`,
+      detail: `${stats.stream_manager?.total_streams ?? 0} total`,
+      color: "text-sky-400",
+    },
+    {
+      name: "并行执行",
+      value: `${stats.parallel_executor?.parallel_calls ?? 0}`,
+      detail: `${stats.parallel_executor?.total_calls ?? 0} calls`,
+      color: "text-violet-400",
+    },
+  ]
+
+  return (
+    <div className="md:col-span-2">
+      <div className="text-sm font-medium text-gray-300 mb-3">P1 增强组件</div>
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        {p1Items.map((item) => (
+          <div
+            key={item.name}
+            className="p-3 rounded-lg bg-gray-800/30 border border-gray-700/50"
+          >
+            <div className="text-xs text-gray-400 mb-1">{item.name}</div>
+            <div className={`text-lg font-semibold ${item.color}`}>
+              {item.value}
+            </div>
+            <div className="text-xs text-gray-500 mt-1">{item.detail}</div>
+          </div>
+        ))}
       </div>
     </div>
   )
