@@ -467,31 +467,33 @@ function useAcpWebSocket(params: {
   // Migrate a temp session to a real session ID (update store + sidebar + tag agent)
   const handleTempSessionMigration = useCallback((newSessionId: string, currentSelectedAgentId: string) => {
     if (!selectedSessionRef.current || !selectedSessionRef.current.id) {
-      const updated = { id: newSessionId, name: '', platform: 'hermes' } as Session;
+      const updated = { id: newSessionId, name: '', title: '', platform: 'hermes' } as Session;
       setSelectedSession(updated);
       selectedSessionRef.current = updated;
-      useAppStore.getState().setActiveSession(newSessionId, null, { sessionName: updated.name || updated.title || '' });
+      // 清除创建时设置的默认sessionName（"SoulMate 新会话"）
+      useAppStore.getState().setActiveSession(newSessionId, null, { sessionName: undefined as unknown as string });
       // temp→real 迁移完成，清除新建流程标记
       useAppStore.setState({ _isNewSessionFlow: false });
       useAppStore.getState().refreshSidebar();
       tagSessionAgent(newSessionId, currentSelectedAgentId);
-      // 标题由后端自动生成（临时标题+LLM精炼标题），前端不重复PATCH
       updateSessionMessages(newSessionId, prev => prev);
-      // 延迟从OpenSoul刷新selectedSession.title（等后端LLM标题生成完成）
-      setTimeout(async () => {
+      // 立即取一次标题（后端临时标题已PATCH到OpenSoul）
+      const fetchTitle = async () => {
         try {
           const resp = await fetch(`${getApiBaseUrl()}/api/sessions/${newSessionId}`);
           if (resp.ok) {
             const data = await resp.json();
             const freshTitle = data.title || data.name || '';
-            if (freshTitle) {
+            if (freshTitle && freshTitle !== 'soulmate 会话') {
               setSelectedSession(prev => prev ? { ...prev, name: freshTitle, title: freshTitle } : prev);
-              selectedSessionRef.current = { ...(selectedSessionRef.current || {}), name: freshTitle, title: freshTitle } as Session;
+              selectedSessionRef.current = { ...(selectedSessionRef.current || { id: newSessionId }), name: freshTitle, title: freshTitle } as Session;
               useAppStore.getState().setActiveSession(newSessionId, null, { sessionName: freshTitle });
             }
           }
         } catch {}
-      }, 8000); // 8秒后LLM标题应该已生成
+      };
+      fetchTitle(); // 立即取临时标题
+      setTimeout(fetchTitle, 8000); // 8秒后取LLM精炼标题
     }
     // 无论 selectedSessionRef 是否为空，都刷新 sidebar
     useAppStore.getState().refreshSidebar();
@@ -1713,7 +1715,7 @@ export function ChatClient() {
                   onClick={startEditTitle}
                   title={selectedSession?.id ? 'Click to rename' : undefined}
                 >
-                  {selectedSession?.name || selectedSession?.title || storeSessionName || (selectedAgent || storeAgentName ? `${selectedAgent?.name || storeAgentName} ${t('chat.newSession')}` : t('chat.newChat'))}
+                  {selectedSession?.title || selectedSession?.name || storeSessionName || (selectedAgent || storeAgentName ? `${selectedAgent?.name || storeAgentName} ${t('chat.newSession')}` : t('chat.newChat'))}
                 </span>
               )}
             </div>
