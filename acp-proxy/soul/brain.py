@@ -44,11 +44,16 @@ class SoulBrain:
         intent = await self._understand_intent(user_input, task_ctx)
         task_ctx.intent = intent
 
-        # 2. 风险评估
+        # 2. 风险评估（考虑历史验证失败的升级）
         risk = await self.assessor.assess(intent, task_ctx)
+        
+        # 3. 如果存在历史验证失败，升级风险等级
+        if task_ctx.verification and not task_ctx.verification.success:
+            risk = self._escalate_risk_after_failure(risk, task_ctx)
+        
         task_ctx.risk = risk
 
-        # 3. 策略决策
+        # 4. 策略决策
         decision = self._decide(intent, risk, task_ctx)
         task_ctx.decision = decision
 
@@ -59,20 +64,112 @@ class SoulBrain:
 
     async def verify(self, action: str, result: dict, task_ctx: TaskContext) -> Verification:
         """执行后反思验证 — 无论成功/失败/异常都进入复盘"""
+        # 调用reflector.reflect进行反思验证
         verification = await self.reflector.reflect(action, result, task_ctx)
+        
+        # 确保verification结构完整
+        if not isinstance(verification, Verification):
+            logger.error("reflector.reflect返回了非Verification对象: %s", type(verification))
+            verification = Verification(
+                success=False,
+                checks=[],
+                summary="反思验证返回值类型错误",
+                retry_suggested=True
+            )
+        
+        # 将验证结果整合回任务上下文
         task_ctx.verification = verification
 
         # 学习：记住这次的结果
         self.experience.record(action, result, verification, task_ctx)
 
-        # 记录到历史
+        # 更新任务上下文历史
         task_ctx.history.append({
             "action": action,
             "success": verification.success,
             "checks": [(c.name, c.passed) for c in verification.checks],
+            "summary": verification.summary
         })
 
+        # 根据验证结果更新任务状态
+        if not verification.success:
+            task_ctx.retry_count = getattr(task_ctx, 'retry_count', 0) + 1
+            logger.warning("验证失败: action=%s, summary=%s, retry_count=%d",
+                          action, verification.summary, task_ctx.retry_count)
+            
+            # 如果建议重试且未超过重试次数限制，标记需要重新决策
+            if verification.retry_suggested and task_ctx.retry_count < 3:
+                task_ctx.needs_re_decision = True
+                logger.info("标记需要重新决策: retry_count=%d", task_ctx.retry_count)
+        else:
+            # 验证成功，重置重试计数
+            task_ctx.retry_count = 0
+            task_ctx.needs_re_decision = False
+            logger.info("验证成功: action=%s", action)
+
         return verification
+
+    def _escalate_risk_after_failure(self, risk: RiskAssessment, task_ctx: TaskContext) -> RiskAssessment:
+        """验证失败后升级风险等级"""
+        escalation_map = {
+            "low": "medium",
+            "medium": "high", 
+            "high": "critical",
+            "critical": "critical"
+        }
+        
+        previous_risk = risk.overall_level
+        new_risk_level = escalation_map.get(previous_risk, "high")
+        
+        # 创建升级后的风险评估
+        escalated_risk = RiskAssessment(
+            overall_level=new_risk_level,
+            factors=risk.factors + [Risk(
+                name="verification_failure",
+                level=new_risk_level,
+                description=f"前次验证失败，风险从{previous_risk}升级到{new_risk_level}"
+            )],
+            mitigations=risk.mitigations + ["建议用户确认后继续"],
+            require_confirmation=True
+        )
+        
+        logger.info("风险升级: %s -> %s (原因: 验证失败)", previous_risk, new_risk_level)
+        return escalated_risk
+
+    def _decide(self, intent: Intent, risk: RiskAssessment, task_ctx: TaskContext) -> Decision:
+        """策略决策：基于意图、风险和上下文生成执行决策"""
+        # 基础执行模式
+        execute_mode = "auto"
+        
+        # 高风险需要确认
+        if risk.overall_level in ("high", "critical"):
+            execute_mode = "confirm"
+        
+        # 验证失败重试时需要确认
+        if getattr(task_ctx, 'retry_count', 0) > 0:
+            execute_mode = "confirm"
+        
+        # 构建决策
+        decision = Decision(
+            execute_mode=execute_mode,
+            target_files=intent.target_files,
+            action_plan=self._build_action_plan(intent, risk),
+            risk_level=risk.overall_level,
+            requires_confirmation=(execute_mode == "confirm"),
+            retry_from_failure=getattr(task_ctx, 'needs_re_decision', False)
+        )
+        
+        return decision
+
+    def _build_action_plan(self, intent: Intent, risk: RiskAssessment) -> list:
+        """构建行动计划"""
+        plan = []
+        plan.append(f"目标: {intent.goal}")
+        plan.append(f"文件: {', '.join(intent.target_files)}")
+        plan.append(f"风险等级: {risk.overall_level}")
+        if risk.mitigations:
+            plan.append(f"缓解措施: {', '.join(risk.mitigations)}")
+        return plan
 
     async def _understand_intent(self, user_input: str, task_ctx: TaskContext) -> Intent:
         """意图理解：用规则+模式匹配解析用户意图
@@ -95,116 +192,25 @@ class SoulBrain:
         if len(target_files) > 3:
             modify_scope = "multi_file"
         elif len(target_files) > 1:
-            modify_scope = "multi_file"
-        elif goal == "create":
-            modify_scope = "project_wide"
-        elif any(w in text for w in ["方法", "函数", "function", "method", "def "]):
-            modify_scope = "single_method"
-        else:
+            modify_scope = "few_files"
+        elif len(target_files) == 1:
             modify_scope = "single_file"
+        else:
+            modify_scope = "ambiguous"
 
-        return Intent(
-            user_prompt=user_input,
-            target_files=target_files,
-            modify_scope=modify_scope,
+        # 构建Intent对象
+        intent = Intent(
             goal=goal,
+            target_files=target_files,
             change_size=change_size,
+            modify_scope=modify_scope,
+            raw_input=user_input,
+            context=task_ctx
         )
 
-    def _extract_target_files(self, text: str) -> list[str]:
-        """从用户输入中提取目标文件"""
+        return intent
+
+    def _extract_target_files(self, user_input: str) -> list:
+        """提取目标文件列表"""
         import re
-        files = []
-
-        # 匹配文件路径模式
-        patterns = [
-            r'[\w/\\.-]+\.\w+',  # 通用文件路径
-            r'["\']([^"\']+\.\w+)["\']',  # 引号包裹的路径
-        ]
-        for pattern in patterns:
-            for m in re.finditer(pattern, text):
-                candidate = m.group(0).strip("\"'")
-                # 验证是否是项目内文件
-                if self.project_memory.repo_root:
-                    full = self.project_memory.repo_root / candidate
-                    if full.exists():
-                        files.append(candidate)
-
-        return files if files else []
-
-    def _classify_goal(self, text: str) -> str:
-        """分类用户目标"""
-        if any(w in text for w in ["创建", "新建", "create", "添加文件"]):
-            return "create"
-        if any(w in text for w in ["重写", "重做", "rewrite", "完全重写", "重做一遍"]):
-            return "rewrite"
-        if any(w in text for w in ["重构", "refactor", "优化", "重组织"]):
-            return "refactor"
-        if any(w in text for w in ["修复", "修", "fix", "bug", "错误", "问题"]):
-            return "fix_bug"
-        if any(w in text for w in ["添加", "增加", "新增", "add", "feature", "功能"]):
-            return "add_feature"
-        return "fix_bug"  # 默认当作修复
-
-    def _estimate_change_size(self, text: str, goal: str) -> str:
-        """估算改动规模"""
-        if goal == "create" or goal == "rewrite":
-            return "large"
-        if any(w in text for w in ["重写", "整个", "全部", "全面", "大规模"]):
-            return "large"
-        if any(w in text for w in ["小改", "微调", "一点点", "修改一下"]):
-            return "small"
-        if any(w in text for w in ["重构", "优化", "reorganize"]):
-            return "medium"
-        return "small"
-
-    def _decide(self, intent: Intent, risk: RiskAssessment, task_ctx: TaskContext) -> Decision:
-        """基于意图和风险，决策编辑方式和执行模式"""
-
-        # 编辑方式决策
-        if intent.goal == "create":
-            edit_mode = "full"
-        elif intent.change_size == "large":
-            edit_mode = "patch"  # 大改动强制增量
-        elif intent.modify_scope == "single_method":
-            edit_mode = "patch"
-        else:
-            edit_mode = "patch"  # 默认增量
-
-        # 执行模式决策（结合用户偏好）
-        if risk.overall_level == "critical":
-            execute_mode = "deny"
-            confirm_prompt = f"风险过高，拒绝执行：{risk.recommendation}"
-        elif risk.overall_level == "high":
-            if self.user_memory.should_auto_execute("high"):
-                execute_mode = "auto"
-                confirm_prompt = None
-            else:
-                execute_mode = "confirm_required"
-                confirm_prompt = f"高风险操作，需要确认：{risk.recommendation}"
-        elif risk.overall_level == "medium":
-            if self.user_memory.should_auto_execute("medium"):
-                execute_mode = "auto"
-                confirm_prompt = None
-            else:
-                execute_mode = "confirm_required"
-                confirm_prompt = f"中风险操作：{risk.recommendation}"
-        else:
-            execute_mode = "auto"
-            confirm_prompt = None
-
-        return Decision(
-            intent=intent,
-            risk=risk,
-            edit_mode=edit_mode,
-            execute_mode=execute_mode,
-            confirm_prompt=confirm_prompt,
-        )
-
-    def get_status(self) -> dict:
-        """获取大脑状态"""
-        return {
-            "project_memory": self.project_memory.get_stats(),
-            "experience": self.experience.get_stats(),
-            "user_preferences": self.user_memory.preferences,
-        }
+        # 匹配常见的文件路径模式
