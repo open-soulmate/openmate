@@ -21,6 +21,7 @@ from gateway.router import router as gateway_router
 from model_router import get_model_router
 from routes.skills import router as skills_router
 from routes.evolution import router as evolution_router
+from routes.architecture import router as architecture_router
 
 logger = logging.getLogger("acp-proxy.app")
 
@@ -185,6 +186,17 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         logger.warning(f"Evolution strand failed to start: {e}")
 
+    # 初始化架构增强系统（P0组件）
+    try:
+        from agent.architecture_enhanced import EnhancedArchitecture
+        from agent import arch_monitor
+        arch = EnhancedArchitecture()
+        await arch.start()
+        arch_monitor.set_architecture(arch)
+        logger.info("Enhanced architecture initialized")
+    except Exception as e:
+        logger.warning(f"Architecture init failed: {e}")
+
     yield
 
     if evolution_task:
@@ -214,6 +226,7 @@ app.include_router(mcp_router)
 app.include_router(gateway_router)
 app.include_router(skills_router)
 app.include_router(evolution_router)
+app.include_router(architecture_router)
 
 
 @app.websocket("/ws/acp")

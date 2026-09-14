@@ -44,6 +44,8 @@ from skill_manager import SkillManager
 from evolution import EvolutionEngine
 from dna_evolution import DNAEvolutionEngine
 from utils.token_manager import truncate_tool_result
+from agent.architecture_enhanced import EnhancedArchitecture
+from agent import arch_monitor
 from utils.task_state_manager import TaskStateManager, judge_task_continuation
 
 logger = logging.getLogger("acp-agent.soulmate")
@@ -79,6 +81,10 @@ class SoulMateAgent:
         self._self_reflector = SelfReflector(llm_call_fn=self._llm_plan_call)
         # 任务状态管理器（独立状态机，规则+LLM兜底）
         self._task_state_manager = TaskStateManager(db_path=str(self._db_path))
+        # 架构增强系统 — 整合所有P0组件（98个Agent调研结论）
+        self._arch = EnhancedArchitecture()
+        # 注册到监控系统
+        arch_monitor.set_architecture(self._arch)
 
     def _get_db(self) -> sqlite3.Connection:
         db = sqlite3.connect(str(self._db_path))
@@ -964,11 +970,43 @@ You can send files to the user natively: to deliver a file, write a brief confir
 
         流式推送：通过 AgentSideConnection.session_update() 发送 AgentMessageChunk，
         客户端收到 session_update 通知即可实时显示生成内容。
+        
+        Writer Fencing: 同一session同时只有一个prompt在处理，后来的排队等待。
         """
         logger.info(f"[prompt] CALLED! session={session_id}, parts={len(prompt)}")
         session = self.sessions.get(session_id)
         if not session:
             logger.error(f"Session not found: {session_id}")
+            return PromptResponse(stop_reason="refusal")
+
+        # ── Writer Fencing: 获取会话写入锁（通过架构增强系统）──
+        writer_id = f"prompt:{message_id or id(prompt)}"
+        async with self._arch.session_guard(session_id, writer_id=writer_id) as acquired:
+            if not acquired:
+                logger.warning(f"[fence] Could not acquire write lock for {session_id}")
+                # 推送提示给用户
+                if self._client:
+                    try:
+                        await self._client.session_update(
+                            session_id=session_id,
+                            update=acp.update_agent_message_text("⏳ 上一条消息还在处理中，请稍候..."),
+                        )
+                    except Exception:
+                        pass
+                return PromptResponse(stop_reason="refusal")
+            
+            return await self._prompt_inner(prompt, session_id, message_id, **kwargs)
+
+    async def _prompt_inner(
+        self,
+        prompt: list,
+        session_id: str,
+        message_id: str | None = None,
+        **kwargs,
+    ) -> PromptResponse:
+        """prompt的实际处理逻辑（在writer fence保护下执行）"""
+        session = self.sessions.get(session_id)
+        if not session:
             return PromptResponse(stop_reason="refusal")
 
         # 提取文本内容 — prompt 是 TextContentBlock | ImageContentBlock | FileContentBlock 列表

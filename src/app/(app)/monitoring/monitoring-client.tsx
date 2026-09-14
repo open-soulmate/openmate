@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 
 import { EChart } from '@/components/echart';
+import { ArchitectureMonitor } from '@/components/architecture-monitor';
 
 // ── Types ────────────────────────────────────────────────────
 
@@ -161,7 +162,7 @@ interface StreamSummary {
 
 // ── Constants ────────────────────────────────────────────────
 
-type MonitoringTab = 'overview' | 'system' | 'benchmark' | 'activity';
+type MonitoringTab = 'overview' | 'system' | 'benchmark' | 'activity' | 'architecture';
 type BenchmarkSubTab = 'run' | 'comparison' | 'history';
 
 const ORGAN_ICONS: Record<string, React.ElementType> = {
@@ -760,6 +761,7 @@ export function MonitoringClient() {
     { id: 'system', label: 'System', icon: BarChart3, color: 'text-blue-500' },
     { id: 'benchmark', label: 'Benchmark', icon: Gauge, color: 'text-primary' },
     { id: 'activity', label: 'Activity', icon: Zap, color: 'text-emerald-500' },
+    { id: 'architecture', label: 'Architecture', icon: Layers, color: 'text-purple-500' },
   ];
 
   // ── Register sidebar content (LeftPanel) ───────────────────
@@ -1768,6 +1770,13 @@ export function MonitoringClient() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Architecture Tab ──────────────────────────────── */}
+        {activeTab === 'architecture' && (
+          <div className="h-full overflow-hidden">
+            <ArchitectureMonitor />
           </div>
         )}
       </div>
