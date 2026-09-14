@@ -307,10 +307,25 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 ### 可用工具
 - read_file: 读取文件，path 参数必填
 - write_file: 写入文件，path 和 content 参数必填。path必须是完整路径+文件名+扩展名（如 /home/climbing/openmate/index.html）。根据用户意图推断文件名和扩展名——用户说"网页"→.html，"脚本"→.py，"配置"→.yaml，"样式"→.css。不确定时先用read_file确认目录结构。⚠️ 注意：content超过3000字符时不要用write_file，改用execute_code写入（如 with open(path,'w') as f: f.write(...)），避免JSON截断。
-- send_file: 发送文件给用户。当用户说"发送"/"发给我"/"send"/"下载"时，必须用send_file而不是read_file。path参数填文件绝对路径。工具返回MEDIA标签后，你必须在回复末尾原样保留MEDIA:/path/to/file标签，不要省略。
+- search_files: 搜索文件，pattern 参数必填，path 默认为当前目录
 - search_files: 搜索文件，pattern 参数必填，path 默认为当前目录
 - terminal: 执行命令，command 参数必填
-- execute_code: 执行 Python 代码，code 参数必填"""
+- execute_code: 执行 Python 代码，code 参数必填
+
+## 文件下发规范（MEDIA标签）
+当用户要求获取、下载、发送文件时，你不要调用任何发送类工具。
+你需要在回答文本中嵌入MEDIA标记，格式严格如下：
+MEDIA:/absolute/path/to/file-name.ext
+
+规则：
+1. MEDIA标签写在回答文本末尾，单独一行
+2. 只填服务器内的绝对路径
+3. 不要修改标签格式，不要省略
+4. 一次回复可以包含多个MEDIA标签
+5. 若无文件需要下发，不要凭空生成MEDIA标签
+6. 先用search_files找到文件绝对路径，再输出MEDIA标签
+
+重要：当用户请求文件时，你必须输出MEDIA标签。不要仅回复"文件已找到"而省略MEDIA标记。"""
 
         # 注入匹配的技能上下文
         if matched_skills:
@@ -476,20 +491,6 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                     "type": "object",
                     "properties": {
                         "path": {"type": "string", "description": "图片文件路径"},
-                    },
-                    "required": ["path"],
-                },
-            },
-        }, {
-            "type": "function",
-            "function": {
-                "name": "send_file",
-                "description": "发送文件给用户。直接提供文件下载路径，不需要启动HTTP服务器。支持任何类型文件。",
-                "parameters": {
-                    "type": "object",
-                    "properties": {
-                        "path": {"type": "string", "description": "要发送的文件绝对路径"},
-                        "message": {"type": "string", "description": "附带的说明消息", "default": ""},
                     },
                     "required": ["path"],
                 },
@@ -783,32 +784,6 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                             except Exception as e:
                                 result = f"clarify失败: {e}"
 
-                        elif func_name == "send_file":
-                            try:
-                                path = func_args.get("path", "")
-                                message = func_args.get("message", "")
-                                if not path or not os.path.exists(path):
-                                    result = f"错误: 文件不存在: {path}"
-                                else:
-                                    size = os.path.getsize(path)
-                                    name = os.path.basename(path)
-                                    try:
-                                        if size < 1024 * 1024:  # <1MB
-                                            with open(path, "r", encoding="utf-8", errors="replace") as f:
-                                                file_content = f.read()
-                                            # 不发送文件内容到聊天，只返回MEDIA标签
-                                            logger.info(f"[send_file] file={name} size={size}")
-# 返回MEDIA标签，LLM会在回复中包含它，前端会检测并渲染
-                                            result = f"已发送文件 {name} ({size} 字节) 给用户。请在回复中包含: MEDIA:{path}"
-                                            # 文件已发出，跳出工具循环（不继续执行后续步骤）
-                                            break
-                                        else:
-                                            result = f"📎 文件已准备好: {name} ({size} 字节)\n路径: {path}\n文件过大，请用read_file读取指定部分"
-                                    except UnicodeDecodeError:
-                                        result = f"📎 二进制文件: {name} ({size} 字节)\n路径: {path}\n二进制文件无法预览，请用read_image或终端工具处理"
-                            except Exception as e:
-                                result = f"发送文件失败: {e}"
-
                         elif func_name == "todo":
                             # 简单的内存任务列表
                             if not hasattr(self, '_todo_list'):
@@ -908,7 +883,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 
                         # 推送工具调用结果摘要
                         if self._client is not None:
-                            if func_name != "send_file":  # send_file结果已在MEDIA标签中，不重复预览
+                            if True:
                                 result_preview = result[:200] + "..." if len(result) > 200 else result
                                 await self._client.session_update(
                                     session_id=session_id,
@@ -1064,6 +1039,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
         logger.info(f"Prompt [{session_id}]: {user_text[:100]}")
         logger.info(f"[_run_llm_with_tools] starting, client={self._client is not None}")
 
+
         # ── 技能匹配（需要最低分数阈值，避免短消息误匹配）──────────
         matched_skills = []
         if len(user_text) > 10:  # 短消息不匹配技能
@@ -1193,28 +1169,6 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
             entities = [w for w in user_text if len(w) > 1 and w not in "的了是在有和与对"]
             self._task_state_manager.create_task(session_id, goal=user_text, entities=entities[:10])
 
-        # ── 文件发送拦截：用户要发文件时直接处理，不走LLM ──────────
-        send_keywords = ["发送", "发给我", "发给我", "send", "下载", "download"]
-        if any(kw in user_text for kw in send_keywords):
-            import glob as _glob
-            # 从消息中提取文件名（.扩展名的token）
-            fname_match = re.search(r'([\w\-\.]+\.\w{1,5})', user_text)
-            if fname_match:
-                fname = fname_match.group(1)
-                # 搜索文件
-                candidates = _glob.glob(f"/home/climbing/**/{fname}", recursive=True)
-                if candidates:
-                    fpath = candidates[0]
-                    size = os.path.getsize(fpath)
-                    name = os.path.basename(fpath)
-                    logger.info(f"[send_file intercept] {name} ({size}B) at {fpath}")
-                    reply = f"已发送文件 {name}，请查收。\n\nMEDIA:{fpath}"
-                    if self._client is not None:
-                        await self._client.session_update(
-                            session_id=session_id,
-                            update=acp.update_agent_message_text(reply),
-                        )
-                    return PromptResponse(stop_reason="end_turn")
 
         # ── 任务规划 ──────────────────────────────────────
         plan = await self._task_planner.plan(user_text, session_id)
@@ -1351,6 +1305,30 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                         session_id=session_id,
                         update=acp.update_agent_message_text(full_response),
                     )
+
+        # ── 网关后处理：提取MEDIA标签、校验路径、下发文件 ──────
+        media_paths = re.findall(r"MEDIA:([\w\-\/\.]+)", full_response)
+        if media_paths:
+            _ALLOWED_ROOT = "/home/climbing"
+            validated = []
+            for mp in media_paths:
+                # 路径穿越防护
+                if ".." in mp or not mp.startswith("/"):
+                    logger.warning(f"[media] blocked path traversal: {mp}")
+                    continue
+                real = os.path.realpath(mp)
+                if not real.startswith(_ALLOWED_ROOT):
+                    logger.warning(f"[media] blocked outside whitelist: {real}")
+                    continue
+                if not os.path.exists(real):
+                    logger.warning(f"[media] file not found: {real}")
+                    continue
+                validated.append(real)
+                logger.info(f"[media] validated: {real} ({os.path.getsize(real)}B)")
+            # 剥离MEDIA标签得到纯展示文本（前端已自行处理MEDIA渲染，这里只记录日志）
+            display_text = re.sub(r"MEDIA:[\w\-\/\.]+", "", full_response).strip()
+            if validated:
+                logger.info(f"[media] {len(validated)} file(s) validated for delivery")
 
         session["messages"].append({"role": "assistant", "content": full_response})
         self._save_message(session_id, "assistant", full_response)
