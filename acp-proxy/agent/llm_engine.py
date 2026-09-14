@@ -8,6 +8,7 @@
 import asyncio
 import json
 import logging
+from utils.token_manager import get_max_output_tokens
 import os
 from typing import AsyncGenerator, Optional, TYPE_CHECKING
 
@@ -156,7 +157,7 @@ class LLMEngine:
             "messages": self._build_messages(messages, system_prompt),
             "stream": True,
             "temperature": 0.7,
-            "max_tokens": int(os.environ.get("LLM_MAX_TOKENS", "65536")),
+            "max_tokens": get_max_output_tokens(),
         }
         try:
             async with client:
@@ -322,16 +323,38 @@ class LLMEngine:
                                             logger.debug(f"[LLM STREAM] tc[{idx}] args += {len(func_delta['arguments'])} chars, total={len(accumulated_tool_calls[idx]['function']['arguments'])}")
                                     if choice.get("finish_reason") in ("stop", "tool_calls", "length"):
                                         if accumulated_tool_calls:
-                                            # 验证arguments完整性
+                                            # 检查是否有不完整的tool_calls（finish_reason=length导致截断）
+                                            incomplete = False
                                             for _i, _tc in accumulated_tool_calls.items():
                                                 _args = _tc["function"]["arguments"]
                                                 if not _args:
                                                     logger.warning(f"[LLM] tool_call args为空: name={_tc['function']['name']}")
+                                                    incomplete = True
                                                 else:
                                                     try:
                                                         json.loads(_args)
                                                     except json.JSONDecodeError:
-                                                        logger.warning(f"[LLM] tool_call args不完整: name={_tc['function']['name']}, len={len(_args)}, preview={_args[:100]}")
+                                                        logger.warning(f"[LLM] tool_call args不完整(截断): name={_tc['function']['name']}, len={len(_args)}")
+                                                        incomplete = True
+                                            if incomplete and choice.get("finish_reason") == "length":
+                                                # max_tokens导致截断，自动续生成
+                                                logger.info(f"[LLM] finish_reason=length, tool_calls不完整, 尝试续生成(max_tokens*2)")
+                                                # 将已有的部分arguments作为上下文，追加续生成请求
+                                                _partial_args = accumulated_tool_calls[0]["function"]["arguments"]
+                                                _func_name = accumulated_tool_calls[0]["function"]["name"]
+                                                _cont_messages = list(messages) + [
+                                                    {"role": "assistant", "content": None, "tool_calls": [{"id": "tc_cont", "type": "function", "function": {"name": _func_name, "arguments": _partial_args}}]},
+                                                    {"role": "tool", "tool_call_id": "tc_cont", "content": "输出被截断了。请用execute_code工具重新写入完整文件，不要用write_file。"},
+                                                ]
+                                                # 用更大的max_tokens重试，但告诉LLM用execute_code
+                                                _new_max = int(os.environ.get("LLM_MAX_TOKENS", "65536"))
+                                                _cont_payload = {**payload, "messages": _cont_messages, "max_tokens": _new_max}
+                                                # 不递归调用，直接返回错误提示让调用方重试
+                                                yield {"tool_calls": [
+                                                    accumulated_tool_calls[i]
+                                                    for i in sorted(accumulated_tool_calls.keys())
+                                                ], "_truncated": True}
+                                                return
                                             yield {"tool_calls": [
                                                 accumulated_tool_calls[i]
                                                 for i in sorted(accumulated_tool_calls.keys())

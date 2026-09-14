@@ -148,7 +148,7 @@ def _get_llm_config() -> dict:
     """Read system LLM config from OpenSoul .env or /api/llm/config."""
     # Try reading from .env first (fast, no network)
     env_path = os.path.join(os.path.dirname(__file__), "..", "..", "opensoul", ".env")
-    cfg: dict[str, str] = {}
+    cfg: dict = {}
     try:
         with open(os.path.abspath(env_path)) as f:
             for line in f:
@@ -159,12 +159,15 @@ def _get_llm_config() -> dict:
                     cfg["base_url"] = line.split("=", 1)[1].strip()
                 elif line.startswith("LLM_MODEL="):
                     cfg["model"] = line.split("=", 1)[1].strip()
+                elif line.startswith("LLM_MAX_TOKENS="):
+                    cfg["max_tokens"] = int(line.split("=", 1)[1].strip())
     except Exception:
         pass
     # Fallback to environment variables
     cfg.setdefault("api_key", os.environ.get("LLM_API_KEY", ""))
     cfg.setdefault("base_url", os.environ.get("LLM_BASE_URL", ""))
     cfg.setdefault("model", os.environ.get("LLM_MODEL", ""))
+    cfg.setdefault("max_tokens", int(os.environ.get("LLM_MAX_TOKENS", "65536")))
     return cfg
 
 

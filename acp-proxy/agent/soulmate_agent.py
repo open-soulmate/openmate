@@ -864,7 +864,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                         tool_results.append({
                             "tool_call_id": tc["id"],
                             "role": "tool",
-                            "content": result,
+                            "content": truncate_tool_result(str(result)),
                         })
 
                         # 记录工具调用

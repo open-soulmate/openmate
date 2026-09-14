@@ -67,7 +67,7 @@ function applyCustomColors(colors: CustomColors) {
 interface SettingsState {
   theme: ThemeId; fontSize: string; language: string; sidebarPosition: string; animationEnabled: boolean;
   defaultAgent: string; agentTimeout: number; retryStrategy: string; logLevel: string;
-  llmProvider: string; apiKey: string; url: string; model: string; temperature: number; maxTokens: number;
+  llmProvider: string; apiKey: *** url: string; model: string; temperature: number; maxTokens: number;
   shellWhitelist: string; fileAccess: string; networkAccess: boolean; mcpConfig: string;
   knowledgePath: string; cacheLimit: number;
 }
@@ -127,8 +127,8 @@ export function SettingsClient() {
   const [settings, setSettings] = useState<SettingsState>({
     theme: "dark", fontSize: "medium", language: "system", sidebarPosition: "left", animationEnabled: true,
     defaultAgent: "auto", agentTimeout: 30, retryStrategy: "exponential", logLevel: "info",
-    llmProvider: "mimo", apiKey: "", url: "", model: "mimo-v2.5-pro",
-    temperature: 0.7, maxTokens: 4096,
+    llmProvider: "mimo", apiKey: *** url: "", model: "mimo-v2.5-pro",
+    temperature: 0.7, maxTokens: 65536,
     shellWhitelist: "ls, cat, grep, find, git", fileAccess: "full", networkAccess: true, mcpConfig: "",
     knowledgePath: "~/.openmate/knowledge", cacheLimit: 512,
   });
@@ -285,7 +285,7 @@ export function SettingsClient() {
         break;
 
       case "model":
-        setLLMConfig({ provider: settings.llmProvider, apiKey: settings.apiKey, url: settings.url, model: settings.model });
+        setLLMConfig({ provider: settings.llmProvider, apiKey: *** url: settings.url, model: settings.model });
         // Save LLM config to backend
         try {
           await fetch(`${apiBase}/api/llm/config`, {
@@ -295,6 +295,7 @@ export function SettingsClient() {
               api_key: settings.apiKey || undefined,
               base_url: settings.url || undefined,
               model: settings.model || undefined,
+              max_tokens: settings.maxTokens || undefined,
             }),
           });
         } catch {}
@@ -694,7 +695,7 @@ export function SettingsClient() {
               </SettingCard>
 
               <SettingCard title="Max Tokens" description={t("settings.maxTokensDesc")}>
-                <Slider value={settings.maxTokens} onChange={(v) => update("maxTokens", v)} min={256} max={16384} step={256} />
+                <Slider value={settings.maxTokens} onChange={(v) => update("maxTokens", v)} min={256} max={131072} step={256} />
               </SettingCard>
 
               {/* ─── 模型路由器配置 ─────────────────────────────────── */}

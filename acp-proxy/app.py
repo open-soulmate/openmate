@@ -164,6 +164,17 @@ async def lifespan(app: FastAPI):
     if loaded_plugins:
         logger.info("已加载 %d 个插件: %s", len(loaded_plugins), ", ".join(loaded_plugins))
 
+    # 启动时探测模型能力（只执行一次）
+    try:
+        from utils.token_manager import probe_model_capabilities
+        base_url = os.environ.get("LLM_BASE_URL", "")
+        api_key = os.environ.get("LLM_API_KEY", "")
+        model = os.environ.get("LLM_MODEL", "")
+        if base_url and api_key:
+            probe_model_capabilities(base_url, api_key, model)
+    except Exception as e:
+        logger.warning(f"Token probe failed: {e}")
+
     # 启动进化strand（主进程asyncio task，不是子进程）
     evolution_task = None
     try:
