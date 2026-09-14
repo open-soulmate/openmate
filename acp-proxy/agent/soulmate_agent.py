@@ -873,6 +873,22 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                             "result_preview": result[:200] if result else "",
                         })
 
+                        # ── SoulBrain反思学习 ──────────────
+                        try:
+                            await httpx.AsyncClient().post(
+                                "http://127.0.0.1:3100/api/brain/verify",
+                                json={
+                                    "tenant_id": "openmate",
+                                    "agent_id": session_id[:8],
+                                    "task_id": session_id[:8],
+                                    "action": f"{func_name}({json.dumps(func_args, ensure_ascii=False)[:200]})",
+                                    "result": {"file_written": func_name in ("write_file", "file_editor"), "error": None},
+                                },
+                                timeout=3,
+                            )
+                        except Exception:
+                            pass
+
                         # 推送工具调用结果摘要
                         if self._client is not None:
                             result_preview = result[:200] + "..." if len(result) > 200 else result
@@ -1075,6 +1091,44 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                 messages.insert(0, {"role": "system", "content": evo_context})
             except Exception:
                 pass
+
+        # ── SoulBrain认知层：意图理解+风险评估 ──────────────
+        try:
+            brain_resp = await httpx.AsyncClient().post(
+                "http://127.0.0.1:3100/api/brain/think",
+                json={
+                    "tenant_id": "openmate",
+                    "agent_id": session_id[:8],
+                    "user_input": user_text,
+                    "repo_root": str(self._project_root) if self._project_root else "",
+                },
+                timeout=5,
+            )
+            if brain_resp.status_code == 200:
+                brain_data = brain_resp.json()
+                decision = brain_data.get("decision", {})
+                intent = brain_data.get("intent", {})
+                risk = brain_data.get("risk", {})
+
+                # 注入认知信息到系统提示
+                cognitive_context = (
+                    f"\n## 认知层分析\n"
+                    f"- 意图: {intent.get('goal', 'unknown')}\n"
+                    f"- 目标文件: {', '.join(intent.get('target_files', []))}\n"
+                    f"- 改动规模: {intent.get('change_size', 'small')}\n"
+                    f"- 风险等级: {risk.get('overall_level', 'low')}\n"
+                    f"- 编辑模式: {decision.get('edit_mode', 'patch')}\n"
+                    f"- 建议: {risk.get('recommendation', '正常执行')}\n"
+                )
+                if decision.get("execute_mode") == "confirm_required":
+                    cognitive_context += f"- ⚠️ 需要用户确认: {decision.get('confirm_prompt', '')}\n"
+                elif decision.get("execute_mode") == "deny":
+                    cognitive_context += f"- 🚫 操作被拒绝: {decision.get('confirm_prompt', '')}\n"
+
+                messages.insert(0, {"role": "system", "content": cognitive_context})
+                logger.info(f"[brain] 认知分析: goal={intent.get('goal')}, risk={risk.get('overall_level')}, execute={decision.get('execute_mode')}")
+        except Exception as e:
+            logger.debug(f"[brain] 认知层调用失败(非致命): {e}")
 
         # ── 任务规划 ──────────────────────────────────────
         from agent.task_engine import StepStatus
