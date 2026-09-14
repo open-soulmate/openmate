@@ -795,8 +795,15 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                         if size < 1024 * 1024:  # <1MB
                                             with open(path, "r", encoding="utf-8", errors="replace") as f:
                                                 file_content = f.read()
-                                            # 把文件内容直接作为result，主循环会通过ACP发给前端
-                                            result = f"📎 文件: {name} ({size} 字节)\n{message}\n\n--- 文件内容开始 ---\n{file_content}\n--- 文件内容结束 ---"
+                                            # 直接通过ACP发送完整文件内容给前端（不走截断路径）
+                                            if self._client is not None:
+                                                file_msg = f"📎 文件: {name} ({size} 字节)\n{message}\n\n--- 文件内容开始 ---\n{file_content}\n--- 文件内容结束 ---"
+                                                await self._client.session_update(
+                                                    session_id=session_id,
+                                                    update=acp.update_agent_message_text(file_msg),
+                                                )
+                                            # 工具结果只返回简短摘要给LLM
+                                            result = f"已发送文件 {name} ({size} 字节) 给用户"
                                         else:
                                             result = f"📎 文件已准备好: {name} ({size} 字节)\n路径: {path}\n文件过大，请用read_file读取指定部分"
                                     except UnicodeDecodeError:
