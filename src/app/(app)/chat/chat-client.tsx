@@ -560,7 +560,8 @@ function useAcpWebSocket(params: {
             }
             migrateSessionId(sessionId, acpSid);
             // Update selectedSession with real ID, preserve session name
-            const updated = { id: acpSid, name: sessionName || selectedSessionRef.current?.name || '', platform: 'hermes' } as Session;
+            const prevSession = selectedSessionRef.current;
+            const updated = { ...prevSession, id: acpSid, name: sessionName || prevSession?.name || prevSession?.title || '', platform: 'hermes' } as Session;
             setSelectedSession(updated);
             selectedSessionRef.current = updated;
             // Register session in OpenSoul so sidebar can show it
