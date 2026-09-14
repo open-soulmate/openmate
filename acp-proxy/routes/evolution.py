@@ -558,11 +558,14 @@ async def request_improvement(req: ImproveRequest):
             slug = re.sub(r'[^a-zA-Z0-9\u4e00-\u9fff]+', '_', req.description[:30]).strip('_').lower()
             req.target_file = f"src/lib/soulmate_{slug}.py"
 
-        # 写入文件
+        # 写入文件（统一防护入口）
         from pathlib import Path
+        from utils.file_safety import safe_write
         target_path = Path(engine.repo_root) / req.target_file
-        target_path.parent.mkdir(parents=True, exist_ok=True)
-        target_path.write_text(code, encoding="utf-8")
+        
+        ok, err = safe_write(target_path, code, strand_id=strand.strand_id)
+        if not ok:
+            return {"ok": False, "error": err}
 
         # Git commit + push
         commit_msg = f"feat(soulmate): {req.description[:60]}"
