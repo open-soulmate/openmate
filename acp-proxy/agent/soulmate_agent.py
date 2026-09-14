@@ -1157,6 +1157,70 @@ You can send files to the user natively: to deliver a file, write a brief confir
         except Exception as e:
             logger.debug(f"[brain] 认知层调用失败(非致命): {e}")
 
+        # ── OpenSoul 9模块上下文注入 ─────────────────────────
+        try:
+            import httpx as _httpx
+            async with _httpx.AsyncClient() as _client:
+                # 1. 意图分类
+                intent_resp = await _client.post(
+                    "http://127.0.0.1:8090/api/intelligence/intent/classify",
+                    json={"text": user_text}, timeout=2,
+                )
+                if intent_resp.status_code == 200:
+                    intent_data = intent_resp.json()
+                    intent_ctx = (
+                        f"\n## 意图分类\n"
+                        f"- 意图: {intent_data.get('intent', 'unknown')}\n"
+                        f"- 置信度: {intent_data.get('confidence', 0):.0%}\n"
+                        f"- 建议工具: {', '.join(intent_data.get('suggested_tools', [])[:5])}\n"
+                    )
+                    messages.insert(0, {"role": "system", "content": intent_ctx})
+
+                # 2. 长期记忆召回
+                ltm_resp = await _client.post(
+                    "http://127.0.0.1:8090/api/hippo/ltm/context",
+                    json={"query": user_text, "limit": 3}, timeout=2,
+                )
+                if ltm_resp.status_code == 200:
+                    ltm_data = ltm_resp.json()
+                    if ltm_data.get("context"):
+                        messages.insert(0, {"role": "system", "content": ltm_data["context"]})
+
+                # 3. 用户偏好注入
+                pref_resp = await _client.get(
+                    "http://127.0.0.1:8090/api/mind/preference/context", timeout=2,
+                )
+                if pref_resp.status_code == 200:
+                    pref_data = pref_resp.json()
+                    if pref_data.get("context"):
+                        messages.insert(0, {"role": "system", "content": pref_data["context"]})
+
+                # 4. 技能推荐
+                skill_resp = await _client.post(
+                    "http://127.0.0.1:8090/api/gene/skill/recommend",
+                    json={"task_description": user_text}, timeout=2,
+                )
+                if skill_resp.status_code == 200:
+                    skill_data = skill_resp.json()
+                    if skill_data.get("skills"):
+                        skill_names = [s["name"] for s in skill_data["skills"][:3]]
+                        skill_ctx = f"\n## 相关技能\n可用技能: {', '.join(skill_names)}\n"
+                        messages.insert(0, {"role": "system", "content": skill_ctx})
+
+                # 5. 环境信息注入（首次会话时）
+                if len(session.get("messages", [])) <= 1:
+                    env_resp = await _client.get(
+                        "http://127.0.0.1:8090/api/sense/environment/context", timeout=2,
+                    )
+                    if env_resp.status_code == 200:
+                        env_data = env_resp.json()
+                        if env_data.get("context"):
+                            messages.insert(0, {"role": "system", "content": env_data["context"]})
+
+            logger.info("[opensoul] 9模块上下文注入完成")
+        except Exception as e:
+            logger.debug(f"[opensoul] 模块上下文注入失败(非致命): {e}")
+
         # ── 任务状态判断（规则优先，LLM为辅）──────────────
         from agent.task_engine import StepStatus
         current_task = self._task_state_manager.get_current_task(session_id)
