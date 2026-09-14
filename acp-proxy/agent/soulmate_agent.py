@@ -1372,11 +1372,25 @@ You can send files to the user natively: to deliver a file, write a brief confir
 
     async def list_sessions(self, cursor=None, cwd=None, **kwargs) -> ListSessionsResponse:
         """列出所有会话"""
+        def _session_title(s: dict) -> str:
+            """从session的第一条用户消息提取标题"""
+            if s.get("title"):
+                return s["title"]
+            for msg in s.get("messages", []):
+                if msg.get("role") == "user":
+                    text = msg.get("content", "")
+                    if isinstance(text, list):
+                        text = " ".join(p.get("text", "") for p in text if isinstance(p, dict))
+                    text = text.strip()[:30]
+                    if text:
+                        return text
+            return f"Session {s['session_id'][:8]}"
+
         session_list = [
             SessionInfo(
                 session_id=s["session_id"],
                 cwd=s.get("cwd", ""),
-                title=f"Session {s['session_id']}",
+                title=_session_title(s),
             )
             for s in self.sessions.values()
         ]
