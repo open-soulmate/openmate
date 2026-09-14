@@ -1141,13 +1141,27 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 
         # ── 任务规划 ──────────────────────────────────────
         from agent.task_engine import StepStatus
-        # 新消息来了，清除旧的活跃plan，避免重复执行
+        # 检查旧plan：目标不同才清除，目标相同继续执行
         old_plan = self._task_planner.store.get_active_plan(session_id)
         if old_plan and old_plan.status == "active":
-            old_plan.status = "completed"
-            old_plan.completed_at = time.time()
-            self._task_planner.store.save_plan(old_plan)
-            logger.info(f"[task] Cleared stale plan: {old_plan.id}")
+            # 用LLM判断新消息是否和旧任务相关
+            is_continuation = False
+            # 快速判断：如果新消息很短且包含继续关键词，视为继续
+            continuation_keywords = ["继续", "下一步", "重试", "再来", "接着", "然后", "继续执行", "go on", "next", "continue"]
+            if len(user_text) < 30 and any(k in user_text for k in continuation_keywords):
+                is_continuation = True
+            # 如果新消息和旧目标高度重叠，也视为继续
+            elif old_plan.goal and user_text:
+                old_words = set(old_plan.goal)
+                new_words = set(user_text)
+                overlap = len(old_words & new_words) / max(len(old_words | new_words), 1)
+                if overlap > 0.3:
+                    is_continuation = True
+            if not is_continuation:
+                old_plan.status = "completed"
+                old_plan.completed_at = time.time()
+                self._task_planner.store.save_plan(old_plan)
+                logger.info(f"[task] Cleared stale plan: {old_plan.id} (goal mismatch)")
         plan = await self._task_planner.plan(user_text, session_id)
         tool_calls_log = []  # 初始化，两条路径都会用到
 
