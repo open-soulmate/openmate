@@ -610,16 +610,25 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                             try:
                                 path = func_args.get("path", "")
                                 if not path:
-                                    result = "错误: path 参数不能为空"
-                                else:
-                                    file_content = func_args.get("content", "")
-                                    # 创建目录
-                                    from utils.file_safety import atomic_write
-                                    ok, err = atomic_write(path, file_content)
-                                    if not ok:
-                                        result = f"写入失败: {err}"
+                                    # 自动补全：用session cwd + 从content猜测文件名
+                                    content_hint = func_args.get("content", "")[:200]
+                                    import re as _re
+                                    # 尝试从content中提取文件名（如 <!DOCTYPE html> → index.html）
+                                    if "<!DOCTYPE" in content_hint or "<html" in content_hint:
+                                        path = os.path.join(cwd, "index.html")
+                                    elif "import " in content_hint or "def " in content_hint:
+                                        path = os.path.join(cwd, "output.py")
                                     else:
-                                        result = f"已写入 {path} ({len(file_content)} 字节)"
+                                        path = os.path.join(cwd, "output.txt")
+                                    logger.warning(f"[write_file] path为空，自动补全: {path}")
+                                file_content = func_args.get("content", "")
+                                # 创建目录
+                                from utils.file_safety import atomic_write
+                                ok, err = atomic_write(path, file_content)
+                                if not ok:
+                                    result = f"写入失败: {err}"
+                                else:
+                                    result = f"已写入 {path} ({len(file_content)} 字节)"
                             except Exception as e:
                                 result = f"写入失败: {e}"
 
