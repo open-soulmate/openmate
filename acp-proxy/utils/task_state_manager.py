@@ -139,6 +139,26 @@ class TaskStateManager:
             del self._cache[session_id]  # 清缓存，下次get_current_task会重新加载
         logger.info(f"[TaskState] Resumed: {task_id}")
 
+    def add_entities(self, session_id: str, new_entities: list[str]):
+        """动态追加实体（任务执行过程中发现新关键词）"""
+        task = self.get_current_task(session_id)
+        if task:
+            for e in new_entities:
+                if e and e not in task.entities and len(e) > 1:
+                    task.entities.append(e)
+            # 限制实体数量，避免过多导致误匹配
+            if len(task.entities) > 20:
+                task.entities = task.entities[-20:]
+            self._save(task)
+            logger.debug(f"[TaskState] Added entities: {new_entities}, total={len(task.entities)}")
+
+    def remove_entities(self, session_id: str, remove: list[str]):
+        """移除过时实体"""
+        task = self.get_current_task(session_id)
+        if task:
+            task.entities = [e for e in task.entities if e not in remove]
+            self._save(task)
+
     def pop_parent_task(self, session_id: str) -> Optional[TaskState]:
         """子任务完成后，弹出父任务"""
         task = self.get_current_task(session_id)
@@ -200,28 +220,40 @@ def judge_task_continuation(
     if any(k in user_message for k in continue_keywords):
         return {"action": "continue", "reason": "用户显式要求继续"}
 
-    # ── 规则B：超时 → 挂起，视为新任务 ──
+    # ── 规则B：超时 → 挂起，询问用户确认 ──
     if time.time() - current_task.last_active > TASK_TIMEOUT:
-        return {"action": "new", "reason": f"任务超时({TASK_TIMEOUT}s)，已挂起"}
+        return {"action": "ask", "reason": f"任务超时({TASK_TIMEOUT}s)，已挂起，请确认继续还是新建"}
 
-    # ── 规则C：实体匹配 ──
-    if current_task.entities:
+    # ── 规则C：实体匹配（仅在任务非挂起状态下生效）──
+    if current_task.status == "ongoing" and current_task.entities:
         matched = [e for e in current_task.entities if e in user_message]
         if matched:
             return {"action": "continue", "reason": f"匹配实体: {matched}"}
+    elif current_task.status == "suspended":
+        # 挂起任务命中实体，也要询问确认
+        matched = [e for e in current_task.entities if e in user_message]
+        if matched:
+            return {"action": "ask", "reason": f"挂起任务命中实体{matched}，请确认"}
 
     # ── 规则D：短消息 → 可能是模糊指代，需LLM辅助 ──
     if len(user_message) < SHORT_MESSAGE_LEN:
         # 短消息且无法判断，返回"ask"让调用方询问用户
         return {"action": "ask", "reason": f"消息过短({len(user_message)}字)，无法判断意图"}
 
-    # ── 规则E：消息较长且语义不相关 → 新任务 ──
-    # 简单字重叠检测
+    # ── 规则E：文本重叠度作为辅助特征，不单独决策 ──
     goal_chars = set(current_task.goal)
     msg_chars = set(user_message)
     overlap = len(goal_chars & msg_chars) / max(len(goal_chars | msg_chars), 1)
-    if overlap < 0.1:
-        return {"action": "new", "reason": f"语义不相关(重叠度{overlap:.1%})"}
 
-    # ── 无法确定，交给LLM ──
-    return {"action": "llm_judge", "reason": "规则层无法确定，需LLM判断"}
+    # ── 规则F：多意图检测（消息同时含新旧任务关键词）──
+    # 如果消息很长且包含明显的新任务动词，可能是混合意图
+    new_task_verbs = ["帮我写", "创建", "生成", "编写", "设计", "开发", "新建",
+                      "write", "create", "generate", "build", "design"]
+    has_new_intent = any(v in user_message for v in new_task_verbs)
+    has_old_entity = any(e in user_message for e in current_task.entities) if current_task.entities else False
+    if has_new_intent and has_old_entity:
+        # 混合意图，交给LLM判断
+        return {"action": "llm_judge", "reason": f"混合意图：含新任务动词+旧实体", "overlap": overlap}
+
+    # ── 所有规则无法确定，交给LLM（附带overlap作为参考特征）──
+    return {"action": "llm_judge", "reason": f"规则层无法确定(overlap={overlap:.1%})", "overlap": overlap}
