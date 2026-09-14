@@ -319,8 +319,19 @@ class LLMEngine:
                                             accumulated_tool_calls[idx]["function"]["name"] += func_delta["name"]
                                         if func_delta.get("arguments"):
                                             accumulated_tool_calls[idx]["function"]["arguments"] += func_delta["arguments"]
+                                            logger.debug(f"[LLM STREAM] tc[{idx}] args += {len(func_delta['arguments'])} chars, total={len(accumulated_tool_calls[idx]['function']['arguments'])}")
                                     if choice.get("finish_reason") in ("stop", "tool_calls", "length"):
                                         if accumulated_tool_calls:
+                                            # 验证arguments完整性
+                                            for _i, _tc in accumulated_tool_calls.items():
+                                                _args = _tc["function"]["arguments"]
+                                                if not _args:
+                                                    logger.warning(f"[LLM] tool_call args为空: name={_tc['function']['name']}")
+                                                else:
+                                                    try:
+                                                        json.loads(_args)
+                                                    except json.JSONDecodeError:
+                                                        logger.warning(f"[LLM] tool_call args不完整: name={_tc['function']['name']}, len={len(_args)}, preview={_args[:100]}")
                                             yield {"tool_calls": [
                                                 accumulated_tool_calls[i]
                                                 for i in sorted(accumulated_tool_calls.keys())
