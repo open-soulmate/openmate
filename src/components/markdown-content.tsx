@@ -4,6 +4,7 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, Pencil } from 'lucide-react';
 import { useState, useCallback, lazy, Suspense } from 'react';
+import { MermaidDiagram } from './mermaid-diagram';
 import { useTranslation } from 'react-i18next';
 
 // Lazy load Monaco editor to avoid SSR issues
@@ -251,14 +252,20 @@ export function MarkdownContent({ content, onCodeApply }: MarkdownContentProps) 
       );
     }
     const lang = match[1];
-    parts.push(
-      <CodeBlock
-        key={match.index}
-        language={lang}
-        code={match[2].trimEnd()}
-        onApply={(code) => onCodeApply?.(code, lang)}
-      />
-    );
+    if (lang === 'mermaid') {
+      parts.push(
+        <MermaidDiagram key={match.index} code={match[2].trimEnd()} />
+      );
+    } else {
+      parts.push(
+        <CodeBlock
+          key={match.index}
+          language={lang}
+          code={match[2].trimEnd()}
+          onApply={(code) => onCodeApply?.(code, lang)}
+        />
+      );
+    }
     lastIndex = match.index + match[0].length;
   }
   if (lastIndex < content.length) {

@@ -475,18 +475,23 @@ function useAcpWebSocket(params: {
       useAppStore.setState({ _isNewSessionFlow: false });
       useAppStore.getState().refreshSidebar();
       tagSessionAgent(newSessionId, currentSelectedAgentId);
-      updateSessionMessages(newSessionId, prev => {
-        const firstUserMsg = prev.find(m => m.role === 'user');
-        const autoName = firstUserMsg?.parts.find((p: { type: string; text?: string }) => p.type === 'text')?.text?.slice(0, 20) || '';
-        if (autoName) {
-          fetch(`${getApiBaseUrl()}/api/sessions/${newSessionId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: autoName }),
-          }).then(() => useAppStore.getState().refreshSidebar()).catch(() => {});
-        }
-        return prev;
-      });
+      // 标题由后端自动生成（临时标题+LLM精炼标题），前端不重复PATCH
+      updateSessionMessages(newSessionId, prev => prev);
+      // 延迟从OpenSoul刷新selectedSession.title（等后端LLM标题生成完成）
+      setTimeout(async () => {
+        try {
+          const resp = await fetch(`${getApiBaseUrl()}/api/sessions/${newSessionId}`);
+          if (resp.ok) {
+            const data = await resp.json();
+            const freshTitle = data.title || data.name || '';
+            if (freshTitle) {
+              setSelectedSession(prev => prev ? { ...prev, name: freshTitle, title: freshTitle } : prev);
+              selectedSessionRef.current = { ...(selectedSessionRef.current || {}), name: freshTitle, title: freshTitle } as Session;
+              useAppStore.getState().setActiveSession(newSessionId, null, { sessionName: freshTitle });
+            }
+          }
+        } catch {}
+      }, 8000); // 8秒后LLM标题应该已生成
     }
     // 无论 selectedSessionRef 是否为空，都刷新 sidebar
     useAppStore.getState().refreshSidebar();

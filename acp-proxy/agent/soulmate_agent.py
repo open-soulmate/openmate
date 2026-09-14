@@ -988,6 +988,18 @@ You can send files to the user natively: to deliver a file, write a brief confir
         # ── 异步生成会话标题（第一条消息时立即触发，不等回复）──
         if user_text and not session.get("title") and len(session.get("messages", [])) <= 1:
             session["title"] = user_text[:30]  # 先用截断文本做临时标题
+            # 立即同步到OpenSoul（sidebar数据源）
+            try:
+                import httpx
+                async with httpx.AsyncClient() as client:
+                    await client.patch(
+                        f"http://127.0.0.1:8090/api/sessions/{session_id}",
+                        json={"title": user_text[:30]},
+                        timeout=3,
+                    )
+            except Exception:
+                pass
+            # 异步调LLM生成精炼标题
             asyncio.create_task(self._generate_session_title(session_id, user_text))
 
         # 保存附件到临时文件，把路径拼到prompt文本里
@@ -1406,10 +1418,21 @@ You can send files to the user natively: to deliver a file, write a brief confir
         """异步调LLM生成会话标题，并同步到OpenSoul"""
         try:
             title = await self.llm_engine.chat([
-                {"role": "system", "content": "将用户消息总结为一个简短的会话标题（不超过15个字），只输出标题，不要引号或标点。"},
-                {"role": "user", "content": user_text},
+                {"role": "system", "content": "你是标题生成器。只输出一个简短标题（不超过15个汉字），不要任何其他内容、不要markdown、不要代码、不要解释。"},
+                {"role": "user", "content": user_text[:200]},
             ])
-            title = (title or "").strip().strip('"').strip("'").strip("。")
+            # 清洗LLM输出：去掉markdown、代码块、换行等垃圾
+            title = (title or "").strip()
+            if "```" in title:
+                title = title.split("```")[0]
+            title = title.split("\n")[0]  # 只取第一行
+            title = title.strip().strip("#").strip("*").strip('"').strip("'").strip("。").strip()
+            # 如果清洗后太长或含特殊字符，截断
+            if len(title) > 30:
+                title = title[:30]
+            # 如果清洗后为空，fallback到用户消息截断
+            if not title:
+                title = user_text[:30]
             if title and session_id in self.sessions:
                 self.sessions[session_id]["title"] = title
                 logger.info(f"Session title generated: {session_id} -> {title}")
