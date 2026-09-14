@@ -224,6 +224,22 @@ def judge_task_continuation(
     if time.time() - current_task.last_active > TASK_TIMEOUT:
         return {"action": "ask", "reason": f"任务超时({TASK_TIMEOUT}s)，已挂起，请确认继续还是新建"}
 
+    # ── 预计算文本重叠度（规则F和规则E都用）──
+    goal_chars = set(current_task.goal)
+    msg_chars = set(user_message)
+    overlap = len(goal_chars & msg_chars) / max(len(goal_chars | msg_chars), 1)
+
+    # ── 规则F：多意图检测（消息同时含新旧任务关键词）──
+    # 如果消息很长且包含明显的新任务动词，可能是混合意图
+    new_task_verbs = ["帮我写", "创建", "生成", "编写", "设计", "开发", "新建",
+                      "write", "create", "generate", "build", "design"]
+    has_new_intent = any(v in user_message for v in new_task_verbs)
+    has_old_entity = any(e in user_message for e in current_task.entities) if current_task.entities else False
+    if has_new_intent and has_old_entity:
+        # 混合意图，交给LLM判断
+        return {"action": "llm_judge", "reason": f"混合意图：含新任务动词+旧实体", "overlap": overlap}
+
+
     # ── 规则C：实体匹配（仅在任务非挂起状态下生效）──
     if current_task.status == "ongoing" and current_task.entities:
         matched = [e for e in current_task.entities if e in user_message]
@@ -240,20 +256,7 @@ def judge_task_continuation(
         # 短消息且无法判断，返回"ask"让调用方询问用户
         return {"action": "ask", "reason": f"消息过短({len(user_message)}字)，无法判断意图"}
 
-    # ── 规则E：文本重叠度作为辅助特征，不单独决策 ──
-    goal_chars = set(current_task.goal)
-    msg_chars = set(user_message)
-    overlap = len(goal_chars & msg_chars) / max(len(goal_chars | msg_chars), 1)
-
-    # ── 规则F：多意图检测（消息同时含新旧任务关键词）──
-    # 如果消息很长且包含明显的新任务动词，可能是混合意图
-    new_task_verbs = ["帮我写", "创建", "生成", "编写", "设计", "开发", "新建",
-                      "write", "create", "generate", "build", "design"]
-    has_new_intent = any(v in user_message for v in new_task_verbs)
-    has_old_entity = any(e in user_message for e in current_task.entities) if current_task.entities else False
-    if has_new_intent and has_old_entity:
-        # 混合意图，交给LLM判断
-        return {"action": "llm_judge", "reason": f"混合意图：含新任务动词+旧实体", "overlap": overlap}
+    # ── 规则E：文本重叠度作为辅助特征，不单独决策（overlap已预计算）──
 
     # ── 所有规则无法确定，交给LLM（附带overlap作为参考特征）──
     return {"action": "llm_judge", "reason": f"规则层无法确定(overlap={overlap:.1%})", "overlap": overlap}
