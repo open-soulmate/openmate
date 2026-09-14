@@ -156,6 +156,7 @@ function hasFileArtifact(content: string): { path: string; content: string } | n
 function renderMediaTags(content: string): React.ReactNode[] | null {
   const mediaRegex = /MEDIA:(\S+)/g;
   const parts: React.ReactNode[] = [];
+  const seenFiles = new Set<string>(); // 去重：同名文件只显示一次
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   while ((match = mediaRegex.exec(content)) !== null) {
@@ -165,6 +166,11 @@ function renderMediaTags(content: string): React.ReactNode[] | null {
     }
     const filePath = match[1];
     const fileName = filePath.split('/').pop() || 'file';
+    if (seenFiles.has(fileName)) {
+      lastIndex = match.index + match[0].length;
+      continue; // 已显示过，跳过
+    }
+    seenFiles.add(fileName);
     const ext = fileName.split('.').pop()?.toLowerCase() || '';
     const isImage = ['png','jpg','jpeg','gif','webp','svg','bmp'].includes(ext);
     const downloadUrl = `/api/file?path=${encodeURIComponent(filePath)}`;

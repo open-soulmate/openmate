@@ -796,19 +796,12 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                         if size < 1024 * 1024:  # <1MB
                                             with open(path, "r", encoding="utf-8", errors="replace") as f:
                                                 file_content = f.read()
-                                            # 直接通过ACP发送完整文件内容给前端（不走截断路径）
-                                            if self._client is not None:
-                                                file_msg = f"📎 文件: {name} ({size} 字节)\n{message}\n\n--- 文件内容开始 ---\n{file_content}\n--- 文件内容结束 ---"
-                                                logger.info(f"[send_file] sending {len(file_msg)} chars to frontend via session_update")
-                                                await self._client.session_update(
-                                                    session_id=session_id,
-                                                    update=acp.update_agent_message_text(file_msg),
-                                                )
-                                                logger.info(f"[send_file] session_update sent successfully")
-                                            else:
-                                                logger.warning(f"[send_file] self._client is None, cannot send file to frontend")
-                                            # 返回MEDIA标签，LLM会在回复中包含它，前端会检测并渲染
-                                            result = f"已读取文件 {name} ({size} 字节)。请在回复末尾包含: MEDIA:{path}"  
+                                            # 不发送文件内容到聊天，只返回MEDIA标签
+                                            logger.info(f"[send_file] file={name} size={size}")
+# 返回MEDIA标签，LLM会在回复中包含它，前端会检测并渲染
+                                            result = f"已发送文件 {name} ({size} 字节) 给用户。请在回复中包含: MEDIA:{path}"
+                                            # 文件已发出，跳出工具循环（不继续执行后续步骤）
+                                            break
                                         else:
                                             result = f"📎 文件已准备好: {name} ({size} 字节)\n路径: {path}\n文件过大，请用read_file读取指定部分"
                                     except UnicodeDecodeError:
@@ -915,11 +908,12 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 
                         # 推送工具调用结果摘要
                         if self._client is not None:
-                            result_preview = result[:200] + "..." if len(result) > 200 else result
-                            await self._client.session_update(
-                                session_id=session_id,
-                                update=acp.update_agent_message_text(f"📎 工具结果: {result_preview}\n"),
-                            )
+                            if func_name != "send_file":  # send_file结果已在MEDIA标签中，不重复预览
+                                result_preview = result[:200] + "..." if len(result) > 200 else result
+                                await self._client.session_update(
+                                    session_id=session_id,
+                                    update=acp.update_agent_message_text(f"📎 工具结果: {result_preview}\n"),
+                                )
 
                     # 将 assistant 的 tool_calls 消息和工具结果加入消息历史
                     messages.append({"role": "assistant", "content": None, "tool_calls": tool_calls})
@@ -1193,13 +1187,11 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
             entities = [w for w in user_text if len(w) > 1 and w not in "的了是在有和与对"]
             self._task_state_manager.create_task(session_id, goal=user_text, entities=entities[:10])
         elif action == "ask":
-            # 短消息无法判断，询问用户
-            if self._client is not None:
-                await self._client.session_update(
-                    session_id=session_id,
-                    update=acp.update_agent_message_text("🤔 你的消息很简短，我不确定是要继续之前的任务还是开始新任务。请说明一下？"),
-                )
-            return PromptResponse(stop_reason="end_turn")
+            # 短消息无法判断 → 视为新任务继续执行（不阻塞）
+            if current_task:
+                self._task_state_manager.complete_task(session_id)
+            entities = [w for w in user_text if len(w) > 1 and w not in "的了是在有和与对"]
+            self._task_state_manager.create_task(session_id, goal=user_text, entities=entities[:10])
 
         # ── 任务规划 ──────────────────────────────────────
         plan = await self._task_planner.plan(user_text, session_id)
