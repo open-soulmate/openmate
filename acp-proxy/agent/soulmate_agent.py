@@ -788,9 +788,16 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                 else:
                                     size = os.path.getsize(path)
                                     name = os.path.basename(path)
-                                    result = f"📎 文件已准备好: {name} ({size} 字节)\n路径: {path}"
-                                    if message:
-                                        result = f"{message}\n{result}"
+                                    try:
+                                        if size < 1024 * 1024:  # <1MB
+                                            with open(path, "r", encoding="utf-8", errors="replace") as f:
+                                                file_content = f.read()
+                                            # 把文件内容直接作为result，主循环会通过ACP发给前端
+                                            result = f"📎 文件: {name} ({size} 字节)\n{message}\n\n--- 文件内容开始 ---\n{file_content}\n--- 文件内容结束 ---"
+                                        else:
+                                            result = f"📎 文件已准备好: {name} ({size} 字节)\n路径: {path}\n文件过大，请用read_file读取指定部分"
+                                    except UnicodeDecodeError:
+                                        result = f"📎 二进制文件: {name} ({size} 字节)\n路径: {path}\n二进制文件无法预览，请用read_image或终端工具处理"
                             except Exception as e:
                                 result = f"发送文件失败: {e}"
 
