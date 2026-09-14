@@ -564,13 +564,17 @@ function useAcpWebSocket(params: {
             setSelectedSession(updated);
             selectedSessionRef.current = updated;
             // Register session in OpenSoul so sidebar can show it
+            // Only register if session doesn't already exist (avoid overwriting LLM-generated title)
             try {
               const apiBase = getApiBaseUrl();
-              await fetch(`${apiBase}/api/sessions`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
-                body: JSON.stringify({ id: acpSid, name: sessionName || `${agentId} 会话`, agent_id: agentId, tags: [`agent:${agentId}`] }),
-              });
+              const checkResp = await fetch(`${apiBase}/api/sessions/${acpSid}`);
+              if (checkResp.status === 404) {
+                await fetch(`${apiBase}/api/sessions`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}` },
+                  body: JSON.stringify({ id: acpSid, name: sessionName || '新会话', agent_id: agentId, tags: [`agent:${agentId}`] }),
+                });
+              }
             } catch (saveErr) {
               console.warn('[ACP] Register session in OpenSoul failed:', saveErr);
             }
