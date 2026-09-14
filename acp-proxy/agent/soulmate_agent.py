@@ -4,6 +4,7 @@
 通过 acp.run_agent() 在 stdio 上传输 ACP v1.0 标准协议。
 """
 
+import asyncio
 import base64
 import httpx
 import re
@@ -984,6 +985,11 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 elif block.get("type") == "image" and block.get("data"):
                     file_parts.append(block)
 
+        # ── 异步生成会话标题（第一条消息时立即触发，不等回复）──
+        if user_text and not session.get("title") and len(session.get("messages", [])) <= 1:
+            session["title"] = user_text[:30]  # 先用截断文本做临时标题
+            asyncio.create_task(self._generate_session_title(session_id, user_text))
+
         # 保存附件到临时文件，把路径拼到prompt文本里
         if file_parts:
             import base64 as b64mod, tempfile
@@ -1395,6 +1401,31 @@ You can send files to the user natively: to deliver a file, write a brief confir
             for s in self.sessions.values()
         ]
         return ListSessionsResponse(sessions=session_list)
+
+    async def _generate_session_title(self, session_id: str, user_text: str):
+        """异步调LLM生成会话标题，并同步到OpenSoul"""
+        try:
+            title = await self.llm_engine.chat([
+                {"role": "system", "content": "将用户消息总结为一个简短的会话标题（不超过15个字），只输出标题，不要引号或标点。"},
+                {"role": "user", "content": user_text},
+            ])
+            title = (title or "").strip().strip('"').strip("'").strip("。")
+            if title and session_id in self.sessions:
+                self.sessions[session_id]["title"] = title
+                logger.info(f"Session title generated: {session_id} -> {title}")
+                # 同步到OpenSoul
+                try:
+                    import httpx
+                    async with httpx.AsyncClient() as client:
+                        await client.patch(
+                            f"http://127.0.0.1:8090/api/sessions/{session_id}",
+                            json={"title": title},
+                            timeout=5,
+                        )
+                except Exception:
+                    pass
+        except Exception as e:
+            logger.warning(f"Title generation failed: {e}")
 
     async def resume_session(
         self, cwd: str, session_id: str, mcp_servers=None, **kwargs
