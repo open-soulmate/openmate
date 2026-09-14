@@ -239,6 +239,7 @@ class SoulMateAgent:
         messages: list[dict],
         session_id: str,
         matched_skills: list[dict] | None = None,
+        user_text: str = "",
     ) -> tuple[str, list[dict]]:
         """LLM推理 + 工具调用循环。模型返回tool_calls就执行，纯文本就结束。"""
         MAX_ROUNDS = 15
@@ -610,17 +611,19 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                             try:
                                 path = func_args.get("path", "")
                                 if not path:
-                                    # 自动补全：用session cwd + 从content猜测文件名
-                                    content_hint = func_args.get("content", "")[:200]
+                                    # 从用户消息提取文件名
                                     import re as _re
-                                    # 尝试从content中提取文件名（如 <!DOCTYPE html> → index.html）
-                                    if "<!DOCTYPE" in content_hint or "<html" in content_hint:
+                                    # 匹配 "创建/写/生成 xxx.html/py/js" 或 "xxx.html"
+                                    fname_match = _re.search(r'[\w\-\.]+\.(html|py|js|ts|tsx|css|json|md|txt|sh|yaml|yml|xml|sql|vue|jsx)', user_text, _re.IGNORECASE)
+                                    if fname_match:
+                                        path = os.path.join(cwd, fname_match.group(0))
+                                    elif "html" in user_text.lower():
                                         path = os.path.join(cwd, "index.html")
-                                    elif "import " in content_hint or "def " in content_hint:
-                                        path = os.path.join(cwd, "output.py")
+                                    elif "python" in user_text.lower() or "脚本" in user_text:
+                                        path = os.path.join(cwd, "script.py")
                                     else:
                                         path = os.path.join(cwd, "output.txt")
-                                    logger.warning(f"[write_file] path为空，自动补全: {path}")
+                                    logger.warning(f"[write_file] path为空，从用户消息提取: {path}")
                                 file_content = func_args.get("content", "")
                                 # 创建目录
                                 from utils.file_safety import atomic_write
@@ -1266,7 +1269,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
             full_response = ""
             tool_calls_log = []
             try:
-                full_response, tool_calls_log = await self._run_llm_with_tools(messages, session_id, matched_skills=matched_skills)
+                full_response, tool_calls_log = await self._run_llm_with_tools(messages, session_id, matched_skills=matched_skills, user_text=user_text)
             except Exception as e:
                 logger.error(f"LLM error: {e}", exc_info=True)
                 full_response = f"推理错误: {e}"
