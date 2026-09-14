@@ -76,6 +76,8 @@ class SoulMateAgent:
         from agent.task_engine import TaskPlanner, SelfReflector
         self._task_planner = TaskPlanner(llm_call_fn=self._llm_plan_call)
         self._self_reflector = SelfReflector(llm_call_fn=self._llm_plan_call)
+        # 任务状态管理器（独立状态机，规则+LLM兜底）
+        self._task_state_manager = TaskStateManager(db_path=str(self._db_path))
 
     def _get_db(self) -> sqlite3.Connection:
         db = sqlite3.connect(str(self._db_path))
