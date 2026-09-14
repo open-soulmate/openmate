@@ -1141,6 +1141,13 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 
         # ── 任务规划 ──────────────────────────────────────
         from agent.task_engine import StepStatus
+        # 新消息来了，清除旧的活跃plan，避免重复执行
+        old_plan = self._task_planner.store.get_active_plan(session_id)
+        if old_plan and old_plan.status == "active":
+            old_plan.status = "completed"
+            old_plan.completed_at = time.time()
+            self._task_planner.store.save_plan(old_plan)
+            logger.info(f"[task] Cleared stale plan: {old_plan.id}")
         plan = await self._task_planner.plan(user_text, session_id)
         tool_calls_log = []  # 初始化，两条路径都会用到
 
