@@ -43,6 +43,7 @@ from skill_manager import SkillManager
 from evolution import EvolutionEngine
 from dna_evolution import DNAEvolutionEngine
 from utils.token_manager import truncate_tool_result
+from utils.task_state_manager import TaskStateManager, judge_task_continuation
 
 logger = logging.getLogger("acp-agent.soulmate")
 
@@ -1139,29 +1140,54 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
         except Exception as e:
             logger.debug(f"[brain] 认知层调用失败(非致命): {e}")
 
-        # ── 任务规划 ──────────────────────────────────────
+        # ── 任务状态判断（规则优先，LLM为辅）──────────────
         from agent.task_engine import StepStatus
-        # 检查旧plan：目标不同才清除，目标相同继续执行
-        old_plan = self._task_planner.store.get_active_plan(session_id)
-        if old_plan and old_plan.status == "active":
-            # 用LLM判断新消息是否和旧任务相关
-            is_continuation = False
-            # 快速判断：如果新消息很短且包含继续关键词，视为继续
-            continuation_keywords = ["继续", "下一步", "重试", "再来", "接着", "然后", "继续执行", "go on", "next", "continue"]
-            if len(user_text) < 30 and any(k in user_text for k in continuation_keywords):
-                is_continuation = True
-            # 如果新消息和旧目标高度重叠，也视为继续
-            elif old_plan.goal and user_text:
-                old_words = set(old_plan.goal)
-                new_words = set(user_text)
-                overlap = len(old_words & new_words) / max(len(old_words | new_words), 1)
-                if overlap > 0.3:
-                    is_continuation = True
-            if not is_continuation:
-                old_plan.status = "completed"
-                old_plan.completed_at = time.time()
-                self._task_planner.store.save_plan(old_plan)
-                logger.info(f"[task] Cleared stale plan: {old_plan.id} (goal mismatch)")
+        current_task = self._task_state_manager.get_current_task(session_id)
+        judgment = judge_task_continuation(current_task, user_message=user_text)
+        action = judgment["action"]
+        logger.info(f"[TaskState] judgment: action={action}, reason={judgment['reason']}")
+
+        if action == "llm_judge":
+            # 规则无法确定，调用LLM判断
+            judge_messages = [
+                {"role": "system", "content": (
+                    "你是任务判断器。判断用户新消息是继续旧任务还是新任务。\n"
+                    "返回JSON: {\"action\": \"continue\"|\"new\", \"reason\": \"...\"}"
+                )},
+                {"role": "user", "content": f"当前任务: {current_task.goal}\n用户消息: {user_text}"},
+            ]
+            try:
+                raw = await self._llm_call(judge_messages)
+                raw = raw.strip()
+                if raw.startswith("```"):
+                    raw = raw.split("\n", 1)[1].rsplit("```", 1)[0].strip()
+                llm_judge = json.loads(raw)
+                action = llm_judge.get("action", "new")
+                logger.info(f"[TaskState] LLM judge: action={action}")
+            except Exception as e:
+                logger.warning(f"[TaskState] LLM judge failed: {e}, defaulting new")
+                action = "new"
+
+        if action == "continue" and current_task:
+            # 继续旧任务，更新活跃时间
+            self._task_state_manager.update_activity(session_id)
+        elif action == "new":
+            # 新任务，完成旧任务，创建新任务
+            if current_task:
+                self._task_state_manager.complete_task(session_id)
+            # 从消息中提取关键实体（简单实现：取名词短语）
+            entities = [w for w in user_text if len(w) > 1 and w not in "的了是在有和与对"]
+            self._task_state_manager.create_task(session_id, goal=user_text, entities=entities[:10])
+        elif action == "ask":
+            # 短消息无法判断，询问用户
+            if self._client is not None:
+                await self._client.session_update(
+                    session_id=session_id,
+                    update=acp.update_agent_message_text("🤔 你的消息很简短，我不确定是要继续之前的任务还是开始新任务。请说明一下？"),
+                )
+            return PromptResponse(stop_reason="end_turn")
+
+        # ── 任务规划 ──────────────────────────────────────
         plan = await self._task_planner.plan(user_text, session_id)
         tool_calls_log = []  # 初始化，两条路径都会用到
 

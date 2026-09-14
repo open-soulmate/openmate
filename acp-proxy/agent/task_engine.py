@@ -288,8 +288,37 @@ class TaskPlanner:
         # 先检查是否有活跃任务
         existing = self.store.get_active_plan(session_id)
         if existing and existing.status == "active":
-            logger.info(f"[plan] Resuming existing plan: {existing.id}")
-            return existing
+            # 有活跃任务，让LLM判断新消息是继续旧任务还是新任务
+            judge_messages = [
+                {"role": "system", "content": (
+                    "你是任务判断器。用户有一个正在进行的任务，现在发了新消息。\\n"
+                    "判断新消息是：1)继续/补充旧任务 2)全新的任务 3)简单的问答/操作（不需要任务规划）\\n"
+                    "返回JSON: {\"action\": \"continue\"|\"new\"|\"simple\", \"reason\": \"...\"}\\n"
+                    "如果新消息是'把文件发送给我'、'发送给我'、与旧任务无关的请求，返回new或simple。"
+                )},
+                {"role": "user", "content": f"当前进行中的任务: {existing.goal}\\n用户新消息: {goal}"},
+            ]
+            try:
+                raw = await self._llm_call(judge_messages)
+                raw = raw.strip()
+                if raw.startswith("```"):
+                    raw = raw.split("\\n", 1)[1].rsplit("```", 1)[0].strip()
+                judge = json.loads(raw)
+                action = judge.get("action", "simple")
+                logger.info(f"[plan] LLM judge: action={action}, reason={judge.get('reason','')}")
+            except Exception as e:
+                logger.warning(f"[plan] Judge failed: {e}, treating as new")
+                action = "new"
+
+            if action == "continue":
+                logger.info(f"[plan] Resuming existing plan: {existing.id}")
+                return existing
+            else:
+                # 新任务或简单任务，清除旧plan
+                existing.status = "completed"
+                existing.completed_at = time.time()
+                self.store.save_plan(existing)
+                logger.info(f"[plan] Cleared old plan: {existing.id}, action={action}")
 
         messages = [
             {"role": "system", "content": PLANNING_PROMPT},
