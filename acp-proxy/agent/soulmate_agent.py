@@ -42,6 +42,7 @@ from agent.llm_engine import LLMEngine
 from skill_manager import SkillManager
 from evolution import EvolutionEngine
 from dna_evolution import DNAEvolutionEngine
+from utils.token_manager import truncate_tool_result
 
 logger = logging.getLogger("acp-agent.soulmate")
 

@@ -1,0 +1,655 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>攀岩者首页 - 探索垂直世界</title>
+    <style>
+        /* 全局重置和基础样式 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', 'Microsoft YaHei', sans-serif;
+            line-height: 1.6;
+            color: #333;
+            background-color: #f5f5f5;
+        }
+        
+        /* 导航栏样式 */
+        .navbar {
+            background-color: rgba(0, 0, 0, 0.8);
+            padding: 15px 0;
+            position: fixed;
+            width: 100%;
+            top: 0;
+            z-index: 1000;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        .nav-content {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .logo {
+            color: white;
+            font-size: 24px;
+            font-weight: bold;
+            text-decoration: none;
+        }
+        
+        .logo span {
+            color: #e74c3c;
+        }
+        
+        .nav-links {
+            display: flex;
+            list-style: none;
+        }
+        
+        .nav-links li {
+            margin-left: 30px;
+        }
+        
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .nav-links a:hover {
+            color: #e74c3c;
+        }
+        
+        /* 英雄区域 */
+        .hero {
+            background: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), 
+                        url('https://images.unsplash.com/photo-1551698618-1dfe5d97d256?ixlib=rb-1.2.1&auto=format&fit=crop&w=1950&q=80');
+            background-size: cover;
+            background-position: center;
+            height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            color: white;
+            margin-top: 60px;
+        }
+        
+        .hero-content h1 {
+            font-size: 3.5rem;
+            margin-bottom: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .hero-content p {
+            font-size: 1.2rem;
+            margin-bottom: 30px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .btn {
+            display: inline-block;
+            background-color: #e74c3c;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 5px;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: bold;
+            transition: background-color 0.3s;
+        }
+        
+        .btn:hover {
+            background-color: #c0392b;
+        }
+        
+        /* 关于部分 */
+        .section {
+            padding: 80px 0;
+        }
+        
+        .section-title {
+            text-align: center;
+            margin-bottom: 50px;
+        }
+        
+        .section-title h2 {
+            font-size: 2.5rem;
+            color: #2c3e50;
+            margin-bottom: 15px;
+        }
+        
+        .section-title p {
+            color: #7f8c8d;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .about-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+        
+        .about-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        
+        .about-card h3 {
+            color: #e74c3c;
+            margin: 15px 0;
+            font-size: 1.5rem;
+        }
+        
+        .about-card p {
+            color: #666;
+        }
+        
+        .icon {
+            font-size: 2.5rem;
+            color: #e74c3c;
+        }
+        
+        /* 画廊部分 */
+        .gallery {
+            background-color: #2c3e50;
+        }
+        
+        .gallery .section-title h2 {
+            color: white;
+        }
+        
+        .gallery .section-title p {
+            color: #bdc3c7;
+        }
+        
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .gallery-item {
+            position: relative;
+            height: 250px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        
+        .gallery-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.5s;
+        }
+        
+        .gallery-item:hover img {
+            transform: scale(1.1);
+        }
+        
+        .gallery-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: linear-gradient(transparent, rgba(0,0,0,0.7));
+            padding: 20px;
+            color: white;
+            transform: translateY(100%);
+            transition: transform 0.3s;
+        }
+        
+        .gallery-item:hover .gallery-overlay {
+            transform: translateY(0);
+        }
+        
+        /* 特色部分 */
+        .features-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .feature-card {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s;
+        }
+        
+        .feature-card:hover {
+            transform: translateY(-10px);
+        }
+        
+        .feature-card h3 {
+            color: #2c3e50;
+            margin: 15px 0;
+        }
+        
+        /* 新闻部分 */
+        .news-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 30px;
+        }
+        
+        .news-card {
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .news-img {
+            height: 200px;
+            background-size: cover;
+            background-position: center;
+        }
+        
+        .news-content {
+            padding: 20px;
+        }
+        
+        .news-date {
+            color: #e74c3c;
+            font-size: 0.9rem;
+            margin-bottom: 10px;
+        }
+        
+        .news-content h3 {
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        /* 联系部分 */
+        .contact {
+            background-color: #f9f9f9;
+        }
+        
+        .contact-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 40px;
+        }
+        
+        .contact-info {
+            padding: 20px;
+        }
+        
+        .contact-info h3 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+        }
+        
+        .contact-info p {
+            margin-bottom: 15px;
+            color: #666;
+        }
+        
+        .contact-form {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            color: #2c3e50;
+            font-weight: 500;
+        }
+        
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 1rem;
+        }
+        
+        .form-group textarea {
+            height: 120px;
+            resize: vertical;
+        }
+        
+        /* 页脚 */
+        .footer {
+            background-color: #2c3e50;
+            color: white;
+            padding: 40px 0 20px;
+        }
+        
+        .footer-content {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+        
+        .footer-section h3 {
+            color: #e74c3c;
+            margin-bottom: 15px;
+            font-size: 1.2rem;
+        }
+        
+        .footer-section p {
+            color: #bdc3c7;
+            line-height: 1.8;
+        }
+        
+        .footer-section ul {
+            list-style: none;
+        }
+        
+        .footer-section ul li {
+            margin-bottom: 10px;
+        }
+        
+        .footer-section ul li a {
+            color: #bdc3c7;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer-section ul li a:hover {
+            color: #e74c3c;
+        }
+        
+        .footer-bottom {
+            text-align: center;
+            padding-top: 20px;
+            border-top: 1px solid #34495e;
+            color: #7f8c8d;
+            font-size: 0.9rem;
+        }
+        
+        /* 响应式设计 */
+        @media (max-width: 768px) {
+            .nav-links {
+                display: none;
+            }
+            
+            .hero-content h1 {
+                font-size: 2.5rem;
+            }
+            
+            .section {
+                padding: 50px 0;
+            }
+            
+            .section-title h2 {
+                font-size: 2rem;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .hero-content h1 {
+                font-size: 2rem;
+            }
+            
+            .hero-content p {
+                font-size: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 导航栏 -->
+    <nav class="navbar">
+        <div class="container">
+            <div class="nav-content">
+                <a href="#" class="logo">攀岩<span>者</span></a>
+                <ul class="nav-links">
+                    <li><a href="#home">首页</a></li>
+                    <li><a href="#about">关于</a></li>
+                    <li><a href="#gallery">画廊</a></li>
+                    <li><a href="#features">特色</a></li>
+                    <li><a href="#news">新闻</a></li>
+                    <li><a href="#contact">联系</a></li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 英雄区域 -->
+    <section class="hero" id="home">
+        <div class="hero-content">
+            <h1>探索垂直世界</h1>
+            <p>攀岩不仅是一项运动，更是一种生活方式。挑战自我，征服高峰，感受大自然的魅力。</p>
+            <a href="#about" class="btn">了解更多</a>
+        </div>
+    </section>
+
+    <!-- 关于部分 -->
+    <section class="section" id="about">
+        <div class="container">
+            <div class="section-title">
+                <h2>关于攀岩</h2>
+                <p>攀岩运动融合了力量、技巧与智慧，是挑战自我极限的绝佳方式</p>
+            </div>
+            <div class="about-content">
+                <div class="about-card">
+                    <div class="icon">🧗</div>
+                    <h3>室内攀岩</h3>
+                    <p>安全可控的环境，适合初学者和进阶训练。专业的岩馆提供各种难度的线路。</p>
+                </div>
+                <div class="about-card">
+                    <div class="icon">⛰️</div>
+                    <h3>户外攀岩</h3>
+                    <p>拥抱自然，挑战真实岩壁。体验大自然的鬼斧神工，感受攀登的纯粹乐趣。</p>
+                </div>
+                <div class="about-card">
+                    <div class="icon">💪</div>
+                    <h3>体能训练</h3>
+                    <p>攀岩是全身性运动，能有效提升力量、耐力、柔韧性和协调性。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 画廊部分 -->
+    <section class="section gallery" id="gallery">
+        <div class="container">
+            <div class="section-title">
+                <h2>精彩瞬间</h2>
+                <p>记录攀岩路上的每一个挑战与突破</p>
+            </div>
+            <div class="gallery-grid">
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1522163182402-834f871fd851?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60" alt="攀岩瞬间1">
+                    <div class="gallery-overlay">
+                        <h4>垂直挑战</h4>
+                        <p>征服陡峭岩壁</p>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60" alt="攀岩瞬间2">
+                    <div class="gallery-overlay">
+                        <h4>团队协作</h4>
+                        <p>互相鼓励，共同进步</p>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1551698618-1dfe5d97d256?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60" alt="攀岩瞬间3">
+                    <div class="gallery-overlay">
+                        <h4>风景独好</h4>
+                        <p>登顶后的壮丽景色</p>
+                    </div>
+                </div>
+                <div class="gallery-item">
+                    <img src="https://images.unsplash.com/photo-1564769625905-50e93615e769?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60" alt="攀岩瞬间4">
+                    <div class="gallery-overlay">
+                        <h4>技巧展示</h4>
+                        <p>精准的动作控制</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 特色部分 -->
+    <section class="section" id="features">
+        <div class="container">
+            <div class="section-title">
+                <h2>攀岩益处</h2>
+                <p>攀岩带来的身心双重提升</p>
+            </div>
+            <div class="features-content">
+                <div class="feature-card">
+                    <div class="icon">🧠</div>
+                    <h3>心理素质</h3>
+                    <p>培养专注力、决断力和抗压能力。在岩壁上，每一步都需要冷静思考和果断行动。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">🏋️</div>
+                    <h3>身体锻炼</h3>
+                    <p>全面锻炼上肢、核心和下肢力量。提升身体协调性和柔韧性。</p>
+                </div>
+                <div class="feature-card">
+                    <div class="icon">👥</div>
+                    <h3>社交互动</h3>
+                    <p>结识志同道合的朋友，分享攀登经验。建立互信互助的伙伴关系。</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 新闻部分 -->
+    <section class="section" id="news">
+        <div class="container">
+            <div class="section-title">
+                <h2>最新动态</h2>
+                <p>了解攀岩界的最新资讯和活动</p>
+            </div>
+            <div class="news-grid">
+                <div class="news-card">
+                    <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1551698618-1dfe5d97d256?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60');"></div>
+                    <div class="news-content">
+                        <div class="news-date">2024年1月15日</div>
+                        <h3>室内攀岩锦标赛圆满落幕</h3>
+                        <p>为期三天的比赛吸引了全国200多名选手参与，竞争激烈，精彩纷呈。</p>
+                    </div>
+                </div>
+                <div class="news-card">
+                    <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1522163182402-834f871fd851?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60');"></div>
+                    <div class="news-content">
+                        <div class="news-date">2024年1月10日</div>
+                        <h3>新手攀岩体验营开始报名</h3>
+                        <p>为初学者量身定制的体验课程，专业教练指导，安全装备齐全。</p>
+                    </div>
+                </div>
+                <div class="news-card">
+                    <div class="news-img" style="background-image: url('https://images.unsplash.com/photo-1504280390367-361c6d9f38f4?ixlib=rb-1.2.1&auto=format&fit=crop&w=500&q=60');"></div>
+                    <div class="news-content">
+                        <div class="news-date">2024年1月5日</div>
+                        <h3>户外攀岩安全讲座成功举办</h3>
+                        <p>资深攀岩者分享户外攀岩经验和安全知识，参与者受益匪浅。</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 联系部分 -->
+    <section class="section contact" id="contact">
+        <div class="container">
+            <div class="section-title">
+                <h2>联系我们</h2>
+                <p>开始你的攀岩之旅</p>
+            </div>
+            <div class="contact-content">
+                <div class="contact-info">
+                    <h3>联系方式</h3>
+                    <p>📧 邮箱：info@climber.com</p>
+                    <p>📞 电话：400-888-8888</p>
+                    <p>📍 地址：北京市朝阳区攀岩大厦123号</p>
+                    <p>⏰ 营业时间：周一至周日 9:00-21:00</p>
+                </div>
+                <div class="contact-form">
+                    <h3>发送消息</h3>
+                    <form>
+                        <div class="form-group">
+                            <label for="name">姓名</label>
+                            <input type="text" id="name" placeholder="请输入您的姓名">
+                        </div>
+                        <div class="form-group">
+                            <label for="email">邮箱</label>
+                            <input type="email" id="email" placeholder="请输入您的邮箱">
+                        </div>
+                        <div class="form-group">
+                            <label for="message">留言</label>
+                            <textarea id="message" placeholder="请输入您的留言"></textarea>
+                        </div>
+                        <button type="submit" class="btn">发送消息</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- 页脚 -->
+    <footer class="footer">
+        <div class="container">
+            <div class="footer-content">
+                <div class="footer-section">
+                    <h3>攀岩者</h3>
+                    <p>致力于推广攀岩运动，提供专业的训练课程和活动组织，让更多人体验攀岩的乐趣。</p>
+                </div>
+                <div class="footer-section">
+                    <h3>快速链接</h3>
+                    <ul>
+                        <li><a href="#home">首页</a></li>
+                        <li><a href="#about">关于我们</a></li>
+                        <li><a href="#gallery">精彩画廊</a></li>
+                        <li><a href="#contact">联系我们</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>服务项目</h3>
+                    <ul>
+                        <li><a href="#">室内攀岩</a></li>
+                        <li><a href="#">户外攀岩</a></li>
+                        <li><a href="#">体能训练</a></li>
+                        <li><a href="#">赛事组织</a></li>
+                    </ul>
+                </div>
+                <div class="footer-section">
+                    <h3>关注我们</h3>
+                    <p>微信公众号：攀岩者</p>
+                    <p>微博：@攀岩者官方</p>
+                    <p>抖音：攀岩者俱乐部</p>
+                </div>
+            </div>
+            <div class="footer-bottom">
+                <p>&copy; 2024 攀岩者俱乐部 版权所有 | 设计：攀岩者设计团队</p>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
