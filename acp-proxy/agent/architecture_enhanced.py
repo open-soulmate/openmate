@@ -37,6 +37,16 @@ from agent.lane_queue import LaneQueue, Lane
 from agent.layered_timeouts import LayeredTimeoutManager, TimeoutConfig, TimeoutLayer
 from agent.tool_errors import ToolErrorHandler, FailureAction, ErrorCategory
 from agent.edit_safety import EditSafetyGuard, EditConfig, EditResult
+from agent.context_compression import ContextCompressor
+from agent.observability import ObservabilityManager, SpanType, SpanStatus
+from agent.permissions import PermissionManager, PermissionLevel
+from agent.eval_pipeline import EvalPipeline, DEFAULT_EVAL_CASES
+from agent.context_budget import ContextBudgetManager, TokenBudget
+from agent.tool_cache import ToolResultCache
+from agent.agent_checkpoint import AgentCheckpointManager
+from agent.agent_tracer import AgentTracer
+from agent.local_model import LocalModelRouter, LocalModelConfig
+from agent.file_index import SessionFileIndex
 
 logger = logging.getLogger("acp-agent.architecture")
 
@@ -88,6 +98,38 @@ class EnhancedArchitecture:
         self.edit_guard = EditSafetyGuard(
             config=edit_config or EditConfig()
         )
+        
+        # 6. Context Compressor
+        self.context_compressor = ContextCompressor(max_tokens=8000)
+        
+        # 7. Observability
+        self.observability = ObservabilityManager()
+        
+        # 8. Permission Manager
+        self.permissions = PermissionManager()
+        
+        # 9. Eval Pipeline
+        self.eval_pipeline = EvalPipeline()
+        for case in DEFAULT_EVAL_CASES:
+            self.eval_pipeline.add_case(case)
+        
+        # 11. Context Budget Manager
+        self.context_budget = ContextBudgetManager()
+        
+        # 12. Tool Result Cache
+        self.tool_cache = ToolResultCache()
+        
+        # 13. Agent Checkpoint Manager
+        self.checkpoint_mgr = AgentCheckpointManager()
+        
+        # 14. Agent Tracer
+        self.tracer = AgentTracer()
+        
+        # 15. Local Model Router
+        self.local_models = LocalModelRouter()
+        
+        # 16. Session File Index
+        self.file_index = SessionFileIndex()
         
         # 统计
         self._start_time = time.time()
@@ -209,6 +251,16 @@ class EnhancedArchitecture:
             "timeouts": self.timeouts.get_stats(),
             "tool_errors": self.tool_errors.get_stats(),
             "edit_guard": self.edit_guard.get_stats(),
+            "context_compressor": self.context_compressor.get_stats(),
+            "observability": self.observability.get_stats(),
+            "permissions": self.permissions.get_stats(),
+            "eval_pipeline": self.eval_pipeline.get_stats(),
+            "context_budget": self.context_budget.get_stats(),
+            "tool_cache": self.tool_cache.get_stats(),
+            "checkpoints": self.checkpoint_mgr.get_stats(),
+            "tracer": self.tracer.get_stats(),
+            "local_models": self.local_models.get_stats(),
+            "file_index": self.file_index.get_stats(),
         }
     
     def get_session_stats(self, session_id: str) -> dict:

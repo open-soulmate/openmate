@@ -244,13 +244,13 @@ export function ArchitectureMonitor() {
               <div className="flex justify-between text-gray-300">
                 <span>活跃锁</span>
                 <span className="text-white">
-                  {Object.keys(stats.writer_fence.active_claims).length}
+                  {Object.keys(stats.writer_fence?.active_claims ?? {}).length}
                 </span>
               </div>
               <div className="flex justify-between text-gray-300">
                 <span>等待中</span>
                 <span className="text-white">
-                  {Object.values(stats.writer_fence.waiting).reduce((a, b) => a + b, 0)}
+                  {Object.values(stats.writer_fence?.waiting ?? {}).reduce((a, b) => a + b, 0)}
                 </span>
               </div>
             </div>
@@ -357,15 +357,15 @@ export function ArchitectureMonitor() {
             <div className="space-y-2 text-sm">
               <div className="flex justify-between text-gray-300">
                 <span>总Span</span>
-                <span className="text-white">{stats.observability.total_spans}</span>
+                <span className="text-white">{stats.observability?.total_spans ?? 0}</span>
               </div>
               <div className="flex justify-between text-gray-300">
                 <span>活跃Span</span>
-                <span className="text-white">{stats.observability.active_spans}</span>
+                <span className="text-white">{stats.observability?.active_spans ?? 0}</span>
               </div>
               <div className="flex justify-between text-gray-300">
                 <span>错误数</span>
-                <span className="text-white">{stats.observability.total_errors}</span>
+                <span className="text-white">{stats.observability?.total_errors ?? 0}</span>
               </div>
             </div>
           )}
