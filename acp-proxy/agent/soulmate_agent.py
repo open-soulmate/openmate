@@ -312,20 +312,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 - terminal: 执行命令，command 参数必填
 - execute_code: 执行 Python 代码，code 参数必填
 
-## 文件下发规范（MEDIA标签）
-当用户要求获取、下载、发送文件时，你不要调用任何发送类工具。
-你需要在回答文本中嵌入MEDIA标记，格式严格如下：
-MEDIA:/absolute/path/to/file-name.ext
-
-规则：
-1. MEDIA标签写在回答文本末尾，单独一行
-2. 只填服务器内的绝对路径
-3. 不要修改标签格式，不要省略
-4. 一次回复可以包含多个MEDIA标签
-5. 若无文件需要下发，不要凭空生成MEDIA标签
-6. 先用search_files找到文件绝对路径，再输出MEDIA标签
-
-重要：当用户请求文件时，你必须输出MEDIA标签。不要仅回复"文件已找到"而省略MEDIA标记。"""
+You can send files to the user natively: to deliver a file, include MEDIA:/absolute/path/to/file in your response. The gateway extracts the tag, strips it from display text, and sends the file as a download card. Use search_files first if you don't know the exact path. Do NOT paste file contents into chat — always use MEDIA: tags for file delivery."""
 
         # 注入匹配的技能上下文
         if matched_skills:
@@ -881,14 +868,6 @@ MEDIA:/absolute/path/to/file-name.ext
                         except Exception:
                             pass
 
-                        # 推送工具调用结果摘要
-                        if self._client is not None:
-                            if True:
-                                result_preview = result[:200] + "..." if len(result) > 200 else result
-                                await self._client.session_update(
-                                    session_id=session_id,
-                                    update=acp.update_agent_message_text(f"📎 工具结果: {result_preview}\n"),
-                                )
 
                     # 将 assistant 的 tool_calls 消息和工具结果加入消息历史
                     messages.append({"role": "assistant", "content": None, "tool_calls": tool_calls})
@@ -1047,7 +1026,9 @@ MEDIA:/absolute/path/to/file-name.ext
             # 只保留触发词匹配(score>=5)的技能，忽略纯描述匹配
             # ── 文件请求模式检查：命中则跳过技能匹配（Hermes范式：LLM直接输出MEDIA标签）──
             import re as _re
-            _is_file_req = _re.search(r'(?:把|将)?\s*[\w\-]+\.\w{1,5}\s*(?:发给我|发送|发给|给我|下载)', user_text)
+            _has_filename = _re.search(r'[\w\-]+\.\w{1,5}', user_text)
+            _has_send_verb = _re.search(r'发给我|发送|发给|给我|下载|send|download', user_text)
+            _is_file_req = bool(_has_filename and _has_send_verb)
 
             if not _is_file_req:
                 matched_skills = [s for s in raw_skills if any(
