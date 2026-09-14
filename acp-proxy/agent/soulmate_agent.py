@@ -1161,6 +1161,13 @@ You can send files to the user natively: to deliver a file, write a brief confir
         try:
             import httpx as _httpx
             async with _httpx.AsyncClient() as _client:
+                # 0. 会话状态机：idle → thinking
+                await _client.post(
+                    "http://127.0.0.1:8090/api/trajectory/fsm/transition",
+                    json={"session_id": session_id, "event": "user_message"},
+                    timeout=2,
+                )
+
                 # 1. 意图分类
                 intent_resp = await _client.post(
                     "http://127.0.0.1:8090/api/intelligence/intent/classify",
@@ -1495,10 +1502,38 @@ You can send files to the user natively: to deliver a file, write a brief confir
             except Exception as e:
                 logger.debug(f"Evolution observe skipped: {e}")
 
-        # ── OpenSoul偏好学习 + 技能提取 ─────────────────────
+        # ── OpenSoul偏好学习 + 技能提取 + 能力评估 ─────────
         try:
             import httpx as _httpx
             async with _httpx.AsyncClient() as _client:
+                # 0. 会话状态机：thinking → responding
+                await _client.post(
+                    "http://127.0.0.1:8090/api/trajectory/fsm/transition",
+                    json={"session_id": session_id, "event": "assistant_response"},
+                    timeout=2,
+                )
+
+                # 0.5. 能力评估（如果有工具调用）
+                if tool_calls_log:
+                    has_error = "错误" in full_response or "error" in full_response.lower()
+                    await _client.post(
+                        "http://127.0.0.1:8090/api/benchmark/capability/evaluate",
+                        json={
+                            "session_id": session_id,
+                            "task_description": user_text[:200],
+                            "dimension_scores": {
+                                "accuracy": 0.8 if not has_error else 0.3,
+                                "efficiency": 0.7,
+                                "completeness": 0.8 if len(full_response) > 100 else 0.5,
+                                "safety": 0.9,
+                                "helpfulness": 0.8 if len(full_response) > 50 else 0.5,
+                            },
+                            "duration_ms": int((time.time() - start_time) * 1000) if 'start_time' in dir() else 1000,
+                            "success": not has_error,
+                        },
+                        timeout=2,
+                    )
+
                 # 1. 偏好学习（从对话中学习用户偏好）
                 await _client.post(
                     "http://127.0.0.1:8090/api/mind/preference/learn",
