@@ -197,8 +197,11 @@ class SkillManager:
                 # 已有高使用率的匹配技能，不重复创建
                 return None
 
-        # 从交互中提取模式
-        skill_name = self._extract_skill_name(user_text)
+        # 从交互中提取模式 — 技能名必须基于实际使用的工具，不能用用户消息
+        if not tool_names:
+            return None
+        # 技能名 = 工具链组合，如 "search_files→read_file"
+        skill_name = "→".join(tool_names[:4])
         triggers = self._extract_triggers(user_text)
         content = self._extract_workflow(assistant_response, tool_names)
         code_template = self._extract_code(assistant_response)

@@ -1032,19 +1032,11 @@ You can send files to the user natively: to deliver a file, write a brief confir
 
             if not _is_file_req:
                 matched_skills = [s for s in raw_skills if any(
-                    t.lower() in user_text.lower() or user_text.lower() in t.lower()
+                    t.lower() in user_text.lower() and len(t) > 2
                     for t in s.get("triggers", [])
                 )]
                 if matched_skills:
-                    skill_names = [s["name"] for s in matched_skills]
-                    logger.info(f"Matched skills: {skill_names}")
-                    if self._client is not None:
-                        await self._client.session_update(
-                            session_id=session_id,
-                            update=acp.update_agent_message_text(
-                                f"💡 找到相关技能: {', '.join(skill_names)}\n"
-                            ),
-                        )
+                    logger.info(f"Matched skills: {[s['name'] for s in matched_skills]}")
 
         # 构建上下文消息
         messages = session["messages"].copy()
