@@ -1193,6 +1193,29 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
             entities = [w for w in user_text if len(w) > 1 and w not in "的了是在有和与对"]
             self._task_state_manager.create_task(session_id, goal=user_text, entities=entities[:10])
 
+        # ── 文件发送拦截：用户要发文件时直接处理，不走LLM ──────────
+        send_keywords = ["发送", "发给我", "发给我", "send", "下载", "download"]
+        if any(kw in user_text for kw in send_keywords):
+            import glob as _glob
+            # 从消息中提取文件名（.扩展名的token）
+            fname_match = re.search(r'([\w\-\.]+\.\w{1,5})', user_text)
+            if fname_match:
+                fname = fname_match.group(1)
+                # 搜索文件
+                candidates = _glob.glob(f"/home/climbing/**/{fname}", recursive=True)
+                if candidates:
+                    fpath = candidates[0]
+                    size = os.path.getsize(fpath)
+                    name = os.path.basename(fpath)
+                    logger.info(f"[send_file intercept] {name} ({size}B) at {fpath}")
+                    reply = f"已发送文件 {name}，请查收。\n\nMEDIA:{fpath}"
+                    if self._client is not None:
+                        await self._client.session_update(
+                            session_id=session_id,
+                            update=acp.update_agent_message_text(reply),
+                        )
+                    return PromptResponse(stop_reason="end_turn")
+
         # ── 任务规划 ──────────────────────────────────────
         plan = await self._task_planner.plan(user_text, session_id)
         tool_calls_log = []  # 初始化，两条路径都会用到
