@@ -610,28 +610,17 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                         elif func_name == "write_file":
                             try:
                                 path = func_args.get("path", "")
-                                if not path:
-                                    # 从用户消息提取文件名
-                                    import re as _re
-                                    # 匹配 "创建/写/生成 xxx.html/py/js" 或 "xxx.html"
-                                    fname_match = _re.search(r'[\w\-\.]+\.(html|py|js|ts|tsx|css|json|md|txt|sh|yaml|yml|xml|sql|vue|jsx)', user_text, _re.IGNORECASE)
-                                    if fname_match:
-                                        path = os.path.join(cwd, fname_match.group(0))
-                                    elif "html" in user_text.lower():
-                                        path = os.path.join(cwd, "index.html")
-                                    elif "python" in user_text.lower() or "脚本" in user_text:
-                                        path = os.path.join(cwd, "script.py")
-                                    else:
-                                        path = os.path.join(cwd, "output.txt")
-                                    logger.warning(f"[write_file] path为空，从用户消息提取: {path}")
                                 file_content = func_args.get("content", "")
-                                # 创建目录
-                                from utils.file_safety import atomic_write
-                                ok, err = atomic_write(path, file_content)
-                                if not ok:
-                                    result = f"写入失败: {err}"
+                                if not path or not file_content:
+                                    # arguments不完整，不猜测，反馈给LLM让它重新推理
+                                    result = f"错误: write_file 参数不完整（path='{path}', content长度={len(file_content)}）。请重新调用并提供完整的path和content参数。path必须包含文件名和扩展名（如 /home/climbing/project/index.html）。"
                                 else:
-                                    result = f"已写入 {path} ({len(file_content)} 字节)"
+                                    from utils.file_safety import atomic_write
+                                    ok, err = atomic_write(path, file_content)
+                                    if not ok:
+                                        result = f"写入失败: {err}"
+                                    else:
+                                        result = f"已写入 {path} ({len(file_content)} 字节)"
                             except Exception as e:
                                 result = f"写入失败: {e}"
 
