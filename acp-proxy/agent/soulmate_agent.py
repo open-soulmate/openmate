@@ -1045,21 +1045,25 @@ MEDIA:/absolute/path/to/file-name.ext
         if len(user_text) > 10:  # 短消息不匹配技能
             raw_skills = self._skill_manager.search_skills(user_text, limit=3)
             # 只保留触发词匹配(score>=5)的技能，忽略纯描述匹配
-            matched_skills = [s for s in raw_skills if any(
-                t.lower() in user_text.lower() or user_text.lower() in t.lower()
-                for t in s.get("triggers", [])
-            )]
-        if matched_skills:
-            skill_names = [s["name"] for s in matched_skills]
-            logger.info(f"Matched skills: {skill_names}")
-            # 推送技能匹配状态
-            if self._client is not None:
-                await self._client.session_update(
-                    session_id=session_id,
-                    update=acp.update_agent_message_text(
-                        f"💡 找到相关技能: {', '.join(skill_names)}\n"
-                    ),
-                )
+            # ── 文件请求模式检查：命中则跳过技能匹配（Hermes范式：LLM直接输出MEDIA标签）──
+            import re as _re
+            _is_file_req = _re.search(r'(?:把|将)?\s*[\w\-]+\.\w{1,5}\s*(?:发给我|发送|发给|给我|下载)', user_text)
+
+            if not _is_file_req:
+                matched_skills = [s for s in raw_skills if any(
+                    t.lower() in user_text.lower() or user_text.lower() in t.lower()
+                    for t in s.get("triggers", [])
+                )]
+                if matched_skills:
+                    skill_names = [s["name"] for s in matched_skills]
+                    logger.info(f"Matched skills: {skill_names}")
+                    if self._client is not None:
+                        await self._client.session_update(
+                            session_id=session_id,
+                            update=acp.update_agent_message_text(
+                                f"💡 找到相关技能: {', '.join(skill_names)}\n"
+                            ),
+                        )
 
         # 构建上下文消息
         messages = session["messages"].copy()
