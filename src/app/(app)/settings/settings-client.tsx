@@ -67,7 +67,7 @@ function applyCustomColors(colors: CustomColors) {
 interface SettingsState {
   theme: ThemeId; fontSize: string; language: string; sidebarPosition: string; animationEnabled: boolean;
   defaultAgent: string; agentTimeout: number; retryStrategy: string; logLevel: string;
-  llmProvider: string; apiKey: *** url: string; model: string; temperature: number; maxTokens: number;
+  llmProvider: string; apiKey: string; url: string; model: string; temperature: number; maxTokens: number;
   shellWhitelist: string; fileAccess: string; networkAccess: boolean; mcpConfig: string;
   knowledgePath: string; cacheLimit: number;
 }
@@ -127,7 +127,7 @@ export function SettingsClient() {
   const [settings, setSettings] = useState<SettingsState>({
     theme: "dark", fontSize: "medium", language: "system", sidebarPosition: "left", animationEnabled: true,
     defaultAgent: "auto", agentTimeout: 30, retryStrategy: "exponential", logLevel: "info",
-    llmProvider: "mimo", apiKey: *** url: "", model: "mimo-v2.5-pro",
+    llmProvider: "mimo", apiKey: "", url: "", model: "mimo-v2.5-pro",
     temperature: 0.7, maxTokens: 65536,
     shellWhitelist: "ls, cat, grep, find, git", fileAccess: "full", networkAccess: true, mcpConfig: "",
     knowledgePath: "~/.openmate/knowledge", cacheLimit: 512,
@@ -285,7 +285,7 @@ export function SettingsClient() {
         break;
 
       case "model":
-        setLLMConfig({ provider: settings.llmProvider, apiKey: *** url: settings.url, model: settings.model });
+        setLLMConfig({ provider: settings.llmProvider, apiKey: "", url: settings.url, model: settings.model });
         // Save LLM config to backend
         try {
           await fetch(`${apiBase}/api/llm/config`, {
