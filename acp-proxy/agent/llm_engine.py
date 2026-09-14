@@ -156,7 +156,7 @@ class LLMEngine:
             "messages": self._build_messages(messages, system_prompt),
             "stream": True,
             "temperature": 0.7,
-            "max_tokens": 4096,
+            "max_tokens": 16384,
         }
         try:
             async with client:
@@ -242,7 +242,7 @@ class LLMEngine:
             "messages": self._build_messages(messages, system_prompt),
             "stream": True,
             "temperature": 0.7,
-            "max_tokens": 4096,
+            "max_tokens": 16384,
         }
         # 如果提供了工具定义，加入payload
         if tools:
@@ -375,7 +375,7 @@ class LLMEngine:
             "messages": self._build_messages(messages),
             "stream": False,
             "temperature": 0.7,
-            "max_tokens": 4096,
+            "max_tokens": 16384,
         }
         try:
             async with client:
