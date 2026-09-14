@@ -135,8 +135,58 @@ interface MarkdownContentProps {
   onCodeApply?: (code: string, language: string) => void;
 }
 
+// Lazy load FileViewer for send_file results
+const FileViewer = lazy(() =>
+  import('@opensoulmate/openface').then(m => ({ default: m.FileViewer }))
+);
+
+// Detect send_file artifact pattern: ```file:path\ncontent\n```
+// Or: 📎 文件: name\n--- 文件内容开始 ---\ncontent\n--- 文件内容结束 ---
+function hasFileArtifact(content: string): { path: string; content: string } | null {
+  // Pattern 1: ```file:/path/to/file\n...\n```
+  const codeMatch = content.match(/```file:(.+)\n([\s\S]*?)```/);
+  if (codeMatch) return { path: codeMatch[1].trim(), content: codeMatch[2].trimEnd() };
+  // Pattern 2: 📎 文件: name + --- 文件内容开始 --- ... --- 文件内容结束 ---
+  const p2 = content.match(/📎 文件: (.+?)\n.*?--- 文件内容开始 ---\n([\s\S]*?)\n--- 文件内容结束 ---/);
+  if (p2) return { path: p2[1].trim(), content: p2[2] };
+  return null;
+}
+
 export function MarkdownContent({ content, onCodeApply }: MarkdownContentProps) {
   if (!content) return null;
+
+  // Check for file artifact (send_file result)
+  const fileArtifact = hasFileArtifact(content);
+  if (fileArtifact) {
+    // Extract the non-file parts of the message (before/after the artifact)
+    const filePattern = /(```file:[\s\S]*?```|📎 文件:[\s\S]*?--- 文件内容结束 ---)/;
+    const segments = content.split(filePattern).filter(Boolean);
+    return (
+      <>
+        {segments.map((seg, i) => {
+          const artifact = hasFileArtifact(seg);
+          if (artifact) {
+            // Convert text content to data URL for FileViewer
+            const encoder = new TextEncoder();
+            const bytes = encoder.encode(artifact.content);
+            const blob = new Blob([bytes], { type: 'text/plain' });
+            const dataUrl = URL.createObjectURL(blob);
+            return (
+              <Suspense key={i} fallback={<div className="text-xs text-muted-foreground">Loading file...</div>}>
+                <FileViewer
+                  fileUrl={dataUrl}
+                  fileName={artifact.path.split('/').pop() || 'file'}
+                  className="my-2 rounded-lg border border-border/50 overflow-hidden"
+                />
+              </Suspense>
+            );
+          }
+          return <span key={i} className="whitespace-pre-wrap">{seg}</span>;
+        })}
+      </>
+    );
+  }
+
   const parts: React.ReactNode[] = [];
   const regex = /```(\w*)\n([\s\S]*?)```/g;
   let lastIndex = 0;
