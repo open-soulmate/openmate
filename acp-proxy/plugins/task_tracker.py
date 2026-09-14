@@ -45,8 +45,11 @@ class TaskTracker:
     def _save_tasks(self):
         """保存任务队列到JSON文件"""
         try:
-            with open(self.task_queue_path, 'w', encoding='utf-8') as f:
-                json.dump(self.tasks, f, indent=2, ensure_ascii=False)
+            from utils.file_safety import atomic_write
+            content = json.dumps(self.tasks, indent=2, ensure_ascii=False)
+            ok, err = atomic_write(self.task_queue_path, content)
+            if not ok:
+                logger.error(f"保存任务队列失败: {err}")
         except Exception as e:
             logger.error(f"保存任务队列到 {self.task_queue_path} 失败: {e}")
     

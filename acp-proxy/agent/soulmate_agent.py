@@ -614,10 +614,12 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                 else:
                                     file_content = func_args.get("content", "")
                                     # 创建目录
-                                    subprocess.run(["mkdir", "-p", str(Path(path).parent)], timeout=5)
-                                    with open(path, "w", encoding="utf-8") as f:
-                                        f.write(file_content)
-                                    result = f"已写入 {path} ({len(file_content)} 字节)"
+                                    from utils.file_safety import atomic_write
+                                    ok, err = atomic_write(path, file_content)
+                                    if not ok:
+                                        result = f"写入失败: {err}"
+                                    else:
+                                        result = f"已写入 {path} ({len(file_content)} 字节)"
                             except Exception as e:
                                 result = f"写入失败: {e}"
 
@@ -675,9 +677,12 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
                                     result = f"错误: 在 {path} 中未找到匹配文本"
                                 else:
                                     file_content = file_content.replace(old_string, new_string, 1)
-                                    with open(path, "w", encoding="utf-8") as f:
-                                        f.write(file_content)
-                                    result = f"已修改 {path}"
+                                    from utils.file_safety import atomic_write
+                                    ok, err = atomic_write(path, file_content)
+                                    if not ok:
+                                        result = f"修改失败: {err}"
+                                    else:
+                                        result = f"已修改 {path}"
                             except Exception as e:
                                 result = f"修改失败: {e}"
 

@@ -144,8 +144,10 @@ class {class_name}(BasePlugin):
             path.parent.mkdir(parents=True, exist_ok=True)
         
         # 写入模板内容
-        with open(file_path, 'w', encoding='utf-8') as f:
-            f.write(template)
+        from utils.file_safety import atomic_write
+        ok, err = atomic_write(file_path, template)
+        if not ok:
+            return False
         
         # 验证文件是否创建成功
         if path.exists():

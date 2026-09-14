@@ -85,8 +85,11 @@ class MCPToolCreatorPlugin(BasePlugin):
     def _save_registry(self) -> None:
         """保存工具注册表到文件"""
         try:
-            with open(self._registry_file, "w", encoding="utf-8") as f:
-                json.dump(self._tool_registry, f, indent=2, ensure_ascii=False)
+            from utils.file_safety import atomic_write
+            content = json.dumps(self._tool_registry, indent=2, ensure_ascii=False)
+            ok, err = atomic_write(self._registry_file, content)
+            if not ok:
+                self.logger.error(f"Failed to save tool registry: {err}")
         except IOError as e:
             self.logger.error(f"Failed to save tool registry: {e}")
 

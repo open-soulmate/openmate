@@ -1,0 +1,99 @@
+﻿rank,stars,forks,language,category,full_name,description,note,homepage,html_url,license,created_at,pushed_at,source
+1,389559,,TypeScript,coding-agent/personal-agent,openclaw/openclaw,The AI that really does things. Any OS. Any Platform.,"OpenClaw — personal AI agent, any OS/platform",https://openclaw.ai,https://github.com/openclaw/openclaw,,,,snapshot
+2,244997,,Python,coding-agent/personal-agent,NousResearch/hermes-agent,The agent that grows with you,Hermes Agent,,https://github.com/NousResearch/hermes-agent,,,,snapshot
+3,221981,,TypeScript,coding-agent,deepseek-ai/deepseek-harness,DeepSeek Harness: Everything is a Plugin,DeepSeek Harness,,https://github.com/deepseek-ai/deepseek-harness,,,,snapshot
+4,207001,,TypeScript,coding-agent,anomalyco/opencode,The open source coding agent.,OpenCode — open source coding agent (opencode.ai),https://opencode.ai,https://github.com/anomalyco/opencode,,,,snapshot
+5,187294,,Python,autonomous-agent,Significant-Gravitas/AutoGPT,AutoGPT,AutoGPT,,https://github.com/Significant-Gravitas/AutoGPT,,,,snapshot
+6,179678,,TypeScript,agent-infrastructure,firecrawl/firecrawl,Web scraping API for AI,Firecrawl — web context API,,https://github.com/firecrawl/firecrawl,,,,snapshot
+7,155569,,TypeScript,workflow-platform,langgenius/dify,Agentic workflows & RAG,Dify,,https://github.com/langgenius/dify,,,,snapshot
+8,154698,,Python,workflow-platform,langflow-ai/langflow,Build and deploy AI agents and workflows,Langflow,,https://github.com/langflow-ai/langflow,,,,snapshot
+9,146212,,Python,multi-agent-framework,langchain-ai/langchain,The agent engineering platform,LangChain,,https://github.com/langchain-ai/langchain,,,,snapshot
+10,144886,,TypeScript,coding-agent,anthropics/claude-code,Claude Code — agentic coding tool in your terminal,Claude Code — agentic coding in terminal,,https://github.com/anthropics/claude-code,,,,snapshot
+11,123709,,Rust,coding-agent,openai/codex,Lightweight coding agent that runs in your terminal,OpenAI Codex — lightweight coding agent,,https://github.com/openai/codex,,,,snapshot
+12,114422,,Python,browser-computer-use,browser-use/browser-use,Agents that use the browser,browser-use,,https://github.com/browser-use/browser-use,,,,snapshot
+13,106947,,TypeScript,coding-agent,google-gemini/gemini-cli,Open-source AI agent in your terminal,Gemini CLI — open-source terminal agent,,https://github.com/google-gemini/gemini-cli,,,,snapshot
+14,104868,,Python,multi-agent-framework,TauricResearch/TradingAgents,Multi-Agents LLM Financial Trading,TradingAgents,,https://github.com/TauricResearch/TradingAgents,,,,snapshot
+15,104509,,TypeScript,coding-agent,earendil-works/pi,"AI agent toolkit: unified LLM API, agent loop, coding CLI",Pi — AI agent toolkit / coding CLI,,https://github.com/earendil-works/pi,,,,snapshot
+16,90000,,Svelte,workflow-platform,open-webui/open-webui,Open WebUI,Open WebUI,,https://github.com/open-webui/open-webui,,,,snapshot
+17,87716,,TypeScript,coding-agent,OpenHands/OpenHands,OpenHands: AI-Driven Development,OpenHands (ex-OpenDevin) — AI software engineer,,https://github.com/OpenHands/OpenHands,,,,snapshot
+18,82333,,Python,multi-agent-framework,bytedance/deer-flow,Long-horizon SuperAgent harness,DeerFlow — long-horizon SuperAgent,,https://github.com/bytedance/deer-flow,,,,snapshot
+19,80000,,TypeScript,workflow-platform,n8n-io/n8n,Workflow automation,n8n,https://n8n.io,https://github.com/n8n-io/n8n,,,,snapshot
+20,71720,,TypeScript,agent-infrastructure,daytonaio/daytona,Secure infrastructure for AI-generated code,Daytona — secure code runtime,,https://github.com/daytonaio/daytona,,,,snapshot
+21,70342,,Python,multi-agent-framework,FoundationAgents/MetaGPT,Multi-Agent Framework,MetaGPT,,https://github.com/FoundationAgents/MetaGPT,,,,snapshot
+22,67909,,TypeScript,coding-agent,cline/cline,"Autonomous coding agent as SDK, IDE extension, or CLI",Cline — autonomous coding agent SDK/IDE/CLI,,https://github.com/cline/cline,,,,snapshot
+23,65971,,JavaScript,workflow-platform,Mintplex-Labs/anything-llm,All-in-one AI application,AnythingLLM,,https://github.com/Mintplex-Labs/anything-llm,,,,snapshot
+24,65211,,Python,agent-infrastructure,mem0ai/mem0,The Memory Layer for AI Agents,Mem0 — memory layer,,https://github.com/mem0ai/mem0,,,,snapshot
+25,60957,,Python,multi-agent-framework,microsoft/autogen,A programming framework for agentic AI,AutoGen,,https://github.com/microsoft/autogen,,,,snapshot
+26,60000,,TypeScript,workflow-platform,lobehub/lobe-chat,LobeChat,LobeChat,,https://github.com/lobehub/lobe-chat,,,,snapshot
+27,58610,,Python,agent-infrastructure,BerriAI/litellm,LLM Gateway,LiteLLM gateway,,https://github.com/BerriAI/litellm,,,,snapshot
+28,58435,,Python,multi-agent-framework,crewAIInc/crewAI,Orchestrating role-playing autonomous AI agents,CrewAI,,https://github.com/crewAIInc/crewAI,,,,snapshot
+29,58000,,Python,coding-agent,OpenInterpreter/open-interpreter,A natural language interface for computers,Open Interpreter — local code agent,https://openinterpreter.com,https://github.com/OpenInterpreter/open-interpreter,,,,snapshot
+30,56000,,Python,llm-app,imartinez/privateGPT,Interact with documents privately,privateGPT,,https://github.com/imartinez/privateGPT,,,,snapshot
+31,55456,,TypeScript,workflow-platform,FlowiseAI/Flowise,"Build AI Agents, Visually",Flowise,,https://github.com/FlowiseAI/Flowise,,,,snapshot
+32,55102,,Python,coding-agent,AntonOsika/gpt-engineer,gpt-engineer,gpt-engineer — codegen CLI platform,,https://github.com/AntonOsika/gpt-engineer,,,,snapshot
+33,51786,,TypeScript,agent-infrastructure,ChromeDevTools/chrome-devtools-mcp,Chrome DevTools MCP,Chrome DevTools MCP,,https://github.com/ChromeDevTools/chrome-devtools-mcp,,,,snapshot
+34,50000,,TypeScript,coding-agent,getcursor/cursor,The AI Code Editor,Cursor — AI code editor,https://cursor.com,https://github.com/getcursor/cursor,,,,snapshot
+35,50000,,Python,llm-app,binary-husky/gpt_academic,GPT Academic,GPT Academic,,https://github.com/binary-husky/gpt_academic,,,,snapshot
+36,49936,,Ruby,autonomous-agent,huginn/huginn,Create agents that monitor and act,Huginn — agents that monitor & act,,https://github.com/huginn/huginn,,,,snapshot
+37,48070,,Python,multi-agent-framework,HKUDS/nanobot,nanobot personal AI agent,nanobot — personal agent framework,,https://github.com/HKUDS/nanobot,,,,snapshot
+38,46939,,Python,multi-agent-framework,zhayujie/CowAgent,CowAgent harness,CowAgent,,https://github.com/zhayujie/CowAgent,,,,snapshot
+39,43083,,TypeScript,workflow-platform,danny-avila/LibreChat,Enhanced ChatGPT clone,LibreChat,,https://github.com/danny-avila/LibreChat,,,,snapshot
+40,42479,,Rust,browser-computer-use,vercel-labs/agent-browser,Browser automation CLI for AI agents,Vercel agent-browser,,https://github.com/vercel-labs/agent-browser,,,,snapshot
+41,42204,,Python,multi-agent-framework,666ghj/BettaFish,多Agent舆情分析,微舆 multi-agent 舆情,,https://github.com/666ghj/BettaFish,,,,snapshot
+42,42149,,Python,multi-agent-framework,agno-agi/agno,"Build, run, and manage agent platforms",Agno,,https://github.com/agno-agi/agno,,,,snapshot
+43,41548,,Python,multi-agent-framework,langchain-ai/langgraph,Build resilient agents,LangGraph,,https://github.com/langchain-ai/langgraph,,,,snapshot
+44,40415,,Python,workflow-platform,AstrBotDevs/AstrBot,AstrBot,AstrBot,,https://github.com/AstrBotDevs/AstrBot,,,,snapshot
+45,40000,,Python,agent-infrastructure,run-llama/llama_index,LlamaIndex,LlamaIndex,,https://github.com/run-llama/llama_index,,,,snapshot
+46,38941,,TypeScript,browser-computer-use,bytedance/UI-TARS-desktop,Multimodal AI Agent Stack,UI-TARS Desktop,,https://github.com/bytedance/UI-TARS-desktop,,,,snapshot
+47,38631,,Python,workflow-platform,chatchat-space/Langchain-Chatchat,Langchain-Chatchat,Langchain-Chatchat,,https://github.com/chatchat-space/Langchain-Chatchat,,,,snapshot
+48,38000,,Python,coding-agent,Aider-AI/aider,AI pair programming in your terminal,Aider — AI pair programming CLI,https://aider.chat,https://github.com/Aider-AI/aider,,,,snapshot
+49,37296,,Python,autonomous-agent,khoj-ai/khoj,Your AI second brain,Khoj — self-hosted AI second brain,,https://github.com/khoj-ai/khoj,,,,snapshot
+50,36297,,TypeScript,autonomous-agent,reworkd/AgentGPT,"Assemble, configure, and deploy autonomous AI Agents",AgentGPT — browser autonomous agents,,https://github.com/reworkd/AgentGPT,,,,snapshot
+51,35886,,TypeScript,coding-agent,continuedev/continue,Open-source coding agent,Continue — open-source coding agent,,https://github.com/continuedev/continue,,,,snapshot
+52,34524,,TypeScript,agent-infrastructure,langfuse/langfuse,Open source LLM engineering platform,Langfuse — agent observability,,https://github.com/langfuse/langfuse,,,,snapshot
+53,32000,,Python,coding-agent,Pythagora-io/gpt-pilot,AI software developer,gpt-pilot — AI software developer,,https://github.com/Pythagora-io/gpt-pilot,,,,snapshot
+54,31506,,Python,multi-agent-framework,modelscope/agentscope,AgentScope,AgentScope,,https://github.com/modelscope/agentscope,,,,snapshot
+55,30598,,Python,autonomous-agent,feder-cr/AIHawk,AI browser agent,AIHawk — browser automation agent,,https://github.com/feder-cr/AIHawk,,,,snapshot
+56,29636,,TypeScript,workflow-platform,labring/FastGPT,Knowledge-based platform,FastGPT,,https://github.com/labring/FastGPT,,,,snapshot
+57,29423,,Python,research-agent,assafelovic/gpt-researcher,Autonomous deep research agent,GPT Researcher,,https://github.com/assafelovic/gpt-researcher,,,,snapshot
+58,29396,,Python,multi-agent-framework,openai/openai-agents-python,Lightweight multi-agent framework,OpenAI Agents SDK,,https://github.com/openai/openai-agents-python,,,,snapshot
+59,28000,,Python,multi-agent-framework,ag2ai/ag2,AG2,AG2 (ex-AutoGen),,https://github.com/ag2ai/ag2,,,,snapshot
+60,28000,,C#,multi-agent-framework,microsoft/semantic-kernel,Semantic Kernel,Semantic Kernel,,https://github.com/microsoft/semantic-kernel,,,,snapshot
+61,28000,,Python,research-agent,Stanford-oval/storm,STORM — LLM system for research articles,STORM,https://storm-project.stanford.edu,https://github.com/Stanford-oval/storm,,,,snapshot
+62,27000,,Python,coding-agent,smol-ai/developer,smol developer,smol developer,,https://github.com/smol-ai/developer,,,,snapshot
+63,26000,,Python,multi-agent-framework,OpenBMB/ChatDev,Communicative Agents for Software Development,ChatDev,,https://github.com/OpenBMB/ChatDev,,,,snapshot
+64,25000,,Rust,coding-agent,block/goose,"Open source, extensible AI agent",Block Goose — extensible AI agent,https://block.github.io/goose,https://github.com/block/goose,,,,snapshot
+65,25000,,Rust,coding-agent,warpdotdev/warp,Agentic development environment,Warp — agentic development environment,https://warp.dev,https://github.com/warpdotdev/warp,,,,snapshot
+66,22000,,TypeScript,coding-agent,RooCodeInc/Roo-Code,Roo Code coding agent,Roo Code — coding agent,,https://github.com/RooCodeInc/Roo-Code,,,,snapshot
+67,22000,,Python,coding-agent,stitionai/devika,Devika,Devika — AI software engineer,,https://github.com/stitionai/devika,,,,snapshot
+68,22000,,Python,research-agent,joonspk-research/generative-agents,Generative Agents interactive simulacra,Generative Agents (Stanford),,https://github.com/joonspk-research/generative-agents,,,,snapshot
+69,20000,,Python,multi-agent-framework,huggingface/smolagents,smolagents — barebones agent library,smolagents,,https://github.com/huggingface/smolagents,,,,snapshot
+70,18000,,Python,autonomous-agent,frdel/agent-zero,Agent Zero AI agent,Agent Zero,,https://github.com/frdel/agent-zero,,,,snapshot
+71,18000,,Python,agent-infrastructure,deepset-ai/haystack,Haystack,Haystack,,https://github.com/deepset-ai/haystack,,,,snapshot
+72,16000,,Python,coding-agent,SWE-agent/SWE-agent,Agent for GitHub issues / SWE-bench,SWE-agent (org),,https://github.com/SWE-agent/SWE-agent,,,,snapshot
+73,16000,,Python,autonomous-agent,TransformerOptimus/SuperAGI,SuperAGI autonomous agent framework,SuperAGI,,https://github.com/TransformerOptimus/SuperAGI,,,,snapshot
+74,16000,,TypeScript,agent-infrastructure,ComposioHQ/composio,Tools / auth for AI agents,Composio — tools,,https://github.com/ComposioHQ/composio,,,,snapshot
+75,14000,,Python,multi-agent-framework,google/adk-python,Google Agent Development Kit,Google ADK,,https://github.com/google/adk-python,,,,snapshot
+76,12000,,Python,workflow-platform,microsoft/PromptFlow,Prompt flow tooling,PromptFlow,,https://github.com/microsoft/PromptFlow,,,,snapshot
+77,11000,,Python,multi-agent-framework,camel-ai/camel,CAMEL: Communicative Agents,CAMEL,,https://github.com/camel-ai/camel,,,,snapshot
+78,10000,,Python,agent-infrastructure,modelcontextprotocol/python-sdk,MCP Python SDK,MCP Python SDK,,https://github.com/modelcontextprotocol/python-sdk,,,,snapshot
+79,9000,,Python,multi-agent-framework,microsoft/agent-framework,Microsoft Agent Framework,Microsoft Agent Framework,,https://github.com/microsoft/agent-framework,,,,snapshot
+80,8000,,TypeScript,agent-infrastructure,e2b-dev/e2b,Secure sandboxes for AI agents,e2b — sandboxes,,https://github.com/e2b-dev/e2b,,,,snapshot
+81,8000,,TypeScript,agent-infrastructure,modelcontextprotocol/typescript-sdk,MCP TypeScript SDK,MCP TypeScript SDK,,https://github.com/modelcontextprotocol/typescript-sdk,,,,snapshot
+82,8000,,TypeScript,agent-infrastructure,jina-ai/reader,Jina Reader,Jina Reader,,https://github.com/jina-ai/reader,,,,snapshot
+83,8000,,TypeScript,coding-agent,anysphere/cursor-cli,Cursor CLI,Cursor CLI,,https://github.com/anysphere/cursor-cli,,,,snapshot
+84,7000,,TypeScript,multi-agent-framework,openai/openai-agents-js,OpenAI Agents JS SDK,OpenAI Agents JS,,https://github.com/openai/openai-agents-js,,,,snapshot
+85,6000,,Python,multi-agent-framework,InternLM/lagent,Lagent — agent framework from InternLM,Lagent,,https://github.com/InternLM/lagent,,,,snapshot
+86,6000,,Python,multi-agent-framework,kyegomez/swarms,Production-grade multi-agent orchestration,Swarms,,https://github.com/kyegomez/swarms,,,,snapshot
+87,6000,,Python,research-agent,langchain-ai/open_deep_research,Open Deep Research,Open Deep Research,,https://github.com/langchain-ai/open_deep_research,,,,snapshot
+88,6000,,Python,agent-infrastructure,AgentOps-AI/agentops,AgentOps,AgentOps,,https://github.com/AgentOps-AI/agentops,,,,snapshot
+89,5500,,Python,multi-agent-framework,OpenBMB/AgentVerse,AgentVerse,AgentVerse,,https://github.com/OpenBMB/AgentVerse,,,,snapshot
+90,5000,,Python,agent-infrastructure,NVIDIA/NeMo-Guardrails,NeMo Guardrails,NeMo Guardrails,,https://github.com/NVIDIA/NeMo-Guardrails,,,,snapshot
+91,4500,,Python,multi-agent-framework,Langroid/langroid,Multi-agent LLM framework,Langroid,,https://github.com/Langroid/langroid,,,,snapshot
+92,3500,,Python,browser-computer-use,OSU-NLP-Group/Mind2Web,Mind2Web web agent benchmark,Mind2Web,,https://github.com/OSU-NLP-Group/Mind2Web,,,,snapshot
+93,3000,,C#,multi-agent-framework,microsoft/agent-framework-dotnet,Agent Framework .NET,Agent Framework .NET,,https://github.com/microsoft/agent-framework-dotnet,,,,snapshot
+94,3000,,Python,agent-infrastructure,traceloop/openllmetry,OpenLLMetry,OpenLLMetry,,https://github.com/traceloop/openllmetry,,,,snapshot
+95,3000,,Python,agent-benchmark,OpenBMB/ToolBench,ToolBench,ToolBench,,https://github.com/OpenBMB/ToolBench,,,,snapshot
+96,2000,,Python,browser-computer-use,web-arena-x/webarena,WebArena,WebArena,,https://github.com/web-arena-x/webarena,,,,snapshot
+97,2000,,Python,agent-benchmark,OpenBMB/AgentBench,AgentBench,AgentBench,,https://github.com/OpenBMB/AgentBench,,,,snapshot
+98,0,,,multi-agent-framework,langchain-ai/deepagents,deepagents,deepagents,,https://github.com/langchain-ai/deepagents,,,,curated-unknown-stars

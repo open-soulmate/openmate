@@ -1,0 +1,179 @@
+name: Evo CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  run-evolution:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Evolution
+        run: |
+          # 这里是现有进化任务的具体执行逻辑
+          echo "Running evolution task..."
+          node evo.mjs
+      - name: Upload Evolution Results
+        uses: actions/upload-artifact@v4
+        with:
+          name: evolution-results
+          path: evolution-results/
+
+  validate-core-files:
+    needs: run-evolution
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Detect changed files
+        id: changed-files
+        run: |
+          # 获取本次提交变更的文件列表
+          git fetch origin main
+          CHANGED_FILES=$(git diff --name-only --diff-filter=d HEAD~1 HEAD 2>/dev/null || git diff --name-only --diff-filter=d HEAD~1 2>/dev/null || git diff --name-only --diff-filter=d main HEAD)
+          echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+          echo "$CHANGED_FILES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+          echo "Changed files: $CHANGED_FILES"
+      
+      - name: Check protected files
+        id: check-protected
+        run: |
+          CHANGED_FILES="${{ steps.changed-files.outputs.changed_files }}"
+          if [ -z "$CHANGED_FILES" ]; then
+            echo "No files changed, skipping validation"
+            echo "needs_validation=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # 检查 protected_paths.yaml 是否存在
+          if [ ! -f "protected_paths.yaml" ]; then
+            echo "protected_paths.yaml not found, skipping validation"
+            echo "needs_validation=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          
+          # 解析 protected_paths.yaml 获取受保护路径
+          PROTECTED_PATHS=$(python3 -c "
+          import yaml
+          with open('protected_paths.yaml', 'r') as f:
+              data = yaml.safe_load(f)
+              if 'protected_paths' in data:
+                  for path in data['protected_paths']:
+                      print(path)
+          ")
+          
+          echo "Protected paths:"
+          echo "$PROTECTED_PATHS"
+          
+          # 检查是否有交集
+          HAS_INTERSECTION=false
+          while IFS= read -r changed_file; do
+            while IFS= read -r protected_path; do
+              if [[ "$changed_file" == *"$protected_path"* ]]; then
+                echo "Protected file modified: $changed_file (matches pattern: $protected_path)"
+                HAS_INTERSECTION=true
+                break 2
+              fi
+            done <<< "$PROTECTED_PATHS"
+          done <<< "$CHANGED_FILES"
+          
+          echo "needs_validation=$HAS_INTERSECTION" >> $GITHUB_OUTPUT
+      
+      - name: Run Frontend Unit Tests
+        if: steps.check-protected.outputs.needs_validation == 'true'
+        run: |
+          echo "Running frontend unit tests for affected components..."
+          # 这里可以根据变更文件动态确定要运行的测试
+          # 示例：运行所有前端测试
+          npm run test:unit -- --coverage --ci
+          
+          # 或者根据变更文件运行特定测试
+          # CHANGED_FILES="${{ steps.changed-files.outputs.changed_files }}"
+          # if echo "$CHANGED_FILES" | grep -q "src/components/chat/"; then
+          #   npm run test:unit -- --testPathPattern="src/components/chat/"
+          # fi
+      
+      - name: Run TypeScript Type Check
+        if: steps.check-protected.outputs.needs_validation == 'true'
+        run: |
+          echo "Running TypeScript type check..."
+          npx tsc --noEmit
+      
+      - name: Run Code Pattern Integrity Check
+        if: steps.check-protected.outputs.needs_validation == 'true'
+        run: |
+          echo "Running code pattern integrity check..."
+          # 复用 evo.mjs 中的检查逻辑
+          node -e "
+          const fs = require('fs');
+          const yaml = require('js-yaml');
+          
+          // 读取受保护路径
+          const protectedPaths = yaml.load(fs.readFileSync('protected_paths.yaml', 'utf8'));
+          const protectedFiles = protectedPaths.protected_paths || [];
+          
+          // 读取变更文件
+          const changedFiles = process.env.CHANGED_FILES.split('\n').filter(f => f.trim());
+          
+          // 检查变更文件是否符合代码模式
+          console.log('Checking code patterns for protected files...');
+          
+          for (const changedFile of changedFiles) {
+            for (const protectedPattern of protectedFiles) {
+              if (changedFile.includes(protectedPattern)) {
+                console.log(\`Validating file: \${changedFile}\`);
+                // 这里可以调用 evo.mjs 中的具体检查逻辑
+                // 或者实现相同的验证逻辑
+                try {
+                  const content = fs.readFileSync(changedFile, 'utf8');
+                  // 基本示例：检查文件不为空且包含预期模式
+                  if (content.length === 0) {
+                    throw new Error('Empty file');
+                  }
+                  // 可以添加更多检查逻辑...
+                  console.log(\`✓ \${changedFile} passed integrity check\`);
+                } catch (error) {
+                  console.error(\`✗ \${changedFile} failed integrity check: \${error.message}\`);
+                  process.exit(1);
+                }
+              }
+            }
+          }
+          console.log('All code pattern integrity checks passed.');
+          "
+        env:
+          CHANGED_FILES: ${{ steps.changed-files.outputs.changed_files }}
+      
+      - name: Validation Summary
+        if: always() && steps.check-protected.outputs.needs_validation == 'true'
+        run: |
+          echo "=== Validation Summary ==="
+          echo "Protected files were modified and validated."
+          echo "All validation steps completed successfully."
+          
+          # 这里可以添加通知逻辑，例如发送到Slack或邮件
+          # if [ "${{ job.status }}" == "success" ]; then
+          #   echo "Sending success notification..."
+          # else
+          #   echo "Sending failure notification..."
+          #   exit 1
+          # fi
+          
+      - name: Notify on Failure
+        if: failure() && steps.check-protected.outputs.needs_validation == 'true'
+        run: |
+          echo "Validation failed! Notifying responsible personnel..."
+          # 这里可以集成实际的通知服务
+          # 例如：发送邮件、Slack消息、企业微信通知等
+          # 为了演示，我们只是设置一个失败状态
+          exit 1

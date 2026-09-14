@@ -159,15 +159,17 @@ class ArtifactEngine:
     def apply_change(self, change: FileChange) -> bool:
         """应用单个变更到磁盘。返回是否成功。自动创建父目录"""
         try:
+            from utils.file_safety import atomic_write
+            
             if change.change_type == "delete":
                 if os.path.exists(change.path):
                     os.remove(change.path)
                     logger.info("已删除文件: %s", change.path)
             elif change.change_type == "create":
-                parent = os.path.dirname(change.path)
-                os.makedirs(parent, exist_ok=True)
-                with open(change.path, "w", encoding="utf-8") as f:
-                    f.write(change.modified)
+                ok, err = atomic_write(change.path, change.modified)
+                if not ok:
+                    logger.error("创建文件失败: %s — %s", change.path, err)
+                    return False
                 logger.info("已创建文件: %s", change.path)
             elif change.change_type == "modify":
                 # 校验：确保文件未被外部修改
@@ -178,8 +180,10 @@ class ArtifactEngine:
                         logger.error("文件已被外部修改，拒绝应用: %s", change.path)
                         return False
 
-                with open(change.path, "w", encoding="utf-8") as f:
-                    f.write(change.modified)
+                ok, err = atomic_write(change.path, change.modified)
+                if not ok:
+                    logger.error("修改文件失败: %s — %s", change.path, err)
+                    return False
                 logger.info("已修改文件: %s", change.path)
             return True
         except Exception as e:
@@ -201,14 +205,18 @@ class ArtifactEngine:
             return False
 
         try:
+            from utils.file_safety import atomic_write
+            
             original = self._snapshots[abs_path]
             if original == "":
                 # 快照为空说明是新创建的文件，回滚即删除
                 if os.path.exists(abs_path):
                     os.remove(abs_path)
             else:
-                with open(abs_path, "w", encoding="utf-8") as f:
-                    f.write(original)
+                ok, err = atomic_write(abs_path, original)
+                if not ok:
+                    logger.error("回滚写入失败: %s — %s", abs_path, err)
+                    return False
             logger.info("已回滚文件: %s", abs_path)
             return True
         except Exception as e:

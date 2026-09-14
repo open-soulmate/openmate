@@ -55,8 +55,9 @@ class ExperimentManager:
         }
         
         # Save to file
-        with open(experiment_dir / "experiment.json", "w") as f:
-            json.dump(experiment_data, f, indent=2)
+        from utils.file_safety import atomic_write
+        content = json.dumps(experiment_data, indent=2)
+        atomic_write(str(experiment_dir / "experiment.json"), content)
         
         # Create empty directories for data and results
         (experiment_dir / "data").mkdir(exist_ok=True)
@@ -100,8 +101,9 @@ class ExperimentManager:
         experiment_data["last_updated"] = datetime.now().isoformat()
         
         # Save updated data
-        with open(experiment_dir / "experiment.json", "w") as f:
-            json.dump(experiment_data, f, indent=2)
+        from utils.file_safety import atomic_write
+        content = json.dumps(experiment_data, indent=2)
+        atomic_write(str(experiment_dir / "experiment.json"), content)
         
         # Update in-memory data
         self.active_experiments[experiment_id]["data"] = experiment_data
@@ -138,12 +140,13 @@ class ExperimentManager:
         experiment_data["last_updated"] = datetime.now().isoformat()
         
         # Save final data
-        with open(experiment_dir / "experiment.json", "w") as f:
-            json.dump(experiment_data, f, indent=2)
+        from utils.file_safety import atomic_write
+        content = json.dumps(experiment_data, indent=2)
+        atomic_write(str(experiment_dir / "experiment.json"), content)
         
         # Save learning summary as separate file for easy access
-        with open(experiment_dir / "learning_summary.txt", "w") as f:
-            f.write(learning_summary)
+        from utils.file_safety import atomic_write
+        atomic_write(str(experiment_dir / "learning_summary.txt"), learning_summary)
         
         # Move from active to registry
         self.experiment_registry[experiment_id] = self.active_experiments.pop(experiment_id)

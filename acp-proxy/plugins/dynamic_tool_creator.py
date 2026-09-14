@@ -45,8 +45,11 @@ class DynamicToolCreator:
         """保存工具索引文件。"""
         index_path = os.path.join(self.tools_directory, self.index_file)
         try:
-            with open(index_path, 'w', encoding='utf-8') as f:
-                json.dump(self.tools_index, f, indent=2, ensure_ascii=False)
+            from utils.file_safety import atomic_write
+            content = json.dumps(self.tools_index, indent=2, ensure_ascii=False)
+            ok, err = atomic_write(index_path, content)
+            if not ok:
+                print(f"警告：无法保存工具索引文件: {err}")
         except IOError as e:
             print(f"警告：无法保存工具索引文件: {e}")
     

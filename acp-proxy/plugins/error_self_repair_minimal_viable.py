@@ -114,8 +114,11 @@ class KnowledgeBase:
     def save_kb(self):
         """保存知识库"""
         self.kb_data["statistics"]["last_updated"] = datetime.now().isoformat()
-        with open(self.kb_path, 'w', encoding='utf-8') as f:
-            json.dump(self.kb_data, f, indent=2, ensure_ascii=False)
+        from utils.file_safety import atomic_write
+        content = json.dumps(self.kb_data, indent=2, ensure_ascii=False)
+        ok, err = atomic_write(self.kb_path, content)
+        if not ok:
+            self.logger.error(f"保存知识库失败: {err}")
         self.logger.info(f"知识库已保存到 {self.kb_path}")
     
     def add_repair_record(self, record: RepairRecord):
