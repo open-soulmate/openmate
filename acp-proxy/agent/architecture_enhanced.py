@@ -47,6 +47,16 @@ from agent.agent_checkpoint import AgentCheckpointManager
 from agent.agent_tracer import AgentTracer
 from agent.local_model import LocalModelRouter, LocalModelConfig
 from agent.file_index import SessionFileIndex
+from agent.cost_tracker import CostTracker, BudgetConfig
+from agent.smart_retry import SmartRetryManager, RetryConfig
+from agent.multi_agent import MultiAgentCoordinator
+from agent.config_manager import HotConfigManager
+from agent.event_bus import EventBus, get_event_bus
+from agent.session_fsm import SessionStateMachine
+from agent.output_validator import OutputValidator
+from agent.memory_retrieval import MemoryRetrievalEngine
+from agent.stream_manager import StreamingResponseManager
+from agent.parallel_executor import ParallelToolExecutor
 
 logger = logging.getLogger("acp-agent.architecture")
 
@@ -130,6 +140,36 @@ class EnhancedArchitecture:
         
         # 16. Session File Index
         self.file_index = SessionFileIndex()
+        
+        # 17. Cost Tracker
+        self.cost_tracker = CostTracker()
+        
+        # 18. Smart Retry Manager
+        self.retry_manager = SmartRetryManager()
+        
+        # 19. Multi-Agent Coordinator
+        self.multi_agent = MultiAgentCoordinator()
+        
+        # 20. Hot Config Manager
+        self.config_manager = HotConfigManager()
+        
+        # 21. Event Bus
+        self.event_bus = get_event_bus()
+        
+        # 22. Session State Machine
+        self.session_fsm = SessionStateMachine()
+        
+        # 23. Output Validator
+        self.output_validator = OutputValidator()
+        
+        # 24. Memory Retrieval Engine
+        self.memory_engine = MemoryRetrievalEngine()
+        
+        # 25. Streaming Response Manager
+        self.stream_manager = StreamingResponseManager()
+        
+        # 26. Parallel Tool Executor
+        self.parallel_executor = ParallelToolExecutor()
         
         # 统计
         self._start_time = time.time()
@@ -261,6 +301,16 @@ class EnhancedArchitecture:
             "tracer": self.tracer.get_stats(),
             "local_models": self.local_models.get_stats(),
             "file_index": self.file_index.get_stats(),
+            "cost_tracker": self.cost_tracker.get_stats(),
+            "retry_manager": self.retry_manager.get_stats(),
+            "multi_agent": self.multi_agent.get_stats(),
+            "config_manager": self.config_manager.get_stats(),
+            "event_bus": self.event_bus.get_stats(),
+            "session_fsm": self.session_fsm.get_stats(),
+            "output_validator": self.output_validator.get_stats(),
+            "memory_engine": self.memory_engine.get_stats(),
+            "stream_manager": self.stream_manager.get_stats(),
+            "parallel_executor": self.parallel_executor.get_stats(),
         }
     
     def get_session_stats(self, session_id: str) -> dict:
