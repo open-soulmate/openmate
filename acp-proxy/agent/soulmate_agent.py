@@ -1474,6 +1474,46 @@ You can send files to the user natively: to deliver a file, write a brief confir
             except Exception as e:
                 logger.debug(f"Evolution observe skipped: {e}")
 
+        # ── OpenSoul偏好学习 + 技能提取 ─────────────────────
+        try:
+            import httpx as _httpx
+            async with _httpx.AsyncClient() as _client:
+                # 1. 偏好学习（从对话中学习用户偏好）
+                await _client.post(
+                    "http://127.0.0.1:8090/api/mind/preference/learn",
+                    json={"messages": [
+                        {"role": "user", "content": user_text},
+                        {"role": "assistant", "content": full_response[:500]},
+                    ]},
+                    timeout=2,
+                )
+                # 2. 技能提取（如果任务成功且有工具调用）
+                if tool_calls_log and "错误" not in full_response:
+                    await _client.post(
+                        "http://127.0.0.1:8090/api/gene/skill/extract",
+                        json={
+                            "task_description": user_text[:200],
+                            "execution_log": str(tool_calls_log)[:1000],
+                            "success": True,
+                        },
+                        timeout=2,
+                    )
+                # 3. 长期记忆存储（重要对话）
+                if len(user_text) > 50 or len(full_response) > 100:
+                    await _client.post(
+                        "http://127.0.0.1:8090/api/hippo/ltm/add",
+                        json={
+                            "content": f"用户: {user_text[:200]}\n助手: {full_response[:200]}",
+                            "memory_type": "episodic",
+                            "importance": 0.5,
+                            "session_id": session_id,
+                        },
+                        timeout=2,
+                    )
+            logger.info("[opensoul] 偏好学习+技能提取+长期记忆完成")
+        except Exception as e:
+            logger.debug(f"[opensoul] 后处理失败(非致命): {e}")
+
         return PromptResponse(stop_reason="end_turn")
 
     async def cancel(self, session_id: str, **kwargs) -> None:
