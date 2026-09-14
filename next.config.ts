@@ -15,6 +15,10 @@ const nextConfig: NextConfig = {
         source: "/api/soul/:path*",
         destination: `${soulApiUrl}/:path*`,
       },
+      {
+        source: "/api/file",
+        destination: "http://localhost:8092/api/file",
+      },
     ];
   },
   images: {

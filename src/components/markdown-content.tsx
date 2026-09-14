@@ -173,7 +173,7 @@ function renderMediaTags(content: string): React.ReactNode[] | null {
     seenFiles.add(fileName);
     const ext = fileName.split('.').pop()?.toLowerCase() || '';
     const isImage = ['png','jpg','jpeg','gif','webp','svg','bmp'].includes(ext);
-    const downloadUrl = `/api/file?path=${encodeURIComponent(filePath)}`;
+    const downloadUrl = `http://${window.location.hostname}:8092/api/file?path=${encodeURIComponent(filePath)}`;
     parts.push(
       <div key={match.index} className="my-2 rounded-lg border border-border/50 bg-muted/30 p-3 flex items-center gap-3">
         <span className="text-2xl">{isImage ? '🖼️' : '📎'}</span>
