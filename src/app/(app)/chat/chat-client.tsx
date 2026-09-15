@@ -236,11 +236,13 @@ function useAcpWebSocket(params: {
   setSelectedSession: React.Dispatch<React.SetStateAction<Session | null>>;
   activeAgentIdFromStore: string | null;
   migrateSessionId: (oldId: string, newId: string) => void;
+  getSessionMessages: (sessionId: string) => Message[];
 }) {
-  const { selectedAgent, selectedSession, selectedSessionRef, t, updateSessionMessages, incrementUnread, setLoading, setSelectedSession, activeAgentIdFromStore, migrateSessionId } = params;
+  const { selectedAgent, selectedSession, selectedSessionRef, t, updateSessionMessages, incrementUnread, setLoading, setSelectedSession, activeAgentIdFromStore, migrateSessionId, getSessionMessages } = params;
 
   // Multi-session: Map<sessionId, WebSocket> for concurrent connections
   const wsMapRef = useRef<Map<string, WebSocket>>(new Map());
+
   // Per-session ACP state
   const sessionStateMapRef = useRef<Map<string, {
     acpSessionId: string | null;
@@ -466,31 +468,36 @@ function useAcpWebSocket(params: {
 
   // Migrate a temp session to a real session ID (update store + sidebar + tag agent)
   const handleTempSessionMigration = useCallback((newSessionId: string, currentSelectedAgentId: string) => {
-    if (!selectedSessionRef.current || !selectedSessionRef.current.id) {
-      const updated = { id: newSessionId, name: '', platform: 'hermes' } as Session;
-      setSelectedSession(updated);
-      selectedSessionRef.current = updated;
-      useAppStore.getState().setActiveSession(newSessionId, null, { sessionName: updated.name || updated.title || '' });
+    const curId = selectedSessionRef.current?.id;
+    const isTemp = !curId || curId.startsWith('temp-');
+    if (isTemp) {
       // temp→real 迁移完成，清除新建流程标记
       useAppStore.setState({ _isNewSessionFlow: false });
-      useAppStore.getState().refreshSidebar();
       tagSessionAgent(newSessionId, currentSelectedAgentId);
-      updateSessionMessages(newSessionId, prev => {
-        const firstUserMsg = prev.find(m => m.role === 'user');
-        const autoName = firstUserMsg?.parts.find((p: { type: string; text?: string }) => p.type === 'text')?.text?.slice(0, 20) || '';
-        if (autoName) {
-          fetch(`${getApiBaseUrl()}/api/sessions/${newSessionId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ title: autoName }),
-          }).then(() => useAppStore.getState().refreshSidebar()).catch(() => {});
-        }
-        return prev;
-      });
+      // 直接从sessionDataMap读消息（同步），提取自动命名
+      const msgs = getSessionMessages(newSessionId);
+      const firstUserMsg = msgs.find((m: { role: string }) => m.role === 'user');
+      const autoName = firstUserMsg?.parts?.find((p: { type: string; text?: string }) => p.type === 'text')?.text?.slice(0, 20) || '';
+      const displayName = autoName || '新会话';
+      // 更新selectedSession和store
+      const updated = { id: newSessionId, name: displayName, platform: 'hermes' } as Session;
+      setSelectedSession(updated);
+      selectedSessionRef.current = updated;
+      useAppStore.getState().setActiveSession(newSessionId, null, { sessionName: displayName });
+      // PATCH到后端，完成后再刷新sidebar
+      if (autoName) {
+        fetch(`${getApiBaseUrl()}/api/sessions/${newSessionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title: autoName }),
+        }).then(() => useAppStore.getState().refreshSidebar()).catch(() => useAppStore.getState().refreshSidebar());
+      } else {
+        useAppStore.getState().refreshSidebar();
+      }
+    } else {
+      useAppStore.getState().refreshSidebar();
     }
-    // 无论 selectedSessionRef 是否为空，都刷新 sidebar
-    useAppStore.getState().refreshSidebar();
-  }, [updateSessionMessages, setSelectedSession]);
+  }, [setSelectedSession, getSessionMessages]);
 
   // Connect a single session with its own WebSocket
   const connectSession = useCallback((sessionId: string, agentId: string, sessionName?: string) => {
@@ -1040,6 +1047,7 @@ function ToolCallItem({ tc }: { tc: ToolCallInfo }) {
 
 export function ChatClient() {
   const [sessionDataMap, setSessionDataMap] = useState<Map<string, SessionData>>(new Map());
+
   const [input, setInput] = useState('');
   const [clearTrigger, setClearTrigger] = useState(0);
   const [loadFieldsTrigger, setLoadFieldsTrigger] = useState(0);
@@ -1195,9 +1203,13 @@ export function ChatClient() {
     }
     return count;
   }, [sessionDataMap]);
+  const getSessionMessages = useCallback((sessionId: string): Message[] => {
+    return sessionDataMap.get(sessionId)?.messages || [];
+  }, [sessionDataMap]);
+
   const { wsMapRef, wsConnected, streamingSessionIdRef, sendAcpPrompt, connectSession, disconnectSession, approvalRequest, sendApproval } = useAcpWebSocket({
     selectedAgent, selectedSession, selectedSessionRef,
-    t, updateSessionMessages, incrementUnread, setLoading, setSelectedSession, activeAgentIdFromStore, migrateSessionId,
+    t, updateSessionMessages, incrementUnread, setLoading, setSelectedSession, activeAgentIdFromStore, migrateSessionId, getSessionMessages,
   });
 
   // Auto-resize textarea on input
@@ -1709,7 +1721,7 @@ export function ChatClient() {
                   onClick={startEditTitle}
                   title={selectedSession?.id ? 'Click to rename' : undefined}
                 >
-                  {selectedSession?.name || selectedSession?.title || storeSessionName || (selectedAgent || storeAgentName ? `${selectedAgent?.name || storeAgentName} ${t('chat.newSession')}` : t('chat.newChat'))}
+                  {storeSessionName || selectedSession?.name || selectedSession?.title || (selectedAgent || storeAgentName ? `${selectedAgent?.name || storeAgentName} ${t('chat.newSession')}` : t('chat.newChat'))}
                 </span>
               )}
             </div>
@@ -2064,6 +2076,18 @@ export function ChatClient() {
                   pendingSessionIdRef.current = newId;
                 }
                 updateSessionMessages(currentSessionId, prev => [...prev, userMsg]);
+                // 立即更新标题为消息前20字（不等session迁移）
+                const curName = selectedSessionRef.current?.name || '';
+                const curId = selectedSessionRef.current?.id || '';
+                const isDefaultName = curName.includes('新会话') || curName.includes('New Session') || curName.includes('新しいセッション');
+                console.log('[title-fix] curId:', curId, 'curName:', curName, 'isDefault:', isDefaultName);
+                if (selectedSessionRef.current && (curId.startsWith('temp-') || isDefaultName)) {
+                  const autoTitle = text.slice(0, 20);
+                  const updatedSession = { ...selectedSessionRef.current, name: autoTitle };
+                  selectedSessionRef.current = updatedSession;
+                  setSelectedSession(updatedSession);
+                  useAppStore.getState().setActiveSession(currentSessionId, null, { sessionName: autoTitle });
+                }
                 setAttachments([]); setLoading(true);
                 // 计划模式添加前缀
                 const messageText = agentMode === 'plan' ? `[PLAN MODE] ${text}` : text;

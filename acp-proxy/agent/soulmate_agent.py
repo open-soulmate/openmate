@@ -125,6 +125,7 @@ class SoulMateAgent:
         self._mcp_base_url = "http://127.0.0.1:8094"
         self._mcp_tool_call_id_map: dict[str, dict] = {}  # func_name -> {server_id, tool_name}
         self._session_cwds: dict[str, str] = {}  # session_id -> cwd
+        self._streamed_flags: dict[str, bool] = {}  # session_id -> streamed
         # 任务规划与自省引擎
         from agent.task_engine import TaskPlanner, SelfReflector
         self._task_planner = TaskPlanner(llm_call_fn=self._llm_plan_call)
@@ -734,7 +735,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
         
         all_tools = builtin_tools + (mcp_tools or []) + evolution_tools + [clarify_tool]
 
-        session["_streamed"] = False
+        self._streamed_flags[session_id] = False
         for _round in range(MAX_ROUNDS):
             got_tool_call = False
             async for chunk in self.llm_engine.chat_stream_with_tools(
@@ -1103,6 +1104,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                 session_id=session_id,
                                 update=acp.update_agent_message_text(chunk_text),
                             )
+                            self._streamed_flags[session_id] = True
 
             # 如果没有工具调用，模型返回了纯文本，结束循环
             if not got_tool_call:
@@ -1995,7 +1997,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
             logger.debug(f"[opensoul] 后处理失败(非致命): {e}")
 
         # ── 最终推送（如果流式没推送过）──
-        if self._client and full_response and not session.get("_streamed"):
+        if self._client and full_response and not self._streamed_flags.get(session_id, False):
             try:
                 await self._client.session_update(
                     session_id=session_id,
