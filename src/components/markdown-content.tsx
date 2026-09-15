@@ -197,31 +197,23 @@ function renderMediaTags(content: string): React.ReactNode[] | null {
         <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border/30 bg-muted/20">
           <button onClick={async (e) => {
             e.stopPropagation();
-            console.log('[media-preview] Clicked, filePath:', filePath);
             try {
               const apiBase = getApiBaseUrl();
               const url = `${apiBase}/api/file?path=${encodeURIComponent(filePath)}`;
-              console.log('[media-preview] Fetching:', url);
               const resp = await fetch(url);
-              console.log('[media-preview] Response status:', resp.status);
               if (resp.ok) {
                 const data = await resp.json();
                 const content = data.content || '';
-                console.log('[media-preview] Content length:', content.length);
                 const encoder = new TextEncoder();
                 const bytes = encoder.encode(content);
                 const blob = new Blob([bytes], { type: mimeType });
                 const dataUrl = URL.createObjectURL(blob);
-                console.log('[media-preview] Created blob URL:', dataUrl);
                 const store = useAppStore.getState();
                 store.setPendingFilePreview({ url: dataUrl, name: fileName, mimeType });
                 store.setRightPanelOpen(true);
-                console.log('[media-preview] Done');
               } else {
-                console.error('[media-preview] API error:', resp.status, resp.statusText);
               }
             } catch (err) {
-              console.error('[media-preview] Failed:', err);
             }
           }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-primary hover:bg-primary/10 transition-colors">
             <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
