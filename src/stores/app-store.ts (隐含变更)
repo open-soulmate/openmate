@@ -1,0 +1,114 @@
+import { defineStore } from 'pinia';
+
+export const useAppStore = defineStore('app', {
+  state: () => ({
+    // 连接状态 - 专注WebSocket连接状态
+    websocketConnected: false,
+    lastConnectedTime: null as Date | null,
+    connectionError: null as string | null,
+    
+    // UI状态 - 完全独立于连接状态
+    editorMode: 'edit' as 'edit' | 'preview' | 'split',
+    sidebarOpen: true,
+    activeTab: 'editor' as string,
+    
+    // 实时消息通知 - 独立状态通道
+    realtimeNotifications: [] as Array<{
+      id: string;
+      type: 'message' | 'alert' | 'update';
+      content: string;
+      timestamp: Date;
+      read: boolean;
+    }>,
+    unreadNotificationCount: 0,
+    notificationFilter: 'all' as 'all' | 'unread' | 'read',
+  }),
+  
+  getters: {
+    // 连接状态getter
+    isConnected: (state) => state.websocketConnected,
+    connectionStatus: (state) => 
+      state.websocketConnected ? 'connected' : state.connectionError ? 'error' : 'disconnected',
+    
+    // UI状态getter
+    isEditing: (state) => state.editorMode === 'edit',
+    isPreviewing: (state) => state.editorMode === 'preview',
+    isSplitMode: (state) => state.editorMode === 'split',
+    
+    // 通知getter
+    filteredNotifications: (state) => {
+      switch (state.notificationFilter) {
+        case 'unread':
+          return state.realtimeNotifications.filter(n => !n.read);
+        case 'read':
+          return state.realtimeNotifications.filter(n => n.read);
+        default:
+          return state.realtimeNotifications;
+      }
+    },
+    
+    latestNotifications: (state) => 
+      state.realtimeNotifications.slice(0, 10),
+  },
+  
+  actions: {
+    // 连接状态操作
+    setWebSocketConnection(connected: boolean, error?: string) {
+      this.websocketConnected = connected;
+      this.lastConnectedTime = connected ? new Date() : this.lastConnectedTime;
+      this.connectionError = error || null;
+    },
+    
+    // UI状态操作
+    setEditorMode(mode: 'edit' | 'preview' | 'split') {
+      this.editorMode = mode;
+    },
+    
+    toggleSidebar() {
+      this.sidebarOpen = !this.sidebarOpen;
+    },
+    
+    setActiveTab(tab: string) {
+      this.activeTab = tab;
+    },
+    
+    // 通知操作
+    addNotification(notification: {
+      type: 'message' | 'alert' | 'update';
+      content: string;
+    }) {
+      const newNotification = {
+        ...notification,
+        id: Date.now().toString(),
+        timestamp: new Date(),
+        read: false,
+      };
+      this.realtimeNotifications.unshift(newNotification);
+      this.unreadNotificationCount++;
+    },
+    
+    markNotificationAsRead(id: string) {
+      const notification = this.realtimeNotifications.find(n => n.id === id);
+      if (notification && !notification.read) {
+        notification.read = true;
+        this.unreadNotificationCount--;
+      }
+    },
+    
+    markAllNotificationsAsRead() {
+      this.realtimeNotifications.forEach(notification => {
+        notification.read = true;
+      });
+      this.unreadNotificationCount = 0;
+    },
+    
+    setNotificationFilter(filter: 'all' | 'unread' | 'read') {
+      this.notificationFilter = filter;
+    },
+    
+    clearNotifications() {
+      this.realtimeNotifications = [];
+      this.unreadNotificationCount = 0;
+    },
+  },
+});
