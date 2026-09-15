@@ -541,7 +541,9 @@ function useAcpWebSocket(params: {
 
     const performHandshake = async (ws: WebSocket) => {
       try {
+        console.log('[ACP-DEBUG] performHandshake start, sessionId=', sessionId);
         await sendRpcRequest(ws, 'initialize', { protocolVersion: 1 });
+        console.log('[ACP-DEBUG] initialize resolved, sending session/new');
         // 优先使用已有的ACP session ID（重连时避免创建重复会话）
         const existingAcpSid = state.acpSessionId || (sessionId.startsWith('temp-') ? undefined : sessionId);
         const result = await sendRpcRequest(ws, 'session/new', { cwd: '/', mcpServers: [], agent_id: agentId, _meta: existingAcpSid ? { session_id: existingAcpSid } : {} }) as { session_id?: string; sessionId?: string };
@@ -647,6 +649,7 @@ function useAcpWebSocket(params: {
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
+          console.log('[ACP-DEBUG] onmessage: id=' + data.id + ' method=' + data.method + ' hasResult=' + (data.result !== undefined));
 
           // Token invalid detection
           if (data.id === null && data.error) {
