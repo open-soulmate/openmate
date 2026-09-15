@@ -509,7 +509,9 @@ function useAcpWebSocket(params: {
       console.warn(`[ACP] connectSession 拒绝: 无效 sessionId="${sessionId}"`);
       return;
     }
-    if (wsMapRef.current.has(sessionId)) return; // Already connected
+    const existingWs = wsMapRef.current.get(sessionId);
+    if (existingWs && existingWs.readyState === WebSocket.OPEN) return; // Already connected
+    if (existingWs) { wsMapRef.current.delete(sessionId); } // Clean up closed/broken WS
 
     const state = getSessionState(sessionId);
     state.unmounted = false;
@@ -2078,7 +2080,7 @@ export function ChatClient() {
                   const newId = `temp-${Date.now()}`;
                   const newSession = { id: newId, name: text.slice(0, 30) || '新会话', platform: 'hermes', agentId: spAgentId, createdAt: new Date().toISOString() } as Session;
                   // 更新 store：setActiveSession 是唯一的 activeSessionId 来源
-                  useAppStore.getState().setActiveSession(newId, spAgentId === 'soulmate' ? null : spAgentId, { agentName: agent?.name || spAgentId, sessionName: text.slice(0, 30) || '新会话' });
+                  useAppStore.getState().setActiveSession(newId, spAgentId === 'soulmate' ? null : spAgentId, { agentName: agent?.name || spAgentId, sessionName: text.slice(0, 30) || '新会话', _isNewSessionFlow: true });
                   currentSessionId = newId;
                   // 同步设置 selectedSession，让 header 标题立即更新
                   setSelectedSession(newSession);
