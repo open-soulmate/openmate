@@ -25,7 +25,7 @@ export function GlobalWebSocket() {
       if (!token) return;
 
       const apiBase = getApiBaseUrl();
-      const wsUrl = apiBase.replace(/^http/, 'ws').replace(/:\d+$/, ':8092') + `/ws/acp?token=${token}`;
+      const wsUrl = apiBase.replace(/^http/, 'ws') + `/ws?token=${token}`;
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -34,8 +34,6 @@ export function GlobalWebSocket() {
       ws.onopen = () => {
         useAppStore.getState().setGlobalWsConnected(true);
         retryRef.current = 1000;
-        // ACP握手：initialize
-        ws.send(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' }));
       };
 
       ws.onmessage = (e) => {

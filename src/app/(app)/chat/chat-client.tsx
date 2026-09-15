@@ -508,7 +508,9 @@ function useAcpWebSocket(params: {
       console.warn(`[ACP] connectSession 拒绝: 无效 sessionId="${sessionId}"`);
       return;
     }
-    if (wsMapRef.current.has(sessionId)) return; // Already connected
+    const existingWs = wsMapRef.current.get(sessionId);
+    if (existingWs && existingWs.readyState === WebSocket.OPEN) return; // 已连接
+    if (existingWs) { existingWs.close(); wsMapRef.current.delete(sessionId); } // 清理已关闭的WS
 
     const state = getSessionState(sessionId);
     state.unmounted = false;
@@ -816,6 +818,14 @@ function useAcpWebSocket(params: {
 
     connect();
 
+    // WebSocket心跳：每30秒发一次ping防止NAT/路由器断开空闲连接
+    const heartbeatTimer = setInterval(() => {
+      const ws = wsMapRef.current.get(sessionId);
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        try { ws.send(JSON.stringify({ jsonrpc: '2.0', method: 'ping' })); } catch { /* ignore */ }
+      }
+    }, 30000);
+
     // Listen for token changes
     const onStorage = (e: StorageEvent) => {
       if (e.key === 'openmate-token' && e.newValue !== state.connectedToken) {
@@ -833,6 +843,7 @@ function useAcpWebSocket(params: {
       state.unmounted = true;
       window.removeEventListener('storage', onStorage);
       if (state.reconnectTimer) clearTimeout(state.reconnectTimer);
+      clearInterval(heartbeatTimer);
       const oldWs = wsMapRef.current.get(sessionId);
       if (oldWs) oldWs.close();
       wsMapRef.current.delete(sessionId);
@@ -1407,11 +1418,11 @@ export function ChatClient() {
   const loadHistory = useCallback(async (sessionId: string) => {
     // 新建的 temp session 不需要加载历史，也不要清空（消息已经在 onSend 里写入了）
     if (sessionId.startsWith('temp-')) return;
-    // 如果本地已有消息（流式写入的），先显示本地数据，不等服务端
+    // 如果本地已有消息（流式写入的），先显示本地数据
     const localMsgs = sessionDataMap.get(sessionId);
     if (localMsgs && localMsgs.messages.length > 0) {
       updateCurrentSessionMessages(() => localMsgs.messages);
-      return;
+      // 不return — 继续从DB加载，用DB数据补全可能缺失的AI回复
     }
     // 所有会话（包括 soulmate）都从 DB 加载历史
     try {
@@ -1438,7 +1449,11 @@ export function ChatClient() {
               fileChanges: isAgent ? parseFileChanges(content) : undefined,
             };
           });
-        updateCurrentSessionMessages(() => msgs);
+        // DB数据可能比本地更完整（包含AI回复），但如果本地有更多消息（流式中），取更长的
+        const localCount = sessionDataMap.get(sessionId)?.messages.length || 0;
+        if (msgs.length >= localCount || localCount === 0) {
+          updateCurrentSessionMessages(() => msgs);
+        }
       }
     } catch (e) { console.error('[loadHistory] error:', e); }
   }, []);

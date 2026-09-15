@@ -234,6 +234,9 @@ async def ws_acp_endpoint(client_ws: WebSocket):
         try:
             while True:
                 raw = await client_ws.receive_text()
+                # 过滤心跳ping消息，不传给子进程
+                if '"method":"ping"' in raw or '"method": "ping"' in raw:
+                    continue
                 logger.info(f"[{user_id}] ws_to_stdin: forwarding {len(raw)} chars")
                 if use_pty:
                     os.write(master_fd, (raw + "\n").encode())
@@ -331,13 +334,26 @@ async def ws_acp_endpoint(client_ws: WebSocket):
         done, pending = await asyncio.wait(
             [t1, t2], return_when=asyncio.FIRST_COMPLETED
         )
+        # 判断是WebSocket断开还是子进程退出
+        ws_disconnected = t1 in done and not t2.done()
+        if ws_disconnected:
+            # WebSocket断开但子进程还在跑 — 给宽限期完成当前工作
+            logger.info(f"[ACP] WebSocket disconnected, giving subprocess 30s grace period")
+            try:
+                await asyncio.wait_for(asyncio.shield(t2), timeout=30)
+                logger.info(f"[ACP] subprocess finished naturally during grace period")
+            except asyncio.TimeoutError:
+                logger.warning(f"[ACP] grace period expired, killing subprocess")
+            except Exception:
+                pass
         for t in pending:
             t.cancel()
     finally:
         t3.cancel()
-        try:
-            proc.terminate()
-            await asyncio.wait_for(proc.wait(), timeout=5)
-        except Exception:
-            proc.kill()
+        if proc.returncode is None:  # 子进程还活着才杀
+            try:
+                proc.terminate()
+                await asyncio.wait_for(proc.wait(), timeout=5)
+            except Exception:
+                proc.kill()
         logger.info(f"[ACP] user {user_id} session with {agent_id} ended (exit={proc.returncode})")
