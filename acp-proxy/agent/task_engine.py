@@ -235,11 +235,11 @@ REPLAN_PROMPT = """你是一个任务重规划器。之前的任务计划中有�
 
 ## 输出格式（严格JSON）
 ```json
-{
+{{
   "action": "retry|skip|replan|abort",
   "reason": "决策理由",
   "new_subtasks": []
-}
+}}
 ```
 只输出JSON。"""
 
@@ -261,13 +261,13 @@ REFLECTION_PROMPT = """你是一个自省引擎。一个子任务刚执行完，
 
 ## 输出格式（严格JSON）
 ```json
-{
+{{
   "passed": true/false,
   "confidence": 0.0-1.0,
   "error_type": "tool_error|logic_error|understanding_error|null",
   "summary": "一句话总结",
   "suggestion": "如果失败，建议怎么修"
-}
+}}
 ```
 只输出JSON。"""
 

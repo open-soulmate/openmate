@@ -66,6 +66,13 @@ from agent.event_bus import get_event_bus
 from agent.config_manager import HotConfigManager
 from agent.agent_checkpoint import AgentCheckpointManager
 from agent.health_checker import HealthChecker
+from agent.intent_classifier import IntentClassifier
+from agent.user_preferences import UserPreferenceLearner
+from agent.knowledge_graph import KnowledgeGraph
+from agent.reflection_engine import ReflectionEngine
+from agent.memory_consolidator import MemoryConsolidator
+from agent.skill_learner import SkillLearner
+from agent.observability import ObservabilityManager, SpanType, SpanStatus
 
 logger = logging.getLogger("acp-agent.soulmate")
 
@@ -123,6 +130,20 @@ class SoulMateAgent:
         self._config_mgr = HotConfigManager()
         self._checkpoint_mgr = AgentCheckpointManager()
         self._health_checker = HealthChecker()
+        # 意图分类器
+        self._intent_clf = IntentClassifier()
+        # 用户偏好学习器
+        self._pref_learner = UserPreferenceLearner()
+        # 知识图谱
+        self._knowledge_graph = KnowledgeGraph()
+        # 自我反思引擎
+        self._reflection_engine = ReflectionEngine()
+        # 记忆整合器
+        self._memory_consolidator = MemoryConsolidator()
+        # 技能学习器
+        self._skill_learner = SkillLearner()
+        # 可观测性管理器
+        self._observability = ObservabilityManager()
         # 注册基础健康检查
         from agent.health_checker import HealthCheck
         self._health_checker.register_simple(
@@ -376,6 +397,37 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 system_prompt += f"\n### {skill['name']}\n{skill['content']}\n"
                 if skill.get("code_template"):
                     system_prompt += f"```\n{skill['code_template']}\n```\n"
+
+        # 注入用户偏好
+        pref_context = self._pref_learner.get_context_prompt()
+        if pref_context:
+            system_prompt += f"\n\n## 用户偏好（请遵守）\n{pref_context}\n"
+
+        # 注入反思改进建议
+        improvement_ctx = self._reflection_engine.get_improvement_context(session_id)
+        if improvement_ctx:
+            system_prompt += f"\n\n## 历史改进经验（避免重复错误）\n{improvement_ctx}\n"
+
+        # 注入召回的相关记忆
+        if len(user_text) > 10:
+            try:
+                recalled = self._memory_consolidator.recall(user_text, limit=3)
+                if recalled:
+                    system_prompt += "\n\n## 相关历史记忆\n"
+                    for mem in recalled:
+                        system_prompt += f"- {mem.get('content', '')[:200]}\n"
+            except Exception as e:
+                logger.debug(f"[memory] recall error: {e}")
+
+        # 注入学习到的技能
+        if len(user_text) > 10:
+            try:
+                skill_ctx = self._skill_learner.get_context_prompt(user_text)
+                if skill_ctx:
+                    system_prompt += f"\n\n## 学习到的技能（可复用）\n{skill_ctx}\n"
+            except Exception as e:
+                logger.debug(f"[skill_learner] context error: {e}")
+
         full_response = ""
         all_tool_calls = []  # 收集所有工具调用
 
@@ -1086,6 +1138,14 @@ You can send files to the user natively: to deliver a file, write a brief confir
         if not session:
             return PromptResponse(stop_reason="refusal")
 
+        # ── 可观测性：开始run span ──
+        run_span = self._observability.start_span(
+            trace_id=session_id,
+            span_type=SpanType.RUN,
+            name=f"prompt:{session_id}",
+            attributes={"message_id": message_id or ""},
+        )
+
         # 提取文本内容 — prompt 是 TextContentBlock | ImageContentBlock | FileContentBlock 列表
         user_text = ""
         file_parts = []
@@ -1149,6 +1209,47 @@ You can send files to the user natively: to deliver a file, write a brief confir
         session["messages"].append({"role": "user", "content": user_text})
         self._save_message(session_id, "user", user_text)
         logger.info(f"Prompt [{session_id}]: {user_text[:100]}")
+
+        # ── 意图分类（路由到最合适的处理策略）──
+        intent_result = self._intent_clf.classify(user_text)
+        session["last_intent"] = {
+            "intent": intent_result.intent.value,
+            "confidence": intent_result.confidence,
+            "suggested_tools": intent_result.suggested_tools,
+        }
+        logger.info(f"[intent] {intent_result.intent.value} (conf={intent_result.confidence:.2f})")
+        await self._event_bus.emit("intent_classified", {
+            "session_id": session_id,
+            "intent": intent_result.intent.value,
+            "confidence": intent_result.confidence,
+        })
+
+        # ── 用户偏好学习（从消息中自动提取偏好）──
+        learned_prefs = self._pref_learner.learn_from_message(user_text, session_id)
+        if learned_prefs:
+            for p in learned_prefs:
+                logger.info(f"[pref] learned: {p.category}.{p.key}={p.value} (conf={p.confidence:.2f})")
+
+        # ── 知识图谱提取（从消息中提取实体和关系）──
+        if len(user_text) > 20:  # 短消息不提取
+            try:
+                kg_result = self._knowledge_graph.extract_from_text(user_text, context=session_id)
+                if kg_result.get("entities") or kg_result.get("relations"):
+                    logger.info(f"[kg] extracted {len(kg_result.get('entities', []))} entities, {len(kg_result.get('relations', []))} relations")
+            except Exception as e:
+                logger.debug(f"[kg] extract error: {e}")
+
+        # ── 记忆整合器：存储重要消息为记忆片段 ──
+        if len(user_text) > 30:  # 短消息不存记忆
+            try:
+                self._memory_consolidator.add_fragment(
+                    content=user_text[:500],
+                    memory_type="episodic",
+                    importance=0.5,
+                    tags=[intent_result.intent.value],
+                )
+            except Exception as e:
+                logger.debug(f"[memory] add_fragment error: {e}")
         logger.info(f"[_run_llm_with_tools] starting, client={self._client is not None}")
 
 
@@ -1765,6 +1866,13 @@ You can send files to the user natively: to deliver a file, write a brief confir
             logger.info("[opensoul] 偏好学习+技能提取+长期记忆完成")
         except Exception as e:
             logger.debug(f"[opensoul] 后处理失败(非致命): {e}")
+
+        # ── 可观测性：结束run span ──
+        try:
+            if run_span:
+                self._observability.finish_span(run_span.span_id, SpanStatus.SUCCESS)
+        except Exception:
+            pass
 
         return PromptResponse(stop_reason="end_turn")
 

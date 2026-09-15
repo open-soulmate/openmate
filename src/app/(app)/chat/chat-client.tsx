@@ -534,7 +534,9 @@ function useAcpWebSocket(params: {
     const performHandshake = async (ws: WebSocket) => {
       try {
         await sendRpcRequest(ws, 'initialize', { protocolVersion: 1 });
-        const result = await sendRpcRequest(ws, 'session/new', { cwd: '/', mcpServers: [], agent_id: agentId, _meta: sessionId.startsWith('temp-') ? {} : { session_id: sessionId } }) as { session_id?: string; sessionId?: string };
+        // 优先使用已有的ACP session ID（重连时避免创建重复会话）
+        const existingAcpSid = state.acpSessionId || (sessionId.startsWith('temp-') ? undefined : sessionId);
+        const result = await sendRpcRequest(ws, 'session/new', { cwd: '/', mcpServers: [], agent_id: agentId, _meta: existingAcpSid ? { session_id: existingAcpSid } : {} }) as { session_id?: string; sessionId?: string };
         const acpSid = result?.session_id || result?.sessionId;
         if (acpSid) {
           state.acpSessionId = acpSid;
@@ -604,7 +606,7 @@ function useAcpWebSocket(params: {
       };
 
       ws.onclose = (event) => {
-        state.acpSessionId = null;
+        // 保留 state.acpSessionId 供重连时复用，避免创建重复会话
         state.resolveAcpReady?.();
         state.acpReady = null;
         for (const [id, { reject }] of state.pendingRequests) {

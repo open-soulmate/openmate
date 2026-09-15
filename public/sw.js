@@ -1,6 +1,6 @@
 // Service Worker for OpenMate PWA
 // Version bumped to clear stale caches from previous broken token state
-const CACHE_NAME = 'openmate-v2';
+const CACHE_NAME = 'openmate-v3';
 const STATIC_ASSETS = [
   '/manifest.json',
   '/icons/icon-192.png',
