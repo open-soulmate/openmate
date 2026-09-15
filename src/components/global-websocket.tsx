@@ -98,73 +98,87 @@ export function GlobalWebSocket() {
               }
             }
 
-            // Also increment on 'message' type for streaming responses
-            if (data.type === 'message' && data.session_id) {
-              const activeSessionId = useAppStore.getState().activeSessionId;
-              if (data.session_id !== activeSessionId) {
-                useAppStore.getState().incrementUnread(data.session_id);
-              }
-            }
-          } catch {
-            // ignore parse errors
+            // 可以在这里处理其他消息类型
+          } catch (error) {
+            console.error('Failed to parse WebSocket message:', error);
           }
         };
 
-        ws.onclose = () => {
+        ws.onclose = (event) => {
+          console.log('WebSocket closed:', event.code, event.reason);
+          updateWsState(WsState.DISCONNECTED);
           wsRef.current = null;
-          // 如果不是卸载导致的关闭，则尝试重连
+          connectedTokenRef.current = null;
+          // 重连逻辑
           if (!unmountedRef.current) {
             updateWsState(WsState.RECONNECTING);
             setTimeout(connect, retryRef.current);
-            retryRef.current = Math.min(retryRef.current * 1.5, 30000);
-          } else {
-            updateWsState(WsState.DISCONNECTED);
+            retryRef.current = Math.min(retryRef.current * 2, 30000); // 指数退避，最大30秒
           }
         };
 
-        ws.onerror = () => {
-          // onerror后通常会触发onclose，所以这里只需关闭连接
-          ws.close();
-        };
-      } catch (error) {
-        // 连接创建失败
-        updateWsState(WsState.RECONNECTING);
-        setTimeout(connect, retryRef.current);
-        retryRef.current = Math.min(retryRef.current * 1.5, 30000);
-      }
-    };
-
-    // 初始化连接
-    if (!unmountedRef.current) {
-      connect();
-    }
-
-    // 监听 storage 事件，当 token 变化时强制重连
-    const onStorage = (e: StorageEvent) => {
-      if (e.key === 'auth_token' && !unmountedRef.current) {
-        // 如果token变化，关闭现有连接并重连
-        if (wsRef.current) {
-          wsRef.current.close();
+        ws.onerror = (error) => {
+          console.error('WebSocket error:', error);
+          // onerror 后通常会触发 onclose，所以这里可以不做处理，或者直接设置状态
+          updateWsState(WsState.DISCONNECTED);
+          wsRef.current = null;
+          connectedTokenRef.current = null;
+          // 重连逻辑
+          if (!unmountedRef.current) {
+            updateWsState(WsState.RECONNECTING);
+            setTimeout(connect, retryRef.current);
+            retryRef.current = Math.min(retryRef.current * 2, 30000);
+          }
+        };} catch (error) {
+        console.error('Failed to create WebSocket connection:', error);
+        updateWsState(WsState.DISCONNECTED);
+        wsRef.current = null;
+        connectedTokenRef.current = null;
+        // 重连逻辑
+        if (!unmountedRef.current) {
+          updateWsState(WsState.RECONNECTING);
+          setTimeout(connect, retryRef.current);
+          retryRef.current = Math.min(retryRef.current * 2, 30000);
         }
-        // 重置状态以允许重新连接
-        updateWsState(WsState.IDLE);
-        connect();
       }
     };
-    window.addEventListener('storage', onStorage);
+
+    // 初始连接
+    connect();
+
+    // 监听 token 变化（例如用户登出/登入）
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key === 'token' || e.key === 'access_token') {
+        const currentToken = getToken();
+        // Token 变化时断开旧连接，重新连接
+        if (wsRef.current && connectedTokenRef.current !== currentToken) {
+          wsRef.current.close(1000, 'Token changed');
+          wsRef.current = null;
+          connectedTokenRef.current = null;
+          updateWsState(WsState.DISCONNECTED);
+        }
+        // 如果有新 token，触发连接
+        if (currentToken && wsStateRef.current === WsState.IDLE) {
+          connect();
+        }
+      }
+    };
+
+    window.addEventListener('storage', handleStorageChange);
 
     // 清理函数
     return () => {
       unmountedRef.current = true;
-      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('storage', handleStorageChange);
       if (wsRef.current) {
-        wsRef.current.close();
+        wsRef.current.close(1000, 'Component unmounting');
         wsRef.current = null;
       }
+      connectedTokenRef.current = null;
       updateWsState(WsState.DISCONNECTED);
     };
   }, []);
 
-  // 这个组件不渲染任何UI
+  // 该组件不渲染任何 UI
   return null;
 }
