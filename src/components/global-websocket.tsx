@@ -54,6 +54,11 @@ export function GlobalWebSocket() {
     // 同步连接状态到全局store
     const isConnected = newState === WsState.CONNECTED;
     useAppStore.getState().setGlobalWsConnected(isConnected);
+
+    // 确保在 IDLE 或 DISCONNECTED 状态下没有活跃的计时器
+    if (newState === WsState.IDLE || newState === WsState.DISCONNECTED) {
+      clearAllTimers();
+    }
   };
 
   // 清除所有计时器
@@ -62,6 +67,18 @@ export function GlobalWebSocket() {
       clearTimeout(reconnectTimerRef.current);
       reconnectTimerRef.current = null;
     }
+    if (pingTimerRef.current) {
+      clearInterval(pingTimerRef.current);
+      pingTimerRef.current = null;
+    }
+    if (pongTimerRef.current) {
+      clearTimeout(pongTimerRef.current);
+      pongTimerRef.current = null;
+    }
+  };
+
+  // 清除心跳计时器
+  const clearPingPongTimers = () => {
     if (pingTimerRef.current) {
       clearInterval(pingTimerRef.current);
       pingTimerRef.current = null;
@@ -85,6 +102,17 @@ export function GlobalWebSocket() {
     updateWsState(WsState.IDLE);
   };
 
+  // 手动断开连接
+  const disconnect = () => {
+    isManualDisconnectRef.current = true;
+    clearAllTimers();
+    if (wsRef.current) {
+      wsRef.current.close(WsCloseCodes.NORMAL);
+      wsRef.current = null;
+    }
+    updateWsState(WsState.DISCONNECTED);
+  };
+
   // 计算重试延迟（指数退避）
   const calculateRetryDelay = (attempt: number): number => {
     const delay = Math.min(
@@ -99,226 +127,169 @@ export function GlobalWebSocket() {
   // 开始保活机制
   const startPingPong = () => {
     clearPingPongTimers();
-    
+
     // 发送ping帧
     pingTimerRef.current = setInterval(() => {
       if (wsRef.current?.readyState === WebSocket.OPEN) {
         // 尝试发送应用层心跳（如果服务器支持）
-        try {
-          wsRef.current.send(JSON.stringify({ type: 'ping', timestamp: Date.now() }));
-        } catch (error) {
-          console.warn('Failed to send heartbeat:', error);
-        }
-        
-        // 设置pong超时计时器
+        wsRef.current.send(JSON.stringify({ type: 'ping' }));
+
+        // 设置等待pong响应的超时
         pongTimerRef.current = setTimeout(() => {
-          if (wsStateRef.current === WsState.CONNECTED) {
-            console.warn('WebSocket heartbeat timeout, initiating reconnect...');
-            // 主动关闭连接以触发重连
-            if (wsRef.current) {
-              wsRef.current.close();
-            }
+          // 如果在超时内没有收到pong，认为连接已断开
+          if (wsRef.current?.readyState === WebSocket.OPEN) {
+            console.warn('Pong timeout, closing connection.');
+            wsRef.current.close(WsCloseCodes.SERVER_ERROR);
           }
         }, RECONNECT_CONFIG.PONG_TIMEOUT);
       }
     }, RECONNECT_CONFIG.PING_INTERVAL);
   };
 
-  // 清除保活计时器
-  const clearPingPongTimers = () => {
-    if (pingTimerRef.current) {
-      clearInterval(pingTimerRef.current);
-      pingTimerRef.current = null;
-    }
-    if (pongTimerRef.current) {
-      clearTimeout(pongTimerRef.current);
-      pongTimerRef.current = null;
-    }
+  // 处理连接打开
+  const handleOpen = () => {
+    console.log('WebSocket connected.');
+    connectedTokenRef.current = getToken();
+    reconnectAttemptsRef.current = 0;
+    updateWsState(WsState.CONNECTED);
+    startPingPong();
   };
 
-  // 重置保活计时器（收到pong时调用）
-  const resetPongTimer = () => {
-    if (pongTimerRef.current) {
-      clearTimeout(pongTimerRef.current);
-      pongTimerRef.current = null;
-    }
-  };
-
-  // 处理连接关闭事件
-  const handleWebSocketClose = (event: CloseEvent) => {
-    const { code, reason } = event;
+  // 处理连接关闭
+  const handleClose = (event: CloseEvent) => {
+    console.log('WebSocket closed:', event.code, event.reason);
     clearPingPongTimers();
-    
+
     // 如果是手动断开，不进行重连
     if (isManualDisconnectRef.current) {
-      resetConnectionState();
       return;
     }
-    
-    // 认证失败或token无效，停止自动重连
-    if (code === WsCloseCodes.AUTH_FAILED || code === WsCloseCodes.TOKEN_INVALID) {
-      console.warn(`WebSocket closed due to authentication error (code: ${code}, reason: ${reason})`);
+
+    // 认证失败或令牌无效，不进行重连
+    if (event.code === WsCloseCodes.AUTH_FAILED || event.code === WsCloseCodes.TOKEN_INVALID) {
+      console.error('Authentication failed, not reconnecting.');
       updateWsState(WsState.DISCONNECTED);
       return;
     }
-    
-    // 达到最大重试次数
-    if (reconnectAttemptsRef.current >= RECONNECT_CONFIG.MAX_ATTEMPTS) {
-      console.warn(`Maximum reconnection attempts (${RECONNECT_CONFIG.MAX_ATTEMPTS}) reached`);
-      updateWsState(WsState.DISCONNECTED);
-      return;
-    }
-    
-    // 其他错误或非正常关闭，尝试重连
-    if (code !== WsCloseCodes.NORMAL && !unmountedRef.current) {
-      const delay = calculateRetryDelay(reconnectAttemptsRef.current);
-      reconnectAttemptsRef.current += 1;
-      
-      console.log(`WebSocket closed (code: ${code}), attempting reconnect in ${Math.round(delay/1000)}s (attempt ${reconnectAttemptsRef.current}/${RECONNECT_CONFIG.MAX_ATTEMPTS})`);
-      
-      updateWsState(WsState.RECONNECTING);
-      
-      reconnectTimerRef.current = setTimeout(() => {
-        if (!unmountedRef.current) {
-          connect();
-        }
-      }, delay);
-    } else {
-      // 正常关闭或组件已卸载
-      updateWsState(WsState.IDLE);
-    }
-    
-    // 清除WebSocket引用
-    wsRef.current = null;
-    connectedTokenRef.current = null;
+
+    // 尝试重连
+    updateWsState(WsState.RECONNECTING);
+    scheduleReconnect();
   };
 
-  // 处理连接错误事件
-  const handleWebSocketError = (event: Event) => {
-    console.error('WebSocket error:', event);
-    // 错误通常会跟随关闭事件，这里可以添加额外的错误处理逻辑
-    if (wsStateRef.current === WsState.CONNECTING) {
-      // 连接过程中出错，将状态转换为RECONNECTING
-      updateWsState(WsState.RECONNECTING);
-    }
+  // 处理错误
+  const handleError = (error: Event) => {
+    console.error('WebSocket error:', error);
+    // 错误通常会触发关闭事件，所以这里不需要额外处理
   };
 
-  // 处理接收消息
-  const handleWebSocketMessage = (event: MessageEvent) => {
-    // 收到消息时重置pong计时器（视为连接活跃）
-    if (pongTimerRef.current) {
-      resetPongTimer();
-    }
-    
-    // 这里可以添加消息处理逻辑
+  // 处理接收到的消息
+  const handleMessage = (event: MessageEvent) => {
     try {
       const data = JSON.parse(event.data);
-      // 处理pong响应
+      // 根据消息类型处理
       if (data.type === 'pong') {
-        resetPongTimer();
-        return;
+        // 收到pong响应，清除等待pong的超时计时器
+        if (pongTimerRef.current) {
+          clearTimeout(pongTimerRef.current);
+          pongTimerRef.current = null;
+        }
+      } else if (data.type === 'unread_count_update') {
+        // 更新未读消息数，例如通过 store
+        // useAppStore.getState().updateUnreadCount(data.sessionId, data.count);
+        console.log('Unread count update:', data);
+      } else if (data.type === 'session_refresh') {
+        // 刷新会话列表，例如通过 store
+        // useAppStore.getState().triggerSessionRefresh();
+        console.log('Session refresh trigger:', data);
       }
-      // 处理其他消息类型...
-    } catch (error) {
-      // 非JSON消息，可能是原始文本
-      console.log('Received message:', event.data);
+    } catch (e) {
+      console.error('Failed to parse WebSocket message:', e);
     }
   };
 
-  // 建立WebSocket连接
-  const connect = () => {
-    if (unmountedRef.current || wsStateRef.current === WsState.CONNECTED || wsStateRef.current === WsState.CONNECTING) {
+  // 安排重连
+  const scheduleReconnect = () => {
+    if (unmountedRef.current || isManualDisconnectRef.current) {
+      return;
+    }
+
+    if (reconnectAttemptsRef.current >= RECONNECT_CONFIG.MAX_ATTEMPTS) {
+      console.error('Max reconnection attempts reached.');
+      updateWsState(WsState.DISCONNECTED);
+      return;
+    }
+
+    const delay = calculateRetryDelay(reconnectAttemptsRef.current);
+    console.log(`Reconnecting in ${delay}ms (attempt ${reconnectAttemptsRef.current + 1})`);
+
+    reconnectTimerRef.current = setTimeout(() => {
+      reconnectAttemptsRef.current += 1;
+      connectWebSocket();
+    }, delay);
+  };
+
+  // 连接WebSocket
+  const connectWebSocket = () => {
+    if (unmountedRef.current || isManualDisconnectRef.current) {
       return;
     }
 
     const token = getToken();
     if (!token) {
-      console.warn('No authentication token available for WebSocket connection');
+      console.warn('No token available, cannot connect WebSocket.');
       updateWsState(WsState.DISCONNECTED);
       return;
     }
 
-    // 如果是重连且token变化，允许强制重连
-    if (connectedTokenRef.current && connectedTokenRef.current !== token) {
-      if (wsRef.current) {
-        wsRef.current.close();
-      }
-      connectedTokenRef.current = null;
+    // 如果已经使用相同的token连接，则不需要重新连接
+    if (wsRef.current?.readyState === WebSocket.OPEN && connectedTokenRef.current === token) {
+      return;
+    }
+
+    // 关闭现有连接（如果有）
+    if (wsRef.current) {
+      wsRef.current.close(WsCloseCodes.NORMAL);
+      wsRef.current = null;
     }
 
     updateWsState(WsState.CONNECTING);
-    isManualDisconnectRef.current = false;
 
-    const wsUrl = `${getApiBaseUrl()}/ws?token=${encodeURIComponent(token)}`;
-    
+    const wsUrl = `${getApiBaseUrl().replace(/^http/, 'ws')}/ws/global?token=${encodeURIComponent(token)}`;
+
     try {
-      const ws = new WebSocket(wsUrl);
-      wsRef.current = ws;
+      wsRef.current = new WebSocket(wsUrl);
 
-      ws.onopen = () => {
-        if (unmountedRef.current) {
-          ws.close();
-          return;
-        }
-        
-        console.log('WebSocket connected');
-        connectedTokenRef.current = token;
-        reconnectAttemptsRef.current = 0; // 连接成功，重置重试计数
-        updateWsState(WsState.CONNECTED);
-        
-        // 启动保活机制
-        startPingPong();
-      };
-
-      ws.onmessage = handleWebSocketMessage;
-      ws.onerror = handleWebSocketError;
-      ws.onclose = handleWebSocketClose;
+      wsRef.current.onopen = handleOpen;
+      wsRef.current.onclose = handleClose;
+      wsRef.current.onerror = handleError;
+      wsRef.current.onmessage = handleMessage;
     } catch (error) {
-      console.error('Failed to create WebSocket connection:', error);
-      updateWsState(WsState.RECONNECTING);
-      
-      // 安排重连
-      const delay = calculateRetryDelay(reconnectAttemptsRef.current);
-      reconnectAttemptsRef.current += 1;
-      
-      reconnectTimerRef.current = setTimeout(() => {
-        if (!unmountedRef.current) {
-          connect();
-        }
-      }, delay);
+      console.error('Failed to create WebSocket:', error);
+      updateWsState(WsState.DISCONNECTED);
+      scheduleReconnect();
     }
-  };
-
-  // 手动断开连接
-  const disconnect = () => {
-    isManualDisconnectRef.current = true;
-    resetConnectionState();
   };
 
   useEffect(() => {
     unmountedRef.current = false;
-    connect();
-
-    // 监听token变化事件（如果需要）
-    const handleTokenChange = () => {
-      const currentToken = getToken();
-      if (connectedTokenRef.current && connectedTokenRef.current !== currentToken) {
-        // Token变化，重新连接
-        if (wsRef.current) {
-          wsRef.current.close();
-        }
-      }
-    };
-
-    // 可以添加事件监听，例如storage事件监听token变化
-    window.addEventListener('storage', handleTokenChange);
+    // 组件挂载时连接
+    connectWebSocket();
 
     return () => {
+      // 组件卸载时清理
       unmountedRef.current = true;
-      disconnect();
-      window.removeEventListener('storage', handleTokenChange);
+      clearAllTimers();
+      if (wsRef.current) {
+        wsRef.current.close(WsCloseCodes.NORMAL);
+        wsRef.current = null;
+      }
+      // 重置状态，确保store更新
+      updateWsState(WsState.DISCONNECTED);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  return null; // 不渲染任何DOM
+  // 这个组件不渲染任何可见的UI
+  return null;
 }
