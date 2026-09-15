@@ -168,12 +168,15 @@ export function ArchitectureMonitor() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
+  const [opensoulStats, setOpensoulStats] = useState<any>(null)
 
   const fetchStats = async () => {
     try {
-      const [statsRes, healthRes] = await Promise.all([
+      const [statsRes, healthRes, intentRes, ltmRes] = await Promise.all([
         fetch("http://127.0.0.1:8092/api/architecture/stats"),
         fetch("http://127.0.0.1:8092/api/architecture/health"),
+        fetch("http://127.0.0.1:8090/api/intelligence/intent/stats"),
+        fetch("http://127.0.0.1:8090/api/hippo/ltm/stats"),
       ])
       
       if (statsRes.ok) {
@@ -184,6 +187,18 @@ export function ArchitectureMonitor() {
       if (healthRes.ok) {
         const healthData = await healthRes.json()
         setHealth(healthData)
+      }
+
+      // OpenSoul模块统计
+      if (intentRes.ok && ltmRes.ok) {
+        const [intentData, ltmData] = await Promise.all([
+          intentRes.json(),
+          ltmRes.json(),
+        ])
+        setOpensoulStats({
+          intent: intentData,
+          ltm: ltmData,
+        })
       }
       
       setError(null)
@@ -470,13 +485,13 @@ export function ArchitectureMonitor() {
         </ComponentCard>
 
         {/* P1 Components - Compact Grid */}
-        <P1Components stats={stats} />
+        <P1Components stats={stats} opensoulStats={opensoulStats} />
       </div>
     </div>
   )
 }
 
-function P1Components({ stats }: { stats: ArchStats | null }) {
+function P1Components({ stats, opensoulStats }: { stats: ArchStats | null; opensoulStats: any }) {
   if (!stats) return null
 
   const p1Items = [
@@ -551,6 +566,19 @@ function P1Components({ stats }: { stats: ArchStats | null }) {
       value: `${stats.parallel_executor?.parallel_calls ?? 0}`,
       detail: `${stats.parallel_executor?.total_calls ?? 0} calls`,
       color: "text-violet-400",
+    },
+    // OpenSoul 9模块
+    {
+      name: "意图分类",
+      value: opensoulStats?.intent?.total_classified ?? 0,
+      detail: `${opensoulStats?.intent?.known_intents?.length ?? 0} 种意图`,
+      color: "text-teal-400",
+    },
+    {
+      name: "长期记忆",
+      value: opensoulStats?.ltm?.total_memories ?? 0,
+      detail: `${opensoulStats?.ltm?.by_type?.episodic ?? 0} episodic`,
+      color: "text-amber-400",
     },
   ]
 
