@@ -1,5 +1,7 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 
+const HERMES_API_URL = '/api/hermes';
+
 interface Session {
   id: string;
   title: string;
@@ -23,6 +25,7 @@ interface UseSessionStateReturn {
   switchSession: (sessionId: string) => Promise<void>;
   createSession: (title?: string) => Promise<void>;
   deleteSession: (sessionId: string) => Promise<void>;
+  updateSessionTitle: (sessionId: string, title: string) => Promise<void>;
 }
 
 // 模拟API调用，实际项目中替换为真实API
@@ -225,6 +228,24 @@ export function useSessionState(): UseSessionStateReturn {
     }
   }, []);
 
+  const updateSessionTitle = async (sessionId: string, title: string) => {
+    try {
+      const response = await fetch(`${HERMES_API_URL}/api/v1/sessions/${sessionId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: title }),
+      });
+      if (response.ok) {
+        setState(prev => ({
+          ...prev,
+          sessions: prev.sessions.map(s => s.id === sessionId ? { ...s, name: title } : s),
+        }));
+      }
+    } catch (err) {
+      console.warn('Failed to update session title:', err);
+    }
+  };
+
   return {
     currentSession: state.currentSession,
     sessions: state.sessions,
@@ -234,5 +255,6 @@ export function useSessionState(): UseSessionStateReturn {
     switchSession,
     createSession,
     deleteSession,
+    updateSessionTitle,
   };
 }
