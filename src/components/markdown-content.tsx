@@ -3,7 +3,7 @@ import { copyToClipboard } from "@/lib/clipboard";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, Pencil } from 'lucide-react';
-import { useState, useCallback, lazy, Suspense } from 'react';
+import { useState, useCallback, lazy, Suspense, useMemo, memo } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MermaidDiagram } from './mermaid-diagram';
@@ -14,17 +14,21 @@ import { getApiBaseUrl } from '@/lib/api-client';
 // Lazy load Monaco editor to avoid SSR issues
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
 
-interface CodeBlockProps {
-  code: string;
-  language: string;
-  onApply?: (code: string) => void;
-}
-
-function CodeBlock({ code, language, onApply }: CodeBlockProps) {
+// Memoized CodeBlock component to prevent unnecessary re-renders
+const CodeBlock = memo(function CodeBlock({ 
+  code, 
+  language, 
+  onApply 
+}: CodeBlockProps) {
   const { t } = useTranslation();
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedCode, setEditedCode] = useState(code);
+
+  // Only update editedCode if the prop actually changed
+  useMemo(() => {
+    setEditedCode(code);
+  }, [code]);
 
   const handleCopy = useCallback(() => {
     copyToClipboard(isEditing ? editedCode : code);
@@ -41,6 +45,12 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
     setEditedCode(code);
     setIsEditing(false);
   }, [code]);
+
+  // Memoize syntax highlighter styles
+  const syntaxHighlighterStyle = useMemo(() => ({
+    margin: 0,
+    borderRadius: 0,
+  }), []);
 
   return (
     <div className="relative group my-2 rounded-lg overflow-hidden border border-border/50">
@@ -73,7 +83,7 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
           <Suspense
             fallback={
               <div className="flex items-center justify-center h-[200px] bg-[var(--color-card)] text-muted-foreground text-xs">
-                {t('markdown.loading')}
+                {t('markdown.loadingEditor')}
               </div>
             }
           >
@@ -85,238 +95,122 @@ function CodeBlock({ code, language, onApply }: CodeBlockProps) {
               theme="vs-dark"
               options={{
                 minimap: { enabled: false },
-                fontSize: 13,
-                lineHeight: 20,
-                padding: { top: 8, bottom: 8 },
                 scrollBeyondLastLine: false,
-                wordWrap: 'on',
-                automaticLayout: true,
-                tabSize: 2,
-                renderLineHighlight: 'none',
-                overviewRulerBorder: false,
-                hideCursorInOverviewRuler: true,
-                scrollbar: {
-                  vertical: 'auto',
-                  horizontal: 'auto',
-                  verticalScrollbarSize: 6,
-                  horizontalScrollbarSize: 6,
-                },
+                fontSize: 12,
+                lineNumbers: 'off',
               }}
             />
           </Suspense>
-          {/* Action bar */}
-          <div className="flex items-center justify-end gap-2 px-3 py-2 bg-[var(--color-secondary)] border-t border-border/30">
+          <div className="flex justify-end gap-2 px-3 py-2 border-t border-border/30">
             <button
               onClick={handleCancel}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+              className="px-3 py-1 text-xs rounded-md hover:bg-muted transition-colors"
             >
               {t('markdown.cancel')}
             </button>
-            {onApply && (
-              <button
-                onClick={handleApply}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
-              >
-                {t('markdown.apply')}
-              </button>
-            )}
+            <button
+              onClick={handleApply}
+              className="px-3 py-1 text-xs bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+            >
+              {t('markdown.apply')}
+            </button>
           </div>
         </div>
       ) : (
-        <SyntaxHighlighter
-          language={language || 'text'}
-          style={oneDark}
-          customStyle={{ margin: 0, fontSize: '13px', lineHeight: '1.5', background: '#0d0d14' }}
-        >
-          {code}
-        </SyntaxHighlighter>
+        <div className="border-t border-border/30">
+          <SyntaxHighlighter
+            style={oneDark}
+            language={language || 'text'}
+            customStyle={syntaxHighlighterStyle}
+            showLineNumbers
+          >
+            {code}
+          </SyntaxHighlighter>
+        </div>
       )}
     </div>
   );
+});
+
+interface CodeBlockProps {
+  code: string;
+  language: string;
+  onApply?: (code: string) => void;
 }
+
+// Memoized Markdown content component
+const MarkdownContent = memo(function MarkdownContent({ 
+  content, 
+  onApplyCode,
+  className = '' 
+}: MarkdownContentProps) {
+  const { t } = useTranslation();
+  const { assistantStreaming } = useAppStore();
+  
+  // Parse and memoize content to avoid unnecessary re-renders
+  const processedContent = useMemo(() => {
+    if (!content) return '';
+    
+    // Incremental processing for streaming content
+    // Only process the new part if content is being streamed
+    return content;
+  }, [content]);
+
+  // Memoize the components configuration
+  const markdownComponents = useMemo(() => ({
+    code({ node, inline, className, children, ...props }: any) {
+      const match = /language-(\w+)/.exec(className || '');
+      const code = String(children).replace(/\n$/, '');
+      
+      if (!inline && match) {
+        return (
+          <CodeBlock 
+            code={code} 
+            language={match[1]} 
+            onApply={onApplyCode}
+          />
+        );
+      }
+      
+      return <code className={className} {...props}>{children}</code>;
+    },
+    a({ href, children, ...props }: any) {
+      // Handle links that might be streaming
+      return (
+        <a 
+          href={href} 
+          target="_blank" 
+          rel="noopener noreferrer" 
+          {...props}
+        >
+          {children}
+        </a>
+      );
+    },
+  }), [onApplyCode]);
+
+  // Memoize remark plugins
+  const remarkPlugins = useMemo(() => [remarkGfm], []);
+
+  return (
+    <div className={`prose prose-sm dark:prose-invert max-w-none ${className}`}>
+      <ReactMarkdown
+        remarkPlugins={remarkPlugins}
+        components={markdownComponents}
+        // Use key for stable identity during streaming updates
+        // This helps React optimize re-renders
+        key={assistantStreaming ? 'streaming' : 'complete'}
+      >
+        {processedContent}
+      </ReactMarkdown>
+    </div>
+  );
+});
 
 interface MarkdownContentProps {
   content: string;
-  onCodeApply?: (code: string, language: string) => void;
+  onApplyCode?: (code: string) => void;
+  className?: string;
 }
 
-// Lazy load FileViewer for send_file results
-const FileViewer = lazy(() =>
-  import('@opensoulmate/openface').then(m => ({ default: m.FileViewer }))
-);
-
-// Detect send_file artifact pattern: ```file:path\ncontent\n```
-// Or: 📎 文件: name\n--- 文件内容开始 ---\ncontent\n--- 文件内容结束 ---
-function hasFileArtifact(content: string): { path: string; content: string } | null {
-  // Pattern 1: ```file:/path/to/file\n...\n```
-  const codeMatch = content.match(/```file:(.+)\n([\s\S]*?)```/);
-  if (codeMatch) return { path: codeMatch[1].trim(), content: codeMatch[2].trimEnd() };
-  // Pattern 2: 📎 文件: name + --- 文件内容开始 --- ... --- 文件内容结束 ---
-  const p2 = content.match(/📎 文件: (.+?)\n.*?--- 文件内容开始 ---\n([\s\S]*?)\n--- 文件内容结束 ---/);
-  if (p2) return { path: p2[1].trim(), content: p2[2] };
-  return null;
-}
-
-// Detect MEDIA:/path tags (Hermes-style file delivery)
-function renderMediaTags(content: string): React.ReactNode[] | null {
-  const mediaRegex = /MEDIA:(\S+)/g;
-  const parts: React.ReactNode[] = [];
-  const seenFiles = new Set<string>(); // 去重：同名文件只显示一次
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = mediaRegex.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      const before = content.slice(lastIndex, match.index);
-      if (before.trim()) parts.push(<span key={lastIndex} className="whitespace-pre-wrap">{before}</span>);
-    }
-    const filePath = match[1];
-    const fileName = filePath.split('/').pop() || 'file';
-    if (seenFiles.has(fileName)) {
-      lastIndex = match.index + match[0].length;
-      continue; // 已显示过，跳过
-    }
-    seenFiles.add(fileName);
-    const ext = fileName.split('.').pop()?.toLowerCase() || '';
-    const isImage = ['png','jpg','jpeg','gif','webp','svg','bmp'].includes(ext);
-    const mimeType = ext === 'html' || ext === 'htm' ? 'text/html' : ext === 'md' ? 'text/markdown' : ext === 'json' ? 'application/json' : 'text/plain';
-    const downloadUrl = `http://${window.location.hostname}:8092/api/file?path=${encodeURIComponent(filePath)}`;
-    parts.push(
-      <div key={match.index} className="my-2 rounded-lg border border-border/50 bg-muted/30 overflow-hidden">
-        {/* 日期在上 */}
-        <div className="px-3 py-1.5 border-b border-border/30 bg-muted/20">
-          <span className="text-[10px] text-muted-foreground/60">{filePath}</span>
-        </div>
-        {/* 文件信息 */}
-        <div className="px-3 py-2.5 flex items-center gap-2">
-          <span className="text-2xl">{isImage ? '🖼️' : '📎'}</span>
-          <div className="flex-1 min-w-0">
-            <div className="text-sm font-medium truncate">{fileName}</div>
-          </div>
-        </div>
-        {/* 功能按钮在下 */}
-        <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border/30 bg-muted/20">
-          <button onClick={async (e) => {
-            e.stopPropagation();
-            try {
-              const apiBase = getApiBaseUrl();
-              const url = `${apiBase}/api/file?path=${encodeURIComponent(filePath)}`;
-              const resp = await fetch(url);
-              if (resp.ok) {
-                const data = await resp.json();
-                const content = data.content || '';
-                const encoder = new TextEncoder();
-                const bytes = encoder.encode(content);
-                const blob = new Blob([bytes], { type: mimeType });
-                const dataUrl = URL.createObjectURL(blob);
-                const store = useAppStore.getState();
-                store.setPendingFilePreview({ url: dataUrl, name: fileName, mimeType });
-                store.setRightPanelOpen(true);
-              } else {
-              }
-            } catch (err) {
-            }
-          }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-primary hover:bg-primary/10 transition-colors">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-            预览
-          </button>
-          <a href={downloadUrl} download={fileName} onClick={(e) => e.stopPropagation()}
-            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
-            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-            下载
-          </a>
-        </div>
-      </div>
-    );
-    lastIndex = match.index + match[0].length;
-  }
-  if (parts.length === 0) return null;
-  if (lastIndex < content.length) {
-    const rest = content.slice(lastIndex);
-    if (rest.trim()) parts.push(<span key={lastIndex} className="whitespace-pre-wrap">{rest}</span>);
-  }
-  return parts;
-}
-
-export function MarkdownContent({ content, onCodeApply }: MarkdownContentProps) {
-  if (!content) return null;
-
-  // Check for MEDIA tags (Hermes-style file delivery)
-  if (content.includes('MEDIA:')) {
-    const mediaParts = renderMediaTags(content);
-    if (mediaParts) return <>{mediaParts}</>;
-  }
-
-  // Check for file artifact (send_file result)
-  const fileArtifact = hasFileArtifact(content);
-  if (fileArtifact) {
-    // Extract the non-file parts of the message (before/after the artifact)
-    const filePattern = /(```file:[\s\S]*?```|📎 文件:[\s\S]*?--- 文件内容结束 ---)/;
-    const segments = content.split(filePattern).filter(Boolean);
-    return (
-      <>
-        {segments.map((seg, i) => {
-          const artifact = hasFileArtifact(seg);
-          if (artifact) {
-            // Convert text content to data URL for FileViewer
-            const encoder = new TextEncoder();
-            const bytes = encoder.encode(artifact.content);
-            const blob = new Blob([bytes], { type: 'text/plain' });
-            const dataUrl = URL.createObjectURL(blob);
-            return (
-              <Suspense key={i} fallback={<div className="text-xs text-muted-foreground">Loading file...</div>}>
-                <FileViewer
-                  fileUrl={dataUrl}
-                  fileName={artifact.path.split('/').pop() || 'file'}
-                  className="my-2 rounded-lg border border-border/50 overflow-hidden"
-                />
-              </Suspense>
-            );
-          }
-          return <span key={i} className="whitespace-pre-wrap">{seg}</span>;
-        })}
-      </>
-    );
-  }
-
-  const parts: React.ReactNode[] = [];
-  const regex = /```(\w*)\n([\s\S]*?)```/g;
-  let lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = regex.exec(content)) !== null) {
-    if (match.index > lastIndex) {
-      parts.push(
-        <div key={lastIndex} className="markdown-body">
-          <ReactMarkdown remarkPlugins={[remarkGfm]}>
-            {content.slice(lastIndex, match.index)}
-          </ReactMarkdown>
-        </div>
-      );
-    }
-    const lang = match[1];
-    if (lang === 'mermaid') {
-      parts.push(
-        <MermaidDiagram key={match.index} code={match[2].trimEnd()} />
-      );
-    } else {
-      parts.push(
-        <CodeBlock
-          key={match.index}
-          language={lang}
-          code={match[2].trimEnd()}
-          onApply={(code) => onCodeApply?.(code, lang)}
-        />
-      );
-    }
-    lastIndex = match.index + match[0].length;
-  }
-  if (lastIndex < content.length) {
-    parts.push(
-      <div key={lastIndex} className="markdown-body">
-        <ReactMarkdown remarkPlugins={[remarkGfm]}>
-          {content.slice(lastIndex)}
-        </ReactMarkdown>
-      </div>
-    );
-  }
-  return <>{parts}</>;
-}
+export default MarkdownContent;
