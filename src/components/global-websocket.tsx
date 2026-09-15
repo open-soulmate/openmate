@@ -25,7 +25,7 @@ export function GlobalWebSocket() {
       if (!token) return;
 
       const apiBase = getApiBaseUrl();
-      const wsUrl = apiBase.replace(/^http/, 'ws').replace(/:\d+$/, ':8092') + `/ws/chat?token=${token}`;
+      const wsUrl = apiBase.replace(/^http/, 'ws').replace(/:\d+$/, ':8092') + `/ws/acp?token=${token}`;
 
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
@@ -34,13 +34,27 @@ export function GlobalWebSocket() {
       ws.onopen = () => {
         useAppStore.getState().setGlobalWsConnected(true);
         retryRef.current = 1000;
+        // ACP握手：initialize
+        ws.send(JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'initialize' }));
       };
 
       ws.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
 
-          // When a new message arrives for a session that's NOT the current one,
+          // ACP session/update通知
+          if (data.method === 'session/update' && data.params?.update) {
+            const upd = data.params.update;
+            const sid = upd.sessionId || data.params.sessionId;
+            if (sid && (upd.sessionUpdate === 'agent_message_chunk' || upd.sessionUpdate === 'tool_call')) {
+              const activeSessionId = useAppStore.getState().activeSessionId;
+              if (sid !== activeSessionId) {
+                useAppStore.getState().incrementUnread(sid);
+              }
+            }
+          }
+
+          // 旧协议兼容
           // increment unread count
           if (data.type === 'done' && data.session_id) {
             const activeSessionId = useAppStore.getState().activeSessionId;

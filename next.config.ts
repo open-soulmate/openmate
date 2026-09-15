@@ -5,9 +5,6 @@ const soulApiUrl = process.env.SOUL_API_URL || "http://localhost:8090";
 const nextConfig: NextConfig = {
   output: "standalone",
   devIndicators: false,
-  typescript: {
-    ignoreBuildErrors: true,
-  },
   allowedDevOrigins: ["192.168.31.82", "100.76.2.155", "172.17.0.1", "172.18.0.1"],
   turbopack: {
     root: '/home/climbing/openmate',
@@ -17,10 +14,6 @@ const nextConfig: NextConfig = {
       {
         source: "/api/soul/:path*",
         destination: `${soulApiUrl}/:path*`,
-      },
-      {
-        source: "/api/file",
-        destination: "http://localhost:8092/api/file",
       },
     ];
   },

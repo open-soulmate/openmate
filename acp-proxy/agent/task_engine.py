@@ -134,7 +134,7 @@ class TaskStore:
                 (id, plan_id, description, tool_hint, depends_on, status, result, error, error_type, reflection, retry_count, created_at, completed_at, step_order)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (step.id, plan.id, step.description, step.tool_hint,
-                  json.dumps(step.depends_on), step.status.value, step.result,
+                  json.dumps(step.depends_on), str(step.status), step.result,
                   step.error, step.error_type, step.reflection, step.retry_count,
                   step.created_at, step.completed_at, idx))
         db.commit()
@@ -378,7 +378,7 @@ class TaskPlanner:
 
         plan_json = json.dumps({
             "goal": plan.goal,
-            "subtasks": [{"id": s.id, "desc": s.description, "status": s.status.value} for s in plan.subtasks],
+            "subtasks": [{"id": s.id, "desc": s.description, "status": str(s.status)} for s in plan.subtasks],
         }, ensure_ascii=False, indent=2)
 
         messages = [

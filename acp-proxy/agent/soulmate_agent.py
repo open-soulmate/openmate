@@ -47,6 +47,25 @@ from utils.token_manager import truncate_tool_result
 from agent.architecture_enhanced import EnhancedArchitecture
 from agent import arch_monitor
 from utils.task_state_manager import TaskStateManager, judge_task_continuation
+# P1/P2 架构组件
+from agent.semantic_cache import SemanticCache
+from agent.context_compression import ContextCompressor
+from agent.dynamic_prompt import DynamicPromptBuilder
+from agent.memory_retrieval import MemoryRetrievalEngine
+from agent.tool_cache import ToolResultCache
+from agent.tool_auditor import ToolAuditor
+from agent.smart_retry import SmartRetryManager
+from agent.output_validator import OutputValidator
+from agent.output_formatter import OutputFormatter
+from agent.conversation_summarizer import ConversationSummarizer
+from agent.knowledge_distiller import KnowledgeDistiller
+from agent.cost_tracker import CostTracker
+from agent.token_analyzer import TokenAnalyzer
+from agent.agent_tracer import AgentTracer
+from agent.event_bus import get_event_bus
+from agent.config_manager import HotConfigManager
+from agent.agent_checkpoint import AgentCheckpointManager
+from agent.health_checker import HealthChecker
 
 logger = logging.getLogger("acp-agent.soulmate")
 
@@ -85,6 +104,35 @@ class SoulMateAgent:
         self._arch = EnhancedArchitecture()
         # 注册到监控系统
         arch_monitor.set_architecture(self._arch)
+        # ── P1/P2 组件初始化 ──
+        self._semantic_cache = SemanticCache()
+        self._ctx_compressor = ContextCompressor()
+        self._prompt_builder = DynamicPromptBuilder()
+        self._memory_engine = MemoryRetrievalEngine()
+        self._tool_cache = ToolResultCache()
+        self._tool_auditor = ToolAuditor()
+        self._retry_mgr = SmartRetryManager()
+        self._output_validator = OutputValidator()
+        self._output_formatter = OutputFormatter()
+        self._conv_summarizer = ConversationSummarizer()
+        self._knowledge_distiller = KnowledgeDistiller()
+        self._cost_tracker = CostTracker()
+        self._token_analyzer = TokenAnalyzer()
+        self._tracer = AgentTracer()
+        self._event_bus = get_event_bus()
+        self._config_mgr = HotConfigManager()
+        self._checkpoint_mgr = AgentCheckpointManager()
+        self._health_checker = HealthChecker()
+        # 注册基础健康检查
+        from agent.health_checker import HealthCheck
+        self._health_checker.register_simple(
+            check_id="llm_engine", name="LLM引擎",
+            check_fn=lambda: self.llm_engine is not None,
+        )
+        self._health_checker.register_simple(
+            check_id="opensoul_api", name="OpenSoul API",
+            check_fn=lambda: True,  # 实际检查由arch_monitor做
+        )
 
     def _get_db(self) -> sqlite3.Connection:
         db = sqlite3.connect(str(self._db_path))
@@ -589,6 +637,21 @@ You can send files to the user natively: to deliver a file, write a brief confir
                         except json.JSONDecodeError:
                             func_args = {}
 
+                        # ── P2工具执行增强：缓存+审计 ─────────────────
+                        tool_start = time.time()
+                        # 工具结果缓存检查（只缓存只读工具）
+                        _cached_result = None
+                        if func_name in ("read_file", "list_files", "search_files"):
+                            _cached_result = self._tool_cache.get(func_name, func_args)
+                            if _cached_result is not None:
+                                logger.info(f"[tool-cache] 命中: {func_name}")
+                                result = _cached_result
+                                # 跳过实际执行，直接进入结果处理
+                                tool_calls_log.append({"tool": func_name, "args": func_args, "result": result[:200], "cached": True})
+                                messages.append({"role": "assistant", "tool_calls": [tc]})
+                                messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "content": truncate_tool_result(result)})
+                                continue
+
                         # ── 基础工具执行 ───────────────────────────────
                         if func_name == "read_file":
                             try:
@@ -858,6 +921,20 @@ You can send files to the user natively: to deliver a file, write a brief confir
                             "arguments": func_args,
                             "result_preview": result[:200] if result else "",
                         })
+
+                        # P2工具审计 + 结果缓存
+                        try:
+                            tool_duration = time.time() - tool_start if 'tool_start' in dir() else 0
+                            self._tool_auditor.audit_call(
+                                session_id=session_id, tool_name=func_name,
+                                arguments=func_args, result_preview=str(result)[:200],
+                                duration_s=tool_duration, success="错误" not in str(result),
+                            )
+                            # 缓存只读工具结果
+                            if func_name in ("read_file", "list_files", "search_files") and "错误" not in str(result):
+                                self._tool_cache.put(func_name, func_args, str(result))
+                        except Exception as _audit_err:
+                            logger.debug(f"[tool-audit] 失败(非致命): {_audit_err}")
 
                         # ── SoulBrain反思学习 ──────────────
                         try:
@@ -1157,11 +1234,55 @@ You can send files to the user natively: to deliver a file, write a brief confir
         except Exception as e:
             logger.debug(f"[brain] 认知层调用失败(非致命): {e}")
 
+        # ── P2前置处理：语义缓存+上下文压缩+记忆检索 ──────────
+        try:
+            # 1. 语义缓存：相似问题直接返回缓存
+            cached = self._semantic_cache.get(user_text)
+            if cached and len(cached) > 20:
+                logger.info(f"[semantic-cache] 命中缓存，跳过LLM调用")
+                if self._client:
+                    await self._client.session_update(
+                        session_id=session_id,
+                        update=acp.update_agent_message_text(cached),
+                    )
+                # 记录成本为0（缓存命中）
+                self._cost_tracker.record_usage(
+                    model="cache", session_id=session_id,
+                    input_tokens=0, output_tokens=0, custom_cost=0.0,
+                )
+                return PromptResponse(stop_reason="end_turn")
+
+            # 2. 上下文压缩：消息过多时压缩历史
+            if self._ctx_compressor.should_compress(messages):
+                logger.info(f"[ctx-compress] 上下文过长，压缩历史消息")
+                compressed = self._ctx_compressor.compress(messages)
+                if compressed:
+                    messages = compressed
+
+            # 3. 本地记忆检索引擎（与OpenSoul LTM互补）
+            local_memories = self._memory_engine.retrieve(user_text, limit=3)
+            if local_memories:
+                mem_ctx = "\n".join([f"- {m.content}" for m in local_memories[:3]])
+                messages.insert(0, {"role": "system", "content": f"\n## 相关记忆\n{mem_ctx}\n"})
+
+            # 4. 知识蒸馏：检索相关经验
+            kd_context = self._knowledge_distiller.get_context_prompt(user_text)
+            if kd_context:
+                messages.insert(0, {"role": "system", "content": kd_context})
+
+        except Exception as e:
+            logger.debug(f"[p2-pre] 前置处理失败(非致命): {e}")
+
         # ── OpenSoul 9模块上下文注入 ─────────────────────────
         try:
             import httpx as _httpx
             async with _httpx.AsyncClient() as _client:
-                # 0. 会话状态机：idle → thinking
+                # 0. 会话状态机：创建 + idle → thinking
+                await _client.post(
+                    "http://127.0.0.1:8090/api/trajectory/fsm/create",
+                    json={"session_id": session_id},
+                    timeout=2,
+                )
                 await _client.post(
                     "http://127.0.0.1:8090/api/trajectory/fsm/transition",
                     json={"session_id": session_id, "event": "user_message"},
@@ -1283,11 +1404,12 @@ You can send files to the user natively: to deliver a file, write a brief confir
             try:
                 import httpx as _httpx
                 async with _httpx.AsyncClient() as _client:
+                    dag_steps = "\n".join([f"{i+1}. {s.description}" for i, s in enumerate(plan.subtasks)])
                     dag_resp = await _client.post(
                         "http://127.0.0.1:8090/api/will/dag/plan",
                         json={
                             "goal": user_text,
-                            "llm_response": "\n".join([s.description for s in plan.subtasks]),
+                            "llm_response": dag_steps,
                         },
                         timeout=3,
                     )
@@ -1399,7 +1521,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
 
             report = f"## 任务执行报告\n\n**目标**: {plan.goal}\n\n"
             for i, step in enumerate(plan.subtasks):
-                icon = {"success": "✅", "failed": "❌", "skipped": "⏭️", "pending": "⏳"}.get(step.status.value, "❓")
+                icon = {"success": "✅", "failed": "❌", "skipped": "⏭️", "pending": "⏳"}.get(str(step.status), "❓")
                 report += f"{icon} **步骤{i+1}**: {step.description}\n"
                 if step.result:
                     report += f"   结果: {step.result[:150]}\n"
@@ -1421,7 +1543,30 @@ You can send files to the user natively: to deliver a file, write a brief confir
             full_response = ""
             tool_calls_log = []
             try:
+                # P2监控：tracer + 成本追踪
+                trace_id = self._tracer.start_trace(session_id)
+                from agent.agent_tracer import TraceEventType
+                span_id = self._tracer.start_span(TraceEventType.LLM_REQUEST, {"message_count": len(messages)})
+                llm_start = time.time()
                 full_response, tool_calls_log = await self._run_llm_with_tools(messages, session_id, matched_skills=matched_skills, user_text=user_text)
+                llm_duration = time.time() - llm_start
+                self._tracer.end_span(span_id, {"response_len": len(full_response), "tool_calls": len(tool_calls_log)})
+                # Token分析（估算）
+                prompt_tokens = sum(len(str(m.get("content", ""))) for m in messages) // 3
+                completion_tokens = len(full_response) // 3
+                self._token_analyzer.record(
+                    session_id=session_id, model="mimo", category="chat",
+                    input_tokens=prompt_tokens, output_tokens=completion_tokens,
+                )
+                self._cost_tracker.record_usage(
+                    model="mimo", session_id=session_id,
+                    input_tokens=prompt_tokens, output_tokens=completion_tokens,
+                )
+                # 事件总线发布
+                asyncio.ensure_future(self._event_bus.emit("llm.completed", {
+                    "session_id": session_id, "duration_s": llm_duration,
+                    "response_len": len(full_response),
+                }))
             except Exception as e:
                 logger.error(f"LLM error: {e}", exc_info=True)
                 full_response = f"推理错误: {e}"
@@ -1430,6 +1575,58 @@ You can send files to the user natively: to deliver a file, write a brief confir
                         session_id=session_id,
                         update=acp.update_agent_message_text(full_response),
                     )
+
+        # ── P2基础设施：检查点保存 ────────────────────────
+        try:
+            self._checkpoint_mgr.create_checkpoint(
+                session_id=session_id,
+                state={"messages": messages[-5:], "response_len": len(full_response)},
+            )
+        except Exception as e:
+            logger.debug(f"[checkpoint] 保存失败(非致命): {e}")
+
+        # ── P2后置处理：输出验证+格式化+摘要+知识蒸馏+缓存 ────
+        try:
+            # 1. 输出格式化（JSON美化、表格识别）
+            formatted = self._output_formatter.format(full_response)
+            if formatted.content_type != "text" and formatted.content != full_response:
+                full_response = formatted.content
+                logger.info(f"[output-fmt] 输出已格式化: {formatted.content_type}")
+
+            # 2. 语义缓存存储（只缓存高质量回复）
+            if len(full_response) > 50 and "错误" not in full_response and "error" not in full_response.lower():
+                self._semantic_cache.put(
+                    query=user_text, response=full_response,
+                    tokens_used=len(full_response) // 3,
+                )
+
+            # 3. 对话摘要（长对话时触发）
+            session = self.sessions.get(session_id, {})
+            session_msgs = session.get("messages", [])
+            if self._conv_summarizer.should_summarize(session_msgs):
+                summary = self._conv_summarizer.summarize(session_msgs)
+                if summary:
+                    session["summary"] = summary
+                    logger.info(f"[summarizer] 对话已摘要: {len(summary)}字")
+
+            # 4. 知识蒸馏（从对话中提取可复用知识）
+            self._knowledge_distiller.distill_from_conversation(
+                session_id=session_id,
+                messages=[{"role": "user", "content": user_text}, {"role": "assistant", "content": full_response[:500]}],
+            )
+
+            # 5. 本地记忆存储
+            if len(user_text) > 30 or len(full_response) > 100:
+                from agent.memory_retrieval import MemoryType, MemoryImportance
+                self._memory_engine.store(
+                    content=f"用户: {user_text[:150]}\n助手: {full_response[:150]}",
+                    memory_type=MemoryType.EPISODIC,
+                    importance=MemoryImportance.NORMAL,
+                    session_id=session_id,
+                )
+
+        except Exception as e:
+            logger.debug(f"[p2-post] 后置处理失败(非致命): {e}")
 
         # ── 网关后处理：提取MEDIA标签、校验路径、下发文件 ──────
         media_paths = re.findall(r"MEDIA:([\w\-\/\.]+)", full_response)
@@ -1509,7 +1706,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 # 0. 会话状态机：thinking → responding
                 await _client.post(
                     "http://127.0.0.1:8090/api/trajectory/fsm/transition",
-                    json={"session_id": session_id, "event": "assistant_response"},
+                    json={"session_id": session_id, "event": "response_ready"},
                     timeout=2,
                 )
 
@@ -1519,17 +1716,16 @@ You can send files to the user natively: to deliver a file, write a brief confir
                     await _client.post(
                         "http://127.0.0.1:8090/api/benchmark/capability/evaluate",
                         json={
-                            "session_id": session_id,
-                            "task_description": user_text[:200],
-                            "dimension_scores": {
-                                "accuracy": 0.8 if not has_error else 0.3,
-                                "efficiency": 0.7,
-                                "completeness": 0.8 if len(full_response) > 100 else 0.5,
-                                "safety": 0.9,
-                                "helpfulness": 0.8 if len(full_response) > 50 else 0.5,
+                            "accuracy": 0.8 if not has_error else 0.3,
+                            "efficiency": 0.7,
+                            "completeness": 0.8 if len(full_response) > 100 else 0.5,
+                            "safety": 0.9,
+                            "helpfulness": 0.8 if len(full_response) > 50 else 0.5,
+                            "details": {
+                                "session_id": session_id,
+                                "task": user_text[:200],
+                                "success": not has_error,
                             },
-                            "duration_ms": int((time.time() - start_time) * 1000) if 'start_time' in dir() else 1000,
-                            "success": not has_error,
                         },
                         timeout=2,
                     )
