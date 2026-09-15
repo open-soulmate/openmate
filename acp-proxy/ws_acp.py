@@ -357,3 +357,8 @@ async def ws_acp_endpoint(client_ws: WebSocket):
             except Exception:
                 proc.kill()
         logger.info(f"[ACP] user {user_id} session with {agent_id} ended (exit={proc.returncode})")
+        # 主动关闭WebSocket，通知前端连接已断开，避免前端向已死子进程发消息
+        try:
+            await client_ws.close(code=1000, reason="subprocess exited")
+        except Exception:
+            pass

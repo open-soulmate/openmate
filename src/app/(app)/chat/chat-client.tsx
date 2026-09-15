@@ -555,12 +555,12 @@ function useAcpWebSocket(params: {
             const acpState = sessionStateMapRef.current.get(sessionId);
             if (acpState) {
               sessionStateMapRef.current.set(acpSid, acpState);
-              sessionStateMapRef.current.delete(sessionId);
+              // 不删除旧state — onclose重连闭包引用原始sessionId，删了会导致重连时acpSessionId=null
             }
             const wsEntry = wsMapRef.current.get(sessionId);
             if (wsEntry) {
               wsMapRef.current.set(acpSid, wsEntry);
-              wsMapRef.current.delete(sessionId);
+              // 不删除旧wsMap条目 — 同上，保持重连能力
             }
             migrateSessionId(sessionId, acpSid);
             // Update selectedSession with real ID, preserve session name
@@ -635,6 +635,8 @@ function useAcpWebSocket(params: {
           console.warn('[ACP] 连接被服务端关闭，有token，尝试重连');
         }
         wsMapRef.current.delete(sessionId);
+        // WebSocket断开时重置loading状态，否则后续消息被 if(loading) return 拦截
+        setLoading(false);
         if (!state.unmounted) {
           state.reconnectTimer = setTimeout(connect, state.retryDelay);
         }
@@ -2107,16 +2109,10 @@ export function ChatClient() {
                 // 计划模式添加前缀
                 const messageText = agentMode === 'plan' ? `[PLAN MODE] ${text}` : text;
                 streamingSessionIdRef.current = selectedSession?.id || null;
-                const spWs = wsMapRef.current.get(currentSessionId);
-                if (spWs?.readyState === WebSocket.OPEN) {
-                  sendAcpPrompt(currentSessionId, messageText, attachments);
-                } else {
-                  // No WS exists — create ACP connection now
-                  const spAgentId2 = useAppStore.getState().activeAgentId || 'soulmate';
-                  connectSession(currentSessionId, spAgentId2, text.slice(0, 30));
-                  // 等待 WS 连接就绪，使用公共等待函数
-                  waitForConnection(currentSessionId, messageText, attachments);
-                }
+                // 始终走 connectSession + waitForConnection，避免僵尸WebSocket（readyState=OPEN但对端已死）
+                const spAgentId2 = useAppStore.getState().activeAgentId || 'soulmate';
+                connectSession(currentSessionId, spAgentId2, text.slice(0, 30));
+                waitForConnection(currentSessionId, messageText, attachments);
               }}
               isLoading={loading}
               placeholder={t("chat.inputPlaceholder", "输入任务，点 ✨ 展开字段（Enter 发送，Shift+Enter 换行）")}
