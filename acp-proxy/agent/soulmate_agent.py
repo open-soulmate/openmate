@@ -73,6 +73,8 @@ from agent.reflection_engine import ReflectionEngine
 from agent.memory_consolidator import MemoryConsolidator
 from agent.skill_learner import SkillLearner
 from agent.observability import ObservabilityManager, SpanType, SpanStatus
+from agent.context_analyzer import ContextAnalyzer, ContextComponent
+from agent.session_fsm import SessionStateMachine, SessionState, SessionEvent
 
 logger = logging.getLogger("acp-agent.soulmate")
 
@@ -144,6 +146,10 @@ class SoulMateAgent:
         self._skill_learner = SkillLearner()
         # 可观测性管理器
         self._observability = ObservabilityManager()
+        # 上下文分析器
+        self._context_analyzer = ContextAnalyzer()
+        # 会话状态机
+        self._session_fsm = SessionStateMachine()
         # 注册基础健康检查
         from agent.health_checker import HealthCheck
         self._health_checker.register_simple(
@@ -1156,9 +1162,17 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 if block.get("type") == "text":
                     user_text += block.get("text", "")
                 elif block.get("type") == "file" and block.get("data"):
+
                     file_parts.append(block)
                 elif block.get("type") == "image" and block.get("data"):
                     file_parts.append(block)
+
+        # ── 会话状态机：记录状态转换 ──
+        try:
+            self._session_fsm.create_session(session_id)
+            self._session_fsm.transition(session_id, SessionEvent.USER_MESSAGE, metadata={"text_len": len(user_text)})
+        except Exception:
+            pass
 
         # ── 异步生成会话标题（第一条消息时立即触发，不等回复）──
         if user_text and not session.get("title") and len(session.get("messages", [])) <= 1:
