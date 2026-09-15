@@ -1605,9 +1605,12 @@ export function ChatClient() {
   const selectSession = (session: Session, agent: AgentInfo) => {
     console.log(`[selectSession] session.id=${session.id}, agent.id=${agent.id}`);
     // Update store (single source of truth for activeSessionId)
+    // 如果新session没有name，保留现有的activeSessionName（防止标题被重置）
+    const existingSessionName = useAppStore.getState().activeSessionName;
+    const newName = session.name || session.title || '';
     useAppStore.getState().setActiveSession(session.id, agent.id === 'soulmate' ? null : agent.id, {
       agentName: agent.name,
-      sessionName: session.name || session.title || '',
+      sessionName: newName || existingSessionName || '',
     });
     setSelectedSession(session);
     selectedSessionRef.current = session;
