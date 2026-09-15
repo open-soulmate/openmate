@@ -75,6 +75,16 @@ from agent.skill_learner import SkillLearner
 from agent.observability import ObservabilityManager, SpanType, SpanStatus
 from agent.context_analyzer import ContextAnalyzer, ContextComponent
 from agent.session_fsm import SessionStateMachine, SessionState, SessionEvent
+from agent.parallel_executor import ParallelToolExecutor
+from agent.tool_registry import ToolRegistry
+from agent.tool_validator import ToolResultValidator
+from agent.capability_evaluator import CapabilityEvaluator
+from agent.env_sensor import EnvironmentSensor
+from agent.prompt_manager import PromptTemplateManager
+from agent.context_budget import ContextBudgetManager
+from agent.chain_optimizer import ChainOptimizer
+from agent.stream_manager import StreamingResponseManager
+from agent.session_manager import ConcurrentSessionManager
 
 logger = logging.getLogger("acp-agent.soulmate")
 
@@ -150,6 +160,26 @@ class SoulMateAgent:
         self._context_analyzer = ContextAnalyzer()
         # 会话状态机
         self._session_fsm = SessionStateMachine()
+        # 并行工具执行器
+        self._parallel_executor = ParallelToolExecutor()
+        # 工具注册表
+        self._tool_registry = ToolRegistry()
+        # 工具验证器
+        self._tool_validator = ToolResultValidator()
+        # 能力评估器
+        self._capability_evaluator = CapabilityEvaluator()
+        # 环境传感器
+        self._env_sensor = EnvironmentSensor()
+        # Prompt管理器
+        self._prompt_manager = PromptTemplateManager()
+        # 上下文预算
+        self._context_budget = ContextBudgetManager()
+        # 链优化器
+        self._chain_optimizer = ChainOptimizer()
+        # 流管理器
+        self._stream_manager = StreamingResponseManager()
+        # 会话管理器
+        self._session_manager = ConcurrentSessionManager()
         # 注册基础健康检查
         from agent.health_checker import HealthCheck
         self._health_checker.register_simple(
@@ -1166,6 +1196,24 @@ You can send files to the user natively: to deliver a file, write a brief confir
                     file_parts.append(block)
                 elif block.get("type") == "image" and block.get("data"):
                     file_parts.append(block)
+
+        # ── 环境感知 ──
+        try:
+            env_info = self._env_sensor.sense()
+            if env_info and hasattr(env_info, 'cpu_percent') and env_info.cpu_percent > 90:
+                logger.warning(f"[env] CPU使用率过高: {env_info.cpu_percent}%")
+        except Exception:
+            pass
+
+        # ── 上下文预算管理 ──
+        try:
+            session_msgs = session.get("messages", [])
+            if len(session_msgs) > 20:
+                managed = self._context_budget.manage(session_msgs, max_tokens=8000)
+                if managed and len(managed) < len(session_msgs):
+                    logger.info(f"[context-budget] 压缩历史: {len(session_msgs)}→{len(managed)}条")
+        except Exception:
+            pass
 
         # ── 会话状态机：记录状态转换 ──
         try:
