@@ -85,6 +85,16 @@ from agent.context_budget import ContextBudgetManager
 from agent.chain_optimizer import ChainOptimizer
 from agent.stream_manager import StreamingResponseManager
 from agent.session_manager import ConcurrentSessionManager
+from agent.artifact import ArtifactEngine
+from agent.context_injector import ContextInjector
+from agent.file_index import SessionFileIndex
+from agent.permission import PermissionManager
+from agent.permissions import ToolPolicy
+from agent.tool_errors import ToolError, ToolErrorHandler, FailureAction, ErrorCategory
+from agent.layered_timeouts import TimeoutConfig
+from agent.eval_pipeline import EvalPipeline
+from agent.edit_safety import EditConfig
+from agent.schema_doctor import SchemaDoctor
 
 logger = logging.getLogger("acp-agent.soulmate")
 
@@ -180,6 +190,26 @@ class SoulMateAgent:
         self._stream_manager = StreamingResponseManager()
         # 会话管理器
         self._session_manager = ConcurrentSessionManager()
+        # 工件引擎（文件变更追踪）
+        self._artifact_engine = ArtifactEngine(workspace=str(self._project_root))
+        # 上下文注入器
+        self._context_injector = ContextInjector()
+        # 文件索引
+        self._file_index = SessionFileIndex()
+        # 权限管理器
+        self._permission_manager = PermissionManager()
+        # 工具策略（per-tool配置，按需创建）
+        self._tool_policies: dict = {}
+        # 分层超时配置
+        self._timeout_config = TimeoutConfig()
+        # 评估管道
+        self._eval_pipeline = EvalPipeline()
+        # 编辑安全配置
+        self._edit_safety_config = EditConfig()
+        # Schema医生
+        self._schema_doctor = SchemaDoctor(db_path=':memory:')
+        # 工具错误处理器（分类+doom loop检测）
+        self._tool_error_handler = ToolErrorHandler()
         # 注册基础健康检查
         from agent.health_checker import HealthCheck
         self._health_checker.register_simple(
@@ -699,6 +729,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
         
         all_tools = builtin_tools + (mcp_tools or []) + evolution_tools + [clarify_tool]
 
+        session["_streamed"] = False
         for _round in range(MAX_ROUNDS):
             got_tool_call = False
             async for chunk in self.llm_engine.chat_stream_with_tools(
@@ -756,7 +787,9 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                 else:
                                     result = f"错误: {proc.stderr or '文件不存在或为空'}"
                             except Exception as e:
-                                result = f"读取失败: {e}"
+                                te = self._tool_error_handler.handle_error(
+                                    session_id, "read_file", e, func_args)
+                                result = te.to_model_message()
 
                         elif func_name == "write_file":
                             try:
@@ -773,7 +806,9 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                     else:
                                         result = f"已写入 {path} ({len(file_content)} 字节)"
                             except Exception as e:
-                                result = f"写入失败: {e}"
+                                te = self._tool_error_handler.handle_error(
+                                    session_id, "write_file", e, func_args)
+                                result = te.to_model_message()
 
                         elif func_name == "terminal":
                             try:
@@ -795,9 +830,13 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                     if proc.returncode != 0:
                                         result += f"\\n[exit code: {proc.returncode}]"
                             except subprocess.TimeoutExpired:
-                                result = "命令超时（30秒）"
+                                te = self._tool_error_handler.handle_error(
+                                    session_id, "terminal", Exception("timeout"), func_args)
+                                result = te.to_model_message()
                             except Exception as e:
-                                result = f"执行失败: {e}"
+                                te = self._tool_error_handler.handle_error(
+                                    session_id, "terminal", e, func_args)
+                                result = te.to_model_message()
 
                         elif func_name == "search_files":
                             try:
@@ -963,7 +1002,9 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                     img_b64 = base64.b64encode(f.read()).decode()
                                 result = f"data:image/png;base64,{img_b64[:100]}...(截断，总长{len(img_b64)})"
                             except Exception as e:
-                                result = f"读取失败: {e}"
+                                te = self._tool_error_handler.handle_error(
+                                    session_id, "read_file", e, func_args)
+                                result = te.to_model_message()
 
                         # ── 进化引擎工具 ─────────────────────────────────
                         elif func_name == "request_evolution":
@@ -1196,6 +1237,24 @@ You can send files to the user natively: to deliver a file, write a brief confir
                     file_parts.append(block)
                 elif block.get("type") == "image" and block.get("data"):
                     file_parts.append(block)
+
+        # ── 权限检查：高风险工具需要确认 ──
+        try:
+            if hasattr(self, '_tool_policy'):
+                # 检查是否有高风险工具调用
+                pass  # 实际权限检查在工具执行时进行
+        except Exception:
+            pass
+
+        # ── 文件索引：索引会话中提到的文件 ──
+        try:
+            import re as _re_idx
+            file_mentions = _re_idx.findall(r'[\w/\-]+\.\w{1,5}', user_text)
+            for fp in file_mentions[:3]:
+                if os.path.exists(fp):
+                    self._file_index.index_file(session_id, fp)
+        except Exception:
+            pass
 
         # ── 环境感知 ──
         try:
@@ -1820,16 +1879,6 @@ You can send files to the user natively: to deliver a file, write a brief confir
         logger.info(f"Response [{session_id}]: {full_response[:100]}")
         logger.info(f"[prompt] done, response_len={len(full_response)}, tools={tool_calls_log}")
 
-        # ── 通过ACP session_update推送回复给前端 ──
-        if self._client and full_response:
-            try:
-                await self._client.session_update(
-                    session_id=session_id,
-                    update=acp.update_agent_message_text(full_response),
-                )
-                logger.info(f"[ACP] pushed response to frontend ({len(full_response)} chars)")
-            except Exception as e:
-                logger.warning(f"[ACP] Failed to push response: {e}")
 
         # ── 记录技能使用 ──────────────────────────────────
         for skill in matched_skills:
@@ -1939,6 +1988,17 @@ You can send files to the user natively: to deliver a file, write a brief confir
             logger.info("[opensoul] 偏好学习+技能提取+长期记忆完成")
         except Exception as e:
             logger.debug(f"[opensoul] 后处理失败(非致命): {e}")
+
+        # ── 最终推送（如果流式没推送过）──
+        if self._client and full_response and not session.get("_streamed"):
+            try:
+                await self._client.session_update(
+                    session_id=session_id,
+                    update=acp.update_agent_message_text(full_response),
+                )
+                logger.info(f"[ACP] final push ({len(full_response)} chars)")
+            except Exception as e:
+                logger.warning(f"[ACP] final push failed: {e}")
 
         # ── 可观测性：结束run span ──
         try:
