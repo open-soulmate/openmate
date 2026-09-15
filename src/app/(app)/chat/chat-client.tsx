@@ -37,7 +37,7 @@ async function tagSessionAgent(sessionId: string, agentId: string): Promise<void
 const getAcpProxyUrl = () => {
   // ACP Proxy runs on port 8092, same hostname
   return `http://${window.location.hostname}:8092`;
-};
+};```tsx
 const getAcpWsUrl = () => getAcpProxyUrl().replace('http', 'ws');
 
 interface MessagePart { type: string; text?: string; data?: string; name?: string; mime_type?: string; url?: string; choices?: ChoiceOption[]; }
@@ -64,417 +64,493 @@ interface Checkpoint { id: string; messageId: string; timestamp: Date; messages:
 
 interface Message {
   id: string;
-  role: 'user' | 'assistant' | 'system';
+  role: 'user' | 'assistant' | 'system' | 'tool';
   content: string;
   parts?: MessagePart[];
-  timestamp: Date;
-  tokenUsage?: TokenUsage;
   thinkingBlocks?: ThinkingBlock[];
   toolCalls?: ToolCallInfo[];
-  checkpoint?: Checkpoint;
+  tokenUsage?: TokenUsage;
+  timestamp: Date;
+  isStreaming?: boolean;
+  error?: string;
 }
 
-interface ChatSession {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: Date;
-  updatedAt: Date;
+interface ChatClientProps {
+  sessionId?: string;
   agentId?: string;
+  initialMessages?: Message[];
 }
 
-// [evo:a] - Removed local WebSocket state management in favor of global store
-// [evo:a] - Connection status now driven by useAppStore().globalWsConnected
-// [evo:a] - Removed duplicate connection initialization/cleanup logic
-// [evo:a] - Simplified useEffect hooks with proper dependency arrays
-
-export function ChatClient() {
+export function ChatClient({ sessionId, agentId, initialMessages = [] }: ChatClientProps) {
   const { t } = useTranslation();
   const isMobile = useIsMobile();
-  const { open: sidebarOpen } = useSidebar();
-  
-  // [evo:a] - Use global WebSocket connection state from store instead of local state
-  const { globalWsConnected, addGlobalMessageHandler, removeGlobalMessageHandler } = useAppStore();
-  
-  // Local UI state
-  const [sessions, setSessions] = useState<ChatSession[]>([]);
-  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
+  const { setOpen } = useSidebar();
+  const [messages, setMessages] = useState<Message[]>(initialMessages);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [isSending, setIsSending] = useState(false);
-  const [attachments, setAttachments] = useState<File[]>([]);
-  const [showSidebar, setShowSidebar] = useState(!isMobile);
-  const [streamingContent, setStreamingContent] = useState('');
-  const [streamingThinking, setStreamingThinking] = useState<ThinkingBlock[]>([]);
-  const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCallInfo[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
+  const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [approvalRequest, setApprovalRequest] = useState<AcpApprovalRequest | null>(null);
-  
+  const [attachments, setAttachments] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const abortControllerRef = useRef<AbortController | null>(null);
+  const currentSessionId = useRef<string>(sessionId || '');
+  const streamingMessageId = useRef<string | null>(null);
 
-  // Current session derived state
-  const currentSession = useMemo(() => 
-    sessions.find(s => s.id === currentSessionId) || null,
-    [sessions, currentSessionId]
-  );
-
-  const messages = useMemo(() => 
-    currentSession?.messages || [],
-    [currentSession]
-  );
-
-  // Auto-scroll to bottom on new messages
-  useEffect(() => {
+  const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages, streamingContent]);
-
-  // [evo:a] - Global WebSocket message handler registration
-  // This effect registers/unregisters the component's message handler with the global WebSocket
-  useEffect(() => {
-    const handleGlobalMessage = (event: MessageEvent) => {
-      try {
-        const data = JSON.parse(event.data);
-        
-        // Handle chat-specific messages routed through global connection
-        if (data.type === 'chat_message' && data.sessionId === currentSessionId) {
-          handleIncomingMessage(data);
-        } else if (data.type === 'chat_stream' && data.sessionId === currentSessionId) {
-          handleStreamChunk(data);
-        } else if (data.type === 'chat_stream_end' && data.sessionId === currentSessionId) {
-          handleStreamEnd(data);
-        } else if (data.type === 'thinking_update' && data.sessionId === currentSessionId) {
-          handleThinkingUpdate(data);
-        } else if (data.type === 'tool_call_update' && data.sessionId === currentSessionId) {
-          handleToolCallUpdate(data);
-        } else if (data.type === 'approval_request' && data.sessionId === currentSessionId) {
-          setApprovalRequest(data.request);
-        }
-      } catch (e) {
-        // Not a JSON message or not our concern
-      }
-    };
-
-    // [evo:a] - Register with global WebSocket message handler
-    addGlobalMessageHandler(handleGlobalMessage);
-    
-    // [evo:a] - Cleanup: unregister handler when component unmounts or session changes
-    return () => {
-      removeGlobalMessageHandler(handleGlobalMessage);
-    };
-  }, [currentSessionId, addGlobalMessageHandler, removeGlobalMessageHandler]);
-
-  // [evo:a] - Removed local WebSocket connection effect
-  // Connection management is now handled entirely by GlobalWebSocket component
-
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort();
-        abortControllerRef.current = null;
-      }
-    };
   }, []);
 
-  const handleIncomingMessage = useCallback((data: any) => {
-    const newMessage: Message = {
-      id: data.messageId || `msg-${Date.now()}`,
-      role: data.role || 'assistant',
-      content: data.content || '',
-      parts: data.parts || [],
-      timestamp: new Date(data.timestamp || Date.now()),
-      tokenUsage: data.tokenUsage,
-      thinkingBlocks: data.thinkingBlocks,
-      toolCalls: data.toolCalls,
-    };
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages, scrollToBottom]);
 
-    setSessions(prev => prev.map(session => {
-      if (session.id === currentSessionId) {
-        return {
-          ...session,
-          messages: [...session.messages, newMessage],
-          updatedAt: new Date(),
-        };
-      }
-      return session;
-    }));
-
-    setIsSending(false);
-    setStreamingContent('');
-    setStreamingThinking([]);
-    setStreamingToolCalls([]);
-  }, [currentSessionId]);
-
-  const handleStreamChunk = useCallback((data: any) => {
-    setStreamingContent(prev => prev + (data.content || ''));
-    setIsSending(true);
-  }, []);
-
-  const handleStreamEnd = useCallback((data: any) => {
-    if (streamingContent) {
-      const newMessage: Message = {
-        id: `msg-${Date.now()}`,
-        role: 'assistant',
-        content: streamingContent,
-        timestamp: new Date(),
-        thinkingBlocks: streamingThinking.length > 0 ? streamingThinking : undefined,
-        toolCalls: streamingToolCalls.length > 0 ? streamingToolCalls : undefined,
-      };
-
-      setSessions(prev => prev.map(session => {
-        if (session.id === currentSessionId) {
-          return {
-            ...session,
-            messages: [...session.messages, newMessage],
-            updatedAt: new Date(),
-          };
-        }
-        return session;
-      }));
+  // Stable callback for handling code apply from MarkdownContent
+  const handleCodeApply = useCallback(async (code: string, language?: string, filePath?: string) => {
+    if (!filePath) {
+      console.warn('[CodeApply] No file path provided');
+      return;
     }
 
-    setStreamingContent('');
-    setStreamingThinking([]);
-    setStreamingToolCalls([]);
-    setIsSending(false);
-  }, [streamingContent, streamingThinking, streamingToolCalls, currentSessionId]);
-
-  const handleThinkingUpdate = useCallback((data: any) => {
-    setStreamingThinking(prev => {
-      const existing = prev.find(b => b.id === data.blockId);
-      if (existing) {
-        return prev.map(b => b.id === data.blockId ? { ...b, text: b.text + data.text, isComplete: data.isComplete } : b);
-      }
-      return [...prev, { id: data.blockId, text: data.text, isComplete: data.isComplete }];
-    });
-  }, []);
-
-  const handleToolCallUpdate = useCallback((data: any) => {
-    setStreamingToolCalls(prev => {
-      const existing = prev.find(t => t.toolCallId === data.toolCallId);
-      if (existing) {
-        return prev.map(t => t.toolCallId === data.toolCallId ? { ...t, ...data } : t);
-      }
-      return [...prev, { toolCallId: data.toolCallId, toolName: data.toolName, serverName: data.serverName, state: data.state, args: data.args, content: data.content }];
-    });
-  }, []);
-
-  const handleSend = useCallback(async () => {
-    if (!input.trim() && attachments.length === 0) return;
-    if (!currentSessionId || !globalWsConnected) return;
-
-    const userMessage: Message = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setSessions(prev => prev.map(session => {
-      if (session.id === currentSessionId) {
-        return {
-          ...session,
-          messages: [...session.messages, userMessage],
-          updatedAt: new Date(),
-        };
-      }
-      return session;
-    }));
-
-    setInput('');
-    setAttachments([]);
-    setIsSending(true);
-
-    // Send via HTTP API (global WebSocket is for receiving)
     try {
-      abortControllerRef.current = new AbortController();
-      
-      const formData = new FormData();
-      formData.append('sessionId', currentSessionId);
-      formData.append('content', input);
-      attachments.forEach(file => formData.append('attachments', file));
-
-      const response = await fetch(`${getApiUrl()}/api/chat/send`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${getToken()}`,
-        },
-        body: formData,
-        signal: abortControllerRef.current.signal,
-      });
-
-      if (!response.ok) {
-        throw new Error(`Send failed: ${response.statusText}`);
-      }
-    } catch (error: any) {
-      if (error.name !== 'AbortError') {
-        console.error('[chat] Send error:', error);
-        setIsSending(false);
-      }
-    }
-  }, [input, attachments, currentSessionId, globalWsConnected]);
-
-  const createNewSession = useCallback(async (agentId?: string) => {
-    try {
-      const response = await fetch(`${getApiUrl()}/api/sessions`, {
+      const response = await fetch(`${getApiUrl()}/api/files/apply`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${getToken()}`,
         },
-        body: JSON.stringify({ agentId }),
-      });
-
-      if (!response.ok) throw new Error('Failed to create session');
-      
-      const data = await response.json();
-      const newSession: ChatSession = {
-        id: data.sessionId,
-        title: t('chat.newChat', 'New Chat'),
-        messages: [],
-        createdAt: new Date(),
-        updatedAt: new Date(),
-        agentId,
-      };
-
-      setSessions(prev => [newSession, ...prev]);
-      setCurrentSessionId(newSession.id);
-
-      // Tag session with agent if specified
-      if (agentId) {
-        tagSessionAgent(newSession.id, agentId);
-      }
-
-      return newSession.id;
-    } catch (error) {
-      console.error('[chat] Create session error:', error);
-      return null;
-    }
-  }, [t]);
-
-  const handleApproval = useCallback(async (approved: boolean) => {
-    if (!approvalRequest) return;
-
-    try {
-      await fetch(`${getAcpProxyUrl()}/api/approval`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          requestId: approvalRequest.requestId,
-          approved,
+          path: filePath,
+          content: code,
+          language,
+          sessionId: currentSessionId.current,
         }),
       });
+
+      if (!response.ok) {
+        throw new Error(`Failed to apply code: ${response.statusText}`);
+      }
+
+      const result = await response.json();
+      console.log('[CodeApply] Successfully applied:', result);
+
+      // Add a system message indicating the file was updated
+      const systemMessage: Message = {
+        id: `system-${Date.now()}`,
+        role: 'system',
+        content: `File updated: ${filePath}`,
+        timestamp: new Date(),
+      };
+      setMessages(prev => [...prev, systemMessage]);
     } catch (error) {
-      console.error('[chat] Approval error:', error);
+      console.error('[CodeApply] Error:', error);
+      const errorMessage: Message = {
+        id: `error-${Date.now()}`,
+        role: 'system',
+        content: `Failed to apply code to ${filePath}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        timestamp: new Date(),
+        error: 'apply_failed',
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    }
+  }, []);
+
+  // Connect to WebSocket
+  useEffect(() => {
+    if (!currentSessionId.current) return;
+
+    const wsUrl = `${getWsUrl()}/ws/chat/${currentSessionId.current}`;
+    const token = getToken();
+
+    try {
+      const ws = new WebSocket(`${wsUrl}?token=${token}`);
+      wsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log('[WS] Connected');
+        setIsConnected(true);
+      };
+
+      ws.onclose = () => {
+        console.log('[WS] Disconnected');
+        setIsConnected(false);
+      };
+
+      ws.onerror = (error) => {
+        console.error('[WS] Error:', error);
+        setIsConnected(false);
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          handleWebSocketMessage(data);
+        } catch (e) {
+          console.error('[WS] Failed to parse message:', e);
+        }
+      };
+
+      return () => {
+        ws.close();
+      };
+    } catch (error) {
+      console.error('[WS] Connection failed:', error);
+    }
+  }, [sessionId]);
+
+  // Handle incoming WebSocket messages with stable state updates
+  const handleWebSocketMessage = useCallback((data: any) => {
+    switch (data.type) {
+      case 'message_start': {
+        const newMessage: Message = {
+          id: data.messageId || `msg-${Date.now()}`,
+          role: 'assistant',
+          content: '',
+          parts: [],
+          thinkingBlocks: [],
+          toolCalls: [],
+          timestamp: new Date(),
+          isStreaming: true,
+        };
+        streamingMessageId.current = newMessage.id;
+        setMessages(prev => [...prev, newMessage]);
+        setIsLoading(true);
+        break;
+      }
+
+      case 'content_delta': {
+        if (!streamingMessageId.current) break;
+        const messageId = streamingMessageId.current;
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === messageId) {
+            return {
+              ...msg,
+              content: msg.content + (data.text || ''),
+            };
+          }
+          return msg;
+        }));
+        break;
+      }
+
+      case 'thinking_delta': {
+        if (!streamingMessageId.current) break;
+        const messageId = streamingMessageId.current;
+        const thinkingId = data.thinkingBlockId || 'default';
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === messageId) {
+            const existingBlocks = msg.thinkingBlocks || [];
+            const blockIndex = existingBlocks.findIndex(b => b.id === thinkingId);
+            if (blockIndex >= 0) {
+              const updatedBlocks = [...existingBlocks];
+              updatedBlocks[blockIndex] = {
+                ...updatedBlocks[blockIndex],
+                text: updatedBlocks[blockIndex].text + (data.text || ''),
+              };
+              return { ...msg, thinkingBlocks: updatedBlocks };
+            } else {
+              return {
+                ...msg,
+                thinkingBlocks: [...existingBlocks, {
+                  id: thinkingId,
+                  text: data.text || '',
+                  isComplete: false,
+                }],
+              };
+            }
+          }
+          return msg;
+        }));
+        break;
+      }
+
+      case 'thinking_end': {
+        if (!streamingMessageId.current) break;
+        const messageId = streamingMessageId.current;
+        const thinkingId = data.thinkingBlockId || 'default';
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === messageId) {
+            const blocks = (msg.thinkingBlocks || []).map(b =>
+              b.id === thinkingId ? { ...b, isComplete: true } : b
+            );
+            return { ...msg, thinkingBlocks: blocks };
+          }
+          return msg;
+        }));
+        break;
+      }
+
+      case 'tool_call_start': {
+        if (!streamingMessageId.current) break;
+        const messageId = streamingMessageId.current;
+        const toolCall: ToolCallInfo = {
+          toolCallId: data.toolCallId,
+          toolName: data.toolName,
+          serverName: data.serverName,
+          state: 'running',
+          args: data.args,
+        };
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === messageId) {
+            return {
+              ...msg,
+              toolCalls: [...(msg.toolCalls || []), toolCall],
+            };
+          }
+          return msg;
+        }));
+        break;
+      }
+
+      case 'tool_call_end': {
+        if (!streamingMessageId.current) break;
+        const messageId = streamingMessageId.current;
+        setMessages(prev => prev.map(msg => {
+          if (msg.id === messageId) {
+            const toolCalls = (msg.toolCalls || []).map(tc =>
+              tc.toolCallId === data.toolCallId
+                ? { ...tc, state: data.success ? 'completed' as const : 'failed' as const, content: data.content }
+                : tc
+            );
+            return { ...msg, toolCalls };
+          }
+          return msg;
+        }));
+        break;
+      }
+
+      case 'message_end': {
+        if (streamingMessageId.current) {
+          const messageId = streamingMessageId.current;
+          setMessages(prev => prev.map(msg => {
+            if (msg.id === messageId) {
+              return {
+                ...msg,
+                isStreaming: false,
+                tokenUsage: data.tokenUsage,
+              };
+            }
+            return msg;
+          }));
+          streamingMessageId.current = null;
+        }
+        setIsLoading(false);
+        break;
+      }
+
+      case 'acp_approval_request': {
+        setApprovalRequest(data.request);
+        setShowApprovalModal(true);
+        break;
+      }
+
+      case 'error': {
+        console.error('[WS] Server error:', data.message);
+        if (streamingMessageId.current) {
+          const messageId = streamingMessageId.current;
+          setMessages(prev => prev.map(msg => {
+            if (msg.id === messageId) {
+              return {
+                ...msg,
+                isStreaming: false,
+                error: data.message,
+              };
+            }
+            return msg;
+          }));
+          streamingMessageId.current = null;
+        }
+        setIsLoading(false);
+        break;
+      }
+
+      default:
+        console.log('[WS] Unknown message type:', data.type);
+    }
+  }, []);
+
+  const sendMessage = useCallback(async () => {
+    if (!input.trim() && attachments.length === 0) return;
+    if (isLoading) return;
+
+    const userMessage: Message = {
+      id: `user-${Date.now()}`,
+      role: 'user',
+      content: input.trim(),
+      timestamp: new Date(),
+      parts: attachments.length > 0
+        ? [{ type: 'text', text: input.trim() }]
+        : undefined,
+    };
+
+    // Add user message to state
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsLoading(true);
+
+    // Upload attachments if any
+    const uploadedParts: MessagePart[] = [];
+    if (attachments.length > 0) {
+      for (const file of attachments) {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          const response = await fetch(`${getApiUrl()}/api/upload`, {
+            method: 'POST',
+            headers: { 'Authorization': `Bearer ${getToken()}` },
+            body: formData,
+          });
+          if (response.ok) {
+            const result = await response.json();
+            uploadedParts.push({
+              type: file.type.startsWith('image/') ? 'image' : 'file',
+              url: result.url,
+              name: file.name,
+              mime_type: file.type,
+            });
+          }
+        } catch (error) {
+          console.error('[Upload] Failed:', error);
+        }
+      }
+      setAttachments([]);
     }
 
+    // Send via WebSocket
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'send_message',
+        content: input.trim(),
+        parts: uploadedParts.length > 0 ? uploadedParts : undefined,
+        sessionId: currentSessionId.current,
+        agentId,
+      }));
+    } else {
+      // Fallback to HTTP if WebSocket not connected
+      try {
+        const response = await fetch(`${getApiUrl()}/api/chat`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${getToken()}`,
+          },
+          body: JSON.stringify({
+            message: input.trim(),
+            parts: uploadedParts.length > 0 ? uploadedParts : undefined,
+            sessionId: currentSessionId.current,
+            agentId,
+          }),
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          // Create session if new
+          if (!currentSessionId.current && result.sessionId) {
+            currentSessionId.current = result.sessionId;
+            if (agentId) {
+              tagSessionAgent(result.sessionId, agentId);
+            }
+          }
+        }
+      } catch (error) {
+        console.error('[Chat] Failed to send message:', error);
+        setIsLoading(false);
+      }
+    }
+  }, [input, attachments, isLoading, agentId]);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      sendMessage();
+    }
+  }, [sendMessage]);
+
+  const handleApprove = useCallback(async () => {
+    if (approvalRequest && wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'acp_approval_response',
+        requestId: approvalRequest.requestId,
+        approved: true,
+      }));
+    }
+    setShowApprovalModal(false);
     setApprovalRequest(null);
   }, [approvalRequest]);
+
+  const handleReject = useCallback(async () => {
+    if (approvalRequest && wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'acp_approval_response',
+        requestId: approvalRequest.requestId,
+        approved: false,
+      }));
+    }
+    setShowApprovalModal(false);
+    setApprovalRequest(null);
+  }, [approvalRequest]);
+
+  const handleRetry = useCallback((messageId: string) => {
+    const messageIndex = messages.findIndex(m => m.id === messageId);
+    if (messageIndex >= 0) {
+      // Find the last user message before this one
+      const previousMessages = messages.slice(0, messageIndex);
+      const lastUserMessage = [...previousMessages].reverse().find(m => m.role === 'user');
+      if (lastUserMessage) {
+        setInput(lastUserMessage.content);
+      }
+    }
+  }, [messages]);
 
   const handleCopyMessage = useCallback(async (content: string) => {
     await copyToClipboard(content);
   }, []);
 
-  const handleRegenerate = useCallback(async (messageId: string) => {
-    if (!currentSessionId || !globalWsConnected) return;
-
-    try {
-      await fetch(`${getApiUrl()}/api/chat/regenerate`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify({ sessionId: currentSessionId, messageId }),
-      });
-      setIsSending(true);
-    } catch (error) {
-      console.error('[chat] Regenerate error:', error);
-    }
-  }, [currentSessionId, globalWsConnected]);
-
-  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    setAttachments(prev => [...prev, ...files]);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
-    }
+  const handleClearChat = useCallback(() => {
+    setMessages([]);
+    currentSessionId.current = '';
   }, []);
 
-  const removeAttachment = useCallback((index: number) => {
-    setAttachments(prev => prev.filter((_, i) => i !== index));
-  }, []);
-
-  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  }, [handleSend]);
-
-  // [evo:a] - Connection status indicator uses global store state
-  const ConnectionStatus = useMemo(() => (
-    <div className="flex items-center gap-1 text-xs">
-      {globalWsConnected ? (
-        <>
-          <Wifi className="h-3 w-3 text-green-500" />
-          <span className="text-green-500">{t('chat.connected', 'Connected')}</span>
-        </>
-      ) : (
-        <>
-          <WifiOff className="h-3 w-3 text-red-500" />
-          <span className="text-red-500">{t('chat.disconnected', 'Disconnected')}</span>
-        </>
-      )}
-    </div>
-  ), [globalWsConnected, t]);
-
-  // Render message with thinking blocks and tool calls
   const renderMessage = useCallback((message: Message) => {
     const isUser = message.role === 'user';
-    const isStreaming = false; // Only for current streaming message
+    const isSystem = message.role === 'system';
+
+    if (isSystem) {
+      return (
+        <div key={message.id} className="flex justify-center py-2">
+          <span className="text-xs text-muted-foreground bg-muted px-3 py-1 rounded-full">
+            {message.content}
+          </span>
+        </div>
+      );
+    }
 
     return (
-      <div key={message.id} className={`flex gap-3 p-4 ${isUser ? 'bg-muted/50' : ''}`}>
-        <div className="flex-shrink-0">
-          {isUser ? (
-            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
-              <User className="h-4 w-4 text-primary-foreground" />
-            </div>
-          ) : (
-            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
-              <Bot className="h-4 w-4" />
-            </div>
-          )}
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-sm">
-              {isUser ? t```tsx
-            ? t('chat.you', 'You') : t('chat.assistant', 'Assistant')}
-            </span>
-            <span className="text-xs text-muted-foreground">
-              {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </span>
-            {message.tokenUsage && (
-              <span className="text-xs text-muted-foreground">
-                {message.tokenUsage.input + message.tokenUsage.output} tokens
-              </span>
-            )}
+      <div key={message.id} className={`flex gap-3 py-4 ${isUser ? 'justify-end' : 'justify-start'}`}>
+        {!isUser && (
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center">
+            <Bot className="w-4 h-4 text-primary" />
           </div>
-
+        )}
+        <div className={`max-w-[80%] ${isUser ? 'order-first' : ''}`}>
           {/* Thinking blocks */}
           {message.thinkingBlocks && message.thinkingBlocks.length > 0 && (
             <details className="mb-2 group">
               <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-1">
-                <Brain className="h-3 w-3" />
+                <Brain className="w-3 h-3" />
                 {t('chat.thinking', 'Thinking process')}
-                <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
+                <ChevronDown className="w-3 h-3 transition-transform group-open:rotate-180" />
               </summary>
-              <div className="mt-2 p-2 bg-muted/30 rounded text-xs text-muted-foreground whitespace-pre-wrap">
-                {message.thinkingBlocks.map(block => block.text).join('\n')}
+              <div className="mt-1 p-3 bg-muted/50 rounded-lg text-sm">```tsx
+                {message.thinkingBlocks.map(block => (
+                  <div key={block.id} className="text-muted-foreground">
+                    <MarkdownContent
+                      content={block.text}
+                      onApply={handleCodeApply}
+                    />
+                  </div>
+                ))}
               </div>
             </details>
           )}
@@ -483,359 +559,256 @@ export function ChatClient() {
           {message.toolCalls && message.toolCalls.length > 0 && (
             <div className="mb-2 space-y-1">
               {message.toolCalls.map(toolCall => (
-                <div key={toolCall.toolCallId} className="flex items-center gap-2 text-xs">
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded ${
-                    toolCall.state === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                    toolCall.state === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                  }`}>
-                    {toolCall.state === 'running' && <Loader2 className="h-3 w-3 animate-spin" />}
-                    <Zap className="h-3 w-3" />
+                <div key={toolCall.toolCallId} className="flex items-center gap-2 text-xs bg-muted/50 px-3 py-2 rounded-lg">
+                  {toolCall.state === 'running' && <Loader2 className="w-3 h-3 animate-spin" />}
+                  {toolCall.state === 'completed' && <Zap className="w-3 h-3 text-green-500" />}
+                  {toolCall.state === 'failed' && <X className="w-3 h-3 text-red-500" />}
+                  <span className="font-mono">
+                    {toolCall.serverName && <span className="text-muted-foreground">{toolCall.serverName}/</span>}
                     {toolCall.toolName}
-                    {toolCall.serverName && <span className="text-muted-foreground">({toolCall.serverName})</span>}
                   </span>
+                  {toolCall.state === 'running' && (
+                    <span className="text-muted-foreground">{t('chat.toolRunning', 'Running...')}</span>
+                  )}
                 </div>
               ))}
             </div>
           )}
 
           {/* Message content */}
-          <div className="prose prose-sm dark:prose-invert max-w-none">
-            {message.parts && message.parts.length > 0 ? (
-              message.parts.map((part, i) => {
-                if (part.type === 'text') {
-                  return <MarkdownContent key={i} content={part.text || ''} />;
-                }
-                if (part.type === 'image') {
-                  return (
-                    <div key={i} className="my-2">
-                      <img src={part.url || `data:${part.mime_type};base64,${part.data}`} alt={part.name || 'Image'} className="max-w-sm rounded" />
-                    </div>
-                  );
-                }
-                if (part.type === 'file_diff') {
-                  const changes: FileChange[] = part.data ? JSON.parse(part.data) : [];
-                  return <MultiFileDiff key={i} changes={changes} />;
-                }
-                if (part.type === 'choices' && part.choices) {
-                  return (
-                    <TaskChoiceMenu
-                      key={i}
-                      options={part.choices}
-                      onSelect={(choice) => {
-                        setInput(choice.value);
-                        handleSend();
-                      }}
-                    />
-                  );
-                }
-                return null;
-              })
+          <div className={`rounded-lg px-4 py-3 ${
+            isUser
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted'
+          }`}>
+            {isUser ? (
+              <p className="whitespace-pre-wrap">{message.content}</p>
             ) : (
-              <MarkdownContent content={message.content} />
+              <MarkdownContent
+                content={message.content}
+                onApply={handleCodeApply}
+              />
+            )}
+
+            {/* File/image parts */}
+            {message.parts && message.parts.filter(p => p.type === 'image' || p.type === 'file').length > 0 && (
+              <div className="mt-3 space-y-2">
+                {message.parts.filter(p => p.type === 'image').map((part, idx) => (
+                  <img
+                    key={idx}
+                    src={part.url}
+                    alt={part.name || 'Uploaded image'}
+                    className="max-w-full rounded-lg"
+                  />
+                ))}
+                {message.parts.filter(p => p.type === 'file').map((part, idx) => (
+                  <div key={idx} className="flex items-center gap-2 text-sm bg-background/50 p-2 rounded">
+                    <FileText className="w-4 h-4" />
+                    <span>{part.name}</span>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Error state */}
+            {message.error && (
+              <div className="mt-2 text-sm text-red-500 flex items-center gap-1">
+                <X className="w-3 h-3" />
+                {message.error}
+              </div>
+            )}
+
+            {/* Streaming indicator */}
+            {message.isStreaming && (
+              <span className="inline-block w-2 h-4 bg-foreground/50 animate-pulse ml-1" />
             )}
           </div>
 
           {/* Message actions */}
-          {!isUser && (
-            <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+          {!isUser && !message.isStreaming && (
+            <div className="flex items-center gap-1 mt-1 opacity-0 hover:opacity-100 transition-opacity">
               <button
                 onClick={() => handleCopyMessage(message.content)}
-                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
                 title={t('chat.copy', 'Copy')}
               >
-                <Copy className="h-3.5 w-3.5" />
+                <Copy className="w-3 h-3" />
               </button>
               <button
-                onClick={() => handleRegenerate(message.id)}
-                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
-                title={t('chat.regenerate', 'Regenerate')}
+                onClick={() => handleRetry(message.id)}
+                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                title={t('chat.retry', 'Retry')}
               >
-                <RefreshCw className="h-3.5 w-3.5" />
+                <RefreshCw className="w-3 h-3" />
               </button>
-              <button className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title={t('chat.good', 'Good response')}>
-                <ThumbsUp className="h-3.5 w-3.5" />
+              <button
+                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                title={t('chat.good', 'Good response')}
+              >
+                <ThumbsUp className="w-3 h-3" />
               </button>
-              <button className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title={t('chat.bad', 'Bad response')}>
-                <ThumbsDown className="h-3.5 w-3.5" />
+              <button
+                className="p-1 hover:bg-muted rounded text-muted-foreground hover:text-foreground"
+                title={t('chat.bad', 'Bad response')}
+              >
+                <ThumbsDown className="w-3 h-3" />
               </button>
             </div>
           )}
-        </div>
-      </div>
-    );
-  }, [t, handleCopyMessage, handleRegenerate]);
 
-  // Streaming message display
-  const renderStreamingMessage = useCallback(() => {
-    if (!isSending && !streamingContent) return null;
-
-    return (
-      <div className="flex gap-3 p-4">
-        <div className="flex-shrink-0">
-          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
-            <Bot className="h-4 w-4" />
-          </div>
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 mb-1">
-            <span className="font-medium text-sm">{t('chat.assistant', 'Assistant')}</span>
-            {isSending && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
-          </div>
-
-          {/* Streaming thinking blocks */}
-          {streamingThinking.length > 0 && (
-            <details open className="mb-2">
-              <summary className="text-xs text-muted-foreground flex items-center gap-1">
-                <Brain className="h-3 w-3 animate-pulse" />
-                {t('chat.thinking', 'Thinking...')}
-              </summary>
-              <div className="mt-2 p-2 bg-muted/30 rounded text-xs text-muted-foreground whitespace-pre-wrap">
-                {streamingThinking.map(block => (
-                  <span key={block.id}>
-                    {block.text}
-                    {!block.isComplete && <span className="inline-block w-1.5 h-3 bg-primary animate-pulse" />}
-                  </span>
-                ))}
-              </div>
-            </details>
-          )}
-
-          {/* Streaming tool calls */}
-          {streamingToolCalls.length > 0 && (
-            <div className="mb-2 space-y-1">
-              {streamingToolCalls.map(toolCall => (
-                <div key={toolCall.toolCallId} className="flex items-center gap-2 text-xs">
-                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded ${
-                    toolCall.state === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
-                    toolCall.state === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
-                    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
-                  }`}>
-                    <Loader2 className={`h-3 w-3 ${toolCall.state === 'running' ? 'animate-spin' : ''}`} />
-                    <Zap className="h-3 w-3" />
-                    {toolCall.toolName}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          {/* Streaming content */}
-          {streamingContent && (
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              <MarkdownContent content={streamingContent} />
-              <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5" />
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }, [isSending, streamingContent, streamingThinking, streamingToolCalls, t]);
-
-  return (
-    <div className="flex h-full">
-      {/* Sessions sidebar */}
-      {showSidebar && (
-        <div className={`${isMobile ? 'absolute inset-0 z-50 bg-background' : 'w-64 border-r'} flex flex-col`}>
-          <div className="p-3 border-b flex items-center justify-between">
-            <h2 className="font-semibold text-sm">{t('chat.sessions', 'Sessions')}</h2>
-            <div className="flex items-center gap-1">
-              <button
-                onClick={() => createNewSession()}
-                className="p-1.5 rounded hover:bg-muted"
-                title={t('chat.newChat', 'New Chat')}
-              >
-                <Plus className="h-4 w-4" />
-              </button>
-              {isMobile && (
-                <button
-                  onClick={() => setShowSidebar(false)}
-                  className="p-1.5 rounded hover:bg-muted"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              )}
-            </div>
-          </div>
-          <div className="flex-1 overflow-y-auto">
-            {sessions.map(session => (
-              <button
-                key={session.id}
-                onClick={() => {
-                  setCurrentSessionId(session.id);
-                  if (isMobile) setShowSidebar(false);
-                }}
-                className={`w-full text-left p-3 hover:bg-muted flex items-start gap-2 ${
-                  session.id === currentSessionId ? 'bg-muted' : ''
-                }`}
-              >
-                <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
-                <div className="min-w-0 flex-1">
-                  <div className="text-sm font-medium truncate">{session.title}</div>
-                  <div className="text-xs text-muted-foreground">
-                    {session.updatedAt.toLocaleDateString()}
-                  </div>
-                </div>
-              </button>
-            ))}
-            {sessions.length === 0 && (
-              <div className="p-4 text-center text-muted-foreground text-sm">
-                {t('chat.noSessions', 'No conversations yet')}
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Main chat area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Chat header */}
-        <div className="border-b p-3 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {!showSidebar && (
-              <button
-                onClick={() => setShowSidebar(true)}
-                className="p-1.5 rounded hover:bg-muted"
-              >
-                <PanelLeft className="h-4 w-4" />
-              </button>
-            )}
-            <h1 className="font-semibold text-sm truncate">
-              {currentSession?.title || t('chat.title', 'Chat')}
-            </h1>
-            {currentSession?.agentId && (
-              <span className="text-xs bg-secondary px-2 py-0.5 rounded">
-                {currentSession.agentId}
+          {/* Timestamp */}
+          <div className={`text-xs text-muted-foreground mt-1 ${isUser ? 'text-right' : ''}`}>
+            {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            {message.tokenUsage && (
+              <span className="ml-2">
+                {message.tokenUsage.input + message.tokenUsage.output} tokens
               </span>
             )}
           </div>
-          <div className="flex items-center gap-2">
-            {ConnectionStatus}
+        </div>
+        {isUser && (
+          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+            <User className="w-4 h-4 text-primary-foreground" />
           </div>
-        </div>
+        )}
+      </div>
+    );
+  }, [handleCodeApply, handleCopyMessage, handleRetry, t]);
 
-        {/* Messages area */}
-        <div className="flex-1 overflow-y-auto">
-          {!currentSession ? (
-            <div className="h-full flex items-center justify-center">
-              <div className="text-center max-w-md mx-auto p-6">
-                <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                <h2 className="text-lg font-semibold mb-2">{t('chat.welcome', 'Welcome to Chat')}</h2>
-                <p className="text-muted-foreground text-sm mb-4">
-                  {t('chat.welcomeDesc', 'Start a new conversation or select an existing one.')}
-                </p>
-                <button
-                  onClick={() => createNewSession()}
-                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm"
-                >
-                  <Plus className="h-4 w-4" />
-                  {t('chat.newChat', 'New Chat')}
-                </button>
-              </div>
-            </div>
-          ) : (
-            <div className="pb-4">
-              {messages.map(message => (
-                <div key={message.id} className="group">
-                  {renderMessage(message)}
-                </div>
-              ))}
-              {renderStreamingMessage()}
-              <div ref={messagesEndRef} />
-            </div>
+  return (
+    <div className="flex flex-col h-full">
+      {/* Chat header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b">
+        <div className="flex items-center gap-2">
+          {isMobile && (
+            <button
+              onClick={() => setOpen(true)}
+              className="p-2 hover:bg-muted rounded-lg"
+            >
+              <PanelLeft className="w-4 h-4" />
+            </button>
           )}
+          <h2 className="text-sm font-medium">
+            {t('chat.title', 'Chat')}
+          </h2>
         </div>
-
-        {/* Input area */}
-        {currentSession && (
-          <div className="border-t p-3">
-            {/* Attachments preview */}
-            {attachments.length > 0 && (
-              <div className="flex flex-wrap gap-2 mb-2">
-                {attachments.map((file, index) => (
-                  <div key={index} className="flex items-center gap-1 bg-muted px-2 py-1 rounded text-xs">
-                    {file.type.startsWith('image/') ? (
-                      <ImageIcon className="h-3 w-3" />
-                    ) : (
-                      <FileText className="h-3 w-3" />
-                    )}
-                    <span className="max-w-[100px] truncate">{file.name}</span>
-                    <button
-                      onClick={() => removeAttachment(index)}
-                      className="hover:text-destructive"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1 text-xs">
+            {isConnected ? (
+              <>
+                <Wifi className="w-3 h-3 text-green-500" />
+                <span className="text-green-600">{t('chat.connected', 'Connected')}</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-3 h-3 text-muted-foreground" />
+                <span className="text-muted-foreground">{t('chat.disconnected', 'Disconnected')}</span>
+              </>
             )}
+          </div>
+          <button
+            onClick={handleClearChat}
+            className="p-2 hover:bg-muted rounded-lg text-muted-foreground hover:text-foreground"
+            title={t('chat.clear', 'Clear chat')}
+          >
+            <RotateCcw className="w-4 h-4" />
+          </button>
+        </div>
+      </div>
 
-            <div className="flex items-end gap-2">
-              <input
-                ref={fileInputRef}
-                type="file"
-                multiple
-                className="hidden"
-                onChange={handleFileSelect}
-                accept="image/*,.pdf,.doc,.docx,.txt"
-              />
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                className="p-2 rounded hover:bg-muted text-muted-foreground"
-                disabled={isSending || !globalWsConnected}
-              >
-                <Paperclip className="h-4 w-4" />
-              </button>
-              <div className="flex-1 relative">
-                <textarea
-                  ref={inputRef}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder={
-                    globalWsConnected
-                      ? t('chat.placeholder', 'Type a message...')
-                      : t('chat.disconnectedPlaceholder', 'Disconnected - waiting for connection...')
-                  }
-                  className="w-full resize-none rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[40px] max-h-[200px]"
-                  rows={1}
-                  disabled={isSending || !globalWsConnected}
-                />
-              </div>
-              <button
-                onClick={handleSend}
-                disabled={!input.trim() && attachments.length === 0 || isSending || !globalWsConnected}
-                className="p-2 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {isSending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Send className="h-4 w-4" />
-                )}
-              </button>
-            </div>
-
-            {/* Connection warning */}
-            {!globalWsConnected && (
-              <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-                <WifiOff className="h-3 w-3" />
-                {t('chat.connectionLost', 'Connection lost. Messages cannot be sent until reconnected.')}
-              </div>
-            )}
+      {/* Messages area */}
+      <div className="flex-1 overflow-y-auto px-4">
+        {messages.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
+            <MessageSquare className="w-12 h-12 mb-4 opacity-50" />
+            <p className="text-lg font-medium">{t('chat.emptyTitle', 'Start a conversation')}</p>
+            <p className="text-sm">{t('chat.emptySubtitle', 'Send a message to begin')}</p>
+          </div>
+        ) : (
+          <div className="py-4 space-y-2">
+            {messages.map(renderMessage)}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>
 
+      {/* Input area */}
+      <div className="border-t p-4">
+        {/* Attachments preview */}
+        {attachments.length > 0 && (
+          <div className="flex gap-2 mb-3 flex-wrap">
+            {attachments.map((file, idx) => (
+              <div key={idx} className="flex items-center gap-2 bg-muted px-3 py-2 rounded-lg text-sm">
+                {file.type.startsWith('image/') ? (
+                  <ImageIcon className="w-4 h-4" />
+                ) : (
+                  <FileText className="w-4 h-4" />
+                )}
+                <span className="max-w-[150px] truncate">{file.name}</span>
+                <button
+                  onClick={() => setAttachments(prev => prev.filter((_, i) => i !== idx))}
+                  className="hover:text-destructive"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div className="flex items-end gap-2">
+          <div className="flex-1 relative">
+            <textarea
+              ref={inputRef}
+              value={input}
+              onChange={e => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder={t('chat.placeholder', 'Type a message...')}
+              className="w-full resize-none rounded-lg border bg-background px-4 py-3 pr-12 text-sm focus:outline-none focus:ring-2 focus:ring-primary min-h-[48px] max-h-[200px]"
+              rows={1}
+              disabled={isLoading}
+            />
+            <div className="absolute right-2 bottom-2 flex items-center gap-1">
+              <label className="p-1 hover:bg-muted rounded cursor-pointer text-muted-foreground hover:text-foreground">
+                <Paperclip className="w-4 h-4" />
+                <input
+                  type="file"
+                  className="hidden"
+                  multiple
+                  onChange={e => {
+                    const files = Array.from(e.target.files || []);
+                    setAttachments(prev => [...prev, ...files]);
+                    e.target.value = '';
+                  }}
+                />
+              </label>
+            </div>
+          </div>
+          <button
+            onClick={sendMessage}
+            disabled={(!input.trim() && attachments.length === 0) || isLoading}
+            className="p-3 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLoading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <Send className="w-5 h-5" />
+            )}
+          </button>
+        </div>
+      </div>
+
       {/* ACP Approval Modal */}
-      {approvalRequest && (
-        <AcpApprovalModal
-          request={approvalRequest}
-          onApprove={() => handleApproval(true)}
-          onDeny={() => handleApproval(false)}
-          onClose={() => setApprovalRequest(null)}
-        />
-      )}
+      <AcpApprovalModal
+        open={showApprovalModal}
+        request={approvalRequest}
+        onApprove={handleApprove}
+        onReject={handleReject}
+        onClose={() => {
+          setShowApprovalModal(false);
+          setApprovalRequest(null);
+        }}
+      />
     </div>
   );
 }
