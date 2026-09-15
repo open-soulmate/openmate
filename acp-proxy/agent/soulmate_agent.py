@@ -90,7 +90,9 @@ from agent.context_injector import ContextInjector
 from agent.file_index import SessionFileIndex
 from agent.permission import PermissionManager
 from agent.permissions import ToolPolicy
-from agent.tool_errors import ToolError, ToolErrorHandler, FailureAction, ErrorCategory
+from agent.tool_errors import ToolError, ToolErrorHandler
+from agent.writer_fence import SessionWriterFence, WriteAction
+from agent.context import SessionContext
 from agent.layered_timeouts import TimeoutConfig
 from agent.eval_pipeline import EvalPipeline
 from agent.edit_safety import EditConfig
@@ -210,6 +212,9 @@ class SoulMateAgent:
         self._schema_doctor = SchemaDoctor(db_path=':memory:')
         # 工具错误处理器（分类+doom loop检测）
         self._tool_error_handler = ToolErrorHandler()
+        
+        # ── Writer Fence：per-session写入锁（替代全局_processing标志）──
+        self._writer_fence = SessionWriterFence(action=WriteAction.REJECT, timeout=30)
         # 注册基础健康检查
         from agent.health_checker import HealthCheck
         self._health_checker.register_simple(
