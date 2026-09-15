@@ -1008,3 +1008,30 @@ body {
 }
 
 @import "@xterm/xterm/css/xterm.css";
+
+
+/* ── Markdown 渲染样式（聊天消息） ── */
+.markdown-body { line-height: 1.7; font-size: 14px; }
+.markdown-body h1 { font-size: 1.4em; font-weight: 700; margin: 0.8em 0 0.4em; }
+.markdown-body h2 { font-size: 1.25em; font-weight: 700; margin: 0.7em 0 0.35em; }
+.markdown-body h3 { font-size: 1.1em; font-weight: 600; margin: 0.6em 0 0.3em; }
+.markdown-body h4, .markdown-body h5, .markdown-body h6 { font-size: 1em; font-weight: 600; margin: 0.5em 0 0.25em; }
+.markdown-body p { margin: 0.4em 0; }
+.markdown-body ul, .markdown-body ol { margin: 0.4em 0; padding-left: 1.5em; }
+.markdown-body li { margin: 0.15em 0; }
+.markdown-body ul { list-style: disc; }
+.markdown-body ol { list-style: decimal; }
+.markdown-body strong { font-weight: 700; }
+.markdown-body em { font-style: italic; }
+.markdown-body a { color: #60a5fa; text-decoration: underline; }
+.markdown-body a:hover { color: #93bbfd; }
+.markdown-body blockquote { border-left: 3px solid rgba(255,255,255,0.2); padding-left: 0.8em; margin: 0.5em 0; opacity: 0.8; }
+.markdown-body hr { border: none; border-top: 1px solid rgba(255,255,255,0.15); margin: 0.8em 0; }
+.markdown-body code:not(pre code) { background: rgba(255,255,255,0.1); padding: 0.15em 0.4em; border-radius: 4px; font-size: 0.9em; font-family: 'JetBrains Mono', monospace; }
+.markdown-body { overflow-x: auto; max-width: 100%; }
+.markdown-body table { border-collapse: collapse; margin: 0.6em 0; width: 100%; font-size: 0.85em; table-layout: fixed; }
+.markdown-body th, .markdown-body td { word-break: break-word; overflow-wrap: break-word; }
+.markdown-body thead th { background: rgba(255,255,255,0.08); font-weight: 600; text-align: left; padding: 0.5em 0.6em; border: 1px solid rgba(255,255,255,0.15); word-break: break-word; }
+.markdown-body tbody td { padding: 0.45em 0.75em; border: 1px solid rgba(255,255,255,0.1); }
+.markdown-body tbody tr:nth-child(even) { background: rgba(255,255,255,0.03); }
+.markdown-body tbody tr:hover { background: rgba(255,255,255,0.06); }

@@ -103,7 +103,7 @@ export function HtmlRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAg
 
       {mode === 'preview' && (
         <div className="flex-1 min-h-0">
-          {previewSrc ? <iframe src={previewSrc} className="w-full h-full border-0 bg-white" title={fileName} sandbox="allow-same-origin" />
+          {previewSrc ? <iframe src={previewSrc} className="w-full h-full border-0 bg-white" title={fileName} sandbox="allow-scripts allow-same-origin allow-forms allow-popups" />
             : <div className="flex items-center justify-center h-full text-muted-foreground text-sm">加载中...</div>}
         </div>
       )}
@@ -120,7 +120,7 @@ export function HtmlRenderer({ fileUrl, fileBuffer, fileName, onSave, onSendToAg
               spellCheck={false} placeholder="在此编辑HTML代码..." />
           </div>
           <div className="flex-1 min-w-0">
-            {previewSrc ? <iframe src={previewSrc} className="w-full h-full border-0 bg-white" title="Live Preview" sandbox="allow-same-origin" />
+            {previewSrc ? <iframe src={previewSrc} className="w-full h-full border-0 bg-white" title="Live Preview" sandbox="allow-scripts allow-same-origin allow-forms allow-popups" />
               : <div className="flex items-center justify-center h-full text-muted-foreground text-sm">输入代码查看预览</div>}
           </div>
         </div>

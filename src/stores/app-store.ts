@@ -243,8 +243,10 @@ interface AppState {
 
   // Right workspace panel (shared between top-bar and chat-client)
   rightPanelOpen: boolean;
+  pendingFilePreview: { url: string; name: string; mimeType?: string } | null;
   toggleRightPanel: () => void;
   setRightPanelOpen: (open: boolean) => void;
+  setPendingFilePreview: (file: { url: string; name: string; mimeType?: string } | null) => void;
 
   // Page-specific sidebar/workspace content (for PageLayout framework)
   pageSidebar: React.ReactNode | null;
@@ -418,10 +420,13 @@ export const useAppStore = create<AppState>((set, get) => ({
     set((s) => ({ sidebarCollapsed: !s.sidebarCollapsed })),
 
   rightPanelOpen: false,
+  pendingFilePreview: null,
   toggleRightPanel: () =>
     set((s) => ({ rightPanelOpen: !s.rightPanelOpen })),
   setRightPanelOpen: (open: boolean) =>
     set({ rightPanelOpen: open }),
+  setPendingFilePreview: (file) =>
+    set({ pendingFilePreview: file }),
 
   // Page-specific sidebar/workspace content
   pageSidebar: null,

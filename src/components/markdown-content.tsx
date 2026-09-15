@@ -4,8 +4,12 @@ import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, Pencil } from 'lucide-react';
 import { useState, useCallback, lazy, Suspense } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { MermaidDiagram } from './mermaid-diagram';
 import { useTranslation } from 'react-i18next';
+import { useAppStore } from '@/stores/app-store';
+import { getApiBaseUrl } from '@/lib/api-client';
 
 // Lazy load Monaco editor to avoid SSR issues
 const MonacoEditor = lazy(() => import('@monaco-editor/react'));
@@ -174,18 +178,61 @@ function renderMediaTags(content: string): React.ReactNode[] | null {
     seenFiles.add(fileName);
     const ext = fileName.split('.').pop()?.toLowerCase() || '';
     const isImage = ['png','jpg','jpeg','gif','webp','svg','bmp'].includes(ext);
+    const mimeType = ext === 'html' || ext === 'htm' ? 'text/html' : ext === 'md' ? 'text/markdown' : ext === 'json' ? 'application/json' : 'text/plain';
     const downloadUrl = `http://${window.location.hostname}:8092/api/file?path=${encodeURIComponent(filePath)}`;
     parts.push(
-      <div key={match.index} className="my-2 rounded-lg border border-border/50 bg-muted/30 p-3 flex items-center gap-3">
-        <span className="text-2xl">{isImage ? '🖼️' : '📎'}</span>
-        <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate">{fileName}</div>
-          <div className="text-xs text-muted-foreground truncate">{filePath}</div>
+      <div key={match.index} className="my-2 rounded-lg border border-border/50 bg-muted/30 overflow-hidden">
+        {/* 日期在上 */}
+        <div className="px-3 py-1.5 border-b border-border/30 bg-muted/20">
+          <span className="text-[10px] text-muted-foreground/60">{filePath}</span>
         </div>
-        <a href={downloadUrl} download={fileName}
-          className="shrink-0 px-3 py-1.5 text-xs font-medium rounded-md bg-primary text-primary-foreground hover:bg-primary/90 transition-colors">
-          下载
-        </a>
+        {/* 文件信息 */}
+        <div className="px-3 py-2.5 flex items-center gap-2">
+          <span className="text-2xl">{isImage ? '🖼️' : '📎'}</span>
+          <div className="flex-1 min-w-0">
+            <div className="text-sm font-medium truncate">{fileName}</div>
+          </div>
+        </div>
+        {/* 功能按钮在下 */}
+        <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border/30 bg-muted/20">
+          <button onClick={async (e) => {
+            e.stopPropagation();
+            console.log('[media-preview] Clicked, filePath:', filePath);
+            try {
+              const apiBase = getApiBaseUrl();
+              const url = `${apiBase}/api/file?path=${encodeURIComponent(filePath)}`;
+              console.log('[media-preview] Fetching:', url);
+              const resp = await fetch(url);
+              console.log('[media-preview] Response status:', resp.status);
+              if (resp.ok) {
+                const data = await resp.json();
+                const content = data.content || '';
+                console.log('[media-preview] Content length:', content.length);
+                const encoder = new TextEncoder();
+                const bytes = encoder.encode(content);
+                const blob = new Blob([bytes], { type: mimeType });
+                const dataUrl = URL.createObjectURL(blob);
+                console.log('[media-preview] Created blob URL:', dataUrl);
+                const store = useAppStore.getState();
+                store.setPendingFilePreview({ url: dataUrl, name: fileName, mimeType });
+                store.setRightPanelOpen(true);
+                console.log('[media-preview] Done');
+              } else {
+                console.error('[media-preview] API error:', resp.status, resp.statusText);
+              }
+            } catch (err) {
+              console.error('[media-preview] Failed:', err);
+            }
+          }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-primary hover:bg-primary/10 transition-colors">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+            预览
+          </button>
+          <a href={downloadUrl} download={fileName} onClick={(e) => e.stopPropagation()}
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+            <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+            下载
+          </a>
+        </div>
       </div>
     );
     lastIndex = match.index + match[0].length;
@@ -246,9 +293,11 @@ export function MarkdownContent({ content, onCodeApply }: MarkdownContentProps) 
   while ((match = regex.exec(content)) !== null) {
     if (match.index > lastIndex) {
       parts.push(
-        <span key={lastIndex} className="whitespace-pre-wrap">
-          {content.slice(lastIndex, match.index)}
-        </span>
+        <div key={lastIndex} className="markdown-body">
+          <ReactMarkdown remarkPlugins={[remarkGfm]}>
+            {content.slice(lastIndex, match.index)}
+          </ReactMarkdown>
+        </div>
       );
     }
     const lang = match[1];
@@ -270,9 +319,11 @@ export function MarkdownContent({ content, onCodeApply }: MarkdownContentProps) 
   }
   if (lastIndex < content.length) {
     parts.push(
-      <span key={lastIndex} className="whitespace-pre-wrap">
-        {content.slice(lastIndex)}
-      </span>
+      <div key={lastIndex} className="markdown-body">
+        <ReactMarkdown remarkPlugins={[remarkGfm]}>
+          {content.slice(lastIndex)}
+        </ReactMarkdown>
+      </div>
     );
   }
   return <>{parts}</>;

@@ -104,6 +104,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const setStoreTheme = useAppStore((s) => s.setTheme);
   const [menuOpen, setMenuOpen] = useState(false);
   const rightPanelOpen = useAppStore((s) => s.rightPanelOpen);
+  const pendingFilePreview = useAppStore((s) => s.pendingFilePreview);
   const toggleRightPanel = useAppStore((s) => s.toggleRightPanel);
   const setRightPanelOpen = useAppStore((s) => s.setRightPanelOpen);
   const pageSidebar = useAppStore((s) => s.pageSidebar);
@@ -514,7 +515,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           right: rightPanelOpen ? 0 : -rightPanelWidth,
         }}
       >
-        <WorkspacePanel sessionId={activeSessionIdFromStore || '__default__'} className="h-full" />
+        <WorkspacePanel sessionId={activeSessionIdFromStore || '__default__'} className="h-full" pendingFilePreview={pendingFilePreview} />
       </div>
       </div>
 

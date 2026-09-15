@@ -194,6 +194,8 @@ export interface WorkspacePanelProps {
   onBrowserAIAction?: (context: any, instruction: string) => Promise<any[] | null>;
   onSelectionAIEdit?: (selectedText: string, instruction: string) => Promise<string | null>;
   className?: string;
+  /** External file to preview — when this changes, automatically opens in a file-preview tab */
+  pendingFilePreview?: { url: string; name: string; mimeType?: string } | null;
 }
 
 // ── WorkspacePanel ─────────────────────────────────────────────────
@@ -206,6 +208,7 @@ export function WorkspacePanel({
   onBrowserAIAction,
   onSelectionAIEdit,
   className,
+  pendingFilePreview,
 }: WorkspacePanelProps) {
   const isMobile = useIsMobile();
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -243,6 +246,35 @@ export function WorkspacePanel({
       setWorkspaceMap(prev => ({ ...prev, [sessionId]: { tabs: [defaultTab], activeTabId: defaultTab.id } }));
     }
   }, [sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle external file preview requests
+  useEffect(() => {
+    if (!pendingFilePreview) return;
+    setWorkspaceMap(prev => {
+      const current = prev[sessionId] ?? { tabs: [createTab('new-tab')], activeTabId: '' };
+      // Update the active tab if it's a new-tab, otherwise create a new one
+      const activeTab = current.tabs.find(t => t.id === current.activeTabId);
+      if (activeTab && activeTab.type === 'new-tab') {
+        const updatedTabs = current.tabs.map(t =>
+          t.id === activeTab.id
+            ? { ...t, type: 'file-preview' as WorkspaceTabType, filePath: pendingFilePreview.url, title: pendingFilePreview.name, fileMimeType: pendingFilePreview.mimeType }
+            : t
+        );
+        return { ...prev, [sessionId]: { ...current, tabs: updatedTabs } };
+      } else {
+        const newTab: WorkspaceTab = {
+          id: `tab-${Date.now()}-ext`,
+          type: 'file-preview',
+          title: pendingFilePreview.name,
+          filePath: pendingFilePreview.url,
+          fileMimeType: pendingFilePreview.mimeType,
+          history: [],
+          historyIndex: -1,
+        };
+        return { ...prev, [sessionId]: { tabs: [...current.tabs, newTab], activeTabId: newTab.id } };
+      }
+    });
+  }, [pendingFilePreview, sessionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const wsState = workspaceMap[sessionId] ?? { tabs: [createTab('new-tab')], activeTabId: '' };
   const tabs = wsState.tabs;
