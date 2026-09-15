@@ -476,6 +476,7 @@ function useAcpWebSocket(params: {
       tagSessionAgent(newSessionId, currentSelectedAgentId);
       // 直接从sessionDataMap读消息（同步），提取自动命名
       const msgs = getSessionMessages(newSessionId);
+      console.log('[title-fix] migration: newSessionId=', newSessionId, 'msgs=', msgs.length);
       const firstUserMsg = msgs.find((m: { role: string }) => m.role === 'user');
       const autoName = firstUserMsg?.parts?.find((p: { type: string; text?: string }) => p.type === 'text')?.text?.slice(0, 20) || '';
       const displayName = autoName || '新会话';
