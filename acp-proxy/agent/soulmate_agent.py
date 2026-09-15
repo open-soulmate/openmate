@@ -1758,6 +1758,17 @@ You can send files to the user natively: to deliver a file, write a brief confir
         logger.info(f"Response [{session_id}]: {full_response[:100]}")
         logger.info(f"[prompt] done, response_len={len(full_response)}, tools={tool_calls_log}")
 
+        # ── 通过ACP session_update推送回复给前端 ──
+        if self._client and full_response:
+            try:
+                await self._client.session_update(
+                    session_id=session_id,
+                    update=acp.update_agent_message_text(full_response),
+                )
+                logger.info(f"[ACP] pushed response to frontend ({len(full_response)} chars)")
+            except Exception as e:
+                logger.warning(f"[ACP] Failed to push response: {e}")
+
         # ── 记录技能使用 ──────────────────────────────────
         for skill in matched_skills:
             self._skill_manager.record_usage(skill["id"])
