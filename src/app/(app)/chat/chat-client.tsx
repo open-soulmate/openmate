@@ -61,859 +61,781 @@ interface ToolCallInfo {
 }
 
 interface Checkpoint { id: string; messageId: string; timestamp: Date; messages: Message[]; label: string; }
-type AgentStatus = 'idle' | 'thinking' | 'tool_calling' | 'error';
 
 interface Message {
   id: string;
   role: 'user' | 'assistant' | 'system';
   content: string;
-  parts: MessagePart[];
-  thinkingBlocks?: ThinkingBlock[];
-  toolCalls?: ToolCallInfo[];
+  parts?: MessagePart[];
   timestamp: Date;
   tokenUsage?: TokenUsage;
-  agentStatus?: AgentStatus;
-  sessionId?: string;
+  thinkingBlocks?: ThinkingBlock[];
+  toolCalls?: ToolCallInfo[];
+  checkpoint?: Checkpoint;
 }
 
-interface WebSocketMessage {
-  type: string;
-  [key: string]: any;
-}
-
-export function ChatClient() {
-  const { t } = useTranslation();
-  const {
-    sessions,
-    activeSessionId,
-    setActiveSessionId,
-    addSession,
-    updateSession,
-    addMessageToSession,
-    getActiveSession,
-    globalLoading,
-    setGlobalLoading,
-  } = useAppStore();
-
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [localLoading, setLocalLoading] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
-  const [showApproveModal, setShowApproveModal] = useState(false);
-  const [approveRequest, setApproveRequest] = useState<AcpApprovalRequest | null>(null);
-  const [isTyping, setIsTyping] = useState(false);
-  
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLTextAreaElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const connectionAttemptRef = useRef<boolean>(false);
-  const isMountedRef = useRef<boolean>(true);
-
-  const isMobile = useIsMobile();
-  const { open: sidebarOpen } = useSidebar();
-
-  const activeSession = useMemo(() => {
-    return sessions.find(s => s.id === activeSessionId) || null;
-  }, [sessions, activeSessionId]);
-
-  const messages = useMemo(() => {
-    return activeSession?.messages || [];
-  }, [activeSession]);
-
-  // 管理组件生命周期状态
-  useEffect(() => {
-    isMountedRef.current = true;
-    
-    return () => {
-      isMountedRef.current = false;
-      // 只重置组件内部临时状态，不清理全局会话状态
-      setLoading(false);
-      setLocalLoading(false);
-      setIsTyping(false);
-      setConnectionStatus('disconnected');
-      connectionAttemptRef.current = false;
-      
-      // 关闭WebSocket连接
-      if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
-        wsRef.current.close();
-        wsRef.current = null;
-        setWsConnection(null);
-      }
-    };
-  }, []);
-
-  // WebSocket连接管理
-  const connectSession = useCallback(async (sessionId: string): Promise<WebSocket | null> => {
-    if (!sessionId || connectionAttemptRef.current) return null;
-    
-    connectionAttemptRef.current = true;
-    setConnectionStatus('connecting');
-    setLocalLoading(true);
-    
-    try {
-      const wsUrl = `${getWsUrl()}/ws/chat/${sessionId}?token=${getToken()}`;
-      const ws = new WebSocket(wsUrl);
-      
-      ws.onopen = () => {
-        if (!isMountedRef.current) {
-          ws.close();
-          return;
-        }
-        
-        console.log('[WebSocket] Connected to session:', sessionId);
-        setConnectionStatus('connected');
-        setLocalLoading(false);
-        connectionAttemptRef.current = false;
-        
-        wsRef.current = ws;
-        setWsConnection(ws);
-      };
-      
-      ws.onmessage = (event) => {
-        if (!isMountedRef.current) return;
-        
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-          handleWebSocketMessage(message, sessionId);
-        } catch (error) {
-          console.error('[WebSocket] Error parsing message:', error);
-        }
-      };
-      
-      ws.onclose = (event) => {
-        if (!isMountedRef.current) return;
-        
-        console.log('[WebSocket] Connection closed:', event.code, event.reason);
-        setConnectionStatus('disconnected');
-        setLocalLoading(false);
-        connectionAttemptRef.current = false;
-        
-        if (wsRef.current === ws) {
-          wsRef.current = null;
-          setWsConnection(null);
-        }
-      };
-      
-      ws.onerror = (error) => {
-        if (!isMountedRef.current) return;
-        
-        console.error('[WebSocket] Error:', error);
-        setConnectionStatus('disconnected');
-        setLocalLoading(false);
-        connectionAttemptRef.current = false;
-      };
-      
-      return ws;
-    } catch (error) {
-      console.error('[WebSocket] Failed to create connection:', error);
-      setConnectionStatus('disconnected');
-      setLocalLoading(false);
-      connectionAttemptRef.current = false;
-      return null;
-    }
-  }, []);
-
-  // 处理WebSocket消息
-  const handleWebSocketMessage = useCallback((message: WebSocketMessage, sessionId: string) => {
-    switch (message.type) {
-      case 'text_delta':
-        // 处理文本增量
-        break;
-      case 'thinking_delta':
-        // 处理思考增量
-        break;
-      case 'tool_call_update':
-        // 处理工具调用更新
-        break;
-      case 'agent_status':
-        // 处理代理状态更新
-        break;
-      case 'error':
-        // 处理错误
-        break;
-      default:
-        console.log('[WebSocket] Unknown message type:', message.type);
-    }
-  }, []);
-
-  // 修正后的onSend函数 - 确保通过connectSession管理的连接发送
-  const onSend = useCallback(async (message: string, sessionId?: string) => {
-    const targetSessionId = sessionId || activeSessionId;
-    if (!targetSessionId || !message.trim() || loading || localLoading) return;
-
-    // 确保有活跃的会话
-    let currentSession = sessions.find(s => s.id === targetSessionId);
-    if (!currentSession) {
-      // 如果会话不存在，创建一个新会话
-      const newSessionId = await addSession();
-      if (!newSessionId) return;
-      setActiveSessionId(newSessionId);
-      targetSessionId = newSessionId;
-      currentSession = sessions.find(s => s.id === newSessionId);
-    }
-
-    // 设置加载状态
-    setLoading(true);
-    setLocalLoading(true);
-    setIsTyping(true);
-
-    // 添加用户消息到会话
-    const userMessage: Message = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      content: message,
-      parts: [{ type: 'text', text: message }],
-      timestamp: new Date(),
-      sessionId: targetSessionId,
-    };
-
-    addMessageToSession(targetSessionId, userMessage);
-    setInput('');
-
-    try {
-      // 确保WebSocket连接已建立
-      let ws = wsRef.current;
-      
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        // 如果没有连接或连接已关闭，重新建立连接
-        ws = await connectSession(targetSessionId);
-        
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-          throw new Error('Failed to establish WebSocket connection');
-        }
-      }
-
-      // 通过已建立的连接发送消息
-      const wsMessage = {
-        type: 'user_message',
-        content: message,
-        parts: [{ type: 'text', text: message }],
-        sessionId: targetSessionId,
-        timestamp: new Date().toISOString(),
-      };
-
-      ws.send(JSON.stringify(wsMessage));
-      console.log('[Chat] Message sent via WebSocket:', message);
-
-    } catch (error) {
-      console.error('[Chat] Failed to send message:', error);
-      
-      // 添加错误消息到会话
-      const errorMessage: Message = {
-        id: `msg-error-${Date.now()}`,
-        role: 'assistant',
-        content: 'Failed to send message. Please try again.',
-        parts: [{ type: 'text', text: 'Failed to send message. Please try again.' }],
-        timestamp: new Date(),
-        sessionId: targetSessionId,
-        agentStatus: 'error',
-      };
-      
-      addMessageToSession(targetSessionId, errorMessage);
-    } finally {
-      // 确保在成功或失败时都重置加载状态
-      setLoading(false);
-      setLocalLoading```typescript
-'use client';
-import { MarkdownContent } from "@/components/markdown-content";
-import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
-import { TaskChoiceMenu, type ChoiceOption } from "@/components/task-choice-menu";
-import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { useAppStore } from '@/stores/app-store';
-import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, Copy, ThumbsUp, ThumbsDown, Share2, RefreshCw, MoreHorizontal, Volume2, MessageSquare, FolderOpen } from "lucide-react";
-import { ChatViewToggle } from "@opensoulmate/openface";
-import { ContextRing } from "@/components/context-ring";
-import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
-import { copyToClipboard } from '@/lib/clipboard';
-import { Dialog } from '@/components/ui/dialog';
-import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { useIsMobile } from '@/hooks/use-mobile';
-import { useSidebar } from '@/components/ui/sidebar';
-import { useTranslation } from 'react-i18next';
-import { SmartPrompt } from '@/components/smart-prompt';
-import { AcpApprovalModal, type AcpApprovalRequest } from '@/components/acp-approval-modal';
-
-const getApiUrl = () => getApiBaseUrl();
-const getWsUrl = () => getApiUrl().replace('http', 'ws');
-
-// Tag a session with its owning agent via OpenSoul API
-// This persists server-side, works across devices/browsers
-async function tagSessionAgent(sessionId: string, agentId: string): Promise<void> {
-  try {
-    await fetch(`${getApiUrl()}/api/sessions/${sessionId}/tags`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tag_name: `agent:${agentId}` }),
-    });
-  } catch (e) {
-    console.warn('[session-tag] Failed to tag session:', e);
-  }
-}
-
-const getAcpProxyUrl = () => {
-  // ACP Proxy runs on port 8092, same hostname
-  return `http://${window.location.hostname}:8092`;
-};
-const getAcpWsUrl = () => getAcpProxyUrl().replace('http', 'ws');
-
-interface MessagePart { type: string; text?: string; data?: string; name?: string; mime_type?: string; url?: string; choices?: ChoiceOption[]; }
-interface TokenUsage { input: number; output: number; }
-
-/** 思考过程块 —— 用于存储 Agent 推理链/内心独白的流式文本 */
-interface ThinkingBlock {
-  id: string;        // 唯一标识（使用时间戳 + 随机后缀）
-  text: string;      // 累积的思考文本内容
-  isComplete: boolean; // 是否已完成接收（false = 仍在流式接收中）
-}
-
-/** 工具调用信息 —— 记录 Agent 调用外部工具的完整生命周期 */
-interface ToolCallInfo {
-  toolCallId: string;   // 唯一标识（来自 ACP 协议的 toolCallId）
-  toolName: string;     // 工具名称（如 web_search、read_file）
-  serverName?: string;  // MCP 服务器名称（可选）
-  state: 'running' | 'completed' | 'failed'; // 工具调用状态
-  args?: string;        // 调用参数（JSON 字符串）
-  content?: string;     // 调用结果内容
-}
-
-interface Checkpoint { id: string; messageId: string; timestamp: Date; messages: Message[]; label: string; }
-type AgentStatus = 'idle' | 'thinking' | 'tool_calling' | 'error';
-
-interface Message {
+interface ChatSession {
   id: string;
-  role: 'user' | 'assistant' | 'system';
-  content: string;
-  parts: MessagePart[];
-  thinkingBlocks?: ThinkingBlock[];
-  toolCalls?: ToolCallInfo[];
-  timestamp: Date;
-  tokenUsage?: TokenUsage;
-  agentStatus?: AgentStatus;
-  sessionId?: string;
+  title: string;
+  messages: Message[];
+  createdAt: Date;
+  updatedAt: Date;
+  agentId?: string;
 }
 
-interface WebSocketMessage {
-  type: string;
-  [key: string]: any;
-}
+// [evo:a] - Removed local WebSocket state management in favor of global store
+// [evo:a] - Connection status now driven by useAppStore().globalWsConnected
+// [evo:a] - Removed duplicate connection initialization/cleanup logic
+// [evo:a] - Simplified useEffect hooks with proper dependency arrays
 
 export function ChatClient() {
   const { t } = useTranslation();
-  const {
-    sessions,
-    activeSessionId,
-    setActiveSessionId,
-    addSession,
-    updateSession,
-    addMessageToSession,
-    getActiveSession,
-    globalLoading,
-    setGlobalLoading,
-  } = useAppStore();
-
+  const isMobile = useIsMobile();
+  const { open: sidebarOpen } = useSidebar();
+  
+  // [evo:a] - Use global WebSocket connection state from store instead of local state
+  const { globalWsConnected, addGlobalMessageHandler, removeGlobalMessageHandler } = useAppStore();
+  
+  // Local UI state
+  const [sessions, setSessions] = useState<ChatSession[]>([]);
+  const [currentSessionId, setCurrentSessionId] = useState<string | null>(null);
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const [localLoading, setLocalLoading] = useState(false);
-  const [showSidebar, setShowSidebar] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
-  const [wsConnection, setWsConnection] = useState<WebSocket | null>(null);
-  const [connectionStatus, setConnectionStatus] = useState<'connected' | 'disconnected' | 'connecting'>('disconnected');
-  const [showApproveModal, setShowApproveModal] = useState(false);
-  const [approveRequest, setApproveRequest] = useState<AcpApprovalRequest | null>(null);
-  const [isTyping, setIsTyping] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSending, setIsSending] = useState(false);
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [showSidebar, setShowSidebar] = useState(!isMobile);
+  const [streamingContent, setStreamingContent] = useState('');
+  const [streamingThinking, setStreamingThinking] = useState<ThinkingBlock[]>([]);
+  const [streamingToolCalls, setStreamingToolCalls] = useState<ToolCallInfo[]>([]);
+  const [approvalRequest, setApprovalRequest] = useState<AcpApprovalRequest | null>(null);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
-  const wsRef = useRef<WebSocket | null>(null);
-  const connectionAttemptRef = useRef<boolean>(false);
-  const isMountedRef = useRef<boolean>(true);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
-  const isMobile = useIsMobile();
-  const { open: sidebarOpen } = useSidebar();
+  // Current session derived state
+  const currentSession = useMemo(() => 
+    sessions.find(s => s.id === currentSessionId) || null,
+    [sessions, currentSessionId]
+  );
 
-  const activeSession = useMemo(() => {
-    return sessions.find(s => s.id === activeSessionId) || null;
-  }, [sessions, activeSessionId]);
+  const messages = useMemo(() => 
+    currentSession?.messages || [],
+    [currentSession]
+  );
 
-  const messages = useMemo(() => {
-    return activeSession?.messages || [];
-  }, [activeSession]);
-
-  // 管理组件生命周期状态
-  useEffect(() => {
-    isMountedRef.current = true;
-    
-    return () => {
-      isMountedRef.current = false;
-      // 只重置组件内部临时状态，不清理全局会话状态
-      setLoading(false);
-      setLocalLoading(false);
-      setIsTyping(false);
-      setConnectionStatus('disconnected');
-      connectionAttemptRef.current = false;
-      
-      // 关闭WebSocket连接
-      if (wsRef.current && wsRef.current.readyState !== WebSocket.CLOSED) {
-        wsRef.current.close();
-        wsRef.current = null;
-        setWsConnection(null);
-      }
-    };
-  }, []);
-
-  // WebSocket连接管理
-  const connectSession = useCallback(async (sessionId: string): Promise<WebSocket | null> => {
-    if (!sessionId || connectionAttemptRef.current) return null;
-    
-    connectionAttemptRef.current = true;
-    setConnectionStatus('connecting');
-    setLocalLoading(true);
-    
-    try {
-      const wsUrl = `${getWsUrl()}/ws/chat/${sessionId}?token=${getToken()}`;
-      const ws = new WebSocket(wsUrl);
-      
-      ws.onopen = () => {
-        if (!isMountedRef.current) {
-          ws.close();
-          return;
-        }
-        
-        console.log('[WebSocket] Connected to session:', sessionId);
-        setConnectionStatus('connected');
-        setLocalLoading(false);
-        connectionAttemptRef.current = false;
-        
-        wsRef.current = ws;
-        setWsConnection(ws);
-      };
-      
-      ws.onmessage = (event) => {
-        if (!isMountedRef.current) return;
-        
-        try {
-          const message: WebSocketMessage = JSON.parse(event.data);
-          handleWebSocketMessage(message, sessionId);
-        } catch (error) {
-          console.error('[WebSocket] Error parsing message:', error);
-        }
-      };
-      
-      ws.onclose = (event) => {
-        if (!isMountedRef.current) return;
-        
-        console.log('[WebSocket] Connection closed:', event.code, event.reason);
-        setConnectionStatus('disconnected');
-        setLocalLoading(false);
-        connectionAttemptRef.current = false;
-        
-        if (wsRef.current === ws) {
-          wsRef.current = null;
-          setWsConnection(null);
-        }
-      };
-      
-      ws.onerror = (error) => {
-        if (!isMountedRef.current) return;
-        
-        console.error('[WebSocket] Error:', error);
-        setConnectionStatus('disconnected');
-        setLocalLoading(false);
-        connectionAttemptRef.current = false;
-      };
-      
-      return ws;
-    } catch (error) {
-      console.error('[WebSocket] Failed to create connection:', error);
-      setConnectionStatus('disconnected');
-      setLocalLoading(false);
-      connectionAttemptRef.current = false;
-      return null;
-    }
-  }, []);
-
-  // 处理WebSocket消息
-  const handleWebSocketMessage = useCallback((message: WebSocketMessage, sessionId: string) => {
-    switch (message.type) {
-      case 'text_delta':
-        // 处理文本增量
-        break;
-      case 'thinking_delta':
-        // 处理思考增量
-        break;
-      case 'tool_call_update':
-        // 处理工具调用更新
-        break;
-      case 'agent_status':
-        // 处理代理状态更新
-        break;
-      case 'error':
-        // 处理错误
-        break;
-      default:
-        console.log('[WebSocket] Unknown message type:', message.type);
-    }
-  }, []);
-
-  // 修正后的onSend函数 - 确保通过connectSession管理的连接发送
-  const onSend = useCallback(async (message: string, sessionId?: string) => {
-    const targetSessionId = sessionId || activeSessionId;
-    if (!targetSessionId || !message.trim() || loading || localLoading) return;
-
-    // 确保有活跃的会话
-    let currentSession = sessions.find(s => s.id === targetSessionId);
-    if (!currentSession) {
-      // 如果会话不存在，创建一个新会话
-      const newSessionId = await addSession();
-      if (!newSessionId) return;
-      setActiveSessionId(newSessionId);
-      targetSessionId = newSessionId;
-      currentSession = sessions.find(s => s.id === newSessionId);
-    }
-
-    // 设置加载状态
-    setLoading(true);
-    setLocalLoading(true);
-    setIsTyping(true);
-
-    // 添加用户消息到会话
-    const userMessage: Message = {
-      id: `msg-${Date.now()}`,
-      role: 'user',
-      content: message,
-      parts: [{ type: 'text', text: message }],
-      timestamp: new Date(),
-      sessionId: targetSessionId,
-    };
-
-    addMessageToSession(targetSessionId, userMessage);
-    setInput('');
-
-    try {
-      // 确保WebSocket连接已建立
-      let ws = wsRef.current;
-      
-      if (!ws || ws.readyState !== WebSocket.OPEN) {
-        // 如果没有连接或连接已关闭，重新建立连接
-        ws = await connectSession(targetSessionId);
-        
-        if (!ws || ws.readyState !== WebSocket.OPEN) {
-          throw new Error('Failed to establish WebSocket connection');
-        }
-      }
-
-      // 通过已建立的连接发送消息
-      const wsMessage = {
-        type: 'user_message',
-        content: message,
-        parts: [{ type: 'text', text: message }],
-        sessionId: targetSessionId,
-        timestamp: new Date().toISOString(),
-      };
-
-      ws.send(JSON.stringify(wsMessage));
-      console.log('[Chat] Message sent via WebSocket:', message);
-
-    } catch (error) {
-      console.error('[Chat] Failed to send message:', error);
-      
-      // 添加错误消息到会话
-      const errorMessage: Message = {
-        id: `msg-error-${Date.now()}`,
-        role: 'assistant',
-        content: 'Failed to send message. Please try again.',
-        parts: [{ type: 'text', text: 'Failed to send message. Please try again.' }],
-        timestamp: new Date(),
-        sessionId: targetSessionId,
-        agentStatus: 'error',
-      };
-      
-      addMessageToSession(targetSessionId, errorMessage);
-    } finally {
-      // 确保在成功或失败时都重置加载状态
-      setLoading(false);
-      setLocal```typescript
-      setLoading(false);
-      setLocalLoading(false);
-      setIsTyping(false);
-    }
-  }, [activeSessionId, sessions, loading, localLoading, addSession, setActiveSessionId, addMessageToSession, connectSession]);
-
-  // 处理Acp审批请求
-  const handleAcpApproval = useCallback(async (approved: boolean) => {
-    if (!approveRequest) return;
-    
-    try {
-      const response = await fetch(`${getAcpProxyUrl()}/api/approval/${approveRequest.requestId}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ approved }),
-      });
-      
-      if (!response.ok) {
-        console.error('[ACP] Approval request failed:', response.statusText);
-      }
-    } catch (error) {
-      console.error('[ACP] Approval request error:', error);
-    } finally {
-      setShowApproveModal(false);
-      setApproveRequest(null);
-    }
-  }, [approveRequest]);
-
-  // 自动滚动到底部
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, streamingContent]);
 
-  // 处理键盘事件
-  const handleKeyDown = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      onSend(input);
-    }
-  }, [input, onSend]);
-
-  // 渲染消息部分
-  const renderMessagePart = useCallback((part: MessagePart, index: number) => {
-    switch (part.type) {
-      case 'text':
-        return <MarkdownContent key={index} content={part.text || ''} />;
-      case 'image':
-        return (
-          <div key={index} className="my-2">
-            <img src={part.url} alt={part.name || 'Image'} className="max-w-full rounded-lg" />
-          </div>
-        );
-      case 'file':
-        return (
-          <div key={index} className="my-2 p-3 bg-muted rounded-lg flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            <span className="text-sm">{part.name}</span>
-          </div>
-        );
-      case 'choices':
-        return part.choices ? <TaskChoiceMenu key={index} choices={part.choices} /> : null;
-      default:
-        return null;
-    }
-  }, []);
-
-  // 渲染思考块
-  const renderThinkingBlock = useCallback((block: ThinkingBlock) => {
-    return (
-      <div key={block.id} className="my-2 p-3 bg-muted/50 rounded-lg border border-muted">
-        <div className="flex items-center gap-2 mb-2">
-          <Brain className="h-4 w-4 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground">
-            {block.isComplete ? t('thinking_complete') : t('thinking')}
-          </span>
-          {!block.isComplete && <Loader2 className="h-3 w-3 animate-spin" />}
-        </div>
-        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{block.text}</p>
-      </div>
-    );
-  }, [t]);
-
-  // 渲染工具调用信息
-  const renderToolCall = useCallback((toolCall: ToolCallInfo) => {
-    const stateIcon = {
-      running: <Loader2 className="h-4 w-4 animate-spin text-blue-500" />,
-      completed: <Zap className="h-4 w-4 text-green-500" />,
-      failed: <X className="h-4 w-4 text-red-500" />,
+  // [evo:a] - Global WebSocket message handler registration
+  // This effect registers/unregisters the component's message handler with the global WebSocket
+  useEffect(() => {
+    const handleGlobalMessage = (event: MessageEvent) => {
+      try {
+        const data = JSON.parse(event.data);
+        
+        // Handle chat-specific messages routed through global connection
+        if (data.type === 'chat_message' && data.sessionId === currentSessionId) {
+          handleIncomingMessage(data);
+        } else if (data.type === 'chat_stream' && data.sessionId === currentSessionId) {
+          handleStreamChunk(data);
+        } else if (data.type === 'chat_stream_end' && data.sessionId === currentSessionId) {
+          handleStreamEnd(data);
+        } else if (data.type === 'thinking_update' && data.sessionId === currentSessionId) {
+          handleThinkingUpdate(data);
+        } else if (data.type === 'tool_call_update' && data.sessionId === currentSessionId) {
+          handleToolCallUpdate(data);
+        } else if (data.type === 'approval_request' && data.sessionId === currentSessionId) {
+          setApprovalRequest(data.request);
+        }
+      } catch (e) {
+        // Not a JSON message or not our concern
+      }
     };
 
-    return (
-      <div key={toolCall.toolCallId} className="my-2 p-3 bg-muted/50 rounded-lg border border-muted">
-        <div className="flex items-center gap-2">
-          {stateIcon[toolCall.state]}
-          <span className="text-sm font-medium">{toolCall.toolName}</span>
-          {toolCall.serverName && (
-            <span className="text-xs text-muted-foreground">({toolCall.serverName})</span>
-          )}
-        </div>
-        {toolCall.content && (
-          <p className="mt-2 text-sm text-muted-foreground">{toolCall.content}</p>
-        )}
-      </div>
-    );
+    // [evo:a] - Register with global WebSocket message handler
+    addGlobalMessageHandler(handleGlobalMessage);
+    
+    // [evo:a] - Cleanup: unregister handler when component unmounts or session changes
+    return () => {
+      removeGlobalMessageHandler(handleGlobalMessage);
+    };
+  }, [currentSessionId, addGlobalMessageHandler, removeGlobalMessageHandler]);
+
+  // [evo:a] - Removed local WebSocket connection effect
+  // Connection management is now handled entirely by GlobalWebSocket component
+
+  // Cleanup abort controller on unmount
+  useEffect(() => {
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+        abortControllerRef.current = null;
+      }
+    };
   }, []);
 
-  // 渲染单条消息
+  const handleIncomingMessage = useCallback((data: any) => {
+    const newMessage: Message = {
+      id: data.messageId || `msg-${Date.now()}`,
+      role: data.role || 'assistant',
+      content: data.content || '',
+      parts: data.parts || [],
+      timestamp: new Date(data.timestamp || Date.now()),
+      tokenUsage: data.tokenUsage,
+      thinkingBlocks: data.thinkingBlocks,
+      toolCalls: data.toolCalls,
+    };
+
+    setSessions(prev => prev.map(session => {
+      if (session.id === currentSessionId) {
+        return {
+          ...session,
+          messages: [...session.messages, newMessage],
+          updatedAt: new Date(),
+        };
+      }
+      return session;
+    }));
+
+    setIsSending(false);
+    setStreamingContent('');
+    setStreamingThinking([]);
+    setStreamingToolCalls([]);
+  }, [currentSessionId]);
+
+  const handleStreamChunk = useCallback((data: any) => {
+    setStreamingContent(prev => prev + (data.content || ''));
+    setIsSending(true);
+  }, []);
+
+  const handleStreamEnd = useCallback((data: any) => {
+    if (streamingContent) {
+      const newMessage: Message = {
+        id: `msg-${Date.now()}`,
+        role: 'assistant',
+        content: streamingContent,
+        timestamp: new Date(),
+        thinkingBlocks: streamingThinking.length > 0 ? streamingThinking : undefined,
+        toolCalls: streamingToolCalls.length > 0 ? streamingToolCalls : undefined,
+      };
+
+      setSessions(prev => prev.map(session => {
+        if (session.id === currentSessionId) {
+          return {
+            ...session,
+            messages: [...session.messages, newMessage],
+            updatedAt: new Date(),
+          };
+        }
+        return session;
+      }));
+    }
+
+    setStreamingContent('');
+    setStreamingThinking([]);
+    setStreamingToolCalls([]);
+    setIsSending(false);
+  }, [streamingContent, streamingThinking, streamingToolCalls, currentSessionId]);
+
+  const handleThinkingUpdate = useCallback((data: any) => {
+    setStreamingThinking(prev => {
+      const existing = prev.find(b => b.id === data.blockId);
+      if (existing) {
+        return prev.map(b => b.id === data.blockId ? { ...b, text: b.text + data.text, isComplete: data.isComplete } : b);
+      }
+      return [...prev, { id: data.blockId, text: data.text, isComplete: data.isComplete }];
+    });
+  }, []);
+
+  const handleToolCallUpdate = useCallback((data: any) => {
+    setStreamingToolCalls(prev => {
+      const existing = prev.find(t => t.toolCallId === data.toolCallId);
+      if (existing) {
+        return prev.map(t => t.toolCallId === data.toolCallId ? { ...t, ...data } : t);
+      }
+      return [...prev, { toolCallId: data.toolCallId, toolName: data.toolName, serverName: data.serverName, state: data.state, args: data.args, content: data.content }];
+    });
+  }, []);
+
+  const handleSend = useCallback(async () => {
+    if (!input.trim() && attachments.length === 0) return;
+    if (!currentSessionId || !globalWsConnected) return;
+
+    const userMessage: Message = {
+      id: `msg-${Date.now()}`,
+      role: 'user',
+      content: input,
+      timestamp: new Date(),
+    };
+
+    setSessions(prev => prev.map(session => {
+      if (session.id === currentSessionId) {
+        return {
+          ...session,
+          messages: [...session.messages, userMessage],
+          updatedAt: new Date(),
+        };
+      }
+      return session;
+    }));
+
+    setInput('');
+    setAttachments([]);
+    setIsSending(true);
+
+    // Send via HTTP API (global WebSocket is for receiving)
+    try {
+      abortControllerRef.current = new AbortController();
+      
+      const formData = new FormData();
+      formData.append('sessionId', currentSessionId);
+      formData.append('content', input);
+      attachments.forEach(file => formData.append('attachments', file));
+
+      const response = await fetch(`${getApiUrl()}/api/chat/send`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${getToken()}`,
+        },
+        body: formData,
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) {
+        throw new Error(`Send failed: ${response.statusText}`);
+      }
+    } catch (error: any) {
+      if (error.name !== 'AbortError') {
+        console.error('[chat] Send error:', error);
+        setIsSending(false);
+      }
+    }
+  }, [input, attachments, currentSessionId, globalWsConnected]);
+
+  const createNewSession = useCallback(async (agentId?: string) => {
+    try {
+      const response = await fetch(`${getApiUrl()}/api/sessions`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({ agentId }),
+      });
+
+      if (!response.ok) throw new Error('Failed to create session');
+      
+      const data = await response.json();
+      const newSession: ChatSession = {
+        id: data.sessionId,
+        title: t('chat.newChat', 'New Chat'),
+        messages: [],
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        agentId,
+      };
+
+      setSessions(prev => [newSession, ...prev]);
+      setCurrentSessionId(newSession.id);
+
+      // Tag session with agent if specified
+      if (agentId) {
+        tagSessionAgent(newSession.id, agentId);
+      }
+
+      return newSession.id;
+    } catch (error) {
+      console.error('[chat] Create session error:', error);
+      return null;
+    }
+  }, [t]);
+
+  const handleApproval = useCallback(async (approved: boolean) => {
+    if (!approvalRequest) return;
+
+    try {
+      await fetch(`${getAcpProxyUrl()}/api/approval`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          requestId: approvalRequest.requestId,
+          approved,
+        }),
+      });
+    } catch (error) {
+      console.error('[chat] Approval error:', error);
+    }
+
+    setApprovalRequest(null);
+  }, [approvalRequest]);
+
+  const handleCopyMessage = useCallback(async (content: string) => {
+    await copyToClipboard(content);
+  }, []);
+
+  const handleRegenerate = useCallback(async (messageId: string) => {
+    if (!currentSessionId || !globalWsConnected) return;
+
+    try {
+      await fetch(`${getApiUrl()}/api/chat/regenerate`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${getToken()}`,
+        },
+        body: JSON.stringify({ sessionId: currentSessionId, messageId }),
+      });
+      setIsSending(true);
+    } catch (error) {
+      console.error('[chat] Regenerate error:', error);
+    }
+  }, [currentSessionId, globalWsConnected]);
+
+  const handleFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    setAttachments(prev => [...prev, ...files]);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  }, []);
+
+  const removeAttachment = useCallback((index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSend();
+    }
+  }, [handleSend]);
+
+  // [evo:a] - Connection status indicator uses global store state
+  const ConnectionStatus = useMemo(() => (
+    <div className="flex items-center gap-1 text-xs">
+      {globalWsConnected ? (
+        <>
+          <Wifi className="h-3 w-3 text-green-500" />
+          <span className="text-green-500">{t('chat.connected', 'Connected')}</span>
+        </>
+      ) : (
+        <>
+          <WifiOff className="h-3 w-3 text-red-500" />
+          <span className="text-red-500">{t('chat.disconnected', 'Disconnected')}</span>
+        </>
+      )}
+    </div>
+  ), [globalWsConnected, t]);
+
+  // Render message with thinking blocks and tool calls
   const renderMessage = useCallback((message: Message) => {
     const isUser = message.role === 'user';
-    const isSystem = message.role === 'system';
+    const isStreaming = false; // Only for current streaming message
 
     return (
-      <div
-        key={message.id}
-        className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''} ${isSystem ? 'justify-center' : ''}`}
-      >
-        {!isSystem && (
-          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${
-            isUser ? 'bg-primary' : 'bg-muted'
-          }`}>
-            {isUser ? <User className="h-4 w-4 text-primary-foreground" /> : <Bot className="h-4 w-4" />}
-          </div>
-        )}
-        
-        <div className={`flex flex-col gap-1 max-w-[80%] ${isUser ? 'items-end' : ''}`}>
-          {message.thinkingBlocks?.map(renderThinkingBlock)}
-          {message.toolCalls?.map(renderToolCall)}
-          
-          <div className={`rounded-lg p-3 ${
-            isUser 
-              ? 'bg-primary text-primary-foreground' 
-              : isSystem 
-                ? 'bg-muted/50 text-center' 
-                : 'bg-muted'
-          }`}>
-            {message.parts.map((part, index) => renderMessagePart(part, index))}
-          </div>
-          
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <span>{message.timestamp.toLocaleTimeString()}</span>
+      <div key={message.id} className={`flex gap-3 p-4 ${isUser ? 'bg-muted/50' : ''}`}>
+        <div className="flex-shrink-0">
+          {isUser ? (
+            <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
+              <User className="h-4 w-4 text-primary-foreground" />
+            </div>
+          ) : (
+            <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
+              <Bot className="h-4 w-4" />
+            </div>
+          )}
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-medium text-sm">
+              {isUser ? t```tsx
+            ? t('chat.you', 'You') : t('chat.assistant', 'Assistant')}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
             {message.tokenUsage && (
-              <span>{message.tokenUsage.input + message.tokenUsage.output} tokens</span>
+              <span className="text-xs text-muted-foreground">
+                {message.tokenUsage.input + message.tokenUsage.output} tokens
+              </span>
             )}
           </div>
+
+          {/* Thinking blocks */}
+          {message.thinkingBlocks && message.thinkingBlocks.length > 0 && (
+            <details className="mb-2 group">
+              <summary className="text-xs text-muted-foreground cursor-pointer hover:text-foreground flex items-center gap-1">
+                <Brain className="h-3 w-3" />
+                {t('chat.thinking', 'Thinking process')}
+                <ChevronDown className="h-3 w-3 transition-transform group-open:rotate-180" />
+              </summary>
+              <div className="mt-2 p-2 bg-muted/30 rounded text-xs text-muted-foreground whitespace-pre-wrap">
+                {message.thinkingBlocks.map(block => block.text).join('\n')}
+              </div>
+            </details>
+          )}
+
+          {/* Tool calls */}
+          {message.toolCalls && message.toolCalls.length > 0 && (
+            <div className="mb-2 space-y-1">
+              {message.toolCalls.map(toolCall => (
+                <div key={toolCall.toolCallId} className="flex items-center gap-2 text-xs">
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded ${
+                    toolCall.state === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                    toolCall.state === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                  }`}>
+                    {toolCall.state === 'running' && <Loader2 className="h-3 w-3 animate-spin" />}
+                    <Zap className="h-3 w-3" />
+                    {toolCall.toolName}
+                    {toolCall.serverName && <span className="text-muted-foreground">({toolCall.serverName})</span>}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Message content */}
+          <div className="prose prose-sm dark:prose-invert max-w-none">
+            {message.parts && message.parts.length > 0 ? (
+              message.parts.map((part, i) => {
+                if (part.type === 'text') {
+                  return <MarkdownContent key={i} content={part.text || ''} />;
+                }
+                if (part.type === 'image') {
+                  return (
+                    <div key={i} className="my-2">
+                      <img src={part.url || `data:${part.mime_type};base64,${part.data}`} alt={part.name || 'Image'} className="max-w-sm rounded" />
+                    </div>
+                  );
+                }
+                if (part.type === 'file_diff') {
+                  const changes: FileChange[] = part.data ? JSON.parse(part.data) : [];
+                  return <MultiFileDiff key={i} changes={changes} />;
+                }
+                if (part.type === 'choices' && part.choices) {
+                  return (
+                    <TaskChoiceMenu
+                      key={i}
+                      options={part.choices}
+                      onSelect={(choice) => {
+                        setInput(choice.value);
+                        handleSend();
+                      }}
+                    />
+                  );
+                }
+                return null;
+              })
+            ) : (
+              <MarkdownContent content={message.content} />
+            )}
+          </div>
+
+          {/* Message actions */}
+          {!isUser && (
+            <div className="flex items-center gap-1 mt-2 opacity-0 group-hover:opacity-100 transition-opacity">
+              <button
+                onClick={() => handleCopyMessage(message.content)}
+                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                title={t('chat.copy', 'Copy')}
+              >
+                <Copy className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => handleRegenerate(message.id)}
+                className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground"
+                title={t('chat.regenerate', 'Regenerate')}
+              >
+                <RefreshCw className="h-3.5 w-3.5" />
+              </button>
+              <button className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title={t('chat.good', 'Good response')}>
+                <ThumbsUp className="h-3.5 w-3.5" />
+              </button>
+              <button className="p-1 rounded hover:bg-muted text-muted-foreground hover:text-foreground" title={t('chat.bad', 'Bad response')}>
+                <ThumbsDown className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
-  }, [renderThinkingBlock, renderToolCall, renderMessagePart]);
+  }, [t, handleCopyMessage, handleRegenerate]);
 
-  return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b">
-        <div className="flex items-center gap-3">
-          {isMobile && (
-            <button onClick={() => setShowSidebar(true)} className="p-2 hover:bg-muted rounded-lg">
-              <PanelLeft className="h-5 w-5" />
-            </button>
+  // Streaming message display
+  const renderStreamingMessage = useCallback(() => {
+    if (!isSending && !streamingContent) return null;
+
+    return (
+      <div className="flex gap-3 p-4">
+        <div className="flex-shrink-0">
+          <div className="w-8 h-8 rounded-full bg-secondary flex items-center justify-center">
+            <Bot className="h-4 w-4" />
+          </div>
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="font-medium text-sm">{t('chat.assistant', 'Assistant')}</span>
+            {isSending && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+          </div>
+
+          {/* Streaming thinking blocks */}
+          {streamingThinking.length > 0 && (
+            <details open className="mb-2">
+              <summary className="text-xs text-muted-foreground flex items-center gap-1">
+                <Brain className="h-3 w-3 animate-pulse" />
+                {t('chat.thinking', 'Thinking...')}
+              </summary>
+              <div className="mt-2 p-2 bg-muted/30 rounded text-xs text-muted-foreground whitespace-pre-wrap">
+                {streamingThinking.map(block => (
+                  <span key={block.id}>
+                    {block.text}
+                    {!block.isComplete && <span className="inline-block w-1.5 h-3 bg-primary animate-pulse" />}
+                  </span>
+                ))}
+              </div>
+            </details>
           )}
-          <h1 className="text-lg font-semibold">{t('chat')}</h1>
-          <div className="flex items-center gap-1">
-            {connectionStatus === 'connected' ? (
-              <Wifi className="h-4 w-4 text-green-500" />
-            ) : connectionStatus === 'connecting' ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <WifiOff className="h-4 w-4 text-muted-foreground" />
-            )}
-            <span className="text-xs text-muted-foreground">
-              {t(`connection_${connectionStatus}`)}
-            </span>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          <button
-            onClick={() => addSession()}
-            className="p-2 hover:bg-muted rounded-lg"
-            title={t('new_chat')}
-          >
-            <Plus className="h-5 w-5" />
-          </button>
-        </div>
-      </div>
 
-      {/* Messages */}
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center">
-            <Bot className="h-12 w-12 mb-4 text-muted-foreground" />
-            <h2 className="text-lg font-semibold mb-2">{t('welcome_title')}</h2>
-            <p className="text-muted-foreground max-w-md">{t('welcome_description')}</p>
-          </div>
-        ) : (
-          messages.map(renderMessage)
-        )}
-        
-        {(loading || localLoading) && (
-          <div className="flex items-center gap-3">
-            <div className="flex-shrink-0 w-8 h-8 rounded-full bg-muted flex items-center justify-center">
-              <Bot className="h-4 w-4" />
-            </div>
-            <div className="rounded-lg p-3 bg-muted">
-              <Loader2 className="h-5 w-5 animate-spin" />
-            </div>
-          </div>
-        )}
-        
-        <div ref={messagesEndRef} />
-      </div>
-
-      {/* Input */}
-      <div className="border-t p-4">
-        <div className="flex items-end gap-2">
-          <ContextRing sessionId={activeSessionId || ''}>
-            <SmartPrompt
-              ref={inputRef}
-              value={input}
-              onChange={setInput}
-              onKeyDown={handleKeyDown}
-              placeholder={t('type_message')}
-              className="flex-1 min-h-[40px] max-h-[120px]"
-              disabled={loading || localLoading}
-            />
-          </ContextRing>
-          
-          <button
-            onClick={() => onSend(input)}
-            disabled={!input.trim() || loading || localLoading}
-            className="p-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {loading || localLoading ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Sidebar */}
-      {isMobile && (
-        <Sheet open={showSidebar} onOpenChange={setShowSidebar}>
-          <SheetContent side="left" className="w-[300px]">
-            <SheetHeader>
-              <SheetTitle>{t('sessions')}</SheetTitle>
-            </SheetHeader>
-            <div className="mt-4 space-y-2">
-              {sessions.map((session) => (
-                <button
-                  key={session.id}
-                  onClick={() => {
-                    setActiveSessionId(session.id);
-                    setShowSidebar(false);
-                  }}
-                  className={`w-full p-3 text-left rounded-lg hover:bg-muted ${
-                    session.id === activeSessionId ? 'bg-muted' : ''
-                  }`}
-                >
-                  <div className="font-medium truncate">{session.title || t('untitled')}</div>
-                  <div className="text-sm text-muted-foreground">
-                    {new Date(session.updatedAt).toLocaleDateString()}
-                  </div>
-                </button>
+          {/* Streaming tool calls */}
+          {streamingToolCalls.length > 0 && (
+            <div className="mb-2 space-y-1">
+              {streamingToolCalls.map(toolCall => (
+                <div key={toolCall.toolCallId} className="flex items-center gap-2 text-xs">
+                  <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded ${
+                    toolCall.state === 'completed' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                    toolCall.state === 'failed' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                    'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                  }`}>
+                    <Loader2 className={`h-3 w-3 ${toolCall.state === 'running' ? 'animate-spin' : ''}`} />
+                    <Zap className="h-3 w-3" />
+                    {toolCall.toolName}
+                  </span>
+                </div>
               ))}
             </div>
-          </SheetContent>
-        </Sheet>
+          )}
+
+          {/* Streaming content */}
+          {streamingContent && (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+              <MarkdownContent content={streamingContent} />
+              <span className="inline-block w-2 h-4 bg-primary animate-pulse ml-0.5" />
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }, [isSending, streamingContent, streamingThinking, streamingToolCalls, t]);
+
+  return (
+    <div className="flex h-full">
+      {/* Sessions sidebar */}
+      {showSidebar && (
+        <div className={`${isMobile ? 'absolute inset-0 z-50 bg-background' : 'w-64 border-r'} flex flex-col`}>
+          <div className="p-3 border-b flex items-center justify-between">
+            <h2 className="font-semibold text-sm">{t('chat.sessions', 'Sessions')}</h2>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => createNewSession()}
+                className="p-1.5 rounded hover:bg-muted"
+                title={t('chat.newChat', 'New Chat')}
+              >
+                <Plus className="h-4 w-4" />
+              </button>
+              {isMobile && (
+                <button
+                  onClick={() => setShowSidebar(false)}
+                  className="p-1.5 rounded hover:bg-muted"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              )}
+            </div>
+          </div>
+          <div className="flex-1 overflow-y-auto">
+            {sessions.map(session => (
+              <button
+                key={session.id}
+                onClick={() => {
+                  setCurrentSessionId(session.id);
+                  if (isMobile) setShowSidebar(false);
+                }}
+                className={`w-full text-left p-3 hover:bg-muted flex items-start gap-2 ${
+                  session.id === currentSessionId ? 'bg-muted' : ''
+                }`}
+              >
+                <MessageSquare className="h-4 w-4 mt-0.5 flex-shrink-0 text-muted-foreground" />
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-medium truncate">{session.title}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {session.updatedAt.toLocaleDateString()}
+                  </div>
+                </div>
+              </button>
+            ))}
+            {sessions.length === 0 && (
+              <div className="p-4 text-center text-muted-foreground text-sm">
+                {t('chat.noSessions', 'No conversations yet')}
+              </div>
+            )}
+          </div>
+        </div>
       )}
 
+      {/* Main chat area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        {/* Chat header */}
+        <div className="border-b p-3 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            {!showSidebar && (
+              <button
+                onClick={() => setShowSidebar(true)}
+                className="p-1.5 rounded hover:bg-muted"
+              >
+                <PanelLeft className="h-4 w-4" />
+              </button>
+            )}
+            <h1 className="font-semibold text-sm truncate">
+              {currentSession?.title || t('chat.title', 'Chat')}
+            </h1>
+            {currentSession?.agentId && (
+              <span className="text-xs bg-secondary px-2 py-0.5 rounded">
+                {currentSession.agentId}
+              </span>
+            )}
+          </div>
+          <div className="flex items-center gap-2">
+            {ConnectionStatus}
+          </div>
+        </div>
+
+        {/* Messages area */}
+        <div className="flex-1 overflow-y-auto">
+          {!currentSession ? (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center max-w-md mx-auto p-6">
+                <Bot className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
+                <h2 className="text-lg font-semibold mb-2">{t('chat.welcome', 'Welcome to Chat')}</h2>
+                <p className="text-muted-foreground text-sm mb-4">
+                  {t('chat.welcomeDesc', 'Start a new conversation or select an existing one.')}
+                </p>
+                <button
+                  onClick={() => createNewSession()}
+                  className="inline-flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 text-sm"
+                >
+                  <Plus className="h-4 w-4" />
+                  {t('chat.newChat', 'New Chat')}
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="pb-4">
+              {messages.map(message => (
+                <div key={message.id} className="group">
+                  {renderMessage(message)}
+                </div>
+              ))}
+              {renderStreamingMessage()}
+              <div ref={messagesEndRef} />
+            </div>
+          )}
+        </div>
+
+        {/* Input area */}
+        {currentSession && (
+          <div className="border-t p-3">
+            {/* Attachments preview */}
+            {attachments.length > 0 && (
+              <div className="flex flex-wrap gap-2 mb-2">
+                {attachments.map((file, index) => (
+                  <div key={index} className="flex items-center gap-1 bg-muted px-2 py-1 rounded text-xs">
+                    {file.type.startsWith('image/') ? (
+                      <ImageIcon className="h-3 w-3" />
+                    ) : (
+                      <FileText className="h-3 w-3" />
+                    )}
+                    <span className="max-w-[100px] truncate">{file.name}</span>
+                    <button
+                      onClick={() => removeAttachment(index)}
+                      className="hover:text-destructive"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <div className="flex items-end gap-2">
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+                accept="image/*,.pdf,.doc,.docx,.txt"
+              />
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                className="p-2 rounded hover:bg-muted text-muted-foreground"
+                disabled={isSending || !globalWsConnected}
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
+              <div className="flex-1 relative">
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder={
+                    globalWsConnected
+                      ? t('chat.placeholder', 'Type a message...')
+                      : t('chat.disconnectedPlaceholder', 'Disconnected - waiting for connection...')
+                  }
+                  className="w-full resize-none rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring min-h-[40px] max-h-[200px]"
+                  rows={1}
+                  disabled={isSending || !globalWsConnected}
+                />
+              </div>
+              <button
+                onClick={handleSend}
+                disabled={!input.trim() && attachments.length === 0 || isSending || !globalWsConnected}
+                className="p-2 rounded bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+
+            {/* Connection warning */}
+            {!globalWsConnected && (
+              <div className="mt-2 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                <WifiOff className="h-3 w-3" />
+                {t('chat.connectionLost', 'Connection lost. Messages cannot be sent until reconnected.')}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
       {/* ACP Approval Modal */}
-      <AcpApprovalModal
-        open={showApproveModal}
-        onOpenChange={setShowApproveModal}
-        request={approveRequest}
-        onApprove={() => handleAcpApproval(true)}
-        onDeny={() => handleAcpApproval(false)}
-      />
+      {approvalRequest && (
+        <AcpApprovalModal
+          request={approvalRequest}
+          onApprove={() => handleApproval(true)}
+          onDeny={() => handleApproval(false)}
+          onClose={() => setApprovalRequest(null)}
+        />
+      )}
     </div>
   );
 }
