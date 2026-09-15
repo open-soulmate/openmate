@@ -1728,7 +1728,10 @@ export function ChatClient() {
                   onClick={startEditTitle}
                   title={selectedSession?.id ? 'Click to rename' : undefined}
                 >
-                  {storeSessionName || selectedSession?.name || selectedSession?.title || (selectedAgent || storeAgentName ? `${selectedAgent?.name || storeAgentName} ${t('chat.newSession')}` : t('chat.newChat'))}
+                  {(() => {
+                    const fallbackTitle = messages.find(m => m.role === 'user')?.parts?.find((p: any) => p.type === 'text')?.text?.slice(0, 30) || '';
+                    return storeSessionName || selectedSession?.name || selectedSession?.title || fallbackTitle || (selectedAgent || storeAgentName ? `${selectedAgent?.name || storeAgentName} ${t('chat.newSession')}` : t('chat.newChat'));
+                  })()}
                 </span>
               )}
             </div>
@@ -2062,6 +2065,7 @@ export function ChatClient() {
               }}
               onSend={(assembled) => {
                 if ((!assembled.trim() && attachments.length === 0) || loading) return;
+                console.log('[onSend-debug] activeSessionIdFromStore:', activeSessionIdFromStore, 'selectedSession?.id:', selectedSession?.id);
                 const text = assembled.trim();
                 const userMsg: Message = { id: Date.now().toString(), role: 'user', parts: [{ type: 'text', text }, ...attachments], timestamp: new Date() };
                 let currentSessionId = activeSessionIdFromStore;
