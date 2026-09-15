@@ -3,7 +3,7 @@ import { copyToClipboard } from "@/lib/clipboard";
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { Copy, Check, Pencil } from 'lucide-react';
-import { useState, useCallback, lazy, Suspense, useMemo, memo, useEffect } from 'react';
+import { useState, useCallback, lazy, Suspense, useMemo, memo, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { MermaidDiagram } from './mermaid-diagram';
@@ -24,23 +24,44 @@ const CodeBlock = memo(function CodeBlock({
   const [copied, setCopied] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editedCode, setEditedCode] = useState(code);
+  const isMountedRef = useRef(true);
 
   useEffect(() => {
     setEditedCode(code);
   }, [code]);
 
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
   const handleCopy = useCallback(() => {
+    if (!isMountedRef.current) return;
+    
     copyToClipboard(isEditing ? editedCode : code);
     setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    
+    const timer = setTimeout(() => {
+      if (isMountedRef.current) {
+        setCopied(false);
+      }
+    }, 2000);
+    
+    return () => clearTimeout(timer);
   }, [code, editedCode, isEditing]);
 
   const handleApply = useCallback(() => {
+    if (!isMountedRef.current) return;
+    
     onApply?.(editedCode);
     setIsEditing(false);
   }, [editedCode, onApply]);
 
   const handleCancel = useCallback(() => {
+    if (!isMountedRef.current) return;
+    
     setEditedCode(code);
     setIsEditing(false);
   }, [code]);
@@ -76,4 +97,99 @@ const CodeBlock = memo(function CodeBlock({
         </div>
       </div>
 
-      {/* Editor or 
+      {/* Editor or SyntaxHighlighter */}
+      {isEditing ? (
+        <div className="border-t border-border/50">
+          <Suspense fallback={<div className="p-4 text-muted-foreground">Loading editor...</div>}>
+            <MonacoEditor
+              height="300px"
+              defaultLanguage={language || 'text'}
+              value={editedCode}
+              onChange={(value) => setEditedCode(value || '')}
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                scrollBeyondLastLine: false,
+                fontSize: 14,
+                wordWrap: 'on',
+                automaticLayout: true,
+              }}
+            />
+          </Suspense>
+          <div className="flex justify-end gap-2 px-3 py-2 bg-[var(--color-secondary)] border-t border-border/50">
+            <button
+              onClick={handleCancel}
+              className="px-3 py-1 text-sm bg-background rounded border border-border hover:bg-secondary"
+            >
+              {t('markdown.cancel')}
+            </button>
+            <button
+              onClick={handleApply}
+              className="px-3 py-1 text-sm bg-primary text-primary-foreground rounded hover:bg-primary/90"
+            >
+              {t('markdown.apply')}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <SyntaxHighlighter
+          language={language || 'text'}
+          style={oneDark}
+          customStyle={syntaxHighlighterStyle}
+        >
+          {code}
+        </SyntaxHighlighter>
+      )}
+    </div>
+  );
+});
+
+// Memoized Mermaid component
+const MemoizedMermaid = memo(({ code }: { code: string }) => (
+  <MermaidDiagram code={code} />
+));
+
+// Main markdown content component
+interface MarkdownContentProps {
+  content: string;
+  onCodeApply?: (code: string) => void;
+}
+
+const MarkdownContent = memo(function MarkdownContent({ content, onCodeApply }: MarkdownContentProps) {
+  const { t } = useTranslation();
+
+  const components = useMemo(() => ({
+    code({ node, inline, className, children, ...props }: any) {
+      const match = /language-(\w+)/.exec(className || '');
+      const language = match ? match[1] : '';
+      const code = String(children).replace(/\n$/, '');
+
+      if (!inline && code) {
+        if (language === 'mermaid') {
+          return <MemoizedMermaid code={code} />;
+        }
+        return (
+          <CodeBlock
+            code={code}
+            language={language}
+            onApply={onCodeApply}
+          />
+        );
+      }
+      return <code className={className} {...props}>{children}</code>;
+    },
+  }), [onCodeApply, t]);
+
+  return (
+    <div className="markdown-content">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={components}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+});
+
+export default MarkdownContent;
