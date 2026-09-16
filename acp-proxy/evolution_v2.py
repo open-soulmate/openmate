@@ -1,0 +1,447 @@
+"""进化引擎 v2 — 整合失败记忆+集成测试+独立grader
+
+核心改进（基于100-agent调研）：
+1. 真实集成测试：WS发消息→必须收到AI回复（不再是health check ping）
+2. 失败记忆：记录每次失败，规划时注入历史失败上下文（借鉴mem0审计表+CAMEL工作流记忆）
+3. 独立grader：三态判定，解析失败=拒绝（借鉴DeepAgents RubricMiddleware）
+4. 错误风暴熔断：连续同错即停（借鉴agno）
+5. 程序化验证优先：集成测试结果不需要LLM裁判（借鉴CAMEL）
+"""
+import asyncio
+import json
+import logging
+import time
+from datetime import datetime, timezone
+from pathlib import Path
+
+import failure_memory
+import evolution_grader
+import integration_test
+
+logger = logging.getLogger("evolution-v2")
+
+# 配置
+MAX_RETRIES = 2                # 重试次数（从3降到2，因为有失败记忆了）
+PLATEAU_ROUNDS = 3
+
+
+class EvolutionV2:
+    """进化引擎 v2"""
+    
+    def __init__(self, strand, repo_root: Path, instance_id: str):
+        self.strand = strand
+        self.repo_root = repo_root
+        self.instance_id = instance_id
+        self.data_dir = repo_root / "acp-proxy" / "data"
+        
+        # 收敛追踪
+        self._score_history: list[float] = []
+        self._consecutive_no_improve = 0
+    
+    async def run(self, failure_batch: list[dict]) -> dict:
+        """执行完整的进化流程"""
+        round_id = f"evo_v2_{int(time.time())}_{self.instance_id}"
+        result = {"round_id": round_id, "stages": {}, "success": False}
+        
+        start_time = time.time()
+        
+        try:
+            # ── 阶段0: 错误风暴熔断检查 ──
+            for f in failure_batch[:3]:
+                sig = self._error_signature(f)
+                if failure_memory.check_error_storm(sig):
+                    result["stages"]["storm_check"] = {
+                        "status": "blocked",
+                        "reason": f"错误风暴熔断: {sig[:80]}",
+                    }
+                    self.strand._log("storm", f"🛑 错误风暴熔断: {sig[:60]}")
+                    return result
+            
+            result["stages"]["storm_check"] = {"status": "ok"}
+            
+            # ── 阶段1: 诊断 ──
+            diagnosis = await self._locate(failure_batch)
+            result["stages"]["locate"] = diagnosis
+            self.strand._log("locate", f"🔍 诊断: {diagnosis.get('root_cause', 'unknown')[:80]}")
+            
+            if not diagnosis.get("root_cause"):
+                result["stages"]["locate"]["status"] = "no_root_cause"
+                return result
+            
+            # ── 阶段2: 规划（注入失败记忆）──
+            affected_files = diagnosis.get("affected_files", [])
+            failure_context = failure_memory.get_failure_context_for_planning(affected_files)
+            
+            plan = await self._plan(diagnosis, failure_context)
+            result["stages"]["plan"] = plan
+            self.strand._log("plan", f"📋 方案: {len(plan.get('changes', []))}个文件")
+            
+            # ── 阶段3: 独立grader评审方案（三态判定）──
+            plan_review = await evolution_grader.grade_plan(self.strand, plan, failure_context)
+            result["stages"]["plan_review"] = plan_review
+            self.strand._log("plan_review", f"{'✅' if plan_review['verdict'] == 'satisfied' else '❌'} 方案评审: {plan_review.get('reason', '')[:60]}")
+            
+            if plan_review["verdict"] == evolution_grader.VERDICT_FAILED:
+                self._record_failure(round_id, "plan_review", affected_files, plan, plan_review)
+                return result
+            
+            if plan_review["verdict"] == evolution_grader.VERDICT_NEEDS_REVISION:
+                # 可以重试
+                if failure_context:
+                    plan = await self._plan(diagnosis, failure_context + f"\n\n上次评审意见: {plan_review.get('reason', '')}")
+                    plan_review = await evolution_grader.grade_plan(self.strand, plan, failure_context)
+                    result["stages"]["plan_review_v2"] = plan_review
+                    if plan_review["verdict"] != evolution_grader.VERDICT_SATISFIED:
+                        self._record_failure(round_id, "plan_review", affected_files, plan, plan_review)
+                        return result
+            
+            # ── 阶段4: 实现 ──
+            patches = await self._implement(plan)
+            result["stages"]["implement"] = patches
+            applied = [p for p in patches if p["status"] == "applied"]
+            self.strand._log("implement", f"🔧 {len(applied)}个补丁")
+            
+            if not applied:
+                self._record_failure(round_id, "implement", affected_files, plan, {"reason": "no patches applied"})
+                return result
+            
+            # ── 阶段5: 独立grader评审代码 ──
+            code_review = await evolution_grader.grade_code(self.strand, applied, plan)
+            result["stages"]["code_review"] = code_review
+            self.strand._log("code_review", f"{'✅' if code_review['verdict'] == 'satisfied' else '❌'} 代码评审: {code_review.get('reason', '')[:60]}")
+            
+            if code_review["verdict"] == evolution_grader.VERDICT_FAILED:
+                for p in applied:
+                    self._git_revert_file(p["target_file"])
+                self._record_failure(round_id, "code_review", affected_files, plan, code_review)
+                return result
+            
+            # ── 阶段6: 真实集成测试 ──
+            self.strand._log("test", "🧪 运行集成测试...")
+            test_result = await integration_test.run_integration_tests(
+                self.repo_root,
+                changed_files=[p["target_file"] for p in applied],
+                include_ws_test=True,
+                include_build=True,
+            )
+            result["stages"]["integration_test"] = test_result.to_dict()
+            self.strand._log("test", f"{'✅' if test_result.passed else '❌'} 集成测试: {sum(1 for t in test_result.tests if t['passed'])}/{len(test_result.tests)} score={test_result.score}")
+            
+            # 程序化验证判定（不需要LLM裁判）
+            test_grade = await evolution_grader.grade_integration_test_result(self.strand, test_result.to_dict())
+            result["stages"]["test_grade"] = test_grade
+            
+            if test_grade["verdict"] == evolution_grader.VERDICT_FAILED:
+                for p in applied:
+                    self._git_revert_file(p["target_file"])
+                self._record_failure(round_id, "integration_test", affected_files, plan, test_grade)
+                return result
+            
+            if test_grade["verdict"] == evolution_grader.VERDICT_NEEDS_REVISION:
+                for p in applied:
+                    self._git_revert_file(p["target_file"])
+                self._record_failure(round_id, "integration_test", affected_files, plan, test_grade)
+                return result
+            
+            # ── 阶段7: 判定 + 提交 ──
+            verdict = self._verdict(test_result.score)
+            result["stages"]["verdict"] = verdict
+            
+            if verdict["converged"]:
+                for p in applied:
+                    self._git_commit(p["target_file"], f"[evo:v2:{self.instance_id}] {round_id}")
+                
+                # 记录成功模式
+                for p in applied:
+                    failure_memory.record_success(
+                        round_id, p["target_file"],
+                        p.get("description", ""), "bugfix", "integration_test",
+                        test_result.score,
+                    )
+                
+                # 重置错误风暴
+                failure_memory.reset_storm()
+                
+                result["success"] = True
+                self.strand._log("verdict", f"🎉 进化成功! score={test_result.score}")
+            else:
+                for p in applied:
+                    self._git_revert_file(p["target_file"])
+                self._record_failure(round_id, "verdict", affected_files, plan, verdict)
+                self.strand._log("verdict", f"↩️ 回滚: {verdict.get('reason', '')[:60]}")
+        
+        except Exception as e:
+            logger.error(f"Evolution v2 error: {e}")
+            result["error"] = str(e)
+        
+        result["duration"] = round(time.time() - start_time, 1)
+        return result
+    
+    # ── 内部方法 ──
+    
+    async def _locate(self, failure_batch: list[dict]) -> dict:
+        """诊断故障根因"""
+        failure_summary = "\n".join([
+            f"- [{f.get('type', 'error')}] {f.get('description', str(f))[:200]}"
+            for f in failure_batch[:10]
+        ])
+        
+        code_context = await self._read_relevant_code(failure_batch)
+        
+        prompt = f"""你是一个代码诊断专家。分析以下失败样本，找出根因。
+
+失败样本：
+{failure_summary}
+
+相关代码：
+{code_context[:3000]}
+
+输出JSON格式：
+{{"root_cause": "一句话描述根因", "affected_files": ["file1.py", "file2.py"], "severity": "low/medium/high", "fix_strategy": "修复策略描述"}}"""
+        
+        result = await self.strand._call_llm(prompt)
+        try:
+            clean = result.strip()
+            if clean.startswith("```"):
+                clean = "\n".join(clean.split("\n")[1:-1])
+            return json.loads(clean)
+        except json.JSONDecodeError:
+            return {"root_cause": result[:200], "affected_files": [], "severity": "medium"}
+    
+    async def _plan(self, diagnosis: dict, failure_context: str = "") -> dict:
+        """生成修复方案（注入失败记忆）"""
+        affected = diagnosis.get("affected_files", [])
+        code_context = ""
+        for f in affected[:5]:
+            fpath = self.repo_root / f
+            if fpath.exists():
+                try:
+                    content = fpath.read_text(encoding="utf-8")[:2000]
+                    code_context += f"\n--- {f} ---\n{content}\n"
+                except Exception:
+                    pass
+        
+        prompt = f"""你是一个代码修复专家。根据诊断结果生成修复方案。
+
+根因：{diagnosis.get('root_cause', '')}
+影响文件：{', '.join(affected)}
+修复策略：{diagnosis.get('fix_strategy', '')}
+
+{failure_context}
+
+相关代码：
+{code_context[:4000]}
+
+⚠️ 重要：必须考虑上面的历史失败记录，不要重复已经失败过的修改方式。
+
+输出JSON格式：
+{{"changes": [
+  {{"target_file": "acp-proxy/xxx.py", "description": "修改描述", "requirements": "具体要求"}}
+],
+ "risk_assessment": "风险评估",
+ "test_plan": "测试计划"}}"""
+        
+        result = await self.strand._call_llm(prompt)
+        try:
+            clean = result.strip()
+            if clean.startswith("```"):
+                clean = "\n".join(clean.split("\n")[1:-1])
+            return json.loads(clean)
+        except json.JSONDecodeError:
+            return {"changes": [], "risk_assessment": "parse error", "test_plan": ""}
+    
+    async def _implement(self, plan: dict) -> list[dict]:
+        """实现修复 — 使用增量edit而非全量overwrite"""
+        results = []
+        for change in plan.get("changes", []):
+            target = change.get("target_file", "")
+            full_path = self.repo_root / target
+            
+            existing = ""
+            if full_path.exists():
+                existing = full_path.read_text(encoding="utf-8")
+            
+            # 增量edit协议（借鉴DNAStrand._generate_code的安全路径）
+            if existing:
+                prompt = f"""你是一个代码修改专家。对以下文件进行增量修改。
+
+目标文件：{target}
+现有代码（前3000行）：
+{existing[:3000]}
+
+修改要求：{change.get('description', '')}
+具体要求：{change.get('requirements', '无')}
+
+⚠️ 必须使用增量修改格式，不要重写整个文件。输出格式：
+```json
+{{"edits": [
+  {{"old_string": "要替换的原文", "new_string": "替换后的内容"}}
+]}}
+```
+
+如果需要新增文件，直接输出完整内容。"""
+            else:
+                prompt = f"""创建新文件 {target}。
+
+要求：{change.get('description', '')}
+具体要求：{change.get('requirements', '无')}
+
+只输出文件内容，不要解释。"""
+            
+            content = await self.strand._call_llm(prompt)
+            if not content:
+                results.append({**change, "status": "failed", "reason": "LLM generation empty"})
+                continue
+            
+            # 清理markdown代码块
+            if content.startswith("```"):
+                lines = content.split("\n")
+                content = "\n".join(lines[1:-1]) if len(lines) > 2 else content
+            
+            # 应用修改
+            try:
+                if existing and '"edits"' in content:
+                    # 增量edit模式
+                    edits = json.loads(content).get("edits", [])
+                    new_content = existing
+                    for edit in edits:
+                        old = edit.get("old_string", "")
+                        new = edit.get("new_string", "")
+                        if old and old in new_content:
+                            new_content = new_content.replace(old, new, 1)
+                        else:
+                            results.append({**change, "status": "failed", "reason": f"old_string not found: {old[:50]}"})
+                            continue
+                    content = new_content
+                elif not existing:
+                    pass  # 新文件，直接用content
+                else:
+                    # 有existing但不是edit格式 → 拒绝（防止全量overwrite）
+                    results.append({**change, "status": "failed", "reason": "expected incremental edits format, got full content"})
+                    continue
+                
+                # 语法检查
+                if target.endswith(".py"):
+                    import ast
+                    try:
+                        ast.parse(content)
+                    except SyntaxError as e:
+                        results.append({**change, "status": "failed", "reason": f"syntax error: {e}"})
+                        continue
+                
+                # 原子写入
+                full_path.parent.mkdir(parents=True, exist_ok=True)
+                import tempfile, os
+                with tempfile.NamedTemporaryFile(
+                    mode="w", encoding="utf-8",
+                    dir=str(full_path.parent), suffix=".tmp", delete=False,
+                ) as tmp:
+                    tmp.write(content)
+                    tmp_path = tmp.name
+                os.rename(tmp_path, str(full_path))
+                results.append({**change, "status": "applied", "content": content[:500]})
+            
+            except Exception as e:
+                results.append({**change, "status": "failed", "reason": f"apply failed: {e}"})
+        
+        return results
+    
+    def _verdict(self, score: float) -> dict:
+        """判定是否收敛"""
+        self._score_history.append(score)
+        
+        converged = score >= 0.8  # 从0.7提高到0.8
+        
+        if len(self._score_history) >= PLATEAU_ROUNDS:
+            recent = self._score_history[-PLATEAU_ROUNDS:]
+            if all(abs(recent[i] - recent[i-1]) < 0.01 for i in range(1, len(recent))):
+                return {
+                    "converged": False, "score": score,
+                    "reason": f"平台期: 近{PLATEAU_ROUNDS}轮分数无变化",
+                    "plateau": True,
+                }
+        
+        return {
+            "converged": converged, "score": score,
+            "reason": "达标" if converged else f"分数{score}未达标(需>=0.8)",
+        }
+    
+    def _record_failure(self, round_id: str, stage: str, files: list[str], plan: dict, review: dict):
+        """记录失败到记忆系统"""
+        for f in files[:3]:
+            failure_memory.record_failure(
+                round_id=round_id,
+                stage=stage,
+                target_file=f,
+                change_description=json.dumps(plan.get("changes", []), ensure_ascii=False)[:500],
+                failure_reason=review.get("reason", str(review))[:500],
+                error_type=self._classify_error(review),
+            )
+    
+    def _classify_error(self, review: dict) -> str:
+        """分类错误类型"""
+        reason = review.get("reason", "").lower()
+        if "syntax" in reason or "语法" in reason:
+            return "syntax"
+        if "import" in reason or "导入" in reason:
+            return "import"
+        if "protocol" in reason or "协议" in reason:
+            return "protocol"
+        if "security" in reason or "安全" in reason:
+            return "security"
+        if "ws" in reason or "websocket" in reason:
+            return "ws"
+        return "logic"
+    
+    def _error_signature(self, failure: dict) -> str:
+        """生成错误签名（用于风暴检测）"""
+        desc = failure.get("description", str(failure))
+        # 取前100字符作为签名
+        return desc[:100]
+    
+    async def _read_relevant_code(self, failure_batch: list[dict]) -> str:
+        """读取失败样本相关的代码"""
+        import subprocess
+        code = ""
+        files = set()
+        for f in failure_batch:
+            if "file" in f:
+                files.add(f["file"])
+        
+        for fpath in list(files)[:5]:
+            full = self.repo_root / fpath
+            if full.exists():
+                try:
+                    content = full.read_text(encoding="utf-8")[:1500]
+                    code += f"\n--- {fpath} ---\n{content}\n"
+                except Exception:
+                    pass
+        
+        if not code:
+            try:
+                result = subprocess.run(
+                    ["git", "log", "--oneline", "-5", "--name-only"],
+                    capture_output=True, text=True, cwd=str(self.repo_root),
+                )
+                code = f"Recent git changes:\n{result.stdout[:2000]}"
+            except Exception:
+                code = "No relevant code context available"
+        
+        return code
+    
+    def _git_commit(self, target: str, message: str):
+        """Git提交"""
+        import subprocess
+        try:
+            subprocess.run(["git", "add", target], cwd=str(self.repo_root), capture_output=True, timeout=10)
+            subprocess.run(["git", "commit", "-m", message], cwd=str(self.repo_root), capture_output=True, timeout=10)
+        except Exception as e:
+            logger.warning(f"Git commit failed: {e}")
+    
+    def _git_revert_file(self, target: str):
+        """Git回滚单个文件"""
+        import subprocess
+        try:
+            subprocess.run(["git", "checkout", "HEAD", "--", target], cwd=str(self.repo_root), capture_output=True, timeout=10)
+        except Exception as e:
+            logger.warning(f"Git revert failed: {e}")

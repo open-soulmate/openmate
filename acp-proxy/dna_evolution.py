@@ -458,13 +458,14 @@ class DNAStrand:
                 self._log("locate", f"📊 收集到{len(failure_batch)}个失败样本")
 
                 # 网关摘流
-                from evolution_pipeline import EvolutionPipeline, gateway_drain, gateway_undrain
-                pipeline = EvolutionPipeline(self, self.repo_root, self.strand_id.split("_")[1])
+                from evolution_v2 import EvolutionV2
+                from evolution_pipeline import gateway_drain, gateway_undrain
+                pipeline = EvolutionV2(self, self.repo_root, self.strand_id.split("_")[1])
 
                 await gateway_drain(self.strand_id.split("_")[1])
 
                 try:
-                    pipeline_result = await pipeline.run_pipeline(failure_batch)
+                    pipeline_result = await pipeline.run(failure_batch)
                     cycle.changes = pipeline_result.get("stages", {}).get("implement", {}).get("applied", [])
                     cycle.success = pipeline_result.get("success", False)
                     cycle.executed_by = "self"
