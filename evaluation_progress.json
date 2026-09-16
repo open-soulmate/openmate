@@ -1,0 +1,25 @@
+{
+  "current_case": 1,
+  "dimension_A": {
+    "name": "工具调用 & MEDIA标签",
+    "scores": {},
+    "total": 0
+  },
+  "dimension_B": {
+    "name": "代码编辑 & 防截断",
+    "scores": {},
+    "total": 0
+  },
+  "dimension_C": {
+    "name": "多轮任务状态机",
+    "scores": {},
+    "total": 0
+  },
+  "dimension_D": {
+    "name": "指令遵守 & 边界鲁棒性",
+    "scores": {},
+    "total": 0
+  },
+  "status": "in_progress",
+  "last_updated": "2026-09-16"
+}

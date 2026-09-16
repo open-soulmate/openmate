@@ -1,5 +1,5 @@
 'use client';
-import { MarkdownContent } from "@/components/markdown-content";
+import MarkdownContent from "@/components/markdown-content";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { TaskChoiceMenu, type ChoiceOption } from "@/components/task-choice-menu";
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
@@ -1947,7 +1947,7 @@ export function ChatClient() {
                 )}
                 {msg.parts.map((p, i) => (
                   <div key={i}>
-                    {p.type === 'text' && <MarkdownContent content={p.text || ''} onCodeApply={(code, lang) => {
+                    {p.type === 'text' && <MarkdownContent content={p.text || ''} onCodeApply={(code: string) => {
                       // Handle code apply - 复制到剪贴板，HTTP环境下用fallback
                       copyToClipboard(code);
                     }} />}

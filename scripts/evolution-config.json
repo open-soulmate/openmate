@@ -1,0 +1,6 @@
+{
+  "lockFilePath": "/var/lock/evolution.lock",
+  "maxConcurrentTasks": 5,
+  "retryAttempts": 3,
+  "taskTimeout": 300
+}

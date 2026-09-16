@@ -144,6 +144,12 @@ const CodeBlock = memo(function CodeBlock({
   );
 });
 
+interface CodeBlockProps {
+  code: string;
+  language: string;
+  onApply?: (code: string) => void;
+}
+
 // Memoized Mermaid component
 const MemoizedMermaid = memo(({ code }: { code: string }) => (
   <MermaidDiagram code={code} />

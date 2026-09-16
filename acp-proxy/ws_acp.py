@@ -325,40 +325,89 @@ async def ws_acp_endpoint(client_ws: WebSocket):
         except Exception:
             pass
 
-    t1 = asyncio.create_task(ws_to_stdin())
-    t2 = asyncio.create_task(stdout_to_ws())
-    t3 = asyncio.create_task(stderr_drain())
+    # 主循环：子进程退出后如果WebSocket还活着，用同一ACP session_id重启
+    max_restarts = 3
+    restart_count = 0
+    while True:
+        t1 = asyncio.create_task(ws_to_stdin())
+        t2 = asyncio.create_task(stdout_to_ws())
+        t3 = asyncio.create_task(stderr_drain())
 
-    try:
-        # 等待任一任务完成（WebSocket断开或子进程退出）
-        done, pending = await asyncio.wait(
-            [t1, t2], return_when=asyncio.FIRST_COMPLETED
-        )
-        # 判断是WebSocket断开还是子进程退出
-        ws_disconnected = t1 in done and not t2.done()
-        if ws_disconnected:
-            # WebSocket断开但子进程还在跑 — 给宽限期完成当前工作
-            logger.info(f"[ACP] WebSocket disconnected, giving subprocess 30s grace period")
-            try:
-                await asyncio.wait_for(asyncio.shield(t2), timeout=30)
-                logger.info(f"[ACP] subprocess finished naturally during grace period")
-            except asyncio.TimeoutError:
-                logger.warning(f"[ACP] grace period expired, killing subprocess")
-            except Exception:
-                pass
-        for t in pending:
-            t.cancel()
-    finally:
-        t3.cancel()
-        if proc.returncode is None:  # 子进程还活着才杀
-            try:
-                proc.terminate()
-                await asyncio.wait_for(proc.wait(), timeout=5)
-            except Exception:
-                proc.kill()
-        logger.info(f"[ACP] user {user_id} session with {agent_id} ended (exit={proc.returncode})")
-        # 主动关闭WebSocket，通知前端连接已断开，避免前端向已死子进程发消息
         try:
-            await client_ws.close(code=1000, reason="subprocess exited")
+            done, pending = await asyncio.wait(
+                [t1, t2], return_when=asyncio.FIRST_COMPLETED
+            )
+            ws_disconnected = t1 in done and not t2.done()
+
+            if ws_disconnected:
+                # WebSocket断开但子进程还在跑 — 给宽限期完成当前工作
+                logger.info(f"[ACP] WebSocket disconnected, giving subprocess 30s grace period")
+                try:
+                    await asyncio.wait_for(asyncio.shield(t2), timeout=30)
+                    logger.info(f"[ACP] subprocess finished naturally during grace period")
+                except asyncio.TimeoutError:
+                    logger.warning(f"[ACP] grace period expired, killing subprocess")
+                except Exception:
+                    pass
+                for t in pending:
+                    t.cancel()
+                break  # WebSocket已断开，退出主循环
+
+            # 子进程退出但WebSocket还活着 — 重启子进程
+            for t in pending:
+                t.cancel()
+            t3.cancel()
+            restart_count += 1
+            if restart_count > max_restarts:
+                logger.warning(f"[ACP] max restarts ({max_restarts}) exceeded, closing")
+                break
+
+            # 清理旧子进程
+            if proc.returncode is None:
+                try:
+                    proc.terminate()
+                    await asyncio.wait_for(proc.wait(), timeout=5)
+                except Exception:
+                    proc.kill()
+
+            # 用同一ACP session_id重启子进程（客户端无感知）
+            sid_for_restart = acp_sid
+            logger.info(f"[ACP] subprocess exited, restarting with acpSessionId={sid_for_restart} (attempt {restart_count})")
+            new_proc = await asyncio.create_subprocess_exec(
+                sys.executable, "-m", "agent.soulmate_agent",
+                "--session-id", str(user_id),
+                "--agent-id", agent_id,
+                cwd=str(Path(__file__).parent),
+                stdin=asyncio.subprocess.PIPE,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+            )
+            if new_proc.returncode is not None:
+                err = await new_proc.stderr.read() if new_proc.stderr else b""
+                logger.error(f"[ACP] subprocess failed to restart: {err.decode()[:500]}")
+                break
+            proc = new_proc
+            logger.info(f"[ACP] subprocess restarted: {agent_id}, pid={proc.pid}")
+            # 更新acp_sid（session_state里的引用）
+            session_state['proc'] = proc
+            # 循环继续，重新创建t1/t2/t3
+        except Exception as e:
+            logger.error(f"[ACP] restart loop error: {e}")
+            break
+
+    # 最终清理
+    try:
+        t3.cancel()
+    except Exception:
+        pass
+    if proc.returncode is None:
+        try:
+            proc.terminate()
+            await asyncio.wait_for(proc.wait(), timeout=5)
         except Exception:
-            pass
+            proc.kill()
+    logger.info(f"[ACP] user {user_id} session with {agent_id} ended (exit={proc.returncode})")
+    try:
+        await client_ws.close(code=1000, reason="session ended")
+    except Exception:
+        pass
