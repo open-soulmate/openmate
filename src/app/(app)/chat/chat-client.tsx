@@ -1796,7 +1796,7 @@ export function ChatClient() {
       {/* Chat Window */}
       <div className="flex flex-1 flex-col min-w-0">
         {/* Chat header */}
-        <div className="border-b border-border flex flex-col shrink-0">
+        <div className="flex flex-col shrink-0">
           <div className="h-12 flex items-center gap-1.5 lg:gap-2 min-w-0 px-3 lg:px-4">
             <button onClick={(e) => { e.stopPropagation(); toggleSidebar(); if (isMobile) { setRightPanelOpen(false); setShowCheckpoints(false); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Sidebar">
               <PanelLeft className="w-4 h-4" />
@@ -1823,20 +1823,21 @@ export function ChatClient() {
               )}
             </div>
             {(selectedAgent || storeAgentName) && <span className="text-[10px] lg:text-xs text-muted-foreground px-1 lg:px-1.5 py-0.5 rounded bg-muted shrink-0 truncate max-w-[80px] lg:max-w-none">{selectedAgent?.name || storeAgentName}</span>}
-            <button
-              onClick={() => setShowViewTabs(!showViewTabs)}
-              className="shrink-0 p-1.5 rounded-md hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation"
-              title={showViewTabs ? '收起视图切换' : '展开视图切换'}
-            >
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showViewTabs ? 'rotate-180' : ''}`} />
-            </button>
             <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); setShowCheckpoints(false); if (isMobile && sidebarOpen) toggleSidebar(); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
               <PanelLeft className="w-4 h-4 scale-x-[-1]" />
             </button>
           </div>
           {/* Chat view toggle — 裙摆式分段视图（可折叠） */}
           {showViewTabs && <>
-          <div className="border-t border-border" />
+          <div className="relative border-t border-border">
+            <button
+              onClick={() => setShowViewTabs(!showViewTabs)}
+              className="absolute left-1/2 -translate-x-1/2 -top-[9px] p-0.5 rounded-full bg-background border border-border hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation"
+              title={showViewTabs ? '收起视图切换' : '展开视图切换'}
+            >
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showViewTabs ? 'rotate-0' : '-rotate-90'}`} />
+            </button>
+          </div>
           <SkirtTabs
             tabs={[
               { id: 'messages', title: t('chat.viewMessages', '消息') },
@@ -1858,7 +1859,6 @@ export function ChatClient() {
                 {tab.id === 'audio' && <Music className="w-3.5 h-3.5 shrink-0" />}
                 {tab.id === 'links' && <Link2 className="w-3.5 h-3.5 shrink-0" />}
                 {tab.id === 'dates' && <CalendarDays className="w-3.5 h-3.5 shrink-0" />}
-                <span className="flex-1" />
                 {tab.id === 'files' && fileAttachments.length > 0 && (
                   <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{fileAttachments.length}</span>
                 )}

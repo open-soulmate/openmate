@@ -188,7 +188,7 @@ export function SkirtTabs({
                   />
                 </svg>
               )}
-              <div className="relative flex items-center w-full h-full z-10" style={{ padding: '0 12px', gap: 8 }}>
+              <div className="relative flex items-center justify-center w-full h-full z-10" style={{ padding: '0 8px', gap: 4 }}>
                 {renderTabContent ? renderTabContent(tab, isActive) : defaultRenderTab(tab, isActive)}
               </div>
             </button>
