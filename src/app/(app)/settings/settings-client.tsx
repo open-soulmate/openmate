@@ -75,18 +75,184 @@ interface SettingsState {
 // sections defined inside SettingsClient for i18n
 
 const llmProviders = [
-  { value: "openai", label: "OpenAI", models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo"] },
-  { value: "claude", label: "Claude (Anthropic)", models: ["claude-sonnet-4-20250514", "claude-haiku-4-20250514"] },
-  { value: "mimo", label: "MiMo", models: ["mimo-v2.5-pro", "mimo-v2.5", "mimo-auto"] },
-  { value: "deepseek", label: "DeepSeek", models: ["deepseek-chat", "deepseek-coder", "deepseek-r1"] },
-  { value: "qwen", label: "Qwen", models: ["qwen-max", "qwen-plus", "qwen-turbo"] },
-  { value: "ollama", label: "Ollama (Local)", models: ["llama3.1", "qwen2.5", "deepseek-r1"] },
-  { value: "custom", label: "Custom", models: [] },
+  // 国际模型
+  { value: "openai", label: "OpenAI", models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "o1-preview", "o1-mini"], baseUrl: "https://api.openai.com/v1" },
+  { value: "claude", label: "Claude (Anthropic)", models: ["claude-sonnet-4-20250514", "claude-haiku-4-20250514", "claude-opus-4-20250514"], baseUrl: "https://api.anthropic.com/v1" },
+  { value: "gemini", label: "Google Gemini", models: ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"], baseUrl: "https://generativelanguage.googleapis.com/v1beta" },
+  
+  // 国内模型
+  { value: "mimo", label: "MiMo (小米)", models: ["mimo-v2.5-pro", "mimo-v2.5", "mimo-auto", "mimo-v2-pro"], baseUrl: "https://api.xiaomi.com/v1", 
+    apiVariants: [
+      { id: "standard", label: "标准API (按量付费)", baseUrl: "https://api.xiaomi.com/v1" },
+      { id: "token-plan", label: "Token Plan (订阅制)", baseUrl: "https://api-tokenplan.xiaomi.com/v1" },
+    ]
+  },
+  { value: "deepseek", label: "DeepSeek (深度求索)", models: ["deepseek-chat", "deepseek-coder", "deepseek-r1", "deepseek-v3"], baseUrl: "https://api.deepseek.com/v1",
+    apiVariants: [
+      { id: "standard", label: "标准API", baseUrl: "https://api.deepseek.com/v1" },
+    ]
+  },
+  { value: "qwen", label: "通义千问 (阿里)", models: ["qwen-max", "qwen-plus", "qwen-turbo", "qwen-vl-max", "qwen-long"], baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
+  { value: "zhipu", label: "智谱 (GLM)", models: ["glm-4-plus", "glm-4-flash", "glm-4v-plus", "glm-4-long"], baseUrl: "https://open.bigmodel.cn/api/paas/v4" },
+  { value: "moonshot", label: "月之暗面 (Kimi)", models: ["moonshot-v1-128k", "moonshot-v1-32k", "moonshot-v1-8k"], baseUrl: "https://api.moonshot.cn/v1" },
+  { value: "baichuan", label: "百川智能", models: ["Baichuan4", "Baichuan3-Turbo", "Baichuan2-Turbo"], baseUrl: "https://api.baichuan-ai.com/v1" },
+  { value: "yi", label: "零一万物 (Yi)", models: ["yi-large", "yi-medium", "yi-spark", "yi-vl-plus"], baseUrl: "https://api.lingyiwanwu.com/v1" },
+  { value: "minimax", label: "MiniMax", models: ["abab6.5s-chat", "abab6.5-chat", "abab5.5-chat"], baseUrl: "https://api.minimax.chat/v1" },
+  { value: "stepfun", label: "阶跃星辰", models: ["step-1v-8k", "step-1-32k", "step-2-16k"], baseUrl: "https://api.stepfun.com/v1" },
+  { value: "doubao", label: "豆包 (字节)", models: ["doubao-pro-32k", "doubao-lite-32k", "doubao-pro-128k"], baseUrl: "https://ark.cn-beijing.volces.com/api/v3" },
+  
+  // 本地部署
+  { value: "ollama", label: "Ollama (本地)", models: ["llama3.1", "qwen2.5", "deepseek-r1", "mistral", "phi3", "gemma2"], baseUrl: "http://localhost:11434/v1" },
+  { value: "lmstudio", label: "LM Studio (本地)", models: ["local-model"], baseUrl: "http://localhost:1234/v1" },
+  { value: "vllm", label: "vLLM (本地)", models: ["local-model"], baseUrl: "http://localhost:8000/v1" },
+  
+  // 自定义
+  { value: "custom", label: "自定义模型", models: [], baseUrl: "" },
 ];
+
+// ─── 自动路由策略配置 ──────────────────────────────────────────────
+interface RoutingRule {
+  id: string;
+  name: string;
+  description: string;
+  localModel: string;      // 本地模型
+  onlineModel: string;     // 在线API模型
+  complexityThreshold: number;  // 复杂度阈值 (0-1)
+}
+
+interface RoutingConfig {
+  enabled: boolean;
+  mode: 'auto' | 'manual' | 'hybrid';
+  defaultStrategy: 'local-first' | 'online-first' | 'cost-optimal' | 'quality-optimal';
+  rules: RoutingRule[];
+  // 自动模式下的复杂度判断参数
+  autoParams: {
+    shortTextThreshold: number;      // 短文本阈值（字符数）
+    codeDetection: boolean;          // 检测代码请求
+    questionDetection: boolean;      // 检测问题类型
+    imageAnalysis: boolean;          // 图片分析走在线
+  };
+}
+
+const DEFAULT_ROUTING_CONFIG: RoutingConfig = {
+  enabled: true,
+  mode: 'auto',
+  defaultStrategy: 'local-first',
+  rules: [
+    {
+      id: 'simple-chat',
+      name: '简单对话',
+      description: '日常聊天、问候、简单问答',
+      localModel: 'mimo-auto',
+      onlineModel: 'gpt-4o-mini',
+      complexityThreshold: 0.3,
+    },
+    {
+      id: 'code-gen',
+      name: '代码生成',
+      description: '编程、代码分析、调试',
+      localModel: 'qwen2.5-coder',
+      onlineModel: 'claude-sonnet-4-20250514',
+      complexityThreshold: 0.6,
+    },
+    {
+      id: 'complex-reasoning',
+      name: '复杂推理',
+      description: '数学、逻辑、多步推理',
+      localModel: 'deepseek-r1',
+      onlineModel: 'gpt-4o',
+      complexityThreshold: 0.8,
+    },
+    {
+      id: 'creative-writing',
+      name: '创意写作',
+      description: '文章、故事、文案创作',
+      localModel: 'qwen2.5',
+      onlineModel: 'claude-opus-4-20250514',
+      complexityThreshold: 0.5,
+    },
+  ],
+  autoParams: {
+    shortTextThreshold: 50,
+    codeDetection: true,
+    questionDetection: true,
+    imageAnalysis: true,
+  },
+};
+
 
 // ─── Main Component ──────────────────────────────────────────────────
 
 export function SettingsClient() {
+  // ─── 路由配置状态 ──────────────────────────────────────────────
+  const { addToast } = useToast();
+  const [routingConfig, setRoutingConfig] = useState<RoutingConfig>(DEFAULT_ROUTING_CONFIG);
+  const [routingLoading, setRoutingLoading] = useState(false);
+  const [routingTestResult, setRoutingTestResult] = useState<string>('');
+
+  // 加载路由配置
+  useEffect(() => {
+    const loadRoutingConfig = async () => {
+      try {
+        const apiBase = getApiBaseUrl();
+        const res = await fetch(`${apiBase}/api/routing/config`);
+        if (res.ok) {
+          const data = await res.json();
+          setRoutingConfig(data);
+        }
+      } catch (e) {
+        console.error('Failed to load routing config:', e);
+      }
+    };
+    loadRoutingConfig();
+  }, []);
+
+  // 保存路由配置
+  const handleSaveRoutingConfig = async () => {
+    setRoutingLoading(true);
+    try {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/api/routing/config`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(routingConfig),
+      });
+      if (res.ok) {
+        addToast('success', '成功', '路由配置已保存');
+      } else {
+        addToast('error', '错误', '保存失败');
+      }
+    } catch (e) {
+      addToast('error', '错误', '保存失败: ' + e);
+    } finally {
+      setRoutingLoading(false);
+    }
+  };
+
+  // 测试路由规则
+  const handleTestRouting = async (testMessage: string) => {
+    setRoutingTestResult('测试中...');
+    try {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/api/routing/test`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: testMessage, config: routingConfig }),
+      });
+      const data = await res.json();
+      setRoutingTestResult(`
+        消息: ${testMessage}
+        选择模型: ${data.model}
+        路由类型: ${data.type === 'local' ? '本地' : '在线'}
+        复杂度: ${(data.complexity * 100).toFixed(0)}%
+        原因: ${data.reason}
+      `);
+    } catch (e) {
+      setRoutingTestResult('测试失败: ' + e);
+    }
+  };
+
+
   const router = useRouter();
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -744,6 +910,163 @@ export function SettingsClient() {
               </SettingCard>
             </>
           )}
+
+
+              {/* ─── 自动路由策略设置 ──────────────────────────────── */}
+              <SettingCard
+                title={t("settings.autoRouting") || "自动路由策略"}
+                description={t("settings.autoRoutingDesc") || "配置模型自动选择策略，基础操作走本地，复杂问题走在线API"}
+              >
+                {/* 路由开关 */}
+                <div className="flex items-center justify-between mb-4">
+                  <span className="text-sm">{t("settings.enableRouting") || "启用自动路由"}</span>
+                  <Toggle
+                    checked={routingConfig.enabled}
+                    onChange={(v) => setRoutingConfig(prev => ({ ...prev, enabled: v }))}
+                  />
+                </div>
+
+                {routingConfig.enabled && (
+                  <>
+                    {/* 路由模式选择 */}
+                    <div className="mb-4">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {t("settings.routingMode") || "路由模式"}
+                      </p>
+                      <ButtonGroup
+                        value={routingConfig.mode}
+                        onChange={(v) => setRoutingConfig(prev => ({ ...prev, mode: v as any }))}
+                        options={[
+                          { value: "auto", label: t("settings.routingAuto") || "自动模式" },
+                          { value: "manual", label: t("settings.routingManual") || "手动模式" },
+                          { value: "hybrid", label: t("settings.routingHybrid") || "混合模式" },
+                        ]}
+                      />
+                      <p className="mt-2 text-xs text-muted-foreground">
+                        {routingConfig.mode === 'auto' && (t("settings.routingAutoDesc") || "根据消息复杂度自动选择本地或在线模型")}
+                        {routingConfig.mode === 'manual' && (t("settings.routingManualDesc") || "固定使用默认策略选择的模型")}
+                        {routingConfig.mode === 'hybrid' && (t("settings.routingHybridDesc") || "自动模式基础上允许用户覆盖选择")}
+                      </p>
+                    </div>
+
+                    {/* 默认策略 */}
+                    <div className="mb-4">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {t("settings.defaultStrategy") || "默认策略"}
+                      </p>
+                      <SelectInput
+                        value={routingConfig.defaultStrategy}
+                        onChange={(v) => setRoutingConfig(prev => ({ ...prev, defaultStrategy: v as any }))}
+                        options={[
+                          { value: "local-first", label: t("settings.localFirst") || "本地优先 (省成本)" },
+                          { value: "online-first", label: t("settings.onlineFirst") || "在线优先 (高质量)" },
+                          { value: "cost-optimal", label: t("settings.costOptimal") || "成本最优" },
+                          { value: "quality-optimal", label: t("settings.qualityOptimal") || "质量最优" },
+                        ]}
+                      />
+                    </div>
+
+                    {/* 自动模式参数 */}
+                    {routingConfig.mode === 'auto' && (
+                      <div className="space-y-3 p-3 bg-muted/30 rounded-lg">
+                        <p className="text-xs font-medium">
+                          {t("settings.autoParams") || "自动模式参数"}
+                        </p>
+                        
+                        {/* 短文本阈值 */}
+                        <div>
+                          <p className="text-xs text-muted-foreground mb-1">
+                            {t("settings.shortTextThreshold") || "短文本阈值"}: {routingConfig.autoParams.shortTextThreshold} 字符
+                          </p>
+                          <Slider
+                            value={routingConfig.autoParams.shortTextThreshold}
+                            onChange={(v) => setRoutingConfig(prev => ({
+                              ...prev,
+                              autoParams: { ...prev.autoParams, shortTextThreshold: v }
+                            }))}
+                            min={10}
+                            max={200}
+                            step={10}
+                          />
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            {t("settings.shortTextDesc") || "低于此长度的消息优先使用本地模型"}
+                          </p>
+                        </div>
+
+                        {/* 检测选项 */}
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs">{t("settings.codeDetection") || "代码请求走在线"}</span>
+                            <Toggle
+                              checked={routingConfig.autoParams.codeDetection}
+                              onChange={(v) => setRoutingConfig(prev => ({
+                                ...prev,
+                                autoParams: { ...prev.autoParams, codeDetection: v }
+                              }))}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs">{t("settings.questionDetection") || "复杂问题走在线"}</span>
+                            <Toggle
+                              checked={routingConfig.autoParams.questionDetection}
+                              onChange={(v) => setRoutingConfig(prev => ({
+                                ...prev,
+                                autoParams: { ...prev.autoParams, questionDetection: v }
+                              }))}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs">{t("settings.imageAnalysis") || "图片分析走在线"}</span>
+                            <Toggle
+                              checked={routingConfig.autoParams.imageAnalysis}
+                              onChange={(v) => setRoutingConfig(prev => ({
+                                ...prev,
+                                autoParams: { ...prev.autoParams, imageAnalysis: v }
+                              }))}
+                            />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* 路由规则预览 */}
+                    <div className="mt-4">
+                      <p className="text-xs text-muted-foreground mb-2">
+                        {t("settings.routingRules") || "路由规则预览"}
+                      </p>
+                      <div className="space-y-2">
+                        {routingConfig.rules.map(rule => (
+                          <div key={rule.id} className="p-2 bg-muted/20 rounded text-xs">
+                            <p className="font-medium">{rule.name}</p>
+                            <p className="text-muted-foreground mb-1">{rule.description}</p>
+                            <div className="flex gap-2">
+                              <span className="text-[10px] px-1.5 py-0.5 bg-blue-500/10 text-blue-500 rounded">
+                                本地: {rule.localModel}
+                              </span>
+                              <span className="text-[10px] px-1.5 py-0.5 bg-purple-500/10 text-purple-500 rounded">
+                                在线: {rule.onlineModel}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* 保存路由配置按钮 */}
+                    <button
+                      onClick={handleSaveRoutingConfig}
+                      disabled={routingLoading}
+                      className="mt-4 w-full px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 disabled:opacity-50"
+                    >
+                      {routingLoading ? (
+                        <><RefreshCw size={14} className="animate-spin inline mr-1" /> 保存中...</>
+                      ) : (
+                        <><Save size={14} className="inline mr-1" /> {t("settings.saveRoutingConfig") || "保存路由配置"}</>
+                      )}
+                    </button>
+                  </>
+                )}
+              </SettingCard>
 
           {/* ─── Agent ───────────────────────────────────────── */}
           {active === "agent" && (

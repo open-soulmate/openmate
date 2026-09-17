@@ -1,6 +1,84 @@
 # 100Agent功能研究进度
 
-更新：2026-09-17 深夜轮14（cron）；状态：源码级深读约96/100；**Warp六轮收官 + SUMMARY.md全面重写完成**
+更新：2026-09-17 深夜轮18（cron·终验轮）；状态：**研究阶段关闭，覆盖度与P0差距双重终验通过**
+## 本轮新增 —— 深夜轮18：终验轮（脚本化覆盖度核对 + P0差距复验）
+> 轮17已宣告研究收官。本轮不做新增研究，做两项独立验证：①CSV↔feature-matrix覆盖度脚本核对 ②SUMMARY v2 P0差距清单对当前代码复验。
+- ✅**覆盖度终验通过**：CSV 98行×179份feature-matrix，脚本按仓库名匹配，7个"未命中"逐一确认全是文件名假阴性（openai-agents→17-openai-agents-deep、adk-python→18-google-adk-deep、mcp-pysdk→79、mcp-tssdk→82、Mind2Web/webarena/AgentBench→93-97-98-benchmarks-batch）。**实质覆盖 98/98 = 100%**。
+- ✅**P0差距复验全部成立**（对当前opensoul/src实时grep）：cortex无retry/backoff（0命中，10个模块文件全查）；无compaction引擎（compacted仅hippo/long_term_memory+api/sessions_api标志位）；immune/仅5文件（access_control/audit/intrusion/moderator/rate_limiter）——**无permission_engine、moderator.py中API key正则0命中**（sk-/AKIA/ghp_全无）；job_queue/BackgroundJob全库0命中；truncate/offload/spill在cortex 0命中。OpenMate侧：steer/drill/peek(会话义)/suggest(建议卡义)均无实质命中。
+- 🏁**终态结论**：研究产出（190+份报告+SUMMARY v2+差距表）与代码现状一致，无过期结论。**本cron的研究使命已完成，无新增研究欠账**——下步应转入实现阶段（SUMMARY v2第一阶段：可观测span/评估闭环/压缩引擎/输出侧脱敏），建议将本cron改派为"实现进度稽核"或停用。
+
+## 上一轮 —— 深夜轮17：#47 langchain-chatchat 源码级收官（全库最后欠账清零）
+> 轮16收官后盘点：CSV 100/100覆盖，但#47 langchain-chatchat（38.6k★）仍是README+目录级31行——本轮codeload 54MB全量到手（131个py/1.7万行+langchain_chatchat自研扩展层），读agents_registry/chat/mcp_routes/tools_factory/file_chat/kb_chat/kb_summary/human_message_event/openai_routes全文。
+- ✅**langchain-chatchat(#47) README级→源码级** → **47-langchain-chatchat-source.md（18项）重写** ✅本轮主成果
+  - 🔴 **Agent执行器注册表8种策略工厂**（agents_registry.py 226行）：每模型家族独立prompt模板+解析器+executor（qwen禁streaming显式注释），"Write any optimized method here"单点扩展位——OpenSoul agent_type仅DB标签无策略分派 → P1纯重构
+  - 🔴 **intermediate_steps DB序列化+跨会话回灌**（chat.py）：langchain dumps()存message.metadata，下一turn loads(namespace白名单4个)注入executor——工具中间态续跑；OpenSoul trajectory只存事件不回灌 → P1
+  - 🔴 **MCP Profile全局配置+对话级use_mcp开关**（mcp_routes 616行）：全局timeout/working_dir/env_vars+reset端点+search+每次对话bool开关（敏感对话不给MCP工具）——OpenSoul api/mcp.py 135行缺此三件 → P1约100行
+  - 🔴 **工具输出message_type自报**：工具返回JSON带message_type→前端按类型渲染——ToolResultEnvelope协议是MCP工具返回图片/表格的前置件，双侧全无 → P1
+  - 🔴 **temp_kb临时知识库**（file_chat.py）：上传即建临时向量库+prev_id链式续用，"扔3个PDF问一轮就走"最高频RAG场景 → P1
+  - text2sql/text2promql薄工具（后者直指用户监控场景）；KB文档MapReduce自动摘要链；工具调用级人类反馈（call_id粒度，OpenMate仅消息级like/dislike）；Langfuse三环境变量即插observability；/v1 OpenAI兼容网关多平台路由；kb_chat检索三态+return_direct+出处[n]引用编号；三档工具降级矩阵源码复核保留
+- ⚠️grep确认：OpenSoul NONE=agent策略注册表/intermediate_steps回灌/MCP profile+search+use_mcp/message_type渲染协议/temp_kb/bm25/text2sql/文档摘要链/langfuse/return_direct；部分=api/mcp.py CRUD、trajectory tool_call事件流、knowledge chunking+Qdrant、multi_agent_coord.message_type（语义不同）。OpenMate部分=mcp页、消息级feedback
+- 🏁 **全库状态**：190+份feature-matrix报告，100个agent全部源码级或结论级，无浅读残留。**研究阶段正式结束，无新增研究欠账**；下阶段按SUMMARY.md v2进入实现（P0：洋葱管道/TOCTOU/三值动作策略/cron合成事件/压缩引擎三算法/溢出重试环/lock_plugin路由；本轮新增P1候选：MCP Profile+use_mcp开关、ToolResultEnvelope、temp_kb、agent策略注册表）
+## 上一轮 —— 深夜轮16：gpt_academic源码级 + gpt-engineer收官（CSV 100/100 完结轮）
+## 本轮新增 —— 深夜轮16：gpt_academic源码级 + gpt-engineer收官（CSV 100/100 完结轮）
+> 轮15遗留的最后两个README级条目清零。gpt_academic codeload 2.7MB/511文件全量到手（71个插件目录+crazy_functional.py 785行注册表全文）；gpt-engineer 验证停更16个月（2025-05最后push，pivot lovable.dev），按结论级+core/抽查处理。
+- ✅**gpt_academic(#35, 50k★) README级→源码级** → **35-gpt-academic-source.md（21项）** ✅本轮主成果
+  - 🔴 **上下文裁剪三算法**（context_clip_policy.py 296行全文）：被动clip_history(argmax最长条目+delta=最大/16颗粒度逐轮削)/each_message(clip_prior_weight=token占比+新近度×0.1+per-message AUTO_CONTEXT_MAX_CLIP_RATIO数组)/search_optimal(全局_scale 0.05步长二分搜索+promote_latest_long_message保护最后长消息)+裁剪必插显式标记 `...(content clipped because token overflows)...`——**压缩引擎第8方互证**，与kilocode/goose"摘要式"互补的"纯token预算空间分配"式，纯函数可整体移植cortex → P0
+  - 🔴 **lock_plugin插件抢占用户输入路由**（Interactive模板+multi_stage_utils）：插件把回调路径写cookie，用户下次提交直路由到该插件（多轮交互式插件最小协议），用毕必须显式解锁防死锁——OpenSoul需session级pending_plugin_route，~30行 → P0
+  - 🔴 **Token溢出自动重试环**：ConnectionAbortedError带溢出数→EXCEED_ALLO=512+512×次数递增重裁→continue重试+输出侧同步披露警告——cortex retry=0缺口再确认（与kilocode retry.ts互证），P0
+  - 🔴 **虚空终端NL意图路由**（Void_Terminal.py 179行全文）：UserIntention三分类(ModifyConfiguration/ExecutePlugin/Chat)+**规则先验短路省钱**（关键词命中跳过LLM分类）+GptJsonIO自动修复+模糊时输出能力说明并lock_plugin等二次指令+**agent修改自身配置分热改/重启两档**（vt_modify_config）
+  - 🔴 **动态插件生成**（Dynamic_Function_Generate.py 251行全文）：LLM写代码→TerminalFunction模板重写→try_make_module验证→子进程15s硬超时执行→traceback回喂重试×3——"工具自生成"新形态（与code-mode工具批量化互补），复用mirror/sandbox可做，P1
+  - **多线程LLM扇出+UI主线程喂狗**（crazy_utils.py 168行）：ThreadPoolExecutor+mutable跨线程[输出,时间戳,状态字]+**喂狗方向反转**（UI线程喂，worker死锁即判定终止）+逐线程状态字幕（等待中/截断重试/重试中n/m/已失败）+Rate limit等待×3——"用户可观测"直接参照，OpenMate任务面板可整体抄
+  - **PluginMultiprocessManager**（pipe.py 195行全文）：Pipe命令协议(show/interact/done)+心跳看门狗5min+**workdir文件变化监控**（st_mtime全树→产物promote下载区+图片立即预览"检测到新生图像"）；WatchDog通用类29行+run_in_subprocess_with_timeout装饰器37行两个通用件
+  - **实时语音自动寻找回答时机**（Audio_Assistant+live_audio）：阿里云ASR流式0.5s捕获+sentence_end事件+AsyncGptTask用户说话时异步预取GPT回答——OpenSoul sense/ASR只有文件转写，实时语音线完全没有
+  - **多API-key随机负载均衡**（key_pattern_manager 138行）：6家key格式正则+按模型前缀分流+random.choice+CUSTOM_API_KEY_PATTERN用户扩展；**模型能力注册表model_info**（tokenizer/can_multi_thread逐模型声明，chatglm禁多线程防卡顿）
+  - 插件热重载HotReload（importlib.reload每次调用即生效）；插件状态机pickle持久化进cookie（GptAcademicGameBaseState带lock/step_cnt/delete自清理）；API_URL_REDIRECT前缀级endpoint重写；插件Group多组标签+随变按钮+AdvancedArgs高级参数区
+- ✅**gpt-engineer(#32, 55k★) 结论级收官**（验证停更16个月，Python核心仅6,118行）→ **32-gpt-engineer-source.md（7项）**
+  - 🔴 **覆盖前git暂存未提交修改**（git.py stage_uncommitted_to_git）：improve模式写文件前 `git diff --name-only` 检测+stage将被覆盖文件——"agent改代码不吞用户未提交工作"，与Cline事务性回滚互补（事前保全vs事后回滚），~40行P1
+  - **生成后lint门**（linting.py）：按扩展名注册linter表(.py→black)失败静默保留——smol-developer教训"lint回喂是收敛点"的实现
+  - Review四问反馈环（ran/perfect/works/comments+consent先行）；gitignore感知（git check-ignore批量过滤）；行业教训第3次印证：整库合成赛道全军覆没
+- ⚠️grep确认（本轮关键词）OpenSoul全部NONE：importlib.reload|hot_reload / lock_plugin|plugin_state|intention_type / context_clip|clip_history / WatchDog|bark_fn / ThreadPoolExecutor(可见代码) / json_repair|auto_repair / select_api_key|key_pattern / model_info|can_multi_thread / git add|stage_files|check-ignore / black.|ruff|lint（src内）；st_mtime命中=config热载+文件列表非产物巡检；ASR命中=sense文件转写非实时流式。OpenMate NONE：lock_plugin|plugin_state|hotReload
+- 🏁 **CSV 100/100 全部源码级或结论级收官**。收尾欠账只剩：SUMMARY.md v2 已在轮14重写；下阶段=进入实现（P0清单：洋葱管道/TOCTOU/三值动作策略/cron合成事件/压缩引擎三算法/溢出重试环/lock_plugin路由）
+
+## 上一轮 —— 深夜轮15：README级→源码级 三连升级（CSV 44/40/33）
+## 本轮新增 —— 深夜轮15：README级→源码级 三连升级（CSV 44/40/33）
+> 本轮起点盘点：CSV 98 行经脚本核对，**覆盖度实为 100%**（12 个"未命中"全是文件名假阴性——gpt-engineer/chrome-devtools-mcp/gpt_academic/agent-browser/AstrBot 在 32-44 批次档，openai-agents/adk/mcp-pysdk/mcp-tssdk/Mind2Web/webarena/AgentBench 各有专档）。**真正的缺口是"深度"不是"数量"**：5 个条目仍是 README 级。本轮把其中最有价值的 3 个推到源码级。
+- ✅**AstrBot(#44, 40k★) README级→源码级**（codeload 4.0MB tar 校验通过，读 pipeline/+agent/+computer/+skills/+cron/）→ **44-astrbot-source.md（20项）** ✅本轮主成果
+  - 🔴 **洋葱模型消息管道**（scheduler.py 100行）：`stage.process()` 返回 AsyncGenerator 时 `yield` 即前后置分界，下游**递归**执行后再回到本阶段后置逻辑；返回普通协程则不进下一层；`event.is_stopped()` 统一中断传播。**9阶段显式有序**（Waking→Whitelist→SessionStatus→RateLimit→ContentSafety→PreProcess→Process→ResultDecorate→Respond）。OpenSoul 现在是"端点直连处理器"，每个横切关注点都是散落 if → P0
+  - 🔴 **TOCTOU 防御文件访问**（local_file_security.py 187行全文）：dirfd+`O_NOFOLLOW`+`O_DIRECTORY` 逐路径分量打开、fstat 校验常规文件、**`st_nlink>1` 直接拒**（防硬链接别名逃逸）、多 root 取最长匹配、不支持平台显式 RuntimeError 不静默降级——**与 goose TOCTOU 四连互证升两方**，纯标准库可整体搬进 immune/
+  - 🔴 **cron 合成事件注入主循环**（cron/events.py 67行）：`CronMessageEvent(AstrMessageEvent)` 伪造一条消息走完整管道，`is_wake=True`+`send_streaming` 流式+session 复用——**定时任务天然获得管道全部能力**，比独立 cron 系统优雅
+  - 🔴 **Handoff 工具自带 `background_task` 参数**（handoff.py）：由 **LLM 在调用时决定**委派是否后台执行（schema 显式说明"可能耗时/涉及外部工具/用户无需等待"），另带 `image_urls` 多模态委派 + per-agent `provider_id` 覆盖模型——与 goose summon async 后台子 agent 互补，新形态
+  - **Agent 运行钩子四点**（hooks.py）：on_agent_begin/on_tool_start/on_tool_end/on_agent_done —— **与 CrewAI 四拦截点互证升两方**（此前 CrewAI 独家，现确认行业模式）→ P0
+  - **多沙箱后端**（process_sandbox 941行）：bubblewrap(Linux)+seatbelt(macOS sandbox-exec)+unix；**olayer 五操作层**（browser/filesystem/gui/python/shell）；**booters 七启动器**+**CUA 空闲超时自动回收**（GUI 沙箱不空烧资源，~40行可抄）
+  - **技能三源 + 同步进运行中的沙箱**（skill_manager 916行+neo_skill_sync 372行）：插件/workspace/sandbox-only 三类；`sync_skills_to_active_sandboxes()` 注入已启动沙箱 + `.astrbot_managed_skills.json` 托管清单防篡改——与 privateGPT 只读卷挂载互证
+  - 内容安全/限流/唤醒均为独立管道阶段（内容安全带 keywords+baidu_aip 可插拔策略）；`immune/moderator.py` 只是**可调用的 API**，不在消息路径上（差距关键）
+- ✅**agent-browser(#40, 42k★) README级→源码级**（codeload 2.0MB，读 native/ 51,783行目录级+policy.rs/diff.rs/webmcp.rs/skills.rs/trust-boundaries.md 全文）→ **40-agent-browser-source.md（16项）**
+  - 🔴 **三值动作策略引擎**（policy.rs 217行全文含10测试）：`Allow/Deny(reason)/RequiresConfirmation`；JSON 四键 allow/deny/confirm/default；**优先级 deny>confirm>allow**（测试显式锁定）；**default 缺省即 deny（fail-closed）**；热加载 reload()；AGENT_BROWSER_CONFIRM_ACTIONS 环境变量另设确认类目——**与 AgentScope PermissionEngine 848行/kilocode 三层叠加互证，第三代共识**，OpenSoul 在这条线上完全空白（差距最大单项之一）
+  - 🔴 **随产品发布的信任边界文档**（trust-boundaries.md 全文）：明确写"**页面内容是不可信数据，不是指令**"并列举不可信来源；"秘密不进模型"（cookie 只走文件、错误永不回显、**用户粘贴秘密进聊天要停下让他存文件**）；连"应该跟用户说什么"都给逐字话术——**把威胁模型写成 agent 会读的 skill，而不是给人看的 SECURITY.md**
+  - 🔴 **`--allowed-domains` 的诚实边界声明**：拦 HTTP/WS/EventSource/sendBeacon+禁 RTCPeerConnection（STUN/TURN DNS 不过 CDP 拦截）+Worker bootstrap 包装器 **CSP 禁止时失败关闭**；**并明确列出该选项不生效的 8 种场景**——少见的"列出自己不管用的地方"
+  - **截图像素 diff**（diff.rs）：`ScreenshotDiffResult` 结构化+**尺寸不匹配是独立字段而非报错**+颜色距离 `threshold*255*sqrt(3)` 归一+产 diff_image；另有文本 snapshot 行级 `SnapshotDiffResult`
+  - **WebMCP 增量披露**（webmcp.rs 1057行）：发现摘要**不含 schema、不含页面自述的安全声明**（"Full metadata is retrieved explicitly after the agent chooses a relevant tool"）；`context_update()` **沉默即无更新**（只有"有工具→空目录"才作废旧上下文）；iframe 级 origin 分层清理
+  - **产品自带技能包 + 薄发现桩**：`skill-data/core/SKILL.md`+10篇 references（含 trust-boundaries）+3个可执行模板；`skills/agent-browser/SKILL.md` 是**故意做薄的发现桩**，唯一作用重定向到 `agent-browser skills get core`，AGENTS.md 明令禁止把功能内容写进薄桩
+  - **CLI/MCP 双表面对齐强制+对齐测试**（parity_tests.rs 886行）：AGENTS.md 硬性规定改 CLI 必须同步改 mcp.rs，没有对应工具要么补要么写明为何省略，**加测试证明两表面对齐**——OpenSoul 同时有 HTTP API 和 MCP server 两个表面，目前无对齐保障
+  - `opensrc/` 依赖源码随仓分发（`npx opensrc` 拉 npm/pypi/crates/GitHub 源码）；`--engine` Chrome vs Lightpanda；录制回放 3097行；React 感知（react inspect/tree/suspense——对 OpenMate 自测有直接价值）；`doctor` 自检
+- ✅**chrome-devtools-mcp(#33, 52k★, Google官方) README级→源码级**（codeload 3.4MB，83个TS文件，读 tools/+pagination+WaitForHelper+AGENTS.md）→ **33-chrome-devtools-mcp-source.md（16项）**
+  - 🔴 **工具元数据四件套**（ToolDefinition.ts 556行）：`annotations.category`（11类枚举）+`annotations.readOnlyHint`+**`blockedByDialog: boolean`**（工具自述"我会不会被 modal 卡住"）+`verifyFilesSchema`——**Google 官方给 MCP 加非标准注解**，说明原生 annotations 不够用，行业在各自扩展
+  - 🔴 **"连设置等待也要限超时"**（WaitForHelper.ts）：注释即规格——"Without this cap a paused renderer (e.g. an open dialog) would make evaluateHandle hang until protocolTimeout (180s) **while the tool mutex is held**"，故给 `evaluateHandle` 也套 Promise.race；DOM 稳定等待=MutationObserver+100ms稳定期去抖+3000ms超时，**CPU/网络双 timeout multiplier** 按环境缩放；`#dialogHandled` 与 `#dialogDetected` 分开建模（对话框会暂停 renderer）
+  - 🔴 **分页带 `invalidPage` 诚实标志**（pagination.ts 84行全文）：页码越界返回第0页**并置 invalidPage:true**，不静默改页码——OpenSoul 所有列表型工具都该这样做
+  - **`--slim` 是另写一套**（slim/tools.ts 106行自包含 definePageTool）而非从全集过滤——slim 版可更简单
+  - **URL scheme 校验门**：navigate 的 `validateUrl(url,{javascriptEvaluation,categoryExtensions})` 拦 `javascript:` 等危险 scheme——与 agent-browser 出网白名单互补（一个是 scheme 白名单一个是域名白名单）
+  - 🔴 **也随产品发布 6 个 agent 技能**（skills/）：troubleshooting/**debug-optimize-lcp**(4篇references)/cookie-debugging/**memory-leak-debugging**/**a11y-debugging**/chrome-devtools(-cli)——且技能内容是**领域专长**（怎么调LCP/怎么找内存泄漏），不是"怎么调用我"。**"工具自带技能"本轮已三方**（agent-browser/chrome-devtools-mcp/AstrBot）
+  - **多宿主分发四清单**：gemini-extension.json+plugin.json+mcp.json+server.json——同一份能力四个 manifest
+  - AGENTS.md 价值不亚于代码：**禁用逃生舱**（no `any`/`as`/`!`/`@ts-ignore`/`@ts-nocheck`/`@ts-expect-error`——把 AI 最爱用的绕过类型系统手段全禁掉）+**mock 反模式**（"不要在 mock 里重新实现业务逻辑"、必须 sinon.createStubInstance、必须 calledOnceWithExactly）
+- ⚠️**CSV 标注修正**：#40 agent-browser 标 Rust **部分正确**——浏览器 daemon 是 Rust（cli/src/native/ 51,783行，actions.rs 单文件 17,708行），但 packages/ 下有 TS 的 eve(Chrome扩展)与 sandbox
+- ⚠️grep确认（本轮关键词）OpenSoul 全部 NONE：O_NOFOLLOW|dir_fd|st_nlink / bubblewrap|seatbelt|sandbox-exec / on_tool_start|on_tool_end|on_agent_begin|run_hooks / waking|wake_word|is_wake / background_task(委派义) / allowed_domains(唯一命中 link.py 是 "Webhook Egress" 注释巧合)；OpenMate 全部 NONE：onion|middleware stage / pixel diff|if-changed / getFullAXTree|ariaSnapshot / webmcp|allowedDomains
+- **部分**：OpenSoul `immune/moderator.py` 有 PII 检测脱敏但**只挂 /api/immune 显式端点不在消息路径上**；`immune/rate_limiter.py` 是 API 限流非消息级；`immune/access_control.py` 是用户级 RBAC 非动作级；`mirror/sandbox.py` 有代码执行沙箱缺 bubblewrap/seatbelt OS 级隔离；skills.py/plugins_api 有缺"同步进沙箱+托管清单"；hermes_cron 独立于 agent 循环（缺合成事件进主循环）；limb=固定 RPA 模板
+- **本轮三大跨项目信号**：①**洋葱/分层管道**是消息类 agent 事实标准 ②**三值动作策略（allow/deny/confirm）已是第三代共识**，OpenSoul 空白最大 ③**"工具自带 agent 技能"本轮三方**+`.agents/skills/` 五方——技能正从"用户的资产"变成"工具厂商的交付物"
+
+## 下一轮研究对象
+- 仍为 README 级的 2 个：**#35 gpt_academic（50k★）**、**#32 gpt-engineer（55k★，半停滞、价值低，可结论级收官）**；#47 langchain-chatchat（README+目录级，半停滞）
+- **进入实现阶段**：按本轮 P0 洋葱管道 / TOCTOU 文件访问 / 三值动作策略 / cron 合成事件 落地
+
+## 上一轮 —— 深夜轮14：Warp六轮收官 + SUMMARY.md v2全面重写
 
 ## 本轮新增 —— 深夜轮14：Warp收尾轮（warp_tui前端层+convert层）+ SUMMARY.md v2重写（两大收尾欠账清偿）
 - ✅**Warp第六补验=warp_tui收官**（从warp3.tar.gz按需解压warp_tui 203文件/5.2万行非测试代码，前5轮全在GUI侧，本轮补齐headless TUI层+API↔Action转换层）→ **64-warp-source-supplement4.md（12项）** ✅本轮主成果
