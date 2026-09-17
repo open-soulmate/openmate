@@ -162,7 +162,7 @@ export function SkirtTabs({
               className="group relative shrink cursor-pointer touch-manipulation min-w-0"
               style={{
                 height: tabHeight,
-                minWidth: Math.max(60, Math.min(minWidth, Math.floor((tabBarRef.current?.clientWidth || 600) / tabs.length) - 10)),
+                minWidth: 0,
                 maxWidth,
                 flex: '1 1 auto',
                 alignItems: 'center',
