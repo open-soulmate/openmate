@@ -1827,19 +1827,18 @@ export function ChatClient() {
               <PanelLeft className="w-4 h-4 scale-x-[-1]" />
             </button>
           </div>
-          {/* Chat view toggle — 裙摆式分段视图（可折叠） */}
-          {showViewTabs && <>
-          <style>{`.skirt-tabs-chat .relative.flex.items-center.w-full.h-full.z-10 { justify-content: center !important; padding: 0 8px !important; gap: 4px !important; }`}</style>
-          <div className="skirt-tabs-chat">
-          <div className="relative border-t border-border">
+          {/* Collapse handle — always visible on title row border */}
+          <div className="relative">
             <button
               onClick={() => setShowViewTabs(!showViewTabs)}
-              className="absolute left-1/2 -translate-x-1/2 -top-[9px] p-0.5 rounded-full bg-background border border-border hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation"
+              className="absolute left-1/2 -translate-x-1/2 -top-[9px] z-10 p-0.5 rounded-full bg-background border border-border hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation"
               title={showViewTabs ? '收起视图切换' : '展开视图切换'}
             >
               <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showViewTabs ? 'rotate-0' : '-rotate-90'}`} />
             </button>
           </div>
+          {/* Chat view toggle — 裙摆式分段视图（可折叠） */}
+          {showViewTabs && <>
           <SkirtTabs
             tabs={[
               { id: 'messages', title: t('chat.viewMessages', '消息') },
@@ -1879,7 +1878,6 @@ export function ChatClient() {
               </>
             )}
           />
-          </div>
           </>}
         </div>
 
