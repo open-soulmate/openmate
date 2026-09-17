@@ -144,7 +144,7 @@ export function SkirtTabs({
       {/* Tab bar */}
       <div
         ref={tabBarRef}
-        className="flex items-end shrink-0 px-2"
+        className="flex items-end shrink-0 w-full px-2"
         style={{ height: tabHeight, marginTop: 12, gap: 0, overflowX: 'visible', overflowY: 'visible', scrollbarWidth: 'none' }}
       >
         {tabs.map((tab, index) => {
@@ -164,7 +164,7 @@ export function SkirtTabs({
                 height: tabHeight,
                 minWidth: Math.max(60, Math.min(minWidth, Math.floor((tabBarRef.current?.clientWidth || 600) / tabs.length) - 10)),
                 maxWidth,
-                flex: '0 1 auto',
+                flex: '1 1 auto',
                 alignItems: 'center',
                 border: 'none',
                 outline: 'none',
