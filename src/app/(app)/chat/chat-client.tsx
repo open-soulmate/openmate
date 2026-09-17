@@ -4,8 +4,8 @@ import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { TaskChoiceMenu, type ChoiceOption } from "@/components/task-choice-menu";
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/stores/app-store';
-import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, Copy, ThumbsUp, ThumbsDown, Share2, RefreshCw, MoreHorizontal, Volume2, MessageSquare, FolderOpen } from "lucide-react";
-import { ChatViewToggle } from "@opensoulmate/openface";
+import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, Copy, ThumbsUp, ThumbsDown, Share2, RefreshCw, MoreHorizontal, Volume2, MessageSquare, FolderOpen, Video, Music, Link2, CalendarDays } from "lucide-react";
+import { ChatViewToggle, type ChatViewType, type ChatViewTab } from "@opensoulmate/openface";
 import { ContextRing } from "@/components/context-ring";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { copyToClipboard } from '@/lib/clipboard';
@@ -1103,7 +1103,7 @@ export function ChatClient() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const [chatView, setChatView] = useState<'messages' | 'files'>('messages');
+  const [chatView, setChatView] = useState<ChatViewType>('messages');
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const setSessionDetails = useAppStore((s) => s.setSessionDetails);
@@ -1227,6 +1227,66 @@ export function ChatClient() {
     }
     return files;
   }, [messages]);
+
+  // 分类视图数据：图片、视频、音频
+  const imageAttachments = useMemo(() => fileAttachments.filter(f =>
+    f.mimeType?.startsWith('image/') || /\.(png|jpe?g|gif|webp|svg|bmp|ico)$/i.test(f.name)
+  ), [fileAttachments]);
+
+  const videoAttachments = useMemo(() => fileAttachments.filter(f =>
+    f.mimeType?.startsWith('video/') || /\.(mp4|avi|mov|wmv|flv|mkv|webm)$/i.test(f.name)
+  ), [fileAttachments]);
+
+  const audioAttachments = useMemo(() => fileAttachments.filter(f =>
+    f.mimeType?.startsWith('audio/') || /\.(mp3|wav|ogg|flac|aac|m4a|wma)$/i.test(f.name)
+  ), [fileAttachments]);
+
+  // 链接提取：从消息文本中提取URL
+  const linkItems = useMemo(() => {
+    const links: { url: string; title?: string; messageId: string; role: 'user' | 'agent'; timestamp: Date }[] = [];
+    const urlRegex = /https?:\/\/[^\s<>"')\]]+/g;
+    for (const msg of messages) {
+      for (const p of msg.parts) {
+        if (p.type === 'text' && p.text) {
+          const matches = p.text.matchAll(urlRegex);
+          for (const m of matches) {
+            const url = m[0].replace(/[.,;:!?]+$/, '');
+            if (!links.some(l => l.url === url)) {
+              // 尝试从URL提取域名作为标题
+              let title = '';
+              try { title = new URL(url).hostname; } catch { title = url.slice(0, 50); }
+              links.push({ url, title, messageId: msg.id, role: msg.role, timestamp: msg.timestamp });
+            }
+          }
+        }
+      }
+    }
+    return links;
+  }, [messages]);
+
+  // 日期分组：按日期分组消息
+  const dateGroups = useMemo(() => {
+    const groups: { date: string; label: string; count: number; messages: typeof messages }[] = [];
+    const map = new Map<string, typeof messages>();
+    for (const msg of messages) {
+      const d = msg.timestamp.toISOString().slice(0, 10);
+      if (!map.has(d)) map.set(d, []);
+      map.get(d)!.push(msg);
+    }
+    for (const [date, msgs] of map) {
+      const d = new Date(date);
+      const now = new Date();
+      const diffDays = Math.floor((now.getTime() - d.getTime()) / 86400000);
+      let label = date;
+      if (diffDays === 0) label = '今天';
+      else if (diffDays === 1) label = '昨天';
+      else if (diffDays < 7) label = `${diffDays}天前`;
+      else label = d.toLocaleDateString('zh-CN', { month: 'long', day: 'numeric', weekday: 'short' });
+      groups.push({ date, label, count: msgs.length, messages: msgs });
+    }
+    return groups.sort((a, b) => b.date.localeCompare(a.date));
+  }, [messages]);
+
   // Total unread count across all sessions
   const totalUnread = useMemo(() => {
     let count = 0;
@@ -1770,16 +1830,20 @@ export function ChatClient() {
           </div>
         </div>
 
-        {/* Chat view toggle */}
+        {/* Chat view toggle — 裙摆式分段视图 */}
         <ChatViewToggle
           activeView={chatView}
           onViewChange={setChatView}
-          messagesLabel={t('chat.viewMessages', '消息')}
-          filesLabel={t('chat.viewFiles', '文件')}
-          messagesIcon={<MessageSquare className="w-3.5 h-3.5" />}
-          filesIcon={<FolderOpen className="w-3.5 h-3.5" />}
-          fileCount={fileAttachments.length}
           visible={messages.length > 0}
+          tabs={[
+            { value: 'messages', label: t('chat.viewMessages', '消息'), icon: <MessageSquare className="w-3.5 h-3.5" /> },
+            { value: 'files', label: t('chat.viewFiles', '文件'), icon: <FolderOpen className="w-3.5 h-3.5" />, count: fileAttachments.length },
+            { value: 'images', label: t('chat.viewImages', '图片'), icon: <ImageIcon className="w-3.5 h-3.5" />, count: imageAttachments.length },
+            { value: 'videos', label: t('chat.viewVideos', '视频'), icon: <Video className="w-3.5 h-3.5" />, count: videoAttachments.length },
+            { value: 'audio', label: t('chat.viewAudio', '音频'), icon: <Music className="w-3.5 h-3.5" />, count: audioAttachments.length },
+            { value: 'links', label: t('chat.viewLinks', '链接'), icon: <Link2 className="w-3.5 h-3.5" />, count: linkItems.length },
+            { value: 'dates', label: t('chat.viewDates', '日期'), icon: <CalendarDays className="w-3.5 h-3.5" />, count: dateGroups.length },
+          ]}
         />
 
         {/* Messages */}
@@ -1887,6 +1951,214 @@ export function ChatClient() {
                           复制
                         </button>}
                       </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Images view — 图片网格 */}
+          {chatView === 'images' && (
+            <div className="space-y-2">
+              {imageAttachments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                  <ImageIcon className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-sm">暂无图片</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                  {imageAttachments.map((f, i) => (
+                    <div
+                      key={i}
+                      className="group relative aspect-square rounded-lg overflow-hidden border border-border/40 bg-muted/20 cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={async () => {
+                        const store = useAppStore.getState();
+                        let dataUrl: string | undefined;
+                        if (f.data) {
+                          dataUrl = `data:${f.mimeType || 'image/png'};base64,${f.data}`;
+                        } else if (f.filePath) {
+                          try {
+                            const apiBase = getApiUrl();
+                            const resp = await fetch(`${apiBase}/api/file?path=${encodeURIComponent(f.filePath)}`);
+                            if (resp.ok) {
+                              const data = await resp.json();
+                              const b64 = btoa(unescape(encodeURIComponent(data.content || '')));
+                              dataUrl = `data:${f.mimeType || 'image/png'};base64,${b64}`;
+                            }
+                          } catch {}
+                        }
+                        if (dataUrl) {
+                          store.setPendingFilePreview({ url: dataUrl, name: f.name, mimeType: f.mimeType });
+                          store.setRightPanelOpen(true);
+                        }
+                      }}
+                    >
+                      {f.data ? (
+                        <img
+                          src={`data:${f.mimeType || 'image/png'};base64,${f.data}`}
+                          alt={f.name}
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center">
+                          <ImageIcon className="w-8 h-8 opacity-30" />
+                        </div>
+                      )}
+                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <p className="text-[10px] text-white truncate">{f.name}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Videos view — 视频列表 */}
+          {chatView === 'videos' && (
+            <div className="space-y-2">
+              {videoAttachments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                  <Video className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-sm">暂无视频</p>
+                </div>
+              ) : (
+                videoAttachments.map((f, i) => (
+                  <div key={i} className="rounded-lg border border-border/40 bg-muted/20 overflow-hidden">
+                    <div className="px-3 py-2 flex items-center gap-2">
+                      <Video className="w-5 h-5 text-muted-foreground shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{f.name}</p>
+                        <p className="text-[10px] text-muted-foreground/60">
+                          {f.timestamp.toLocaleString('zh-CN')} {f.mimeType && `· ${f.mimeType}`}
+                        </p>
+                      </div>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
+                        {f.role === 'user' ? '用户' : 'AI'}
+                      </span>
+                    </div>
+                    {f.data && (
+                      <video controls className="w-full max-h-64 bg-black" preload="metadata">
+                        <source src={`data:${f.mimeType || 'video/mp4'};base64,${f.data}`} />
+                      </video>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Audio view — 音频列表 */}
+          {chatView === 'audio' && (
+            <div className="space-y-2">
+              {audioAttachments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                  <Music className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-sm">暂无音频</p>
+                </div>
+              ) : (
+                audioAttachments.map((f, i) => (
+                  <div key={i} className="rounded-lg border border-border/40 bg-muted/20 p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Music className="w-5 h-5 text-muted-foreground shrink-0" />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{f.name}</p>
+                        <p className="text-[10px] text-muted-foreground/60">
+                          {f.timestamp.toLocaleString('zh-CN')} {f.mimeType && `· ${f.mimeType}`}
+                        </p>
+                      </div>
+                    </div>
+                    {f.data && (
+                      <audio controls className="w-full" preload="metadata">
+                        <source src={`data:${f.mimeType || 'audio/mpeg'};base64,${f.data}`} />
+                      </audio>
+                    )}
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Links view — 链接列表 */}
+          {chatView === 'links' && (
+            <div className="space-y-2">
+              {linkItems.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                  <Link2 className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-sm">暂无链接</p>
+                </div>
+              ) : (
+                linkItems.map((link, i) => (
+                  <a
+                    key={i}
+                    href={link.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center gap-3 p-3 rounded-lg border border-border/40 bg-muted/20 hover:bg-muted/40 transition-colors group"
+                  >
+                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                      <Link2 className="w-4 h-4 text-primary" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
+                        {link.title || link.url}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground/60 truncate">{link.url}</p>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground/40 shrink-0">
+                      {link.timestamp.toLocaleDateString('zh-CN')}
+                    </div>
+                  </a>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Dates view — 日期分组 */}
+          {chatView === 'dates' && (
+            <div className="space-y-3">
+              {dateGroups.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                  <CalendarDays className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-sm">暂无消息</p>
+                </div>
+              ) : (
+                dateGroups.map((group) => (
+                  <div key={group.date} className="rounded-lg border border-border/40 overflow-hidden">
+                    <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border/30">
+                      <div className="flex items-center gap-2">
+                        <CalendarDays className="w-4 h-4 text-primary" />
+                        <span className="text-sm font-medium">{group.label}</span>
+                        <span className="text-[10px] text-muted-foreground">{group.date}</span>
+                      </div>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                        {group.count} 条
+                      </span>
+                    </div>
+                    <div className="divide-y divide-border/20">
+                      {group.messages.slice(0, 5).map((msg, j) => (
+                        <div key={j} className="px-3 py-2 flex items-start gap-2">
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${msg.role === 'user' ? 'bg-blue-500/10' : 'bg-primary/10'}`}>
+                            {msg.role === 'user' ? <User className="w-3 h-3 text-blue-500" /> : <Bot className="w-3 h-3 text-primary" />}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="text-xs text-muted-foreground line-clamp-2">
+                              {msg.parts.find(p => p.type === 'text')?.text?.slice(0, 120) || '...'}
+                            </p>
+                          </div>
+                          <span className="text-[10px] text-muted-foreground/40 shrink-0">
+                            {msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                      ))}
+                      {group.messages.length > 5 && (
+                        <div className="px-3 py-1.5 text-center">
+                          <span className="text-[10px] text-muted-foreground">
+                            还有 {group.messages.length - 5} 条消息...
+                          </span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 ))

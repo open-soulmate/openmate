@@ -8,7 +8,7 @@ export type { SkirtTabsProps, SkirtTab } from './components/skirt-tabs';
 export { WorkspacePanel } from './components/workspace-panel';
 export type { WorkspacePanelProps } from './components/workspace-panel';
 export { ChatViewToggle } from './components/chat-view-toggle';
-export type { ChatViewToggleProps } from './components/chat-view-toggle';
+export type { ChatViewToggleProps, ChatViewType, ChatViewTab } from './components/chat-view-toggle';
 export { MainPanel } from './components/main-panel';
 export type { MainPanelProps } from './components/main-panel';
 export { LeftPanel } from './components/left-panel';
