@@ -1842,7 +1842,7 @@ export function ChatClient() {
           <SkirtTabs
             tabs={[
               { id: 'messages', title: t('chat.viewMessages', '消息') },
-              ...(!isMobile ? [{ id: 'files', title: t('chat.viewFiles', '文件') }] : []),
+              { id: 'files', title: t('chat.viewFiles', '文件') },
               { id: 'images', title: t('chat.viewImages', '图片') },
               { id: 'videos', title: t('chat.viewVideos', '视频') },
               { id: 'audio', title: t('chat.viewAudio', '音频') },
@@ -1860,6 +1860,7 @@ export function ChatClient() {
                 {tab.id === 'audio' && <Music className="w-3.5 h-3.5 shrink-0" />}
                 {tab.id === 'links' && <Link2 className="w-3.5 h-3.5 shrink-0" />}
                 {tab.id === 'dates' && <CalendarDays className="w-3.5 h-3.5 shrink-0" />}
+                <span className="hidden lg:inline truncate text-xs">{tab.title}</span>
                 {tab.id === 'files' && fileAttachments.length > 0 && (
                   <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{fileAttachments.length}</span>
                 )}
