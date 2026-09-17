@@ -1843,8 +1843,6 @@ export function ChatClient() {
           ]}
           activeTabId={chatView}
           onTabChange={(id: string) => setChatView(id as any)}
-          minWidth={60}
-          maxWidth={200}
           renderTabContent={(tab: any, isActive: boolean) => (
             <>
               {tab.id === 'messages' && <MessageSquare className="w-3.5 h-3.5 shrink-0" />}

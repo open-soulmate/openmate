@@ -71,8 +71,8 @@ export function SkirtTabs({
   dividerColor = 'var(--color-border, var(--border, #333))',
   extraRight = 0,
   tabHeight = 36,
-  minWidth = 140,
-  maxWidth = 240,
+  minWidth = 60,
+  maxWidth = 9999,
   className,
 }: SkirtTabsProps) {
   const [tabWidths, setTabWidths] = useState<Record<string, number>>({});
