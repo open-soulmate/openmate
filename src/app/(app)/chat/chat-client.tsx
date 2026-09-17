@@ -1823,6 +1823,47 @@ export function ChatClient() {
             </div>
             {(selectedAgent || storeAgentName) && <span className="text-[10px] lg:text-xs text-muted-foreground px-1 lg:px-1.5 py-0.5 rounded bg-muted shrink-0 truncate max-w-[80px] lg:max-w-none">{selectedAgent?.name || storeAgentName}</span>}
           </div>
+          {/* Chat view toggle — 裙摆式分段视图 */}
+          <SkirtTabs
+            tabs={[
+              { id: 'messages', title: t('chat.viewMessages', '消息') },
+              { id: 'files', title: t('chat.viewFiles', '文件') },
+              { id: 'images', title: t('chat.viewImages', '图片') },
+              { id: 'videos', title: t('chat.viewVideos', '视频') },
+              { id: 'audio', title: t('chat.viewAudio', '音频') },
+              { id: 'links', title: t('chat.viewLinks', '链接') },
+              { id: 'dates', title: t('chat.viewDates', '日期') },
+            ]}
+            activeTabId={chatView}
+            onTabChange={(id: string) => setChatView(id as any)}
+            renderTabContent={(tab: any, isActive: boolean) => (
+              <>
+                {tab.id === 'messages' && <MessageSquare className="w-3.5 h-3.5 shrink-0" />}
+                {tab.id === 'files' && <FolderOpen className="w-3.5 h-3.5 shrink-0" />}
+                {tab.id === 'images' && <ImageIcon className="w-3.5 h-3.5 shrink-0" />}
+                {tab.id === 'videos' && <Video className="w-3.5 h-3.5 shrink-0" />}
+                {tab.id === 'audio' && <Music className="w-3.5 h-3.5 shrink-0" />}
+                {tab.id === 'links' && <Link2 className="w-3.5 h-3.5 shrink-0" />}
+                {tab.id === 'dates' && <CalendarDays className="w-3.5 h-3.5 shrink-0" />}
+                <span className="flex-1" />
+                {tab.id === 'files' && fileAttachments.length > 0 && (
+                  <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{fileAttachments.length}</span>
+                )}
+                {tab.id === 'images' && imageAttachments.length > 0 && (
+                  <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{imageAttachments.length}</span>
+                )}
+                {tab.id === 'videos' && videoAttachments.length > 0 && (
+                  <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{videoAttachments.length}</span>
+                )}
+                {tab.id === 'audio' && audioAttachments.length > 0 && (
+                  <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{audioAttachments.length}</span>
+                )}
+                {tab.id === 'links' && linkItems.length > 0 && (
+                  <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{linkItems.length}</span>
+                )}
+              </>
+            )}
+          />
           <div className="flex items-center gap-1 shrink-0">
             <button onClick={(e) => { e.stopPropagation(); toggleRightPanel(); setShowCheckpoints(false); if (isMobile && sidebarOpen) toggleSidebar(); }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Workspace">
               <PanelLeft className="w-4 h-4 scale-x-[-1]" />
@@ -1830,47 +1871,7 @@ export function ChatClient() {
           </div>
         </div>
 
-        {/* Chat view toggle — 裙摆式分段视图 */}
-        <SkirtTabs
-          tabs={[
-            { id: 'messages', title: t('chat.viewMessages', '消息') },
-            { id: 'files', title: t('chat.viewFiles', '文件') },
-            { id: 'images', title: t('chat.viewImages', '图片') },
-            { id: 'videos', title: t('chat.viewVideos', '视频') },
-            { id: 'audio', title: t('chat.viewAudio', '音频') },
-            { id: 'links', title: t('chat.viewLinks', '链接') },
-            { id: 'dates', title: t('chat.viewDates', '日期') },
-          ]}
-          activeTabId={chatView}
-          onTabChange={(id: string) => setChatView(id as any)}
-          renderTabContent={(tab: any, isActive: boolean) => (
-            <>
-              {tab.id === 'messages' && <MessageSquare className="w-3.5 h-3.5 shrink-0" />}
-              {tab.id === 'files' && <FolderOpen className="w-3.5 h-3.5 shrink-0" />}
-              {tab.id === 'images' && <ImageIcon className="w-3.5 h-3.5 shrink-0" />}
-              {tab.id === 'videos' && <Video className="w-3.5 h-3.5 shrink-0" />}
-              {tab.id === 'audio' && <Music className="w-3.5 h-3.5 shrink-0" />}
-              {tab.id === 'links' && <Link2 className="w-3.5 h-3.5 shrink-0" />}
-              {tab.id === 'dates' && <CalendarDays className="w-3.5 h-3.5 shrink-0" />}
-              <span className="truncate flex-1" />
-              {tab.id === 'files' && fileAttachments.length > 0 && (
-                <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{fileAttachments.length}</span>
-              )}
-              {tab.id === 'images' && imageAttachments.length > 0 && (
-                <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{imageAttachments.length}</span>
-              )}
-              {tab.id === 'videos' && videoAttachments.length > 0 && (
-                <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{videoAttachments.length}</span>
-              )}
-              {tab.id === 'audio' && audioAttachments.length > 0 && (
-                <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{audioAttachments.length}</span>
-              )}
-              {tab.id === 'links' && linkItems.length > 0 && (
-                <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{linkItems.length}</span>
-              )}
-            </>
-          )}
-        />
+
 
         {/* Messages */}
         <div ref={scrollRef} onScroll={(e) => {
