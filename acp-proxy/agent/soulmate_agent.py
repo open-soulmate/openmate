@@ -126,6 +126,8 @@ class SoulMateAgent:
         self._mcp_tool_call_id_map: dict[str, dict] = {}  # func_name -> {server_id, tool_name}
         self._session_cwds: dict[str, str] = {}  # session_id -> cwd
         self._streamed_flags: dict[str, bool] = {}  # session_id -> streamed
+        # 菜单选择等待机制：session_id -> asyncio.Future
+        self._pending_choices: dict[str, asyncio.Future] = {}
         # 任务规划与自省引擎
         from agent.task_engine import TaskPlanner, SelfReflector
         self._task_planner = TaskPlanner(llm_call_fn=self._llm_plan_call)
@@ -971,6 +973,15 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                         update=acp.update_agent_message_text(json.dumps(choice_payload)),
                                     )
                                 result = f"已向用户展示选择菜单: {question} (共{len(options)}个选项，等待用户选择)"
+                                # 等待用户选择（最多60秒）
+                                future = asyncio.get_event_loop().create_future()
+                                self._pending_choices[session_id] = future
+                                try:
+                                    result = await asyncio.wait_for(future, timeout=60)
+                                except asyncio.TimeoutError:
+                                    result = "用户未在60秒内选择，请继续"
+                                finally:
+                                    self._pending_choices.pop(session_id, None)
                             except Exception as e:
                                 result = f"clarify失败: {e}"
 
@@ -1187,6 +1198,23 @@ You can send files to the user natively: to deliver a file, write a brief confir
         Writer Fencing: 同一session同时只有一个prompt在处理，后来的排队等待。
         """
         logger.info(f"[prompt] CALLED! session={session_id}, parts={len(prompt)}")
+        
+        # ── 检查是否有等待中的菜单选择 ──
+        if session_id in self._pending_choices:
+            # 提取用户选择的文本
+            user_choice = ""
+            for block in prompt:
+                if hasattr(block, "text"):
+                    user_choice += block.text
+                elif isinstance(block, dict) and block.get("type") == "text":
+                    user_choice += block.get("text", "")
+            
+            if user_choice.strip():
+                logger.info(f"[choice] User selected: {user_choice[:50]}")
+                self.resolve_choice(session_id, user_choice.strip())
+                # 返回成功，不继续处理
+                return PromptResponse(stop_reason="end_turn")
+        
         session = self.sessions.get(session_id)
         if not session:
             logger.error(f"Session not found: {session_id}")
@@ -2015,6 +2043,23 @@ You can send files to the user natively: to deliver a file, write a brief confir
             pass
 
         return PromptResponse(stop_reason="end_turn")
+
+    def resolve_choice(self, session_id: str, choice_result: str) -> bool:
+        """用户选择后调用，唤醒等待中的clarify工具
+        
+        Args:
+            session_id: 会话ID
+            choice_result: 用户选择的结果文本
+        
+        Returns:
+            bool: 是否成功唤醒
+        """
+        future = self._pending_choices.get(session_id)
+        if future and not future.done():
+            future.set_result(choice_result)
+            logger.info(f"[choice] Resolved: session={session_id}, result={choice_result[:50]}")
+            return True
+        return False
 
     async def cancel(self, session_id: str, **kwargs) -> None:
         """取消当前操作"""
