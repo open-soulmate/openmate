@@ -670,7 +670,13 @@
     "routingManual": "Manual Mode",
     "routingManualDesc": "Always use the default strategy model",
     "shortTextDesc": "Messages shorter than this threshold prefer local model",
-    "searchPlaceholder": "Search settings..."
+    "searchPlaceholder": "Search settings...",
+    "customProviderName": "Provider Name",
+    "customProviderNamePlaceholder": "e.g. My Local Model",
+    "addCustomModel": "Add Custom Model",
+    "savedCustomModels": "Saved Custom Models",
+    "useThisModel": "Use This Model",
+    "deleteCustomModel": "Delete"
   },
   "search": {
     "title": "Search Everything",

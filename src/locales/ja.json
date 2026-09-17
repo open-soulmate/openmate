@@ -667,7 +667,13 @@
     "routingManual": "手動モード",
     "routingManualDesc": "デフォルト戦略のモデルを常に使用",
     "shortTextDesc": "この長さ未満のメッセージはローカルモデルを優先",
-    "searchPlaceholder": "設定を検索..."
+    "searchPlaceholder": "設定を検索...",
+    "customProviderName": "プロバイダー名",
+    "customProviderNamePlaceholder": "例: ローカルモデル",
+    "addCustomModel": "カスタムモデルを追加",
+    "savedCustomModels": "保存済みカスタムモデル",
+    "useThisModel": "このモデルを使用",
+    "deleteCustomModel": "削除"
   },
   "search": {
     "title": "すべてを検索",

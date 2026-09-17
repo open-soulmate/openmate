@@ -669,7 +669,13 @@
     "routingManual": "手动模式",
     "routingManualDesc": "固定使用默认策略选择的模型",
     "shortTextDesc": "低于此长度的消息优先使用本地模型",
-    "searchPlaceholder": "搜索设置..."
+    "searchPlaceholder": "搜索设置...",
+    "customProviderName": "提供商名称",
+    "customProviderNamePlaceholder": "例如: 我的本地模型",
+    "addCustomModel": "添加自定义模型",
+    "savedCustomModels": "已保存的自定义模型",
+    "useThisModel": "使用此模型",
+    "deleteCustomModel": "删除"
   },
   "search": {
     "title": "搜索一切",
