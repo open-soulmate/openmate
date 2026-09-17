@@ -62,3 +62,34 @@
 - 重启opensoul(:8090)后live确认：/api/system/health ok，/api/gland/providers正常列出openai/ollama两provider consecutive_failures=0
 
 **commit**：opensoul 8dad4d5b
+
+## [2026-09-17 15:37] trajectory三层观测模型：langfuse Trace→Observation→Score
+
+**目标**：解决调研确认的P0差距——"我都不知道他们在干嘛"的后端数据前提缺失。OpenSoul trajectory是扁平事件表：事件无结束语义（duration靠调用方随手填，各写各的时钟）、parent_event_id有雏形但无任何嵌套查询（前端只能拿扁平列表）、质量评分零存储（"有没有变好"无处可查，P0-5评估闭环连数据层都没有）。
+
+**调研来源**：langfuse三层模型（SUMMARY.md P0-4：Trace→Observation嵌套span→Score挂载）；Warp subtree rollup（每节点子树事件/token/duration汇总）；deepseek"溢写失败绝不能把成功调用变错"（end_event对坏created_at不fail）；SUMMARY.md行业信号5（OTel GenAI semconv被官方收编→trajectory字段应对齐gen_ai标准）。
+
+**改动文件**：
+- opensoul/src/trajectory/store.py
+- opensoul/src/api/trajectory.py
+- opensoul/tests/test_trajectory_spans.py（新增）
+- opensoul/tests/test_trajectory_store.py（4处mock调用计数更新）
+
+**改动内容**：
+1. store.py：
+   - TrajectoryEvent新增end_at字段；SQLite迁移ALTER TABLE（无IF NOT EXISTS，重复列错误按消息匹配安全吞掉，其他异常照常raise）
+   - end_event()：span关闭语义——end_at盖章、duration_ms由created_at→now单一时钟推导（不信调用方）、token_usage增量回填session总量；created_at解析失败时长记0不抛错
+   - get_trace_tree()：parent_event_id→父子边构建嵌套观测树，每节点depth+subtree_events/subtree_tokens/subtree_duration_ms rollup；悬空parent提升root、环状血缘seen-set遍历切断（损坏数据不能挂死读取方）
+   - TrajectoryScore数据类+trajectory_scores表（langfuse Score镜像：name/value/string_value/data_type/source/trace_id/comment），SCORE_SOURCES=api/llm_judge/code_eval/human
+   - add_score五项校验、get_scores按session/name/source过滤、get_score_summary按name聚合（count/avg/min/max/裁判数/人工数="有没有变好"一条SQL）
+   - delete_session级联清理scores；EventType新增SPAN（通用嵌套span类型）
+   - gen_ai_attributes()：OTel GenAI semconv属性构造（gen_ai.system/request.model/usage.input_tokens/output_tokens/response.finish_reasons）
+2. trajectory.py新增端点：POST /events/{id}/end（span关闭）、GET /sessions/{id}/trace（嵌套树）、POST/GET /sessions/{id}/scores、GET /sessions/{id}/scores/summary
+
+**验证结果**：
+- tests/test_trajectory_spans.py 13 passed（真实/tmp SQLite隔离库：end_event持久化+token回填、迁移幂等连跑两次、树嵌套+rollup+深度、悬空parent提升、2-环不挂死、score增查过滤聚合、delete级联、校验5种、gen_ai属性）
+- 既有trajectory四套测试65 passed（含4处mock调用计数随DDL同步）
+- acp-proxy集成测试 run_integration_tests score=1.0（三服务健康+语法+WS协议对齐全过，include_build=False无前端改动）
+- 重启opensoul(:8090)后live确认：/api/trajectory/health ok、新端点全部注册、trajectory_sessions表当前0会话无测试数据污染
+
+**commit**：opensoul b6c06130
