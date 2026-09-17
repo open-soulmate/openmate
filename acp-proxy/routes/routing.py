@@ -118,9 +118,16 @@ async def update_routing_config(config: RoutingConfig):
     return {"status": "ok", "message": "路由配置已保存"}
 
 
+class TestRequest(BaseModel):
+    message: str
+    config: Optional[RoutingConfig] = None
+
+
 @router.post("/test")
-async def test_routing(message: str, config: Optional[RoutingConfig] = None):
+async def test_routing(request: TestRequest):
     """测试路由规则"""
+    message = request.message
+    config = request.config
     if config is None:
         config = load_config()
     
