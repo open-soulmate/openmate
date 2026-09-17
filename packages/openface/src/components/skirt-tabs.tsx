@@ -145,7 +145,7 @@ export function SkirtTabs({
       <div
         ref={tabBarRef}
         className="flex items-end shrink-0 px-2"
-        style={{ height: tabHeight, marginTop: 12, gap: 0, overflowX: 'auto', overflowY: 'visible', scrollbarWidth: 'none' }}
+        style={{ height: tabHeight, marginTop: 12, gap: 0, overflowX: 'visible', overflowY: 'visible', scrollbarWidth: 'none' }}
       >
         {tabs.map((tab, index) => {
           const isActive = tab.id === activeTabId;
