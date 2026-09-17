@@ -93,3 +93,45 @@
 - 重启opensoul(:8090)后live确认：/api/trajectory/health ok、新端点全部注册、trajectory_sessions表当前0会话无测试数据污染
 
 **commit**：opensoul b6c06130
+
+## [2026-09-17 17:46] cortex上下文压缩引擎：goose 9段式摘要+kilocode预算化切分+三级降级
+
+**目标**：解决调研确认的P0差距——OpenSoul完全没有上下文压缩能力，长对话直接溢出context window导致完全失败。SUMMARY.md第一阶段路线图第3项"上下文压缩引擎：goose 9段式+kilocode切分策略合抄进cortex"。
+
+**调研来源**：
+- goose structured.rs（~/agent-research-src/goose/crates/goose-context-management/src/structured.rs 484行）：9段式JSON摘要格式(user_intent/technical_concepts/files/errors_and_fixes/problem_solving/user_messages/pending_tasks/current_work/next_step)，每列表按重要性排序"消费方可从尾部截断"，宽容反序列化(对象/数字转字符串而非失败)，多候选JSON提取(</analysis>后的json fence优先，last first)，brace-balanced extraction处理字符串值内的特殊字符。
+- kilocode compaction-chunks.ts（~/agent-research-src/kilocode/packages/opencode/src/kilocode/session/compaction-chunks.ts 406行）：预算化切分(60% of context, min 1000 tokens)，消息粒度二分切分(单条超预算时切两半)，并发chunk摘要(concurrency=3)，二叉归约合并(depth limit=3)，三级降级(LLM失败→跳过chunk→返回compact信号→fatal error返回stop)。
+
+**改动文件**：
+- opensoul/src/cortex/context_compression.py（新建，517行）
+- opensoul/src/cortex/__init__.py
+
+**改动内容**：
+1. context_compression.py（新建）：
+   - `StructuredSummary` dataclass：9字段+extra，`parse()`方法实现多候选提取（</analysis>后的json fence优先，last first，brace-balanced extraction处理字符串内特殊字符）+宽容反序列化(对象/数字/null转字符串，wrap scalars为单元素列表)+空白条目剔除+`_is_empty()`判空(全空则返回None触发raw text fallback)
+   - `render()`方法：markdown格式渲染，9段式section headers(User Intent/Technical Concepts/Files/Errors+Fixes/Problem Solving/User Messages/Pending Tasks/Current Work/Next Step)，code fence自动计算backtick长度避免嵌套
+   - `ContextCompressor`类：`compress(messages, context_limit, preserve_last_user=True)`主入口
+     - `_budget()`：60% of context, min 1000 tokens (kilocode公式)
+     - `_split()`：从后向前累积token估算，超预算时二分切分单条消息(remaining chars逻辑，kilocode select()的Python移植)
+     - `_summarize_chunk()`：单chunk摘要，优先structured summary，fallback raw text
+     - `_reduce_summaries()`：二叉归约(depth limit=3)，空响应时递归二分重试(kilocode reduce()逻辑)
+     - preserve_last_user：提取最近text-only用户消息，摘要后重附加(agent仍能"听到"用户最后的话，goose逻辑)
+   - `_json_candidates()`：goose json_candidates()的Python移植——terminator列表，fenced blocks，leading object，dedupe
+   - `_leading_object()`：brace-balanced extraction，处理string/escape/nested object
+   - `_stringify()`：goose stringify_lenient()的Python移植——dict→"k: v; k: v"，list→"a; b; c"，其他→str()
+2. __init__.py：
+   - 新增`from src.cortex.context_compression import ContextCompressor, StructuredSummary`
+   - `__all__`列表追加`"ContextCompressor", "StructuredSummary"`
+
+**验证结果**：
+- Test 1: StructuredSummary解析goose格式JSON通过（user_intent==['Fix parser bug']，files[0].path=='src/parser.rs'）
+- Test 2: 宽容反序列化通过（对象→字符串，数字→字符串，null→剔除，scalar→单元素列表）
+- Test 3: Markdown渲染通过（'# Conversation Summary'，'## User Intent'，'### src/parser.rs'）
+- Test 4: 无JSON时raw text fallback通过（返回None）
+- Test 5: 空summary({})拒绝通过（返回None）
+- python3语法检查通过
+- cortex模块导入成功（ContextCompressor, StructuredSummary）
+
+**commit**：f094e452
+
+**解决痛点**：长时间任务context溢出，为后续评估闭环提供数据基础。
