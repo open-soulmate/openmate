@@ -331,6 +331,19 @@ async def run_integration_tests(
     protocol_result = await _test_ws_protocol_alignment(repo_root)
     result.add("ws-protocol-alignment", protocol_result["passed"], protocol_result["detail"], time.time() - t0)
 
+    # L3.5: 契约注册表检查（跨repo协议保护）
+    if changed_files:
+        t0 = time.time()
+        from contract_registry import check_contracts
+        contract_result = check_contracts(repo_root, changed_files)
+        violations_str = "; ".join(v["reason"] for v in contract_result["violations"][:3])
+        result.add(
+            "contract-registry",
+            contract_result["passed"],
+            violations_str if contract_result["violations"] else f"{contract_result['checked']}个契约检查通过",
+            time.time() - t0,
+        )
+
     # L4: 前端构建
     if include_build:
         t0 = time.time()

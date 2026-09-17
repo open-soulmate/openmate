@@ -17,6 +17,8 @@ from pathlib import Path
 import failure_memory
 import evolution_grader
 import integration_test
+from contract_registry import check_contracts, get_protected_files
+from branch_evolution import BranchManager
 
 logger = logging.getLogger("evolution-v2")
 
@@ -95,15 +97,43 @@ class EvolutionV2:
                         self._record_failure(round_id, "plan_review", affected_files, plan, plan_review)
                         return result
             
-            # ── 阶段4: 实现 ──
+            # ── 阶段3.5: 契约注册表检查 ──
+            target_files = [c.get("target_file", "") for c in plan.get("changes", [])]
+            protected = get_protected_files()
+            touching_protected = [f for f in target_files if f in protected]
+            if touching_protected:
+                contract_check = check_contracts(self.repo_root, target_files)
+                result["stages"]["contract_check"] = contract_check
+                if not contract_check["passed"]:
+                    violations = "; ".join(v["reason"] for v in contract_check["violations"][:3])
+                    self.strand._log("contract", f"🚫 契约违规: {violations[:80]}")
+                    self._record_failure(round_id, "contract", target_files, plan, {"reason": violations})
+                    return result
+                self.strand._log("contract", f"✅ 契约检查通过({contract_check['checked']}个)")
+            
+            # ── 阶段3.8: 创建实验分支 ──
+            bm = BranchManager(self.repo_root)
+            exp = bm.create_experiment_branch(f"round-{round_id}")
+            if not exp:
+                result["stages"]["branch"] = {"status": "failed", "reason": "无法创建实验分支"}
+                return result
+            result["stages"]["branch"] = {"status": "created", "name": exp.branch_name}
+            self.strand._log("branch", f"🌿 实验分支: {exp.branch_name}")
+            
+            # ── 阶段4: 实现（在实验分支上）──
             patches = await self._implement(plan)
             result["stages"]["implement"] = patches
             applied = [p for p in patches if p["status"] == "applied"]
             self.strand._log("implement", f"🔧 {len(applied)}个补丁")
             
             if not applied:
+                bm.rollback_experiment()
                 self._record_failure(round_id, "implement", affected_files, plan, {"reason": "no patches applied"})
                 return result
+            
+            # 提交到实验分支
+            changed_files = [p["target_file"] for p in applied]
+            bm.commit_changes(f"evo: round-{round_id}", changed_files)
             
             # ── 阶段5: 独立grader评审代码 ──
             code_review = await evolution_grader.grade_code(self.strand, applied, plan)
@@ -111,8 +141,7 @@ class EvolutionV2:
             self.strand._log("code_review", f"{'✅' if code_review['verdict'] == 'satisfied' else '❌'} 代码评审: {code_review.get('reason', '')[:60]}")
             
             if code_review["verdict"] == evolution_grader.VERDICT_FAILED:
-                for p in applied:
-                    self._git_revert_file(p["target_file"])
+                bm.rollback_experiment()
                 self._record_failure(round_id, "code_review", affected_files, plan, code_review)
                 return result
             
@@ -132,14 +161,12 @@ class EvolutionV2:
             result["stages"]["test_grade"] = test_grade
             
             if test_grade["verdict"] == evolution_grader.VERDICT_FAILED:
-                for p in applied:
-                    self._git_revert_file(p["target_file"])
+                bm.rollback_experiment()
                 self._record_failure(round_id, "integration_test", affected_files, plan, test_grade)
                 return result
             
             if test_grade["verdict"] == evolution_grader.VERDICT_NEEDS_REVISION:
-                for p in applied:
-                    self._git_revert_file(p["target_file"])
+                bm.rollback_experiment()
                 self._record_failure(round_id, "integration_test", affected_files, plan, test_grade)
                 return result
             
@@ -148,31 +175,41 @@ class EvolutionV2:
             result["stages"]["verdict"] = verdict
             
             if verdict["converged"]:
-                for p in applied:
-                    self._git_commit(p["target_file"], f"[evo:v2:{self.instance_id}] {round_id}")
+                # Merge实验分支到main
+                merged = bm.merge_experiment()
+                result["stages"]["merge"] = {"merged": merged, "branch": exp.branch_name}
                 
-                # 记录成功模式
-                for p in applied:
-                    failure_memory.record_success(
-                        round_id, p["target_file"],
-                        p.get("description", ""), "bugfix", "integration_test",
-                        test_result.score,
-                    )
-                
-                # 重置错误风暴
-                failure_memory.reset_storm()
-                
-                result["success"] = True
-                self.strand._log("verdict", f"🎉 进化成功! score={test_result.score}")
+                if merged:
+                    # 记录成功模式
+                    for p in applied:
+                        failure_memory.record_success(
+                            round_id, p["target_file"],
+                            p.get("description", ""), "bugfix", "integration_test",
+                            test_result.score,
+                        )
+                    
+                    # 重置错误风暴
+                    failure_memory.reset_storm()
+                    
+                    result["success"] = True
+                    self.strand._log("verdict", f"🎉 进化成功! 分支已merge. score={test_result.score}")
+                else:
+                    self.strand._log("verdict", f"⚠️ 测试通过但merge失败")
             else:
-                for p in applied:
-                    self._git_revert_file(p["target_file"])
+                bm.rollback_experiment()
                 self._record_failure(round_id, "verdict", affected_files, plan, verdict)
-                self.strand._log("verdict", f"↩️ 回滚: {verdict.get('reason', '')[:60]}")
+                self.strand._log("verdict", f"↩️ 分支回滚: {verdict.get('reason', '')[:60]}")
         
         except Exception as e:
             logger.error(f"Evolution v2 error: {e}")
             result["error"] = str(e)
+            # 异常时也要回滚分支
+            try:
+                _bm = locals().get("bm")
+                if _bm and _bm.get_current_branch().startswith("evo/exp-"):
+                    _bm.rollback_experiment()
+            except Exception:
+                pass
         
         result["duration"] = round(time.time() - start_time, 1)
         return result
