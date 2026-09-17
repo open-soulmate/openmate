@@ -53,10 +53,10 @@ export function ChatViewToggle({ value, onChange, tabs, className }: ChatViewTog
   const tabBarRef = useRef<HTMLDivElement | null>(null);
   const activeTabRef = useRef<HTMLButtonElement | null>(null);
   const [tabWidths, setTabWidths] = useState<Record<string, number>>({});
-  const [activeTabLeft, setActiveTabLeft] = useState(0);
-  const [activeTabWidth, setActiveTabWidth] = useState(0);
-  const [barLeft, setBarLeft] = useState(0);
-  const [barRight, setBarRight] = useState(0);
+
+
+
+
 
   const measureTab = (id: string, el: HTMLElement) => {
     const w = el.getBoundingClientRect().width;
@@ -66,35 +66,7 @@ export function ChatViewToggle({ value, onChange, tabs, className }: ChatViewTog
     });
   };
 
-  useLayoutEffect(() => {
-    const calc = () => {
-      if (!tabBarRef.current || !activeTabRef.current) return;
-      const barRect = tabBarRef.current.getBoundingClientRect();
-      const tabRect = activeTabRef.current.getBoundingClientRect();
-      setBarLeft(barRect.left);
-      setBarRight(barRect.right);
-      setActiveTabLeft(tabRect.left);
-      setActiveTabWidth(tabRect.width);
-    };
-    calc();
-    requestAnimationFrame(calc);
-  }, [tabs, value, tabWidths]);
 
-  useLayoutEffect(() => {
-    const recalc = () => {
-      if (!tabBarRef.current || !activeTabRef.current) return;
-      const barRect = tabBarRef.current.getBoundingClientRect();
-      const tabRect = activeTabRef.current.getBoundingClientRect();
-      setBarLeft(barRect.left);
-      setBarRight(barRect.right);
-      setActiveTabLeft(tabRect.left);
-      setActiveTabWidth(tabRect.width);
-    };
-    window.addEventListener('resize', recalc);
-    const ro = new ResizeObserver(recalc);
-    if (tabBarRef.current) ro.observe(tabBarRef.current);
-    return () => { window.removeEventListener('resize', recalc); ro.disconnect(); };
-  }, []);
 
   return (
     <div className={cn('relative', className)}>
@@ -160,25 +132,13 @@ export function ChatViewToggle({ value, onChange, tabs, className }: ChatViewTog
                 )}
               </div>
             </button>
-            {showDivider && (
-              <div className="shrink-0 self-center" style={{ width: 1, height: 20, background: 'var(--color-border, var(--border))', margin: '0 2px', opacity: 0.5 }} />
-            )}
+
             </Fragment>
           );
         })}
       </div>
 
-      {/* Underline: two segments, gap under skirt */}
-      <div className="relative shrink-0" style={{ height: 1, marginTop: -1 }}>
-        <div
-          className="absolute top-0 left-0"
-          style={{ height: 1, background: 'var(--color-border, var(--border))', width: Math.max(0, activeTabLeft - barLeft - SKIRT) }}
-        />
-        <div
-          className="absolute top-0"
-          style={{ height: 1, background: 'var(--color-border, var(--border))', left: activeTabLeft - barLeft + activeTabWidth + SKIRT, right: 0 }}
-        />
-      </div>
+
     </div>
   );
 }
