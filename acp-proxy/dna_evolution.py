@@ -1305,31 +1305,78 @@ new_string是替换后的文本。
         re.compile(r"# \.\.\. rest of"),
     ]
 
+    # ── 出站脱敏（immune/moderator.py模式，Warp 20正则子集）──
+    _REDACT_PATTERNS = [
+        (re.compile(r"sk-[a-zA-Z0-9]{20,}"), "sk-***"),
+        (re.compile(r"tp-[a-zA-Z0-9]{20,}"), "tp-***"),
+        (re.compile(r"(?i)(api[_-]?key|token|secret|password|authorization)[\"\':\s=]+[a-zA-Z0-9_\-\.]{16,}"), r"\1=***"),
+    ]
+
+    @classmethod
+    def _redact_secrets(cls, text: str) -> str:
+        """脱敏出站文本中的敏感信息，防止泄漏到LLM provider"""
+        for pat, repl in cls._REDACT_PATTERNS:
+            text = pat.sub(repl, text)
+        return text
+
+    # ── 重试策略（cortex/llm_retry.py模式：429/5xx重试，尊重Retry-After）──
+    _RETRY_MAX = 3
+    _RETRY_BASE_DELAY = 2.0
+
+    @staticmethod
+    def _retry_delay(resp_status: int, attempt: int, retry_after: str = "") -> float | None:
+        """返回重试延迟秒数，None=不重试"""
+        if resp_status == 429 or resp_status >= 500:
+            if retry_after:
+                try:
+                    return min(float(retry_after), 30.0)
+                except ValueError:
+                    pass
+            return min(2.0 ** attempt * 2.0, 15.0)
+        return None  # 401/400/404等不重试
+
     async def _call_llm(self, prompt: str) -> str:
-        """调用LLM，支持finish_reason检测+自动续写（Aider方案）+ omission检测（Gemini CLI方案）"""
+        """调用LLM，支持finish_reason检测+自动续写（Aider方案）+ omission检测（Gemini CLI方案）
+        v2增强：出站脱敏 + 429/5xx重试（kilocode retry.ts + Warp redaction模式）"""
         try:
+            # 出站脱敏：防止prompt中意外包含的API key/token泄漏到provider
+            safe_prompt = self._redact_secrets(prompt)
+            if safe_prompt != prompt:
+                logger.info(f"[{self.strand_id}] Outbound redaction applied to prompt ({len(prompt)}→{len(safe_prompt)} chars)")
+
             headers = {"Content-Type": "application/json"}
             if self.llm_api_key:
                 headers["Authorization"] = f"Bearer {self.llm_api_key}"
 
             full_content = ""
-            messages = [{"role": "user", "content": prompt}]
+            messages = [{"role": "user", "content": safe_prompt}]
             max_continuation = 3  # 最多续写3次
 
             async with httpx.AsyncClient(timeout=httpx.Timeout(120.0)) as client:
                 for attempt in range(max_continuation):
-                    resp = await client.post(
-                        f"{self.llm_base_url}/chat/completions",
-                        headers=headers,
-                        json={
-                            "model": self.llm_model,
-                            "messages": messages,
-                            "temperature": self.temperature,
-                            "max_tokens": 4096,  # 从2000提升到4096
-                        },
-                    )
-                    if resp.status_code != 200:
-                        logger.error(f"[{self.strand_id}] LLM call failed: {resp.status_code} {resp.text[:200]}")
+                    # 带重试的HTTP请求
+                    resp = None
+                    for retry in range(self._RETRY_MAX):
+                        resp = await client.post(
+                            f"{self.llm_base_url}/chat/completions",
+                            headers=headers,
+                            json={
+                                "model": self.llm_model,
+                                "messages": messages,
+                                "temperature": self.temperature,
+                                "max_tokens": 4096,
+                            },
+                        )
+                        delay = self._retry_delay(resp.status_code, retry, resp.headers.get("retry-after", ""))
+                        if delay is None or retry + 1 >= self._RETRY_MAX:
+                            break
+                        logger.warning(f"[{self.strand_id}] LLM HTTP {resp.status_code}, retry {retry+1}/{self._RETRY_MAX} in {delay:.1f}s")
+                        await asyncio.sleep(delay)
+
+                    if resp is None or resp.status_code != 200:
+                        status = resp.status_code if resp else "no-response"
+                        body = resp.text[:200] if resp else ""
+                        logger.error(f"[{self.strand_id}] LLM call failed: {status} {body}")
                         return full_content
 
                     data = resp.json()
