@@ -5,7 +5,7 @@ import { TaskChoiceMenu, type ChoiceOption } from "@/components/task-choice-menu
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/stores/app-store';
 import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, Copy, ThumbsUp, ThumbsDown, Share2, RefreshCw, MoreHorizontal, Volume2, MessageSquare, FolderOpen, Video, Music, Link2, CalendarDays } from "lucide-react";
-import { ChatViewToggle, type ChatViewType, type ChatViewTab } from "@opensoulmate/openface";
+import { SkirtTabs } from "@opensoulmate/openface";
 import { ContextRing } from "@/components/context-ring";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
 import { copyToClipboard } from '@/lib/clipboard';
@@ -1103,7 +1103,7 @@ export function ChatClient() {
   const [editingTitle, setEditingTitle] = useState(false);
   const [editTitleValue, setEditTitleValue] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
-  const [chatView, setChatView] = useState<ChatViewType>('messages');
+  const [chatView, setChatView] = useState<string>('messages');
   const { t } = useTranslation();
   const isMobile = useIsMobile();
   const setSessionDetails = useAppStore((s) => s.setSessionDetails);
@@ -1831,18 +1831,47 @@ export function ChatClient() {
         </div>
 
         {/* Chat view toggle — 裙摆式分段视图 */}
-        <ChatViewToggle
-          value={chatView}
-          onChange={setChatView}
+        <SkirtTabs
           tabs={[
-            { value: 'messages', label: t('chat.viewMessages', '消息'), icon: <MessageSquare className="w-3.5 h-3.5" /> },
-            { value: 'files', label: t('chat.viewFiles', '文件'), icon: <FolderOpen className="w-3.5 h-3.5" />, count: fileAttachments.length },
-            { value: 'images', label: t('chat.viewImages', '图片'), icon: <ImageIcon className="w-3.5 h-3.5" />, count: imageAttachments.length },
-            { value: 'videos', label: t('chat.viewVideos', '视频'), icon: <Video className="w-3.5 h-3.5" />, count: videoAttachments.length },
-            { value: 'audio', label: t('chat.viewAudio', '音频'), icon: <Music className="w-3.5 h-3.5" />, count: audioAttachments.length },
-            { value: 'links', label: t('chat.viewLinks', '链接'), icon: <Link2 className="w-3.5 h-3.5" />, count: linkItems.length },
-            { value: 'dates', label: t('chat.viewDates', '日期'), icon: <CalendarDays className="w-3.5 h-3.5" />, count: dateGroups.length },
+            { id: 'messages', title: t('chat.viewMessages', '消息') },
+            { id: 'files', title: t('chat.viewFiles', '文件') },
+            { id: 'images', title: t('chat.viewImages', '图片') },
+            { id: 'videos', title: t('chat.viewVideos', '视频') },
+            { id: 'audio', title: t('chat.viewAudio', '音频') },
+            { id: 'links', title: t('chat.viewLinks', '链接') },
+            { id: 'dates', title: t('chat.viewDates', '日期') },
           ]}
+          activeTabId={chatView}
+          onTabChange={(id: string) => setChatView(id as any)}
+          minWidth={80}
+          maxWidth={120}
+          renderTabContent={(tab: any, isActive: boolean) => (
+            <>
+              {tab.id === 'messages' && <MessageSquare className="w-3.5 h-3.5 shrink-0" />}
+              {tab.id === 'files' && <FolderOpen className="w-3.5 h-3.5 shrink-0" />}
+              {tab.id === 'images' && <ImageIcon className="w-3.5 h-3.5 shrink-0" />}
+              {tab.id === 'videos' && <Video className="w-3.5 h-3.5 shrink-0" />}
+              {tab.id === 'audio' && <Music className="w-3.5 h-3.5 shrink-0" />}
+              {tab.id === 'links' && <Link2 className="w-3.5 h-3.5 shrink-0" />}
+              {tab.id === 'dates' && <CalendarDays className="w-3.5 h-3.5 shrink-0" />}
+              <span className={`truncate flex-1 text-[13px] transition-colors ${isActive ? 'text-foreground' : 'text-muted-foreground'}`}>{tab.title}</span>
+              {tab.id === 'files' && fileAttachments.length > 0 && (
+                <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{fileAttachments.length}</span>
+              )}
+              {tab.id === 'images' && imageAttachments.length > 0 && (
+                <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{imageAttachments.length}</span>
+              )}
+              {tab.id === 'videos' && videoAttachments.length > 0 && (
+                <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{videoAttachments.length}</span>
+              )}
+              {tab.id === 'audio' && audioAttachments.length > 0 && (
+                <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{audioAttachments.length}</span>
+              )}
+              {tab.id === 'links' && linkItems.length > 0 && (
+                <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{linkItems.length}</span>
+              )}
+            </>
+          )}
         />
 
         {/* Messages */}
