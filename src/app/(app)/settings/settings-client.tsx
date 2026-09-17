@@ -6,7 +6,7 @@ import {
   HardDrive, Info, Wrench, Sliders, Check, X,
   RefreshCw, Download, Upload, Trash2, ExternalLink, Terminal,
   Wifi, FolderOpen, Gauge, RotateCcw, Zap, ChevronRight,
-  CheckCircle2, AlertCircle, LogOut, User, Settings, Menu,
+  CheckCircle2, AlertCircle, LogOut, User, Settings, Menu, Plus,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { type ThemeId, getThemes, getStoredTheme, persistTheme } from "@/lib/theme";
@@ -290,6 +290,11 @@ export function SettingsClient() {
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [backendVersion, setBackendVersion] = useState<string>("");
   const [customColors, setCustomColors] = useState<CustomColors>(loadCustomColors);
+  const [customProviderName, setCustomProviderName] = useState("");
+  const [customProviders, setCustomProviders] = useState<Array<{id: string; name: string; model: string; url: string; apiKey: string}>>(() => {
+    if (typeof window === "undefined") return [];
+    try { return JSON.parse(localStorage.getItem("openmate-custom-providers") || "[]"); } catch { return []; }
+  });
 
   const [settings, setSettings] = useState<SettingsState>({
     theme: "dark", fontSize: "medium", language: "system", sidebarPosition: "left", animationEnabled: true,
@@ -933,11 +938,24 @@ export function SettingsClient() {
                     />
                   </div>
 
+                  {settings.llmProvider === "custom" && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5">
+                        {t("settings.customProviderName") || "提供商名称"}
+                      </p>
+                      <TextInput value={customProviderName} onChange={setCustomProviderName} placeholder={t("settings.customProviderNamePlaceholder") || "例如: 我的本地模型"} />
+                    </div>
+                  )}
+
                   <div>
                     <p className="text-xs text-muted-foreground mb-1.5">
                       {t("settings.model") || "模型"}
                     </p>
-                    <SelectInput value={settings.model} onChange={(v) => update("model", v)} options={modelOptions} />
+                    {settings.llmProvider === "custom" ? (
+                      <TextInput value={settings.model} onChange={(v) => update("model", v)} placeholder={t("settings.inputModelName") || "输入模型名称"} />
+                    ) : (
+                      <SelectInput value={settings.model} onChange={(v) => update("model", v)} options={modelOptions} />
+                    )}
                   </div>
 
                   <div>
@@ -974,6 +992,70 @@ export function SettingsClient() {
                         : (t("settings.testConnection") || "测试连接")
                     }
                   </button>
+
+                  {settings.llmProvider === "custom" && (
+                    <button
+                      onClick={() => {
+                        if (!settings.model || !settings.url) return;
+                        const name = customProviderName || settings.model;
+                        const newProvider = {
+                          id: `custom-${Date.now()}`,
+                          name,
+                          model: settings.model,
+                          url: settings.url,
+                          apiKey: settings.apiKey,
+                        };
+                        const next = [...customProviders, newProvider];
+                        setCustomProviders(next);
+                        localStorage.setItem("openmate-custom-providers", JSON.stringify(next));
+                        setCustomProviderName("");
+                      }}
+                      className="w-full px-3 py-2 rounded-lg border border-dashed border-primary/40 text-xs text-primary hover:bg-primary/5 flex items-center justify-center gap-1.5 transition-colors"
+                    >
+                      <Plus size={12} />
+                      {t("settings.addCustomModel") || "添加自定义模型"}
+                    </button>
+                  )}
+
+                  {customProviders.length > 0 && (
+                    <div className="space-y-1.5">
+                      <p className="text-[10px] text-muted-foreground">{t("settings.savedCustomModels") || "已保存的自定义模型"}</p>
+                      {customProviders.map(cp => (
+                        <div key={cp.id} className="flex items-center justify-between p-2 rounded-lg border border-border bg-muted/20">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-medium truncate">{cp.name}</div>
+                            <div className="text-[10px] text-muted-foreground truncate">{cp.model} @ {cp.url}</div>
+                          </div>
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button
+                              onClick={() => {
+                                update("llmProvider", "custom");
+                                update("model", cp.model);
+                                update("url", cp.url);
+                                update("apiKey", cp.apiKey);
+                                setCustomProviderName(cp.name);
+                              }}
+                              className="p-1 rounded hover:bg-muted text-muted-foreground"
+                              title={t("settings.useThisModel") || "使用此模型"}
+                            >
+                              <CheckCircle2 size={12} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                const next = customProviders.filter(p => p.id !== cp.id);
+                                setCustomProviders(next);
+                                localStorage.setItem("openmate-custom-providers", JSON.stringify(next));
+                              }}
+                              className="p-1 rounded hover:bg-red-500/10 text-red-500/60"
+                              title={t("settings.deleteCustomModel") || "删除"}
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </SettingCard>
 
