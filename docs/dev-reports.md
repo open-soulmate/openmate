@@ -135,3 +135,49 @@
 **commit**：f094e452
 
 **解决痛点**：长时间任务context溢出，为后续评估闭环提供数据基础。
+
+## [2026-09-17 19:30] cortex循环/重复检测guard：5源合抄防agent死循环
+**目标**：解决调研确认的P0差距——agent可无限重复相同工具调用或生成重复文本，无任何检测或干预，烧token和时间无止境。SUMMARY.md cortex清单P0项"循环/重复检测guard | anything-llm Jaccard 0.85+Khoj组合签名"。
+
+**调研来源**：
+- ag2 LoopDetector（65号报告#3）：EventWatch+sliding deque(maxlen=10)+连续3次相同(name,args)→ObserverAlert+_flagged去重，75行
+- goose RepetitionInspector（63号supplement#9）：tool_monitor.rs 135行，连续相同(name+args)超max_repetitions→Deny
+- Khoj重复组合检测（38号报告#4）：{(tool,args tuple)}集合，命中→warning注入prompt"你已经调过这个，换一个"，5行核心
+- anything-llm loop-detect（PROGRESS.md轮9）：3-gram shingle+Jaccard≥0.85，文本重复≥8次/工具签名重复≥4次/连续15轮无工具调用→报警，60s冷却
+- DeerFlow LoopDetectionMiddleware（23号报告#2）：三级渐进响应——warn注入警告/intervene剥离tool_calls/force_stop
+
+**改动文件**：
+- opensoul/src/cortex/loop_guard.py（新建，~470行）
+- opensoul/src/cortex/__init__.py（增量更新导出）
+- opensoul/tests/test_loop_guard.py（新建，25个测试）
+
+**改动内容**：
+1. loop_guard.py：
+   - `ToolCallSignature`：name+args_hash（sha256前12位），args canonical化（sorted keys, no whitespace variance）
+   - `LoopGuard`类：主guard，组合4种检测策略
+     - `_check_tool_repetition`：滑窗连续计数，≥warn(3)→WARN，≥intervene(5)→INTERVENE
+     - `_check_repeated_combination`：Khoj集合检测，非连续重复→WARN（跳过连续重复，由tool repetition负责）
+     - `_check_text_similarity`：3-gram Jaccard≥0.85，重复≥8次→FORCE_STOP
+     - `_check_no_tool_calls`：预留接口，≥15轮无工具调用→报警
+   - `LoopSeverity`：ok/warn/intervene/force_stop四级渐进（DeerFlow模式）
+   - `DetectionType`：tool_repetition/text_similarity/repeated_combination/no_tool_calls
+   - 冷却机制：alarm后60s内抑制后续alarm（anything-llm模式）
+   - stats属性：round/window_size/unique_combinations/flagged_count/recent_texts
+
+2. 关键设计决策（踩坑修复）：
+   - 分离`_flagged_repeat`和`_flagged_combo`两个去重集合——共用一个集合时Khoj在第2次调用就fire并污染tool repetition的flagged集
+   - Khoj检查跳过连续重复——连续场景由tool repetition负责，两者职责分离
+   - 窗口在检查前更新——否则WARN提前返回导致窗口不增长，INTERVENE阈值永远达不到
+   - seen_combinations在Khoj检查后更新——否则首次调用被误判为重复
+
+3. __init__.py：新增LoopGuard/LoopDetectionResult/LoopSeverity/DetectionType导出
+
+**验证结果**：
+- tests/test_loop_guard.py 25 passed（签名canonical化、连续WARN/INTERVENE、Khoj非连续去重、文本相似度Jaccard精确计算、冷却抑制、统计观测、OpenAI格式解析、reset清空）
+- tests/test_moderator.py 18 passed（回归）
+- tests/test_llm_retry.py 26 passed（回归）
+- acp-proxy集成测试 score=1.0（三服务健康+语法+WS协议对齐+WS收发全过，include_build=False无前端改动）
+
+**commit**：opensoul 10d0b290
+
+**解决痛点**：agent卡死循环烧token/time，为后续ACP proxy集成提供安全底座。
