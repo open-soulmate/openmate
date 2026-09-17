@@ -1,4 +1,4 @@
-# Open Deep Research 架构深度分析
+# 97. Open Deep Research 架构深度分析
 
 > 项目地址：[langchain-ai/open_deep_research](https://github.com/langchain-ai/open_deep_research)
 > 版本：v0.0.16 | 许可证：MIT | 作者：Lance Martin (LangChain)

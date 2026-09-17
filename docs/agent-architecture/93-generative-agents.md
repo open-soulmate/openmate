@@ -1,4 +1,4 @@
-# 93 - Generative Agents: Interactive Simulacra of Human Behavior
+# 93. Generative Agents: Interactive Simulacra of Human Behavior
 
 > **论文**: Generative Agents: Interactive Simulacra of Human Behavior (Park et al., 2023)
 > **代码**: [joonspk-research/generative_agents](https://github.com/joonspk-research/generative_agents)

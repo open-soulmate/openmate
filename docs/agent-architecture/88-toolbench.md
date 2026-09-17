@@ -1,4 +1,4 @@
-# 88 - ToolBench 架构深度分析
+# 88. ToolBench 架构深度分析
 
 > **项目**: [OpenBMB/ToolBench](https://github.com/OpenBMB/ToolBench)
 > **论文**: ToolLLM: Facilitating Large Language Models to Master 16000+ Real-world APIs (ICLR 2024 Spotlight)

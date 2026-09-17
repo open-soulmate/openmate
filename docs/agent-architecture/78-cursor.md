@@ -1,4 +1,4 @@
-# 78 — Cursor 架构深度分析
+# 78. Cursor 架构深度分析
 
 > **仓库**: [getcursor/cursor](https://github.com/getcursor/cursor) | **Stars**: 30k+ | **语言**: TypeScript + Rust + Python  
 > **定位**: AI-First 代码编辑器，从 VS Code Fork 演进为 Agent 编排平台  

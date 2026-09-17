@@ -1,4 +1,4 @@
-# AutoGPT 架构深度分析
+# 47. AutoGPT 架构深度分析
 
 > 基于 Significant-Gravitas/AutoGPT 源码分析，覆盖 autogpt_platform（新一代平台）与 classic（经典版）两套架构
 

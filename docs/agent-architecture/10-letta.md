@@ -1,4 +1,4 @@
-# Letta (MemGPT) 架构深度分析
+# 10. Letta (MemGPT) 架构深度分析
 
 > **项目**: [letta-ai/letta](https://github.com/letta-ai/letta) | **Stars**: 24.6K | **License**: Apache 2.0
 > **定位**: 有状态 AI Agent 平台——具有高级记忆系统，能够随时间学习和自我改进

@@ -188,6 +188,7 @@ export function SettingsClient() {
   const { addToast } = useToast();
   const [routingConfig, setRoutingConfig] = useState<RoutingConfig>(DEFAULT_ROUTING_CONFIG);
   const [routingLoading, setRoutingLoading] = useState(false);
+
   const [routingTestResult, setRoutingTestResult] = useState<string>('');
 
   // 加载路由配置
@@ -465,6 +466,14 @@ export function SettingsClient() {
             }),
           });
         } catch {}
+        // Save routing config to backend
+        try {
+          await fetch(`${apiBase}/api/routing/config`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(routingConfig),
+          });
+        } catch {}
         break;
 
       case "agent":
@@ -691,6 +700,30 @@ export function SettingsClient() {
   const currentProvider = llmProviders.find((p) => p.value === settings.llmProvider);
   const modelOptions = currentProvider?.models.length ? currentProvider.models.map((m) => ({ value: m, label: m })) : [{ value: settings.model, label: settings.model || t("settings.inputModelName") }];
 
+  // ─── 已配置模型状态 ─────────────────────────────────────────
+  interface ConfiguredModel {
+    id: string;
+    name: string;
+    provider: string;
+    endpoint?: string;
+    status: 'active' | 'configured' | 'unconfigured';
+    isDefault?: boolean;
+  }
+
+  const configuredModels: ConfiguredModel[] = [
+    // 从localStorage读取已配置的模型
+    ...llmProviders.map(p => {
+      const stored = typeof window !== 'undefined' ? localStorage.getItem(`llm_${p.value}_key`) : null;
+      return {
+        id: p.value,
+        name: p.label,
+        provider: p.value,
+        status: (stored ? 'configured' : 'unconfigured') as 'configured' | 'unconfigured',
+        isDefault: p.value === settings.llmProvider,
+      };
+    }),
+  ];
+
   // Mobile sidebar navigation (PC sidebar is registered via setPageSidebar into the app shell)
   const MobileSidebarNav = () => (
     <>
@@ -832,28 +865,116 @@ export function SettingsClient() {
                 <div><h1 className="text-lg font-semibold">{t("settings.modelConfig")}</h1><p className="text-xs text-muted-foreground">{t("settings.modelConfigDesc")}</p></div>
               </div>
 
-              <SettingCard title={t("settings.llmProvider")} description={t("settings.llmProviderDesc")}>
-                <SelectInput value={settings.llmProvider} onChange={(v) => { update("llmProvider", v); const p = llmProviders.find(p => p.value === v); if (p?.models[0]) update("model", p.models[0]); }}
-                  options={llmProviders.map(p => ({ value: p.value, label: p.label }))} />
-              </SettingCard>
-
-              <SettingCard title={t("settings.model")} description={t("settings.modelDesc")}>
-                <SelectInput value={settings.model} onChange={(v) => update("model", v)} options={modelOptions} />
-              </SettingCard>
-
-              <SettingCard title={t("settings.apiKey")} description={t("settings.apiKeyDesc")}>
-                <TextInput value={settings.apiKey} onChange={(v) => update("apiKey", v)} placeholder="sk-..." type="password" />
-                <div className="flex gap-2 mt-2">
-                  <button onClick={handleTestConnection}
-                    className="px-3 py-1.5 rounded-lg border border-border text-xs hover:bg-muted flex items-center gap-1.5">
-                    {testStatus === "testing" ? <RefreshCw size={12} className="animate-spin" /> : testStatus === "success" ? <CheckCircle2 size={12} className="text-green-500" /> : testStatus === "error" ? <AlertCircle size={12} className="text-red-500" /> : <Wifi size={12} />}
-                    {t("settings.testConnection")}
-                  </button>
+              {/* ─── 已配置模型概览 ────────────────────────────── */}
+              <SettingCard
+                title={t("settings.configuredModels") || "已配置模型"}
+                description={t("settings.configuredModelsDesc") || "查看所有已接入的模型提供商及其配置状态"}
+              >
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                  {configuredModels.map(model => (
+                    <div
+                      key={model.id}
+                      className={`
+                        p-3 rounded-lg border transition-all cursor-pointer hover:shadow-md
+                        ${model.isDefault
+                          ? 'border-primary bg-primary/5 shadow-sm'
+                          : model.status === 'configured'
+                            ? 'border-green-500/30 bg-green-500/5'
+                            : 'border-border bg-muted/30'
+                        }
+                      `}
+                      onClick={() => {
+                        update("llmProvider", model.id);
+                        const p = llmProviders.find(p => p.value === model.id);
+                        if (p?.models[0]) update("model", p.models[0]);
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-xs font-medium truncate">{model.name}</span>
+                        {model.isDefault && (
+                          <CheckCircle2 size={14} className="text-primary flex-shrink-0" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <div className={`
+                          w-1.5 h-1.5 rounded-full flex-shrink-0
+                          ${model.status === 'configured' ? 'bg-green-500' : 'bg-gray-300'}
+                        `} />
+                        <span className="text-[10px] text-muted-foreground">
+                          {model.status === 'configured'
+                            ? (t("settings.modelConfigured") || "已配置")
+                            : (t("settings.modelUnconfigured") || "未配置")
+                          }
+                        </span>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </SettingCard>
 
-              <SettingCard title={t("settings.baseUrl") || "Base URL"} description={t("settings.baseUrlDesc") || "API endpoint base URL (e.g. https://api.openai.com/v1)"}>
-                <TextInput value={settings.url} onChange={(v) => update("url", v)} placeholder="https://api.openai.com/v1" />
+              {/* ─── 当前模型详细配置 ──────────────────────────── */}
+              <SettingCard
+                title={t("settings.currentModelConfig") || "当前模型配置"}
+                description={currentProvider?.label || ""}
+              >
+                <div className="space-y-3">
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">
+                      {t("settings.llmProvider") || "提供商"}
+                    </p>
+                    <SelectInput
+                      value={settings.llmProvider}
+                      onChange={(v) => {
+                        update("llmProvider", v);
+                        const p = llmProviders.find(p => p.value === v);
+                        if (p?.models[0]) update("model", p.models[0]);
+                      }}
+                      options={llmProviders.map(p => ({ value: p.value, label: p.label }))}
+                    />
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">
+                      {t("settings.model") || "模型"}
+                    </p>
+                    <SelectInput value={settings.model} onChange={(v) => update("model", v)} options={modelOptions} />
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">
+                      {t("settings.baseUrl") || "Base URL"}
+                    </p>
+                    <TextInput value={settings.url} onChange={(v) => update("url", v)} placeholder="https://api.openai.com/v1" />
+                  </div>
+
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1.5">
+                      {t("settings.apiKey") || "API Key"}
+                    </p>
+                    <TextInput value={settings.apiKey} onChange={(v) => update("apiKey", v)} placeholder="sk-..." type="password" />
+                  </div>
+
+                  <button
+                    onClick={handleTestConnection}
+                    className="w-full px-3 py-2 rounded-lg border border-border text-xs hover:bg-muted flex items-center justify-center gap-1.5 transition-colors"
+                  >
+                    {testStatus === "testing" ? (
+                      <RefreshCw size={12} className="animate-spin" />
+                    ) : testStatus === "success" ? (
+                      <CheckCircle2 size={12} className="text-green-500" />
+                    ) : testStatus === "error" ? (
+                      <AlertCircle size={12} className="text-red-500" />
+                    ) : (
+                      <Wifi size={12} />
+                    )}
+                    {testStatus === "success"
+                      ? (t("settings.testSuccess") || "连接成功")
+                      : testStatus === "error"
+                        ? (t("settings.testFailed") || "连接失败")
+                        : (t("settings.testConnection") || "测试连接")
+                    }
+                  </button>
+                </div>
               </SettingCard>
 
               <SettingCard title="Temperature" description={`${t("settings.temperatureDesc")}: ${settings.temperature}`}>
@@ -1052,18 +1173,7 @@ export function SettingsClient() {
                       </div>
                     </div>
 
-                    {/* 保存路由配置按钮 */}
-                    <button
-                      onClick={handleSaveRoutingConfig}
-                      disabled={routingLoading}
-                      className="mt-4 w-full px-3 py-2 bg-primary text-primary-foreground rounded-lg text-sm hover:bg-primary/90 disabled:opacity-50"
-                    >
-                      {routingLoading ? (
-                        <><RefreshCw size={14} className="animate-spin inline mr-1" /> 保存中...</>
-                      ) : (
-                        <><Save size={14} className="inline mr-1" /> {t("settings.saveRoutingConfig") || "保存路由配置"}</>
-                      )}
-                    </button>
+
                   </>
                 )}
               </SettingCard>

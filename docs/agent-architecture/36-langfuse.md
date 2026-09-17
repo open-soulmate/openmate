@@ -1,4 +1,4 @@
-# 36 - Langfuse 架构深度分析
+# 36. Langfuse 架构深度分析
 
 > **项目**: [langfuse/langfuse](https://github.com/langfuse/langfuse)
 > **定位**: 开源 LLM 工程平台（可观测性、评估、Prompt 管理、数据集）

@@ -1,4 +1,4 @@
-# 49 - Continue 架构分析
+# 49. Continue 架构分析
 
 > **项目**: continuedev/continue
 > **GitHub**: https://github.com/continuedev/continue

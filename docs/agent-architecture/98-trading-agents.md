@@ -1,4 +1,4 @@
-# 98 - TradingAgents：多智能体 LLM 金融交易框架深度分析
+# 98. TradingAgents：多智能体 LLM 金融交易框架深度分析
 
 > **项目**: [TauricResearch/TradingAgents](https://github.com/TauricResearch/TradingAgents)
 > **论文**: arXiv:2412.20138 (2024-12, revised 2025-06)

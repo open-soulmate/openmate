@@ -1,4 +1,4 @@
-# 94 - Smol Developer (smol-ai/developer) 架构分析
+# 94. Smol Developer (smol-ai/developer) 架构分析
 
 > **项目地址**: https://github.com/smol-ai/developer
 > **定位**: "Human-centric & Coherent Whole Program Synthesis" — 你的个人初级开发者

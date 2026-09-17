@@ -1,4 +1,4 @@
-# 56 - Roo Code 架构分析
+# 56. Roo Code 架构分析
 
 > **项目**: Roo Code (prev. Roo Cline)  
 > **仓库**: [RooCodeInc/Roo-Code](https://github.com/RooCodeInc/Roo-Code) (原 RooVetGit/Roo-Code)  

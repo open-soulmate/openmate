@@ -1,4 +1,4 @@
-# ComfyUI 架构深度分析
+# 46. ComfyUI 架构深度分析
 
 > **仓库**: [comfyanonymous/ComfyUI](https://github.com/comfyanonymous/ComfyUI) | **语言**: Python + TypeScript/Vue | **许可证**: GPL-3.0 | **Star**: 78k+
 

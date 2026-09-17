@@ -1,4 +1,4 @@
-# Khoj 架构深度分析
+# 62. Khoj 架构深度分析
 
 > **项目**: [khoj-ai/khoj](https://github.com/khoj-ai/khoj) — 37,292 Stars | AGPL-3.0
 > **定位**: Your AI Second Brain — 自托管的个人AI助手，支持本地/云端LLM、文档问答、自动化研究

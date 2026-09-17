@@ -1,4 +1,4 @@
-# AgentVerse (OpenBMB/AgentVerse) 架构深度分析
+# 83. AgentVerse (OpenBMB/AgentVerse) 架构深度分析
 
 > **项目地址**: https://github.com/OpenBMB/AgentVerse
 > **论文**: [AgentVerse: Facilitating Multi-Agent Collaboration and Exploring Emergent Behaviors in Agents](https://arxiv.org/abs/2308.10848)

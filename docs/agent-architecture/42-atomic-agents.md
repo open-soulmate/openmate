@@ -1,4 +1,4 @@
-# Atomic Agents 架构深度分析
+# 42. Atomic Agents 架构深度分析
 
 > **项目**: [BrainBlend-AI/Atomic Agents](https://github.com/BrainBlend-AI/atomic-agents)（现维护者 Eigenwise）
 > **定位**: 基于 Instructor + Pydantic 的模块化 AI Agent 框架

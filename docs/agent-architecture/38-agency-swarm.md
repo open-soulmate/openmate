@@ -1,4 +1,4 @@
-# 38 - Agency Swarm 架构深度分析
+# 38. Agency Swarm 架构深度分析
 
 > **项目**: [VRSEN/agency-swarm](https://github.com/VRSEN/agency-swarm)
 > **定位**: 基于 OpenAI Agents SDK 的多智能体编排框架

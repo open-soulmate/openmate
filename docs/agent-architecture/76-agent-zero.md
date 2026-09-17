@@ -1,4 +1,4 @@
-# Agent Zero 架构深度分析
+# 76. Agent Zero 架构深度分析
 
 > 仓库：[frdel/agent-zero](https://github.com/agent0ai/agent-zero)
 > 定位：「给你的 Agent 一台完整的 Linux 计算机」——基于 Docker 化 Linux 桌面的开源智能体框架

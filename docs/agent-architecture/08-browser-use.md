@@ -1,4 +1,4 @@
-# Browser-Use 深度架构分析
+# 08. Browser-Use 深度架构分析
 
 > **项目**: [browser-use/browser-use](https://github.com/browser-use/browser-use)  
 > **定位**: AI 浏览器自动化 Agent 框架，MIT 许可，86k+ Stars  

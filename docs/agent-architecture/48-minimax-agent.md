@@ -1,4 +1,4 @@
-# MiniMax Mini-Agent 架构深度分析
+# 48. MiniMax Mini-Agent 架构深度分析
 
 > 项目地址：https://github.com/MiniMax-AI/Mini-Agent
 > Stars: 3,017 | Forks: 442 | License: MIT

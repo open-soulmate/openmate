@@ -1,4 +1,4 @@
-# MCP Python SDK 架构深度分析
+# 40. MCP Python SDK 架构深度分析
 
 > 基于 `modelcontextprotocol/python-sdk` v2 源码分析，协议版本 2026-07-28
 

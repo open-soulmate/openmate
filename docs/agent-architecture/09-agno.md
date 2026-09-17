@@ -1,4 +1,4 @@
-# 09 - Agno 深度架构分析
+# 09. Agno 深度架构分析
 
 > **项目**: [agno-agi/agno](https://github.com/agno-agi/agno)
 > **定位**: Build, run, and manage agent platforms

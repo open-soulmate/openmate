@@ -1,4 +1,4 @@
-# NeMo Guardrails 架构深度分析
+# 87. NeMo Guardrails 架构深度分析
 
 > **仓库**: [NVIDIA/NeMo-Guardrails](https://github.com/NVIDIA/NeMo-Guardrails) | **Stars**: 6,629 | **License**: Apache 2.0
 > **论文**: [arXiv:2310.10501](https://arxiv.org/abs/2310.10501) | **版本**: v0.23.0 | **语言**: Python 3.10-3.13

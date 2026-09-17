@@ -1,4 +1,4 @@
-# 28 — Langflow 架构深度分析
+# 28. Langflow 架构深度分析
 
 > **项目**: [langflow-ai/langflow](https://github.com/langflow-ai/langflow)
 > **Stars**: 154k+ | **License**: MIT | **语言**: Python + TypeScript

@@ -1,4 +1,4 @@
-# 58 — LiteLLM 架构分析
+# 58. LiteLLM 架构分析
 
 > **项目**: [BerriAI/litellm](https://github.com/BerriAI/litellm)  
 > **Stars**: 58.6k+ | **语言**: Python + Rust | **许可**: MIT  

@@ -1,4 +1,4 @@
-# LangGraph 架构深度分析
+# 02. LangGraph 架构深度分析
 
 > **项目**: langchain-ai/langgraph  
 > **Stars**: 41,548 | **Forks**: 7,018 | **License**: MIT  

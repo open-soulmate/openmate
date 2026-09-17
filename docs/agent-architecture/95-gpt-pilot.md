@@ -1,4 +1,4 @@
-# GPT Pilot (Pythagora-io/gpt-pilot) 架构深度分析
+# 95. GPT Pilot (Pythagora-io/gpt-pilot) 架构深度分析
 
 > **项目地址**: https://github.com/Pythagora-io/gpt-pilot  
 > **Stars**: 33.8K | **Forks**: 3,469  

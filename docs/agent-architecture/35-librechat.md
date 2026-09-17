@@ -1,4 +1,4 @@
-# LibreChat 架构深度分析
+# 35. LibreChat 架构深度分析
 
 > **版本**: v0.8.8-rc1 | **GitHub**: [danny-avila/LibreChat](https://github.com/danny-avila/LibreChat) | **许可证**: MIT
 > **分析时间**: 2026-09-13

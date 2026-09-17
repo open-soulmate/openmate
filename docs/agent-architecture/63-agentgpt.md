@@ -1,4 +1,4 @@
-# 63 - AgentGPT 架构分析
+# 63. AgentGPT 架构分析
 
 > **项目**: [reworkd/AgentGPT](https://github.com/reworkd/AgentGPT) (35.8k⭐, 已归档)
 > **定位**: 浏览器端自主 AI Agent 组装、配置与部署平台

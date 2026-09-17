@@ -1,4 +1,4 @@
-# Big-AGI 架构深度分析
+# 34. Big-AGI 架构深度分析
 
 > **项目**: [enricoros/big-AGI](https://github.com/enricoros/big-AGI)  
 > **版本**: 2.1.1  

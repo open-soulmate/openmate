@@ -1,4 +1,4 @@
-# 32 - OpenAI Swarm 架构深度分析
+# 32. OpenAI Swarm 架构深度分析
 
 > **项目**：[openai/swarm](https://github.com/openai/swarm)
 > **定位**：实验性、教育性多智能体编排框架

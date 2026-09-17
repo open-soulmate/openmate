@@ -1,4 +1,4 @@
-# AgentScope 架构深度分析
+# 33. AgentScope 架构深度分析
 
 > GitHub: [agentscope-ai/agentscope](https://github.com/agentscope-ai/agentscope) | Stars: 23k+ | License: Apache-2.0
 > 核心理念："Build and run agents you can see, understand and trust."

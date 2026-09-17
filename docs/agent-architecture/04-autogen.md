@@ -1,4 +1,4 @@
-# AutoGen 深度架构分析
+# 04. AutoGen 深度架构分析
 
 > 源码版本：microsoft/autogen (main branch, 2025)
 > 框架定位：微软研究院出品的多智能体AI应用框架，基于消息传递与事件驱动架构

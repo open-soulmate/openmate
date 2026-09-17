@@ -1,4 +1,4 @@
-# Mind2Web：通用网页智能体的数据集与架构分析
+# 91. Mind2Web：通用网页智能体的数据集与架构分析
 
 > **项目**：Mind2Web (OSU-NLP-Group/Mind2Web)
 > **论文**：[Mind2Web: Towards a Generalist Agent for the Web](https://arxiv.org/abs/2306.06070)（NeurIPS 2023 Spotlight）

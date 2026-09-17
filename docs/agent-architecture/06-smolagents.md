@@ -1,4 +1,4 @@
-# SmolAgents 深度架构分析
+# 06. SmolAgents 深度架构分析
 
 > **项目地址**: https://github.com/huggingface/smolagents
 > **Stars**: 29.2k | **Commits**: 1,054 | **协议**: Apache 2.0

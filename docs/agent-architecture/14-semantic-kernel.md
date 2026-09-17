@@ -1,4 +1,4 @@
-# 14 - Microsoft Semantic Kernel 架构深度分析
+# 14. Microsoft Semantic Kernel 架构深度分析
 
 > **项目**: [microsoft/semantic-kernel](https://github.com/microsoft/semantic-kernel)
 > **Stars**: 28.5K+ | **License**: MIT | **语言**: Python / .NET / Java

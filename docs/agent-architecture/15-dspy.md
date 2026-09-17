@@ -1,4 +1,4 @@
-# DSPy 架构深度分析：声明式自改进语言模型编程框架
+# 15. DSPy 架构深度分析：声明式自改进语言模型编程框架
 
 > **项目**: stanfordnlp/dspy | **Stars**: 37.6k | **许可**: MIT
 > **定位**: "Programming — not prompting — Foundation Models"

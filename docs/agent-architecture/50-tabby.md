@@ -1,4 +1,4 @@
-# TabbyML/tabby 架构深度分析
+# 50. TabbyML/tabby 架构深度分析
 
 > 项目地址：https://github.com/TabbyML/tabby
 > Stars: 33,874 | Forks: 1,785 | 语言: Rust | 许可证: Apache 2.0

@@ -1,4 +1,4 @@
-# Dify Agent 架构深度分析
+# 12. Dify Agent 架构深度分析
 
 > 基于 [langgenius/dify](https://github.com/langgenius/dify) 源码分析（154k+ Stars，24.4k Forks）
 > 分析源码：`api/core/agent/base_agent_runner.py`、`api/core/agent/cot_agent_runner.py`、`api/core/tools/tool_manager.py`

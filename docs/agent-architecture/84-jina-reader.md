@@ -1,4 +1,4 @@
-# 84 — Jina Reader (jina-ai/reader) 架构深度分析
+# 84. Jina Reader (jina-ai/reader) 架构深度分析
 
 > **项目**: [jina-ai/reader](https://github.com/jina-ai/reader)
 > **定位**: API-first SaaS，将任意 URL 转换为 LLM 友好的 Markdown/图像输入

@@ -1,4 +1,4 @@
-# 29 - FlowiseAI/Flowise 架构深度分析
+# 29. FlowiseAI/Flowise 架构深度分析
 
 > **GitHub**: https://github.com/FlowiseAI/Flowise
 > **Star**: 50k+ | **语言**: TypeScript | **许可**: Apache 2.0

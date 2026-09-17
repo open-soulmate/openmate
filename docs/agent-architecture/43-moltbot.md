@@ -1,4 +1,4 @@
-# Moltbot (OpenClaw) 架构深度分析
+# 43. Moltbot (OpenClaw) 架构深度分析
 
 > **仓库**: [moltbot/moltbot](https://github.com/moltbot/moltbot) (重定向至 openclaw/openclaw)
 > **定位**: 个人 AI 助手网关 — 跨平台、多通道、可扩展

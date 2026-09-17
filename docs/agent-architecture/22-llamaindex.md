@@ -1,4 +1,4 @@
-# 22 - LlamaIndex 架构深度分析
+# 22. LlamaIndex 架构深度分析
 
 > **项目**: [run-llama/llama_index](https://github.com/run-llama/llama_index)
 > **Stars**: 52.1k | **Forks**: 8.1k | **Commits**: 7,930

@@ -1,4 +1,4 @@
-# GPT-Researcher 深度架构分析
+# 20. GPT-Researcher 深度架构分析
 
 > **项目**: [assafelovic/gpt-researcher](https://github.com/assafelovic/gpt-researcher)
 > **Stars**: 29k+ | **License**: Apache 2.0 | **语言**: Python

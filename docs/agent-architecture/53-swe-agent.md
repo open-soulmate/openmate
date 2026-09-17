@@ -1,4 +1,4 @@
-# SWE-agent 架构深度分析
+# 53. SWE-agent 架构深度分析
 
 > **仓库**: [princeton-nlp/SWE-agent](https://github.com/SWE-agent/SWE-agent) (现迁移至 SWE-agent org)
 > **论文**: *SWE-agent: Agent-Computer Interfaces Enable Automated Software Engineering* (NeurIPS 2024)

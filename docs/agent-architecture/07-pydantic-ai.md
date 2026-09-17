@@ -1,4 +1,4 @@
-# 07 - PydanticAI 架构深度分析
+# 07. PydanticAI 架构深度分析
 
 > **项目**: [pydantic/pydantic-ai](https://github.com/pydantic/pydantic-ai)
 > **定位**: "How Python does AI" — 基于 Pydantic 类型系统的类型安全 AI Agent 框架

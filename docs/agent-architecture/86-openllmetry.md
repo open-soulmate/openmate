@@ -1,4 +1,4 @@
-# 86 - OpenLLMetry 架构深度分析
+# 86. OpenLLMetry 架构深度分析
 
 > **项目**: [traceloop/openllmetry](https://github.com/traceloop/openllmetry)
 > **定位**: 基于 OpenTelemetry 的 LLM/GenAI 应用可观测性开源框架
