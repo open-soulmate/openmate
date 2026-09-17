@@ -19,6 +19,7 @@ from agent.llm_engine import LLMEngine
 from agent.context import SessionContext
 from agent.artifact import ArtifactEngine
 from agent.permission import PermissionManager
+from agent.tool_output_handler import ToolOutputHandler
 
 logger = logging.getLogger("acp-agent.engine")
 
@@ -36,6 +37,7 @@ class AgentEngine:
         self.contexts: dict[str, SessionContext] = {}  # sessionId → 上下文
         self.permission_mgr = PermissionManager()      # 权限审批管理器
         self.agent_profiles = self._load_agent_profiles()  # 多Agent配置
+        self.output_handler = ToolOutputHandler()      # 工具结果溢出处理器
 
     def _load_agent_profiles(self) -> dict:
         """加载agent_profiles.json配置文件"""
@@ -219,14 +221,18 @@ class AgentEngine:
                 )
 
                 # 工具结果消息加入上下文
+                # P0-2: 工具结果溢出处理 — 超限时外置到磁盘，stub放入context
+                spill = self.output_handler.process(func_name, tc_id, tool_result)
+                tool_result_for_ctx = spill.processed_text
                 ctx.add_message_raw({
                     "role": "tool",
                     "tool_call_id": tc_id,
-                    "content": tool_result,
+                    "content": tool_result_for_ctx,
                 })
 
                 # 将工具结果推送给客户端
-                tool_summary = f"[工具结果]: {tool_result[:500]}{'...' if len(tool_result) > 500 else ''}\n"
+                display_text = spill.processed_text
+                tool_summary = f"[工具结果]: {display_text[:500]}{'...' if len(display_text) > 500 else ''}\n"
                 await self.acp_server.emit_message(session, content=tool_summary)
         else:
             # 循环达到上限
@@ -253,6 +259,8 @@ class AgentEngine:
         """
         if name == "read_file":
             return await self._tool_read_file(args, workspace)
+        elif name == "read_file_segment":
+            return await self._tool_read_file_segment(args)
         else:
             return f"错误：未知工具 '{name}'"
 
@@ -285,9 +293,10 @@ class AgentEngine:
         try:
             with open(real_path, "r", encoding="utf-8", errors="replace") as f:
                 content = f.read()
-            # 限制返回长度，防止超大文件撑爆上下文
-            if len(content) > 50000:
-                content = content[:50000] + f"\n\n... [文件过大，已截断，共 {len(content)} 字符]"
+            # P0-2: 工具结果溢出处理 — 超限时外置到磁盘+stub引用
+            spill = self.output_handler.process("read_file", f"rf_{rel_path}", content)
+            if spill.spilled:
+                return spill.processed_text
             return content
         except FileNotFoundError:
             return f"错误：文件不存在 — '{rel_path}'"
@@ -295,6 +304,18 @@ class AgentEngine:
             return f"错误：无权限读取 — '{rel_path}'"
         except Exception as e:
             return f"错误：读取文件失败 — {e}"
+    
+    async def _tool_read_file_segment(self, args: dict) -> str:
+        """read_file_segment工具实现 — 分段读取溢出文件
+        
+        deepagents模式：stub教模型用offset/limit分段读回完整内容。
+        """
+        path = args.get("path", "")
+        start_line = int(args.get("start_line", 1))
+        end_line = int(args.get("end_line", 200))
+        if not path:
+            return "错误：缺少必填参数 'path'"
+        return self.output_handler.read_segment(path, start_line, end_line)
 
     def _get_tool_definitions(self) -> list[dict]:
         """返回OpenAI function calling格式的工具定义列表
@@ -317,6 +338,31 @@ class AgentEngine:
                             "path": {
                                 "type": "string",
                                 "description": "相对于工作目录的文件路径，如 'src/main.py' 或 'README.md'",
+                            },
+                        },
+                        "required": ["path"],
+                    },
+                },
+            },
+            {
+                "type": "function",
+                "function": {
+                    "name": "read_file_segment",
+                    "description": "分段读取溢出存储的文件内容。当工具输出被外置到磁盘时，用此工具按行范围分段读取完整内容。",
+                    "parameters": {
+                        "type": "object",
+                        "properties": {
+                            "path": {
+                                "type": "string",
+                                "description": "溢出文件的完整路径（从工具溢出stub中获取）",
+                            },
+                            "start_line": {
+                                "type": "integer",
+                                "description": "起始行号（1-indexed，默认1）",
+                            },
+                            "end_line": {
+                                "type": "integer",
+                                "description": "结束行号（inclusive，默认200）",
                             },
                         },
                         "required": ["path"],
