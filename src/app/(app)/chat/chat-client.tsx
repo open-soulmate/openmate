@@ -1832,9 +1832,8 @@ export function ChatClient() {
 
         {/* Chat view toggle — 裙摆式分段视图 */}
         <ChatViewToggle
-          activeView={chatView}
-          onViewChange={setChatView}
-          visible={messages.length > 0}
+          value={chatView}
+          onChange={setChatView}
           tabs={[
             { value: 'messages', label: t('chat.viewMessages', '消息'), icon: <MessageSquare className="w-3.5 h-3.5" /> },
             { value: 'files', label: t('chat.viewFiles', '文件'), icon: <FolderOpen className="w-3.5 h-3.5" />, count: fileAttachments.length },
