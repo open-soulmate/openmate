@@ -1834,7 +1834,7 @@ export function ChatClient() {
               className="absolute left-1/2 -translate-x-1/2 -top-[9px] z-10 p-0.5 rounded-full bg-background border border-border hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation"
               title={showViewTabs ? '收起视图切换' : '展开视图切换'}
             >
-              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showViewTabs ? 'rotate-0' : '-rotate-90'}`} />
+              <ChevronDown className={`w-3.5 h-3.5 transition-transform duration-200 ${showViewTabs ? 'rotate-180' : 'rotate-0'}`} />
             </button>
           </div>
           {/* Chat view toggle — 裙摆式分段视图（可折叠） */}
@@ -1842,7 +1842,7 @@ export function ChatClient() {
           <SkirtTabs
             tabs={[
               { id: 'messages', title: t('chat.viewMessages', '消息') },
-              { id: 'files', title: t('chat.viewFiles', '文件') },
+              ...(!isMobile ? [{ id: 'files', title: t('chat.viewFiles', '文件') }] : []),
               { id: 'images', title: t('chat.viewImages', '图片') },
               { id: 'videos', title: t('chat.viewVideos', '视频') },
               { id: 'audio', title: t('chat.viewAudio', '音频') },
