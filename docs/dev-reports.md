@@ -277,3 +277,37 @@
 - acp-proxy integration_test score=1.0（5项全过：health×3+WS协议对齐+WS收发）
 - python3 ast.parse语法检查通过（engine.py + tool_output_handler.py）
 **commit**：openmate 9710f690
+
+## [2026-09-18 17:00] benchmark评估闭环：agno/langfuse式数据集+LLM裁判+实验基线diff
+**目标**：解决调研确认的P0-5差距——"但是一直没有进化啊"的度量解法完全缺失。现有benchmark/evaluator.py正是SUMMARY.md点名的"5维自评非裁判"：评分由调用方POST（EvaluateRequest五个0.5默认值），没有数据集、没有独立裁判、没有基线对比、没有环境指纹——"agent有没有变好"无从回答。SUMMARY.md第一阶段路线图第2项"评估闭环：LLM-as-Judge+数据集+实验对比"。
+**调研来源**：
+- agno environments（42-agno-source.md，evolution-engine-patterns.md §2.1）：scorer三件套+run_rollouts K次全隔离+env/policy指纹分离+baseline diff+learning_zone（"有成有败"=SFT候选）+错误风暴熔断（前N次attempt同错即停）
+- langfuse（SUMMARY.md P0-5）：LLM-as-Judge+Dataset+Experiment+确定性采样
+- CAMEL verifiers（§2.4）："能程序化验证的绝不靠LLM"——CodeScorer排在JudgeScorer之前
+- deepagents RubricMiddleware（§2.2）：完成=独立裁判对照rubric评分，非模型自说自话
+- agno JudgeScorer：judge prompt fence防注入+裁判身份digest哈希（回归能定位裁判是否换过）
+**改动文件**：
+- opensoul/src/benchmark/eval_loop.py（新建，~650行）
+- opensoul/src/benchmark/__init__.py（增量导出）
+- opensoul/src/api/benchmark.py（增量：9个/eval/*端点）
+- opensoul/tests/test_eval_loop.py（新建，41个测试）
+**改动内容**：
+1. eval_loop.py：
+   - EvalStore：eval_datasets/eval_cases/eval_experiments三表SQLite持久化；list_cases(seed=)确定性采样（同seed同样本，实验可比）；env_fingerprint=sha256(sorted用例指纹+scorer digest列表+k)——环境指纹，数据集/scorer/k任一变化即变
+   - CodeScorer：contains/not_contains/regex/equals/自定义case_fn五种程序化校验，用例无expected时显式abstain（不冒充裁判）
+   - JudgeScorer：LLM-as-Judge——候选输出包在<candidate_output>标签内并在system prompt声明UNTRUSTED DATA（judge prompt注入防线）；verdict宽容解析（fenced JSON→裸JSON→regex fallback "score: 7/10"）；解析失败/judge异常=abstain绝不编分；model_identity digest随diff报告
+   - ExperimentRunner：每用例k次尝试；pass_rate分母只算scored attempt（agno"超时≠答错"，错误attempt记unscored不记fail）；错误风暴熔断——任意连续storm_window次同类型错误即中止实验（agno原版只看前N次，此处泛化：provider可能中途死）；learning_zone=0<pass<scored的用例；policy_fingerprint=sha256(policy_name+policy_meta)与env指纹分离；实验结果可镜像写trajectory Score层（source=code_eval/llm_judge）
+   - diff_against_baseline：env指纹不匹配raise EnvMismatchError（跨环境对比无效，agno MismatchError）；输出policy_changed+improved/regressed/unchanged/unscored/new_cases
+   - make_router_runner/make_router_judge：gland router生产接线（agent-under-test与裁判都走ModelRouter，自动享受重试/failover/出网脱敏）
+2. api/benchmark.py：POST/GET /eval/datasets、POST/GET /eval/datasets/{id}/cases、POST /eval/experiments/run（scorer=auto|code|judge；auto=CodeScorer优先+JudgeScorer兜底）、GET /eval/experiments、GET /eval/experiments/{id}、GET /eval/experiments/{id}/diff?baseline_id=（409 on env mismatch）、GET /eval/learning-zone/{id}
+**验证结果**：
+- tests/test_eval_loop.py 41 passed（数据集CRUD/确定性采样/env指纹敏感性、CodeScorer五模式+abstain+digest、JudgeScorer JSON/fenced/regex fallback/unparseable abstain/judge错误abstain/UNTRUSTED fence内容/分数钳位/身份digest、ExperimentRunner pass_rate/unscored不进分母/熔断触发/异构错误不误熔断/learning_zone/baseline diff improved+policy_changed/env不匹配raise/结果持久化、scorer链code先judge后且judge只被调一次、trajectory分数写入断言、独立diff函数new_case+unscored桶）
+- 既有test_benchmark+test_trajectory_spans+test_moderator 43 passed（回归）
+- acp-proxy集成测试 run_integration_tests score=1.0
+- 重启opensoul(:8090, systemd user service)后live端到端验证：
+  * 真实LLM实验（scorer=code）：数据集"smoke-eval"2用例，seed=42确定性采样生效（['cap','arith']），2/2 passed，CodeScorer contains check落判
+  * 真实裁判实验（scorer=judge）：JudgeScorer返回解析后verdict+真实评语（"Candidate output is 'Paris', which exactly matches the rubric..."），2/2 passed
+  * baseline diff：同环境不同policy的实验diff返回policy_changed=true+unchanged=[cap,arith]
+  * 环境守卫：scorer从code换成judge后对旧基线run实验被409拒绝（env_fingerprint 083be... vs 38f78...）
+  * trajectory落库确认：sqlite查询trajectory_scores表命中evalsmoke_arith/cap两条，source=llm_judge、trace_id=实验id（GET API 404是因为session级读端点要求会话存在，写路径已验证成功）
+**commit**：opensoul 26b54a4e
