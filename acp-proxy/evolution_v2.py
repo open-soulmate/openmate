@@ -190,6 +190,15 @@ class EvolutionV2:
                 self._record_failure(round_id, "integration_test", affected_files, plan, test_grade)
                 return result
             
+            # ── 阶段6.5: P0-5评估闭环（langfuse LLM-as-Judge + agno experiment模式）──
+            try:
+                eval_result = await self._run_eval_loop(plan, applied, test_result.score)
+                result["stages"]["eval_loop"] = eval_result
+                self.strand._log("eval", f"📊 评估闭环: judge_score={eval_result.get('judge_score', 'N/A')} verdict={eval_result.get('verdict', 'N/A')}")
+            except Exception as eval_exc:
+                result["stages"]["eval_loop"] = {"status": "error", "detail": str(eval_exc)[:200]}
+                self.strand._log("eval", f"⚠️ 评估闭环异常(不阻塞): {eval_exc}")
+            
             # ── 阶段7: 判定 + 提交 ──
             verdict = self._verdict(test_result.score)
             result["stages"]["verdict"] = verdict
@@ -405,6 +414,81 @@ class EvolutionV2:
                 results.append({**change, "status": "failed", "reason": f"apply failed: {e}"})
         
         return results
+    
+    # ── P0-5 评估闭环（langfuse LLM-as-Judge + agno experiment模式）──
+    
+    async def _run_eval_loop(self, plan: dict, applied: list[dict], test_score: float) -> dict:
+        """P0-5: LLM裁判评估改进质量。
+        
+        参照: langfuse LLM-as-Judge + agno environments + deepagents RubricMiddleware。
+        用独立LLM调用对改进方案+实施结果进行裁判评分，与程序化测试分数对比。
+        """
+        # 构建评估prompt（rubric格式）
+        plan_desc = plan.get("description", plan.get("title", ""))
+        changes_desc = "\n".join([
+            f"- {p.get('target_file', '?')}: {p.get('description', p.get('change', ''))[:200]}"
+            for p in applied[:5]
+        ])
+        
+        judge_prompt = f"""你是独立的代码改进评审员（LLM-as-Judge）。请评估以下进化改进的质量。
+
+## 改进方案
+{plan_desc[:500]}
+
+## 实施的变更
+{changes_desc}
+
+## 程序化测试得分
+{test_score}
+
+## 评估维度（每项1-5分）
+1. **有效性**: 变更是否真正解决了声明的问题？
+2. **安全性**: 变更是否引入新风险？
+3. **最小性**: 变更是否过度（超出解决问题所需）？
+4. **可验证性**: 变更效果是否可测量？
+
+请严格以JSON格式回复：
+{{"effectiveness": <1-5>, "safety": <1-5>, "minimality": <1-5>, "verifiability": <1-5>, "overall": <1.0-5.0>, "verdict": "satisfied|needs_revision|failed", "reason": "<一句话>"}}"""
+
+        try:
+            judge_response = await self.strand._call_llm(judge_prompt)
+            # 解析JSON（宽容提取）
+            import json as _json
+            import re as _re
+            json_match = _re.search(r'\{[^{}]+\}', judge_response, _re.DOTALL)
+            if json_match:
+                scores = _json.loads(json_match.group())
+            else:
+                return {"status": "parse_failed", "raw": judge_response[:200], "judge_score": None}
+            
+            judge_score = scores.get("overall", 0)
+            verdict = scores.get("verdict", "unknown")
+            
+            # 记录到eval store（如果opensoul benchmark可用）
+            try:
+                import httpx as _httpx
+                async with _httpx.AsyncClient(timeout=5.0) as client:
+                    await client.post(
+                        "http://127.0.0.1:8090/api/benchmark/experiments",
+                        json={
+                            "dataset_id": "evo_v2_judge",
+                            "scores": scores,
+                            "test_score": test_score,
+                            "plan": plan_desc[:200],
+                        },
+                    )
+            except Exception:
+                pass  # benchmark API不可用时不阻塞
+            
+            return {
+                "status": "ok",
+                "judge_score": judge_score,
+                "verdict": verdict,
+                "scores": scores,
+                "test_score": test_score,
+            }
+        except Exception as e:
+            return {"status": "error", "detail": str(e)[:200], "judge_score": None}
     
     def _verdict(self, score: float) -> dict:
         """判定是否收敛"""
