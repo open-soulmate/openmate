@@ -1797,7 +1797,7 @@ export function ChatClient() {
       <div className="flex flex-1 flex-col min-w-0">
         {/* Chat header */}
         <div className="flex flex-col shrink-0">
-          <div className="h-12 flex items-center gap-1.5 lg:gap-2 min-w-0 px-3 lg:px-4">
+          <div className="h-12 flex items-center gap-1.5 lg:gap-2 min-w-0 px-3 lg:px-4 border-b border-border">
             <button onClick={(e) => { e.stopPropagation(); toggleSidebar(); if (isMobile) { setRightPanelOpen(false); setShowCheckpoints(false); } }} className="shrink-0 p-2 hover:bg-muted/50 active:bg-muted transition-colors text-muted-foreground touch-manipulation" aria-label="Toggle Sidebar">
               <PanelLeft className="w-4 h-4" />
             </button>
