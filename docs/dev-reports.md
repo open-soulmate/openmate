@@ -181,3 +181,99 @@
 **commit**：opensoul 10d0b290
 
 **解决痛点**：agent卡死循环烧token/time，为后续ACP proxy集成提供安全底座。
+
+## [2026-09-18 06:30] hippo三因子记忆检索：recency+importance+relevance等权归一
+**目标**：解决调研确认的P0-6差距——OpenSoul hippocampus检索评分完全缺失recency时间衰减因子。现有retrieve()只有jaccard*0.5+importance*0.3+access_count*0.2，不含任何时间感知，旧记忆与新记忆同等权重，无法反映"最近聊过的话题更相关"这一人类记忆特性。
+**调研来源**：generative-agents（斯坦福论文）retrieve.py（~/agent-research-src/gen-agents/reverie/backend_server/persona/cognitive_modules/retrieve.py，new_retrieve lines 199-271）。SUMMARY.md P0-6："三因子检索（generative-agents，40行可移植）：recency(0.99^i)+importance(poignancy 1-10)+relevance(cos_sim)等权归一——hippo只有时间衰减"。
+**改动文件**：
+- opensoul/src/hippo/long_term_memory.py（新增three_factor_retrieve()方法+_normalize_dict_floats()辅助函数，get_context_prompt()更新为默认使用三因子检索）
+- opensoul/src/hippo/__init__.py（导出_normalize_dict_floats）
+- opensoul/tests/test_memory_three_factor.py（新增，25个测试）
+**改动内容**：
+1. long_term_memory.py：
+   - `_normalize_dict_floats(d, target_min, target_max)`：从generative-agents retrieve.py移植的归一化函数，将dict中所有float值缩放到[target_min, target_max]，range=0时全部映射到中点
+   - `three_factor_retrieve()`：三因子检索主方法——Phase 1候选搜索（LIKE-based与现有retrieve()相同）、Phase 2计算三因子原始分数（recency=decay^idle_hours, importance=存储值, relevance=Jaccard token相似度）、Phase 3各因子归一化到[0,1]、Phase 4加权组合。支持自定义recency_decay/recency_weight/relevance_weight/importance_weight参数。返回结果包含three_factor_score/recency_raw/relevance_raw诊断字段
+   - `get_context_prompt()`：新增use_three_factor=True参数，默认使用三因子检索，False时回退到旧retrieve()
+2. __init__.py：导出_normalize_dict_floats
+3. tests/test_memory_three_factor.py：25个测试覆盖归一化函数（7个：基本/同值中点/空/单值/自定义范围/负值/保序）和三因子检索（18个：基本检索/空结果/recency偏新/importance偏高/relevance偏匹配/分数归一化/recency_raw时间反映/权重recency主导/权重importance主导/与旧方法差异/memory_type过滤/min_importance过滤/access_count更新/limit遵守/context_prompt三因子/context_prompt回退/中文内容/自定义衰减率）
+**验证结果**：
+- tests/test_memory_three_factor.py 25 passed（0.20s）
+- tests/test_hippo.py 5 passed（回归）
+- 模块导入验证通过
+- acp-proxy集成测试 run_integration_tests score=1.0（include_build=False无前端改动）
+**commit**：opensoul 00a17838
+
+## [2026-09-18 09:20] hippo长期记忆CRUD + mem0审计表：Khoj信任设计 + 全程可追溯
+
+**目标**：解决调研确认的P0-6差距——OpenSoul hippocampus长期记忆完全没有CRUD能力（无法查看/修改/删除），且任何记忆变更无审计记录不可追溯。用户对AI记忆是黑箱状态，不知道AI记了什么、无法纠错、无法行使"被遗忘权"。
+
+**调研来源**：
+- Khoj记忆CRUD API（SUMMARY.md P0-6）："Khoj DateFilter/FileFilter/WordFilter自然语言检索过滤+记忆CRUD API（用户可看/改/删AI对自己的记忆——信任设计）"
+- mem0记忆审计表（evolution-engine-patterns.md §1.2）："SQLite表字段 = memory_id / old / new / event(ADD-UPDATE-DELETE) / is_deleted，配 history() 查询接口 + 批量写。基因/skill每次被修改都写审计记录，全程可追溯。半天可实现。"
+
+**改动文件**：
+- opensoul/src/hippo/long_term_memory.py（新增MemoryAuditEntry dataclass + memory_audit表 + 6个新方法）
+- opensoul/src/hippo/__init__.py（导出MemoryAuditEntry）
+- opensoul/src/api/hippo.py（新增6个REST端点）
+- opensoul/tests/test_memory_crud.py（新增，29个测试）
+
+**改动内容**：
+1. long_term_memory.py：
+   - `MemoryAuditEntry` dataclass：audit_id/memory_id/event/old_value/new_value/is_deleted/reason/created_at
+   - `_init_db()`新增`memory_audit`表 + 两个索引（idx_audit_memory按memory_id+created_at、idx_audit_event按event+created_at）
+   - `store()`：写入后自动写ADD审计记录（content摘要+memory_type+importance作为new_value）
+   - `_write_audit()`：统一审计写入helper，audit_id用sha256前12位
+   - `update_memory()`：稀疏编辑模式——只UPDATE显式提供的字段，old/new快照写入UPDATE审计；FTS索引同步（content或tags变化时delete+reinsert）
+   - `delete_memory()`：软删（default，consolidated=1）/硬删（hard_delete=True），删除前取快照写DELETE审计
+   - `list_memories()`：按类型过滤、分页（limit+offset）、include_deleted开关，tags/metadata自动JSON解析
+   - `get_history()`：按memory_id/event过滤，DESC时间排序
+   - `consolidate()`：合并去重时写MERGE审计记录（old=被合并方importance/access_count, new=merged_into目标ID）
+   - `get_audit_stats()`：审计统计（总数/按事件类型/删除数/最近5条操作）
+2. api/hippo.py新增端点：
+   - GET /ltm/list — 列出所有长期记忆
+   - GET /ltm/audit/history — 审计轨迹查询
+   - GET /ltm/audit/stats — 审计统计
+   - GET /ltm/{memory_id} — 获取单条记忆
+   - PATCH /ltm/{memory_id} — 更新记忆（带审计）
+   - DELETE /ltm/{memory_id} — 删除记忆（带审计）
+   - FastAPI路由顺序：/ltm/audit/*和/ltm/list在/ltm/{memory_id}之前注册，防止"audit"/"list"被路径参数捕获
+
+**验证结果**：
+- tests/test_memory_crud.py 29 passed（store写ADD审计、稀疏编辑、FTS同步、软删/硬删、删除后不进检索、分页无重叠、审计old/new快照、consolidate写MERGE、审计统计聚合、全生命周期审计轨迹ADD→UPDATE→DELETE）
+- tests/test_hippo.py 5 passed（回归）
+- tests/test_memory_three_factor.py 25 passed（回归）
+- acp-proxy集成测试 run_integration_tests score=1.0（三服务健康+WS协议对齐+WS收发全过，include_build=False无前端改动）
+- Python语法检查4文件全部通过
+
+**commit**：opensoul a25efb53
+
+## [2026-09-18 12:30] acp-proxy工具结果溢出处理：goose落盘+deepagents分段读回+AIHawk显式标记
+**目标**：解决调研确认的P0-2差距——engine.py的_agent_loop将完整tool_result直接加入context（零大小检查），tool_output_handler不存在导致任何大工具输出都能撑爆context window。SUMMARY.md P0-2："工具结果外置/溢出处理（7方互证）——OpenSoul：零"。
+**调研来源**：
+- goose large_response_handler.rs（~/agent-research-src/goose/crates/goose/src/agents/large_response_handler.rs 265行）：>200k字符→写临时文件→stub引用路径+文件权限0o600
+- deepagents #3双策略外置（59-deepagents-source.md）：proactive超阈值即外置 + reactive溢出裁尾 + stub教模型read_file_segment分段读回
+- AIHawk SHOWN/SENT双预算：截断必须显式标记[TRUNCATED]
+- kilocode Truncate：字符数+行数双限
+**改动文件**：
+- acp-proxy/agent/tool_output_handler.py（新建，~270行）
+- acp-proxy/engine.py（增量修改5处）
+- acp-proxy/tests/test_tool_output_handler.py（新建，17个测试）
+**改动内容**：
+1. tool_output_handler.py：
+   - ToolOutputHandler类：双限判断(50K字符/2000行)→落盘+head/tail预览stub
+   - read_segment(): 按行范围分段读回，路径安全验证（必须在spill_dir内防路径穿越）
+   - SpillResult dataclass: spilled/spill_path/original_size/shown_size/spill_id
+   - 溢出文件权限0o600保护敏感数据（goose unix permission模式）
+   - get_stats(): 统计溢出次数和总大小
+2. engine.py（增量edit）：
+   - import ToolOutputHandler, __init__中实例化output_handler
+   - _agent_loop: tool_result加入context前经过output_handler.process()
+   - _tool_read_file: 替换原有粗糙50K截断为handler处理（外置+stub引用）
+   - _tool_read_file_segment: 新工具实现，分段读回溢出文件
+   - _get_tool_definitions: 新增read_file_segment工具定义
+3. tests/test_tool_output_handler.py：17个测试覆盖：小输出透传/超字符溢出/超行数溢出/head+tail预览/教模型分段读回/分段读回基础/续读/到达末尾/超出范围报错/路径安全防护/文件不存在/权限验证/唯一路径/统计/空结果/恰好阈值不溢出/超1字符即溢出
+**验证结果**：
+- tests/test_tool_output_handler.py 17/17 passed
+- acp-proxy integration_test score=1.0（5项全过：health×3+WS协议对齐+WS收发）
+- python3 ast.parse语法检查通过（engine.py + tool_output_handler.py）
+**commit**：openmate 9710f690
