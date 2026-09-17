@@ -19,6 +19,7 @@ import evolution_grader
 import integration_test
 from contract_registry import check_contracts, get_protected_files
 from branch_evolution import BranchManager
+from global_awareness import get_global_awareness
 
 logger = logging.getLogger("evolution-v2")
 
@@ -61,6 +62,18 @@ class EvolutionV2:
             
             result["stages"]["storm_check"] = {"status": "ok"}
             
+            # ── 阶段0.5: 全局感知 ──
+            ga = get_global_awareness(self.repo_root)
+            system_state = ga.get_system_state()
+            suggestions = ga.suggest_target(system_state)
+            result["stages"]["global_awareness"] = {
+                "modules": len(system_state.get("modules", [])),
+                "dependencies": len(system_state.get("dependencies", {})),
+                "tech_debt": len(system_state.get("tech_debt", [])),
+                "suggestions": suggestions.get("suggestions", [])[:5],
+            }
+            self.strand._log("global", f"🌍 全局感知: {len(system_state.get('modules', []))}模块, {len(system_state.get('tech_debt', []))}个技术债务")
+            
             # ── 阶段1: 诊断 ──
             diagnosis = await self._locate(failure_batch)
             result["stages"]["locate"] = diagnosis
@@ -70,11 +83,18 @@ class EvolutionV2:
                 result["stages"]["locate"]["status"] = "no_root_cause"
                 return result
             
-            # ── 阶段2: 规划（注入失败记忆）──
+            # ── 阶段2: 规划（注入失败记忆+全局视角）──
             affected_files = diagnosis.get("affected_files", [])
             failure_context = failure_memory.get_failure_context_for_planning(affected_files)
             
-            plan = await self._plan(diagnosis, failure_context)
+            # 注入全局视角：让规划时知道系统整体状态
+            global_context = f"\n\n【全局系统状态】\n"
+            global_context += f"- 系统共{len(system_state.get('modules', []))}个模块\n"
+            global_context += f"- 技术债务: {len(system_state.get('tech_debt', []))}个标记\n"
+            if suggestions.get("suggestions"):
+                global_context += f"- 推荐关注: {suggestions['suggestions'][0].get('target', '')} ({suggestions['suggestions'][0].get('reason', '')})\n"
+            
+            plan = await self._plan(diagnosis, failure_context + global_context)
             result["stages"]["plan"] = plan
             self.strand._log("plan", f"📋 方案: {len(plan.get('changes', []))}个文件")
             
@@ -190,6 +210,9 @@ class EvolutionV2:
                     
                     # 重置错误风暴
                     failure_memory.reset_storm()
+                    
+                    # 更新全局感知缓存
+                    ga.update_after_change(changed_files, result)
                     
                     result["success"] = True
                     self.strand._log("verdict", f"🎉 进化成功! 分支已merge. score={test_result.score}")
