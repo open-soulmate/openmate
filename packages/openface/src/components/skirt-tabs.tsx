@@ -66,7 +66,7 @@ export function SkirtTabs({
   onTabChange,
   onAddTab,
   renderTabContent,
-  strokeColor = '#27272a',
+  strokeColor = 'var(--color-border, var(--border, #27272a))',
   underlineColor = 'var(--color-border, var(--border, #27272a))',
   dividerColor = 'var(--color-border, var(--border, #333))',
   extraRight = 0,
@@ -188,7 +188,7 @@ export function SkirtTabs({
                   />
                 </svg>
               )}
-              <div className="relative flex items-center justify-center w-full h-full z-10" style={{ padding: '0 8px', gap: 4 }}>
+              <div className="relative flex items-center w-full h-full z-10" style={{ padding: '0 12px', gap: 8 }}>
                 {renderTabContent ? renderTabContent(tab, isActive) : defaultRenderTab(tab, isActive)}
               </div>
             </button>

@@ -1829,6 +1829,8 @@ export function ChatClient() {
           </div>
           {/* Chat view toggle — 裙摆式分段视图（可折叠） */}
           {showViewTabs && <>
+          <style>{`.skirt-tabs-chat .relative.flex.items-center.w-full.h-full.z-10 { justify-content: center !important; padding: 0 8px !important; gap: 4px !important; }`}</style>
+          <div className="skirt-tabs-chat">
           <div className="relative border-t border-border">
             <button
               onClick={() => setShowViewTabs(!showViewTabs)}
@@ -1877,6 +1879,7 @@ export function ChatClient() {
               </>
             )}
           />
+          </div>
           </>}
         </div>
 
