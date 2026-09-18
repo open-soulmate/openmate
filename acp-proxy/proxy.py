@@ -84,6 +84,10 @@ class ACPProcess:
         # re-read the shared _default_session_id after await (race under
         # concurrent new-session requests — S4 same-session concurrency test).
         self._new_session_lock: asyncio.Lock = asyncio.Lock()
+        # Fire-and-forget warmup task (ensure_warmup); also gives the health
+        # loop a chance to exist — _health_task is only created inside
+        # start(), so a fresh instance has NO self-heal until first start.
+        self._warmup_task: asyncio.Task | None = None
 
     @property
     def is_running(self) -> bool:
@@ -92,6 +96,23 @@ class ACPProcess:
         if self._proc.stdin and self._proc.stdin.is_closing():
             return False
         return True
+
+    def ensure_warmup(self) -> bool:
+        """Idempotent fire-and-forget start so status checks can bring the
+        subprocess (and its health loop) up without waiting for a send."""
+        if not self.is_running and (self._warmup_task is None or self._warmup_task.done()):
+            try:
+                loop = asyncio.get_running_loop()
+            except RuntimeError:
+                return self.is_running
+
+            def _done(task: asyncio.Task):
+                if not task.cancelled() and task.exception():
+                    logger.error(f"Warmup start failed: {task.exception()}")
+
+            self._warmup_task = loop.create_task(self.start())
+            self._warmup_task.add_done_callback(_done)
+        return self.is_running
 
     async def start(self):
         async with self._start_lock:

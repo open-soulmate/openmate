@@ -383,7 +383,13 @@ async def ws_chat_health():
 @router.get("/acp/status")
 async def acp_status():
     acp = get_acp_process()
-    return {"running": acp.is_running}
+    # Idempotent warmup: previously a fresh proxy instance had no health
+    # loop (only created inside start()), so running=false persisted until
+    # the next send_message lazy-started the subprocess.
+    was_running = acp.is_running
+    running = acp.ensure_warmup()
+    warming = (not was_running) and (not running)
+    return {"running": running, "warming": warming}
 
 
 class ACPMessage:

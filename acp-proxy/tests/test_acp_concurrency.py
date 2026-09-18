@@ -459,3 +459,52 @@ def test_restart_during_inflight_message_surfaces_as_retryable_result():
         assert events == ["start:msg"]
 
     run(scenario())
+
+
+# ════════════════════════════════════════════════════════════════
+# /acp/status warmup：fresh实例无health loop → status端点幂等预热
+# ════════════════════════════════════════════════════════════════
+
+def test_ensure_warmup_idempotent_and_status_endpoint_warming_flag():
+    async def scenario():
+        acp = ACPProcess()
+        assert acp.is_running is False
+        started = {"n": 0}
+
+        async def fake_start():
+            started["n"] += 1
+            await asyncio.sleep(0.05)
+
+        acp.start = fake_start
+        # 第一次status → 触发warmup任务但不阻塞
+        orig = _with_fake_acp(acp)
+        try:
+            resp = await ws_chat.acp_status()
+            assert resp["running"] is False
+            assert resp["warming"] is True
+            # 短时间多次status → 不重复spawn（幂等）
+            await asyncio.sleep(0.01)
+            await ws_chat.acp_status()
+            await ws_chat.acp_status()
+            assert started["n"] == 1
+        finally:
+            ws_chat.get_acp_process = orig
+
+    run(scenario())
+
+
+def test_ensure_warmup_noop_when_already_running():
+    async def scenario():
+        acp = ACPProcess()
+        _fake_running(acp)
+        called = {"n": 0}
+
+        async def fake_start():
+            called["n"] += 1
+
+        acp.start = fake_start
+        assert acp.ensure_warmup() is True
+        await asyncio.sleep(0.02)
+        assert called["n"] == 0  # 已running → 不触发start
+
+    run(scenario())
