@@ -311,3 +311,19 @@
   * 环境守卫：scorer从code换成judge后对旧基线run实验被409拒绝（env_fingerprint 083be... vs 38f78...）
   * trajectory落库确认：sqlite查询trajectory_scores表命中evalsmoke_arith/cap两条，source=llm_judge、trace_id=实验id（GET API 404是因为session级读端点要求会话存在，写路径已验证成功）
 **commit**：opensoul 26b54a4e
+
+## [2026-09-18 09:08 CST] P0-3 工具级权限引擎 — AgentScope PermissionEngine移植 + 5模式/三层规则/真人审批全链路接线
+**目标**：解决SUMMARY.md P0-3差距——immune只有用户级RBAC，无工具/路径级权限引擎；且acp-proxy既有PermissionManager从未被调用（"写了≠接线了"）、其"session/request_permission事件"协议前端根本无处理器，与ACP v1.0标准协议不兼容
+**调研来源**：AgentScope PermissionEngine 848行源码全文精读（~/agent-research-src/agentscope/src/agentscope/permission/ _engine.py/_types.py/_decision.py/_rule.py/_context.py + 3个permission测试文件）；kilocode三层规则叠加（base/approved×wildcard findLast + session per-approval）与"敏感权限必须真人交互——机器审批静默拒绝留pending"；open-webui tool_approval三态（拒绝=合成错误工具结果，loop不断）；goose permission_judge缓存（防审批弹窗疲劳）；AIHawk"截断/阻断必须显式标记"；54-agentscope-source.md差距表标注权限层P0安全
+**改动文件**：
+- opensoul：src/immune/permission_engine.py（新~700行）、src/immune/__init__.py、src/api/immune.py（+9端点）、tests/test_permission_engine.py（新49测试）
+- openmate：acp-proxy/agent/permission_gate.py（新296行）、acp-proxy/agent/soulmate_agent.py（+95行）、acp-proxy/tests/test_permission_gate.py（新18测试）、src/app/(app)/chat/chat-client.tsx（+53行）、src/components/acp-approval-modal.tsx（TOOL_LABELS补齐）
+**改动内容**：
+- opensoul canonical引擎：5模式（default/accept_edits/explore/bypass/dont_ask）；评估顺序=hard deny硬否决（8条builtin灾难规则，bypass也不可覆盖）→findLast统一扫描（kilocode三层：session>user>builtin，同优先级seq降序最后匹配胜出，跨allow/ask/deny行为类）→只读快路径→EXPLORE拒绝写入（用户allow规则不可授予写权限，AgentScope保证）→ACCEPT_EDITS工作目录内自动放行→模式fallback（dont_ask永不返回ask、转deny保留建议；bypass除deny/ask规则外全放）
+- 规则匹配：Bash子串/prefix wildcard（"git:*"）、Write/Read glob+basename+~/.ssh关键目录、其余工具generic参数子串；BUILTIN基线37条（8 hard deny + 29 ask：sudo/systemctl/dd、.env/.pem/.key/~/.ssh、/dev/sd*整盘写入等），引擎脱离store时自动补上（fail-closed）
+- PermissionStore：SQLite规则存储（三层provenance+seq+软删审计）+模式存储+决策审计表+人工审批outcome记录（approved/denied+comment）
+- acp-proxy执行侧gate：每个tool_call执行前调opensoul /api/immune/permission/check；deny→合成阻断工具结果（含provenance"为什么被拦"+建议规则"怎么放行"+"勿重复调用同样参数"指引）；ask→ACP v1.0标准session/request_permission真人审批（经acp官方库Client.request_permission，响应{"outcome":{"outcome":"selected","optionId":"allow_once"}}/cancelled；无人值守=静默拒绝留审计）；opensoul不可达→本地降级（只读放行+灾难命令本地硬否决+fail-open不锁死工作流，用户曾差点被锁在门外）；同session同参数审批结果缓存10分钟
+- 前端：chat-client.tsx实现ACP v1.0 session/request_permission请求-响应协议（approvalRpcRef暂存JSON-RPC id/ws/optionId，sendApproval以result答复），复用既有AcpApprovalModal弹窗，旧human.approval.required流程保持兼容
+- API：opensoul /api/immune/permission/* 9端点（check/mode/rules CRUD/audit/audit outcome/stats），服务已重启加载
+**验证结果**：opensoul pytest 49/49通过（5模式矩阵、findLast分层、explore下allow不可授予写、dont_ask永不ask、审计provenance、outcome校验）；回归test_immune+test_moderator+test_permission 33/33通过；acp-proxy gate测试18/18（审批三态/超时/缓存/降级），test_tool_output_handler 17/17回归（test_safety_1000的7个ERROR为既有fixture缺陷`fixture 'c' not found`，与本次无关）；npm run build通过且前端:3000已重启、served build确认含session/request_permission处理器；acp-proxy integration_test score=1.0（7项全过）；真实opensoul端到端：read_file→allow、rm -rf /→deny、无人值守ask→deny带provenance，opensoul审计记录全部决策（stats: 37 active规则/8 hard）
+**commit**：opensoul a37b7b26 + openmate 398d4e2a
