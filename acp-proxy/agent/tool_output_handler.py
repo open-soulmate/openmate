@@ -9,6 +9,7 @@
 """
 
 import hashlib
+import json
 import logging
 import os
 import tempfile
@@ -64,6 +65,34 @@ class ToolOutputHandler:
         self.char_threshold = char_threshold
         self.line_threshold = line_threshold
         self.preview_chars = preview_chars
+        # AIHawk SHOWN/SENT双预算账本（JSONL）：agent子进程写、app.py读，跨进程可读。
+        # "截断必须显式标记，不能静默丢数据"——每次工具结果处理（含未溢出）都记账。
+        self.ledger_path = self.spill_dir / "spill_ledger.jsonl"
+
+    def _record(
+        self,
+        tool_name: str,
+        tool_call_id: str,
+        original_size: int,
+        shown_size: int,
+        spilled: bool,
+        spill_id: str = "",
+    ) -> None:
+        """AIHawk双预算记账：SENT=原始字符数，SHOWN=实际进入context的字符数。失败不影响主流程。"""
+        try:
+            record = {
+                "ts": time.time(),
+                "tool_name": tool_name,
+                "tool_call_id": tool_call_id,
+                "sent_chars": original_size,
+                "shown_chars": shown_size,
+                "spilled": 1 if spilled else 0,
+                "spill_id": spill_id,
+            }
+            with open(self.ledger_path, "a", encoding="utf-8") as f:
+                f.write(json.dumps(record, ensure_ascii=False) + "\n")
+        except Exception as e:
+            logger.debug(f"spill ledger record failed (non-fatal): {e}")
 
     def _should_spill(self, text: str) -> bool:
         """判断是否需要溢出外置 — 双限（kilocode模式）"""
@@ -157,6 +186,7 @@ class ToolOutputHandler:
         line_count = result.count("\n") + 1
 
         if not self._should_spill(result):
+            self._record(tool_name, tool_call_id, original_size, original_size, False)
             return SpillResult(
                 processed_text=result,
                 spilled=False,
@@ -179,6 +209,7 @@ class ToolOutputHandler:
                 f"{tail}"
             )
             logger.warning(f"[{tool_call_id}] Spill failed for {tool_name}, degraded truncation")
+            self._record(tool_name, tool_call_id, original_size, len(degraded), True)
             return SpillResult(
                 processed_text=degraded,
                 spilled=True,
@@ -205,6 +236,7 @@ class ToolOutputHandler:
             f"[{tool_call_id}] Tool output spilled: {tool_name} "
             f"({original_size} chars → {len(stub)} char stub, path={spill_path})"
         )
+        self._record(tool_name, tool_call_id, original_size, len(stub), True, spill_id)
 
         return SpillResult(
             processed_text=stub,
@@ -278,13 +310,59 @@ class ToolOutputHandler:
         return header + segment
 
     def get_stats(self) -> dict:
-        """获取溢出统计"""
+        """获取溢出统计 — 文件系统事实 + AIHawk SHOWN/SENT双预算账本聚合（跨进程可读）"""
         spill_files = list(self.spill_dir.glob("*.txt"))
         total_size = sum(f.stat().st_size for f in spill_files if f.exists())
-        return {
+        stats = {
             "spill_dir": str(self.spill_dir),
             "total_spills": len(spill_files),
             "total_size_bytes": total_size,
             "char_threshold": self.char_threshold,
             "line_threshold": self.line_threshold,
+            # ── AIHawk SHOWN/SENT双预算账本聚合 ──
+            "total_calls": 0,
+            "truncated_calls": 0,
+            "sent_chars_total": 0,
+            "shown_chars_total": 0,
+            "by_tool": {},
+            "recent_spills": [],
+            "ledger_path": str(self.ledger_path),
         }
+        try:
+            if self.ledger_path.exists():
+                with open(self.ledger_path, "r", encoding="utf-8") as f:
+                    lines = f.readlines()[-5000:]  # 防账本无限增长拖垮读取
+                for line in lines:
+                    line = line.strip()
+                    if not line:
+                        continue
+                    try:
+                        rec = json.loads(line)
+                    except json.JSONDecodeError:
+                        continue
+                    stats["total_calls"] += 1
+                    sent = int(rec.get("sent_chars", 0))
+                    shown = int(rec.get("shown_chars", 0))
+                    stats["sent_chars_total"] += sent
+                    stats["shown_chars_total"] += shown
+                    bt = stats["by_tool"].setdefault(
+                        rec.get("tool_name", "unknown"),
+                        {"calls": 0, "truncated": 0, "sent_chars": 0, "shown_chars": 0},
+                    )
+                    bt["calls"] += 1
+                    bt["sent_chars"] += sent
+                    bt["shown_chars"] += shown
+                    if rec.get("spilled"):
+                        stats["truncated_calls"] += 1
+                        bt["truncated"] += 1
+                        stats["recent_spills"].append({
+                            "tool_name": rec.get("tool_name", ""),
+                            "original_size": sent,
+                            "shown_size": shown,
+                            "spill_id": rec.get("spill_id", ""),
+                            "ts": rec.get("ts", 0),
+                        })
+                stats["recent_spills"] = stats["recent_spills"][-10:]
+        except Exception as e:
+            stats["ledger_error"] = str(e)
+        return stats

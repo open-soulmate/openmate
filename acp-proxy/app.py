@@ -279,6 +279,22 @@ async def agent_peek(session_id: str):
     return data
 
 
+def _tool_output_stats():
+    """P0-2: 工具结果溢出统计（AIHawk SHOWN/SENT双预算账本 + goose spill落盘事实）。
+    agent子进程写JSONL账本/落盘文件，本进程跨进程读取（账本+spill目录都是共享文件系统真源）。"""
+    from agent.tool_output_handler import ToolOutputHandler
+    return ToolOutputHandler().get_stats()
+
+
+@app.get("/api/agent/tool-output/stats")
+async def agent_tool_output_stats():
+    """P0-2溢出统计：截断次数/SHOWN vs SENT双预算/按工具分布/最近spill"""
+    try:
+        return _tool_output_stats()
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/health")
 async def health():
     instance_id = os.environ.get("INSTANCE_ID", "a")
@@ -286,6 +302,16 @@ async def health():
     # P0-4: peek统计并入health——既有monitoring页探测health即可看到agent活动状态，不新建页面
     try:
         payload["agent_activity"] = _activity_store().peek_all()["summary"]
+    except Exception:
+        pass
+    # P0-2: 工具结果溢出统计摘要并入health（SHOWN/SENT双预算可观测）
+    try:
+        _ts = _tool_output_stats()
+        payload["tool_output"] = {
+            k: _ts.get(k)
+            for k in ("total_spills", "total_calls", "truncated_calls",
+                      "sent_chars_total", "shown_chars_total", "char_threshold", "line_threshold")
+        }
     except Exception:
         pass
     return payload

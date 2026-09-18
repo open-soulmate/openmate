@@ -192,6 +192,22 @@ interface AgentPeek {
   };
 }
 
+// P0-2: 工具结果溢出统计（AIHawk SHOWN/SENT双预算 + goose spill落盘）
+// 数据源：acp-proxy :8092/api/agent/tool-output/stats
+interface ToolOutputStats {
+  spill_dir: string;
+  total_spills: number;
+  total_size_bytes: number;
+  char_threshold: number;
+  line_threshold: number;
+  total_calls: number;
+  truncated_calls: number;
+  sent_chars_total: number;
+  shown_chars_total: number;
+  by_tool: Record<string, { calls: number; truncated: number; sent_chars: number; shown_chars: number }>;
+  recent_spills: { tool_name: string; original_size: number; shown_size: number; spill_id: string; ts: number }[];
+}
+
 interface JobInfo {
   id: string;
   name: string;
@@ -609,6 +625,7 @@ export function MonitoringClient() {
   // ── Agents & Jobs state (P0-8面板) ────────────────────────
   const [agentPeek, setAgentPeek] = useState<AgentPeek | null>(null);
   const [peekErr, setPeekErr] = useState('');
+  const [toolSpill, setToolSpill] = useState<ToolOutputStats | null>(null);
   const [jobsHealth, setJobsHealth] = useState<JobsHealth | null>(null);
   const [jobsList, setJobsList] = useState<JobInfo[]>([]);
   const [evoStats, setEvoStats] = useState<EvoStats | null>(null);
@@ -829,12 +846,13 @@ export function MonitoringClient() {
       ? `http://${window.location.hostname}:8092`
       : 'http://127.0.0.1:8092';
     // 各端点独立容错：单个服务挂掉不拖垮整个面板（fail-safe渲染"unavailable"）
-    const [peekRes, jhRes, jlRes, evoRes, glandRes] = await Promise.allSettled([
+    const [peekRes, jhRes, jlRes, evoRes, glandRes, spillRes] = await Promise.allSettled([
       fetch(`${acpBase}/api/agent/peek`, { signal: AbortSignal.timeout(8000) }),
       fetch(`${apiBase}/api/will/jobs/health`, { signal: AbortSignal.timeout(8000) }),
       fetch(`${apiBase}/api/will/jobs?limit=20`, { signal: AbortSignal.timeout(8000) }),
       fetch(`${apiBase}/api/heredity/health`, { signal: AbortSignal.timeout(8000) }),
       fetch(`${apiBase}/api/gland/health`, { signal: AbortSignal.timeout(8000) }),
+      fetch(`${acpBase}/api/agent/tool-output/stats`, { signal: AbortSignal.timeout(8000) }),
     ]);
     if (peekRes.status === 'fulfilled' && peekRes.value.ok) {
       try { setAgentPeek(await peekRes.value.json()); setPeekErr(''); } catch {}
@@ -852,6 +870,9 @@ export function MonitoringClient() {
     }
     if (glandRes.status === 'fulfilled' && glandRes.value.ok) {
       try { const d = await glandRes.value.json(); setChainTrace(d.last_chain_trace || []); } catch {}
+    }
+    if (spillRes.status === 'fulfilled' && spillRes.value.ok) {
+      try { setToolSpill(await spillRes.value.json()); } catch {}
     }
     setAgentsUpdated(new Date());
     setAgentsLoading(false);
@@ -1947,7 +1968,7 @@ export function MonitoringClient() {
             </div>
 
             {/* Summary cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 lg:gap-4">
               <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="text-xl lg:text-2xl font-bold">{agentPeek?.summary.total_sessions ?? 0}</div>
                 <div className="text-[10px] text-muted-foreground">
@@ -1975,6 +1996,20 @@ export function MonitoringClient() {
                 <div className="text-xl lg:text-2xl font-bold">{jobsHealth?.workers ?? 0}</div>
                 <div className="text-[10px] text-muted-foreground">
                   Job Workers · {jobsHealth?.queue_size ?? 0} queued · {jobsHealth?.running ? 'running' : 'idle'}
+                </div>
+              </div>
+              {/* P0-2: 工具结果溢出 — AIHawk SHOWN/SENT双预算（截断必须显式可见） */}
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+                <div className={cn('text-xl lg:text-2xl font-bold', (toolSpill?.truncated_calls ?? 0) > 0 && 'text-amber-500')}>
+                  {toolSpill?.truncated_calls ?? 0}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  Tool Output Spills
+                  {toolSpill && (
+                    <span className="ml-1 font-mono">
+                      SHOWN {toolSpill.shown_chars_total}/SENT {toolSpill.sent_chars_total}
+                    </span>
+                  )}
                 </div>
               </div>
             </div>

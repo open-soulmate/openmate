@@ -44,6 +44,7 @@ from skill_manager import SkillManager
 from evolution import EvolutionEngine
 from dna_evolution import DNAEvolutionEngine
 from utils.token_manager import truncate_tool_result
+from agent.tool_output_handler import ToolOutputHandler
 from agent.architecture_enhanced import EnhancedArchitecture
 from agent import arch_monitor
 from utils.task_state_manager import TaskStateManager, judge_task_continuation
@@ -153,6 +154,12 @@ class SoulMateAgent:
         self._memory_engine = MemoryRetrievalEngine()
         self._tool_cache = ToolResultCache()
         self._tool_auditor = ToolAuditor()
+        # P0-2: 工具结果溢出处理器（kilocode双限→落盘+stub，AIHawk双预算记账）。
+        # 阈值env可调：TOOL_SPILL_CHARS默认8000（与旧truncate同阈值，但落盘后context只进stub≈2KB，更省）
+        self._output_handler = ToolOutputHandler(
+            char_threshold=int(os.environ.get("TOOL_SPILL_CHARS", "8000")),
+            line_threshold=int(os.environ.get("TOOL_SPILL_LINES", "2000")),
+        )
         self._retry_mgr = SmartRetryManager()
         self._output_validator = OutputValidator()
         self._output_formatter = OutputFormatter()
@@ -430,6 +437,25 @@ class SoulMateAgent:
         """轻量 LLM 调用，只返回文本（不带工具），用于规划和自省"""
         return await self.llm_engine.chat(messages)
 
+    def _process_tool_output(self, func_name: str, tool_call_id: str, result: str) -> str:
+        """P0-2接线：工具结果溢出处理 — goose spill落盘 + deepagents stub + AIHawk双预算
+
+        超阈值（字符/行双限）→完整结果落盘+stub入context（教模型用read_file_segment分段读回）；
+        处理失败降级为旧truncate_tool_result行为（fail-safe，溢出处理绝不让任务循环崩溃）。
+        """
+        try:
+            handler = getattr(self, "_output_handler", None)
+            if handler is None:
+                handler = ToolOutputHandler(
+                    char_threshold=int(os.environ.get("TOOL_SPILL_CHARS", "8000")),
+                    line_threshold=int(os.environ.get("TOOL_SPILL_LINES", "2000")),
+                )
+                self._output_handler = handler
+            return handler.process(func_name, tool_call_id, str(result)).processed_text
+        except Exception as e:
+            logger.warning(f"[tool-output] spill处理失败，降级截断: {e}")
+            return truncate_tool_result(str(result))
+
     async def _run_llm_with_tools(
         self,
         messages: list[dict],
@@ -498,6 +524,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 
 ### 可用工具
 - read_file: 读取文件，path 参数必填
+- read_file_segment: 分段读取溢出文件——工具输出过大被外置时（结果中出现[TRUNCATED]标记），按 stub 提示用 path/start_line/end_line 分段读回完整内容
 - write_file: 写入文件，path 和 content 参数必填。path必须是完整路径+文件名+扩展名（如 /home/climbing/openmate/index.html）。根据用户意图推断文件名和扩展名——用户说"网页"→.html，"脚本"→.py，"配置"→.yaml，"样式"→.css。不确定时先用read_file确认目录结构。⚠️ 注意：content超过3000字符时不要用write_file，改用execute_code写入（如 with open(path,'w') as f: f.write(...)），避免JSON截断。
 - search_files: 搜索文件，pattern 参数必填，path 默认为当前目录
 - search_files: 搜索文件，pattern 参数必填，path 默认为当前目录
@@ -562,6 +589,21 @@ You can send files to the user natively: to deliver a file, write a brief confir
                         "path": {"type": "string", "description": "文件路径（绝对或相对路径）"},
                         "offset": {"type": "integer", "description": "起始行号（从1开始）", "default": 1},
                         "limit": {"type": "integer", "description": "最大读取行数", "default": 100},
+                    },
+                    "required": ["path"],
+                },
+            },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "read_file_segment",
+                "description": "分段读取溢出文件。当工具输出过大被外置（工具结果中出现[TRUNCATED]标记和文件路径）时，用此工具按行范围分段读回完整内容。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "溢出文件路径（见[TRUNCATED]提示中的路径）"},
+                        "start_line": {"type": "integer", "description": "起始行号（从1开始）", "default": 1},
+                        "end_line": {"type": "integer", "description": "结束行号（含）", "default": 200},
                     },
                     "required": ["path"],
                 },
@@ -855,7 +897,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
                             tool_results.append({
                                 "tool_call_id": tc.get("id", ""),
                                 "role": "tool",
-                                "content": truncate_tool_result(blocked_reason),
+                                "content": self._process_tool_output(func_name, tc.get("id", ""), blocked_reason),
                             })
                             all_tool_calls.append({
                                 "name": func_name,
@@ -877,7 +919,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                 # 跳过实际执行，直接进入结果处理
                                 tool_calls_log.append({"tool": func_name, "args": func_args, "result": result[:200], "cached": True})
                                 messages.append({"role": "assistant", "tool_calls": [tc]})
-                                messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "content": truncate_tool_result(result)})
+                                messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "content": self._process_tool_output(func_name, tc.get("id", ""), result)})
                                 continue
 
                         # ── 基础工具执行 ───────────────────────────────
@@ -1113,6 +1155,23 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                 else:
                                     result = "任务列表为空"
 
+                        elif func_name == "read_file_segment":
+                            # P0-2读回闭环：分段读取溢出文件（deepagents stub教模型的读回方式；
+                            # read_segment内含路径安全校验——只允许读spill_dir内的文件）
+                            _seg_handler = getattr(self, "_output_handler", None)
+                            if _seg_handler is None:
+                                from agent.tool_output_handler import ToolOutputHandler as _TOH
+                                _seg_handler = _TOH()
+                                self._output_handler = _seg_handler
+                            try:
+                                result = _seg_handler.read_segment(
+                                    str(func_args.get("path", "")),
+                                    start_line=int(func_args.get("start_line", 1) or 1),
+                                    end_line=int(func_args.get("end_line", 200) or 200),
+                                )
+                            except Exception as _seg_err:
+                                result = f"错误: read_file_segment执行失败 — {_seg_err}"
+
                         elif func_name == "read_image":
                             try:
                                 path = func_args.get("path", "")
@@ -1159,7 +1218,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
                         tool_results.append({
                             "tool_call_id": tc["id"],
                             "role": "tool",
-                            "content": truncate_tool_result(str(result)),
+                            "content": self._process_tool_output(func_name, tc["id"], str(result)),
                         })
 
                         # 记录工具调用
