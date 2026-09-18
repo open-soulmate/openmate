@@ -281,9 +281,13 @@ async def agent_peek(session_id: str):
 
 def _tool_output_stats():
     """P0-2: 工具结果溢出统计（AIHawk SHOWN/SENT双预算账本 + goose spill落盘事实）。
-    agent子进程写JSONL账本/落盘文件，本进程跨进程读取（账本+spill目录都是共享文件系统真源）。"""
+    agent子进程写JSONL账本/落盘文件，本进程跨进程读取（账本+spill目录都是共享文件系统真源）。
+    阈值与soulmate agent一致（env驱动），否则面板显示的阈值与agent实际行为不符。"""
     from agent.tool_output_handler import ToolOutputHandler
-    return ToolOutputHandler().get_stats()
+    return ToolOutputHandler(
+        char_threshold=int(os.environ.get("TOOL_SPILL_CHARS", "8000")),
+        line_threshold=int(os.environ.get("TOOL_SPILL_LINES", "2000")),
+    ).get_stats()
 
 
 @app.get("/api/agent/tool-output/stats")
