@@ -489,3 +489,36 @@
 3. agno原版heartbeat lease分布式锁/CAS续跑未实现（单进程部署以stale回收替代，docstring注明差异）；retry无退避立即重排队（agno retry_or_fail退避未抄，高并发可能打爆下游，下轮补）
 4. 生产者目前2个（/jobs/submit通用+dream background）；proactive/goal runner等更多器官作业化属后续路线
 5. 主会话"模型路由4按钮接线"WIP（opensoul src/api/model_router.py等3文件未提交）本轮未触碰未提交；opensoul重启时随main.py加载（语法已验证，服务健康），与本commit互不包含
+## [2026-09-19 00:25 CST] P0-2 工具结果溢出处理接线到真实ACP路径 — goose spill+deepagents stub+AIHawk双预算+读回闭环
+**目标**：解决SUMMARY.md P0-2差距在真实运行时的"写了≠接线了"标本——tool_output_handler.py（290行，goose large_response_handler+deepagents双策略+AIHawk显式标记的完整实现）此前只接在engine.py AgentEngine；grep确认真实ACP主路径(:8092 ws→agent.start stdio子进程→SoulMateAgent._run_llm_with_tools，OpenMate聊天页实际使用的路径)三处工具结果入context位置全部走naive truncate_tool_result（8000字符head+tail硬切，无落盘无读回）；且stub教模型用read_file_segment读回，但该工具在真实路径根本不存在——溢出数据落盘后模型永远读不回来（stub引用的工具缺失=读回闭环断裂）
+**调研来源**：SUMMARY.md P0-2（7方互证）：goose large_response_handler(~80行超阈值→落盘→stub引用)、deepagents双策略(proactive超阈值即外置+reactive溢出裁尾+stub教模型分段读回)、AIHawk SHOWN/SENT双预算(截断必须显式标记不能静默丢数据)、kilocode Truncate服务(2000行/50KB双限→落盘+preview+分级提示)、ODR子agent只回传蒸馏结果；engine.py:8787路径（pid 8606活进程）已有完整spill+read_file_segment接线，作为"正确形态"参照
+**改动文件**：
+- acp-proxy/agent/soulmate_agent.py（增量7处：import/__init__初始化/helper方法/3处调用点替换/read_file_segment工具定义+执行分支/system prompt工具文档）
+- acp-proxy/agent/tool_output_handler.py（增量4处：import json/ledger路径+_record方法/process三个返回点记账/get_stats扩展聚合）
+- acp-proxy/app.py（+3处：GET /api/agent/tool-output/stats端点+health并入摘要+阈值env对齐修复）
+- src/app/(app)/monitoring/monitoring-client.tsx（增量5处：ToolOutputStats类型/toolSpill状态/fetch第6路/setter/汇总卡第5张"Tool Output Spills"）
+- acp-proxy/tests/test_tool_output_wiring.py（新建20测试）
+**改动内容**：
+1. soulmate_agent.py真实路径接线：__init__初始化ToolOutputHandler（TOOL_SPILL_CHARS默认8000与旧truncate同阈值——落盘后context只进stub≈2KB比旧head+tail 8000更省；TOOL_SPILL_LINES默认2000=kilocode行限）；_process_tool_output helper（处理失败降级旧truncate，fail-safe）；三处调用点全部改走handler；新增read_file_segment工具（定义+执行分支委托handler.read_segment+prompt文档）——read_segment内含路径穿越防护
+2. tool_output_handler.py：AIHawk SHOWN/SENT双预算账本——每次工具结果处理JSONL记账{sent_chars/shown_chars/spilled/by_tool}，账本落spill_dir（agent子进程写、app.py进程读，共享文件系统真源）；get_stats聚合total_calls/truncated_calls/sent_chars_total/shown_chars_total/by_tool/recent_spills（读取限尾5000行）
+3. app.py：stats端点+health并入；阈值与agent一致（修复前端点显示handler默认50000而agent实际8000溢出的口径不一致）
+4. monitoring-client.tsx：Agents tab第5张汇总卡（truncated>0变amber+SHOWN/SENT双预算），沿用既有10s轮询+allSettled容错，不新建页面
+**接线位置**（grep证据，文件:行号）：soulmate_agent.py:159 handler初始化/:440 def _process_tool_output/:900、:922、:1221三处运行时调用点（工具结果→messages的content全部经此）/:599工具定义/:1158执行分支；grep '"content": truncate_tool_result'=0（运行时已无naive截断）；app.py:282、:293、:313；monitoring-client.tsx:628、:2003-2008；permission_gate.py:39 read_file_segment已在只读白名单
+**验证结果**：
+- 完整性✅：git diff逐文件确认（evo stash事故后从stash@{0}恢复，符号计数soulmate=4/handler=5/app=1/tsx=5全对上）；commit后git show确认5 files +483/-7
+- 集成✅：grep证据如上；live运行时证据——重启后:8092账本出现6条真实terminal工具调用（真实ACP流量经新代码）；**live跨进程实证**：真实soulmate_agent模块代码（默认路径+env同参数）处理61889字符结果→2104字符stub+完整落盘+read_segment分段读回成功→live :8092端点读到账本变化（calls 6→7/truncated 0→1/by_tool.read_file{sent:61889,shown:2104}/recent_spills含spill_id）——"agent写、API进程读"跨进程链路闭环
+- 测试✅：test_tool_output_wiring.py 20/20 passed + 回归test_tool_output_handler 17+test_steering 51+test_permission_gate 14=102 passed；测试自身缺陷3类已如实修正（FakeLLM step元素须为list/read_file默认limit=100/head+tail预览含尾部是设计）
+- 系统性测试✅：28/29(97%)——S2"ACP工具执行链路"改后从❌变✅；唯一❌S4"同session并发3条消息"为改动前既有问题（重启前27/29同样错误，本次未触碰并发路径）
+- 集成测试✅：run_integration_tests(changed_files=[4文件], include_build=False) SCORE=1.0（health×3+语法+ws协议+契约+ws收发全过）
+- 前端✅：npm run build通过；.next/static/chunks/0fi12-18gdhk-.js含"Tool Output Spills"；:3000/monitoring 200
+- ⚠️Live完整LLM E2E未闭环（诚实报告）：ws:8092发"read_file读/tmp/spill_demo.txt"，240s只收到connected+thinking（LLM provider延迟，同期systemic同因）；溢出行为验证改由"真实模块代码+默认路径+live端点跨进程读回"完成，唯一未覆盖=LLM自主发大文件read_file工具调用，待provider恢复补跑（脚本/tmp/spill_e2e.py已备）
+**服务重启**：acp-proxy-a(:8092)+acp-proxy-b(:8095)→/health ok；前端:3000新build→/monitoring 200；live端点char_threshold=8000（口径对齐）
+**commit**：openmate 29b24f5b（主提交5 files +483/-7）+ b92942f9（阈值口径修复）
+**⚠️重大运行环境发现（本轮差点丢失全部工作）**：23:56:58 evo管线cron周期在main上执行git stash push（stash@{0}="evo-pre-branch-1789747018"）→checkout evo/exp分支跑round——我所有未提交改动被stash走、磁盘4文件同秒回到git HEAD。发现过程：patch报成功+pytest 102 passed+npm build成功之后，重启服务live端点404、grep磁盘=0（测试通过时代码还在盘上，跑systemic期间被evo stash走）。恢复：git checkout stash@{0} -- <4文件>外科手术恢复后立即commit。**教训：每轮改动测试通过后第一时间commit，再跑systemic/integration等长耗时验证**——evo每2h一轮，验证窗口内未提交工作随时可能被stash；supervisor.sh另有git_rollback()=git reset --hard HEAD~1（连续崩溃3次触发）同样毁未提交工作
+**遗留问题**：
+1. S4"同session并发3条消息"systemic失败（JSON parse error，改动前既有）——下轮第1优先候选
+2. LLM provider延迟→live完整E2E未闭环，provider恢复后用/tmp/spill_demo.txt+/tmp/spill_e2e.py补跑
+3. 8787进程(pid 8606, `python -m agent.start`, 无systemd unit)仍运行改动前代码——ws_chat soulmate模式经此路径（有spill无账本）；需确认服务归属后处理
+4. 前端面板视觉渲染未人工确认（登录墙）——用户下次访问/monitoring切Agents tab确认第5张卡
+5. supervisor.sh git_rollback与evo stash对未提交工作的破坏性未防护（本轮遵循铁律未改evo/infra代码）——建议讨论后再动
+6. 账本无轮转策略（读取侧限5000行，文件持续增长）——当前量级极小，量大再治
