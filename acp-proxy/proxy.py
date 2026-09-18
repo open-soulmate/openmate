@@ -45,6 +45,9 @@ logger.addHandler(_ch)
 class PendingPrompt:
     """State for a single in-flight prompt."""
     msg_id: str
+    # ACP session this prompt belongs to — used to filter session/update
+    # chunk notifications by params.sessionId under concurrency.
+    session_id: str = ""
     chunks: list[str] = field(default_factory=list)
     response: dict = field(default_factory=dict)
     done: asyncio.Event = field(default_factory=asyncio.Event)
@@ -72,6 +75,15 @@ class ACPProcess:
         self._interrupt_queue: dict[str, list[dict]] = {}
         # Track which sessions are currently processing
         self._sessions_busy: set[str] = set()
+        # Per-session execution locks — concurrent messages to the same
+        # session are serialized FIFO (asyncio.Lock wakes waiters in order).
+        self._session_locks: dict[str, asyncio.Lock] = {}
+        # Serializes start()/restart so concurrent callers can't double-spawn
+        self._start_lock: asyncio.Lock = asyncio.Lock()
+        # Serializes session/new; callers must use ITS return value, never
+        # re-read the shared _default_session_id after await (race under
+        # concurrent new-session requests — S4 same-session concurrency test).
+        self._new_session_lock: asyncio.Lock = asyncio.Lock()
 
     @property
     def is_running(self) -> bool:
@@ -82,6 +94,10 @@ class ACPProcess:
         return True
 
     async def start(self):
+        async with self._start_lock:
+            return await self._start_locked()
+
+    async def _start_locked(self):
         if self.is_running:
             return self._get_agent_info()
 
@@ -168,10 +184,15 @@ class ACPProcess:
             except (asyncio.CancelledError, Exception):
                 pass
             self._stderr_task = None
-        # Cancel all pending RPC futures
+        # Resolve all pending RPC futures with a *catchable* exception.
+        # NOTE: fut.cancel() made awaiters receive asyncio.CancelledError
+        # (a BaseException) which escapes `except Exception` in endpoints →
+        # uvicorn ASGI 500 with a plain-text body → clients parsing JSON
+        # crash ("Expecting value: line 1 column 1"). BrokenPipeError flows
+        # into the existing retry/CLI-fallback path instead.
         for fut in self._rpc_pending.values():
             if not fut.done():
-                fut.cancel()
+                fut.set_exception(BrokenPipeError("ACP process stopped"))
         self._rpc_pending.clear()
         # Signal all pending prompts as done (with error)
         for p in self._prompt_pending.values():
@@ -219,14 +240,19 @@ class ACPProcess:
         consecutive_timeouts = 0
         while True:
             await asyncio.sleep(30)
-            if not self.is_running or not self._initialized:
-                if self._initialized:
-                    logger.warning("Health check: process not running, attempting restart")
-                    try:
-                        await self._restart()
-                        consecutive_timeouts = 0
-                    except Exception as e:
-                        logger.error(f"Health-triggered restart failed: {e}")
+            if not self.is_running:
+                # Self-heal regardless of _initialized — previously a process
+                # that died after stop() (_initialized=False) was NEVER
+                # restarted by this loop; /acp/status stayed running=false
+                # until the next send_message happened to lazy-start it.
+                logger.warning("Health check: process not running, attempting restart")
+                try:
+                    await self._restart()
+                    consecutive_timeouts = 0
+                except Exception as e:
+                    logger.error(f"Health-triggered restart failed: {e}")
+                continue
+            if not self._initialized:
                 continue
             try:
                 await asyncio.wait_for(
@@ -291,16 +317,24 @@ class ACPProcess:
 
                 # Prompt chunk event
                 if method == "session/update":
-                    update = msg.get("params", {}).get("update", {})
+                    params = msg.get("params", {})
+                    update = params.get("update", {})
                     su = update.get("sessionUpdate", "")
                     if su == "agent_message_chunk":
                         content = update.get("content", {})
                         if isinstance(content, dict) and content.get("type") == "text" and content.get("text"):
-                            # Only append to prompts that are still active
-                            # NOTE: we don't know which prompt a chunk belongs to,
-                            # but we only have one active prompt at a time in practice
+                            # ACP session/update notifications carry a required
+                            # sessionId (acp.schema.SessionNotification). Route
+                            # each chunk ONLY to pending prompts of that session
+                            # — broadcasting to all active prompts mixed
+                            # concurrent responses together (S4 systemic test
+                            # observed 3 different sessions all returning
+                            # identical 245-char content).
+                            update_sid = str(params.get("sessionId", "") or "")
                             for pid, p in self._prompt_pending.items():
-                                if not p.done.is_set() and pid in self._active_prompt_ids:
+                                if p.done.is_set() or pid not in self._active_prompt_ids:
+                                    continue
+                                if not update_sid or not p.session_id or p.session_id == update_sid:
                                     p.chunks.append(content["text"])
                     continue
 
@@ -340,47 +374,64 @@ class ACPProcess:
             await self.start()
         # Empty string = explicitly new session (frontend "+" button)
         if session_id == "":
-            await self.new_session()
-            sid = self._default_session_id or "default"
+            sid = await self._fresh_session_sid()
         else:
             sid = session_id or self._default_session_id or "default"
         if sid and len(sid) < 36 and sid != "default":
             sid = self._default_session_id or "default"
-        
-        # ── P0-9 插话队列：如果该session正在处理，排队等待 ──
-        if sid in self._sessions_busy:
-            queued_msg = {"text": text, "queued_at": time.time()}
-            self._interrupt_queue.setdefault(sid, []).append(queued_msg)
-            queue_pos = len(self._interrupt_queue[sid])
-            logger.info(f"Interrupt queued for session {sid}: pos={queue_pos}")
-            # 等待当前处理完成（最多120s）
-            for _ in range(240):
-                await asyncio.sleep(0.5)
-                if sid not in self._sessions_busy:
-                    break
-            # 取出队列中最早的消息（FIFO）
-            queue = self._interrupt_queue.get(sid, [])
-            if queue:
-                queued_msg = queue.pop(0)
-                if not queue:
-                    self._interrupt_queue.pop(sid, None)
-                text = queued_msg["text"]
-        
-        self._sessions_busy.add(sid)
+
+        # ── P0-9 插话队列：同session消息FIFO串行执行 ──
+        # Previous implementation polled _sessions_busy with sleep(0.5) and
+        # popped a shared queue after waking — two waiters could both observe
+        # "not busy", both pop, and run the SAME session concurrently. A
+        # per-session asyncio.Lock gives atomic FIFO serialization, and each
+        # request executes ITS OWN text (a shared pop(0) could answer another
+        # request's question under reordering).
+        lock = self._session_locks.setdefault(sid, asyncio.Lock())
+        queued_at = time.time()
+        self._interrupt_queue.setdefault(sid, []).append({"text": text, "queued_at": queued_at})
+        if len(self._interrupt_queue[sid]) > 1:
+            logger.info(f"Interrupt queued for session {sid}: pos={len(self._interrupt_queue[sid])}")
         try:
-            result = await self._send_message_inner(text, sid)
-            # 空响应重试一次（ACP可能在处理排队消息时返回空）
-            if not result.get("response_text"):
-                logger.warning(f"Empty response for session {sid}, retrying once")
-                await asyncio.sleep(1)
-                result = await self._send_message_inner(text, sid)
-            return result
+            async with lock:
+                self._sessions_busy.add(sid)
+                try:
+                    result = await self._send_message_inner(text, sid)
+                    # 空响应重试一次（ACP可能在处理排队消息时返回空）
+                    if not result.get("response_text"):
+                        logger.warning(f"Empty response for session {sid}, retrying once")
+                        await asyncio.sleep(1)
+                        result = await self._send_message_inner(text, sid)
+                    result.setdefault("session_id", sid)
+                    return result
+                finally:
+                    self._sessions_busy.discard(sid)
         finally:
-            self._sessions_busy.discard(sid)
-            # 处理完成后，检查是否有排队的消息需要通知
+            # Bookkeeping only (observability): remove this request's entry
+            q = self._interrupt_queue.get(sid, [])
+            for i, m in enumerate(q):
+                if m.get("queued_at") == queued_at:
+                    del q[i]
+                    break
+            if not q:
+                self._interrupt_queue.pop(sid, None)
             remaining = len(self._interrupt_queue.get(sid, []))
             if remaining:
                 logger.info(f"Session {sid}: {remaining} queued messages remaining")
+
+    async def _fresh_session_sid(self) -> str:
+        """Create a new ACP session and return the sid THAT call created.
+
+        Concurrent callers must not read the shared _default_session_id
+        after await — whichever session/new finished last wins the shared
+        attr, so two callers could both grab the same sid (observed race in
+        the S4 same-session concurrency test where session_id="" requests
+        all funneled into racing new_session calls).
+        """
+        async with self._new_session_lock:
+            resp = await self.new_session()
+        sid = resp.get("sessionId") or resp.get("session_id")
+        return sid or self._default_session_id or "default"
 
     async def _send_message_inner(self, text: str, sid: str) -> dict[str, Any]:
         """send_message的实际执行逻辑（不含插话队列管理）"""
@@ -428,8 +479,7 @@ class ACPProcess:
             await self.start()
         # Empty string = explicitly new session (frontend "+" button)
         if session_id == "":
-            await self.new_session()
-            sid = self._default_session_id or "default"
+            sid = await self._fresh_session_sid()
         else:
             sid = session_id or self._default_session_id or "default"
         if sid and len(sid) < 36 and sid != "default":
@@ -443,6 +493,7 @@ class ACPProcess:
                 parts.append({"type": "image", "data": b64, "mimeType": mime_type})
                 result = await self._prompt_parts(parts, sid)
                 if result.get("response_text") is not None:
+                    result.setdefault("session_id", sid)
                     return result
             except (BrokenPipeError, OSError, TimeoutError) as e:
                 logger.warning(f"Image prompt error (attempt {attempt+1}): {e}")
@@ -487,8 +538,7 @@ class ACPProcess:
             await self.start()
         # Empty string = explicitly new session (frontend "+" button)
         if session_id == "":
-            await self.new_session()
-            sid = self._default_session_id or "default"
+            sid = await self._fresh_session_sid()
         else:
             sid = session_id or self._default_session_id or "default"
         if sid and len(sid) < 36 and sid != "default":
@@ -523,6 +573,7 @@ class ACPProcess:
                 try:
                     result = await self._prompt(prompt_text, sid)
                     if result.get("response_text") is not None:
+                        result.setdefault("session_id", sid)
                         return result
                 except (BrokenPipeError, OSError, TimeoutError) as e:
                     logger.warning(f"File prompt error (attempt {attempt+1}): {e}")
@@ -602,8 +653,7 @@ class ACPProcess:
         if not self.is_running or not self._initialized:
             await self.start()
         if session_id == "":
-            await self.new_session()
-            sid = self._default_session_id or "default"
+            sid = await self._fresh_session_sid()
         else:
             sid = session_id or self._default_session_id or "default"
         if sid and len(sid) < 36 and sid != "default":
@@ -617,7 +667,7 @@ class ACPProcess:
             "params": {"prompt": [{"type": "text", "text": text}], "sessionId": sid},
         }
 
-        pending = PendingPrompt(msg_id=msg_id)
+        pending = PendingPrompt(msg_id=msg_id, session_id=sid)
         self._prompt_pending[msg_id] = pending
         self._active_prompt_ids.add(msg_id)
 
@@ -669,8 +719,7 @@ class ACPProcess:
         if not self.is_running or not self._initialized:
             await self.start()
         if session_id == "":
-            await self.new_session()
-            sid = self._default_session_id or "default"
+            sid = await self._fresh_session_sid()
         else:
             sid = session_id or self._default_session_id or "default"
         if sid and len(sid) < 36 and sid != "default":
@@ -684,7 +733,7 @@ class ACPProcess:
             "params": {"prompt": parts, "sessionId": sid},
         }
 
-        pending = PendingPrompt(msg_id=msg_id)
+        pending = PendingPrompt(msg_id=msg_id, session_id=sid)
         self._prompt_pending[msg_id] = pending
         self._active_prompt_ids.add(msg_id)
 
@@ -741,7 +790,7 @@ class ACPProcess:
             "params": {"prompt": parts, "sessionId": session_id},
         }
 
-        pending = PendingPrompt(msg_id=msg_id)
+        pending = PendingPrompt(msg_id=msg_id, session_id=session_id)
         self._prompt_pending[msg_id] = pending
         self._active_prompt_ids.add(msg_id)
 

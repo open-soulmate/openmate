@@ -283,16 +283,29 @@ async def s4_interrupt_queue(client: httpx.AsyncClient):
         
         responses = await asyncio.gather(*tasks, return_exceptions=True)
         latency = time.monotonic() - t0
-        
+
         success_count = 0
+        failures: list[str] = []
         for r in responses:
             if isinstance(r, httpx.Response):
-                d = r.json()
+                try:
+                    d = r.json()
+                except Exception:
+                    # Non-JSON body (e.g. plain-text 500) — record instead of
+                    # crashing the whole case with a JSONDecodeError that
+                    # masks which request failed and why.
+                    failures.append(f"status={r.status_code} body={r.text[:60]!r}")
+                    continue
                 if d.get("ok") and d.get("content"):
                     success_count += 1
-        
+                else:
+                    failures.append(f"status={r.status_code} err={d.get('error', '')[:60]}")
+            else:
+                failures.append(f"exc={type(r).__name__}: {str(r)[:60]}")
+
         record("S4", "同session并发3条消息", success_count >= 2,
-               f"session={session_id[:20] if session_id else 'default'}, success={success_count}/3, total_latency={latency:.1f}s",
+               f"session={session_id[:20] if session_id else 'default'}, success={success_count}/3, "
+               f"total_latency={latency:.1f}s" + (f", failures={failures}" if failures else ""),
                latency)
     except Exception as e:
         record("S4", "同session并发3条消息", False, str(e), time.monotonic() - t0)
@@ -310,8 +323,15 @@ async def s4_interrupt_queue(client: httpx.AsyncClient):
             tasks.append(task)
         responses = await asyncio.gather(*tasks, return_exceptions=True)
         latency = time.monotonic() - t0
-        
-        success = sum(1 for r in responses if isinstance(r, httpx.Response) and r.json().get("ok"))
+
+        success = 0
+        for r in responses:
+            if isinstance(r, httpx.Response):
+                try:
+                    if r.json().get("ok"):
+                        success += 1
+                except Exception:
+                    continue
         record("S4", "不同session并发", success >= 2,
                f"success={success}/3, latency={latency:.1f}s", latency)
     except Exception as e:

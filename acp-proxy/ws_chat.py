@@ -398,9 +398,26 @@ async def acp_send(data: dict):
     acp = get_acp_process()
     try:
         result = await acp.send_message(data.get("text", ""), data.get("session_id"))
-        return {"ok": True, "content": result.get("response_text", ""), "source": result.get("source", "acp")}
+        return {
+            "ok": True,
+            "content": result.get("response_text", ""),
+            "source": result.get("source", "acp"),
+            # Return the session id so HTTP clients can continue the same
+            # session on follow-up requests (previously dropped — clients
+            # had no way to do multi-turn over this endpoint, and the S4
+            # systemic test's "same session" case silently created 3 new
+            # sessions instead of exercising the interrupt queue).
+            "session_id": result.get("session_id") or data.get("session_id") or "",
+        }
     except TimeoutError:
         return {"ok": False, "error": "请求超时，请重试"}
+    except asyncio.CancelledError:
+        # CancelledError is a BaseException — a bare `except Exception`
+        # lets it escape to uvicorn, which returns a plain-text 500 that
+        # breaks every JSON client ("Expecting value: line 1 column 1").
+        # Surface it as a normal JSON error instead.
+        logger.warning("HTTP send cancelled (process restart or client disconnect)")
+        return {"ok": False, "error": "请求被中断（服务重启或连接断开），请重试"}
     except Exception as e:
         logger.error(f"HTTP send error: {e}")
         return {"ok": False, "error": "处理消息时出错，请重试"}
@@ -415,9 +432,17 @@ async def acp_send_image(data: dict):
             data.get("text", ""), data.get("image_data", ""),
             data.get("mime_type", "image/png"), data.get("session_id")
         )
-        return {"ok": True, "content": result.get("response_text", ""), "source": result.get("source", "acp")}
+        return {
+            "ok": True,
+            "content": result.get("response_text", ""),
+            "source": result.get("source", "acp"),
+            "session_id": result.get("session_id") or data.get("session_id") or "",
+        }
     except TimeoutError:
         return {"ok": False, "error": "图片处理超时，请重试"}
+    except asyncio.CancelledError:
+        logger.warning("HTTP image send cancelled (process restart or client disconnect)")
+        return {"ok": False, "error": "请求被中断（服务重启或连接断开），请重试"}
     except Exception as e:
         logger.error(f"HTTP image send error: {e}")
         return {"ok": False, "error": "处理图片时出错，请重试"}
@@ -433,9 +458,17 @@ async def acp_send_file(data: dict):
             data.get("file_name", "file"), data.get("mime_type", "application/octet-stream"),
             data.get("session_id")
         )
-        return {"ok": True, "content": result.get("response_text", ""), "source": result.get("source", "acp")}
+        return {
+            "ok": True,
+            "content": result.get("response_text", ""),
+            "source": result.get("source", "acp"),
+            "session_id": result.get("session_id") or data.get("session_id") or "",
+        }
     except TimeoutError:
         return {"ok": False, "error": "文件处理超时，请重试"}
+    except asyncio.CancelledError:
+        logger.warning("HTTP file send cancelled (process restart or client disconnect)")
+        return {"ok": False, "error": "请求被中断（服务重启或连接断开），请重试"}
     except Exception as e:
         logger.error(f"HTTP file send error: {e}")
         return {"ok": False, "error": "处理文件时出错，请重试"}
