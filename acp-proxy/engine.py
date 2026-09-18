@@ -246,6 +246,9 @@ class AgentEngine:
     ) -> str:
         """执行单个工具调用 — 根据工具名分发到具体实现
 
+        P0-3: 每次工具调用前先经过immune权限引擎检查。
+        权限引擎不可用时降级放行（不阻塞），但记录日志。
+
         当前支持的工具：
         - read_file: 读取本地文件（需路径安全验证）
 
@@ -257,6 +260,21 @@ class AgentEngine:
         Returns:
             工具执行结果文本
         """
+        # ── P0-3 权限引擎检查（AgentScope PermissionEngine）──
+        try:
+            import httpx as _httpx
+            async with _httpx.AsyncClient(timeout=3.0) as _client:
+                _resp = await _client.post(
+                    "http://127.0.0.1:8090/api/immune/permission/check",
+                    json={"tool_name": name, "tool_input": args},
+                )
+                if _resp.status_code == 403:
+                    _detail = _resp.json().get("detail", "permission denied")
+                    return f"⛔ 工具执行被权限引擎拒绝: {_detail}"
+        except Exception as _perm_exc:
+            # 权限引擎不可用时放行，不阻塞工具执行
+            logger.debug(f"permission engine unavailable, allowing tool '{name}': {_perm_exc}")
+
         if name == "read_file":
             return await self._tool_read_file(args, workspace)
         elif name == "read_file_segment":

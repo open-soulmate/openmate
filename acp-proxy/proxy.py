@@ -67,6 +67,11 @@ class ACPProcess:
         self._prompt_pending: dict[str, PendingPrompt] = {}
         # Track the expected prompt msg_id for id=0 filtering
         self._active_prompt_ids: set[str] = set()
+        # ── P0-9 插话队列（Khoj interrupt_queue模式）──
+        # Keyed by session_id, value = list of queued messages
+        self._interrupt_queue: dict[str, list[dict]] = {}
+        # Track which sessions are currently processing
+        self._sessions_busy: set[str] = set()
 
     @property
     def is_running(self) -> bool:
@@ -341,6 +346,38 @@ class ACPProcess:
             sid = session_id or self._default_session_id or "default"
         if sid and len(sid) < 36 and sid != "default":
             sid = self._default_session_id or "default"
+        
+        # ── P0-9 插话队列：如果该session正在处理，排队等待 ──
+        if sid in self._sessions_busy:
+            queued_msg = {"text": text, "queued_at": time.time()}
+            self._interrupt_queue.setdefault(sid, []).append(queued_msg)
+            queue_pos = len(self._interrupt_queue[sid])
+            logger.info(f"Interrupt queued for session {sid}: pos={queue_pos}")
+            # 等待当前处理完成（最多120s）
+            for _ in range(240):
+                await asyncio.sleep(0.5)
+                if sid not in self._sessions_busy:
+                    break
+            # 取出队列中最早的消息（FIFO）
+            queue = self._interrupt_queue.get(sid, [])
+            if queue:
+                queued_msg = queue.pop(0)
+                if not queue:
+                    self._interrupt_queue.pop(sid, None)
+                text = queued_msg["text"]
+        
+        self._sessions_busy.add(sid)
+        try:
+            return await self._send_message_inner(text, sid)
+        finally:
+            self._sessions_busy.discard(sid)
+            # 处理完成后，检查是否有排队的消息需要通知
+            remaining = len(self._interrupt_queue.get(sid, []))
+            if remaining:
+                logger.info(f"Session {sid}: {remaining} queued messages remaining")
+
+    async def _send_message_inner(self, text: str, sid: str) -> dict[str, Any]:
+        """send_message的实际执行逻辑（不含插话队列管理）"""
         for attempt in range(2):
             try:
                 result = await self._prompt(text, sid)
