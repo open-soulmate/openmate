@@ -368,7 +368,13 @@ class ACPProcess:
         
         self._sessions_busy.add(sid)
         try:
-            return await self._send_message_inner(text, sid)
+            result = await self._send_message_inner(text, sid)
+            # 空响应重试一次（ACP可能在处理排队消息时返回空）
+            if not result.get("response_text"):
+                logger.warning(f"Empty response for session {sid}, retrying once")
+                await asyncio.sleep(1)
+                result = await self._send_message_inner(text, sid)
+            return result
         finally:
             self._sessions_busy.discard(sid)
             # 处理完成后，检查是否有排队的消息需要通知
