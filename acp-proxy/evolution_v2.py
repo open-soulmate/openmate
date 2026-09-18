@@ -303,6 +303,14 @@ class EvolutionV2:
 
 ⚠️ 重要：必须考虑上面的历史失败记录，不要重复已经失败过的修改方式。
 
+📖 工作方法论参考（主会话开发经验总结）：
+请阅读 docs/main-session-methodology.md（如存在）了解诊断方法和验证标准。
+核心原则：
+1. 诊断链条：现象→假设→工具验证→数据确认根因——不猜测，用数据说话
+2. 增量修复：精确old_string/new_string替换，禁止全量重写
+3. 验证三关：完整性(grep确认改动存在)→集成(grep调用点证据)→行为(API/pytest实测)
+4. 诚实报告：校验不过禁止声称完成，失败如实记录原因
+
 输出JSON格式：
 {{"changes": [
   {{"target_file": "acp-proxy/xxx.py", "description": "修改描述", "requirements": "具体要求"}}
