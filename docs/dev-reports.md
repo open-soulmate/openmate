@@ -450,3 +450,42 @@
 - peek端点live：/api/agent/peek summary（by_status分组+durable_turns_total+steer_injected_total）+ /api/agent/peek/{session_id}单会话指标
 - 集成测试run_integration_tests(repo_root, changed_files=[本轮8文件])：SCORE 1.0（服务健康+认证+模型路由+WS协议+WS收发+契约检查全过）
 **commit**：openmate（hash见commit message）
+## [2026-09-18 21:31] P0-8后台作业队列运行时接线 + monitoring页"Agents & Jobs"面板（goose peek三指标）
+**目标**：两个调研差距一次闭环——①P0-8作业队列是"写了≠接线了"标本：c1feb676只落了队列基础设施+API，grep确认register_handler/start/submit运行时调用点全为0，作业提交后永远pending（重启前live实证workers=0/handlers=[]，运行时死代码）；②SUMMARY.md前端差距表P1"后台作业面板（peek三指标）｜OpenMate：完全没有"——acp-proxy peek、opensoul jobs/evolution/gland trace数据层已存在但零UI消费，"我都不知道他们在干嘛"看不到后台在跑什么。
+**调研来源**：
+- agno job_queue/store.py 300行（42-agno-source.md，evolution-engine-patterns.md §5.2）：idempotency_key幂等键去重+stale锁回收+"注释即规格"
+- goose peek三指标（SUMMARY.md P0-4："不知道它在干嘛"的行业首个完整实现）：status/durable turn数/idle时长
+- claude-code noop自报streak（连续无进展折叠统计=停滞可观测）
+- mem0 §1.1"失败必须可见"：未注册handler→FAILED带error，绝不静默
+- SUMMARY.md前端差距P1"后台作业面板（peek三指标），参照goose peek+kilocode BackgroundJob"
+**改动文件**：
+- opensoul：src/will/job_queue.py（增量9处）、src/will/job_handlers.py（新建）、src/api/will.py、src/api/hippo.py、tests/test_job_queue_wiring.py（新建19测试）
+- openmate：src/app/(app)/monitoring/monitoring-client.tsx（+403/-1，既有monitoring页新增tab，不新建页面）
+**改动内容**：
+1. job_handlers.py（新建）：handler注册表——heredity.evaluate_triggers（接P0-7进化引擎真实函数）+hippo.dream（接Dream蒸馏，复用api/hippo单例不产生第二份状态）；函数体内懒import防will→api循环；handler命名<organ>.<action>
+2. job_queue.py：submit()幂等键（同key pending/running返回既有id不重复执行，completed/failed不拦重跑）；start()接_recover_from_db()（死进程遗留running→回pending重排队，pending重入队——agno stale回收单进程版，无分布式heartbeat lease的差异已在docstring注明不假装）；list_jobs/get/get_stats改SQLite为真源（重启后面板仍见历史，原内存dict重启失明）；_row_to_job宽容反序列化；retry路径补persist；idempotency_key列迁移（duplicate column安全吞）+索引
+3. api/will.py：模块加载时_register_job_handlers(_get_job_queue())（幂等，GET零副作用）；/jobs/submit懒启动jq.start()+幂等键+deduped回执；/jobs/health统计含handlers/running
+4. api/hippo.py：DreamRequest.background=True→提交hippo.dream后台作业（返回job_id/status_url，LLM长任务不阻塞请求方）；background=False同步路径零改动
+5. monitoring-client.tsx：既有monitoring页新增'agents' tab"Agents & Jobs"：4汇总卡（Agent Sessions/Durable Turns/Steer Injected/Job Workers）+4明细卡（①Agent Sessions=goose peek三指标+noop streak≥3变amber+steer queued→injected记账②Background Jobs=by_status色块+handlers列表+作业行+failed行显示error原文③Evolution Pipeline=提案状态chips+Proposal Budget进度条+breaker徽章+ledger事件④Model Chain Trace=gland last_chain_trace逐条provider/model/pass/fail原因）；10s轮询+手动Refresh；Promise.allSettled各端点独立容错（:8092挂掉只影响peek卡不拖垮面板）；配色全部沿用本页既有emerald/amber/red语义
+**接线位置**（grep证据，文件:行号）：
+- opensoul/src/api/will.py:461 import register_default_handlers+模块级_register_job_handlers(_get_job_queue())（live实证：重启后/jobs/health返回handlers=["heredity.evaluate_triggers","hippo.dream"]）
+- opensoul/src/api/hippo.py:528,532,535 dream background分支→register_default_handlers+submit("hippo.dream",...)
+- opensoul/src/will/job_handlers.py:61-62 HANDLER_SPECS两handler，函数体接src.api.heredity.evolution_engine/src.api.hippo._dream_distiller真实单例
+- openmate monitoring-client.tsx:826 fetchAgentsData；833-835 fetch(api/agent/peek+api/will/jobs/health+api/will/jobs+api/heredity/health+api/gland/health)；862-865 useEffect 10s轮询仅activeTab==='agents'
+- 运行时路径实证：POST /jobs/submit→worker执行→GET /jobs/{id}=completed+真实result（见下）
+**验证结果**：
+- 完整性✅：git diff——opensoul job_queue.py+176/api/will.py+38/api/hippo.py+21+新建2文件（commit 29418e3b，5 files +646/-29）；openmate monitoring-client.tsx +403/-1；主会话WIP（model_router.py/llm.py/main.py）确认未纳入本次commit（git status仍显示uncommitted）
+- 集成✅：grep调用证据如上；live端到端：重启opensoul后POST /api/will/jobs/submit {"name":"heredity.evaluate_triggers","params":{"idle_seconds":0,"recent_errors":["x_err","x_err"]}}→job_606359b56047 completed，duration 0.09s，result={"fired":["error_pattern"],"trigger_ids":["trg_3ddaf7530828"],"breaker_open":false}——作业真实执行进化触发器评估并触发error_pattern，非空转
+- 测试✅：tests/test_job_queue_wiring.py 19/19 passed（注册幂等/未知handler可见失败/执行到completed/结果跨模拟重启存活/retry后成功/重试耗尽带error/stale running+pending回收重跑/幂等键4项 + live API 6项：health含handlers、submit到completed且workers≥1、dream background全链路、dream同步路径不变、幂等live、jobs list含历史）
+- 回归✅：test_heredity+test_dream_distiller+test_memory_crud+test_hippo 74 passed
+- 集成测试✅：acp-proxy run_integration_tests(changed_files=[本轮6文件], include_build=True) SCORE=1.0
+- 前端✅：npm run build通过；grep .next/static/chunks/1_9z_z55j624y.js确认含"Agents & Jobs"+"api/agent/peek"+"Evolution Pipeline (heredity)"；:3000/monitoring HTTP 200（新build已重启）
+- ⚠️前端视觉渲染未人工确认：/monitoring受登录墙保护（cron无凭证，不猜测登录），面板实际渲染待用户下次访问确认
+**服务重启**：opensoul.service重启→/api/system/health {"status":"ok"}；前端:3000用新build重启→/monitoring 200；acp-proxy未改动→/health 200；重启后live确认：/api/will/jobs/health workers=3 running=true handlers=2、/api/agent/peek返回真实会话（om-0c9a21193a3f durable_turns=4 steer 1→1）、历史作业failed行error="No handler for job type 'stress_test'"（失败可见语义正确）
+**commit**：opensoul 29418e3b + openmate（hash见commit message）
+**遗留问题**：
+1. 前端面板视觉渲染未人工验证（登录墙），用户下次访问/monitoring切"Agents & Jobs"tab确认；比例/配色不符审美按反馈调整
+2. job_queue.db有23条systemic-test时代遗留作业（stress_test/test_job），stale回收后因无handler转failed（error可见，语义正确）；面板DELETE清理端点为下轮P2候选
+3. agno原版heartbeat lease分布式锁/CAS续跑未实现（单进程部署以stale回收替代，docstring注明差异）；retry无退避立即重排队（agno retry_or_fail退避未抄，高并发可能打爆下游，下轮补）
+4. 生产者目前2个（/jobs/submit通用+dream background）；proactive/goal runner等更多器官作业化属后续路线
+5. 主会话"模型路由4按钮接线"WIP（opensoul src/api/model_router.py等3文件未提交）本轮未触碰未提交；opensoul重启时随main.py加载（语法已验证，服务健康），与本commit互不包含

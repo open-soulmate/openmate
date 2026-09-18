@@ -17,6 +17,7 @@ import {
   Zap, Shield, Droplets, Volume2, Layers, Link2,
   MousePointer, Sparkles, Filter, ChevronDown,
   ChevronUp, Trash2,
+  Bot,
 } from 'lucide-react';
 
 import { EChart } from '@/components/echart';
@@ -160,9 +161,79 @@ interface StreamSummary {
   collected_at: number;
 }
 
+// Agents & Jobs types — P0-8后台作业面板（SUMMARY.md前端差距表P1"后台作业面板（peek三指标）"）
+// 数据源：acp-proxy :8092/api/agent/peek（goose peek三指标+claude-code noop自报）
+//        opensoul :8090/api/will/jobs*（agno job_queue模式，P0-8）
+//        opensoul :8090/api/heredity/health（P0-7进化管线）、/api/gland/health（模型链路trace）
+interface PeekSession {
+  session_id: string;
+  status: string;
+  durable_turns: number;
+  idle_seconds: number;
+  buffered: number;
+  noop_streak: number;
+  total_noops: number;
+  max_noop_streak: number;
+  steer_queued: number;
+  steer_injected: number;
+  tool_calls_total: number;
+  aborted: number;
+}
+
+interface AgentPeek {
+  sessions: PeekSession[];
+  summary: {
+    total_sessions: number;
+    by_status: Record<string, number>;
+    durable_turns_total: number;
+    total_noops: number;
+    buffered_total: number;
+    steer_injected_total: number;
+  };
+}
+
+interface JobInfo {
+  id: string;
+  name: string;
+  status: string;
+  error?: string;
+  created_at: number;
+  started_at: number;
+  finished_at: number;
+  duration_s: number;
+  retries: number;
+}
+
+interface JobsHealth {
+  total: number;
+  by_status: Record<string, number>;
+  queue_size: number;
+  workers: number;
+  handlers: string[];
+  running?: boolean;
+}
+
+interface EvoStats {
+  proposals: Record<string, number>;
+  pending: number;
+  max_pending: number;
+  pending_budget_remaining: number;
+  ledger_events: Record<string, number>;
+  triggers: number;
+  breaker: { open: boolean; error_type: string; consecutive: number };
+}
+
+interface ChainTraceEntry {
+  provider?: string;
+  model?: string;
+  pass?: number;
+  error?: string;
+  [k: string]: unknown;
+}
+
 // ── Constants ────────────────────────────────────────────────
 
-type MonitoringTab = 'overview' | 'system' | 'benchmark' | 'activity' | 'architecture';
+type MonitoringTab = 'overview' | 'system' | 'benchmark' | 'activity' | 'agents' | 'architecture';
 type BenchmarkSubTab = 'run' | 'comparison' | 'history';
 
 const ORGAN_ICONS: Record<string, React.ElementType> = {
@@ -282,6 +353,24 @@ function getLatencyBg(ms: number) {
   if (ms < 50) return 'bg-yellow-400';
   if (ms < 100) return 'bg-orange-400';
   return 'bg-red-400';
+}
+
+// P0-8面板状态色（沿用本页既有emerald/amber/red语义，不新造配色）
+function jobStatusColor(status: string): string {
+  switch (status) {
+    case 'completed': return 'text-emerald-500 bg-emerald-500/10';
+    case 'running': return 'text-amber-500 bg-amber-500/10';
+    case 'failed':
+    case 'timeout': return 'text-red-500 bg-red-500/10';
+    case 'cancelled': return 'text-muted-foreground bg-muted';
+    default: return 'text-blue-500 bg-blue-500/10'; // pending
+  }
+}
+
+function sessionStatusColor(status: string): string {
+  if (status === 'running') return 'text-emerald-500 bg-emerald-500/10';
+  if (status === 'error' || status === 'aborted') return 'text-red-500 bg-red-500/10';
+  return 'text-muted-foreground bg-muted'; // idle
 }
 
 // ── Shared UI Components ────────────────────────────────────
@@ -517,6 +606,16 @@ export function MonitoringClient() {
   const sseRef = useRef<EventSource | null>(null);
   const [sseConnected, setSseConnected] = useState(false);
 
+  // ── Agents & Jobs state (P0-8面板) ────────────────────────
+  const [agentPeek, setAgentPeek] = useState<AgentPeek | null>(null);
+  const [peekErr, setPeekErr] = useState('');
+  const [jobsHealth, setJobsHealth] = useState<JobsHealth | null>(null);
+  const [jobsList, setJobsList] = useState<JobInfo[]>([]);
+  const [evoStats, setEvoStats] = useState<EvoStats | null>(null);
+  const [chainTrace, setChainTrace] = useState<ChainTraceEntry[]>([]);
+  const [agentsLoading, setAgentsLoading] = useState(false);
+  const [agentsUpdated, setAgentsUpdated] = useState<Date | null>(null);
+
   // ── Detail selection state ─────────────────────────────────
   const [selectedOrganDetail, setSelectedOrganDetail] = useState<OrganResult | null>(null);
 
@@ -722,6 +821,49 @@ export function MonitoringClient() {
     setActivityLoading(false);
   };
 
+  // ── Agents & Jobs data fetching (P0-8面板，10s轮询) ────────
+
+  const fetchAgentsData = useCallback(async () => {
+    setAgentsLoading(true);
+    const acpBase = typeof window !== 'undefined'
+      ? `http://${window.location.hostname}:8092`
+      : 'http://127.0.0.1:8092';
+    // 各端点独立容错：单个服务挂掉不拖垮整个面板（fail-safe渲染"unavailable"）
+    const [peekRes, jhRes, jlRes, evoRes, glandRes] = await Promise.allSettled([
+      fetch(`${acpBase}/api/agent/peek`, { signal: AbortSignal.timeout(8000) }),
+      fetch(`${apiBase}/api/will/jobs/health`, { signal: AbortSignal.timeout(8000) }),
+      fetch(`${apiBase}/api/will/jobs?limit=20`, { signal: AbortSignal.timeout(8000) }),
+      fetch(`${apiBase}/api/heredity/health`, { signal: AbortSignal.timeout(8000) }),
+      fetch(`${apiBase}/api/gland/health`, { signal: AbortSignal.timeout(8000) }),
+    ]);
+    if (peekRes.status === 'fulfilled' && peekRes.value.ok) {
+      try { setAgentPeek(await peekRes.value.json()); setPeekErr(''); } catch {}
+    } else {
+      setPeekErr(`ACP proxy (${acpBase}) unreachable`);
+    }
+    if (jhRes.status === 'fulfilled' && jhRes.value.ok) {
+      try { setJobsHealth(await jhRes.value.json()); } catch {}
+    }
+    if (jlRes.status === 'fulfilled' && jlRes.value.ok) {
+      try { const d = await jlRes.value.json(); setJobsList(d.jobs || []); } catch {}
+    }
+    if (evoRes.status === 'fulfilled' && evoRes.value.ok) {
+      try { const d = await evoRes.value.json(); setEvoStats(d.evolution || null); } catch {}
+    }
+    if (glandRes.status === 'fulfilled' && glandRes.value.ok) {
+      try { const d = await glandRes.value.json(); setChainTrace(d.last_chain_trace || []); } catch {}
+    }
+    setAgentsUpdated(new Date());
+    setAgentsLoading(false);
+  }, [apiBase]);
+
+  useEffect(() => {
+    if (activeTab !== 'agents') return;
+    fetchAgentsData();
+    const timer = setInterval(fetchAgentsData, 10000);
+    return () => clearInterval(timer);
+  }, [activeTab, fetchAgentsData]);
+
   // ── Computed values ────────────────────────────────────────
 
   const sortedOrgans = diagData?.organs
@@ -761,6 +903,7 @@ export function MonitoringClient() {
     { id: 'system', label: 'System', icon: BarChart3, color: 'text-blue-500' },
     { id: 'benchmark', label: 'Benchmark', icon: Gauge, color: 'text-primary' },
     { id: 'activity', label: 'Activity', icon: Zap, color: 'text-emerald-500' },
+    { id: 'agents', label: 'Agents & Jobs', icon: Bot, color: 'text-cyan-500' },
     { id: 'architecture', label: 'Architecture', icon: Layers, color: 'text-purple-500' },
   ];
 
@@ -1770,6 +1913,265 @@ export function MonitoringClient() {
                 </div>
               </div>
             )}
+          </div>
+        )}
+
+        {/* ── Agents & Jobs Tab（P0-8后台作业面板 + goose peek三指标 + 进化管线 + 模型链路trace） ── */}
+        {activeTab === 'agents' && (
+          <div className="p-3 lg:p-6 space-y-3 lg:space-y-6">
+            {/* Toolbar */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="rounded-full bg-cyan-500/10 px-2 py-0.5 text-xs font-medium text-cyan-500">
+                {agentPeek?.summary.total_sessions ?? 0} sessions
+              </span>
+              <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-500">
+                {jobsHealth?.total ?? 0} jobs
+              </span>
+              <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                auto 10s
+              </span>
+              {agentsUpdated && (
+                <span className="text-[10px] text-muted-foreground flex items-center gap-0.5">
+                  <Clock size={9} /> {agentsUpdated.toLocaleTimeString()}
+                </span>
+              )}
+              <button
+                onClick={fetchAgentsData}
+                disabled={agentsLoading}
+                className="ml-auto flex items-center gap-1.5 rounded-lg border border-border px-2.5 py-1.5 text-xs hover:bg-muted transition-colors disabled:opacity-50"
+              >
+                {agentsLoading ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                Refresh
+              </button>
+            </div>
+
+            {/* Summary cards */}
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 lg:gap-4">
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+                <div className="text-xl lg:text-2xl font-bold">{agentPeek?.summary.total_sessions ?? 0}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  Agent Sessions
+                  {agentPeek?.summary.by_status && Object.keys(agentPeek.summary.by_status).length > 0 && (
+                    <span className="ml-1">
+                      ({Object.entries(agentPeek.summary.by_status).map(([k, v]) => `${k}:${v}`).join(' ')})
+                    </span>
+                  )}
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+                <div className="text-xl lg:text-2xl font-bold">{agentPeek?.summary.durable_turns_total ?? 0}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  Durable Turns · {agentPeek?.summary.buffered_total ?? 0} buffered
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+                <div className="text-xl lg:text-2xl font-bold">{agentPeek?.summary.steer_injected_total ?? 0}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  Steer Injected · {agentPeek?.summary.total_noops ?? 0} noops
+                </div>
+              </div>
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+                <div className="text-xl lg:text-2xl font-bold">{jobsHealth?.workers ?? 0}</div>
+                <div className="text-[10px] text-muted-foreground">
+                  Job Workers · {jobsHealth?.queue_size ?? 0} queued · {jobsHealth?.running ? 'running' : 'idle'}
+                </div>
+              </div>
+            </div>
+
+            {/* Card 1: Agent Sessions — goose peek三指标（status/durable_turns/idle）+ noop自报 + steer记账 */}
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Bot size={14} className="text-cyan-500" />
+                <h4 className="text-xs font-medium">Agent Sessions (goose peek)</h4>
+              </div>
+              {peekErr ? (
+                <p className="text-xs text-red-500">{peekErr}</p>
+              ) : !agentPeek || agentPeek.sessions.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground/50">
+                  <Bot className="w-8 h-8 mx-auto mb-1.5" />
+                  <p className="text-xs">No agent sessions recorded</p>
+                  <p className="text-[10px] mt-1">Sessions appear after a chat task runs via ACP proxy</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {agentPeek.sessions.map(s => (
+                    <div key={s.session_id} className="py-2.5 first:pt-0 last:pb-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', sessionStatusColor(s.status))}>
+                          {s.status}
+                        </span>
+                        <span className="text-xs font-mono truncate flex-1">{s.session_id}</span>
+                        {s.aborted > 0 && (
+                          <span className="rounded px-1.5 py-0.5 text-[10px] font-medium text-red-500 bg-red-500/10">
+                            aborted {s.aborted}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3 flex-wrap text-[10px] text-muted-foreground">
+                        <span>turns <span className="font-mono text-foreground">{s.durable_turns}</span></span>
+                        <span>idle <span className="font-mono text-foreground">{formatUptime(Math.floor(s.idle_seconds))}</span></span>
+                        <span>buffered <span className="font-mono text-foreground">{s.buffered}</span></span>
+                        <span>
+                          steer <span className="font-mono text-foreground">{s.steer_queued}→{s.steer_injected}</span>
+                        </span>
+                        <span className={cn('font-mono', s.noop_streak >= 3 ? 'text-amber-500' : 'text-foreground')}>
+                          noop {s.noop_streak} (total {s.total_noops}, max {s.max_noop_streak})
+                        </span>
+                        <span>tools <span className="font-mono text-foreground">{s.tool_calls_total}</span></span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Card 2: Background Jobs — will job_queue（agno模式：handler注册/worker池/幂等键） */}
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <Sparkles size={14} className="text-amber-500" />
+                <h4 className="text-xs font-medium">Background Jobs (will job_queue)</h4>
+                {jobsHealth && Object.entries(jobsHealth.by_status).map(([status, count]) => (
+                  <span key={status} className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', jobStatusColor(status))}>
+                    {status}: {count}
+                  </span>
+                ))}
+                {jobsHealth && (
+                  <span className="text-[10px] text-muted-foreground ml-auto">
+                    handlers: {jobsHealth.handlers.length > 0 ? jobsHealth.handlers.join(', ') : 'none registered'}
+                  </span>
+                )}
+              </div>
+              {jobsList.length === 0 ? (
+                <div className="py-8 text-center text-muted-foreground/50">
+                  <History className="w-8 h-8 mx-auto mb-1.5" />
+                  <p className="text-xs">No background jobs yet</p>
+                  <p className="text-[10px] mt-1">Submit via POST /api/will/jobs/submit or dream background=true</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border max-h-72 overflow-y-auto">
+                  {jobsList.map(j => (
+                    <div key={j.id} className="py-2 first:pt-0 last:pb-0">
+                      <div className="flex items-center gap-2">
+                        <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium shrink-0', jobStatusColor(j.status))}>
+                          {j.status}
+                        </span>
+                        <span className="text-xs font-medium truncate">{j.name}</span>
+                        <span className="text-[10px] font-mono text-muted-foreground truncate hidden lg:inline">{j.id}</span>
+                        <span className="text-[10px] text-muted-foreground ml-auto whitespace-nowrap flex items-center gap-1">
+                          {j.retries > 0 && <span className="text-amber-500">retry {j.retries}</span>}
+                          {j.duration_s > 0 && <span className="font-mono">{j.duration_s}s</span>}
+                          <Clock size={9} /> {formatTimestamp(j.created_at, t)}
+                        </span>
+                      </div>
+                      {j.status === 'failed' && j.error && (
+                        <p className="text-[10px] text-red-400 mt-0.5 truncate">{j.error}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Card 3: Evolution Pipeline — P0-7自进化闭环状态（声明→审批→落盘→回滚+熔断） */}
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <Target size={14} className="text-purple-500" />
+                <h4 className="text-xs font-medium">Evolution Pipeline (heredity)</h4>
+                {evoStats ? (
+                  <>
+                    {evoStats.breaker?.open ? (
+                      <span className="rounded px-1.5 py-0.5 text-[10px] font-medium text-red-500 bg-red-500/10">
+                        breaker open: {evoStats.breaker.error_type} ×{evoStats.breaker.consecutive}
+                      </span>
+                    ) : (
+                      <span className="rounded px-1.5 py-0.5 text-[10px] font-medium text-emerald-500 bg-emerald-500/10">
+                        breaker closed
+                      </span>
+                    )}
+                    <span className="text-[10px] text-muted-foreground ml-auto">
+                      {evoStats.triggers} triggers · ledger {Object.values(evoStats.ledger_events || {}).reduce((a, b) => a + b, 0)} events
+                    </span>
+                  </>
+                ) : (
+                  <span className="text-[10px] text-muted-foreground ml-auto">unavailable</span>
+                )}
+              </div>
+              {evoStats ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    {Object.entries(evoStats.proposals || {}).map(([status, count]) => (
+                      <span
+                        key={status}
+                        className={cn(
+                          'rounded px-1.5 py-0.5 text-[10px] font-medium',
+                          status === 'applied' ? 'text-emerald-500 bg-emerald-500/10'
+                            : status === 'rejected' || status === 'apply_failed' ? 'text-red-500 bg-red-500/10'
+                            : status === 'pending' ? 'text-blue-500 bg-blue-500/10'
+                            : 'text-muted-foreground bg-muted',
+                        )}
+                      >
+                        {status}: {count}
+                      </span>
+                    ))}
+                  </div>
+                  <GaugeBar
+                    value={evoStats.pending}
+                    max={evoStats.max_pending || 20}
+                    label={`Proposal Budget (pending ${evoStats.pending}/${evoStats.max_pending || 20})`}
+                  />
+                  {Object.keys(evoStats.ledger_events || {}).length > 0 && (
+                    <div className="flex items-center gap-2 flex-wrap text-[10px] text-muted-foreground">
+                      {Object.entries(evoStats.ledger_events).map(([ev, n]) => (
+                        <span key={ev} className="font-mono">{ev}:{n}</span>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-xs text-muted-foreground/50 py-4 text-center">Evolution stats unavailable</p>
+              )}
+            </div>
+
+            {/* Card 4: Model Chain Trace — gland链路trace（"哪个模型在干活/为什么失败"） */}
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Zap size={14} className="text-blue-500" />
+                <h4 className="text-xs font-medium">Model Chain Trace (gland)</h4>
+              </div>
+              {chainTrace.length === 0 ? (
+                <div className="py-6 text-center text-muted-foreground/50">
+                  <Zap className="w-8 h-8 mx-auto mb-1.5" />
+                  <p className="text-xs">No LLM chain trace recorded yet</p>
+                  <p className="text-[10px] mt-1">Appears after the first gland chat/embed call</p>
+                </div>
+              ) : (
+                <div className="divide-y divide-border">
+                  {chainTrace.map((e, i) => (
+                    <div key={i} className="py-2 first:pt-0 last:pb-0 flex items-center gap-2 text-xs">
+                      <span
+                        className={cn(
+                          'rounded px-1.5 py-0.5 text-[10px] font-medium shrink-0',
+                          e.error ? 'text-red-500 bg-red-500/10' : 'text-emerald-500 bg-emerald-500/10',
+                        )}
+                      >
+                        {e.error ? 'fail' : 'ok'}
+                      </span>
+                      <span className="font-mono">{String(e.provider ?? '?')}</span>
+                      <span className="text-muted-foreground truncate">{String(e.model ?? '')}</span>
+                      {e.pass !== undefined && (
+                        <span className="text-[10px] text-muted-foreground">pass {String(e.pass)}</span>
+                      )}
+                      {e.error && (
+                        <span className="text-[10px] text-red-400 truncate ml-auto" title={String(e.error)}>
+                          {String(e.error).slice(0, 100)}
+                        </span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         )}
 
