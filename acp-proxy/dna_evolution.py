@@ -691,7 +691,14 @@ class DNAStrand:
             if not partner_plans_file.exists():
                 return
             with open(partner_plans_file, "r") as f:
-                plans_data = json.load(f)
+                content = f.read().strip()
+            # 空文件/写入竞态容错: 0字节或空白文件=无计划，不是错误
+            # (此前json.loads空串→"Expecting value"error日志刷屏，误报为故障)
+            if not content:
+                return
+            plans_data = json.loads(content)
+            if not plans_data:
+                return
 
             existing_ids = {p.plan_id for p in self._partner_plans_for_me}
             for pd in plans_data:
