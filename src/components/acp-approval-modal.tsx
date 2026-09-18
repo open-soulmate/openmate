@@ -57,8 +57,12 @@ const RISK_CONFIG: Record<string, { color: string; bgColor: string; borderColor:
 const TOOL_LABELS: Record<string, string> = {
   browser: '浏览器操作',
   shell: 'Shell命令执行',
+  terminal: '终端命令执行',
+  execute_code: '代码执行',
   write_file: '文件写入',
+  patch: '文件修改',
   delete_file: '文件删除',
+  read_file: '文件读取',
 };
 
 export function AcpApprovalModal({ request, onApprove, onReject, onClose }: AcpApprovalModalProps) {

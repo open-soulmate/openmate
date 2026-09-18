@@ -90,6 +90,7 @@ from agent.context_injector import ContextInjector
 from agent.file_index import SessionFileIndex
 from agent.permission import PermissionManager
 from agent.permissions import ToolPolicy
+from agent.permission_gate import PermissionGate
 from agent.tool_errors import ToolError, ToolErrorHandler
 from agent.writer_fence import SessionWriterFence, WriteAction
 from agent.context import SessionContext
@@ -203,6 +204,7 @@ class SoulMateAgent:
         self._file_index = SessionFileIndex()
         # 权限管理器
         self._permission_manager = PermissionManager()
+        self._permission_gate = PermissionGate()  # P0-3 工具级权限门禁（opensoul immune引擎客户端）
         # 工具策略（per-tool配置，按需创建）
         self._tool_policies: dict = {}
         # 分层超时配置
@@ -764,6 +766,34 @@ You can send files to the user natively: to deliver a file, write a brief confir
                         except json.JSONDecodeError:
                             func_args = {}
 
+                        # ── P0-3 工具权限引擎门禁（AgentScope PermissionEngine×kilocode分层）──
+                        # opensoul immune评估：deny=合成阻断结果（open-webui三态，loop不断）；
+                        # ask=ACP v1.0标准 session/request_permission 真人审批（超时/拒绝=阻断）
+                        gate_result = await self._permission_gate.check(
+                            session_id, func_name, func_args,
+                            working_dir=str(self._session_cwds.get(session_id, self._project_root) or ""),
+                            request_approval=(
+                                lambda tn, ta, dec, _sid=session_id:
+                                    self._request_tool_approval(_sid, tn, ta, dec)),
+                        )
+                        if not gate_result.allowed:
+                            blocked_reason = gate_result.blocked_reason
+                            logger.warning(
+                                f"[{session_id}] permission-gate {gate_result.behavior}: "
+                                f"{func_name} (source={gate_result.rule_source}, mode={gate_result.mode})")
+                            tool_results.append({
+                                "tool_call_id": tc.get("id", ""),
+                                "role": "tool",
+                                "content": truncate_tool_result(blocked_reason),
+                            })
+                            all_tool_calls.append({
+                                "name": func_name,
+                                "arguments": func_args,
+                                "result_preview": blocked_reason[:200],
+                                "permission": gate_result.behavior,
+                            })
+                            continue
+
                         # ── P2工具执行增强：缓存+审计 ─────────────────
                         tool_start = time.time()
                         # 工具结果缓存检查（只缓存只读工具）
@@ -1122,6 +1152,71 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 break
 
         return full_response, all_tool_calls
+
+    async def _request_tool_approval(
+        self, session_id: str, tool_name: str, tool_args: dict, decision: dict
+    ) -> bool:
+        """P0-3: ASK决策 → ACP v1.0标准 session/request_permission 真人审批
+
+        通过acp官方库 Client.request_permission 发起agent→client请求（wire method:
+        session/request_permission），前端AcpApprovalModal弹窗响应
+        {"outcome":{"outcome":"selected","optionId":"allow_once"}} / cancelled。
+        与engine.py旧PermissionManager的"session/request_permission事件"不同：
+        前者从未接线且前端无处理器；本方法走的是ACP v1.0标准请求-响应协议。
+        """
+        if self._client is None:
+            return False
+        try:
+            from acp.schema import ContentToolCallContent, PermissionOption, TextContentBlock, ToolCallUpdate
+
+            risk = str(decision.get("risk", "medium"))
+            reason = decision.get("decision_reason", "") or decision.get("message", "")
+            if tool_name in ("terminal", "execute_code"):
+                kind = "execute"
+            elif tool_name in ("write_file", "patch"):
+                kind = "edit"
+            elif tool_name in ("read_file", "read_image", "vision_analyze", "search_files"):
+                kind = "read"
+            else:
+                kind = "other"
+            description = (
+                f"OpenSoul权限引擎要求人工确认（risk={risk}）\n"
+                f"原因: {reason}\n"
+                f"参数: {json.dumps(tool_args, ensure_ascii=False)[:400]}")
+            tool_call = ToolCallUpdate(
+                tool_call_id=f"perm-{str(decision.get('decision_id', ''))[:12]}",
+                title=tool_name,
+                kind=kind,
+                content=[ContentToolCallContent(
+                    type="content",
+                    content=TextContentBlock(type="text", text=description),  # type: ignore[arg-type]
+                )],
+                raw_input=tool_args,
+            )
+            options = [
+                PermissionOption(option_id="allow_once", kind="allow_once",
+                                 name=f"允许 {tool_name}（仅此一次）"),
+                PermissionOption(option_id="reject_once", kind="reject_once",
+                                 name=f"拒绝 {tool_name}"),
+            ]
+            resp = await self._client.request_permission(
+                options=options, session_id=session_id, tool_call=tool_call)
+            # 兼容pydantic模型与原始dict两种返回
+            if isinstance(resp, dict):
+                outcome_obj = resp.get("outcome") or {}
+                if isinstance(outcome_obj, dict):
+                    return outcome_obj.get("outcome") == "selected" and str(
+                        outcome_obj.get("optionId") or outcome_obj.get("option_id") or "").startswith("allow")
+                return False
+            outcome_obj = getattr(resp, "outcome", None)
+            if outcome_obj is None:
+                return False
+            selected = getattr(outcome_obj, "outcome", "") == "selected"
+            option_id = str(getattr(outcome_obj, "option_id", "") or "")
+            return selected and option_id.startswith("allow")
+        except Exception as e:
+            logger.error(f"[permission-gate] approval request failed: {e}", exc_info=True)
+            return False
 
     # ── ACP 协议方法 ──────────────────────────────────────────────
 

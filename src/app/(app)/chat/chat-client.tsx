@@ -261,6 +261,12 @@ function useAcpWebSocket(params: {
   const streamingSessionIdRef = useRef<string | null>(null);
   // ACP审批弹窗状态
   const [approvalRequest, setApprovalRequest] = useState<AcpApprovalRequest | null>(null);
+  // P0-3: ACP v1.0标准 session/request_permission 的JSON-RPC请求上下文（agent→client请求-响应）
+  const approvalRpcRef = useRef<{
+    id: string | number;
+    ws: WebSocket;
+    allowOptionId: string;
+  } | null>(null);
 
   // Get or create per-session state
   const getSessionState = useCallback((sessionId: string) => {
@@ -732,6 +738,32 @@ function useAcpWebSocket(params: {
             }
           }
 
+          // P0-3: ACP v1.0标准工具审批 — agent→client的 session/request_permission 请求
+          // （opensoul免疫权限引擎 ask决策 → SoulMateAgent经acp库发起 → 弹窗答复JSON-RPC result）
+          if (data.method === 'session/request_permission' && data.id != null) {
+            const permParams = data.params || {};
+            const permToolCall = permParams.toolCall || permParams.tool_call || {};
+            const permDesc = Array.isArray(permToolCall.content)
+              ? permToolCall.content.map((c: any) => c?.content?.text || '').join('\n').trim()
+              : '';
+            const permRisk = /risk=(high|critical)/.test(permDesc)
+              ? 'high'
+              : /risk=medium/.test(permDesc) ? 'medium' : 'low';
+            const allowOpt = (permParams.options || []).find((o: any) => o.kind?.startsWith('allow'));
+            approvalRpcRef.current = {
+              id: data.id,
+              ws,
+              allowOptionId: allowOpt?.optionId || 'allow_once',
+            };
+            setApprovalRequest({
+              request_id: `perm:${data.id}`,
+              tool_name: permToolCall.title || 'terminal',
+              risk_level: permRisk,
+              description: permDesc || '代理请求执行工具，需要你的确认',
+            });
+            console.log('[ACP] session/request_permission:', data.id, permToolCall.title);
+          }
+
           // ACP v1.0 session/update
           if (data.method === 'session/update') {
             const p = data.params || {};
@@ -878,7 +910,26 @@ function useAcpWebSocket(params: {
 
   // 发送ACP审批决议
   const sendApproval = useCallback((requestId: string, action: 'approve' | 'reject', comment: string) => {
-    // Use the active session's WebSocket for approval — read from store (single source of truth)
+    // P0-3: ACP v1.0标准 request_permission — 以JSON-RPC响应直接答复agent
+    // result: {"outcome":{"outcome":"selected","optionId":"allow_once"}} / {"outcome":{"outcome":"cancelled"}}
+    if (requestId.startsWith('perm:') && approvalRpcRef.current) {
+      const ctx = approvalRpcRef.current;
+      approvalRpcRef.current = null;
+      const approved = action === 'approve';
+      ctx.ws.send(JSON.stringify({
+        jsonrpc: '2.0',
+        id: ctx.id,
+        result: {
+          outcome: approved
+            ? { outcome: 'selected', optionId: ctx.allowOptionId }
+            : { outcome: 'cancelled' },
+        },
+      }));
+      console.log(`[ACP] request_permission #${String(ctx.id)} → ${action}`, comment || '');
+      setApprovalRequest(null);
+      return;
+    }
+    // 旧版 human.approval.required 流程：Use the active session's WebSocket for approval — read from store (single source of truth)
     const currentActiveSessionId = useAppStore.getState().activeSessionId;
     if (!currentActiveSessionId) {
       console.error('[ACP] 无法发送审批决议：无活跃会话');
