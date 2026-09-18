@@ -1,8 +1,8 @@
 "use client";
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import {
-  Moon, Sun, Palette, Monitor, Save, Bot, Cpu, Globe, Key,
+  Moon, Sun, Palette, Monitor, Save, Bot, Cpu, Globe, Key, Route,
   HardDrive, Info, Wrench, Sliders, Check, X,
   RefreshCw, Download, Upload, Trash2, ExternalLink, Terminal,
   Wifi, FolderOpen, Gauge, RotateCcw, Zap, ChevronRight,
@@ -20,7 +20,7 @@ import { PageLayout } from '@/components/page-layout';
 import { SettingCard, Toggle, SelectInput, ButtonGroup, Slider, TextInput } from "@opensoulmate/openface";
 import { LeftPanel } from '@/components/left-panel';
 
-type SectionId = "appearance" | "agent" | "model" | "tools" | "storage" | "organs" | "account" | "about";
+type SectionId = "appearance" | "agent" | "model" | "modelRouter" | "tools" | "storage" | "organs" | "account" | "about";
 
 /** 自定义主题的 9 个核心颜色及其 CSS 变量名、默认值 */
 const CUSTOM_COLOR_DEFS: { key: string; var: string; default: string }[] = [
@@ -81,10 +81,10 @@ const llmProviders = [
   { value: "gemini", label: "Google Gemini", models: ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"], baseUrl: "https://generativelanguage.googleapis.com/v1beta" },
   
   // 国内模型
-  { value: "mimo", label: "MiMo (小米)", models: ["mimo-v2.5-pro", "mimo-v2.5", "mimo-auto", "mimo-v2-pro"], baseUrl: "https://api.xiaomi.com/v1", 
+  { value: "mimo", label: "MiMo (小米)", models: ["mimo-v2.5-pro", "mimo-v2.5", "mimo-auto", "mimo-v2-pro"], baseUrl: "https://api.xiaomimimo.com/v1", 
     apiVariants: [
-      { id: "standard", label: "标准API (按量付费)", baseUrl: "https://api.xiaomi.com/v1" },
-      { id: "token-plan", label: "Token Plan (订阅制)", baseUrl: "https://api-tokenplan.xiaomi.com/v1" },
+      { id: "standard", label: "标准API (按量付费)", baseUrl: "https://api.xiaomimimo.com/v1" },
+      { id: "token-plan", label: "Token Plan (订阅制)", baseUrl: "https://token-plan-cn.xiaomimimo.com/v1" },
     ]
   },
   { value: "deepseek", label: "DeepSeek (深度求索)", models: ["deepseek-chat", "deepseek-coder", "deepseek-r1", "deepseek-v3"], baseUrl: "https://api.deepseek.com/v1",
@@ -196,7 +196,7 @@ export function SettingsClient() {
     const loadRoutingConfig = async () => {
       try {
         const apiBase = getApiBaseUrl();
-        const res = await fetch(`${apiBase}/api/routing/config`);
+        const res = await fetch(`${apiBase}/api/model-router/routing-config`);
         if (res.ok) {
           const data = await res.json();
           setRoutingConfig(data);
@@ -213,7 +213,7 @@ export function SettingsClient() {
     setRoutingLoading(true);
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/routing/config`, {
+      const res = await fetch(`${apiBase}/api/model-router/routing-config`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(routingConfig),
@@ -259,16 +259,17 @@ export function SettingsClient() {
   const isMobile = useIsMobile();
   const [showSidebar, setShowSidebar] = useState(false);
 
-  const sections: { id: SectionId; label: string; icon: React.ElementType }[] = [
+  const sections = useMemo<{ id: SectionId; label: string; icon: React.ElementType }[]>(() => [
     { id: "appearance", label: t("settings.appearance"), icon: Monitor },
     { id: "model", label: t("settings.modelConfig"), icon: Cpu },
+    { id: "modelRouter", label: t("settings.modelRouter"), icon: Route },
     { id: "agent", label: "Agent", icon: Bot },
     { id: "tools", label: t("settings.toolPermissions"), icon: Wrench },
     { id: "storage", label: t("settings.storage"), icon: HardDrive },
     { id: "organs", label: t("settings.organManagement"), icon: Zap },
     { id: "account", label: t("settings.account"), icon: User },
     { id: "about", label: t("settings.about"), icon: Info },
-  ];
+  ], [t]);
 
 
 
@@ -281,12 +282,14 @@ export function SettingsClient() {
   const [active, setActive] = useState<SectionId>(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "") as SectionId;
-      if (["appearance","agent","model","tools","storage","account","about"].includes(hash)) return hash;
+      if (["appearance","agent","model","modelRouter","tools","storage","account","about"].includes(hash)) return hash;
     }
     return "appearance";
   });
   const [saved, setSaved] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
+  const [testedModels, setTestedModels] = useState<Set<string>>(new Set());
+  const [fetchedModels, setFetchedModels] = useState<string[]>([]);
   const [loadingConfig, setLoadingConfig] = useState(true);
   const [backendVersion, setBackendVersion] = useState<string>("");
   const [customColors, setCustomColors] = useState<CustomColors>(loadCustomColors);
@@ -328,11 +331,32 @@ export function SettingsClient() {
           const llmRes = await fetch(`${apiBase}/api/llm/config`);
           if (llmRes.ok) {
             const llmData = await llmRes.json();
+            // Detect provider from base_url
+            let detectedProvider = "";
+            if (llmData.base_url) {
+              const match = llmProviders.find(p => llmData.base_url.startsWith(p.baseUrl));
+              if (match) detectedProvider = match.value;
+              else detectedProvider = "custom";
+            }
             setSettings(s => ({
               ...s,
               ...(llmData.model ? { model: llmData.model } : {}),
               ...(llmData.base_url ? { url: llmData.base_url } : {}),
+              ...(llmData.api_key ? { ["apiKey"]: llmData.api_key } : {}),
+              ...(detectedProvider ? { llmProvider: detectedProvider } : {}),
             }));
+            // Persist loaded backend config to localStorage
+            if (detectedProvider && llmData.base_url) {
+              try {
+                const key = `saved-llm-${detectedProvider}-${llmData.base_url}`;
+                if (!localStorage.getItem(key)) {
+                  localStorage.setItem(key, JSON.stringify({
+                    provider: detectedProvider, url: llmData.base_url,
+                    model: llmData.model || "", hasKey: !!llmData.api_key,
+                  }));
+                }
+              } catch {}
+            }
           }
         } catch {}
         // Load version
@@ -352,7 +376,8 @@ export function SettingsClient() {
           const routerData = await routerRes.json();
           setRouterMode(routerData.mode || "balance");
           // 根据当前模式获取对应的模型列表
-          const modeModels = routerData.models?.[routerData.mode] || routerData.models?.balance || [];
+          const mm = routerData.models;
+          const modeModels = Array.isArray(mm) ? mm : (mm?.[routerData.mode] || mm?.balance || []);
           setRouterModels(modeModels);
         }
       } catch {}
@@ -401,8 +426,12 @@ export function SettingsClient() {
         }
       />
     );
+  }, [active, sections, backendVersion, setPageSidebar, t, router]);
+
+  // Cleanup sidebar ONLY on unmount
+  useEffect(() => {
     return () => setPageSidebar(null);
-  }, [active, sections, backendVersion, setPageSidebar, t]);
+  }, [setPageSidebar]);
 
   const update = useCallback(<K extends keyof SettingsState>(key: K, value: SettingsState[K]) => {
     // Side effects 先执行（在setState外面）
@@ -458,6 +487,14 @@ export function SettingsClient() {
 
       case "model":
         setLLMConfig({ provider: settings.llmProvider, apiKey: "", url: settings.url, model: settings.model });
+        // Save to persistent config list (multiple configs coexist)
+        try {
+          const key = `saved-llm-${settings.llmProvider}-${settings.url}`;
+          localStorage.setItem(key, JSON.stringify({
+            provider: settings.llmProvider, url: settings.url,
+            model: settings.model, hasKey: !!(settings.apiKey),
+          }));
+        } catch {}
         // Save LLM config to backend
         try {
           await fetch(`${apiBase}/api/llm/config`, {
@@ -473,7 +510,7 @@ export function SettingsClient() {
         } catch {}
         // Save routing config to backend
         try {
-          await fetch(`${apiBase}/api/routing/config`, {
+          await fetch(`${apiBase}/api/model-router/routing-config`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify(routingConfig),
@@ -638,23 +675,52 @@ export function SettingsClient() {
     }
   }
 
+  async function fetchModelsFromApi() {
+    if (!settings.url) return;
+    try {
+      const apiBase = getApiBaseUrl();
+      const res = await fetch(`${apiBase}/api/llm/models`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          base_url: settings.url,
+          api_key: settings.apiKey || undefined,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.models?.length) {
+          setFetchedModels(data.models);
+        }
+      }
+    } catch {}
+  }
+
   async function handleTestConnection() {
     setTestStatus("testing");
     try {
       const apiBase = getApiBaseUrl();
+      const testPayload = {
+        base_url: settings.url || undefined,
+        api_key: settings.apiKey || undefined,
+        model: settings.model || undefined,
+      };
+      console.log("[TestConnection] provider:", settings.llmProvider, "base_url:", testPayload.base_url, "model:", testPayload.model, "api_key_len:", testPayload.api_key?.length || 0);
       const res = await fetch(`${apiBase}/api/llm/test`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          base_url: settings.url || undefined,
-          api_key: settings.apiKey || undefined,
-          model: settings.model || undefined,
-        }),
+        body: JSON.stringify(testPayload),
       });
       if (res.ok) {
         const data = await res.json();
         if (data.status === "ok") {
           setTestStatus("success");
+          const testKey = settings.llmProvider === "custom"
+            ? `custom-${settings.model}@${settings.url}`
+            : settings.llmProvider;
+          setTestedModels(prev => new Set(prev).add(testKey));
+          // Auto-fetch available models from API
+          fetchModelsFromApi();
           toast.success(
             t("settings.testSuccess") || "连接成功",
             `${data.model} @ ${data.base_url} — ${data.reply}`
@@ -681,29 +747,38 @@ export function SettingsClient() {
   }
 
   // ─── 切换模型路由模式 ─────────────────────────────────────────
+  // 预定义的各模式模型列表（乐观更新，避免加载闪烁）
+  const ROUTER_MODE_MODELS: Record<string, string[]> = {
+    cost: ["mimo-7b-local", "mimo-v2.5-lite"],
+    balance: ["mimo-v2.5-pro", "mimo-7b-local"],
+    intelligence: ["mimo-v2.5-pro", "mimo-v2.5-pro-beta"],
+    auto: ["mimo-v2.5-pro", "mimo-7b-local", "mimo-v2.5-lite"],
+  };
+
   const handleRouterModeChange = useCallback(async (mode: string) => {
-    setRouterLoading(true);
+    // 立即更新UI（乐观更新，无闪烁）
+    setRouterMode(mode);
+    setRouterModels(ROUTER_MODE_MODELS[mode] || []);
+    // 后台同步到后端
     try {
       const apiBase = getApiBaseUrl();
-      const res = await fetch(`${apiBase}/api/model-router/mode`, {
+      await fetch(`${apiBase}/api/model-router/mode`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ mode }),
       });
-      if (res.ok) {
-        const data = await res.json();
-        setRouterMode(mode);
-        // 更新当前模式的模型列表
-        const modeModels = data.models?.[mode] || [];
-        setRouterModels(modeModels);
-      }
-    } catch {} finally {
-      setRouterLoading(false);
-    }
+    } catch {}
   }, []);
 
   const currentProvider = llmProviders.find((p) => p.value === settings.llmProvider);
-  const modelOptions = currentProvider?.models.length ? currentProvider.models.map((m) => ({ value: m, label: m })) : [{ value: settings.model, label: settings.model || t("settings.inputModelName") }];
+  const baseModelOptions = currentProvider?.models.length ? currentProvider.models.map((m) => ({ value: m, label: m })) : [{ value: settings.model, label: settings.model || t("settings.inputModelName") }];
+  // Merge API-fetched models (includes beta models user has access to)
+  const modelOptions = (() => {
+    if (!fetchedModels.length) return baseModelOptions;
+    const existing = new Set(baseModelOptions.map(o => o.value));
+    const extra = fetchedModels.filter(m => !existing.has(m)).map(m => ({ value: m, label: `${m} ★` }));
+    return [...baseModelOptions, ...extra];
+  })();
 
   // ─── 已配置模型状态 ─────────────────────────────────────────
   interface ConfiguredModel {
@@ -716,17 +791,40 @@ export function SettingsClient() {
   }
 
   const configuredModels: ConfiguredModel[] = [
-    // 从localStorage读取已配置的模型
-    ...llmProviders.map(p => {
-      const stored = typeof window !== 'undefined' ? localStorage.getItem(`llm_${p.value}_key`) : null;
+    // 预设模型
+    ...llmProviders.filter(p => p.value !== "custom").map(p => {
+      const isCurrent = p.value === settings.llmProvider;
+      const hasKey = isCurrent && !!settings.apiKey;
+      const tested = testedModels.has(p.value);
+      // Check all saved configs for this provider (any URL)
+      let isConfigured = hasKey;
+      if (!isConfigured && typeof window !== "undefined") {
+        try {
+          for (let i = 0; i < localStorage.length; i++) {
+            const k = localStorage.key(i);
+            if (k && k.startsWith(`saved-llm-${p.value}-`)) {
+              const cfg = JSON.parse(localStorage.getItem(k) || "null");
+              if (cfg?.hasKey) { isConfigured = true; break; }
+            }
+          }
+        } catch {}
+      }
       return {
         id: p.value,
         name: p.label,
         provider: p.value,
-        status: (stored ? 'configured' : 'unconfigured') as 'configured' | 'unconfigured',
-        isDefault: p.value === settings.llmProvider,
+        status: (tested ? 'active' : isConfigured ? 'configured' : 'unconfigured') as 'active' | 'configured' | 'unconfigured',
+        isDefault: isCurrent,
       };
     }),
+    // 自定义模型（排在预设后面）
+    ...customProviders.map(cp => ({
+      id: cp.id,
+      name: cp.name,
+      provider: 'custom',
+      status: (testedModels.has(`custom-${cp.model}@${cp.url}`) ? 'active' : 'configured') as 'active' | 'configured',
+      isDefault: settings.llmProvider === 'custom' && settings.model === cp.model && settings.url === cp.url,
+    })),
   ];
 
   // Mobile sidebar navigation (PC sidebar is registered via setPageSidebar into the app shell)
@@ -903,12 +1001,14 @@ export function SettingsClient() {
                       <div className="flex items-center gap-1">
                         <div className={`
                           w-1.5 h-1.5 rounded-full flex-shrink-0
-                          ${model.status === 'configured' ? 'bg-green-500' : 'bg-gray-300'}
+                          ${model.status === 'active' ? 'bg-green-500' : model.status === 'configured' ? 'bg-yellow-500' : 'bg-gray-300'}
                         `} />
                         <span className="text-[10px] text-muted-foreground">
-                          {model.status === 'configured'
-                            ? (t("settings.modelConfigured") || "已配置")
-                            : (t("settings.modelUnconfigured") || "未配置")
+                          {model.status === 'active'
+                            ? (t("settings.modelActive") || "已验证")
+                            : model.status === 'configured'
+                              ? (t("settings.modelConfigured") || "已配置")
+                              : (t("settings.modelUnconfigured") || "未配置")
                           }
                         </span>
                       </div>
@@ -951,10 +1051,22 @@ export function SettingsClient() {
                     <p className="text-xs text-muted-foreground mb-1.5">
                       {t("settings.model") || "模型"}
                     </p>
-                    {settings.llmProvider === "custom" ? (
-                      <TextInput value={settings.model} onChange={(v) => update("model", v)} placeholder={t("settings.inputModelName") || "输入模型名称"} />
+                    {settings.llmProvider === "custom" || !modelOptions.some(o => o.value === settings.model) ? (
+                      <div className="flex gap-1.5">
+                        <TextInput value={settings.model} onChange={(v) => update("model", v)} placeholder={t("settings.inputModelName") || "输入模型名称"} />
+                        {settings.llmProvider !== "custom" && modelOptions.length > 0 && (
+                          <button
+                            onClick={() => update("model", modelOptions[0].value)}
+                            className="px-2 py-1.5 rounded-lg border border-border text-[10px] text-muted-foreground hover:bg-muted shrink-0"
+                          >
+                            {t("settings.backToList") || "列表"}
+                          </button>
+                        )}
+                      </div>
                     ) : (
-                      <SelectInput value={settings.model} onChange={(v) => update("model", v)} options={modelOptions} />
+                      <div className="flex gap-1.5">
+                        <SelectInput value={settings.model} onChange={(v) => { if (v === "__custom__") { update("model", ""); } else { update("model", v); } }} options={[...modelOptions, { value: "__custom__", label: `+ ${t("settings.customModelName") || "自定义模型名"}...` }]} />
+                      </div>
                     )}
                   </div>
 
@@ -1066,7 +1178,12 @@ export function SettingsClient() {
               <SettingCard title="Max Tokens" description={t("settings.maxTokensDesc")}>
                 <Slider value={settings.maxTokens} onChange={(v) => update("maxTokens", v)} min={256} max={131072} step={256} />
               </SettingCard>
+            </>
+          )}
 
+          {/* ─── 模型路由 ──────────────────────────────────────── */}
+          {active === "modelRouter" && (
+            <>
               {/* ─── 模型路由器配置 ─────────────────────────────────── */}
               <SettingCard
                 title={t("settings.modelRouter")}
@@ -1084,37 +1201,25 @@ export function SettingsClient() {
                   ]}
                 />
                 {/* 当前选中模式的描述文字 */}
-                <p className="mt-2 text-xs text-muted-foreground">
+                <p className="mt-2 text-xs text-muted-foreground transition-all duration-200" style={{ minHeight: '20px' }}>
                   {t(`settings.router${routerMode.charAt(0).toUpperCase() + routerMode.slice(1)}Desc`)}
                 </p>
                 {/* 当前模式的模型列表 — 小标签展示 */}
-                {routerModels.length > 0 && (
-                  <div className="mt-3">
-                    <p className="text-[10px] text-muted-foreground mb-1.5">{t("settings.routerModels")}</p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {routerModels.map((model) => (
-                        <span
-                          key={model}
-                          className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-mono text-primary"
-                        >
-                          {model}
-                        </span>
-                      ))}
-                    </div>
+                <div className="mt-3" style={{ minHeight: '52px' }}>
+                  <p className="text-[10px] text-muted-foreground mb-1.5">{t("settings.routerModels")}</p>
+                  <div className="flex flex-wrap gap-1.5 transition-all duration-200">
+                    {routerModels.map((model) => (
+                      <span
+                        key={model}
+                        className="inline-flex items-center rounded-md bg-primary/10 px-2 py-0.5 text-[10px] font-mono text-primary"
+                      >
+                        {model}
+                      </span>
+                    ))}
                   </div>
-                )}
-                {/* 加载状态指示器 */}
-                {routerLoading && (
-                  <div className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                    <RefreshCw size={10} className="animate-spin" />
-                    <span>...</span>
-                  </div>
-                )}
+                </div>
+                {/* Loading indicator removed - optimistic update */}
               </SettingCard>
-            </>
-          )}
-
-
               {/* ─── 自动路由策略设置 ──────────────────────────────── */}
               <SettingCard
                 title={t("settings.autoRouting") || "自动路由策略"}
@@ -1259,6 +1364,18 @@ export function SettingsClient() {
                   </>
                 )}
               </SettingCard>
+
+              {/* 保存按钮 */}
+              <div className="flex justify-end">
+                <button
+                  onClick={handleSaveRoutingConfig}
+                  className="px-4 py-2 bg-primary text-primary-foreground rounded-md text-sm hover:bg-primary/90 transition-colors"
+                >
+                  {t("common.save") || "保存"}
+                </button>
+              </div>
+            </>
+          )}
 
           {/* ─── Agent ───────────────────────────────────────── */}
           {active === "agent" && (
