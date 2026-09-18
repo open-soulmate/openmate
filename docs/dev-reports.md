@@ -327,3 +327,39 @@
 - API：opensoul /api/immune/permission/* 9端点（check/mode/rules CRUD/audit/audit outcome/stats），服务已重启加载
 **验证结果**：opensoul pytest 49/49通过（5模式矩阵、findLast分层、explore下allow不可授予写、dont_ask永不ask、审计provenance、outcome校验）；回归test_immune+test_moderator+test_permission 33/33通过；acp-proxy gate测试18/18（审批三态/超时/缓存/降级），test_tool_output_handler 17/17回归（test_safety_1000的7个ERROR为既有fixture缺陷`fixture 'c' not found`，与本次无关）；npm run build通过且前端:3000已重启、served build确认含session/request_permission处理器；acp-proxy integration_test score=1.0（7项全过）；真实opensoul端到端：read_file→allow、rm -rf /→deny、无人值守ask→deny带provenance，opensoul审计记录全部决策（stats: 37 active规则/8 hard）
 **commit**：opensoul a37b7b26 + openmate 398d4e2a
+## [2026-09-18 21:40] P0-7 自进化闭环：LobeChat声明式意图+审批落盘+护栏+回滚+记账
+**目标**：解决SUMMARY.md P0-7差距——"但是一直没有进化啊"的机制化解法。OpenSoul heredity/self_evolution.py（182行）只有分析：analyze_and_evolve()把发现写进evolution_log日志表后即结束，无提案、无触发器、无审批、无护栏、无回滚、无记账——进化发现无人审批也无处落地，等于没有进化。第一阶段路线图4项P0中最后一项未实现的机制缺口。
+**调研来源**：
+- LobeChat declareSelfFeedbackIntent（SUMMARY.md P0-7"本轮单设计价值最高"）：agent只"声明改进意图"+confidence+evidenceRefs稳定id，绝不动手；reviewer负责去重/审批/落盘——"高召回声明+严格审批"解掉不敢改/乱改两个死法
+- claude-code ProposeSkills：提议必须给evidence+完整内容，用户审阅后才保存；无证据直接拒绝（但拒绝必须可见，mem0"失败不静默"）
+- agno（evolution-engine-patterns.md §1.4/§5.6）：错误风暴熔断（连续同类型错误≥N即停，"别把系统性故障记成N条独立失败"）+ run_continuation_blocked"审批人≠发起人"
+- CowAgent（SUMMARY.md P0-7）：idle进化触发器（idle≥N∧context>0.8∧budget）+_WorkspaceWriteGuard硬护栏+内置skills保护+无效结果回滚+预算上限
+- kilocode防记忆回声（P0-6，15行）：同样的证据不重复产生同一条进化
+- agent-zero（§4.4）：_agent_editor确定性稀疏编辑（只改锚点片段防覆盖写）+_time_travel快照/revert
+- mem0（§1.2）：审计表old/new/event全程可追溯
+- Letta（§4.2）：保护区READ_ONLY fail-closed，进化产出分可改区/保护区
+**改动文件**：
+- opensoul/src/heredity/evolution_loop.py（新建，~640行）
+- opensoul/src/heredity/__init__.py（增量导出）
+- opensoul/src/api/heredity.py（+5个Pydantic schema + 9个/evolution/*端点 + /health与/stats并入evolution统计）
+- opensoul/src/api/brain.py（/evolve增量改造：分析结果接入提案管线）
+- opensoul/tests/test_evolution_loop.py（新建，46个测试）
+**改动内容**：
+1. evolution_loop.py：
+   - `EvolutionEngine.declare_intent()`：LobeChat声明范式——只建pending提案+写DECLARED账本，绝不碰文件。校验链：kind白名单/ confidence∈[0,1] / 无evidence→rejected(evidence_required，拒绝也入账本) / 目标命中PROTECTED_TARGET_MARKERS→rejected(protected_target) / 同digest已applied→rejected(memory_echo, duplicate_of指向原提案)（kilocode防回声）/ 同digest pending→返回既有提案(duplicate=True去重) / pending积压≥max_pending=20→rejected(budget_exceeded)（MetaGPT预算/CowAgent budget）
+   - `review()`：decision∈approve/reject；提案必须pending；**reviewer==proposer直接raise**（agno"审批人≠发起人"）；APPROVED/REJECTED写账本old/new
+   - `apply()`：仅approved可落盘；保护区二次校验（即使DB被篡改为approved也拦——fail-closed实测：篡改status后apply仍返回protected_target拒绝）；稀疏锚点替换（anchor_old必须在文件中，找不到→apply_failed且文件不动，agent-zero"绝不整文件重写"）；**改动前先写快照**到snapshots/<id>.snap
+   - `rollback()`：仅applied可回滚；快照缺失→raise不瞎写；恢复原文件+账本ROLLED_BACK
+   - `evaluate_triggers()`：CowAgent idle触发（idle≥60s∧context_pressure≥0.8∧budget>0三条件合取）+error_pattern触发（有错但未达熔断线）+agno错误风暴熔断（尾部连续同类型错误≥3→开熔断只记一条error_storm_breaker事件，同错再来→suppressed不再记；错误类型变化→熔断解除且响应反映解除后状态）+auto_propose（触发器自动声明pending提案，proposer=auto_trigger，evidence=trigger:<id>，触发器行回链提案id）
+   - `get_stats()`：提案状态分布/pending预算余量/账本事件计数/触发器数/熔断状态——一条SQL看清进化管线全貌（可观测性）
+   - `EvolutionStore`：SQLite四表（proposals/ledger/triggers/breaker）；账本=mem0审计模式（proposal_id/event/actor/old/new/reason）
+2. api/heredity.py：POST /evolution/intents、GET /evolution/proposals[?status]、GET /evolution/proposals/{id}（提案+完整审计轨迹）、POST .../review、POST .../apply、POST .../rollback、POST /evolution/triggers/evaluate、GET /evolution/ledger、GET /evolution/stats；/api/heredity/health与/stats响应并入evolution统计（既有monitoring页探测health即可看到进化管线状态，不新建页面）
+3. api/brain.py /evolve接线（"写了≠接线了"）：SelfEvolution分析结果不再只写日志——每条发现映射kind（failure_avoidance→failure_avoidance、strategy_adjustment→policy_adjustment、style_adjustment→prompt_strategy）后走declare_intent进入审批管线，evidence_refs=evolution_log:<type>；分析层异常（如experiences表缺失）不阻断，响应始终返回declared_proposals+pipeline统计
+**验证结果**：
+- tests/test_evolution_loop.py 46/46 passed（37单测：声明校验链7种/审批6种/落盘7种含DB篡改fail-closed实测/回滚3种/触发器+熔断8种/统计2种 + 9个live API测试：health并入统计/审批人≠发起人400/apply+rollback文件内容断言/evidence_required/400校验/熔断suppressed/brain/evolve返回管线/ledger/stats端点）
+- 回归113 passed（test_heredity 7 + test_eval_loop 41 + test_memory_crud 29 + test_memory_three_factor 25 + test_trajectory_spans 13）
+- acp-proxy integration_test score=1.0（5项全过：三服务健康+WS协议对齐+WS收发），include_build=False无前端改动
+- live端到端11项全过（:8090真实服务）：①declare pending ②无evidence→rejected可见 ③同proposer审批→400 ④异人审批→approved ⑤apply→文件稀疏替换+快照存在+其余行原样 ⑥同digest再声明→memory_echo指向原提案 ⑦rollback→文件恢复逐字节一致 ⑧账本轨迹[DECLARED,APPROVED,APPLIED,ROLLED_BACK] ⑨保护区API层拒绝 ⑩brain/evolve返回declared_proposals+pipeline ⑪stats全量统计正确
+- Python语法检查5文件全过；opensoul(:8090)重启后/system/health ok
+**已知数据层缺口**（如实标注）：brain/evolve上游SelfEvolution.analyze_and_evolve()查询的experiences/user_feedback表在当前SQLite库不存在（analysis_error="no such table: experiences"），是改动前就存在的数据层缺口——分析产出为0时管线返回空declared_proposals属正确行为，非本轮接线缺陷；experiences数据积累属后续hippo/learn数据层工作
+**commit**：opensoul d94858c1
