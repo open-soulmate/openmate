@@ -207,7 +207,11 @@ class ACPProcess:
             raise
 
     async def _health_loop(self):
-        """Periodically check if hermes acp is responsive; auto-restart if stuck."""
+        """Periodically check if hermes acp is responsive; auto-restart if stuck.
+        
+        连续3次超时才重启，避免LLM长回复时误杀。
+        """
+        consecutive_timeouts = 0
         while True:
             await asyncio.sleep(30)
             if not self.is_running or not self._initialized:
@@ -215,6 +219,7 @@ class ACPProcess:
                     logger.warning("Health check: process not running, attempting restart")
                     try:
                         await self._restart()
+                        consecutive_timeouts = 0
                     except Exception as e:
                         logger.error(f"Health-triggered restart failed: {e}")
                 continue
@@ -222,15 +227,24 @@ class ACPProcess:
                 await asyncio.wait_for(
                     self._rpc("session/list", {}), timeout=10
                 )
+                consecutive_timeouts = 0  # 重置计数
             except (BrokenPipeError, OSError) as e:
                 logger.warning(f"Health check pipe error: {e}")
+                consecutive_timeouts = 0
                 try:
                     await self._restart()
                 except Exception as e2:
                     logger.error(f"Health-triggered restart failed: {e2}")
             except TimeoutError:
-                logger.warning("Health check timeout (10s)")
-                # Don't restart on timeout — might just be busy
+                consecutive_timeouts += 1
+                logger.warning(f"Health check timeout ({consecutive_timeouts}/3)")
+                if consecutive_timeouts >= 3:
+                    logger.warning("Health check: 3 consecutive timeouts, restarting ACP")
+                    try:
+                        await self._restart()
+                        consecutive_timeouts = 0
+                    except Exception as e:
+                        logger.error(f"Health-triggered restart failed: {e}")
             except Exception as e:
                 logger.warning(f"Health check unexpected error: {e}")
 
@@ -339,6 +353,9 @@ class ACPProcess:
                 if attempt == 0:
                     try:
                         await self._restart()
+                        # ACP重启后旧session_id失效，创建新session
+                        await self.new_session()
+                        sid = self._default_session_id or "default"
                     except Exception:
                         pass
                     continue
@@ -347,6 +364,9 @@ class ACPProcess:
                 if attempt == 0:
                     try:
                         await self._restart()
+                        # ACP重启后旧session_id失效，创建新session
+                        await self.new_session()
+                        sid = self._default_session_id or "default"
                     except Exception as re:
                         logger.error(f"Restart failed: {re}")
                         break
@@ -694,8 +714,13 @@ class ACPProcess:
             self._active_prompt_ids.discard(msg_id)
             raise
 
-        # Wait for prompt response (no timeout - ACP handles its own lifecycle)
-        await pending.done.wait()
+        # Wait for prompt response (timeout: 120s — ACP LLM calls can be slow but not infinite)
+        try:
+            await asyncio.wait_for(pending.done.wait(), timeout=120)
+        except asyncio.TimeoutError:
+            self._prompt_pending.pop(msg_id, None)
+            self._active_prompt_ids.discard(msg_id)
+            raise TimeoutError(f"ACP prompt timeout (120s) for msg_id={msg_id}")
 
         # Clean up
         self._prompt_pending.pop(msg_id, None)
