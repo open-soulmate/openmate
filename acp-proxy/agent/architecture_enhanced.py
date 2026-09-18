@@ -74,8 +74,13 @@ class EnhancedArchitecture:
         max_workers: int = 4,
     ):
         # 1. Writer Fencing
+        # P1插话修复：QUEUE→REJECT。
+        # QUEUE模式的等待锁与claim未绑定（claim释放不signal lock，竞争者acquire到空闲锁
+        # 立即返回→覆盖活跃claim）= 并发prompt都能"获取"栅栏，串行化完全失效；
+        # 且插话语义（Khoj interrupt_queue/goose Steer）要求运行中消息立即拒绝→进插话队列
+        # 在turn间隙注入，而非等待整个任务结束。session_guard唯一消费方=soulmate prompt()。
         self.writer_fence = SessionWriterFence(
-            action=WriteAction.QUEUE,
+            action=WriteAction.REJECT,
             timeout=60.0,
             stale_after=180.0,
         )

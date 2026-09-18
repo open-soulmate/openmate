@@ -248,10 +248,47 @@ async def ws_mcp_route(websocket: WebSocket):
     await ws_mcp_endpoint(websocket)
 
 
+# ── P0-4: agent活动观测（goose peek三指标 + claude-code noop自报 + 插话队列）──
+# soulmate agent以stdio子进程运行，活动快照持久化在SQLite，本进程跨进程读取。
+_activity_store_singleton = None
+
+
+def _activity_store():
+    global _activity_store_singleton
+    if _activity_store_singleton is None:
+        from agent.steering import ActivityStore
+        _activity_store_singleton = ActivityStore()
+    return _activity_store_singleton
+
+
+@app.get("/api/agent/peek")
+async def agent_peek_all():
+    """goose peek三指标聚合：durable turn数 / idle时长 / buffered通知数 + noop streak"""
+    try:
+        return _activity_store().peek_all()
+    except Exception as e:
+        return {"sessions": [], "summary": {"error": str(e)}}
+
+
+@app.get("/api/agent/peek/{session_id}")
+async def agent_peek(session_id: str):
+    """单会话peek — '不知道它在干嘛'的直接答案"""
+    data = _activity_store().peek(session_id)
+    if data is None:
+        return {"error": f"no activity recorded for session {session_id}"}
+    return data
+
+
 @app.get("/health")
 async def health():
     instance_id = os.environ.get("INSTANCE_ID", "a")
-    return {"status": "ok", "service": "acp-proxy", "instance": instance_id}
+    payload = {"status": "ok", "service": "acp-proxy", "instance": instance_id}
+    # P0-4: peek统计并入health——既有monitoring页探测health即可看到agent活动状态，不新建页面
+    try:
+        payload["agent_activity"] = _activity_store().peek_all()["summary"]
+    except Exception:
+        pass
+    return payload
 
 
 @app.get("/api/file")

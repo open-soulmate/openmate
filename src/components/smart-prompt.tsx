@@ -323,7 +323,7 @@ export function SmartPrompt({
             onChange={(val: string) => updateField('task', val)}
             onKeyDown={handleKeyDown}
             placeholder={placeholderText}
-            readOnly={isLoading}
+            readOnly={false /* P1插话：任务运行中输入框保持可编辑，消息作为插话排队注入 */}
           />
           {/* Generating indicator */}
           {generating && (

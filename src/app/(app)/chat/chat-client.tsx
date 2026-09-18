@@ -255,7 +255,8 @@ function useAcpWebSocket(params: {
     unmounted: boolean;
     retryDelay: number;
     ws: WebSocket | null;
-    promptRpcId: number | null; // 记录 session/prompt 的 RPC id，响应回来时触发完成
+    promptRpcId: number | null; // 记录 session/prompt 的 RPC id
+    steerRpcIds: Set<number>; // P1插话：运行中消息的RPC id集合（其响应≠任务完成）
   }>>(new Map());
   const [wsConnected, setWsConnected] = useState(false);
   const streamingSessionIdRef = useRef<string | null>(null);
@@ -284,6 +285,7 @@ function useAcpWebSocket(params: {
         retryDelay: 1000,
         ws: null as WebSocket | null,
         promptRpcId: null, // 记录 session/prompt 的 RPC id
+        steerRpcIds: new Set<number>(), // P1插话：运行中消息的RPC id（响应只代表已排队）
       };
       sessionStateMapRef.current.set(sessionId, state);
     }
@@ -291,7 +293,8 @@ function useAcpWebSocket(params: {
   }, []);
 
   // 发送用户消息到指定会话的 ACP 连接（支持多模态：文本+图片+文件）
-  const sendAcpPrompt = useCallback(async (sessionId: string, text: string, attachments?: MessagePart[]) => {
+  // opts.steer=true：任务运行中的插话（Khoj interrupt_queue/goose Steer），RPC响应不触发完成
+  const sendAcpPrompt = useCallback(async (sessionId: string, text: string, attachments?: MessagePart[], opts?: { steer?: boolean }) => {
     const state = getSessionState(sessionId);
     // 等待 ACP 握手完成
     if (state.acpReady) await state.acpReady;
@@ -301,7 +304,11 @@ function useAcpWebSocket(params: {
     const id = ++state.rpcId;
     const messageId = `msg-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     // 记录 prompt RPC id，响应回来时知道是 prompt 完成
-    state.promptRpcId = id;
+    if (opts?.steer) {
+      state.steerRpcIds.add(id);
+    } else {
+      state.promptRpcId = id;
+    }
     state.pendingRequests.set(id, { resolve: () => {}, reject: () => {} });
     // 构建多模态 prompt 内容（文本 + 图片 + 文件）
     const promptParts: Array<Record<string, unknown>> = [{ type: 'text', text }];
@@ -688,6 +695,11 @@ function useAcpWebSocket(params: {
               } else {
                 pending.resolve(data.result);
               }
+            }
+            // P1插话：运行中插话的RPC响应只代表"已排队"，原任务仍在执行，不能触发完成
+            if (data.id != null && state.steerRpcIds.has(data.id as number)) {
+              state.steerRpcIds.delete(data.id as number);
+              return;
             }
             // session/prompt 的 RPC 响应 = agent 处理完成（SoulMate 不发 last:true）
             if (data.id === state.promptRpcId) {
@@ -1725,7 +1737,8 @@ export function ChatClient() {
   };
 
   // 公共 WS 等待函数：连接建立后自动发送消息
-  const waitForConnection = useCallback((sessionId: string, messageText: string, attachments?: MessagePart[]) => {
+  // opts.steer=true：任务运行中发送=插话（排队注入，不抢占当前任务）
+  const waitForConnection = useCallback((sessionId: string, messageText: string, attachments?: MessagePart[], opts?: { steer?: boolean }) => {
     let spWaited = 0; // 已等待毫秒数
     const spWaitConnect = setInterval(() => {
       spWaited += 500; // 每500ms检查一次
@@ -1736,7 +1749,7 @@ export function ChatClient() {
         // 用迁移后的 sessionId 发送
         const activeSid = useAppStore.getState().activeSessionId;
         const sendId = activeSid && wsMapRef.current.has(activeSid) ? activeSid : sessionId;
-        sendAcpPrompt(sendId, messageText, attachments);
+        sendAcpPrompt(sendId, messageText, attachments, opts);
       } else if (spWaited >= 15000) {
         // 超时15秒，放弃并提示用户
         clearInterval(spWaitConnect);
@@ -2506,7 +2519,9 @@ export function ChatClient() {
                 });
               }}
               onSend={(assembled) => {
-                if ((!assembled.trim() && attachments.length === 0) || loading) return;
+                // P1插话（Khoj interrupt_queue/goose Steer）：任务运行中发送=插话排队注入，不拒绝
+                const isSteer = loading;
+                if (!assembled.trim() && attachments.length === 0) return;
                 const text = assembled.trim();
                 const userMsg: Message = { id: Date.now().toString(), role: 'user', parts: [{ type: 'text', text }, ...attachments], timestamp: new Date() };
                 let currentSessionId = activeSessionIdFromStore;
@@ -2547,7 +2562,7 @@ export function ChatClient() {
                 // 始终走 connectSession + waitForConnection，避免僵尸WebSocket（readyState=OPEN但对端已死）
                 const spAgentId2 = useAppStore.getState().activeAgentId || 'soulmate';
                 connectSession(currentSessionId, spAgentId2, text.slice(0, 30));
-                waitForConnection(currentSessionId, messageText, attachments);
+                waitForConnection(currentSessionId, messageText, attachments, { steer: isSteer });
               }}
               isLoading={loading}
               placeholder={t("chat.inputPlaceholder", "输入任务，点 ✨ 展开字段（Enter 发送，Shift+Enter 换行）")}
@@ -2587,9 +2602,9 @@ export function ChatClient() {
                   )}
                   <button
                     onClick={() => { window.dispatchEvent(new CustomEvent('smart-prompt-send')); }}
-                    disabled={loading}
+                    disabled={false /* P1插话：任务运行中可发送插话 */}
                     className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 transition-colors"
-                    title="发送"
+                    title={loading ? "发送插话（任务间隙注入）" : "发送"}
                   >
                     {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </button>

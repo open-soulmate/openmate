@@ -13,6 +13,7 @@ import json
 import logging
 import os
 import re
+import sys
 from uuid import UUID
 
 import jwt
@@ -38,8 +39,10 @@ JWT_SECRET = os.getenv("JWT_SECRET", _OPSOUL_ENV.get("JWT_SECRET", "openmate-jwt
 JWT_ALGORITHM = "HS256"
 
 # Agent路由配置：agent_id → subprocess命令
+# soulmate/default用sys.executable（proxy自身解释器=依赖齐全的venv python）：
+# 裸"python"在systemd环境下解析到系统python3.14（无aiohttp等依赖）→ agent子进程import即死
 AGENT_ROUTES = {
-    "soulmate": {"cmd": ["python", "-m", "agent.start", "--stdio"], "cwd": "/home/climbing/openmate/acp-proxy"},
+    "soulmate": {"cmd": [sys.executable, "-m", "agent.start", "--stdio"], "cwd": "/home/climbing/openmate/acp-proxy"},
     "hermes": {"cmd": ["hermes", "acp"], "cwd": "/home/climbing"},
     "openclaw": {"cmd": ["openclaw", "acp"], "cwd": "/home/climbing"},
     "opencode": {"cmd": ["opencode", "acp"], "cwd": "/home/climbing"},
@@ -47,7 +50,7 @@ AGENT_ROUTES = {
 }
 
 # 默认路由
-DEFAULT_ROUTE = {"cmd": ["python", "-m", "agent.start", "--stdio"], "cwd": "/home/climbing/openmate/acp-proxy"}
+DEFAULT_ROUTE = {"cmd": [sys.executable, "-m", "agent.start", "--stdio"], "cwd": "/home/climbing/openmate/acp-proxy"}
 
 
 def decode_token(token: str) -> str | None:
@@ -370,14 +373,16 @@ async def ws_acp_endpoint(client_ws: WebSocket):
                 except Exception:
                     proc.kill()
 
-            # 用同一ACP session_id重启子进程（客户端无感知）
-            sid_for_restart = acp_sid
-            logger.info(f"[ACP] subprocess exited, restarting with acpSessionId={sid_for_restart} (attempt {restart_count})")
+            # 重启子进程（与初始路由相同命令；proxy不解析ACP sessionId，
+            # 重启后无进程内会话连续性，由客户端session/load恢复——诚实记录而非假装无感知）
+            sid_for_restart = None
+            logger.info(
+                f"[ACP] subprocess exited, respawning route cmd for {agent_id} "
+                f"(attempt {restart_count}, acpSessionId={sid_for_restart})"
+            )
             new_proc = await asyncio.create_subprocess_exec(
-                sys.executable, "-m", "agent.soulmate_agent",
-                "--session-id", str(user_id),
-                "--agent-id", agent_id,
-                cwd=str(Path(__file__).parent),
+                *route["cmd"],
+                cwd=str(route["cwd"]),  # 所有route都定义了cwd
                 stdin=asyncio.subprocess.PIPE,
                 stdout=asyncio.subprocess.PIPE,
                 stderr=asyncio.subprocess.PIPE,
@@ -388,8 +393,6 @@ async def ws_acp_endpoint(client_ws: WebSocket):
                 break
             proc = new_proc
             logger.info(f"[ACP] subprocess restarted: {agent_id}, pid={proc.pid}")
-            # 更新acp_sid（session_state里的引用）
-            session_state['proc'] = proc
             # 循环继续，重新创建t1/t2/t3
         except Exception as e:
             logger.error(f"[ACP] restart loop error: {e}")

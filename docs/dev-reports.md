@@ -363,3 +363,90 @@
 - Python语法检查5文件全过；opensoul(:8090)重启后/system/health ok
 **已知数据层缺口**（如实标注）：brain/evolve上游SelfEvolution.analyze_and_evolve()查询的experiences/user_feedback表在当前SQLite库不存在（analysis_error="no such table: experiences"），是改动前就存在的数据层缺口——分析产出为0时管线返回空declared_proposals属正确行为，非本轮接线缺陷；experiences数据积累属后续hippo/learn数据层工作
 **commit**：opensoul d94858c1
+## [2026-09-18 14:03] cortex模型降级有序链：CowAgent限流快切+环绕第二遍+链路trace可观测
+**目标**：解决SUMMARY.md cortex P0差距"模型降级有序链（fallback+限流立即切备胎）"——router此前是health-priority单遍provider循环：429限流即使有健康备胎也先在同一provider原地重试3次（白等秒数才切）；链耗尽报错只有"All providers failed for task=chat"一句话，不告诉你试过什么模型；无任何provider/model级链路trace；本地Ollama因无API key被静默跳过（"keys total=1"只属于openai），OpenAI一限流本地备胎永远轮不上。
+**调研来源**：CowAgent chat fallback有序链（38-CowAgent-source-supplement3.md #12，protocol/agent_stream.py commit即规格、上游68测试；PROGRESS.md轮12确认OpenSoul grep fallback_chain=0"完全没有"）：①有序链[{provider,model}]②限流有备胎立即切换、没备胎干等③走完环绕第二遍"瞬时限流已恢复不该废掉整个turn"④链耗尽报错列出所有试过的模型。配合kilocode retry.ts既有策略（64号supplement #79明确两者合读="cortex重试子系统完整参照"：link内transient错误仍原地重试，只有429+有备胎走快切）。SUMMARY.md P0-4可观测性痛点"我都不知道他们在干嘛"在模型路由层的落地。
+**改动文件**：
+- opensoul/src/gland/router.py（增量edit 9处）
+- opensoul/src/api/gland.py（import块+/health//providers//stats加trace字段+/chat//embed错误处理）
+- opensoul/tests/test_fallback_chain.py（新建23测试）
+- opensoul/tests/test_eval_loop.py（1处隔离缺陷修复）
+**改动内容**：
+1. router.py：
+   - `_is_rate_limited`/`_is_transient_error`模块级分类器（429专用判定 vs 429/5xx/transport可恢复判定，后者决定环绕是否有意义——401/404不会自己好）
+   - `_walk_chain(links, tried, invoke)`：CowAgent有序链主逻辑——pass1按priority逐link（link内保留kilocode重试），失败记tried；pass2环绕仅在「≥2 link ∧ pass1有transient错误」时触发，每link单次快速探测不再重试；耗尽时raise枚举全部{provider,model,pass,error}
+   - `_with_retry(has_backup=)`：429∧有备胎→立即raise快切（"限流有备胎立即切换"）；无备胎→原地重试（"没备胎干等"）；5xx保持原地重试（kilocode策略，单次502常为代理抖动）
+   - `AllProvidersFailedError(message, tried=)`：tried结构化trace随异常传递
+   - `_last_chain_trace`+`get_chain_trace()`：每次chat/embed遍历trace（防御性copy返回）
+   - `_build_links`：keyless provider（Ollama）以空key留在链内；`_call_chat`/`_call_embedding`空key时省略Authorization头（401时链继续走，fail-safe不劣于旧跳过行为）
+   - `RETRY_MAX_ATTEMPTS: int = 3`注解（实例级可覆盖语义显式化）
+   - chat()/embed()改走链（签名不变，token记账在胜出link上，既有调用方零改动）
+2. api/gland.py：/health /providers /stats加last_chain_trace字段（monitoring页既有探测即可见，不新建页面）；/chat /embed捕获AllProvidersFailedError→502+{error,tried}、NoProviderError→503（此前/chat裸500吞掉全部诊断信息，CowAgent"报错列出所有试过的模型"必须到达调用方）
+3. test_eval_loop.py：run()助手get_event_loop().run_until_complete()→asyncio.run()——pytest-asyncio在任一先行异步测试模块后关闭并unset线程loop，旧写法组合跑必炸（latent顺序隔离缺陷：eval测试晚于retry测试诞生，两模块此前从未同会话运行，本轮新增fallback异步模块后暴露）
+**验证结果**：
+- tests/test_fallback_chain.py 23/23 passed（错误分类4/链构建4/限流快切3：429+备胎A恰调用1次零重试、末link原地重试3次、failure mark=1不触发cooldown/环绕3：pass2恢复A=2+B=4次调用且trace末条pass=2 success、永久错误不环绕a=1+b=1、单link 500不环绕恰RETRY_MAX_ATTEMPTS次/耗尽报错2：消息含两provider两model、tried属性结构完整/trace可观测3/embed链2/keyless 2：请求确实无Authorization头、cloud限流→keyless local接棒）
+- 组合回归175 passed（fallback23+retry26+moderator18+eval_loop41+memory_crud29+memory_three_factor25+trajectory_spans13）
+- 既有test_llm_retry 26/26在新链逻辑下全过（单provider重试语义、401立即切provider-b等原有断言零修改通过=行为兼容）
+- test_llm.py/test_llm_api.py 5 failed经git stash对照确认为既有环境问题（settings api_key未脱敏断言+live端点500），与本次改动无关
+- acp-proxy集成测试 run_integration_tests score=1.0（5项全过：health×3+WS协议对齐+WS收发），include_build=False无前端改动
+- live端到端（:8090重启后）：①/api/gland/health与/providers含last_chain_trace字段②providers列表确认ollama（无key）真实在链③POST /api/gland/chat故障场景trace完整记录：openai(partial-test, DNS Errno -5, pass1)→ollama(llama3.2, 404, pass1)→环绕pass2再探两者——transient触发环绕、keyless入链、trace逐项error全部实证④链耗尽响应502携带detail.error枚举全部试过的模型+detail.tried结构化数组
+**commit**：opensoul 913c71aa
+## [2026-09-18 23:50] hippo Dream记忆蒸馏 + kilocode记忆回声阻断
+**目标**：解决SUMMARY.md P0-6差距——OpenSoul hippocampus完全没有"对话历史→Dream蒸馏"管线（hippo有DB级consolidation但无对话到记忆的转化入口），且无记忆回声阻断——recall命中过的回合如果digest回记忆会造成自我污染循环（"答案来自记忆的回合不能再蒸馏回记忆"）。
+**调研来源**：
+- CowAgent Deep Dream五步蒸馏prompt（38-CowAgent-source-supplement.md #1，agent/memory/summarizer.py 34KB：合并提炼/新增萃取/冲突更新/清理无效/删除冗余五步+防幻觉条款"只能基于提供的材料整理，严禁编造推测"）
+- nanobot archive-as-tool-call（37-nanobot-source.md #4，memory.py：LLM通过调用archive工具显式确认记忆检查点——记忆固化是模型显式动作而非后台启发式）
+- kilocode recalledMemory()（kilocode-source-supplement3.md #5，15行：本轮若跑过kilo_memory_recall且count>0→跳过digest——"记忆自我污染闭环的阻断器"）
+**改动文件**：
+- opensoul/src/hippo/dream_distiller.py（新建~390行）
+- opensoul/src/hippo/__init__.py（增量导出）
+- opensoul/src/api/hippo.py（+4端点 + /health并入统计）
+- opensoul/tests/test_dream_distiller.py（新建35测试）
+**改动内容**：
+1. dream_distiller.py：
+   - DreamDistiller类：dream(messages, force)主入口——格式化现有记忆+对话历史→CowAgent五步蒸馏prompt→LLM（默认走gland router，temperature=0.3）→解析JSON操作列表→逐条执行ADD/UPDATE/DELETE/SKIP
+   - 记忆回声阻断（kilocode pattern）：mark_recall(memory_ids)标记recall→should_skip_digest()返回True→dream()非force时echo_blocked=True拒绝蒸馏→reset_turn()回合边界重置
+   - _parse_dream_actions()：宽容JSON解析（```json fence→裸[]→嵌入text中的[]，object非array安全返回空，ADD无content拒绝，UPDATE/DELETE无memory_id拒绝，importance钳位[0,1]，无效memory_type降级semantic）
+   - DreamAction/DreamResult dataclass：action/content/memory_id/new_content/memory_type/importance/tags/reason + counts/echo_blocked/to_dict()
+   - DREAM_SYSTEM_PROMPT：CowAgent五步法完整prompt（五步+JSON格式+铁律：严禁编造推测/SKIP保守原则/四种memory_type）
+   - _execute_action()：nanobot archive模式——每个操作显式执行+审计（ADD→store(), UPDATE→update_memory(sparse), DELETE→soft-delete, SKIP→no-op计applied）
+   - get_stats()：total_dreams/applied/echo_blocked_count/current_turn_echo/recent_dreams
+2. api/hippo.py：POST /ltm/dream（触发蒸馏）、POST /ltm/dream/recall-mark（标记recall激活阻断）、POST /ltm/dream/reset-turn、GET /ltm/dream/stats、/health并入dream_distiller统计
+3. Dream端点注册在/ltm/{memory_id}之前防路径参数捕获
+**验证结果**：
+- tests/test_dream_distiller.py 35/35 passed（回声阻断6：无recall放行/recall阻断/统计/重置/dream被阻断/force绕过、解析13：ADD/UPDATE/DELETE/SKIP/fenced/嵌入/无效action/ADD缺content/UPDATE缺id/importance钳位/无效type降级/空响应/非数组、管线8：无消息/空actions/ADD落库/UPDATE生效/DELETE软删/混合操作/LLM错误不抛/审计trail、统计3、prompt内容4：防幻觉/五步/保守原则/四类型、生命周期1：recall→block→reset→dream成功）
+- 回归158 passed（dream 35 + hippo 5 + three_factor 25 + memory_crud 29 + moderator 18 + evolution_loop 46）
+- acp-proxy集成测试 score=1.0（三服务健康+WS协议对齐+WS收发）
+- Python语法检查4文件全过；模块导入验证OK
+**commit**：opensoul a945205d
+## [2026-09-19 00:10] 聊天插话队列（Khoj interrupt_queue/goose Steer移植）+ goose peek三指标 + claude-code noop自报 + P0栅栏假串行化修复
+**目标**：解决"OpenMate聊天框在任务运行时无插话语义"（运行中消息被拒绝丢弃）和"我都不知道他们在干嘛"（agent运行状态零可观测）两大调研差距。
+**调研来源**：
+- Khoj research.py L489-533 interrupt_queue（"研究跑到第N轮，用户发新指令 → 从queue取出 → 拼进研究历史、重置query、保留已完成迭代继续跑"，15行插话回路核心）+ SUMMARY.md"L489-533 interrupt_queue非空→'继续研究+新指令'"
+- goose ops_steer.rs 78行 Steer实现（任务运行中消息进队列，turn间隙drain注入）+ goose peek三指标（status/durable_turns/idle_seconds）
+- nanobot注入上限（MAX_INJECTIONS_PER_TURN → MAX_QUEUE_DEPTH=8，AIHawk语义：队列满显式标记丢弃不静默）
+- claude-code noop自报（连续无进展轮次折叠统计=停滞可观测）
+**改动文件**：
+- acp-proxy/agent/steering.py（新建282行：SteeringQueue/SessionActivity/ActivityStore/ABORT_MESSAGE/MAX_QUEUE_DEPTH）
+- acp-proxy/agent/soulmate_agent.py（插话接入：fence忙碌→排队不拒绝、turn间隙drain注入、abort识别、活动记账三指标+noop）
+- acp-proxy/agent/architecture_enhanced.py（P0修复：writer_fence QUEUE→REJECT）
+- acp-proxy/app.py（GET /api/agent/peek + /api/agent/peek/{sid}端点 + /health并入活动摘要）
+- acp-proxy/ws_acp.py（P0修复：agent子进程spawn python→sys.executable；重启循环NameError/undefined引用修复）
+- acp-proxy/tests/test_steering.py（新建，51测试）
+- src/app/(app)/chat/chat-client.tsx（运行中可发消息：steer标记、steerRpcIds集合防误触发任务完成、发送按钮不禁用）
+- src/components/smart-prompt.tsx（readOnly={isLoading}→false，任务运行中输入框保持可编辑）
+**改动内容**：
+1. steering.py：SteeringQueue（asyncio.Queue有界8条，is_abort识别，ABORT_MESSAGE常量，drain在turn边界取回）+ SessionActivity（三指标：status/durable_turns/idle_seconds + noop_streak/total_noops/max_noop_streak + steer_queued/steer_injected/buffered/aborted/tool_calls_total，dict serde）+ ActivityStore（SQLite持久化agent_activity.db，peek_all按status分组统计，供app.py端点跨进程读取）
+2. soulmate_agent.py插话闭环：prompt()内writer fence忙碌分支——原实现直接拒绝"⏳ 上一条消息还在处理中，请稍候"；改为SteeringQueue.enqueue + 回执"⏳ 插话已排队（第N条）：将在当前工具轮次结束后注入任务"；abort→回执"🛑 中断指令已排队，任务将在当前步骤后停止"；队列满→显式"队列已满（8条），本条被丢弃"。_run_llm_with_tools循环：每轮turn边界drain队列→注入messages并session_update "**Incorporate New Instruction**: {text}"（沿用Khoj信号原名）；drain到abort→break回执"🛑 收到中断指令，停止当前任务"。活动记账：prompt开始mark_running、每轮有tool_call/文本输出→durable_turns++、无产出→noop_streak++（超3轮log warning疑似停滞）、完成/异常→mark_idle（异常路径也结束观测，防peek假活性）
+3. app.py：peek端点从ActivityStore读取（soulmate子进程写SQLite、FastAPI读，进程解耦）；/health加agent_activity摘要（零依赖现有monitoring页探测）
+4. P0-REJECT修复：EnhancedArchitecture原writer_fence=QUEUE(60s)——QUEUE模式等待的asyncio.Lock与claim未绑定（claim释放不signal lock，竞争者acquire到空闲锁立即返回→覆盖活跃claim），实际效果=两个并发prompt都"获取"栅栏同时跑，串行化完全失效且插话分支永远不触发；session_guard唯一真实消费方是soulmate prompt()（另一处为类docstring示例），REJECT（快速失败→插话队列）是正确语义
+5. P0-spawn修复：ws_acp.py AGENT_ROUTES/DEFAULT_ROUTE裸"python"在systemd环境解析到系统python3.14（无aiohttp等依赖）→soulmate子进程import即死、经:8092的聊天会话100%打不开（live实测journal：ModuleNotFoundError: No module named 'aiohttp' at agent/local_model.py）；改sys.executable（proxy自身解释器=依赖齐全的venv）。重启循环sid_for_restart=acp_sid未定义NameError + session_state未定义引用一并修复，重启命令改为route原cmd（诚实记录：重启后无进程内会话连续性，由客户端session/load恢复）
+6. 前端：chat-client prompt()加载中不再丢弃用户输入——steer标记发送、steerRpcIds集合中和steer响应防误触发"任务完成"、发送按钮不禁用
+**验证结果**：
+- tests/test_steering.py：51/51 passed（queue单元/上限/abort、活动三指标/serde、ActivityStore持久化/peek分组、prompt插话分支（忙时enqueue回执/abort/队列满/文本块提取）、循环drain注入（turn边界/abort break）、EnhancedArchitecture REJECT即时拒绝）
+- 回归：test_permission_gate + test_tool_output_handler全绿；Python语法检查全过
+- npm run build通过，served构建确认含steerRpcIds（.next/static/chunks/0of-1nypn7mxs.js），前端:3000已重启
+- **Live E2E（真实ws:8092→proxy→stdio→soulmate→LLM全链路）**：工具循环任务prompt运行中0.8s后发插话→①回执"⏳ 插话已排队（第1条）"②插话prompt响应stopReason=end_turn③任务循环中发出"**Incorporate New Instruction**: 补充要求：最终总结控制在5句话以内"④peek终态durable_turns=4/tool_calls_total=3/steer_queued=1/steer_injected=1/buffered=0/noop_streak=0/status=idle——插话排队/注入/peek三指标/记账全部实证
+- peek端点live：/api/agent/peek summary（by_status分组+durable_turns_total+steer_injected_total）+ /api/agent/peek/{session_id}单会话指标
+- 集成测试run_integration_tests(repo_root, changed_files=[本轮8文件])：SCORE 1.0（服务健康+认证+模型路由+WS协议+WS收发+契约检查全过）
+**commit**：openmate（hash见commit message）

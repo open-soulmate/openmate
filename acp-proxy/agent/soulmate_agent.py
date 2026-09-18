@@ -93,6 +93,13 @@ from agent.permissions import ToolPolicy
 from agent.permission_gate import PermissionGate
 from agent.tool_errors import ToolError, ToolErrorHandler
 from agent.writer_fence import SessionWriterFence, WriteAction
+from agent.steering import (
+    ABORT_MESSAGE,
+    MAX_QUEUE_DEPTH,
+    ActivityStore,
+    SessionActivity,
+    SteeringQueue,
+)
 from agent.context import SessionContext
 from agent.layered_timeouts import TimeoutConfig
 from agent.eval_pipeline import EvalPipeline
@@ -217,6 +224,10 @@ class SoulMateAgent:
         self._schema_doctor = SchemaDoctor(db_path=':memory:')
         # 工具错误处理器（分类+doom loop检测）
         self._tool_error_handler = ToolErrorHandler()
+        # ── P0-4/P1: 插话队列 + 活动可观测（goose peek三指标 + claude-code noop自报）──
+        self._steering = SteeringQueue()                     # Khoj interrupt_queue + goose Steer
+        self._activity_store = ActivityStore()               # SQLite持久化，HTTP peek端点跨进程读
+        self._activities: dict[str, SessionActivity] = {}    # session_id -> 活动观测
         
         # ── Writer Fence：per-session写入锁（替代全局_processing标志）──
         self._writer_fence = SessionWriterFence(action=WriteAction.REJECT, timeout=30)
@@ -286,6 +297,35 @@ class SoulMateAgent:
         except Exception as e:
             logger.error(f"Failed to check session: {e}")
             return False
+
+    # ── P0-4/P1: 插话队列 + 活动可观测（goose peek三指标 + claude-code noop自报）──
+
+    def _activity(self, session_id: str) -> SessionActivity:
+        """获取或创建会话活动观测（内存态；状态变化时upsert到SQLite供HTTP peek读取）"""
+        act = self._activities.get(session_id)
+        if act is None:
+            act = SessionActivity(session_id=session_id)
+            self._activities[session_id] = act
+        return act
+
+    async def _steer_notify(self, session_id: str, text: str):
+        """插话相关通知推送给前端（best-effort，失败不影响任务执行）"""
+        if self._client is None:
+            return
+        try:
+            await self._client.session_update(
+                session_id=session_id,
+                update=acp.update_agent_message_text(text),
+            )
+        except Exception as e:
+            logger.debug(f"[steer] notify failed for {session_id}: {e}")
+
+    def peek_sessions(self) -> dict:
+        """goose peek三指标（agent侧聚合；HTTP端点直接读ActivityStore）"""
+        for sid, act in self._activities.items():
+            act.buffered = self._steering.pending(sid)
+            self._activity_store.upsert(act)
+        return self._activity_store.peek_all()
 
     # ── MCP 工具支持 ──────────────────────────────────────────────
 
@@ -740,8 +780,39 @@ You can send files to the user natively: to deliver a file, write a brief confir
         all_tools = builtin_tools + (mcp_tools or []) + evolution_tools + [clarify_tool]
 
         self._streamed_flags[session_id] = False
+        # ── P0-4: 活动观测开始（goose peek：status=running，durable turns开始计数）──
+        activity = self._activity(session_id)
+        activity.mark_running()
+        activity.buffered = self._steering.pending(session_id)
+        self._activity_store.upsert(activity)
         for _round in range(MAX_ROUNDS):
+            # ── P1: turn间隙批量注入插话 ──
+            # goose Steer: between-turns drain（上一角色=Tool或回合刚结束）+ with_steer标记；
+            # Khoj interrupt_queue: 拼进当前任务历史、保留已完成迭代继续跑；
+            # nanobot: 每轮注入数封顶MAX_INJECTIONS_PER_TURN，abort=Khoj abort_message语义。
+            steered = self._steering.drain(session_id)
+            if steered:
+                steer_abort = False
+                for sm in steered:
+                    if sm.is_abort:
+                        steer_abort = True
+                        await self._steer_notify(session_id, "🛑 收到中断指令，停止当前任务")
+                        break
+                    messages.append({"role": "user", "content": f"[用户插话] {sm.text}"})
+                    activity.steer_injected += 1
+                    await self._steer_notify(
+                        session_id, f"**Incorporate New Instruction**: {sm.text[:200]}"
+                    )
+                activity.buffered = self._steering.pending(session_id)
+                self._activity_store.upsert(activity)
+                if steer_abort:
+                    activity.mark_aborted()
+                    self._activity_store.upsert(activity)
+                    logger.info(f"[steer] session {session_id} aborted via interrupt queue")
+                    return full_response + "\n\n[任务被用户插话中断]", all_tool_calls
             got_tool_call = False
+            round_had_text = False
+            tool_results: list = []  # 预绑定：活动记账在循环尾读取，防possibly-unbound
             async for chunk in self.llm_engine.chat_stream_with_tools(
                 messages=messages,
                 tools=all_tools if all_tools else None,
@@ -1139,6 +1210,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
                     # 纯文本 chunk
                     chunk_text = str(chunk) if not isinstance(chunk, str) else chunk
                     if chunk_text:
+                        round_had_text = True
                         full_response += chunk_text
                         if self._client is not None:
                             await self._client.session_update(
@@ -1147,10 +1219,27 @@ You can send files to the user natively: to deliver a file, write a brief confir
                             )
                             self._streamed_flags[session_id] = True
 
+            # ── P0-4: 活动记账（goose durable turns + claude-code noop自报streak）──
+            if got_tool_call:
+                activity.mark_progress(tool=True, tool_count=len(tool_results))
+            elif round_had_text:
+                activity.mark_progress(tool=False)
+            else:
+                # claude-code: noop必须自报——连续noop折叠统计=停滞可观测
+                activity.report_noop()
+                logger.warning(
+                    f"[peek] session={session_id} noop streak={activity.noop_streak} "
+                    "(本轮无工具调用也无文本输出)"
+                )
+
             # 如果没有工具调用，模型返回了纯文本，结束循环
             if not got_tool_call:
                 break
 
+        # ── P0-4: 活动观测结束（idle+持久化，/api/agent/peek跨进程可读）──
+        activity.mark_idle()
+        activity.buffered = self._steering.pending(session_id)
+        self._activity_store.upsert(activity)
         return full_response, all_tool_calls
 
     async def _request_tool_approval(
@@ -1319,17 +1408,38 @@ You can send files to the user natively: to deliver a file, write a brief confir
         writer_id = f"prompt:{message_id or id(prompt)}"
         async with self._arch.session_guard(session_id, writer_id=writer_id) as acquired:
             if not acquired:
-                logger.warning(f"[fence] Could not acquire write lock for {session_id}")
-                # 推送提示给用户
-                if self._client:
-                    try:
-                        await self._client.session_update(
-                            session_id=session_id,
-                            update=acp.update_agent_message_text("⏳ 上一条消息还在处理中，请稍候..."),
-                        )
-                    except Exception:
-                        pass
-                return PromptResponse(stop_reason="refusal")
+                # ── P1: 插话队列（Khoj interrupt_queue + goose Steer）──
+                # 运行中消息不再拒绝丢弃（调研："OpenMate聊天框无插话语义"）：
+                # 排队后在turn间隙注入当前任务；/abort = Khoj abort_message语义。
+                busy_text = ""
+                for block in prompt:
+                    if hasattr(block, "text"):
+                        busy_text += block.text
+                    elif isinstance(block, dict) and block.get("type") == "text":
+                        busy_text += block.get("text", "")
+                act = self._activity(session_id)
+                if SteeringQueue.is_abort(busy_text):
+                    self._steering.enqueue(session_id, busy_text.strip())
+                    act.buffered = self._steering.pending(session_id)
+                    self._activity_store.upsert(act)
+                    logger.info(f"[steer] abort queued for busy session {session_id}")
+                    await self._steer_notify(session_id, "🛑 中断指令已排队，任务将在当前步骤后停止")
+                    return PromptResponse(stop_reason="end_turn")
+                msg = self._steering.enqueue(session_id, busy_text.strip() or "(空插话)")
+                if msg is None:
+                    # 队列满（Khoj maxsize=10语义）：丢弃必须显式标记（AIHawk）
+                    notice = f"⏳ 任务运行中，插话队列已满（{MAX_QUEUE_DEPTH}条），本条被丢弃"
+                else:
+                    act.steer_queued += 1
+                    notice = (
+                        f"⏳ 插话已排队（第{self._steering.pending(session_id)}条）："
+                        "将在当前工具轮次结束后注入任务"
+                    )
+                act.buffered = self._steering.pending(session_id)
+                self._activity_store.upsert(act)
+                logger.info(f"[steer] busy session {session_id}: {notice}")
+                await self._steer_notify(session_id, notice)
+                return PromptResponse(stop_reason="end_turn")
             
             return await self._prompt_inner(prompt, session_id, message_id, **kwargs)
 
@@ -1921,6 +2031,10 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 }))
             except Exception as e:
                 logger.error(f"LLM error: {e}", exc_info=True)
+                # P0-4: 异常路径也要结束活动观测，否则peek永远显示running（假活性）
+                err_act = self._activity(session_id)
+                err_act.mark_idle()
+                self._activity_store.upsert(err_act)
                 full_response = f"推理错误: {e}"
                 if self._client is not None:
                     await self._client.session_update(
