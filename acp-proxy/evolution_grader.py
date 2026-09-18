@@ -33,10 +33,29 @@ GRADER_SYSTEM_PROMPT = """你是一个严格的代码审查专家。你的职责
 - 协议对齐：跨系统通信的字段名/格式是否与对端一致
 """
 
+# 提案级评审（proposal_review阶段）— 评审文字提案，不是代码diff
+# 修复evo停滞根因：plan阶段产物是描述性提案，不能拿代码diff标准审它（46/46全拒的死锁根源）
+PROPOSAL_REVIEW_SYSTEM_PROMPT = """你是一个严格的改进提案评审专家。当前评审阶段是proposal_review——
+评审对象是【修复/改进提案】（文字描述），不是代码diff。代码实现尚未发生，将在提案通过后的implement阶段进行。
+
+⚠️ 禁止以"缺少代码diff/实际代码变更"为由拒绝提案——提案阶段本来就没有代码。
+⚠️ 代码正确性/安全性由后续code_review阶段对实际diff评审，不是本阶段职责。
+
+提案评审标准：
+- 目标明确性：问题描述和改进目标是否清晰，是否对应具体失败模式或改进机会
+- 可行性：提出的改法在技术上是否合理，步骤是否可执行
+- 最小改动：方案是否只改必要的部分，没有过度设计
+- 具体性：是否指明了target_file和具体改动点（不允许空泛的"优化系统"式提案）
+- 风险意识：risk_assessment是否有效，是否识别了主要风险
+- 协议对齐：涉及跨系统的改动是否考虑了对端契约
+
+三态判定：satisfied / needs_revision / failed
+"""
+
 
 async def grade_plan(strand, plan: dict, failure_context: str = "") -> dict:
-    """评审修复方案 — 独立grader，三态判定
-    
+    """评审修复方案（proposal_review阶段）— 评审文字提案用提案级标准，修复评审门错位死锁
+
     返回: {"verdict": "satisfied"|"needs_revision"|"failed", "reason": "...", "issues": [...]}
     """
     changes = plan.get("changes", [])
@@ -55,9 +74,9 @@ async def grade_plan(strand, plan: dict, failure_context: str = "") -> dict:
             "issues": ["invalid_risk_assessment"],
         }
 
-    prompt = f"""{GRADER_SYSTEM_PROMPT}
+    prompt = f"""{PROPOSAL_REVIEW_SYSTEM_PROMPT}
 
-评审以下修复方案：
+评审以下修复方案（提案阶段产物）：
 
 方案：
 {json.dumps(plan, ensure_ascii=False, indent=2)[:3000]}
@@ -84,9 +103,12 @@ async def grade_code(strand, applied: list[dict], original_plan: dict) -> dict:
         }
 
     # 只展示diff（提交物），不展示生成过程（借鉴SWE-agent ReviewSubmission）
+    # code_review评审输入扩容(evo修复④): 每补丁800字截断只给评审者看文件开头几行→
+    # "代码变更信息不完整"误拒(cycle237实证)。补丁展示2500字/8个，评审总预算12000。
+    # code_review评审输入扩容: 800字截断只给评审者看文件开头几行→误拒"信息不完整"
     diff_summary = "\n".join([
-        f"--- {p['target_file']} ---\n{p.get('content', '')[:800]}"
-        for p in applied[:5]
+        f"--- {p['target_file']} ---\n{p.get('content', '')[:2500]}"
+        for p in applied[:8]
     ])
 
     prompt = f"""{GRADER_SYSTEM_PROMPT}
@@ -94,7 +116,7 @@ async def grade_code(strand, applied: list[dict], original_plan: dict) -> dict:
 评审以下代码变更（只看提交物）：
 
 变更：
-{diff_summary[:4000]}
+{diff_summary[:12000]}
 
 原始方案要求：
 {json.dumps(original_plan.get('changes', []), ensure_ascii=False)[:1000]}

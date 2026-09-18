@@ -376,7 +376,10 @@ class DNAStrand:
                 # 生成方写计划 → 伙伴读到 → review确认 → 执行 → 触发重启
                 unanalyzed = [o for o in self._observations if not o.analyzed]
                 interval = EVOLUTION_INTERVAL if partner_alive else EVOLUTION_INTERVAL / 2
-                should_evolve = unanalyzed and len(unanalyzed) >= 1 and (now - last_evolution) > interval
+                # 进化触发解卡: NOISE_OBS入列即标analyzed→unanalyzed恒空→进化永久休眠(cycle冻结根因)。
+                # 时间兜底: 3×interval无进化→自省式进化，噪声观察仍不进failure样本。
+                time_fallback = (now - last_evolution) > interval * 3
+                should_evolve = (now - last_evolution) > interval and (bool(unanalyzed) or time_fallback)
 
                 # 1. 先检查有没有伙伴给我的计划（review+执行）
                 self._load_partner_plans(partner_id)
@@ -711,12 +714,15 @@ class DNAStrand:
 
     async def _reflect(self) -> list[str]:
         unanalyzed = [o for o in self._observations if not o.analyzed]
-        if len(unanalyzed) < 1:
-            return []
-
+        # 自省式降级: 无未分析观察时不返回空(空→_plan空→跳过→死循环)。
+        # 用近期观察+goals+memory做自省式反思。
+        introspective_mode = len(unanalyzed) < 1
+        obs_pool = self._observations[-15:] if introspective_mode else unanalyzed[-15:]
         observations_text = "\n".join(
-            f"[{o.obs_type}] {o.content}" for o in unanalyzed[-15:]
+            f"[{o.obs_type}] {o.content}" for o in obs_pool
         )
+        if introspective_mode:
+            observations_text = "（本轮无新失败样本，以下为近期观察快照，供自省式反思参考）\n" + observations_text
 
         # 加入历史经验
         memory_context = ""
@@ -1513,10 +1519,16 @@ new_string是替换后的文本。
         # 1. 从进化历史中采集失败周期
         for cycle in self._cycles[-20:]:
             if not cycle.success and cycle.plan:
+                desc = f"进化周期失败: {len(cycle.plan.get('improvements', []))}项改进未通过验证"
+                # 自省式进化的周期描述不是真实失败(evo修复⑤): 无失败样本时的自省动作
+                # 被采集为失败样本→check_error_storm把自省签名当错误风暴→误熔断(cycle236实证)
+                introspective = getattr(cycle, "introspective", False) or "自省式进化" in json.dumps(cycle.plan, ensure_ascii=False)
+                if introspective:
+                    continue
                 samples.append({
                     "type": "failed_cycle",
                     "cycle_id": cycle.cycle_id,
-                    "description": f"进化周期失败: {len(cycle.plan.get('improvements', []))}项改进未通过验证",
+                    "description": desc,
                     "plan": cycle.plan,
                     "verification": getattr(cycle, "verification", {}),
                 })
@@ -1533,9 +1545,14 @@ new_string是替换后的文本。
                         entry = json.loads(line)
                         if entry.get("event") in ("plan_rejected", "code_rejected", "pipeline_done"):
                             if not entry.get("success", True):
+                                reason_text = str(entry.get("reason", ""))
+                                # 自省动作不是失败(evo修复⑤): "无明确失败样本→自省式进化"签名
+                                # 不进失败样本库，防check_error_storm误熔断
+                                if "自省式进化" in reason_text or "无明确失败样本" in reason_text:
+                                    continue
                                 samples.append({
                                     "type": "audit_failure",
-                                    "description": f"审计记录: {entry.get('event')} - {entry.get('reason', '')}",
+                                    "description": f"审计记录: {entry.get('event')} - {reason_text}",
                                     "entry": entry,
                                 })
             except Exception:

@@ -511,7 +511,11 @@ class EvolutionV2:
         }
     
     def _record_failure(self, round_id: str, stage: str, files: list[str], plan: dict, review: dict):
-        """记录失败到记忆系统"""
+        """记录失败到记忆系统。
+        plan_review评审拒绝不是代码执行失败，不喂failure_memory（防评审签名污染风暴检测）。"""
+        if stage == "plan_review":
+            self.strand._log("plan_review", f"📝 提案评审意见留存(不计入失败样本): {review.get('reason', '')[:60]}")
+            return
         for f in files[:3]:
             failure_memory.record_failure(
                 round_id=round_id,
