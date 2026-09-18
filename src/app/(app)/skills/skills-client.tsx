@@ -16,6 +16,10 @@ interface Skill {
   installed: boolean;
   version?: string;
   path?: string;
+  // marketplace来源上下文（registry skill走skill_guard供应链安装管线）
+  source_id?: string;
+  skill_id?: string;
+  security_status?: string;
 }
 
 export function SkillsClient() {
@@ -47,8 +51,9 @@ export function SkillsClient() {
           const marketData = await marketRes.json();
           const onlineSkills = (marketData.skills || []).map((s: any) => ({
             name: s.name, description: s.description, category: s.category || s.source_name,
-            installed: localSkills.some((l: any) => l.name === s.name),
+            installed: s.installed ?? localSkills.some((l: any) => l.name === s.name),
             version: s.version, source: s.source_name,
+            source_id: s.source_id, skill_id: s.skill_id, security_status: s.security_status,
           }));
           // Merge: local skills + online skills not already installed
           const localNames = new Set(localSkills.map((s: any) => s.name));
@@ -86,9 +91,18 @@ export function SkillsClient() {
 
   const handleInstall = async (skill: Skill) => {
     try {
-      const res = await fetch(`${getApiBaseUrl()}/api/skills/${skill.name}/install`, {
+      // marketplace skill走registry供应链安全管线（origin钉死+staging+原子swap）；
+      // 本地/agent目录skill走原shared目录安装路径
+      const url = skill.source_id
+        ? `${getApiBaseUrl()}/api/marketplace/skills/${skill.source_id}/${skill.skill_id || skill.name}/install`
+        : `${getApiBaseUrl()}/api/skills/${skill.name}/install`;
+      const res = await fetch(url, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${getToken()}` },
+        headers: {
+          Authorization: `Bearer ${getToken()}`,
+          ...(skill.source_id ? { 'Content-Type': 'application/json' } : {}),
+        },
+        ...(skill.source_id ? { body: JSON.stringify({ force: false }) } : {}),
       });
       const data = await res.json();
       if (data.success) {
