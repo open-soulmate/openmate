@@ -2242,17 +2242,32 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 if all_results:
                     prev_context = "\n\n## 前面步骤的执行结果（直接使用这些数据，不要重复执行）\n" + "\n".join(all_results)
 
+                # 完整任务计划（让LLM看到全局步骤分工，防止越界做后续步骤的工作）
+                plan_lines = []
+                for pi, ps in enumerate(plan.subtasks):
+                    marker = "▶" if pi == idx else " "
+                    if pi == idx:
+                        note = "（当前步骤，只做这个）"
+                    elif ps.status in (StepStatus.SUCCESS, StepStatus.SKIPPED):
+                        note = "（已完成）"
+                    else:
+                        note = "（后续步骤，不要提前执行）"
+                    plan_lines.append(f"  {marker} {pi+1}. {ps.description} {note}")
+                full_plan = "\n".join(plan_lines)
+
                 step_messages.append({
                     "role": "system",
                     "content": (
+                        f"## 任务计划（共{len(plan.subtasks)}步）\n{full_plan}\n\n"
                         f"当前子任务：{step.description}\n"
                         f"建议工具：{step.tool_hint or '无'}\n"
-                        f"请专注完成这一个子任务。{prev_context}\n\n"
+                        f"请严格只完成当前子任务（第{idx+1}步），即使你能一步完成后续步骤，也不要越界执行。{prev_context}\n\n"
                         "重要规则：\n"
-                        "1. 如果前面步骤已经获取了数据，直接使用，不要重复执行\n"
-                        "2. 生成报告时直接用文本格式输出结果，绝对不要写代码文件\n"
-                        "3. 不要创建新的Python脚本来生成报告\n"
-                        "4. 直接用文字总结和格式化已有数据即可"
+                        "1. 只做当前步骤描述的工作范围，不要提前执行后续步骤的工作\n"
+                        "2. 如果前面步骤已经获取了数据，直接使用，不要重复执行\n"
+                        "3. 生成报告时直接用文本格式输出结果，绝对不要写代码文件\n"
+                        "4. 不要创建新的Python脚本来生成报告\n"
+                        "5. 直接用文字总结和格式化已有数据即可"
                     ),
                 })
 
