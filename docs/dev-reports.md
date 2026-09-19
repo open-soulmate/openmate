@@ -695,3 +695,85 @@
 6. 前端monitoring面板Card 5读acp-proxy /api/agent/token-attribution（非opensoul /api/chat/token-attribution），本轮新增的estimate_gap字段在opensoul侧API已就绪但前端暂无对应展示组件——是否在面板加"估算vs真实gap"卡片属P2 UI增强，需用户确认（用户反感擅自加UI）
 7. gene skill上报成功：skill_id=skill_564fe848adee（gene技能库随cron开发动态增长，本轮tool序列read_file→terminal→write_file→patch→...已入库）
 
+
+## [2026-09-20 04:30 CST] P0-6 Khoj自然语言记忆检索过滤：DateFilter/TypeFilter/ImportanceFilter/WordFilter
+**目标**：解决SUMMARY.md P0-6确认的最后一个hippo差距——"Khoj DateFilter/FileFilter/WordFilter自然语言检索过滤"。现有retrieve()/three_factor_retrieve()只支持memory_type和min_importance作为函数参数，用户无法用自然语言表达"last week的important memories mentioning Docker"这类组合过滤条件。搜索API /ltm/search返回结果不含任何filter解析信息。
+**调研来源**：SUMMARY.md P0-6 "Khoj DateFilter/FileFilter/WordFilter自然语言检索过滤+记忆CRUD API"（CRUD部分已在前几轮完成）；Khoj processor/filter/queries.py模式（自然语言→结构化过滤器+clean_query）；CAMEL verifiers哲学"能程序化验证的绝不靠LLM"（全部regex解析，零LLM调用）。
+**改动文件**：
+- opensoul/src/hippo/nl_filters.py（新建360行）
+- opensoul/src/hippo/__init__.py（增量：导出NLFilterResult/parse_nl_query/apply_post_filters）
+- opensoul/src/api/hippo.py（增量：/ltm/search和/ltm/context两处接线，+54/-10行）
+- opensoul/tests/test_nl_filters.py（新建436行，57测试）
+**改动内容**：
+1. nl_filters.py：parse_nl_query()解析自然语言查询→NLFilterResult（clean_query+date_from/date_to/memory_types/min_importance/word_filters+parsed_filters日志）
+   - DateFilter：相对日期（today/yesterday/last week/N days ago/recent/last N weeks/months）+绝对日期（after/before YYYY-MM-DD, in YYYY-MM, in YYYY）
+   - TypeFilter：episodic/semantic/procedural/working（正则+排除常见动词防误匹配）
+   - ImportanceFilter：important→0.6/critical→0.8/high importance→0.6
+   - WordFilter：mentioning/containing/about/related to+捕获词/短语
+   - clean_query：过滤短语剥离+残留介词/冠词清理
+   - apply_post_filters()：对memory dict列表后过滤（date_from/date_to/min_importance/word_filters全content+tags匹配）
+   - _compute_date_range()：相对日期→epoch范围（yesterday特殊处理=start_of_yesterday→start_of_today）
+2. api/hippo.py接线：
+   - /ltm/search：parse_nl_query前置解析→clean_query空但has_filters时list_memories替代search→apply_post_filters后过滤→响应新增nl_filters字段（调用方可审计过滤器解析结果）
+   - /ltm/context：同模式接线，响应新增nl_filters字段
+3. __init__.py：新增3个导出符号
+**接线位置**（grep证据，文件:行号）：
+- src/hippo/__init__.py:21 from src.hippo.nl_filters import NLFilterResult, parse_nl_query, apply_post_filters
+- src/api/hippo.py:422 from src.hippo.nl_filters import parse_nl_query, apply_post_filters（/ltm/search）
+- src/api/hippo.py:424 nl = parse_nl_query(req.query)
+- src/api/hippo.py:437/:445 apply_post_filters(results, nl)（两处：list路径+search路径）
+- src/api/hippo.py:460 "nl_filters": nl.to_dict()（响应字段）
+- src/api/hippo.py:480/:482（/ltm/context同模式接线）
+- src/main.py已include hippo_router(prefix=/api/hippo)——新逻辑随既有router自动可达
+**验证结果**：
+- 完整性✅：git show --stat opensoul 85d6757e（4 files +844/-10）；git diff确认改动真实落盘
+- 集成✅：grep证据如上；live :8090 /api/hippo/ltm/search 5项端到端测试全过——①"important memories from last week"→min_importance=0.6+date_from=2026-09-13 00:00+parsed_filters含日期和重要度②"episodic memories mentioning Python"→memory_types=['episodic']+word_filters=['Python']③"Python"纯搜索→has_filters=False+clean_query='Python'（向后兼容）④"memories after 2024-01-01 about coding"→date_from=1704038400+word_filters=['coding']⑤/ltm/context端点→nl_filters.has_filters=True
+- 测试✅：tests/test_nl_filters.py 57/57 passed（相对日期8+绝对日期5+类型5+重要度4+关键词5+组合4+clean_query 5+Result 3+apply_post_filters 9+helpers 5+中文3）；回归222 passed（three_factor 25+crud+gatekeeper+decision_log+chat_loop_guard+chat+eval_loop+evolution_loop）=279 total
+**服务重启**：systemctl --user restart opensoul.service→/api/system/health ok+/api/hippo/health ok（ltm.total=479条真实记忆）
+**commit**：opensoul 85d6757e
+**遗留问题**：
+1. 记忆count=0是过滤查询的预期结果（479条存量记忆不在"last week"窗口内），非bug；真实使用中新建记忆会被正确过滤
+2. WordFilter的"about"模式较贪婪——"about Python programming"捕获整个"Python programming"为一个词过滤器（by design：保留完整搜索意图），但可能导致clean_query为空（整条查询都是过滤器时正确行为）
+3. DeerMem三标签(scope/durability/authority)和codex两阶段记忆管线仍为P0-6遗留项
+4. 前端无NL filter展示UI——nl_filters字段已在API响应中，是否在搜索页面展示待用户确认（用户反感擅自加UI）
+5. gene skill上报见下方执行
+
+## [2026-09-20 09:50 CST] P0-6 DeerMem记忆抽取安全标签(scope/durability/authority)fail-closed + fact_dedup近重复并入门
+**目标**：解决上轮dev-report遗留#3——DeerMem三标签与写侧近重复并入门仍为P0-6缺口。此前记忆写入无安全标签维度：自动抽取管线（dream/ltm_add/session_importer）可把task/project域事实、transient工作记忆、prescriptive规则无差别写入LTM；近重复fact被gatekeeper reject而非按DeerMem语义并入（保留原id+importance取max）；自动路径可删除任何事实无域保护。
+**调研来源**：18-deer-flow-source.md #11"记忆抽取安全标签：抽取提议必须带scope/durability/authority，自动写只接受user-scoped+durable+descriptive；矛盾删除带reason+replacement，task/project域删除fail-closed"（OpenSoul现状列标注"完全没有"）+#10"写侧近重复fact门（fact_dedup）：新fact与同类别现有fact释义重复→并入（保留原id/confidence取max）而非追加；token-Jaccard确定性无网络，CJK bigram参与"；PROGRESS.md DeerMem条目；组合参照CAMEL verifiers"能程序化验证的绝不靠LLM"+mem0 §1.1"失败必须可见"+Letta §4.2保护区fail-closed。上轮已有的gatekeeper近重复判定（reject语义）保留为默认策略，本轮补的是"并入"语义与三标签维度。
+**改动文件**：
+- opensoul/src/hippo/extractors/deermem_tags.py（新建306行）
+- opensoul/src/hippo/extractors/__init__.py（docstring更新）
+- opensoul/src/hippo/long_term_memory.py（+314/-11：store标签门+fact_dedup merge分支+_reject_on_tags+_merge_into_existing+delete_memory删除门+get_gatekeeper_stats deermem节）
+- opensoul/src/hippo/dream_distiller.py（+37：DreamAction三标签字段+prompt三标签要求+_parse解析+ADD走dup_policy=merge+DELETE走delete_mode=auto）
+- opensoul/src/hippo/__init__.py（导出6符号）
+- opensoul/src/api/hippo.py（+52：LongTermMemoryRequest三新字段+ltm_add透传/outcome响应+GET /ltm/deermem/stats+LTMDeleteRequest.replacement+DELETE删除门409）
+- opensoul/tests/test_deermem_tags.py（新建670行54测试）
+- opensoul/tests/test_memory_crud.py（1处metadata契约更新：store()新增deermem_tags持久化后精确相等断言改为key保留+新字段断言）
+**改动内容**：
+1. deermem_tags.py：SafetyTags(scope∈user/task/project/session × durability∈durable/transient × authority∈descriptive/prescriptive/contradiction, provenance)三标签词表fail-closed校验；validate_write_tags（auto模式只接受user+durable+descriptive，其余合法组合rule=requires_explicit_confirmation；显式标签缺失/越界→invalid_<field>；标签缺失→infer_tags确定性推断补provenance=inferred后照常校验）；validate_delete_tags（contradiction删除reason+replacement两种模式强制；task/project域auto删除fail-closed=protected_scope；explicit人工路径放行域保护）；infer_tags（冒号锚定标记任务：/项目：/规则：/更正：/TODO:等，memory_type=working→transient，默认user/durable/descriptive）；tags_vocab()词表快照
+2. long_term_memory.py：store()新增safety_tags/write_mode/dup_policy三参——gatekeeper拒绝且rule∈{duplicate_exact,duplicate_near}且dup_policy=merge时走_merge_into_existing（仅同memory_type并入：保留原id/content、importance取max、被并入内容留痕metadata["deermem_merges"]有界20条、MERGE审计reason=fact_dedup:<rule>；跨类别→回退GATE_REJECT且reason标注cross_category_not_mergeable）；gatekeeper准入后过标签门（不合规→TAG_REJECT审计+last_write_outcome=rejected_tags，force=True旁路）；resolved标签持久化metadata["deermem_tags"]+ADD审计携带；delete_memory()新增delete_mode/replacement参+删除门（拦截→DELETE_BLOCKED审计+False；last_delete_decision每次入口重置防残留误判API）；get_gatekeeper_stats()新增deermem节（tag_rejected/delete_blocked/fact_dedup_merged/last_write_outcome/recent_blocks）
+3. dream_distiller.py：DREAM_SYSTEM_PROMPT新增"ADD必须带三标签…自动入库只接受user+durable+descriptive…近重复ADD自动并入…task/project域与矛盾事实DELETE会被拦截优先用UPDATE"；_parse_dream_actions宽容解析三字段（缺失=空串→store推断；部分提供→coerce fail-closed拒绝）；_execute_action ADD→store(safety_tags,write_mode=auto,dup_policy=merge)（dream=自动抽取管线，fact_dedup目标路径）；DELETE→delete_memory(delete_mode=auto)过删除门
+4. api/hippo.py：/ltm/add透传三新参，响应新增outcome（added/merged/rejected_tags/rejected_gate）+merged+deermem_tags判定详情；GET /ltm/deermem/stats（统计+词表，注册位置在/ltm/{memory_id}之前）；DELETE /ltm/{memory_id}显式模式+replacement透传，被删除门拦截→409 {error:deermem_delete_blocked, decision}
+**接线位置**（grep证据，文件:行号）：
+- src/hippo/long_term_memory.py:23-27 import deermem_tags五符号；:192 store签名dup_policy；:220-266 merge分支（gatekeeper拒绝路径内调validate_write_tags+_merge_into_existing）；:295标签门validate_write_tags调用；:310/:351 metadata["deermem_tags"]持久化；:617 delete_memory签名delete_mode；:651 validate_delete_tags调用；:843+ get_gatekeeper_stats deermem节
+- src/hippo/dream_distiller.py:376 dup_policy="merge"（dream ADD运行时路径）；:400 delete_mode="auto"（dream DELETE运行时路径）
+- src/api/hippo.py:403-405 ltm_add透传safety_tags/write_mode/dup_policy；:435-441 GET /ltm/deermem/stats；:696-697 DELETE透传delete_mode/replacement；router=src/main.py既有hippo_router(prefix=/api/hippo)自动注册（live curl实证）
+- src/hippo/__init__.py:22-28/:50-57 导出
+- 运行时调用实证（非死代码）：live :8090真实HTTP 18项E2E（/tmp/deermem_e2e.py）——①GET /ltm/deermem/stats 200+vocab auto_writable={user,durable,descriptive}②POST /ltm/add project标签→added=false+outcome=rejected_tags+rule=requires_explicit_confirmation③正常写入outcome=added④近重复+dup_policy=merge→merged=true且memory_id与首条相同（并入实证，非追加）⑤矛盾事实explicit写入→无replacement DELETE返回409 deermem_delete_blocked→带replacement DELETE成功⑥task域fact explicit写入→GET /ltm/{id}回读metadata.deermem_tags={scope:task,provenance:explicit}→explicit DELETE成功（人的权威可删保护区）⑦/gatekeeper/stats deermem节tag_rejected≥1+fact_dedup_merged≥1⑧/ltm/audit/history TAG_REJECT可查+MERGE事件reason=fact_dedup:*命中
+**验证结果**：
+- 完整性✅：git show --stat opensoul 9fbd867d（8 files +1390/-11，含2新建）逐文件落盘；git diff确认改动真实存在
+- 集成✅：grep证据如上（dream ADD/DELETE运行时路径、api透传、store门、delete门全部有调用点）；live :8090 E2E 18/18 passed（真实HTTP经新代码路径，含拒绝/并入/删除门/审计查询全链路）
+- 测试✅：tests/test_deermem_tags.py 54/54 passed（infer推断8+validate_write 10+validate_delete 9+store标签门6+fact_dedup merge 6+删除门5+dream接线8+可观测2）；组合回归381 passed（deermem54+gatekeeper+dream_distiller+memory_crud+memory_three_factor+nl_filters+hippo+dedup+job_queue_wiring+evolution_loop=300，chat+chat_loop_guard+decision_log+sessions_api+metrics_api=81）
+- 集成测试✅：acp-proxy run_integration_tests(changed_files=[5 opensoul文件], include_build=False) SCORE=1.0（三服务健康+WS协议对齐+WS收发全过）
+- 系统性测试：本轮未跑systemic_test.py——改动全部在opensoul hippo/api层，未触碰acp-proxy代码路径；integration_test SCORE=1.0已覆盖三服务健康+WS协议（与既往opensoul-only轮次同口径）
+**服务重启**：systemctl --user restart opensoul.service→/api/system/health {"status":"ok"}+/api/hippo/health ok；live /ltm/deermem/stats 200确认新端点已加载；acp-proxy(:8092/:8095)与前端未改动，无需重启/build
+**commit**：opensoul 9fbd867d
+**既有测试契约更新（如实标注）**：tests/test_memory_crud.py::test_list_memories_returns_parsed_json原断言metadata精确等于用户传入dict——store()本轮新增deermem_tags持久化（删除门依据，与ADD审计同为设计内新契约）后该断言失效；按trajectory轮DDL同步先例更新为"用户key保留+deermem_tags字段断言"，非放松校验而是对新契约的更精确断言。除此之外全部既有测试零修改通过（默认dup_policy=reject+标签缺失推断user/durable/descriptive=旧行为兼容）。
+**遗留问题**：
+1. codex两阶段记忆管线（Phase1提取+Phase2 consolidation agent+版本化）仍为P0-6遗留项（上轮遗留#3的另一半，本轮完成DeerMem部分）
+2. dream为唯一dup_policy=merge的自动写路径；session_importer仍走默认reject策略（历史会话批量导入时近重复会被reject掉而非并入——是否切换merge需用户确认导入语义偏好）
+3. infer_tags是确定性启发式（冒号锚定标记），非LLM抽取——"任务/项目"域识别依赖内容标记，无标记的task域事实会被推断为user域（fail-open于推断不确定处，fail-closed于显式标签非法处；差异已在模块docstring注明）。真正的LLM抽取三标签需要dream上游provider配合，当前dream prompt已要求LLM输出三标签，实测取决于模型遵循度
+4. API层无deermem统计/标签展示UI（/ltm/deermem/stats后端已就绪）——用户反感擅自加UI，是否在monitoring/skills页展示待确认
+5. acp-proxy镜像侧provider usage回填（上上轮遗留#1）本轮未做，仍为下轮候选
+6. gene skill上报见下方执行
