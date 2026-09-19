@@ -317,6 +317,11 @@ export function SettingsClient() {
     }).catch(() => {});
   }, []);
   const variantStatus = (providerId: string, variantId: string) => presetStatus[providerId]?.[variantId]?.status || "not_configured";
+  const providerDisplay = (m: { value: string; name: string }) => {
+    const brand = m.name.split(" (")[0];
+    const desc = t(`settings.providerDesc.${m.value}`);
+    return desc && !desc.startsWith("settings.") ? `${brand} (${desc})` : m.name;
+  };
   const STATUS_DOT: Record<string, string> = {
     ok: "bg-green-500", low_balance: "bg-yellow-500", invalid_key: "bg-red-500",
     unreachable: "bg-red-400", not_configured: "bg-gray-300",
@@ -1040,7 +1045,7 @@ export function SettingsClient() {
                       }}
                     >
                       <div className="flex items-center justify-between mb-1">
-                        <span className="text-xs font-medium truncate">{model.name}</span>
+                        <span className="text-xs font-medium truncate">{providerDisplay(model)}</span>
                         {model.isDefault && (
                           <CheckCircle2 size={14} className="text-primary flex-shrink-0" />
                         )}
@@ -1092,7 +1097,7 @@ export function SettingsClient() {
                             model: target?.model || (p?.models?.[0] ?? "") };
                         });
                       }}
-                      options={llmProviders.map(p => ({ value: p.value, label: p.label }))}
+                      options={llmProviders.map(p => ({ value: p.value, label: providerDisplay(p) }))}
                     />
                   </div>
 
@@ -1123,7 +1128,7 @@ export function SettingsClient() {
                                 : "border-border text-muted-foreground hover:bg-muted"
                             }`}
                           >
-                            {v.label === "标准API" ? (t("settings.standardApi") || "标准API") : v.label === "订阅制" ? (t("settings.subscription") || "订阅制") : v.label === "本地" ? (t("settings.localProvider") || "本地") : v.label}
+                            {v.label === "标准API" ? (t("settings.standardApi") || "标准API") : v.label === "订阅制" ? (t("settings.subscription") || "订阅制") : v.label === "本地部署" ? (t("settings.localDeploy") || "本地部署") : v.label === "本地" ? (t("settings.localProvider") || "本地") : v.label}
                           </button>
                         ))}
                       </div>

@@ -685,7 +685,27 @@
     "statusLowBalance": "Low balance",
     "statusInvalidKey": "Invalid key",
     "statusUnreachable": "Unreachable",
-    "statusNotConfigured": "Not configured"
+    "statusNotConfigured": "Not configured",
+    "providerDesc": {
+      "mimo": "Xiaomi",
+      "openai": "GPT",
+      "claude": "Anthropic",
+      "gemini": "Google",
+      "deepseek": "DeepSeek",
+      "qwen": "Qwen",
+      "zhipu": "GLM",
+      "moonshot": "Kimi",
+      "baichuan": "Baichuan",
+      "yi": "Yi",
+      "minimax": "MiniMax",
+      "stepfun": "StepFun",
+      "doubao": "Doubao",
+      "ollama": "Local",
+      "lmstudio": "Local",
+      "vllm": "Local",
+      "custom": "Custom"
+    },
+    "localDeploy": "Local Deploy"
   },
   "search": {
     "title": "Search Everything",

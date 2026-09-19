@@ -682,7 +682,27 @@
     "statusLowBalance": "残高不足",
     "statusInvalidKey": "キー無効",
     "statusUnreachable": "到達不能",
-    "statusNotConfigured": "未設定"
+    "statusNotConfigured": "未設定",
+    "providerDesc": {
+      "mimo": "Xiaomi",
+      "openai": "GPT",
+      "claude": "Anthropic",
+      "gemini": "Google",
+      "deepseek": "DeepSeek",
+      "qwen": "Qwen",
+      "zhipu": "GLM",
+      "moonshot": "Kimi",
+      "baichuan": "Baichuan",
+      "yi": "Yi",
+      "minimax": "MiniMax",
+      "stepfun": "StepFun",
+      "doubao": "Doubao",
+      "ollama": "ローカル",
+      "lmstudio": "ローカル",
+      "vllm": "ローカル",
+      "custom": "カスタム"
+    },
+    "localDeploy": "ローカル配置"
   },
   "search": {
     "title": "すべてを検索",

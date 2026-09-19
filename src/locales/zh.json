@@ -684,7 +684,27 @@
     "statusLowBalance": "余额不足",
     "statusInvalidKey": "Key无效",
     "statusUnreachable": "服务不可达",
-    "statusNotConfigured": "未配置"
+    "statusNotConfigured": "未配置",
+    "providerDesc": {
+      "mimo": "小米",
+      "openai": "GPT系列",
+      "claude": "Anthropic",
+      "gemini": "Google",
+      "deepseek": "深度求索",
+      "qwen": "阿里通义",
+      "zhipu": "GLM",
+      "moonshot": "Kimi",
+      "baichuan": "百川",
+      "yi": "Yi",
+      "minimax": "MiniMax",
+      "stepfun": "阶跃",
+      "doubao": "字节",
+      "ollama": "本地",
+      "lmstudio": "本地",
+      "vllm": "本地",
+      "custom": "自定义"
+    },
+    "localDeploy": "本地部署"
   },
   "search": {
     "title": "搜索一切",
