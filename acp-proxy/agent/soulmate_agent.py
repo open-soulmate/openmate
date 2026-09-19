@@ -275,13 +275,17 @@ class SoulMateAgent:
         db.row_factory = sqlite3.Row
         return db
 
-    def _save_message(self, session_id: str, role: str, content: str):
-        """保存消息到 agent_messages 表"""
+    def _save_message(self, session_id: str, role: str, content: str, attachments: str = None):
+        """保存消息到 agent_messages 表（attachments为JSON字符串：附件元数据列表）"""
         try:
             db = self._get_db()
+            try:
+                db.execute("SELECT attachments FROM agent_messages LIMIT 1")
+            except sqlite3.OperationalError:
+                db.execute("ALTER TABLE agent_messages ADD COLUMN attachments TEXT")
             db.execute(
-                "INSERT INTO agent_messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
-                (session_id, role, content, time.time()),
+                "INSERT INTO agent_messages (session_id, role, content, timestamp, attachments) VALUES (?, ?, ?, ?, ?)",
+                (session_id, role, content, time.time(), attachments),
             )
             # 更新会话的 message_count 和 last_activity_at
             db.execute(
@@ -1866,9 +1870,12 @@ You can send files to the user natively: to deliver a file, write a brief confir
             # 异步调LLM生成精炼标题
             asyncio.create_task(self._generate_session_title(session_id, user_text))
 
-        # 保存附件到临时文件，把路径拼到prompt文本里
+        # 保存附件到持久化目录，记录元数据供会话历史加载时恢复
+        attachments_meta = []
         if file_parts:
-            import base64 as b64mod, tempfile
+            import base64 as b64mod
+            persist_dir = f"/home/climbing/opensoul/data/attachments/{session_id}"
+            os.makedirs(persist_dir, exist_ok=True)
             for f in file_parts:
                 try:
                     b64_data = f.get("data", "")
@@ -1882,13 +1889,21 @@ You can send files to the user natively: to deliver a file, write a brief confir
                         ext = "." + fname.rsplit(".", 1)[-1]
                     elif "/" in mime:
                         ext = "." + mime.split("/")[-1].split(";")[0]
-                    tmp_dir = tempfile.mkdtemp(prefix="openmate_file_")
                     safe_name = fname.replace("/", "_").replace("\\", "_") or "file"
-                    tmp_path = os.path.join(tmp_dir, safe_name if "." in safe_name else safe_name + ext)
-                    with open(tmp_path, "wb") as fp:
+                    if "." not in safe_name:
+                        safe_name += ext
+                    persist_path = os.path.join(persist_dir, safe_name)
+                    with open(persist_path, "wb") as fp:
                         fp.write(file_bytes)
-                    user_text += f"\n[附件已保存到: {tmp_path}]"
-                    logger.info(f"[prompt] File saved: {tmp_path} ({len(file_bytes)} bytes)")
+                    user_text += f"\n[附件已保存到: {persist_path}]"
+                    att_type = "image" if mime.startswith("image/") else "file"
+                    attachments_meta.append({
+                        "type": att_type,
+                        "name": safe_name,
+                        "mime_type": mime,
+                        "path": persist_path,
+                    })
+                    logger.info(f"[prompt] File saved: {persist_path} ({len(file_bytes)} bytes)")
                 except Exception as e:
                     logger.error(f"[prompt] File save error: {e}")
 
@@ -1896,7 +1911,10 @@ You can send files to the user natively: to deliver a file, write a brief confir
             return PromptResponse(stop_reason="end_turn")
 
         session["messages"].append({"role": "user", "content": user_text})
-        self._save_message(session_id, "user", user_text)
+        self._save_message(
+            session_id, "user", user_text,
+            attachments=json.dumps(attachments_meta, ensure_ascii=False) if attachments_meta else None,
+        )
         logger.info(f"Prompt [{session_id}]: {user_text[:100]}")
 
         # ── 意图分类（路由到最合适的处理策略）──

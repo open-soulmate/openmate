@@ -1705,10 +1705,18 @@ export function ChatClient() {
           .map((m: Record<string, unknown>) => {
             const content = (m.content as string) || '';
             const isAgent = m.role !== 'user';
+            const attachmentParts = ((m.attachments as Array<Record<string, unknown>>) || [])
+              .filter((a): a is Record<string, unknown> & { data: string } => typeof a.data === 'string' && a.data.length > 0)
+              .map(a => ({
+                type: (a.mime_type as string)?.startsWith('image/') ? 'image' : 'file',
+                data: a.data as string,
+                name: a.name as string,
+                mime_type: a.mime_type as string,
+              }));
             return {
               id: (m.id || Date.now()).toString(),
               role: isAgent ? 'agent' : 'user',
-              parts: [{ type: 'text', text: content }],
+              parts: [{ type: 'text', text: content }, ...attachmentParts],
               timestamp: new Date((m.timestamp as string) || Date.now()),
               source: m.source as string,
               fileChanges: isAgent ? parseFileChanges(content) : undefined,
