@@ -1523,19 +1523,34 @@ You can send files to the user natively: to deliver a file, write a brief confir
         )
 
         # 提取文本内容 — prompt 是 TextContentBlock | ImageContentBlock | FileContentBlock 列表
+        # acp SDK把params.prompt解析成Pydantic对象（TextContentBlock/ImageContentBlock/
+        # EmbeddedResourceContentBlock等），不是dict——两种形态都要支持，否则图片被静默丢弃
         user_text = ""
         file_parts = []
         for block in prompt:
-            if hasattr(block, "text"):
-                user_text += block.text
-            elif isinstance(block, dict):
+            bname = type(block).__name__
+            if isinstance(block, dict):
                 if block.get("type") == "text":
                     user_text += block.get("text", "")
-                elif block.get("type") == "file" and block.get("data"):
-
-                    file_parts.append(block)
-                elif block.get("type") == "image" and block.get("data"):
-                    file_parts.append(block)
+                elif block.get("type") in ("file", "image") and block.get("data"):
+                    file_parts.append(dict(block))
+            elif bname == "TextContentBlock" or (hasattr(block, "text") and getattr(block, "type", "") == "text"):
+                user_text += block.text
+            elif getattr(block, "type", "") in ("image", "audio") or bname in ("ImageContentBlock", "AudioContentBlock"):
+                # SDK ImageContentBlock对象: .data + .mime_type(snake_case) + .type="image"
+                data = getattr(block, "data", None)
+                if data:
+                    mime = getattr(block, "mime_type", None) or getattr(block, "mimeType", None) or "image/png"
+                    file_parts.append({"type": "image", "data": data, "mimeType": mime})
+            elif hasattr(block, "resource"):
+                # EmbeddedResourceContentBlock(type:"resource"): .resource = BlobResourceContents(.blob/.mime_type/.uri)
+                res = getattr(block, "resource", None)
+                blob = getattr(res, "blob", None) or (res.get("blob") if isinstance(res, dict) else None)
+                if blob:
+                    mime = getattr(res, "mime_type", None) or (res.get("mimeType") if isinstance(res, dict) else None) or "application/octet-stream"
+                    uri = getattr(res, "uri", None) or (res.get("uri") if isinstance(res, dict) else "") or ""
+                    fname = uri.split("/")[-1] if uri else "file"
+                    file_parts.append({"type": "file", "data": blob, "name": fname, "mimeType": mime})
 
         # ── 权限检查：高风险工具需要确认 ──
         try:
