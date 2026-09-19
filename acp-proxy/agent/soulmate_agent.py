@@ -51,6 +51,7 @@ from utils.task_state_manager import TaskStateManager, judge_task_continuation
 # P1/P2 架构组件
 from agent.semantic_cache import SemanticCache
 from agent.context_compression import ContextCompressor
+from agent.loop_guard import LoopGuard
 from agent.dynamic_prompt import DynamicPromptBuilder
 from agent.memory_retrieval import MemoryRetrievalEngine
 from agent.tool_cache import ToolResultCache
@@ -160,6 +161,8 @@ class SoulMateAgent:
             char_threshold=int(os.environ.get("TOOL_SPILL_CHARS", "8000")),
             line_threshold=int(os.environ.get("TOOL_SPILL_LINES", "2000")),
         )
+        # P0 cortex: 循环/重复检测guard per-session实例（ag2+goose+Khoj+anything-llm+DeerFlow五源）
+        self._loop_guards: dict[str, "LoopGuard"] = {}
         self._retry_mgr = SmartRetryManager()
         self._output_validator = OutputValidator()
         self._output_formatter = OutputFormatter()
@@ -455,6 +458,24 @@ class SoulMateAgent:
         except Exception as e:
             logger.warning(f"[tool-output] spill处理失败，降级截断: {e}")
             return truncate_tool_result(str(result))
+
+    def _loop_guard_for(self, session_id: str) -> "LoopGuard":
+        """P0 cortex循环guard：per-session实例，每次任务开始reset（窗口只在本任务工具循环内累积）。
+
+        agent侧guard cooldown_seconds=0：opensoul原版60s冷却面向人类告警场景防警觉疲劳，
+        接线侧拦截不打扰人类——冷却期内guard静默放行会让重复命令重新执行产生副作用，
+        疲劳抑制改由wiring级升级链承担（同任务第2次INTERVENE→FORCE_STOP，DeerFlow三级渐进）。
+        """
+        guards = getattr(self, "_loop_guards", None)
+        if guards is None:
+            guards = {}
+            self._loop_guards = guards
+        guard = guards.get(session_id)
+        if guard is None:
+            guard = LoopGuard(cooldown_seconds=0)
+            guards[session_id] = guard
+        guard.reset()
+        return guard
 
     async def _run_llm_with_tools(
         self,
@@ -827,6 +848,9 @@ You can send files to the user natively: to deliver a file, write a brief confir
         activity.mark_running()
         activity.buffered = self._steering.pending(session_id)
         self._activity_store.upsert(activity)
+        # ── P0 cortex: 循环/重复检测guard接入真实工具循环（opensoul侧模块此前无真实工具路径消费方）──
+        guard = self._loop_guard_for(session_id)
+        loop_intervene_count = 0
         for _round in range(MAX_ROUNDS):
             # ── P1: turn间隙批量注入插话 ──
             # goose Steer: between-turns drain（上一角色=Tool或回合刚结束）+ with_steer标记；
@@ -864,6 +888,71 @@ You can send files to the user natively: to deliver a file, write a brief confir
                     # LLM 请求调用工具
                     tool_calls = chunk["tool_calls"]
                     got_tool_call = True
+
+                    # ── P0 cortex循环防护（ag2连续检测+goose拒绝阈值+Khoj组合签名+DeerFlow三级渐进）──
+                    # 检查发生在工具执行之前：INTERVENE/FORCE_STOP时合成拦截结果、不执行工具
+                    # （open-webui三态：拒绝=合成错误工具结果，loop不断），重复调用不再重复产生副作用
+                    loop_result = None
+                    try:
+                        loop_result = guard.check(tool_calls=[
+                            {
+                                "name": (tc.get("function") or {}).get("name", ""),
+                                "arguments": (tc.get("function") or {}).get("arguments"),
+                            }
+                            for tc in tool_calls
+                        ])
+                    except Exception as _lg_err:
+                        logger.debug(f"[loop-guard] 检查失败(fail-safe放行): {_lg_err}")
+                    if loop_result is not None and loop_result.is_looping:
+                        lg_severity = str(loop_result.severity)
+                        logger.warning(
+                            f"[loop-guard] session={session_id} severity={lg_severity} "
+                            f"type={loop_result.detection_type} count={loop_result.consecutive_count}")
+                        # 可观测：拦截/警告事件进tool_calls_log（trajectory可查"为什么没执行"）
+                        for tc in tool_calls:
+                            all_tool_calls.append({
+                                "name": (tc.get("function") or {}).get("name", ""),
+                                "arguments": (tc.get("function") or {}).get("arguments"),
+                                "result_preview": loop_result.message[:200],
+                                "permission": f"loop_guard:{lg_severity}",
+                            })
+                        _lg_force_stop = lg_severity == "force_stop" or (
+                            lg_severity == "intervene" and loop_intervene_count >= 1)
+                        if _lg_force_stop:
+                            # FORCE_STOP（或wiring级升级）：断循环+用户可见（mem0：失败必须可见）
+                            stop_note = f"\n\n🛑 [循环检测强制停止] {loop_result.message}"
+                            full_response += stop_note
+                            if self._client is not None:
+                                await self._client.session_update(
+                                    session_id=session_id,
+                                    update=acp.update_agent_message_text(stop_note),
+                                )
+                                self._streamed_flags[session_id] = True
+                            activity.mark_idle()
+                            self._activity_store.upsert(activity)
+                            logger.warning(f"[loop-guard] session={session_id} FORCE_STOP，任务提前终止")
+                            return full_response, all_tool_calls
+                        if lg_severity == "intervene":
+                            # DeerFlow INTERVENE：剥离工具执行，合成拦截结果（协议保持完整，loop不断）
+                            loop_intervene_count += 1
+                            synthetic = (
+                                f"🛑 [loop-guard INTERVENE] {loop_result.message} "
+                                "该工具调用已被拦截、未执行。请基于已有信息给出最终回答，"
+                                "或改用不同的工具/参数——重复相同调用将导致任务被强制停止。")
+                            for tc in tool_calls:
+                                tool_results.append({
+                                    "tool_call_id": tc.get("id", ""),
+                                    "role": "tool",
+                                    "content": synthetic,
+                                })
+                            messages.append({"role": "assistant", "content": None, "tool_calls": tool_calls})
+                            messages.extend(tool_results)
+                            break
+                        # WARN：Khoj模式——注入"已经调过这个，换一个"警告，本轮工具正常执行
+                        messages.append({
+                            "role": "user",
+                            "content": f"[LoopGuard警告] {loop_result.message}",
+                        })
 
                     # 推送工具调用状态给前端
                     for tc in tool_calls:
@@ -933,8 +1022,8 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                     capture_output=True, text=True, errors="replace", timeout=10,
                                 )
                                 if proc.returncode == 0 and proc.stdout:
-                                    lines = proc.stdout.split("\\n")
-                                    result = "\\n".join(f"{offset + i}|{line}" for i, line in enumerate(lines))
+                                    lines = proc.stdout.split("\n")
+                                    result = "\n".join(f"{offset + i}|{line}" for i, line in enumerate(lines))
                                 else:
                                     result = f"错误: {proc.stderr or '文件不存在或为空'}"
                             except Exception as e:
@@ -979,7 +1068,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                     output = proc.stdout + proc.stderr
                                     result = output[:3000] if output else "(无输出)"
                                     if proc.returncode != 0:
-                                        result += f"\\n[exit code: {proc.returncode}]"
+                                        result += f"\n[exit code: {proc.returncode}]"
                             except subprocess.TimeoutExpired:
                                 te = self._tool_error_handler.handle_error(
                                     session_id, "terminal", Exception("timeout"), func_args)
@@ -1294,6 +1383,19 @@ You can send files to the user natively: to deliver a file, write a brief confir
             # 如果没有工具调用，模型返回了纯文本，结束循环
             if not got_tool_call:
                 break
+        else:
+            # mem0 §1.1"失败必须可见"：轮次耗尽必须显式告知，不能静默返回残缺结果
+            exhaustion_note = (
+                f"\n\n[已达最大工具调用轮次({MAX_ROUNDS})，任务停止。"
+                "如需继续，请发送新指令。]")
+            full_response += exhaustion_note
+            if self._client is not None:
+                await self._client.session_update(
+                    session_id=session_id,
+                    update=acp.update_agent_message_text(exhaustion_note),
+                )
+                self._streamed_flags[session_id] = True
+            logger.warning(f"[loop-guard] session={session_id} MAX_ROUNDS={MAX_ROUNDS} 耗尽")
 
         # ── P0-4: 活动观测结束（idle+持久化，/api/agent/peek跨进程可读）──
         activity.mark_idle()
