@@ -81,7 +81,7 @@ async def _run_evolution_strand(instance_id: str, repo_root: str):
         repo_root=repo_root,
         llm_base_url="https://token-plan-cn.xiaomimimo.com/v1",
         strategy=strategy,
-        llm_api_key=os.environ.get("MIMO_API_KEY", "REDACTED"),
+        llm_api_key=os.environ.get("MIMO_API_KEY", ""),
         llm_model="xiaomi/mimo-v2.5-pro",
     )
 
@@ -134,7 +134,7 @@ async def _run_evolution_strand(instance_id: str, repo_root: str):
     engine = DNAEvolutionEngine(
         repo_root=repo_root,
         llm_base_url="https://token-plan-cn.xiaomimimo.com/v1",
-        llm_api_key=os.environ.get("MIMO_API_KEY", "REDACTED"),
+        llm_api_key=os.environ.get("MIMO_API_KEY", ""),
         llm_model="xiaomi/mimo-v2.5-pro",
     )
     engine._running = True
