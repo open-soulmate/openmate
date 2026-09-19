@@ -60,7 +60,32 @@ interface ToolCallInfo {
   content?: string;     // 调用结果内容
 }
 
-interface Checkpoint { id: string; messageId: string; timestamp: Date; messages: Message[]; label: string; }
+interface Checkpoint { id: string; messageId: string; timestamp: number; summary?: string; }
+
+/** 安全处理消息列表，避免undefined错误 */
+const useSafeMessages = (messages: any[] | undefined) => {
+  return useMemo(() => {
+    if (!messages || !Array.isArray(messages)) {
+      return [];
+    }
+    return messages;
+  }, [messages]);
+};
+
+/** 校验附件是否有效 */
+const validateAttachments = (files: any[]) => {
+  if (!files || !Array.isArray(files)) {
+    return false;
+  }
+  return files.some(file => {
+    if (!file) return false;
+    // 检查文件大小（如果是文件对象）
+    if (file.size !== undefined && file.size === 0) return false;
+    // 检查文件数据（如果是附件数据）
+    if (file.data && typeof file.data === 'string' && file.data.length === 0) return false;
+    return true;
+  });
+};; timestamp: Date; messages: Message[]; label: string; }
 type AgentMode = 'plan' | 'act';
 interface Message {
   id: string;
