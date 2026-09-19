@@ -318,7 +318,8 @@ function useAcpWebSocket(params: {
           promptParts.push({ type: 'image', data: att.data, mimeType: att.mime_type || 'image/png' });
         }
         if (att.type === 'file' && att.data) {
-          promptParts.push({ type: 'file', data: att.data, name: att.name || 'file', mimeType: att.mime_type || 'application/octet-stream' });
+          // ACP v1.0标准 EmbeddedResourceContentBlock — type:'file'不是合法schema，SDK解析会报ValidationError
+          promptParts.push({ type: 'resource', resource: { uri: `file:///${att.name || 'file'}`, mimeType: att.mime_type || 'application/octet-stream', blob: att.data } });
         }
       }
     }
