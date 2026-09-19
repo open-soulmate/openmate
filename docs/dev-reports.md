@@ -616,3 +616,44 @@
 4. 74个存量skill无origin manifest问题仍在（上轮遗留①，marketplace安装的新skill均带manifest，存量待update时补签）
 5. gene skill上报curl见下方执行结果（失败不影响本轮完成）
 6. acp-proxy systemic_test.py本轮未跑（改动全部在opensoul+openmate前端，未触碰acp-proxy代码路径；integration_test SCORE=1.0已覆盖三服务健康+WS协议）
+
+## [2026-09-19 19:10 CST] P1上下文逐项token归因：claude-code SDKContextUsage移植（opensoul+acp-proxy+monitoring面板）+ P0修复evo破坏的chat-client.tsx
+**目标**：解决SUMMARY.md P0-4/P1确认的差距——token_meter/token_analyzer只有总量统计，用户"不知道上下文被什么吃掉了"。SDKContextUsage是100-agent调研中唯一见到的逐项token归因实现（10-claude-code-source.md #7标注"OpenSoul cortex/token_attribution.py"落位建议），直击用户两大痛点之一"我都不知道他们在干嘛"的上下文维度。
+**调研来源**：10-claude-code-source.md #7 SDKContextUsage（total_tokens/raw_max_tokens/percentage/over_limit{tokens_over, kind: hard_limit|compaction_window} + 四类明细数组mcp_tools[]/memory_files[]/agents[]/skills[]每项多少token）；52-langfuse-source.md #15（langfuse Tokenisation只有总量，"升级：按span逐项归因"）；73-superagi-source.md（工具使用率/token按模型归因="不知道在干嘛"痛点最低成本起步）；SUMMARY.md P1"token逐项归因（per-tool/per-agent）"+路线图第一阶段。
+**改动文件**：
+- opensoul/src/cortex/token_attribution.py（新建312行）
+- opensoul/src/api/chat.py（增量：import+helper+端点+3处调用点，+87行）
+- opensoul/tests/test_token_attribution.py（新建309行，30测试）
+- openmate acp-proxy/agent/token_attribution.py（新建302行，opensoul侧的同启发式镜像实现——独立venv无法import）
+- openmate acp-proxy/agent/soulmate_agent.py（增量：import/init/系统提示段逐项/工具逐项/首轮记录块，+92行）
+- openmate acp-proxy/app.py（增量：stats函数+GET /api/agent/token-attribution+health并入摘要，+27行）
+- openmate acp-proxy/tests/test_token_attribution_wiring.py（新建352行，19测试）
+- openmate src/app/(app)/monitoring/monitoring-client.tsx（增量7处：类型/state/第7路fetch/handler/汇总卡第6张grid-cols-6/Card 5明细，+124行）
+- openmate src/app/(app)/chat/chat-client.tsx（P0修复2处：evo破坏）
+**改动内容**：
+1. token_attribution.py（两侧镜像）：estimate_tokens（CJK≈1token/字符+其余chars//4，两侧公式一致且各自测试断言同一公式）；ContextItem(kind/name/source/tokens/extra)；build_context_usage→SDKContextUsage形态（total/raw_max/compaction_tokens/percentage/over_limit两态区分+明细数组mcp_tools/builtin_tools/evolution_tools/memory_files/agents/skills+sections聚合+top_consumers前10）；resolve_context_window（模型名子串匹配粗表，opensoul侧默认32768/acp侧32000=llm_engine._truncate_context默认）；opensoul侧ContextAttributor（进程内环形缓冲+可选JSONL账本+聚合摘要）；acp侧AttributionLedger（JSONL账本：agent子进程写/app.py进程读，与tool_output spill账本同构，读取限尾5000行防OOM）
+2. opensoul chat路径接线：_attribute_chat_context（hippo记忆逐条/RAG chunk逐块/用户问题逐项）接进三条真实路径——rag_stream正常分支（chat.py:401）、rag_stream RAG降级分支（:310）、非流式chat用真实命中provider/model（:549）；GET /api/chat/token-attribution（:228）；fail-safe：任何异常仅debug日志不阻断chat
+3. acp-proxy真实agent路径接线：soulmate_agent._run_llm_with_tools逐项记账——基础系统提示（:579）/每个matched skill（:593，重构为skill_body变量保持system_prompt字节不变）/用户偏好（:602）/反思改进（:611）/每条召回记忆逐条（:626 memory_recall[i]）/学习技能（:639）/工具定义逐个per-tool×三来源builtin/mcp/evolution（:938-941）/会话消息+工具结果聚合；首轮LLM请求前快照写账本（:985-1004，AGENT_CONTEXT_WINDOW env默认32000）；全程try/except fail-safe
+4. monitoring面板：Agents tab第6张汇总卡"Context Tokens"（最新请求总量/窗口占比/超限时amber高亮+kind标注）+Card 5"Context Attribution (SDKContextUsage)"明细（top_consumers条形图：kind标签+名称+token×出现次数+over_limit徽章+records/avg/max汇总行）；沿用既有10s轮询+allSettled容错，不新建页面
+5. **P0修复（build阻断）**：evo round a88d8ae8破坏chat-client.tsx——①`interface Checkpoint`被改成`{timestamp:number;summary?}`与运行时saveCheckpoint/rollbackToCheckpoint实际用法（timestamp:Date/messages/label）矛盾②编辑残片`};; timestamp: Date; messages: Message[]; label: string; }`造成语法错误→npm run build整体失败（Parse error at chat-client.tsx:88）；修复=按运行时用法恢复原接口形状+清除残片；evo新增的useSafeMessages/validateAttachments两个helper保留（语法有效但无调用点=死代码，未接线）
+**接线位置**（grep证据，文件:行号）：
+- opensoul src/api/chat.py:13-20 import/:228端点/:244 helper定义/:277 attributor.record/:310、:401、:549三处真实LLM路径调用点；src/main.py:503 chat_router(prefix=/api/chat)已在——新端点同router自动注册
+- acp-proxy agent/soulmate_agent.py:87-102 import/:227 ledger初始化/:578-643系统提示各注入段逐项/:938-941工具per-tool/:1004 record调用；app.py:302-306 stats函数/:310端点/:339-347 health并入摘要
+- 前端monitoring-client.tsx：fetch第7路/api/agent/token-attribution/第6张卡+Card 5；build产物.next/static/chunks/2m53kzt3zc7ly.js含"token-attribution"+"Context Attribution"（grep实证）
+- 运行时调用实证（非死代码）：①opensoul live——POST /api/chat?user_id=...&stream=true真实HTTP流量→RAG降级路径触发归因→GET /api/chat/token-attribution返回完整记录{model:mimo-x-pro-preview, raw_max_tokens:65536, sections:{message:6}, top_consumers:[user_question]}②acp-proxy live跨进程——真实SoulMateAgent模块代码（生产默认账本路径~/.hermes/soulmate/token_attribution）跑_run_llm_with_tools写入记录（total=3471tok/32000窗口=10.8%，skills=[live-proof-skill,learned_skills]，memory_recall[0]，mcp_tools=[mcp__demo__search]，builtin_tools 16项逐个token数，top3=soulmate_base_prompt 1239>read_file_segment 175>clarify 169）→live :8092 /api/agent/token-attribution端点读回同一记录4049字节完整per-tool明细——"agent写、API进程读"跨进程闭环
+**验证结果**：
+- 完整性✅：git show --stat核实——opensoul 498a5a39（3 files +708）；openmate cde25b1a（4 files +769/-4）+cedbf62a（2 files +124/-4），全部落盘
+- 集成✅：grep证据如上；live端点×5全部200（opensoul /api/chat/token-attribution、acp :8092/:8095 /api/agent/token-attribution、front :3000/monitoring）；live跨进程实证如上（非测试桩——生产模块+生产账本路径+生产API进程）
+- 测试✅：opensoul tests/test_token_attribution.py 30 passed + 回归test_chat_loop_guard/test_chat/test_decision_log 54 passed；acp-proxy tests/test_token_attribution_wiring.py 19 passed + 回归（tool_output_wiring+steering+acp_concurrency+permission_gate+tool_output_handler）119 passed=138 passed；E2E测试直接驱动真实SoulMateAgent._run_llm_with_tools断言账本逐项明细+system_prompt字节零副作用+env窗口超限+mcp来源归因+属性缺失fail-safe+前端契约字段
+- 系统性测试✅：systemic_test.py 29/29 (100%)——含S4并发（上轮修复保持）+S5"RAG不可用时chat降级"（live触发本轮chat.py归因路径）
+- 集成测试✅：run_integration_tests(changed_files=[5文件], include_build=True) SCORE=1.0（health×3+python-imports 5文件+ws-protocol+contract+frontend-build 16.46s+ws-send-receive全过）
+- 前端✅：npm run build通过（首次失败暴露evo破坏，修复后通过）；chunk 2m53kzt3zc7ly.js含两处新标识；:3000/monitoring 200；⚠️面板视觉渲染受登录墙保护未人工确认（cron无凭证不猜测登录）
+**服务重启**：opensoul.service重启→/api/system/health+chat/token-attribution 200；acp-proxy-a(:8092)+acp-proxy-b(:8095)重启→双端token-attribution 200；前端旧进程kill后node_modules/.bin/next start -p 3000新build→/monitoring 200
+**commit**：opensoul 498a5a39；openmate cde25b1a（agent侧主提交）+cedbf62a（monitoring面板+evo破坏修复）
+**遗留问题**：
+1. 8787孤儿进程（pid 8606无systemd unit）仍运行本轮改动前代码——ws_chat soulmate模式（OpenMate聊天页）经此路径，聊天页真实流量的归因记录待该进程重启/归属确认后出现（上轮遗留#5，cron不擅自处理进程归属未确认的服务）；本轮live证据改用"生产模块+生产账本+生产API"跨进程实证方法（P0-2轮同方法）
+2. evo round a88d8ae8对chat-client.tsx的破坏已修复，但evo新增的useSafeMessages/validateAttachments是无调用点死代码；evo管线对前端文件的编辑质量无校验gate（本轮build失败才发现）——evo supervisor侧是否加build校验属evo基建，铁律"不改evo自身bootstrap"本轮未动，建议用户讨论
+3. estimate_tokens是估算非精确计数（CJK≈1token/字符保守侧），用途是相对归因非计费；record带actual_prompt_tokens参数+estimate_gap字段预留自校准，但两侧调用方暂无provider usage回填（opensoul streaming路径拿usage需要SSE聚合，下轮候选）
+4. opensoul侧归因仅覆盖/api/chat RAG路径；gland router.chat()（dream/gene等内部调用方）未接——内部调用的上下文构成相对固定，优先级低
+5. 面板视觉渲染未人工确认（登录墙）；marketplace-client.tsx last_sync_error UI展示（上轮遗留#3）仍未做，P2候选
+6. gene skill上报成功：skill_id=skill_4d66a974b8d8（gene技能库随cron开发动态增长）
