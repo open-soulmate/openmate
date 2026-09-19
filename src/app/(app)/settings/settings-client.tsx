@@ -75,39 +75,52 @@ interface SettingsState {
 // sections defined inside SettingsClient for i18n
 
 const llmProviders = [
-  // 国际模型
-  { value: "openai", label: "OpenAI", models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "o1-preview", "o1-mini"], baseUrl: "https://api.openai.com/v1" },
-  { value: "claude", label: "Claude (Anthropic)", models: ["claude-sonnet-4-20250514", "claude-haiku-4-20250514", "claude-opus-4-20250514"], baseUrl: "https://api.anthropic.com/v1" },
-  { value: "gemini", label: "Google Gemini", models: ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"], baseUrl: "https://generativelanguage.googleapis.com/v1beta" },
+  // 国际模型（API层无订阅制套餐，Token Plan灯位灰显"无此体系"）
+  { value: "openai", label: "OpenAI", models: ["gpt-4o", "gpt-4o-mini", "gpt-4-turbo", "o1-preview", "o1-mini"], baseUrl: "https://api.openai.com/v1",
+    apiVariants: [{ id: "standard", label: "标准API", baseUrl: "https://api.openai.com/v1", keyPrefix: "sk-" }] },
+  { value: "claude", label: "Claude (Anthropic)", models: ["claude-sonnet-4-20250514", "claude-haiku-4-20250514", "claude-opus-4-20250514"], baseUrl: "https://api.anthropic.com/v1",
+    apiVariants: [{ id: "standard", label: "标准API", baseUrl: "https://api.anthropic.com/v1", keyPrefix: "sk-ant-" }] },
+  { value: "gemini", label: "Google Gemini", models: ["gemini-2.0-flash", "gemini-1.5-pro", "gemini-1.5-flash"], baseUrl: "https://generativelanguage.googleapis.com/v1beta",
+    apiVariants: [{ id: "standard", label: "标准API", baseUrl: "https://generativelanguage.googleapis.com/v1beta", keyPrefix: "AIza" }] },
   
   // 国内模型
   { value: "mimo", label: "MiMo (小米)", models: ["mimo-v2.5-pro", "mimo-v2.5", "mimo-auto", "mimo-v2-pro"], baseUrl: "https://api.xiaomimimo.com/v1", 
     apiVariants: [
-      { id: "standard", label: "标准API (按量付费)", baseUrl: "https://api.xiaomimimo.com/v1" },
-      { id: "token-plan", label: "Token Plan (订阅制)", baseUrl: "https://token-plan-cn.xiaomimimo.com/v1" },
+      { id: "standard", label: "标准API (按量付费)", baseUrl: "https://api.xiaomimimo.com/v1", keyPrefix: "sk-" },
+      { id: "token-plan", label: "Token Plan (订阅制)", baseUrl: "https://token-plan-cn.xiaomimimo.com/v1", keyPrefix: "tp-" },
     ]
   },
   { value: "deepseek", label: "DeepSeek (深度求索)", models: ["deepseek-chat", "deepseek-coder", "deepseek-r1", "deepseek-v3"], baseUrl: "https://api.deepseek.com/v1",
-    apiVariants: [
-      { id: "standard", label: "标准API", baseUrl: "https://api.deepseek.com/v1" },
-    ]
+    apiVariants: [{ id: "standard", label: "标准API", baseUrl: "https://api.deepseek.com/v1", keyPrefix: "sk-" }]
   },
-  { value: "qwen", label: "通义千问 (阿里)", models: ["qwen-max", "qwen-plus", "qwen-turbo", "qwen-vl-max", "qwen-long"], baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1" },
-  { value: "zhipu", label: "智谱 (GLM)", models: ["glm-4-plus", "glm-4-flash", "glm-4v-plus", "glm-4-long"], baseUrl: "https://open.bigmodel.cn/api/paas/v4" },
-  { value: "moonshot", label: "月之暗面 (Kimi)", models: ["moonshot-v1-128k", "moonshot-v1-32k", "moonshot-v1-8k"], baseUrl: "https://api.moonshot.cn/v1" },
-  { value: "baichuan", label: "百川智能", models: ["Baichuan4", "Baichuan3-Turbo", "Baichuan2-Turbo"], baseUrl: "https://api.baichuan-ai.com/v1" },
-  { value: "yi", label: "零一万物 (Yi)", models: ["yi-large", "yi-medium", "yi-spark", "yi-vl-plus"], baseUrl: "https://api.lingyiwanwu.com/v1" },
-  { value: "minimax", label: "MiniMax", models: ["abab6.5s-chat", "abab6.5-chat", "abab5.5-chat"], baseUrl: "https://api.minimax.chat/v1" },
-  { value: "stepfun", label: "阶跃星辰", models: ["step-1v-8k", "step-1-32k", "step-2-16k"], baseUrl: "https://api.stepfun.com/v1" },
-  { value: "doubao", label: "豆包 (字节)", models: ["doubao-pro-32k", "doubao-lite-32k", "doubao-pro-128k"], baseUrl: "https://ark.cn-beijing.volces.com/api/v3" },
+  { value: "qwen", label: "通义千问 (阿里)", models: ["qwen-max", "qwen-plus", "qwen-turbo", "qwen-vl-max", "qwen-long"], baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    apiVariants: [{ id: "standard", label: "标准API", baseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1", keyPrefix: "sk-" }] },
+  { value: "zhipu", label: "智谱 (GLM)", models: ["glm-4-plus", "glm-4-flash", "glm-4v-plus", "glm-4-long"], baseUrl: "https://open.bigmodel.cn/api/paas/v4",
+    apiVariants: [{ id: "standard", label: "标准API", baseUrl: "https://open.bigmodel.cn/api/paas/v4", keyPrefix: "" }] },
+  { value: "moonshot", label: "月之暗面 (Kimi)", models: ["moonshot-v1-128k", "moonshot-v1-32k", "moonshot-v1-8k"], baseUrl: "https://api.moonshot.cn/v1",
+    apiVariants: [{ id: "standard", label: "标准API", baseUrl: "https://api.moonshot.cn/v1", keyPrefix: "sk-" }] },
+  { value: "baichuan", label: "百川智能", models: ["Baichuan4", "Baichuan3-Turbo", "Baichuan2-Turbo"], baseUrl: "https://api.baichuan-ai.com/v1",
+    apiVariants: [{ id: "standard", label: "标准API", baseUrl: "https://api.baichuan-ai.com/v1", keyPrefix: "sk-" }] },
+  { value: "yi", label: "零一万物 (Yi)", models: ["yi-large", "yi-medium", "yi-spark", "yi-vl-plus"], baseUrl: "https://api.lingyiwanwu.com/v1",
+    apiVariants: [{ id: "standard", label: "标准API", baseUrl: "https://api.lingyiwanwu.com/v1", keyPrefix: "sk-" }] },
+  { value: "minimax", label: "MiniMax", models: ["abab6.5s-chat", "abab6.5-chat", "abab5.5-chat"], baseUrl: "https://api.minimax.chat/v1",
+    apiVariants: [{ id: "standard", label: "标准API", baseUrl: "https://api.minimax.chat/v1", keyPrefix: "" }] },
+  { value: "stepfun", label: "阶跃星辰", models: ["step-1v-8k", "step-1-32k", "step-2-16k"], baseUrl: "https://api.stepfun.com/v1",
+    apiVariants: [{ id: "standard", label: "标准API", baseUrl: "https://api.stepfun.com/v1", keyPrefix: "sk-" }] },
+  { value: "doubao", label: "豆包 (字节)", models: ["doubao-pro-32k", "doubao-lite-32k", "doubao-pro-128k"], baseUrl: "https://ark.cn-beijing.volces.com/api/v3",
+    apiVariants: [{ id: "standard", label: "标准API", baseUrl: "https://ark.cn-beijing.volces.com/api/v3", keyPrefix: "" }] },
   
   // 本地部署
-  { value: "ollama", label: "Ollama (本地)", models: ["llama3.1", "qwen2.5", "deepseek-r1", "mistral", "phi3", "gemma2"], baseUrl: "http://localhost:11434/v1" },
-  { value: "lmstudio", label: "LM Studio (本地)", models: ["local-model"], baseUrl: "http://localhost:1234/v1" },
-  { value: "vllm", label: "vLLM (本地)", models: ["local-model"], baseUrl: "http://localhost:8000/v1" },
+  { value: "ollama", label: "Ollama (本地)", models: ["llama3.1", "qwen2.5", "deepseek-r1", "mistral", "phi3", "gemma2"], baseUrl: "http://localhost:11434/v1",
+    apiVariants: [{ id: "standard", label: "本地部署", baseUrl: "http://localhost:11434/v1", keyPrefix: "" }] },
+  { value: "lmstudio", label: "LM Studio (本地)", models: ["local-model"], baseUrl: "http://localhost:1234/v1",
+    apiVariants: [{ id: "standard", label: "本地部署", baseUrl: "http://localhost:1234/v1", keyPrefix: "" }] },
+  { value: "vllm", label: "vLLM (本地)", models: ["local-model"], baseUrl: "http://localhost:8000/v1",
+    apiVariants: [{ id: "standard", label: "本地部署", baseUrl: "http://localhost:8000/v1", keyPrefix: "" }] },
   
   // 自定义
-  { value: "custom", label: "自定义模型", models: [], baseUrl: "" },
+  { value: "custom", label: "自定义模型", models: [], baseUrl: "",
+    apiVariants: [{ id: "standard", label: "自定义", baseUrl: "", keyPrefix: "" }] },
 ];
 
 // ─── 自动路由策略配置 ──────────────────────────────────────────────
@@ -294,6 +307,23 @@ export function SettingsClient() {
   const [backendVersion, setBackendVersion] = useState<string>("");
   const [customColors, setCustomColors] = useState<CustomColors>(loadCustomColors);
   const [customProviderName, setCustomProviderName] = useState("");
+  // ── 大模型预设双体系状态指示灯（标准API / Token Plan） ──
+  const [presetStatus, setPresetStatus] = useState<Record<string, Record<string, { status: string; label: string; base_url: string; key_prefix: string }>>>({});
+  const [activeApiVariant, setActiveApiVariant] = useState<string>("standard");
+  useEffect(() => {
+    fetch(`${getApiBaseUrl()}/api/llm/presets/status`).then(r => r.json()).then(d => {
+      if (d?.presets) setPresetStatus(d.presets);
+    }).catch(() => {});
+  }, []);
+  const variantStatus = (providerId: string, variantId: string) => presetStatus[providerId]?.[variantId]?.status || "not_configured";
+  const STATUS_DOT: Record<string, string> = {
+    ok: "bg-green-500", low_balance: "bg-yellow-500", invalid_key: "bg-red-500",
+    unreachable: "bg-red-400", not_configured: "bg-gray-300",
+  };
+  const STATUS_TEXT: Record<string, string> = {
+    ok: "可用", low_balance: "余额不足", invalid_key: "Key无效",
+    unreachable: "不可达", not_configured: "未配置",
+  };
   const [customProviders, setCustomProviders] = useState<Array<{id: string; name: string; model: string; url: string; apiKey: string}>>(() => {
     if (typeof window === "undefined") return [];
     try { return JSON.parse(localStorage.getItem("openmate-custom-providers") || "[]"); } catch { return []; }
@@ -998,19 +1028,18 @@ export function SettingsClient() {
                           <CheckCircle2 size={14} className="text-primary flex-shrink-0" />
                         )}
                       </div>
-                      <div className="flex items-center gap-1">
-                        <div className={`
-                          w-1.5 h-1.5 rounded-full flex-shrink-0
-                          ${model.status === 'active' ? 'bg-green-500' : model.status === 'configured' ? 'bg-yellow-500' : 'bg-gray-300'}
-                        `} />
-                        <span className="text-[10px] text-muted-foreground">
-                          {model.status === 'active'
-                            ? (t("settings.modelActive") || "已验证")
-                            : model.status === 'configured'
-                              ? (t("settings.modelConfigured") || "已配置")
-                              : (t("settings.modelUnconfigured") || "未配置")
-                          }
-                        </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {(llmProviders.find(p => p.value === model.id)?.apiVariants || [{ id: "standard", label: "标准API" }]).map((variant) => {
+                          const st = variantStatus(model.id, variant.id);
+                          return (
+                            <div key={variant.id} className="flex items-center gap-1" title={`${variant.label}: ${STATUS_TEXT[st] || st}`}>
+                              <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[st] || "bg-gray-300"}`} />
+                              <span className="text-[9px] text-muted-foreground">
+                                {variant.id === "standard" ? "标准" : "TokenPlan"}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
                   ))}
@@ -1031,12 +1060,42 @@ export function SettingsClient() {
                       value={settings.llmProvider}
                       onChange={(v) => {
                         update("llmProvider", v);
+                        setActiveApiVariant("standard");
                         const p = llmProviders.find(p => p.value === v);
                         if (p?.models[0]) update("model", p.models[0]);
+                        const v0 = p?.apiVariants?.[0];
+                        if (v0?.baseUrl) update("url", v0.baseUrl);
                       }}
                       options={llmProviders.map(p => ({ value: p.value, label: p.label }))}
                     />
                   </div>
+
+                  {/* ── API体系选择：标准API / Token Plan（地址自动跟随） ── */}
+                  {(currentProvider?.apiVariants?.length ?? 0) > 0 && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1.5">
+                        {t("settings.apiVariant") || "API体系"}
+                      </p>
+                      <div className="flex gap-1.5">
+                        {(currentProvider?.apiVariants || []).map((v) => (
+                          <button
+                            key={v.id}
+                            onClick={() => {
+                              setActiveApiVariant(v.id);
+                              if (v.baseUrl) update("url", v.baseUrl);
+                            }}
+                            className={`flex-1 px-2 py-1.5 rounded-lg border text-[11px] transition-colors ${
+                              activeApiVariant === v.id
+                                ? "border-primary bg-primary/5 text-primary font-medium"
+                                : "border-border text-muted-foreground hover:bg-muted"
+                            }`}
+                          >
+                            {v.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
                   {settings.llmProvider === "custom" && (
                     <div>
@@ -1074,14 +1133,14 @@ export function SettingsClient() {
                     <p className="text-xs text-muted-foreground mb-1.5">
                       {t("settings.baseUrl") || "Base URL"}
                     </p>
-                    <TextInput value={settings.url} onChange={(v) => update("url", v)} placeholder="https://api.openai.com/v1" />
+                    <TextInput value={settings.url} onChange={(v) => update("url", v)} placeholder={(currentProvider?.apiVariants?.find(x => x.id === activeApiVariant) || currentProvider?.apiVariants?.[0])?.baseUrl || "https://api.openai.com/v1"} />
                   </div>
 
                   <div>
                     <p className="text-xs text-muted-foreground mb-1.5">
                       {t("settings.apiKey") || "API Key"}
                     </p>
-                    <TextInput value={settings.apiKey} onChange={(v) => update("apiKey", v)} placeholder="sk-..." type="password" />
+                    <TextInput value={settings.apiKey} onChange={(v) => update("apiKey", v)} placeholder={(() => { const v = currentProvider?.apiVariants?.find(x => x.id === activeApiVariant) || currentProvider?.apiVariants?.[0]; return (v?.keyPrefix || "sk-") + "..."; })()} type="password" />
                   </div>
 
                   <button
