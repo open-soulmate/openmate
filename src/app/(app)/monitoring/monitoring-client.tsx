@@ -208,6 +208,49 @@ interface ToolOutputStats {
   recent_spills: { tool_name: string; original_size: number; shown_size: number; spill_id: string; ts: number }[];
 }
 
+// P1: 上下文逐项token归因（claude-code SDKContextUsage移植）——"上下文被什么吃掉了"
+// 数据源：acp-proxy :8092/api/agent/token-attribution（soulmate agent写JSONL账本，API进程跨进程读）
+interface TokenAttrConsumer {
+  kind: string;
+  name: string;
+  source?: string;
+  tokens?: number;
+  tokens_total?: number;
+  times_seen?: number;
+  avg_tokens?: number;
+}
+interface TokenAttributionStats {
+  total_records: number;
+  recent: {
+    session_id: string;
+    model: string;
+    ts: number;
+    usage: {
+      total_tokens: number;
+      percentage: number;
+      raw_max_tokens: number;
+      over_limit: { tokens_over: number; kind: string } | null;
+      top_consumers: TokenAttrConsumer[];
+    };
+  }[];
+  summary: {
+    total_records: number;
+    over_limit_records: number;
+    avg_total_tokens: number;
+    max_total_tokens: number;
+    latest: {
+      total_tokens: number;
+      percentage: number;
+      over_limit: { tokens_over: number; kind: string } | null;
+      raw_max_tokens: number;
+      session_id: string;
+      model: string;
+    };
+    top_consumers: TokenAttrConsumer[];
+  };
+  ledger_path?: string;
+}
+
 interface JobInfo {
   id: string;
   name: string;
@@ -626,6 +669,7 @@ export function MonitoringClient() {
   const [agentPeek, setAgentPeek] = useState<AgentPeek | null>(null);
   const [peekErr, setPeekErr] = useState('');
   const [toolSpill, setToolSpill] = useState<ToolOutputStats | null>(null);
+  const [tokenAttr, setTokenAttr] = useState<TokenAttributionStats | null>(null);
   const [jobsHealth, setJobsHealth] = useState<JobsHealth | null>(null);
   const [jobsList, setJobsList] = useState<JobInfo[]>([]);
   const [evoStats, setEvoStats] = useState<EvoStats | null>(null);
@@ -846,13 +890,14 @@ export function MonitoringClient() {
       ? `http://${window.location.hostname}:8092`
       : 'http://127.0.0.1:8092';
     // 各端点独立容错：单个服务挂掉不拖垮整个面板（fail-safe渲染"unavailable"）
-    const [peekRes, jhRes, jlRes, evoRes, glandRes, spillRes] = await Promise.allSettled([
+    const [peekRes, jhRes, jlRes, evoRes, glandRes, spillRes, attrRes] = await Promise.allSettled([
       fetch(`${acpBase}/api/agent/peek`, { signal: AbortSignal.timeout(8000) }),
       fetch(`${apiBase}/api/will/jobs/health`, { signal: AbortSignal.timeout(8000) }),
       fetch(`${apiBase}/api/will/jobs?limit=20`, { signal: AbortSignal.timeout(8000) }),
       fetch(`${apiBase}/api/heredity/health`, { signal: AbortSignal.timeout(8000) }),
       fetch(`${apiBase}/api/gland/health`, { signal: AbortSignal.timeout(8000) }),
       fetch(`${acpBase}/api/agent/tool-output/stats`, { signal: AbortSignal.timeout(8000) }),
+      fetch(`${acpBase}/api/agent/token-attribution?limit=5`, { signal: AbortSignal.timeout(8000) }),
     ]);
     if (peekRes.status === 'fulfilled' && peekRes.value.ok) {
       try { setAgentPeek(await peekRes.value.json()); setPeekErr(''); } catch {}
@@ -873,6 +918,9 @@ export function MonitoringClient() {
     }
     if (spillRes.status === 'fulfilled' && spillRes.value.ok) {
       try { setToolSpill(await spillRes.value.json()); } catch {}
+    }
+    if (attrRes.status === 'fulfilled' && attrRes.value.ok) {
+      try { setTokenAttr(await attrRes.value.json()); } catch {}
     }
     setAgentsUpdated(new Date());
     setAgentsLoading(false);
@@ -1968,7 +2016,7 @@ export function MonitoringClient() {
             </div>
 
             {/* Summary cards */}
-            <div className="grid grid-cols-2 md:grid-cols-5 gap-2 lg:gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-6 gap-2 lg:gap-4">
               <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
                 <div className="text-xl lg:text-2xl font-bold">{agentPeek?.summary.total_sessions ?? 0}</div>
                 <div className="text-[10px] text-muted-foreground">
@@ -2008,6 +2056,30 @@ export function MonitoringClient() {
                   {toolSpill && (
                     <span className="ml-1 font-mono">
                       SHOWN {toolSpill.shown_chars_total}/SENT {toolSpill.sent_chars_total}
+                    </span>
+                  )}
+                </div>
+              </div>
+              {/* P1: 上下文逐项token归因（SDKContextUsage）——最新LLM请求上下文总量/窗口占比/超限性质 */}
+              <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+                <div className={cn('text-xl lg:text-2xl font-bold', !!tokenAttr?.summary?.latest?.over_limit && 'text-amber-500')}>
+                  {tokenAttr?.summary?.latest?.total_tokens ?? 0}
+                  {tokenAttr?.summary?.latest?.raw_max_tokens ? (
+                    <span className="text-xs text-muted-foreground font-normal ml-1">
+                      /{tokenAttr.summary.latest.raw_max_tokens >= 10000
+                        ? `${Math.round(tokenAttr.summary.latest.raw_max_tokens / 1024)}k`
+                        : tokenAttr.summary.latest.raw_max_tokens}
+                    </span>
+                  ) : null}
+                </div>
+                <div className="text-[10px] text-muted-foreground">
+                  Context Tokens
+                  {tokenAttr?.summary?.latest && (
+                    <span className="ml-1 font-mono">
+                      {tokenAttr.summary.latest.percentage ?? 0}%
+                      {tokenAttr.summary.latest.over_limit
+                        ? ` · ${tokenAttr.summary.latest.over_limit.kind}`
+                        : ''}
                     </span>
                   )}
                 </div>
@@ -2204,6 +2276,54 @@ export function MonitoringClient() {
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+            </div>
+
+            {/* Card 5: Context Attribution — claude-code SDKContextUsage（"上下文被什么吃掉了"逐项归因） */}
+            <div className="rounded-xl border border-border bg-card p-3 lg:p-4">
+              <div className="flex items-center gap-2 mb-3">
+                <Bot size={14} className="text-amber-500" />
+                <h4 className="text-xs font-medium">Context Attribution (SDKContextUsage)</h4>
+                {tokenAttr?.summary?.latest?.over_limit && (
+                  <span className="text-[10px] text-amber-500 bg-amber-500/10 rounded px-1.5 py-0.5">
+                    over_limit: {tokenAttr.summary.latest.over_limit.kind} +{tokenAttr.summary.latest.over_limit.tokens_over}
+                  </span>
+                )}
+              </div>
+              {!tokenAttr || (tokenAttr.total_records ?? 0) === 0 ? (
+                <div className="py-6 text-center text-muted-foreground/50">
+                  <Bot className="w-8 h-8 mx-auto mb-1.5" />
+                  <p className="text-xs">No context attribution recorded yet</p>
+                  <p className="text-[10px] mt-1">Appears after a chat task runs — per-item tokens (tools/memory/skills/system prompt)</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {(tokenAttr.summary.top_consumers || []).slice(0, 8).map((c, i) => {
+                    const consumers = tokenAttr?.summary?.top_consumers || [];
+                    const maxTokens = consumers[0]?.tokens_total ?? consumers[0]?.tokens ?? 1;
+                    const tokens = c.tokens_total ?? c.tokens ?? 0;
+                    return (
+                      <div key={i} className="flex items-center gap-2 text-xs">
+                        <span className="rounded px-1.5 py-0.5 text-[10px] font-medium shrink-0 bg-muted text-muted-foreground">
+                          {c.kind}
+                        </span>
+                        <span className="font-mono truncate max-w-[220px]" title={c.name}>{c.name}</span>
+                        <div className="flex-1 h-1.5 rounded-full bg-muted overflow-hidden">
+                          <div
+                            className="h-full bg-amber-500/70 rounded-full"
+                            style={{ width: `${Math.max(3, Math.round((tokens / Math.max(1, maxTokens)) * 100))}%` }}
+                          />
+                        </div>
+                        <span className="font-mono text-[10px] text-muted-foreground shrink-0">
+                          {tokens} tok{c.times_seen ? ` ×${c.times_seen}` : ''}
+                        </span>
+                      </div>
+                    );
+                  })}
+                  <div className="pt-1.5 text-[10px] text-muted-foreground border-t border-border mt-2">
+                    records {tokenAttr.total_records} · avg {tokenAttr.summary.avg_total_tokens ?? 0} tok · max {tokenAttr.summary.max_total_tokens ?? 0} tok · over_limit {tokenAttr.summary.over_limit_records ?? 0}
+                  </div>
                 </div>
               )}
             </div>
