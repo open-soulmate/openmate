@@ -768,6 +768,47 @@ You can send files to the user natively: to deliver a file, write a brief confir
                     "required": ["path"],
                 },
             },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "sense_ocr",
+                "description": "OpenSoul感知层OCR：精确文字提取（tesseract优先，不可用时自动降级LLM vision）。适用：扫描件/文档图片/表格截图需要逐字符精确文字时。日常图片内容理解用你自己的视觉能力即可，无需调此工具。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "图片文件路径"},
+                        "language": {"type": "string", "description": "OCR语言，如chi_sim+eng（可选，默认自动）"},
+                    },
+                    "required": ["path"],
+                },
+            },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "sense_analyze_image",
+                "description": "OpenSoul感知层图片元数据分析：尺寸/格式/EXIF/主色调等技术属性。需要图片技术信息而非内容理解时用。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "图片文件路径"},
+                    },
+                    "required": ["path"],
+                },
+            },
+        }, {
+            "type": "function",
+            "function": {
+                "name": "sense_transcribe_audio",
+                "description": "OpenSoul感知层语音转文字（ASR）。适用：音频/视频文件需要提取文字内容时。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "path": {"type": "string", "description": "音频/视频文件路径"},
+                        "language": {"type": "string", "description": "语言代码如zh/en（可选，默认自动检测）"},
+                    },
+                    "required": ["path"],
+                },
+            },
         }]
 
         # 添加进化引擎工具（支持直接对象或HTTP API两种模式）
@@ -1271,6 +1312,33 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                 te = self._tool_error_handler.handle_error(
                                     session_id, "read_file", e, func_args)
                                 result = te.to_model_message()
+
+                        # ── OpenSoul感知层工具（可选补齐层：精确OCR/元数据/语音转文字） ──
+                        elif func_name in ("sense_ocr", "sense_analyze_image", "sense_transcribe_audio"):
+                            try:
+                                path = func_args.get("path", "")
+                                lang = func_args.get("language") or None
+                                import mimetypes
+                                mime = mimetypes.guess_type(path)[0] or "application/octet-stream"
+                                sense_urls = {
+                                    "sense_ocr": "http://127.0.0.1:8090/api/sense/ocr/smart/image",
+                                    "sense_analyze_image": "http://127.0.0.1:8090/api/sense/analyze/image",
+                                    "sense_transcribe_audio": "http://127.0.0.1:8090/api/sense/asr/transcribe",
+                                }
+                                url = sense_urls[func_name]
+                                form = {"language": lang} if lang else {}
+                                async with httpx.AsyncClient(timeout=120.0) as client:
+                                    with open(path, "rb") as f:
+                                        files = {"file": (os.path.basename(path) or "upload", f, mime)}
+                                        resp = await client.post(url, files=files, data=form)
+                                    if resp.status_code == 200:
+                                        result = json.dumps(resp.json(), ensure_ascii=False, indent=2)
+                                    else:
+                                        result = f"⚠️ Sense API错误({resp.status_code}): {resp.text[:300]}"
+                            except FileNotFoundError:
+                                result = f"⚠️ 文件不存在: {path}"
+                            except Exception as e:
+                                result = f"⚠️ Sense感知工具不可用: {e}"
 
                         # ── 进化引擎工具 ─────────────────────────────────
                         elif func_name == "request_evolution":
