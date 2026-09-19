@@ -68,7 +68,7 @@ interface SettingsState {
   theme: ThemeId; fontSize: string; language: string; sidebarPosition: string; animationEnabled: boolean;
   defaultAgent: string; agentTimeout: number; retryStrategy: string; logLevel: string;
   llmProvider: string; apiKey: string; url: string; model: string; temperature: number; maxTokens: number;
-  variantConfigs: Record<string, { url: string; apiKey: string; model: string }>;
+  llmProfiles: Record<string, Record<string, { url: string; apiKey: string; model: string }>>;
   shellWhitelist: string; fileAccess: string; networkAccess: boolean; mcpConfig: string;
   knowledgePath: string; cacheLimit: number;
 }
@@ -334,7 +334,7 @@ export function SettingsClient() {
     theme: "dark", fontSize: "medium", language: "system", sidebarPosition: "left", animationEnabled: true,
     defaultAgent: "auto", agentTimeout: 30, retryStrategy: "exponential", logLevel: "info",
     llmProvider: "mimo", apiKey: "", url: "", model: "mimo-v2.5-pro",
-    variantConfigs: { standard: { url: "", apiKey: "", model: "" }, subscription: { url: "", apiKey: "", model: "" } },
+    llmProfiles: {},
     temperature: 0.7, maxTokens: 65536,
     shellWhitelist: "ls, cat, grep, find, git", fileAccess: "full", networkAccess: true, mcpConfig: "",
     knowledgePath: "~/.openmate/knowledge", cacheLimit: 512,
@@ -371,14 +371,10 @@ export function SettingsClient() {
               else detectedProvider = "custom";
             }
             const variant = llmData.active_variant || "standard";
-            const stdCfg = llmData.standard || {};
-            const subCfg = llmData.subscription || {};
+            const profiles = llmData.profiles || {};
             setSettings(s => ({
               ...s,
-              variantConfigs: {
-                standard: { url: stdCfg.base_url || "", apiKey: stdCfg.api_key || "", model: stdCfg.model || "" },
-                subscription: { url: subCfg.base_url || "", apiKey: subCfg.api_key || "", model: subCfg.model || "" },
-              },
+              llmProfiles: profiles,
               ...(llmData.model ? { model: llmData.model } : {}),
               ...(llmData.base_url ? { url: llmData.base_url } : {}),
               ...(llmData.api_key ? { ["apiKey"]: llmData.api_key } : {}),
@@ -541,6 +537,7 @@ export function SettingsClient() {
             method: "POST",
             headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
+              provider: settings.llmProvider,
               variant: activeApiVariant,
               api_key: settings.apiKey || undefined,
               base_url: settings.url || undefined,
@@ -1028,9 +1025,18 @@ export function SettingsClient() {
                         }
                       `}
                       onClick={() => {
-                        update("llmProvider", model.id);
-                        const p = llmProviders.find(p => p.value === model.id);
-                        if (p?.models[0]) update("model", p.models[0]);
+                        const p = llmProviders.find(pp => pp.value === model.id);
+                        setSettings(s => {
+                          const profiles = { ...s.llmProfiles };
+                          if (!profiles[s.llmProvider]) profiles[s.llmProvider] = {};
+                          profiles[s.llmProvider][activeApiVariant] = { url: s.url, apiKey: s.apiKey, model: s.model };
+                          const target = profiles[model.id]?.[activeApiVariant];
+                          const vd = p?.apiVariants?.find(x => x.id === activeApiVariant) || p?.apiVariants?.[0];
+                          return { ...s, llmProfiles: profiles, llmProvider: model.id,
+                            url: target?.url || vd?.baseUrl || "",
+                            apiKey: target?.apiKey || "",
+                            model: target?.model || (p?.models?.[0] ?? "") };
+                        });
                       }}
                     >
                       <div className="flex items-center justify-between mb-1">
@@ -1070,12 +1076,19 @@ export function SettingsClient() {
                     <SelectInput
                       value={settings.llmProvider}
                       onChange={(v) => {
-                        update("llmProvider", v);
+                        const p = llmProviders.find(pp => pp.value === v);
                         setActiveApiVariant("standard");
-                        const p = llmProviders.find(p => p.value === v);
-                        if (p?.models[0]) update("model", p.models[0]);
-                        const v0 = p?.apiVariants?.[0];
-                        if (v0?.baseUrl) update("url", v0.baseUrl);
+                        setSettings(s => {
+                          const profiles = { ...s.llmProfiles };
+                          if (!profiles[s.llmProvider]) profiles[s.llmProvider] = {};
+                          profiles[s.llmProvider][activeApiVariant] = { url: s.url, apiKey: s.apiKey, model: s.model };
+                          const target = profiles[v]?.["standard"];
+                          const vd = p?.apiVariants?.find(x => x.id === "standard") || p?.apiVariants?.[0];
+                          return { ...s, llmProfiles: profiles, llmProvider: v,
+                            url: target?.url || vd?.baseUrl || "",
+                            apiKey: target?.apiKey || "",
+                            model: target?.model || (p?.models?.[0] ?? "") };
+                        });
                       }}
                       options={llmProviders.map(p => ({ value: p.value, label: p.label }))}
                     />
@@ -1092,14 +1105,16 @@ export function SettingsClient() {
                           <button
                             key={v.id}
                             onClick={() => {
-                              setSettings(s => {
-                                const cache = { ...s.variantConfigs };
-                                cache[activeApiVariant] = { url: s.url, apiKey: s.apiKey, model: s.model };
-                                const target = cache[v.id] || { url: "", apiKey: "", model: "" };
-                                return { ...s, variantConfigs: cache, url: target.url || v.baseUrl || "", apiKey: target.apiKey, model: target.model || s.model };
-                              });
-                              setActiveApiVariant(v.id);
-                            }}
+                                                          setSettings(s => {
+                                                            const profiles = { ...s.llmProfiles };
+                                                            const pid = s.llmProvider;
+                                                            if (!profiles[pid]) profiles[pid] = {};
+                                                            profiles[pid][activeApiVariant] = { url: s.url, apiKey: s.apiKey, model: s.model };
+                                                            const target = profiles[pid]?.[v.id] || { url: "", apiKey: "", model: "" };
+                                                            return { ...s, llmProfiles: profiles, url: target.url || v.baseUrl || "", apiKey: target.apiKey || "", model: target.model || "" };
+                                                          });
+                                                          setActiveApiVariant(v.id);
+                                                        }}
                             className={`flex-1 px-2 py-1.5 rounded-lg border text-[11px] transition-colors ${
                               activeApiVariant === v.id
                                 ? "border-primary bg-primary/5 text-primary font-medium"
