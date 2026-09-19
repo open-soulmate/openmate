@@ -31,6 +31,8 @@ interface SmartPromptFields {
 interface SmartPromptProps {
   /** Callback when user sends the assembled prompt */
   onSend: (assembled: string, fields: SmartPromptFields) => void;
+  /** 是否有附件待发送 — 纯附件（无文字）时也允许发送 */
+  hasAttachments?: boolean;
   /** Whether the AI is currently generating */
   isLoading?: boolean;
   /** Placeholder for the task field */
@@ -112,6 +114,7 @@ export function SmartPrompt({
   footer,
   onFileClick,
   onPaste,
+  hasAttachments,
   initialTask,
   sessionFields,
   onFieldsChange,
@@ -266,7 +269,8 @@ export function SmartPrompt({
   }, [showSendMenu]);
 
   const handleSend = () => {
-    if (!fields.task.trim()) return;
+    // 纯附件发送：文字为空但有待发附件时放行（拦截权交给onSend调用方按attachments判断）
+    if (!fields.task.trim() && !hasAttachments) return;
     const assembled = assemblePrompt(fields);
     onSend(assembled, fields);
     // 发送后清空所有字段和草稿

@@ -1168,6 +1168,7 @@ export function ChatClient() {
   const [editTitleValue, setEditTitleValue] = useState('');
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [chatView, setChatView] = useState<string>('messages');
+  const [smartTaskText, setSmartTaskText] = useState<string>(''); // SmartPrompt实时文字（发送按钮禁用判断：附件与文字都为空时禁用）
   const [showViewTabs, setShowViewTabs] = useState(false);
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -1306,6 +1307,18 @@ export function ChatClient() {
     f.mimeType?.startsWith('audio/') || /\.(mp3|wav|ogg|flac|aac|m4a|wma)$/i.test(f.name)
   ), [fileAttachments]);
 
+  // 文档类（用户规格）：pdf,docx,xlsx,pptx,md,txt — 代码类/其他全部归"其他"兜底
+  const docAttachments = useMemo(() => fileAttachments.filter(f => {
+    if (imageAttachments.includes(f) || videoAttachments.includes(f) || audioAttachments.includes(f)) return false;
+    return /pdf|msword|excel|powerpoint|officedocument|opendocument|text\/plain|markdown/.test(f.mimeType || '')
+      || /\.(pdf|docx?|xlsx?|pptx?|md|txt)$/i.test(f.name);
+  }), [fileAttachments, imageAttachments, videoAttachments, audioAttachments]);
+
+  // 其他类：排除图片/视频/音频/文档后的剩余（压缩包、二进制、未知类型）
+  const otherAttachments = useMemo(() => fileAttachments.filter(f =>
+    !imageAttachments.includes(f) && !videoAttachments.includes(f) && !audioAttachments.includes(f) && !docAttachments.includes(f)
+  ), [fileAttachments, imageAttachments, videoAttachments, audioAttachments, docAttachments]);
+
   // 链接提取：从消息文本中提取URL
   const linkItems = useMemo(() => {
     const links: { url: string; title?: string; messageId: string; role: 'user' | 'agent'; timestamp: Date }[] = [];
@@ -1351,6 +1364,67 @@ export function ChatClient() {
     }
     return groups.sort((a, b) => b.date.localeCompare(a.date));
   }, [messages]);
+
+  // 通用附件操作按钮（预览/下载/复制）— 文档/其他/图片/视频/音频视图共用
+  const renderAttachmentActions = (f: { name: string; data?: string; filePath?: string; mimeType?: string }) => (
+    <>
+      <button onClick={async (e) => {
+        e.stopPropagation();
+        const store = useAppStore.getState();
+        let dataUrl: string | undefined;
+        if (f.data) {
+          dataUrl = `data:${f.mimeType || 'application/octet-stream'};base64,${f.data}`;
+        } else if (f.filePath) {
+          try {
+            const apiBase = getApiUrl();
+            const resp = await fetch(`${apiBase}/api/file?path=${encodeURIComponent(f.filePath)}`);
+            if (resp.ok) {
+              const data = await resp.json();
+              const b64 = btoa(unescape(encodeURIComponent(data.content || '')));
+              dataUrl = `data:${f.mimeType || 'text/plain'};base64,${b64}`;
+            }
+          } catch (err) { console.warn('[file-preview] Failed:', err); }
+        }
+        if (dataUrl) {
+          store.setPendingFilePreview({ url: dataUrl, name: f.name, mimeType: f.mimeType });
+          store.setRightPanelOpen(true);
+        }
+      }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-primary hover:bg-primary/10 transition-colors">
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
+        预览
+      </button>
+      {(f.data || f.filePath) && <button onClick={async (e) => {
+        e.stopPropagation();
+        if (f.data) {
+          const byteChars = atob(f.data);
+          const bytes = new Uint8Array(byteChars.length);
+          for (let j = 0; j < byteChars.length; j++) bytes[j] = byteChars.charCodeAt(j);
+          const blob = new Blob([bytes], { type: f.mimeType || 'application/octet-stream' });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); URL.revokeObjectURL(url);
+        } else if (f.filePath) {
+          try {
+            const apiBase = getApiUrl();
+            const resp = await fetch(`${apiBase}/api/file?path=${encodeURIComponent(f.filePath)}`);
+            if (resp.ok) {
+              const content = (await resp.json()).content || '';
+              const blob = new Blob([content], { type: f.mimeType || 'text/plain' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); URL.revokeObjectURL(url);
+            }
+          } catch (err) { console.warn('[file-download] Failed:', err); }
+        }
+      }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+        <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+        下载
+      </button>}
+      {f.data && <button onClick={(e) => { e.stopPropagation(); navigator.clipboard.writeText(atob(f.data!)); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+        <Copy className="w-3 h-3" />
+        复制
+      </button>}
+    </>
+  );
+
 
   // Total unread count across all sessions
   const totalUnread = useMemo(() => {
@@ -1906,11 +1980,12 @@ export function ChatClient() {
           {showViewTabs && <>
           <SkirtTabs
             tabs={[
-              { id: 'messages', title: t('chat.viewMessages', '消息') },
-              { id: 'files', title: t('chat.viewFiles', '文件') },
+              { id: 'messages', title: t('chat.viewSessions', '会话') },
               { id: 'images', title: t('chat.viewImages', '图片') },
               { id: 'videos', title: t('chat.viewVideos', '视频') },
               { id: 'audio', title: t('chat.viewAudio', '音频') },
+              { id: 'docs', title: t('chat.viewDocs', '文档') },
+              { id: 'others', title: t('chat.viewOthers', '其他') },
               { id: 'links', title: t('chat.viewLinks', '链接') },
               { id: 'dates', title: t('chat.viewDates', '日期') },
             ]}
@@ -1919,15 +1994,19 @@ export function ChatClient() {
             renderTabContent={(tab: any, isActive: boolean) => (
               <>
                 {tab.id === 'messages' && <MessageSquare className="w-3.5 h-3.5 shrink-0" />}
-                {tab.id === 'files' && <FolderOpen className="w-3.5 h-3.5 shrink-0" />}
                 {tab.id === 'images' && <ImageIcon className="w-3.5 h-3.5 shrink-0" />}
                 {tab.id === 'videos' && <Video className="w-3.5 h-3.5 shrink-0" />}
                 {tab.id === 'audio' && <Music className="w-3.5 h-3.5 shrink-0" />}
+                {tab.id === 'docs' && <FileText className="w-3.5 h-3.5 shrink-0" />}
+                {tab.id === 'others' && <Paperclip className="w-3.5 h-3.5 shrink-0" />}
                 {tab.id === 'links' && <Link2 className="w-3.5 h-3.5 shrink-0" />}
                 {tab.id === 'dates' && <CalendarDays className="w-3.5 h-3.5 shrink-0" />}
                 <span className="hidden lg:inline truncate text-xs">{tab.title}</span>
-                {tab.id === 'files' && fileAttachments.length > 0 && (
-                  <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{fileAttachments.length}</span>
+                {tab.id === 'docs' && docAttachments.length > 0 && (
+                  <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{docAttachments.length}</span>
+                )}
+                {tab.id === 'others' && otherAttachments.length > 0 && (
+                  <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{otherAttachments.length}</span>
                 )}
                 {tab.id === 'images' && imageAttachments.length > 0 && (
                   <span className={`shrink-0 text-[10px] px-1.5 py-0 rounded-full font-medium min-w-[18px] text-center ${isActive ? 'bg-primary/15 text-primary' : 'bg-muted text-muted-foreground'}`}>{imageAttachments.length}</span>
@@ -1955,16 +2034,17 @@ export function ChatClient() {
           const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
           setShowScrollDown(!atBottom);
         }} className="flex-1 overflow-y-auto px-3 lg:px-6 py-3 lg:py-4 space-y-3 lg:space-y-4 chat-scrollbar relative">
-          {/* File view: timeline of file attachments */}
-          {chatView === 'files' && (
+                    {/* Docs view — 文档（pdf/docx/xlsx/pptx/md/txt，三段式卡片） */}
+          {chatView === 'docs' && (
             <div className="space-y-2">
-              {fileAttachments.length === 0 ? (
+              {docAttachments.length === 0 ? (
                 <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-                  <FolderOpen className="w-8 h-8 mb-2 opacity-40" />
-                  <p className="text-sm">暂无文件</p>
+                  <FileText className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-sm">暂无文档</p>
                 </div>
               ) : (
-                fileAttachments.map((f, i) => (
+                docAttachments.map((f, i) => (
+
                   <div key={i} className={`flex gap-2 lg:gap-3 ${f.role === 'user' ? 'justify-end' : ''}`}>
                     {f.role === 'agent' && (
                       <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -1972,13 +2052,11 @@ export function ChatClient() {
                       </div>
                     )}
                     <div className="max-w-[85%] lg:max-w-[70%] rounded-xl border border-border/60 bg-background/80 backdrop-blur-sm overflow-hidden">
-                      {/* 日期在上 */}
                       <div className="px-3 py-1.5 border-b border-border/30 bg-muted/20">
                         <span className="text-[10px] text-muted-foreground/60">
                           {f.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
                         </span>
                       </div>
-                      {/* 文件信息 */}
                       <div className="px-3 py-2.5 flex items-center gap-2">
                         <FileText className="w-5 h-5 text-muted-foreground shrink-0" />
                         <div className="min-w-0 flex-1">
@@ -1986,73 +2064,8 @@ export function ChatClient() {
                           {f.mimeType && <p className="text-[10px] text-muted-foreground/60">{f.mimeType}</p>}
                         </div>
                       </div>
-                      {/* 功能按钮在下 */}
                       <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border/30 bg-muted/20">
-                        <button onClick={async (e) => {
-                          e.stopPropagation();
-                          const store = useAppStore.getState();
-                          let dataUrl: string | undefined;
-                          if (f.data) {
-                            dataUrl = `data:${f.mimeType || 'application/octet-stream'};base64,${f.data}`;
-                          } else {
-                            // MEDIA: tag file - fetch from server API
-                            try {
-                              const apiBase = getApiUrl();
-                              const resp = await fetch(`${apiBase}/api/file?path=${encodeURIComponent(f.filePath || f.name)}`);
-                              if (resp.ok) {
-                                const data = await resp.json();
-                                const content = data.content || '';
-                                const b64 = btoa(unescape(encodeURIComponent(content)));
-                                dataUrl = `data:${f.mimeType || 'text/plain'};base64,${b64}`;
-                              }
-                            } catch (err) {
-                              console.warn('[file-preview] Failed to fetch file:', err);
-                            }
-                          }
-                          if (dataUrl) {
-                            store.setPendingFilePreview({ url: dataUrl, name: f.name, mimeType: f.mimeType });
-                            store.setRightPanelOpen(true);
-                          }
-                        }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-primary hover:bg-primary/10 transition-colors">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                          预览
-                        </button>
-                        {(f.data || f.filePath) && <button onClick={async (e) => {
-                          e.stopPropagation();
-                          if (f.data) {
-                            const byteChars = atob(f.data);
-                            const bytes = new Uint8Array(byteChars.length);
-                            for (let j = 0; j < byteChars.length; j++) bytes[j] = byteChars.charCodeAt(j);
-                            const blob = new Blob([bytes], { type: f.mimeType || 'application/octet-stream' });
-                            const url = URL.createObjectURL(blob);
-                            const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); URL.revokeObjectURL(url);
-                          } else if (f.filePath) {
-                            // Fetch from server API and download
-                            try {
-                              const apiBase = getApiUrl();
-                              const resp = await fetch(`${apiBase}/api/file?path=${encodeURIComponent(f.filePath)}`);
-                              if (resp.ok) {
-                                const data = await resp.json();
-                                const content = data.content || '';
-                                const blob = new Blob([content], { type: f.mimeType || 'text/plain' });
-                                const url = URL.createObjectURL(blob);
-                                const a = document.createElement('a'); a.href = url; a.download = f.name; a.click(); URL.revokeObjectURL(url);
-                              }
-                            } catch (err) {
-                              console.warn('[file-download] Failed:', err);
-                            }
-                          }
-                        }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
-                          <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                          下载
-                        </button>}
-                        {f.data && <button onClick={(e) => {
-                          e.stopPropagation();
-                          navigator.clipboard.writeText(atob(f.data!));
-                        }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
-                          <Copy className="w-3 h-3" />
-                          复制
-                        </button>}
+                        {renderAttachmentActions(f)}
                       </div>
                     </div>
                   </div>
@@ -2061,7 +2074,47 @@ export function ChatClient() {
             </div>
           )}
 
-          {/* Images view — 图片网格 */}
+          {/* Others view — 其他文件（zip/7z/代码/二进制/未知兜底，三段式卡片） */}
+          {chatView === 'others' && (
+            <div className="space-y-2">
+              {otherAttachments.length === 0 ? (
+                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
+                  <Paperclip className="w-8 h-8 mb-2 opacity-40" />
+                  <p className="text-sm">暂无其他文件</p>
+                </div>
+              ) : (
+                otherAttachments.map((f, i) => (
+
+                  <div key={i} className={`flex gap-2 lg:gap-3 ${f.role === 'user' ? 'justify-end' : ''}`}>
+                    {f.role === 'agent' && (
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="w-4 h-4 text-primary" />
+                      </div>
+                    )}
+                    <div className="max-w-[85%] lg:max-w-[70%] rounded-xl border border-border/60 bg-background/80 backdrop-blur-sm overflow-hidden">
+                      <div className="px-3 py-1.5 border-b border-border/30 bg-muted/20">
+                        <span className="text-[10px] text-muted-foreground/60">
+                          {f.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="px-3 py-2.5 flex items-center gap-2">
+                        <Paperclip className="w-5 h-5 text-muted-foreground shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{f.name}</p>
+                          {f.mimeType && <p className="text-[10px] text-muted-foreground/60">{f.mimeType}</p>}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border/30 bg-muted/20">
+                        {renderAttachmentActions(f)}
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
+
+          {/* Images view — 图片（三段式卡片：时间在上+内容+功能按钮在下） */}
           {chatView === 'images' && (
             <div className="space-y-2">
               {imageAttachments.length === 0 ? (
@@ -2070,12 +2123,22 @@ export function ChatClient() {
                   <p className="text-sm">暂无图片</p>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {imageAttachments.map((f, i) => (
-                    <div
-                      key={i}
-                      className="group relative aspect-square rounded-lg overflow-hidden border border-border/40 bg-muted/20 cursor-pointer hover:shadow-md transition-shadow"
-                      onClick={async () => {
+                imageAttachments.map((f, i) => (
+                  <div key={i} className={`flex gap-2 lg:gap-3 ${f.role === 'user' ? 'justify-end' : ''}`}>
+                    {f.role === 'agent' && (
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="w-4 h-4 text-primary" />
+                      </div>
+                    )}
+                    <div className="max-w-[85%] lg:max-w-[70%] rounded-xl border border-border/60 bg-background/80 backdrop-blur-sm overflow-hidden">
+                      {/* 时间在上 */}
+                      <div className="px-3 py-1.5 border-b border-border/30 bg-muted/20">
+                        <span className="text-[10px] text-muted-foreground/60">
+                          {f.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      {/* 图片内容（点击预览） */}
+                      <div className="relative cursor-pointer group" onClick={async () => {
                         const store = useAppStore.getState();
                         let dataUrl: string | undefined;
                         if (f.data) {
@@ -2095,30 +2158,30 @@ export function ChatClient() {
                           store.setPendingFilePreview({ url: dataUrl, name: f.name, mimeType: f.mimeType });
                           store.setRightPanelOpen(true);
                         }
-                      }}
-                    >
-                      {f.data ? (
-                        <img
-                          src={`data:${f.mimeType || 'image/png'};base64,${f.data}`}
-                          alt={f.name}
-                          className="w-full h-full object-cover"
-                        />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center">
-                          <ImageIcon className="w-8 h-8 opacity-30" />
+                      }}>
+                        {f.data ? (
+                          <img src={`data:${f.mimeType || 'image/png'};base64,${f.data}`} alt={f.name} className="w-full max-h-80 object-contain bg-black/5" />
+                        ) : (
+                          <div className="w-full h-40 flex items-center justify-center">
+                            <ImageIcon className="w-8 h-8 opacity-30" />
+                          </div>
+                        )}
+                        <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <p className="text-[10px] text-white truncate">{f.name}</p>
                         </div>
-                      )}
-                      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <p className="text-[10px] text-white truncate">{f.name}</p>
+                      </div>
+                      {/* 功能按钮在下 */}
+                      <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border/30 bg-muted/20">
+                        {renderAttachmentActions(f)}
                       </div>
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))
               )}
             </div>
           )}
 
-          {/* Videos view — 视频列表 */}
+          {/* Videos view — 视频（三段式卡片：时间在上+播放器+功能按钮在下） */}
           {chatView === 'videos' && (
             <div className="space-y-2">
               {videoAttachments.length === 0 ? (
@@ -2128,31 +2191,41 @@ export function ChatClient() {
                 </div>
               ) : (
                 videoAttachments.map((f, i) => (
-                  <div key={i} className="rounded-lg border border-border/40 bg-muted/20 overflow-hidden">
-                    <div className="px-3 py-2 flex items-center gap-2">
-                      <Video className="w-5 h-5 text-muted-foreground shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{f.name}</p>
-                        <p className="text-[10px] text-muted-foreground/60">
-                          {f.timestamp.toLocaleString('zh-CN')} {f.mimeType && `· ${f.mimeType}`}
-                        </p>
+                  <div key={i} className={`flex gap-2 lg:gap-3 ${f.role === 'user' ? 'justify-end' : ''}`}>
+                    {f.role === 'agent' && (
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="w-4 h-4 text-primary" />
                       </div>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-muted text-muted-foreground shrink-0">
-                        {f.role === 'user' ? '用户' : 'AI'}
-                      </span>
-                    </div>
-                    {f.data && (
-                      <video controls className="w-full max-h-64 bg-black" preload="metadata">
-                        <source src={`data:${f.mimeType || 'video/mp4'};base64,${f.data}`} />
-                      </video>
                     )}
+                    <div className="max-w-[85%] lg:max-w-[70%] rounded-xl border border-border/60 bg-background/80 backdrop-blur-sm overflow-hidden">
+                      <div className="px-3 py-1.5 border-b border-border/30 bg-muted/20">
+                        <span className="text-[10px] text-muted-foreground/60">
+                          {f.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="px-3 py-2.5 flex items-center gap-2">
+                        <Video className="w-5 h-5 text-muted-foreground shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{f.name}</p>
+                          {f.mimeType && <p className="text-[10px] text-muted-foreground/60">{f.mimeType}</p>}
+                        </div>
+                      </div>
+                      {f.data && (
+                        <video controls className="w-full max-h-64 bg-black" preload="metadata">
+                          <source src={`data:${f.mimeType || 'video/mp4'};base64,${f.data}`} />
+                        </video>
+                      )}
+                      <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border/30 bg-muted/20">
+                        {renderAttachmentActions(f)}
+                      </div>
+                    </div>
                   </div>
                 ))
               )}
             </div>
           )}
 
-          {/* Audio view — 音频列表 */}
+          {/* Audio view — 音频（三段式卡片：时间在上+播放器+功能按钮在下） */}
           {chatView === 'audio' && (
             <div className="space-y-2">
               {audioAttachments.length === 0 ? (
@@ -2162,28 +2235,43 @@ export function ChatClient() {
                 </div>
               ) : (
                 audioAttachments.map((f, i) => (
-                  <div key={i} className="rounded-lg border border-border/40 bg-muted/20 p-3">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Music className="w-5 h-5 text-muted-foreground shrink-0" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{f.name}</p>
-                        <p className="text-[10px] text-muted-foreground/60">
-                          {f.timestamp.toLocaleString('zh-CN')} {f.mimeType && `· ${f.mimeType}`}
-                        </p>
+                  <div key={i} className={`flex gap-2 lg:gap-3 ${f.role === 'user' ? 'justify-end' : ''}`}>
+                    {f.role === 'agent' && (
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="w-4 h-4 text-primary" />
+                      </div>
+                    )}
+                    <div className="max-w-[85%] lg:max-w-[70%] rounded-xl border border-border/60 bg-background/80 backdrop-blur-sm overflow-hidden">
+                      <div className="px-3 py-1.5 border-b border-border/30 bg-muted/20">
+                        <span className="text-[10px] text-muted-foreground/60">
+                          {f.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="px-3 py-2.5 flex items-center gap-2">
+                        <Music className="w-5 h-5 text-muted-foreground shrink-0" />
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{f.name}</p>
+                          {f.mimeType && <p className="text-[10px] text-muted-foreground/60">{f.mimeType}</p>}
+                        </div>
+                      </div>
+                      {f.data && (
+                        <div className="px-3 pb-2">
+                          <audio controls className="w-full" preload="metadata">
+                            <source src={`data:${f.mimeType || 'audio/mpeg'};base64,${f.data}`} />
+                          </audio>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border/30 bg-muted/20">
+                        {renderAttachmentActions(f)}
                       </div>
                     </div>
-                    {f.data && (
-                      <audio controls className="w-full" preload="metadata">
-                        <source src={`data:${f.mimeType || 'audio/mpeg'};base64,${f.data}`} />
-                      </audio>
-                    )}
                   </div>
                 ))
               )}
             </div>
           )}
 
-          {/* Links view — 链接列表 */}
+          {/* Links view — 链接（三段式卡片：时间在上+链接信息+功能按钮在下） */}
           {chatView === 'links' && (
             <div className="space-y-2">
               {linkItems.length === 0 ? (
@@ -2193,32 +2281,45 @@ export function ChatClient() {
                 </div>
               ) : (
                 linkItems.map((link, i) => (
-                  <a
-                    key={i}
-                    href={link.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-3 p-3 rounded-lg border border-border/40 bg-muted/20 hover:bg-muted/40 transition-colors group"
-                  >
-                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <Link2 className="w-4 h-4 text-primary" />
+                  <div key={i} className={`flex gap-2 lg:gap-3 ${link.role === 'user' ? 'justify-end' : ''}`}>
+                    {link.role === 'agent' && (
+                      <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                        <Bot className="w-4 h-4 text-primary" />
+                      </div>
+                    )}
+                    <div className="max-w-[85%] lg:max-w-[70%] rounded-xl border border-border/60 bg-background/80 backdrop-blur-sm overflow-hidden">
+                      <div className="px-3 py-1.5 border-b border-border/30 bg-muted/20">
+                        <span className="text-[10px] text-muted-foreground/60">
+                          {link.timestamp.toLocaleString('zh-CN', { year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <div className="px-3 py-2.5 flex items-center gap-2">
+                        <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                          <Link2 className="w-4 h-4 text-primary" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{link.title || link.url}</p>
+                          <p className="text-[10px] text-muted-foreground/60 truncate">{link.url}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border/30 bg-muted/20">
+                        <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-1 rounded text-xs text-primary hover:bg-primary/10 transition-colors">
+                          <Link2 className="w-3 h-3" />
+                          打开链接
+                        </a>
+                        <button onClick={() => navigator.clipboard.writeText(link.url)} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted/50 transition-colors">
+                          <Copy className="w-3 h-3" />
+                          复制链接
+                        </button>
+                      </div>
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                        {link.title || link.url}
-                      </p>
-                      <p className="text-[10px] text-muted-foreground/60 truncate">{link.url}</p>
-                    </div>
-                    <div className="text-[10px] text-muted-foreground/40 shrink-0">
-                      {link.timestamp.toLocaleDateString('zh-CN')}
-                    </div>
-                  </a>
+                  </div>
                 ))
               )}
             </div>
           )}
 
-          {/* Dates view — 日期分组 */}
+{/* Dates view — 日期分组 */}
           {chatView === 'dates' && (
             <div className="space-y-3">
               {dateGroups.length === 0 ? (
@@ -2504,12 +2605,14 @@ export function ChatClient() {
           <div className="space-y-2 min-h-[80px]">
             <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
             <SmartPrompt
+              hasAttachments={attachments.length > 0}
               initialTask={smartPromptTask}
               sessionFields={effectiveSessionId ? sessionDataMap.get(effectiveSessionId)?.promptFields : undefined}
               sessionId={effectiveSessionId || undefined}
               clearTrigger={clearTrigger}
               loadFieldsTrigger={loadFieldsTrigger}
               onFieldsChange={(newFields) => {
+                setSmartTaskText(newFields.task || '');
                 const sid = useAppStore.getState().activeSessionId;
                 if (!sid) return;
                 setSessionDataMap(prev => {
@@ -2603,7 +2706,7 @@ export function ChatClient() {
                   )}
                   <button
                     onClick={() => { window.dispatchEvent(new CustomEvent('smart-prompt-send')); }}
-                    disabled={false /* P1插话：任务运行中可发送插话 */}
+                    disabled={attachments.length === 0 && !smartTaskText.trim() /* 附件与文字都为空时禁用，任一有内容可发送 */}
                     className="flex items-center justify-center w-9 h-9 rounded-full bg-primary text-primary-foreground hover:bg-primary/90 active:bg-primary/80 disabled:opacity-50 transition-colors"
                     title={loading ? "发送插话（任务间隙注入）" : "发送"}
                   >
