@@ -1,5 +1,6 @@
 'use client';
 import MarkdownContent from "@/components/markdown-content";
+import { SecretScanBadge } from "@/components/secret-scan-badge";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { TaskChoiceMenu, type ChoiceOption } from "@/components/task-choice-menu";
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
@@ -2479,6 +2480,7 @@ export function ChatClient() {
                       // Handle code apply - 复制到剪贴板，HTTP环境下用fallback
                       copyToClipboard(code);
                     }} />}
+                    {p.type === 'text' && msg.role === 'agent' && <SecretScanBadge text={p.text || ''} minRisk="high" />}
                     {p.type === 'image' && p.data && <img src={`data:${p.mime_type || 'image/png'};base64,${p.data}`} alt={p.name || 'image'} className="max-w-xs w-auto max-h-64 rounded-lg mt-1 object-contain" />}
                     {p.type === 'choice' && p.choices && (
                       <TaskChoiceMenu
