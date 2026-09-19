@@ -317,10 +317,12 @@ export function SettingsClient() {
     }).catch(() => {});
   }, []);
   const variantStatus = (providerId: string, variantId: string) => presetStatus[providerId]?.[variantId]?.status || "not_configured";
-  const providerDisplay = (m: { value: string; name: string }) => {
-    const brand = m.name.split(" (")[0];
-    const desc = t(`settings.providerDesc.${m.value}`);
-    return desc && !desc.startsWith("settings.") ? `${brand} (${desc})` : m.name;
+  const providerDisplay = (m: { value?: string; provider?: string; label?: string; name?: string }) => {
+    const pid = m.value || m.provider || "";
+    const raw = m.label || m.name || pid;
+    const brand = raw.split(" (")[0];
+    const desc = t(`settings.providerDesc.${pid}`);
+    return desc && !desc.startsWith("settings.") ? `${brand} (${desc})` : raw;
   };
   const STATUS_DOT: Record<string, string> = {
     ok: "bg-green-500", low_balance: "bg-yellow-500", invalid_key: "bg-red-500",

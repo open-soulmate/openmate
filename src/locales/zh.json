@@ -704,7 +704,9 @@
       "vllm": "本地",
       "custom": "自定义"
     },
-    "localDeploy": "本地部署"
+    "localDeploy": "本地部署",
+    "backToList": "返回列表",
+    "customModelName": "自定义模型名称"
   },
   "search": {
     "title": "搜索一切",

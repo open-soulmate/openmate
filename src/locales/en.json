@@ -705,7 +705,9 @@
       "vllm": "Local",
       "custom": "Custom"
     },
-    "localDeploy": "Local Deploy"
+    "localDeploy": "Local Deploy",
+    "backToList": "Back to list",
+    "customModelName": "Custom model name"
   },
   "search": {
     "title": "Search Everything",

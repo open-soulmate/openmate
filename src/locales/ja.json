@@ -702,7 +702,9 @@
       "vllm": "ローカル",
       "custom": "カスタム"
     },
-    "localDeploy": "ローカル配置"
+    "localDeploy": "ローカル配置",
+    "backToList": "リストに戻る",
+    "customModelName": "カスタムモデル名"
   },
   "search": {
     "title": "すべてを検索",
