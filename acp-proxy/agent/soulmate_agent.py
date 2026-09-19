@@ -84,6 +84,22 @@ from agent.capability_evaluator import CapabilityEvaluator
 from agent.env_sensor import EnvironmentSensor
 from agent.prompt_manager import PromptTemplateManager
 from agent.context_budget import ContextBudgetManager
+from agent.token_attribution import (
+    KIND_BUILTIN_TOOL,
+    KIND_IMPROVEMENT,
+    KIND_MEMORY,
+    KIND_MESSAGE,
+    KIND_MCP_TOOL,
+    KIND_PREFERENCE,
+    KIND_SKILL,
+    KIND_SYSTEM_PROMPT,
+    KIND_TOOL_RESULT,
+    AttributionLedger,
+    ContextItem,
+    build_context_usage,
+    estimate_tokens,
+    items_from_openai_tools,
+)
 from agent.chain_optimizer import ChainOptimizer
 from agent.stream_manager import StreamingResponseManager
 from agent.session_manager import ConcurrentSessionManager
@@ -207,6 +223,8 @@ class SoulMateAgent:
         self._prompt_manager = PromptTemplateManager()
         # 上下文预算
         self._context_budget = ContextBudgetManager()
+        # P1: 上下文逐项token归因账本（claude-code SDKContextUsage移植；agent子进程写，app.py跨进程读）
+        self._token_attr_ledger = AttributionLedger()
         # 链优化器
         self._chain_optimizer = ChainOptimizer()
         # 流管理器
@@ -554,23 +572,46 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 
 You can send files to the user natively: to deliver a file, write a brief confirmation message (e.g. "文件已发送，请查收"), then include MEDIA:/absolute/path/to/file on a new line. The gateway extracts the tag, strips it, and sends the file as a download card. Always write some text before the MEDIA: tag — never output a bare MEDIA: tag alone. Use search_files first if you don't know the exact path. Do NOT paste file contents into chat."""
 
+        # ── P1: 上下文逐项token归因（claude-code SDKContextUsage移植）──
+        # 每个注入段/每个工具定义/每条记忆逐项记账——"上下文被什么吃掉了"直接答案。
+        # 观测性旁路：任一环节失败仅debug日志，绝不阻断agent执行路径。
+        attr_items: list[ContextItem] = []
+        attr_items.append(ContextItem(
+            kind=KIND_SYSTEM_PROMPT, name="soulmate_base_prompt", source="soulmate_agent",
+            tokens=estimate_tokens(system_prompt),
+        ))
+
         # 注入匹配的技能上下文
         if matched_skills:
             system_prompt += "\n\n## 相关技能（参考以下经验执行任务）\n"
             for skill in matched_skills[:3]:
-                system_prompt += f"\n### {skill['name']}\n{skill['content']}\n"
+                skill_body = f"\n### {skill['name']}\n{skill['content']}\n"
                 if skill.get("code_template"):
-                    system_prompt += f"```\n{skill['code_template']}\n```\n"
+                    skill_body += f"```\n{skill['code_template']}\n```\n"
+                system_prompt += skill_body
+                # P1归因：skill逐项（SDKContextUsage skills[]，名称+正文+模板）
+                attr_items.append(ContextItem(
+                    kind=KIND_SKILL, name=str(skill.get("name", "unnamed_skill")),
+                    source="skill_manager.search", tokens=estimate_tokens(skill_body),
+                ))
 
         # 注入用户偏好
         pref_context = self._pref_learner.get_context_prompt()
         if pref_context:
             system_prompt += f"\n\n## 用户偏好（请遵守）\n{pref_context}\n"
+            attr_items.append(ContextItem(
+                kind=KIND_PREFERENCE, name="user_preferences", source="pref_learner",
+                tokens=estimate_tokens(pref_context),
+            ))
 
         # 注入反思改进建议
         improvement_ctx = self._reflection_engine.get_improvement_context(session_id)
         if improvement_ctx:
             system_prompt += f"\n\n## 历史改进经验（避免重复错误）\n{improvement_ctx}\n"
+            attr_items.append(ContextItem(
+                kind=KIND_IMPROVEMENT, name="reflection_improvements", source="reflection_engine",
+                tokens=estimate_tokens(improvement_ctx),
+            ))
 
         # 注入召回的相关记忆
         if len(user_text) > 10:
@@ -578,8 +619,14 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 recalled = self._memory_consolidator.recall(user_text, limit=3)
                 if recalled:
                     system_prompt += "\n\n## 相关历史记忆\n"
-                    for mem in recalled:
-                        system_prompt += f"- {mem.get('content', '')[:200]}\n"
+                    for _i_mem, mem in enumerate(recalled):
+                        mem_line = f"- {mem.get('content', '')[:200]}\n"
+                        system_prompt += mem_line
+                        # P1归因：召回记忆逐条（SDKContextUsage memory_files[]）
+                        attr_items.append(ContextItem(
+                            kind=KIND_MEMORY, name=f"memory_recall[{_i_mem}]",
+                            source="memory_consolidator.recall", tokens=estimate_tokens(mem_line),
+                        ))
             except Exception as e:
                 logger.debug(f"[memory] recall error: {e}")
 
@@ -589,6 +636,10 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 skill_ctx = self._skill_learner.get_context_prompt(user_text)
                 if skill_ctx:
                     system_prompt += f"\n\n## 学习到的技能（可复用）\n{skill_ctx}\n"
+                    attr_items.append(ContextItem(
+                        kind=KIND_SKILL, name="learned_skills", source="skill_learner",
+                        tokens=estimate_tokens(skill_ctx),
+                    ))
             except Exception as e:
                 logger.debug(f"[skill_learner] context error: {e}")
 
@@ -883,6 +934,12 @@ You can send files to the user natively: to deliver a file, write a brief confir
         
         all_tools = builtin_tools + (mcp_tools or []) + evolution_tools + [clarify_tool]
 
+        # P1归因：工具定义逐项（per-tool——"20+工具定义里哪个最吃上下文"；三来源分开归因）
+        attr_items += items_from_openai_tools(builtin_tools, source="builtin")
+        attr_items += items_from_openai_tools(mcp_tools or [], source="mcp")
+        attr_items += items_from_openai_tools(evolution_tools, source="evolution")
+        attr_items += items_from_openai_tools([clarify_tool], source="builtin")
+
         self._streamed_flags[session_id] = False
         # ── P0-4: 活动观测开始（goose peek：status=running，durable turns开始计数）──
         activity = self._activity(session_id)
@@ -920,6 +977,33 @@ You can send files to the user natively: to deliver a file, write a brief confir
             got_tool_call = False
             round_had_text = False
             tool_results: list = []  # 预绑定：活动记账在循环尾读取，防possibly-unbound
+            # ── P1: token归因记录——每次LLM请求一次（首轮=请求发出前的上下文构成快照）──
+            if _round == 0:
+                try:
+                    _window = int(os.environ.get("AGENT_CONTEXT_WINDOW", "32000"))
+                    _model = os.environ.get("LLM_MODEL", "")
+                    _msg_items = list(attr_items)
+                    _conv = 0
+                    _tres = 0
+                    for _m in messages:
+                        _tok = estimate_tokens(str(_m.get("content", "") or ""))
+                        if _m.get("role") == "tool":
+                            _tres += _tok
+                        else:
+                            _conv += _tok
+                    _msg_items.append(ContextItem(
+                        kind=KIND_MESSAGE, name="conversation_history",
+                        source="session", tokens=_conv,
+                    ))
+                    if _tres:
+                        _msg_items.append(ContextItem(
+                            kind=KIND_TOOL_RESULT, name="tool_results_in_context",
+                            source="tool_loop", tokens=_tres,
+                        ))
+                    _usage = build_context_usage(_msg_items, max_tokens=_window, model=_model)
+                    self._token_attr_ledger.record(_usage, session_id=session_id, model=_model)
+                except Exception as _ta_exc:
+                    logger.debug(f"[token-attribution] record failed (non-fatal): {_ta_exc}")
             async for chunk in self.llm_engine.chat_stream_with_tools(
                 messages=messages,
                 tools=all_tools if all_tools else None,

@@ -299,6 +299,23 @@ async def agent_tool_output_stats():
         return {"error": str(e)}
 
 
+def _token_attribution_stats(limit: int | None = None):
+    """P1: 上下文逐项token归因（claude-code SDKContextUsage移植）——"上下文被什么吃掉了"。
+    soulmate agent子进程写JSONL账本，本进程跨进程读取（与tool_output账本同模式，共享文件系统真源）。"""
+    from agent.token_attribution import AttributionLedger
+    return AttributionLedger().get_stats(limit=limit)
+
+
+@app.get("/api/agent/token-attribution")
+async def agent_token_attribution(limit: int = 20):
+    """P1: 上下文逐项token归因——每个工具定义/每条记忆/每个skill/系统提示各多少token，
+    top_consumers=什么最吃上下文，over_limit区分hard_limit/compaction_window两种超限性质"""
+    try:
+        return _token_attribution_stats(limit=min(max(limit, 1), 100))
+    except Exception as e:
+        return {"error": str(e)}
+
+
 @app.get("/health")
 async def health():
     instance_id = os.environ.get("INSTANCE_ID", "a")
@@ -315,6 +332,16 @@ async def health():
             k: _ts.get(k)
             for k in ("total_spills", "total_calls", "truncated_calls",
                       "sent_chars_total", "shown_chars_total", "char_threshold", "line_threshold")
+        }
+    except Exception:
+        pass
+    # P1: token归因摘要并入health（最近上下文总量/超限记录数——monitoring页免额外请求可见）
+    try:
+        _ta = _token_attribution_stats()
+        payload["token_attribution"] = {
+            "total_records": _ta.get("total_records", 0),
+            **{k: _ta.get("summary", {}).get(k)
+               for k in ("over_limit_records", "avg_total_tokens", "max_total_tokens")},
         }
     except Exception:
         pass
