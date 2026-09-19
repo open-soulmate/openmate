@@ -4,7 +4,7 @@ import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { TaskChoiceMenu, type ChoiceOption } from "@/components/task-choice-menu";
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useAppStore } from '@/stores/app-store';
-import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, Copy, ThumbsUp, ThumbsDown, Share2, RefreshCw, MoreHorizontal, Volume2, MessageSquare, FolderOpen, Video, Music, Link2, CalendarDays } from "lucide-react";
+import { Send, Bot, User, Loader2, Paperclip, X, Wifi, WifiOff, FileText, Image as ImageIcon, Info, ChevronDown, ChevronLeft, ChevronRight, Plus, Bookmark, RotateCcw, Zap, Brain, PanelLeft, Copy, ThumbsUp, ThumbsDown, Share2, RefreshCw, MoreHorizontal, Volume2, MessageSquare, FolderOpen, Video, Music, Link2, CalendarDays, LocateFixed } from "lucide-react";
 import { SkirtTabs } from "@opensoulmate/openface";
 import { ContextRing } from "@/components/context-ring";
 import { getApiBaseUrl, getToken, getUserId } from '@/lib/api-client';
@@ -1169,6 +1169,7 @@ export function ChatClient() {
   const titleInputRef = useRef<HTMLInputElement>(null);
   const [chatView, setChatView] = useState<string>('messages');
   const [smartTaskText, setSmartTaskText] = useState<string>(''); // SmartPrompt实时文字（发送按钮禁用判断：附件与文字都为空时禁用）
+  const [calMonth, setCalMonth] = useState<Date>(() => new Date()); // 日期日历视图当前查看月份
   const [showViewTabs, setShowViewTabs] = useState(false);
   const { t } = useTranslation();
   const isMobile = useIsMobile();
@@ -1365,9 +1366,26 @@ export function ChatClient() {
     return groups.sort((a, b) => b.date.localeCompare(a.date));
   }, [messages]);
 
-  // 通用附件操作按钮（预览/下载/复制）— 文档/其他/图片/视频/音频视图共用
-  const renderAttachmentActions = (f: { name: string; data?: string; filePath?: string; mimeType?: string }) => (
+  // 跳转上下文：切到会话视图+滚动定位到目标消息（各视图功能按钮+日期日历共用）
+  const jumpToMessage = useCallback((messageId: string) => {
+    setChatView('messages');
+    setTimeout(() => {
+      const el = document.getElementById(`msg-${messageId}`);
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        el.classList.add('ring-2', 'ring-primary');
+        setTimeout(() => el.classList.remove('ring-2', 'ring-primary'), 2000);
+      }
+    }, 150);
+  }, []);
+
+  // 通用附件操作按钮（跳转/预览/下载/复制）— 文档/其他/图片/视频/音频视图共用
+  const renderAttachmentActions = (f: { name: string; messageId?: string; data?: string; filePath?: string; mimeType?: string }) => (
     <>
+      {f.messageId && <button onClick={(e) => { e.stopPropagation(); jumpToMessage(f.messageId!); }} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted/50 transition-colors" title="跳转到会话中此消息">
+        <LocateFixed className="w-3 h-3" />
+        跳转
+      </button>}
       <button onClick={async (e) => {
         e.stopPropagation();
         const store = useAppStore.getState();
@@ -2303,6 +2321,10 @@ export function ChatClient() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 px-3 py-1.5 border-t border-border/30 bg-muted/20">
+                        <button onClick={() => jumpToMessage(link.messageId)} className="flex items-center gap-1 px-2 py-1 rounded text-xs text-muted-foreground hover:bg-muted/50 transition-colors" title="跳转到会话中此消息">
+                          <LocateFixed className="w-3 h-3" />
+                          跳转
+                        </button>
                         <a href={link.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 px-2 py-1 rounded text-xs text-primary hover:bg-primary/10 transition-colors">
                           <Link2 className="w-3 h-3" />
                           打开链接
@@ -2319,58 +2341,63 @@ export function ChatClient() {
             </div>
           )}
 
-{/* Dates view — 日期分组 */}
-          {chatView === 'dates' && (
-            <div className="space-y-3">
-              {dateGroups.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-40 text-muted-foreground">
-                  <CalendarDays className="w-8 h-8 mb-2 opacity-40" />
-                  <p className="text-sm">暂无消息</p>
+          {/* Dates view — 日期日历（微信式：有会话消息的日期突出显示，点击跳转当天第一条消息） */}
+          {chatView === 'dates' && (() => {
+            const dateMap = new Map(dateGroups.map(g => [g.date, g]));
+            const y = calMonth.getFullYear();
+            const m = calMonth.getMonth();
+            const startOffset = (new Date(y, m, 1).getDay() + 6) % 7; // 周一起始
+            const daysInMonth = new Date(y, m + 1, 0).getDate();
+            const today = new Date().toISOString().slice(0, 10);
+            const cells: ({ d: number; dateStr: string; group?: typeof dateGroups[number] } | null)[] = [];
+            for (let i = 0; i < startOffset; i++) cells.push(null);
+            for (let d = 1; d <= daysInMonth; d++) {
+              const dateStr = `${y}-${String(m + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+              cells.push({ d, dateStr, group: dateMap.get(dateStr) });
+            }
+            return (
+              <div className="max-w-sm mx-auto rounded-xl border border-border/60 bg-background/80 backdrop-blur-sm overflow-hidden">
+                {/* 月份导航 */}
+                <div className="flex items-center justify-between px-4 py-3 border-b border-border/30 bg-muted/20">
+                  <button onClick={() => setCalMonth(new Date(y, m - 1, 1))} className="p-1.5 rounded hover:bg-muted/50 text-muted-foreground transition-colors" title="上个月">
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="text-sm font-medium">{y}年{m + 1}月</span>
+                  <button onClick={() => setCalMonth(new Date(y, m + 1, 1))} className="p-1.5 rounded hover:bg-muted/50 text-muted-foreground transition-colors" title="下个月">
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
                 </div>
-              ) : (
-                dateGroups.map((group) => (
-                  <div key={group.date} className="rounded-lg border border-border/40 overflow-hidden">
-                    <div className="flex items-center justify-between px-3 py-2 bg-muted/30 border-b border-border/30">
-                      <div className="flex items-center gap-2">
-                        <CalendarDays className="w-4 h-4 text-primary" />
-                        <span className="text-sm font-medium">{group.label}</span>
-                        <span className="text-[10px] text-muted-foreground">{group.date}</span>
-                      </div>
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
-                        {group.count} 条
-                      </span>
-                    </div>
-                    <div className="divide-y divide-border/20">
-                      {group.messages.slice(0, 5).map((msg, j) => (
-                        <div key={j} className="px-3 py-2 flex items-start gap-2">
-                          <div className={`w-5 h-5 rounded-full flex items-center justify-center shrink-0 mt-0.5 ${msg.role === 'user' ? 'bg-blue-500/10' : 'bg-primary/10'}`}>
-                            {msg.role === 'user' ? <User className="w-3 h-3 text-blue-500" /> : <Bot className="w-3 h-3 text-primary" />}
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <p className="text-xs text-muted-foreground line-clamp-2">
-                              {msg.parts.find(p => p.type === 'text')?.text?.slice(0, 120) || '...'}
-                            </p>
-                          </div>
-                          <span className="text-[10px] text-muted-foreground/40 shrink-0">
-                            {msg.timestamp.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-                          </span>
-                        </div>
-                      ))}
-                      {group.messages.length > 5 && (
-                        <div className="px-3 py-1.5 text-center">
-                          <span className="text-[10px] text-muted-foreground">
-                            还有 {group.messages.length - 5} 条消息...
-                          </span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          )}
+                {/* 星期表头 */}
+                <div className="grid grid-cols-7 px-2 pt-2 pb-1">
+                  {['一', '二', '三', '四', '五', '六', '日'].map(w => (
+                    <div key={w} className="text-center text-[10px] text-muted-foreground/60 py-1">{w}</div>
+                  ))}
+                </div>
+                {/* 日期网格 */}
+                <div className="grid grid-cols-7 gap-1 p-2">
+                  {cells.map((cell, i) => {
+                    if (!cell) return <div key={`pad-${i}`} />;
+                    const has = !!cell.group;
+                    const isToday = cell.dateStr === today;
+                    return (
+                      <button
+                        key={cell.dateStr}
+                        disabled={!has}
+                        onClick={() => { const first = cell.group?.messages[0]; if (first) jumpToMessage(first.id); }}
+                        className={`relative aspect-square rounded-lg flex flex-col items-center justify-center text-xs transition-colors ${has ? 'bg-primary/15 text-primary font-semibold hover:bg-primary/25 cursor-pointer' : 'text-muted-foreground/40'} ${isToday ? 'ring-1 ring-primary' : ''}`}
+                        title={has ? `${cell.dateStr}：${cell.group!.count}条消息，点击跳转` : cell.dateStr}
+                      >
+                        {cell.d}
+                        {has && <span className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })()}
 
-          {/* Messages view */}
+{/* Messages view */}
           {chatView === 'messages' && (<>
           {messages.length === 0 && (
             <div className="flex flex-col items-center justify-center h-full max-w-2xl mx-auto">
@@ -2396,7 +2423,7 @@ export function ChatClient() {
             </div>
           )}
           {messages.map(msg => (
-            <div key={msg.id} className={`flex gap-2 lg:gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
+            <div key={msg.id} id={`msg-${msg.id}`} className={`flex gap-2 lg:gap-3 rounded-xl transition-all duration-300 ${msg.role === 'user' ? 'justify-end' : ''}`}>
               {msg.role === 'agent' && (
                 <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                   <Bot className="w-4 h-4 text-primary" />
