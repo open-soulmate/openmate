@@ -1175,6 +1175,7 @@ export function ChatClient() {
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<AgentInfo | null>(null);
   const [attachments, setAttachments] = useState<MessagePart[]>([]);
+  const [readingCount, setReadingCount] = useState(0); // 附件读取中计数（大文件base64异步读取，防止读取完成前发送空附件）
   const [smartPromptTask, setSmartPromptTask] = useState<string>('');
   const [agentMode, setAgentMode] = useState<AgentMode>('act');
   const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
@@ -1826,11 +1827,16 @@ export function ChatClient() {
     const files = e.target.files;
     if (!files) return;
     Array.from(files).forEach(file => {
+      setReadingCount(c => c + 1);
       const reader = new FileReader();
       reader.onload = () => {
         const base64 = (reader.result as string).split(',')[1];
         const isImage = file.type.startsWith('image/');
         setAttachments(prev => [...prev, { type: isImage ? 'image' : 'file', data: base64, name: file.name, mime_type: file.type }]);
+        setReadingCount(c => Math.max(0, c - 1));
+      };
+      reader.onerror = () => {
+        setReadingCount(c => Math.max(0, c - 1));
       };
       reader.readAsDataURL(file);
     });
@@ -2645,6 +2651,12 @@ export function ChatClient() {
 
         </div>
         <div className="px-3 lg:px-4 pt-3 pb-6 shrink-0">
+          {readingCount > 0 && (
+            <div className="flex items-center gap-1.5 mb-2 px-2 py-1.5 bg-blue-500/10 text-blue-500 rounded text-xs">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>正在读取文件（{readingCount}个），读取完成前无法发送...</span>
+            </div>
+          )}
           {attachments.length > 0 && (
             <div className="flex gap-2 mb-2 flex-wrap">
               {attachments.map((a, i) => (
@@ -2660,6 +2672,7 @@ export function ChatClient() {
             <input ref={fileRef} type="file" multiple className="hidden" onChange={handleFile} />
             <SmartPrompt
               hasAttachments={attachments.length > 0}
+              isReadingFiles={readingCount > 0}
               initialTask={smartPromptTask}
               sessionFields={effectiveSessionId ? sessionDataMap.get(effectiveSessionId)?.promptFields : undefined}
               sessionId={effectiveSessionId || undefined}
@@ -2679,6 +2692,7 @@ export function ChatClient() {
               onSend={(assembled) => {
                 // P1插话（Khoj interrupt_queue/goose Steer）：任务运行中发送=插话排队注入，不拒绝
                 const isSteer = loading;
+                if (readingCount > 0) return; // 附件读取中，阻止发送防止空附件
                 if (!assembled.trim() && attachments.length === 0) return;
                 const text = assembled.trim();
                 const userMsg: Message = { id: Date.now().toString(), role: 'user', parts: [{ type: 'text', text }, ...attachments], timestamp: new Date() };

@@ -33,6 +33,7 @@ interface SmartPromptProps {
   onSend: (assembled: string, fields: SmartPromptFields) => void;
   /** 是否有附件待发送 — 纯附件（无文字）时也允许发送 */
   hasAttachments?: boolean;
+  isReadingFiles?: boolean;
   /** Whether the AI is currently generating */
   isLoading?: boolean;
   /** Placeholder for the task field */
@@ -115,6 +116,7 @@ export function SmartPrompt({
   onFileClick,
   onPaste,
   hasAttachments,
+  isReadingFiles = false,
   initialTask,
   sessionFields,
   onFieldsChange,
@@ -269,6 +271,8 @@ export function SmartPrompt({
   }, [showSendMenu]);
 
   const handleSend = () => {
+    // 附件读取中：阻止发送（大文件base64读取需要时间，防止空附件发送）
+    if (isReadingFiles) return;
     // 纯附件发送：文字为空但有待发附件时放行（拦截权交给onSend调用方按attachments判断）
     if (!fields.task.trim() && !hasAttachments) return;
     const assembled = assemblePrompt(fields);
@@ -334,6 +338,13 @@ export function SmartPrompt({
             <div className="absolute right-0 top-0 flex items-center gap-1 text-[10px] text-muted-foreground">
               <Loader2 className="w-3 h-3 animate-spin" />
               <span>分析中...</span>
+            </div>
+          )}
+          {/* File reading indicator */}
+          {isReadingFiles && !generating && (
+            <div className="absolute right-0 top-0 flex items-center gap-1 text-[10px] text-blue-500">
+              <Loader2 className="w-3 h-3 animate-spin" />
+              <span>正在读取文件，请稍候...</span>
             </div>
           )}
         </div>
