@@ -82,6 +82,10 @@ class LLMEngine:
         # 路由模式: 默认auto，可通过环境变量覆盖
         self.route_mode = os.environ.get("MODEL_ROUTER_MODE", "auto")
 
+        # P1 provider usage回填：最近一次LLM调用的provider权威usage（chat_stream_with_tools
+        # / chat写入；token归因estimate→真实校准的信号源，无usage时为None）
+        self.last_usage: Optional[dict] = None
+
         logger.info(f"LLM Engine init: base_url={self.base_url}, model={self.model}, router={'enabled' if model_router else 'disabled'}")
 
     def _make_client(self) -> httpx.AsyncClient:
@@ -227,7 +231,10 @@ class LLMEngine:
 
         Yields:
             str: 普通文本delta片段
-            dict: {"tool_calls": [...]} 完整的工具调用列表（仅在LLM请求调用工具时）
+            dict: {"usage": {...}} provider权威usage（P1回填，tool_calls之前发射——
+                消费方收到tool_calls会break出async for，后到chunk被丢弃，usage必须先行）
+            dict: {"tool_calls": [...]} 完整的工具调用列表（仅在LLM请求调用工具时；
+                finish_reason=length截断时附"_truncated": True标记）
         """
         # 通过router解析模型（无router时返回固定配置）
         resolved_model, resolved_base_url, resolved_api_key = self._resolve_model(messages)
@@ -270,6 +277,9 @@ class LLMEngine:
                                 break  # 跳出内层try，回到for重试
                             raise RuntimeError(f"LLM API error {response.status_code}: {error_msg}")
                         buffer = ""
+                        _stream_finished = False
+                        _final_tc_payload = None
+                        latest_usage = None
                         async for chunk in response.aiter_bytes():
                             if cancel_event and cancel_event.is_set():
                                 logger.info("LLM stream cancelled by event")
@@ -282,6 +292,11 @@ class LLMEngine:
                                     continue
                                 data_str = line[6:].strip()
                                 if data_str == "[DONE]":
+                                    # 发射顺序：usage先于tool_calls——消费方（soulmate_agent）
+                                    # 收到tool_calls后break出async for，后到chunk会被丢弃
+                                    self.last_usage = latest_usage
+                                    if latest_usage:
+                                        yield {"usage": latest_usage}
                                     if accumulated_tool_calls:
                                         yield {"tool_calls": [
                                             accumulated_tool_calls[i]
@@ -290,6 +305,12 @@ class LLMEngine:
                                     return
                                 try:
                                     obj = json.loads(data_str)
+                                    # P1 provider usage回填：usage捕获必须在choices判空之前
+                                    # ——OpenAI标准流式形态usage在choices:[]的尾部chunk里，
+                                    # 上轮opensoul侧live实测token-plan亦如此（usage-only chunk）
+                                    _obj_usage = obj.get("usage")
+                                    if isinstance(_obj_usage, dict) and _obj_usage:
+                                        latest_usage = _obj_usage
                                     choices = obj.get("choices", [])
                                     if not choices:
                                         continue
@@ -336,32 +357,73 @@ class LLMEngine:
                                                     except json.JSONDecodeError:
                                                         logger.warning(f"[LLM] tool_call args不完整(截断): name={_tc['function']['name']}, len={len(_args)}")
                                                         incomplete = True
-                                            if incomplete and choice.get("finish_reason") == "length":
-                                                # max_tokens导致截断，自动续生成
-                                                logger.info(f"[LLM] finish_reason=length, tool_calls不完整, 尝试续生成(max_tokens*2)")
-                                                # 将已有的部分arguments作为上下文，追加续生成请求
-                                                _partial_args = accumulated_tool_calls[0]["function"]["arguments"]
-                                                _func_name = accumulated_tool_calls[0]["function"]["name"]
-                                                _cont_messages = list(messages) + [
-                                                    {"role": "assistant", "content": None, "tool_calls": [{"id": "tc_cont", "type": "function", "function": {"name": _func_name, "arguments": _partial_args}}]},
-                                                    {"role": "tool", "tool_call_id": "tc_cont", "content": "输出被截断了。请用execute_code工具重新写入完整文件，不要用write_file。"},
-                                                ]
-                                                # 用更大的max_tokens重试，但告诉LLM用execute_code
-                                                _new_max = int(os.environ.get("LLM_MAX_TOKENS", "65536"))
-                                                _cont_payload = {**payload, "messages": _cont_messages, "max_tokens": _new_max}
-                                                # 不递归调用，直接返回错误提示让调用方重试
-                                                yield {"tool_calls": [
-                                                    accumulated_tool_calls[i]
-                                                    for i in sorted(accumulated_tool_calls.keys())
-                                                ], "_truncated": True}
-                                                return
-                                            yield {"tool_calls": [
+                                            _tc_list = [
                                                 accumulated_tool_calls[i]
                                                 for i in sorted(accumulated_tool_calls.keys())
-                                            ]}
-                                        return
+                                            ]
+                                            if incomplete and choice.get("finish_reason") == "length":
+                                                # max_tokens导致截断：不递归调用，带_truncated标记返回，
+                                                # 调用方按标记决定重试策略（提示模型用execute_code
+                                                # 写完整文件，不要用write_file）
+                                                logger.info(f"[LLM] finish_reason=length, tool_calls不完整, 返回_truncated标记")
+                                                _final_tc_payload = {"tool_calls": _tc_list, "_truncated": True}
+                                            else:
+                                                _final_tc_payload = {"tool_calls": _tc_list}
+                                        # 不在此处直接return：finish_reason之后provider可能还有
+                                        # trailing usage-only chunk（OpenAI标准流式usage所在位置），
+                                        # 需先排空尾部流捕获usage再统一发射
+                                        _stream_finished = True
+                                        break  # 跳出while "\n"解析循环
                                 except json.JSONDecodeError:
                                     continue
+                            if _stream_finished:
+                                break  # 跳出async for，进入尾部usage排空
+                        if _stream_finished:
+                            # P1 provider usage回填：排空finish_reason之后的尾部SSE流，
+                            # 捕获trailing usage-only chunk（choices:[] + usage的OpenAI标准形态）
+                            _drain_done = False
+                            try:
+                                async for _extra in response.aiter_bytes():
+                                    buffer += _extra.decode("utf-8", errors="replace")
+                                    while "\n" in buffer:
+                                        _eline, buffer = buffer.split("\n", 1)
+                                        _eline = _eline.strip()
+                                        if not _eline.startswith("data: "):
+                                            continue
+                                        _edata = _eline[6:].strip()
+                                        if _edata == "[DONE]":
+                                            _drain_done = True
+                                            break
+                                        try:
+                                            _eobj = json.loads(_edata)
+                                        except json.JSONDecodeError:
+                                            continue
+                                        _eusage = _eobj.get("usage")
+                                        if isinstance(_eusage, dict) and _eusage:
+                                            latest_usage = _eusage
+                                    if _drain_done:
+                                        break
+                            except Exception as _drain_err:
+                                logger.debug(f"[LLM] 尾部usage排空失败(非致命): {_drain_err}")
+                            # 发射顺序：usage先于tool_calls（消费方收到tool_calls即break出
+                            # async for，后到chunk被丢弃——usage必须先行）
+                            self.last_usage = latest_usage
+                            if latest_usage:
+                                yield {"usage": latest_usage}
+                            if _final_tc_payload is not None:
+                                yield _final_tc_payload
+                            return
+                        if latest_usage:
+                            # 流自然结束但无finish_reason/[DONE]（非标准provider）：
+                            # 仍发射已捕获usage + 累积tool_calls，避免信息丢失
+                            self.last_usage = latest_usage
+                            yield {"usage": latest_usage}
+                            if accumulated_tool_calls:
+                                yield {"tool_calls": [
+                                    accumulated_tool_calls[i]
+                                    for i in sorted(accumulated_tool_calls.keys())
+                                ]}
+                            return
                     finally:
                         await response.aclose()
                 break  # 成功，退出重试循环
@@ -406,6 +468,10 @@ class LLMEngine:
                 if resp.status_code != 200:
                     raise RuntimeError(f"LLM API error {resp.status_code}: {resp.text[:200]}")
                 data = resp.json()
+                # P1 provider usage回填：非流式响应的权威usage同样写入last_usage
+                _nusage = data.get("usage")
+                if isinstance(_nusage, dict) and _nusage:
+                    self.last_usage = _nusage
                 return data["choices"][0]["message"]["content"]
         except Exception as e:
             logger.error(f"LLM chat error: {e}", exc_info=True)

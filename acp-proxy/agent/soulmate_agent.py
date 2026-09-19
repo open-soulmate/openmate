@@ -981,38 +981,51 @@ You can send files to the user natively: to deliver a file, write a brief confir
             got_tool_call = False
             round_had_text = False
             tool_results: list = []  # 预绑定：活动记账在循环尾读取，防possibly-unbound
-            # ── P1: token归因记录——每次LLM请求一次（首轮=请求发出前的上下文构成快照）──
-            if _round == 0:
-                try:
-                    _window = int(os.environ.get("AGENT_CONTEXT_WINDOW", "32000"))
-                    _model = os.environ.get("LLM_MODEL", "")
-                    _msg_items = list(attr_items)
-                    _conv = 0
-                    _tres = 0
-                    for _m in messages:
-                        _tok = estimate_tokens(str(_m.get("content", "") or ""))
-                        if _m.get("role") == "tool":
-                            _tres += _tok
-                        else:
-                            _conv += _tok
+            # ── P1: token归因记录——每轮LLM请求一次（上下文随工具结果逐轮增长：
+            # 逐轮快照+provider usage逐轮回填，estimate_gap按轮时序配对）──
+            try:
+                _window = int(os.environ.get("AGENT_CONTEXT_WINDOW", "32000"))
+                _model = os.environ.get("LLM_MODEL", "")
+                _msg_items = list(attr_items)
+                _conv = 0
+                _tres = 0
+                for _m in messages:
+                    _tok = estimate_tokens(str(_m.get("content", "") or ""))
+                    if _m.get("role") == "tool":
+                        _tres += _tok
+                    else:
+                        _conv += _tok
+                _msg_items.append(ContextItem(
+                    kind=KIND_MESSAGE, name="conversation_history",
+                    source="session", tokens=_conv,
+                ))
+                if _tres:
                     _msg_items.append(ContextItem(
-                        kind=KIND_MESSAGE, name="conversation_history",
-                        source="session", tokens=_conv,
+                        kind=KIND_TOOL_RESULT, name="tool_results_in_context",
+                        source="tool_loop", tokens=_tres,
                     ))
-                    if _tres:
-                        _msg_items.append(ContextItem(
-                            kind=KIND_TOOL_RESULT, name="tool_results_in_context",
-                            source="tool_loop", tokens=_tres,
-                        ))
-                    _usage = build_context_usage(_msg_items, max_tokens=_window, model=_model)
-                    self._token_attr_ledger.record(_usage, session_id=session_id, model=_model)
-                except Exception as _ta_exc:
-                    logger.debug(f"[token-attribution] record failed (non-fatal): {_ta_exc}")
+                _usage = build_context_usage(_msg_items, max_tokens=_window, model=_model)
+                self._token_attr_ledger.record(_usage, session_id=session_id, model=_model)
+            except Exception as _ta_exc:
+                logger.debug(f"[token-attribution] record failed (non-fatal): {_ta_exc}")
             async for chunk in self.llm_engine.chat_stream_with_tools(
                 messages=messages,
                 tools=all_tools if all_tools else None,
                 system_prompt=system_prompt,
             ):
+                if isinstance(chunk, dict) and "usage" in chunk and "tool_calls" not in chunk:
+                    # P1 provider usage回填（上轮dev-report遗留#1闭环）：llm_engine在
+                    # tool_calls之前发射usage chunk（消费方收到tool_calls会break出async
+                    # for，后到chunk被丢弃——引擎侧已保证usage先行）。provider权威
+                    # prompt_tokens → 本轮归因记录的estimate_gap（估算vs真实偏差）。
+                    try:
+                        _pt = (chunk.get("usage") or {}).get("prompt_tokens")
+                        if _pt is not None:
+                            self._token_attr_ledger.backfill_actual(
+                                session_id, int(_pt), round_index=_round)
+                    except Exception as _bf_exc:
+                        logger.debug(f"[token-attribution] backfill failed (non-fatal): {_bf_exc}")
+                    continue
                 if isinstance(chunk, dict) and "tool_calls" in chunk:
                     # LLM 请求调用工具
                     tool_calls = chunk["tool_calls"]

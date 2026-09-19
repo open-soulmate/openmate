@@ -227,6 +227,62 @@ class AttributionLedger:
             logger.debug("token attribution ledger write failed (non-fatal): %s", exc)
         return rec
 
+    def backfill_actual(
+        self,
+        session_id: str,
+        actual_prompt_tokens: int | None,
+        round_index: int | None = None,
+    ) -> dict | None:
+        """P1 provider usage回填（opensoul ContextAttributor.backfill_actual镜像语义）：
+        LLM请求的provider响应里拿到权威prompt_tokens后，匹配最近一条同session归因
+        记录，计算estimate_gap = actual - usage.total_tokens——gap即"隐藏开销"（provider
+        侧chat模板/系统提示等我方估算未覆盖的部分），也是估算器自我校准信号源。
+
+        账本模式差异（vs opensoul进程内deque）：本侧记录与回填都是JSONL追加行
+        （append-only审计，mem0 §1.2），backfill行带backfill:true标记与归因记录区分；
+        round_index标注该usage来自工具循环第几轮（上下文逐轮增长，gap按轮配对读取）。
+
+        找不到匹配session记录/actual为None → 返回None（fail-safe，不新建不抛）。
+        """
+        if actual_prompt_tokens is None:
+            return None
+        try:
+            recs = self._read_tail()
+            matched = None
+            for r in reversed(recs):
+                if r.get("backfill"):
+                    continue
+                if r.get("session_id") == session_id and r.get("usage"):
+                    matched = r
+                    break
+            if matched is None:
+                return None
+            gap = int(actual_prompt_tokens) - int(
+                matched.get("usage", {}).get("total_tokens", 0)
+            )
+            row = {
+                "backfill": True,
+                "ts": time.time(),
+                "session_id": session_id,
+                "actual_prompt_tokens": int(actual_prompt_tokens),
+                "estimate_gap": gap,
+                "matched_record_ts": matched.get("ts"),
+            }
+            if round_index is not None:
+                row["round"] = round_index
+            try:
+                with open(self.ledger_path, "a", encoding="utf-8") as f:
+                    f.write(json.dumps(row, ensure_ascii=False) + "\n")
+            except Exception as exc:
+                logger.debug(
+                    "token attribution backfill ledger write failed (non-fatal): %s",
+                    exc,
+                )
+            return row
+        except Exception as exc:
+            logger.debug("token attribution backfill unavailable (non-fatal): %s", exc)
+            return None
+
     def _read_tail(self, max_lines: int = 5000) -> list[dict]:
         """读取账本尾部（读取侧限行数防OOM——与tool_output get_stats同策略）。"""
         if not self.ledger_path.exists():
@@ -248,9 +304,18 @@ class AttributionLedger:
         return recs
 
     def get_stats(self, limit: int | None = None) -> dict:
-        """跨进程统计：最近记录 + 聚合摘要（什么最吃上下文/超限记录数/均值峰值）。"""
+        """跨进程统计：最近记录 + 聚合摘要 + provider usage回填合并。
+
+        P1回填合并语义：归因记录在LLM请求发出前写入、backfill行在该请求的provider
+        响应后写入——时序即配对，每条归因记录匹配"其ts之后第一条同session的backfill行"。
+        backfill行本身不计入total_records/总量统计（它不是一次上下文快照）。
+        合并输出：记录行/summary.latest带actual_prompt_tokens + estimate_gap，
+        summary带backfill_count + avg_estimate_gap。
+        """
         limit = limit or self.max_recent
-        recs = self._read_tail()
+        all_recs = self._read_tail()
+        backfills = [r for r in all_recs if r.get("backfill")]
+        recs = [r for r in all_recs if not r.get("backfill")]
         if not recs:
             return {
                 "total_records": 0,
@@ -258,6 +323,27 @@ class AttributionLedger:
                 "summary": {"total_records": 0},
                 "ledger_path": str(self.ledger_path),
             }
+
+        def _match_backfill(rec: dict) -> dict | None:
+            """rec写入之后的第一条同session backfill行（时序配对）"""
+            for bf in all_recs:
+                if not bf.get("backfill"):
+                    continue
+                if (bf.get("session_id") == rec.get("session_id")
+                        and bf.get("ts", 0) >= rec.get("ts", 0)):
+                    return bf
+            return None
+
+        gaps: list[int] = []
+        for r in recs:
+            bf = _match_backfill(r)
+            if bf is not None:
+                r["actual_prompt_tokens"] = bf.get("actual_prompt_tokens")
+                r["estimate_gap"] = bf.get("estimate_gap")
+                if bf.get("round") is not None:
+                    r["backfill_round"] = bf.get("round")
+                if bf.get("estimate_gap") is not None:
+                    gaps.append(int(bf["estimate_gap"]))
 
         totals = [r.get("usage", {}).get("total_tokens", 0) for r in recs]
         over = sum(1 for r in recs if r.get("usage", {}).get("over_limit"))
@@ -276,7 +362,7 @@ class AttributionLedger:
         for s in top:
             s["avg_tokens"] = s["tokens_total"] // max(1, s["times_seen"])
 
-        latest = recs[-1]
+        latest = recs[-1]  # 最新归因记录（backfill行不参与latest选取）
         latest_usage = latest.get("usage", {})
         return {
             "total_records": len(recs),
@@ -295,8 +381,13 @@ class AttributionLedger:
                     "over_limit": latest_usage.get("over_limit"),
                     "raw_max_tokens": latest_usage.get("raw_max_tokens", 0),
                     "item_count": latest_usage.get("item_count", 0),
+                    # P1 provider usage回填：估算 vs provider权威prompt_tokens
+                    "actual_prompt_tokens": latest.get("actual_prompt_tokens"),
+                    "estimate_gap": latest.get("estimate_gap"),
                 },
                 "top_consumers": top,
+                "backfill_count": len(backfills),
+                "avg_estimate_gap": (sum(gaps) // len(gaps)) if gaps else None,
             },
             "ledger_path": str(self.ledger_path),
         }

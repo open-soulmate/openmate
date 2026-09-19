@@ -341,7 +341,8 @@ async def health():
         payload["token_attribution"] = {
             "total_records": _ta.get("total_records", 0),
             **{k: _ta.get("summary", {}).get(k)
-               for k in ("over_limit_records", "avg_total_tokens", "max_total_tokens")},
+               for k in ("over_limit_records", "avg_total_tokens", "max_total_tokens",
+                         "backfill_count", "avg_estimate_gap")},
         }
     except Exception:
         pass
