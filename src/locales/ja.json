@@ -673,7 +673,16 @@
     "addCustomModel": "カスタムモデルを追加",
     "savedCustomModels": "保存済みカスタムモデル",
     "useThisModel": "このモデルを使用",
-    "deleteCustomModel": "削除"
+    "deleteCustomModel": "削除",
+    "apiVariant": "APIバリアント",
+    "standardApi": "標準API",
+    "subscription": "サブスクリプション",
+    "localProvider": "ローカル",
+    "statusOk": "利用可能",
+    "statusLowBalance": "残高不足",
+    "statusInvalidKey": "キー無効",
+    "statusUnreachable": "到達不能",
+    "statusNotConfigured": "未設定"
   },
   "search": {
     "title": "すべてを検索",

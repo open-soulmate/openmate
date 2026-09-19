@@ -676,7 +676,16 @@
     "addCustomModel": "Add Custom Model",
     "savedCustomModels": "Saved Custom Models",
     "useThisModel": "Use This Model",
-    "deleteCustomModel": "Delete"
+    "deleteCustomModel": "Delete",
+    "apiVariant": "API Variant",
+    "standardApi": "Standard API",
+    "subscription": "Subscription",
+    "localProvider": "Local",
+    "statusOk": "Available",
+    "statusLowBalance": "Low balance",
+    "statusInvalidKey": "Invalid key",
+    "statusUnreachable": "Unreachable",
+    "statusNotConfigured": "Not configured"
   },
   "search": {
     "title": "Search Everything",

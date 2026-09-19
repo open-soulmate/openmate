@@ -675,7 +675,16 @@
     "addCustomModel": "添加自定义模型",
     "savedCustomModels": "已保存的自定义模型",
     "useThisModel": "使用此模型",
-    "deleteCustomModel": "删除"
+    "deleteCustomModel": "删除",
+    "apiVariant": "API 体系",
+    "standardApi": "标准API",
+    "subscription": "订阅制",
+    "localProvider": "本地",
+    "statusOk": "可用",
+    "statusLowBalance": "余额不足",
+    "statusInvalidKey": "Key无效",
+    "statusUnreachable": "服务不可达",
+    "statusNotConfigured": "未配置"
   },
   "search": {
     "title": "搜索一切",

@@ -1048,11 +1048,13 @@ export function SettingsClient() {
                       <div className="flex items-center gap-2 flex-wrap">
                         {(llmProviders.find(p => p.value === model.id)?.apiVariants || [{ id: "standard", label: "标准API" }]).map((variant) => {
                           const st = variantStatus(model.id, variant.id);
+                          const vLabel = variant.label === "标准API" ? (t("settings.standardApi") || "标准API") : variant.label === "订阅制" ? (t("settings.subscription") || "订阅制") : variant.label === "本地" ? (t("settings.localProvider") || "本地") : variant.label;
+                          const stMap: Record<string, string> = { ok: "settings.statusOk", low_balance: "settings.statusLowBalance", invalid_key: "settings.statusInvalidKey", unreachable: "settings.statusUnreachable", not_configured: "settings.statusNotConfigured" };
                           return (
-                            <div key={variant.id} className="flex items-center gap-1" title={`${variant.label}: ${STATUS_TEXT[st] || st}`}>
+                            <div key={variant.id} className="flex items-center gap-1" title={`${vLabel}: ${t(stMap[st]) || STATUS_TEXT[st] || st}`}>
                               <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[st] || "bg-gray-300"}`} />
                               <span className="text-[9px] text-muted-foreground">
-                                {variant.id === "standard" ? "标准" : "订阅制"}
+                                {vLabel}
                               </span>
                             </div>
                           );
@@ -1121,7 +1123,7 @@ export function SettingsClient() {
                                 : "border-border text-muted-foreground hover:bg-muted"
                             }`}
                           >
-                            {v.label}
+                            {v.label === "标准API" ? (t("settings.standardApi") || "标准API") : v.label === "订阅制" ? (t("settings.subscription") || "订阅制") : v.label === "本地" ? (t("settings.localProvider") || "本地") : v.label}
                           </button>
                         ))}
                       </div>
