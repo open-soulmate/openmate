@@ -657,3 +657,41 @@
 4. opensoul侧归因仅覆盖/api/chat RAG路径；gland router.chat()（dream/gene等内部调用方）未接——内部调用的上下文构成相对固定，优先级低
 5. 面板视觉渲染未人工确认（登录墙）；marketplace-client.tsx last_sync_error UI展示（上轮遗留#3）仍未做，P2候选
 6. gene skill上报成功：skill_id=skill_4d66a974b8d8（gene技能库随cron开发动态增长）
+
+## [2026-09-19 23:35 CST] P1 provider usage回填：token归因estimate→真实prompt_tokens校准 + P0修复流式空choices usage chunk炸流
+**目标**：闭环上轮dev-report遗留#3——ContextAttributor.record()早已预留actual_prompt_tokens/estimate_gap参数但无任何调用方传值（"写了≠接线了"的死容量）。把LLM provider返回的权威usage.prompt_tokens接进chat归因路径，让token归因从纯启发式估算升级为"估算+真实校准"，量化estimate_gap=真实-估算=我方未归因的chat模板/系统提示开销——直击用户"不知道上下文被什么吃掉了"里估算覆盖不到的部分，也服务用户"数据必须准确"的偏好。附带P0级真实bug修复（见改动内容⑤）。
+**调研来源**：10-claude-code-source.md #7 SDKContextUsage（claude-code是100-agent调研中唯一实现provider权威token计数+逐项归因的）；52-langfuse-source.md #15（langfuse只有总量，升级=按span逐项归因+provider真实计数校准）；SUMMARY.md路线图第一阶段"上下文/token可观测性"。live provider能力实测（token-plan xiaomi）：非流式与流式（含无stream_options）均默认返回usage.prompt_tokens→捕获零请求格式改动、零provider拒绝风险。
+**改动文件**：
+- opensoul/src/cortex/token_attribution.py（增量+39行：ContextAttributor.backfill_actual方法）
+- opensoul/src/api/chat.py（增量+45/-4行：_attribute_chat_context增参+_backfill_token_usage helper+两流式路径usage捕获/回填+非流式usage直传+[P0]delta提取choices安全访问）
+- opensoul/tests/test_token_usage_backfill.py（新建333行，17测试）
+**改动内容**：
+1. token_attribution.py backfill_actual(session_id, actual_prompt_tokens)：从record()预留的actual_prompt_tokens/estimate_gap容量真正落地——流式请求拿到provider真实prompt_tokens后回填最近一条匹配session的归因记录，estimate_gap=actual-usage.total_tokens；找不到匹配session返回None（fail-safe不新建不抛）；ledger_path存在时追加backfill审计行（跨进程可读）。
+2. chat.py _attribute_chat_context增actual_prompt_tokens参数并透传record()（非流式路径可直传）。
+3. chat.py新增_backfill_token_usage(session_key, usage) helper：从usage dict提取prompt_tokens→调用attributor.backfill_actual；空usage/无prompt_tokens安全跳过；全程fail-safe仅debug日志不阻断流。
+4. 两条流式路径（降级:364/正常:465）在SSE解析循环里捕获chunk["usage"]，流结束后:384/:485调用_backfill_token_usage回填；非流式路径:573从resp.json().usage.prompt_tokens捕获→:590经_attribute_chat_context直传record。
+5. **[P0 bug修复·本轮三重校验过程中live实测发现]** 流式delta提取原代码`chunk.get("choices",[{}])[0]`对真实provider末尾`{"choices":[],"usage":{...}}`chunk会`IndexError`炸流（token-plan xiaomi实测即此形态：finish_reason=stop的chunk带usage+非空choices，紧随其后的usage-only chunk带空choices）。旧代码的`except json.JSONDecodeError`捕不到IndexError→生成器炸在backfill之前，导致本功能在真实provider上直接失效+流式在收尾处崩溃。改为`_choices=chunk.get("choices") or []`+`delta=(_choices[0] or {}).get("delta",{}) if _choices else {}`安全访问（两流式路径:365/:466）。
+**接线位置**（grep证据，文件:行号）：
+- backfill_actual定义：src/cortex/token_attribution.py:255；调用点：src/api/chat.py:300（_backfill_token_usage内）
+- _backfill_token_usage定义：src/api/chat.py:288；调用点：src/api/chat.py:384（降级流式）+:485（正常流式）——两条真实流式消息路径均接线
+- actual_prompt_tokens透传：chat.py:280（record调用）+:590（非流式chat路径调用点）
+- usage捕获：chat.py:364/:465（流式SSE）+:573（非流式resp.json）；delta防护：chat.py:365/:466
+- router挂载：src/main.py:503 app.include_router(chat_router, prefix="/api/chat")——新字段随/api/chat/token-attribution端点自动可达
+- 运行时调用实证（非死代码·真实provider）：live POST /api/chat?stream=true真实HTTP流量→RAG空降级路径→真实xiaomi provider SSE流（content正常流出+末尾空choices usage chunk不再炸+到达[DONE]）→GET /api/chat/token-attribution回读记录：session=dc55e789..., model=xiaomi/mimo-v2.5-pro, usage.total_tokens=7(估算,仅用户问题), **actual_prompt_tokens=253**(provider真实usage.prompt_tokens从SSE捕获), **estimate_gap=246**(253-7=246 token隐藏开销)——估算vs权威计数差值即"上下文被什么吃掉"中估算看不见的部分
+**验证结果**：
+- 完整性✅：git show --stat核实opensoul b0ed5b50（3 files +413/-4：chat.py+45/token_attribution.py+39/test_token_usage_backfill.py+333）落盘；git diff确认改动真实存在；ast.parse三文件语法OK
+- 集成✅：grep证据如上（backfill_actual/:300、_backfill_token_usage/:384+/:485、actual_prompt_tokens/:280+:590、router main.py:503）；live端点/api/chat/token-attribution 200且回读到真实回填值actual=253/gap=246
+- 测试✅：tests/test_token_usage_backfill.py 17 passed（backfill_actual单元6：匹配记录gap计算/未知session返None/None输入/最近匹配/ledger审计行/deque变更API可见；chat helper透传4：直传gap/无actual无gap/helper提取prompt_tokens/fail-safe空值；接线驱动5：正常流式回填/降级流式回填/空choices usage chunk存活[DONE]+回填/无usage保持估算/非流式直传+缺失usage；端点读路径1：recent含actual+gap）+回归test_token_attribution 30 passed
+- 回归✅：214 passed（token回填17+归因30+chat+chat_loop_guard+decision_log+ws_chat+loop_guard+eval_loop+evolution_loop）——delta防护未破坏既有流式行为
+- live实证✅：真实HTTP流式→真实provider usage→归因记录actual_prompt_tokens=253/estimate_gap=246（见接线位置运行时实证）
+**服务重启**：opensoul.service重启→/api/system/health 200 + /api/chat/health 200 + /api/chat/token-attribution 200（回读actual/gap值正确）；本轮改动全在opensoul，未触碰acp-proxy/openmate前端，acp-proxy(:8092/:8095)无需重启，npm run build无需执行
+**commit**：opensoul b0ed5b50
+**遗留问题**：
+1. acp-proxy镜像侧（agent/token_attribution.py + soulmate_agent.py）本轮未同步接provider usage回填——acp侧LLM调用(_run_llm_with_tools)是否从provider响应拿到usage待确认，属独立工作量，下轮候选；estimate_tokens公式本轮未改动，镜像一致性声明不受影响
+2. 非流式路径在RAG空时走line487早返回"LLM不可用/No relevant knowledge found"→不经_attribute_chat_context（既有行为：非流式无RAG直接放弃不像流式降级走LLM）——非流式usage回填仅在RAG命中时触发；本轮live证据取自流式降级路径（真实provider）
+3. estimate_gap量化的是"provider真实prompt_tokens - 我方归因估算总量"，其中provider侧chat模板/系统提示开销我方未逐项归因（模型侧模板非我方组装）——gap是"未归因开销总量"信号，非逐项明细；若要拆分provider侧模板开销需provider暴露prompt_tokens_details逐项（当前仅cached_tokens/reasoning_tokens）
+4. opensoul侧归因仍仅覆盖/api/chat路径；gland router.chat()内部调用未接（上轮遗留#4仍在，优先级低）
+5. marketplace-client.tsx last_sync_error UI展示（上轮遗留#5）本轮未做，P2候选
+6. 前端monitoring面板Card 5读acp-proxy /api/agent/token-attribution（非opensoul /api/chat/token-attribution），本轮新增的estimate_gap字段在opensoul侧API已就绪但前端暂无对应展示组件——是否在面板加"估算vs真实gap"卡片属P2 UI增强，需用户确认（用户反感擅自加UI）
+7. gene skill上报成功：skill_id=skill_564fe848adee（gene技能库随cron开发动态增长，本轮tool序列read_file→terminal→write_file→patch→...已入库）
+
