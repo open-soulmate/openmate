@@ -40,7 +40,7 @@ from acp.schema import (
 )
 
 from agent.llm_engine import LLMEngine
-from skill_manager import SkillManager
+from skill_manager import SkillManager, is_injectable_trigger
 from evolution import EvolutionEngine
 from dna_evolution import DNAEvolutionEngine
 from utils.token_manager import truncate_tool_result
@@ -2058,8 +2058,11 @@ You can send files to the user natively: to deliver a file, write a brief confir
             _is_file_req = bool(_has_filename and _has_send_verb)
 
             if not _is_file_req:
+                # .agents/skills标准层接线：触发词策略集中在skill_manager.is_injectable_trigger
+                # （英文len>2原行为不变；中文2字词是完整词，通用词除外）——
+                # 此前len(t)>2门槛系统性排除中文2字触发词，标准技能对中文查询永远不注入
                 matched_skills = [s for s in raw_skills if any(
-                    t.lower() in user_text.lower() and len(t) > 2
+                    t.lower() in user_text.lower() and is_injectable_trigger(t)
                     for t in s.get("triggers", [])
                 )]
                 if matched_skills:
