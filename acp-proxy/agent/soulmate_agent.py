@@ -330,6 +330,46 @@ class SoulMateAgent:
             logger.error(f"Failed to check session: {e}")
             return False
 
+    def _session_has_messages(self, session_id: str) -> bool:
+        """检查会话在agent_messages中是否有任何消息
+
+        ws直建会话（session/new不经OpenSoul API）没有agent_sessions行，
+        但prompt消息已落盘——这类会话重启后同样必须可恢复。"""
+        try:
+            db = self._get_db()
+            row = db.execute(
+                "SELECT 1 FROM agent_messages WHERE session_id = ? LIMIT 1",
+                (session_id,),
+            ).fetchone()
+            db.close()
+            return row is not None
+        except Exception as e:
+            logger.error(f"Failed to check session messages: {e}")
+            return False
+
+    def _reload_session_from_db(self, session_id: str) -> dict | None:
+        """从SQLite恢复会话到内存（进程重启/stale sid自愈）
+
+        d439f163在/acp/send HTTP路径做过期session恢复；本方法把同款恢复
+        落到/ws/acp真实聊天路径的agent侧：子进程崩溃/重启后内存会话清空，
+        prompt收到未知sid时从DB重建，而非静默refusal（基线E2E实证：
+        stale sid → stopReason=refusal + 0 chunk = 用户看到空白）。
+        恢复条件 = agent_sessions有行 OR agent_messages有消息。"""
+        if not (self._session_exists_in_db(session_id) or self._session_has_messages(session_id)):
+            return None
+        messages = self._load_messages_from_db(session_id)
+        cwd = self._project_root
+        self.sessions[session_id] = {
+            "session_id": session_id,
+            "cwd": cwd,
+            "messages": messages,
+            "created_at": time.time(),
+            "state": "active",
+        }
+        self._session_cwds[session_id] = cwd
+        logger.info(f"Recovered session from DB: {session_id} ({len(messages)} messages)")
+        return self.sessions[session_id]
+
     # ── P0-4/P1: 插话队列 + 活动可观测（goose peek三指标 + claude-code noop自报）──
 
     def _activity(self, session_id: str) -> SessionActivity:
@@ -340,8 +380,11 @@ class SoulMateAgent:
             self._activities[session_id] = act
         return act
 
-    async def _steer_notify(self, session_id: str, text: str):
-        """插话相关通知推送给前端（best-effort，失败不影响任务执行）"""
+    async def _notify_client(self, session_id: str, text: str):
+        """通用客户端可见通知（best-effort，失败不影响主路径）
+
+        失败必须可见原则（AIHawk显式标记 + mem0禁止静默降级）：
+        系统异常时给用户可见文字，而非静默空响应。"""
         if self._client is None:
             return
         try:
@@ -350,7 +393,11 @@ class SoulMateAgent:
                 update=acp.update_agent_message_text(text),
             )
         except Exception as e:
-            logger.debug(f"[steer] notify failed for {session_id}: {e}")
+            logger.debug(f"[notify] send failed for {session_id}: {e}")
+
+    async def _steer_notify(self, session_id: str, text: str):
+        """插话相关通知推送给前端（委托_notify_client，best-effort）"""
+        await self._notify_client(session_id, text)
 
     def peek_sessions(self) -> dict:
         """goose peek三指标（agent侧聚合；HTTP端点直接读ActivityStore）"""
@@ -1731,7 +1778,16 @@ You can send files to the user natively: to deliver a file, write a brief confir
         
         session = self.sessions.get(session_id)
         if not session:
-            logger.error(f"Session not found: {session_id}")
+            # stale-session自愈（d439f163 HTTP路径同款，落地/ws/acp真实聊天路径）：
+            # 子进程重启后内存会话清空，从SQLite恢复而非静默refusal
+            session = self._reload_session_from_db(session_id)
+        if not session:
+            logger.error(f"Session not found (memory+DB): {session_id}")
+            # 失败必须可见（AIHawk显式标记/mem0禁止静默）：refusal必须携带用户可见原因
+            await self._notify_client(
+                session_id,
+                "⚠️ 会话已失效：该会话在服务端不存在（可能已被清理），请新建会话后重试。",
+            )
             return PromptResponse(stop_reason="refusal")
 
         # ── Writer Fencing: 获取会话写入锁（通过架构增强系统）──
@@ -1783,6 +1839,12 @@ You can send files to the user natively: to deliver a file, write a brief confir
         """prompt的实际处理逻辑（在writer fence保护下执行）"""
         session = self.sessions.get(session_id)
         if not session:
+            session = self._reload_session_from_db(session_id)
+        if not session:
+            await self._notify_client(
+                session_id,
+                "⚠️ 会话已失效：该会话在服务端不存在（可能已被清理），请新建会话后重试。",
+            )
             return PromptResponse(stop_reason="refusal")
 
         # ── 可观测性：开始run span ──
@@ -2651,9 +2713,10 @@ You can send files to the user natively: to deliver a file, write a brief confir
     async def load_session(
         self, cwd: str, session_id: str, mcp_servers=None, **kwargs
     ) -> acp.LoadSessionResponse | None:
-        """加载已有会话"""
-        session = self.sessions.get(session_id)
+        """加载已有会话（内存miss时从SQLite恢复——进程重启后的标准恢复契约）"""
+        session = self.sessions.get(session_id) or self._reload_session_from_db(session_id)
         if not session:
+            logger.warning(f"load_session: session not found in memory or DB: {session_id}")
             return None
         logger.info(f"Loaded session: {session_id}")
         return acp.LoadSessionResponse()
@@ -2723,9 +2786,10 @@ You can send files to the user natively: to deliver a file, write a brief confir
     async def resume_session(
         self, cwd: str, session_id: str, mcp_servers=None, **kwargs
     ) -> ResumeSessionResponse | None:
-        """恢复会话"""
-        session = self.sessions.get(session_id)
+        """恢复会话（内存miss时从SQLite恢复）"""
+        session = self.sessions.get(session_id) or self._reload_session_from_db(session_id)
         if not session:
+            logger.warning(f"resume_session: session not found in memory or DB: {session_id}")
             return None
         logger.info(f"Resumed session: {session_id}")
         return ResumeSessionResponse()

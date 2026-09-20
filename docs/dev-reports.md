@@ -964,3 +964,34 @@
 5. /acp/send外部消费方（gateway/微信路径）的session_id重绑行为未核查（前端侧已确认无此路径）
 6. 恢复策略收紧（stop_reason=="refusal"才恢复，上轮遗留#5）与acp-proxy镜像侧estimate_tokens公式校准本轮未做
 
+
+## [2026-09-20 20:25 CST] P0修复：/ws/acp真实聊天路径stale-session静默空白闭环——agent侧SQLite自愈+可见失败契约+ws_acp子进程重启session/load重放（连续3轮遗留#1销账）
+**目标**：闭合09-19 23:35/09-20 13:30/15:45/18:00连续标注的遗留#1——ws_acp.py（OpenMate聊天页真实路径 /ws/acp→soulmate stdio子进程）session生命周期未审计。基线live实证（修复前 /tmp/ws_recovery_e2e.py）：新ws连接（=子进程崩溃/重启等价场景：全新agent进程内存sessions清空）+旧sid发session/prompt → `{"stopReason":"refusal"}` + **0 chunk** = 聊天页消息静默空白，用户无法区分"agent没说话"和"系统坏了"；完全不存在的sid同样静默refusal无可见原因。缺陷类与d439f163修复的/acp/send HTTP路径完全同源，但发生在用户实际使用的聊天路径上。
+**调研来源**：本项目dev-report遗留链（连续4轮第1优先标注）；修复原则=SUMMARY.md P0-2 AIHawk SHOWN/SENT双预算"失败必须显式标记"+evolution-engine-patterns.md §1.1 mem0"失败必须可见，禁止静默降级"+open-webui三态"拒绝=合成可见结果，不能静默断流"；恢复模式=d439f163已验证的过期session恢复（恢复条件扩展参照SUMMARY.md P0-10会话资产化"会话=持久资产，进程重启不应丢失"）；恢复契约词汇=ACP v1.0标准session/load（行业信号4"HITL协议词汇收敛：照此实现不自创"）。
+**改动文件**：
+- acp-proxy/agent/soulmate_agent.py（+80/-12量级，增量5处）
+- acp-proxy/ws_acp.py（+56/-6量级，增量5处）
+- acp-proxy/tests/test_ws_session_recovery.py（新建，17测试）
+**改动内容**：
+1. soulmate_agent.py新增`_session_has_messages()`（agent_messages存在性检查）+`_reload_session_from_db()`（SQLite→内存恢复：恢复条件=agent_sessions有行 **OR** agent_messages有消息——基线实证ws直建会话只有messages行无sessions行，单一条件会漏恢复）；新增通用`_notify_client()`（session_update推送可见文字），`_steer_notify`改为委托（行为不变）
+2. `prompt()`/`_prompt_inner()`：未知sid先调`_reload_session_from_db`自愈（恢复正常进��prompt处理）；DB也没有→`_notify_client`推送"⚠️ 会话已失效..."可见通知+refusal（显式失败，不再静默）
+3. `load_session()`/`resume_session()`：内存miss时同样从DB恢复——ACP标准恢复契约跨进程可用（此前恒返回None=进程重启后session/load永远失败）
+4. ws_acp.py：新增模块级`_extract_acp_session_id(parsed, session_new_id)`（从session/new响应捕获ACP sessionId——proxy纯透传时不解析，sid只出现在该响应里）；`_process_line`闭包一次性捕获进`acp_state`；子进程崩溃重启路径��此前`sid_for_restart=None`写死、重放缺失、注释称"由客户端session/load恢复"但前端根本不用该方法=恢复契约落空）：respawn后重放`initialize`(新id进extra_filter_ids不透传客户端)+`session/load`��sessionId+cwd，失败只log不炸、prompt侧自愈兜底=双重保险
+**接线位置**（grep/运行时证据，文件:行号）：
+- soulmate_agent.py:333 `def _session_has_messages`；:350 `def _reload_session_from_db`；:383 `def _notify_client`；:400 `_steer_notify`委托调用；:1783 `prompt()`内`session = self._reload_session_from_db(session_id)`（真实消息路径）；:1787 `_notify_client`可见失败；:1842/:1844 `_prompt_inner`同款；:2717 `load_session`；:2790 `resume_session`
+- ws_acp.py:78 `def _extract_acp_session_id`；:181 `acp_state`定义；:299 `_process_line`内捕获调用；:405 `sid_for_restart = acp_state.get("acp_sid")`；:420-440 respawn重放块
+- 运行时调用链实证（非死代码，/tmp/acp-proxy-a.log真实日志链）：`[ACP] subprocess exited, respawning route cmd for soulmate (attempt 1, acpSessionId=om-82c81199bad1)`（修复前此处恒为None）→ `[ACP] replayed initialize+session/load for om-82c81199bad1 after respawn` → agent侧stderr `Recovered session from DB: om-82c81199bad1 (2 messages)` + `Loaded session: om-82c81199bad1` → `Response [om-82c81199bad1]: 2683`（崩溃前记忆的暗号，连续性端到端实证）；捕获日志 `[soulmate] captured ACP sessionId: om-82c81199bad1`；前端数据流核查（上轮遗留）：chat-client.tsx:587-588重连走session/new+_meta.session_id（new_session的DB恢复路径本就可用），前端不发session/load→proxy侧重放是该契约的真实消费方
+**验证结果**：
+- 完整性✅：`git diff --stat`确认soulmate_agent.py +80/ws_acp.py +56真实落盘（合计+124/-12）；commit git show确认
+- 集成✅：grep证据如上（每个新符号有定义行+调用行）；live日志调用链如上（捕获→respawn→重放→agent DB恢复→正确应答五段完整）；修复前后同脚本E2E对照：修复前P2 stale-sid=`refusal+0chunk`（缺陷实锤）→修复后P2=`end_turn+chunk"7491"`（新子进程从DB恢复历史并正确回答崩溃前的暗号）；P3不存在sid：修复前静默refusal→修复后refusal+可见chunk"⚠️ 会话已失效：该会话在服务端不存在（可能已被清理），请新建会话后重试。"；崩溃注入E2E（/tmp/ws_crash_recovery_e2e.py）：ws保持连接+kill -9 agent子进程→proxy自动respawn+重放→同ws下一条prompt返回`end_turn+chunk"2683"`=用户视角无感恢复
+- 测试✅：新建tests/test_ws_session_recovery.py **17/17 passed**（DB恢复三态/消息行only恢复/prompt自愈进正常处理/未知sid可见refusal+通知内容/正常session无回归/load+resume恢复与None契约/ws_acp sid捕获6用例）；组合回归**198 passed**（新17+既往181：stale_session_recovery+steering+loop_guard_wiring+permission_gate+tool_output_handler+tool_output_wiring+token_attribution_wiring+token_usage_backfill_acp+acp_concurrency，既有测试零修改）；systemic_test.py **29/29 (100%)**（S4同session并发3/3+ACP running=True+S5降级5/5+S6负载4/4全过，改动涉及soulmate_agent+ws_acp多模块按铁律跑）
+- ast.parse+import双文件OK（`import agent.soulmate_agent, ws_acp`成功，helper真值验证`om-x`）
+**服务重启**：acp-proxy-a(:8092)+acp-proxy-b(:8095)重启→双实例/health 200（WSChat ok）→重启后live E2E与崩溃注入E2E全过（见上）；opensoul与前端本轮零改动无需重启/build
+**commit**：openmate（见git log，本报告随代码同commit提交）
+**遗留问题**：
+1. ws_acp重启重放对"session/load在agent侧也失败"的场景只log不推送客户端可见提示——当前有prompt侧自愈兜底故用户无感，但若DB也被清（如opensoul data目录损坏），用户仍会看到prompt侧的⚠️可见失败（契约已闭环，此为极端场景记录）
+2. hermes/openclaw等非soulmate路由的agent子进程是否支持session/load重放未验证（本轮测试对象=soulmate真实聊天路径；hermes acp adapter行为需单独审计——重放失败时日志可见`session/load replay failed`）
+3. ��复策略收紧（stop_reason=="refusal"才触发/acp/send恢复，d439f163遗留#5）与estimate_tokens公式校准本轮未做
+4. POST /sync/agents的agent registry index格式定义（上轮遗留#2）、builtin skill源降噪（#3）仍待用户意见/调研
+5. 前端页面视觉渲染人工确认仍受登录墙限制（cron无凭证）
+6. gene skill_learner上报见本轮末尾执行

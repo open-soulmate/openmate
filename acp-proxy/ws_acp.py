@@ -75,6 +75,20 @@ async def _send_acp(ws: WebSocket, data: dict):
     await ws.send_text(json.dumps(data, ensure_ascii=False))
 
 
+def _extract_acp_session_id(parsed: dict, session_new_id) -> str | None:
+    """从session/new的JSON-RPC响应中提取ACP sessionId
+
+    子进程崩溃重启后proxy需重放session/load恢复会话连续性（遗留#1闭环），
+    前提是知道当前ACP sessionId——它只出现在session/new响应里，
+    proxy做纯透传时不解析，此处集中捕获。"""
+    if session_new_id is None or parsed.get("id") != session_new_id:
+        return None
+    result = parsed.get("result")
+    if not isinstance(result, dict):
+        return None
+    return result.get("sessionId") or result.get("session_id") or None
+
+
 async def ws_acp_endpoint(client_ws: WebSocket):
     """//ws/acp WebSocket入口 — ACP JSON-RPC 2.0多Agent路由
 
@@ -161,6 +175,11 @@ async def ws_acp_endpoint(client_ws: WebSocket):
             route = DEFAULT_ROUTE
             logger.warning(f"Agent '{agent_id}' not found, falling back to soulmate")
     logger.info(f"[ACP] user {user_id} → agent {agent_id} → {route['cmd']}")
+
+    # ACP sessionId捕获 + 重启重放过滤（子进程重启session/load恢复用）
+    session_new_id = session_msg.get("id")
+    acp_state: dict = {"acp_sid": None}
+    extra_filter_ids: set = set()  # 重放initialize的响应id，不透传给客户端
 
     # 启动Agent子进程（Hermes需要用pty模式，因为hermes acp的asyncio不支持非TTY stdin）
     proc = None
@@ -275,6 +294,12 @@ async def ws_acp_endpoint(client_ws: WebSocket):
             logger.debug(f"[{agent_id}] skip subprocess initialize response (id={parsed['id']})")
             init_ids.discard(parsed["id"])
             return
+        # 捕获session/new响应中的ACP sessionId（一次性；子进程重启重放用）
+        if acp_state["acp_sid"] is None:
+            _sid = _extract_acp_session_id(parsed, session_new_id)
+            if _sid:
+                acp_state["acp_sid"] = _sid
+                logger.info(f"[{agent_id}] captured ACP sessionId: {_sid}")
         # 记录并转发给客户端
         logger.info(f"[{agent_id}] → client: id={parsed.get('id')} method={parsed.get('method')} has_result={'result' in parsed}")
         await ws.send_text(msg)
@@ -282,7 +307,7 @@ async def ws_acp_endpoint(client_ws: WebSocket):
     async def stdout_to_ws():
         """subprocess stdout → WebSocket（过滤掉 subprocess 的 initialize 响应）"""
         # 只跟踪 initialize 的 request id（不包括 session/new 等其他 buffered 消息）
-        init_ids: set = set()  # type: ignore
+        init_ids: set = set(extra_filter_ids)  # type: ignore
         for m in buffered_msgs:
             if m.get("method") == "initialize":
                 init_ids.add(m.get("id"))
@@ -373,9 +398,11 @@ async def ws_acp_endpoint(client_ws: WebSocket):
                 except Exception:
                     proc.kill()
 
-            # 重启子进程（与初始路由相同命令；proxy不解析ACP sessionId，
-            # 重启后无进程内会话连续性，由客户端session/load恢复——诚实记录而非假装无感知）
-            sid_for_restart = None
+            # 重启子进程（与初始路由相同命令）；重放initialize+session/load
+            # 恢复进程内会话连续性（遗留#1闭环）：agent侧load_session支持
+            # SQLite恢复（soulmate_agent._reload_session_from_db）；即使重放
+            # 失败，下一条session/prompt在agent侧仍会自愈——双重保险
+            sid_for_restart = acp_state.get("acp_sid")
             logger.info(
                 f"[ACP] subprocess exited, respawning route cmd for {agent_id} "
                 f"(attempt {restart_count}, acpSessionId={sid_for_restart})"
@@ -393,6 +420,27 @@ async def ws_acp_endpoint(client_ws: WebSocket):
                 break
             proc = new_proc
             logger.info(f"[ACP] subprocess restarted: {agent_id}, pid={proc.pid}")
+            if sid_for_restart:
+                try:
+                    reinit_id = f"proxy-reinit-{restart_count}"
+                    extra_filter_ids.add(reinit_id)
+                    replay = [
+                        {"jsonrpc": "2.0", "id": reinit_id, "method": "initialize",
+                         "params": {"protocolVersion": 1}},
+                        {"jsonrpc": "2.0", "id": f"proxy-reload-{restart_count}",
+                         "method": "session/load",
+                         "params": {"sessionId": sid_for_restart,
+                                    "cwd": route.get("cwd", "/home/climbing"),
+                                    "mcpServers": []}},
+                    ]
+                    for _m in replay:
+                        proc.stdin.write((json.dumps(_m, ensure_ascii=False) + "\n").encode())
+                    await proc.stdin.drain()
+                    logger.info(f"[ACP] replayed initialize+session/load for {sid_for_restart} after respawn")
+                except Exception as _e:
+                    logger.warning(f"[ACP] session/load replay failed after respawn: {_e}")
+            else:
+                logger.info("[ACP] no ACP sessionId captured yet, skip session replay (prompt侧仍可自愈)")
             # 循环继续，重新创建t1/t2/t3
         except Exception as e:
             logger.error(f"[ACP] restart loop error: {e}")
