@@ -17,6 +17,8 @@ import tempfile
 import time
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from utils.file_safety import atomic_write, dry_run_edits, find_closest_match
@@ -51,6 +53,20 @@ class Counter:
             for e in self.errors[:20]:
                 print(f"  - {e}")
         print(f"{'='*60}")
+
+
+@pytest.fixture
+def c():
+    """pytest接入（2026-09-20修复）：此前test_*函数声明`c: Counter`参数但无
+    fixture → pytest收集即7个ERROR长期挂账；且脚本模式只打印summary不退出
+    非零，场景失败被静默。fixture为每个测试提供独立Counter，teardown强制
+    断言场景级检查全过——失败必须可见（mem0禁止静默降级原则）。"""
+    counter = Counter()
+    yield counter
+    assert counter.failed == 0, (
+        f"{counter.failed}/{counter.passed + counter.failed} scenario(s) failed: "
+        f"{counter.errors[:5]}"
+    )
 
 
 def test_incremental_edit(c: Counter):
@@ -595,6 +611,10 @@ def main():
     test_find_closest_match(c)    # G: 150个
     
     c.summary()
+
+    # 脚本模式：场景失败必须以非零退出码可见（此前恒exit 0，失败静默）
+    if c.failed:
+        sys.exit(1)
 
 
 if __name__ == "__main__":

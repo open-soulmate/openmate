@@ -418,6 +418,13 @@ async def acp_send(data: dict):
             "session_id": result.get("session_id") or data.get("session_id") or "",
             # 可观测性：过期session恢复标记（原session_id），None=无恢复发生
             "recovered_from_stale_session": result.get("recovered_from_stale_session"),
+            # 可观测性：恢复策略收紧标记（2026-09-20晚轮）——
+            # acp_empty_response=ACP侧空响应已发生；acp_stop_reason=空响应时的
+            # stopReason；acp_recovery_skipped=True表示非stale签名（非refusal），
+            # 按收紧策略未销毁session重建，走了CLI兜底（客户端可据此提示用户）。
+            "acp_empty_response": result.get("acp_empty_response", False),
+            "acp_recovery_skipped": result.get("acp_recovery_skipped", False),
+            "acp_stop_reason": result.get("acp_stop_reason"),
         }
     except TimeoutError:
         return {"ok": False, "error": "请求超时，请重试"}

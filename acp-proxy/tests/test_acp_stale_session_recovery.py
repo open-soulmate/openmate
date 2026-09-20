@@ -220,6 +220,96 @@ def test_pipe_error_path_does_not_trigger_stale_recovery():
 
     run(scenario())
 
+# ════════════════════════════════════════════════════════════════
+# 2b. 恢复策略收紧（2026-09-20晚轮）：仅stale签名(refusal)触发恢复
+# ════════════════════════════════════════════════════════════════
+
+def test_empty_non_refusal_response_skips_stale_recovery():
+    """收紧契约：空响应但stop_reason非stale签名（如end_turn空文本/仅tool-call
+    回合）→ 不触发new_session（有效session上下文不被销毁），CLI兜底且结果
+    显式携带acp_recovery_skipped+acp_stop_reason标记（AIHawk显式标记原则），
+    session_id保持原值（客户端继续用原会话，不失上下文）。"""
+    async def scenario():
+        acp, calls = _make_acp_for_recovery([
+            {"response_text": None, "stop_reason": "end_turn", "empty_response": True},
+        ])
+        result = await acp._send_message_inner("hello", SID_OLD)
+        assert result["response_text"] == "cli:hello", result
+        # 核心收紧语义：非stale签名不得销毁session重建
+        assert calls["new_session"] == 0, f"非stale签名不应触发new_session: {calls}"
+        assert calls["prompt"] == [SID_OLD], calls["prompt"]
+        # 原session保留，客户端不失上下文
+        assert result["session_id"] == SID_OLD, result
+        # 失败/决策必须显式可见，禁止静默降级
+        assert result.get("acp_empty_response") is True, result
+        assert result.get("acp_recovery_skipped") is True, result
+        assert result.get("acp_stop_reason") == "end_turn", result
+
+    run(scenario())
+
+def test_empty_missing_stop_reason_skips_stale_recovery():
+    """收紧契约：空响应且stop_reason缺失（""→None）→ 同样跳过恢复。
+    依据：live实证stale签名恒为refusal（stderr "session not found"），
+    缺失签名按非stale处理但标记可见。"""
+    async def scenario():
+        acp, calls = _make_acp_for_recovery([
+            {"response_text": None, "stop_reason": "", "empty_response": True},
+        ])
+        result = await acp._send_message_inner("hello", SID_OLD)
+        assert result["response_text"] == "cli:hello", result
+        assert calls["new_session"] == 0, calls
+        assert result["session_id"] == SID_OLD, result
+        assert result.get("acp_recovery_skipped") is True, result
+        assert result.get("acp_stop_reason") is None, result  # ""归一为None
+
+    run(scenario())
+
+def test_refusal_recovery_failure_cli_result_has_visibility_markers():
+    """收紧后回归：refusal签名仍触发恢复（new_session=1次）；恢复失败走
+    CLI兜底时结果携带acp_empty_response+acp_stop_reason=refusal，但
+    acp_recovery_skipped不置位（恢复被尝试过，不是被跳过）。"""
+    async def scenario():
+        acp, calls = _make_acp_for_recovery([
+            {"response_text": None, "stop_reason": "refusal", "empty_response": True},
+            {"response_text": None, "stop_reason": "refusal", "empty_response": True},
+        ])
+        result = await acp._send_message_inner("hello", SID_OLD)
+        assert result["response_text"] == "cli:hello", result
+        # refusal签名：恢复必须被尝试（旧session→new_session→重发）
+        assert calls["new_session"] == 1, calls
+        assert calls["prompt"] == [SID_OLD, SID_NEW], calls["prompt"]
+        # fresh session sid，客户端续接（既有契约不变）
+        assert result["session_id"] == SID_NEW, result
+        # 可见性标记：ACP空响应已发生+stop_reason=refusal；非"跳过"
+        assert result.get("acp_empty_response") is True, result
+        assert result.get("acp_stop_reason") == "refusal", result
+        assert not result.get("acp_recovery_skipped"), result
+
+    run(scenario())
+
+def test_acp_send_endpoint_passthrough_of_tightening_markers(monkeypatch):
+    """HTTP端点透传收紧标记：acp_empty_response/acp_recovery_skipped/
+    acp_stop_reason三字段到达客户端响应。"""
+    class _FakeACP:
+        async def send_message(self, text, session_id=None):
+            return {
+                "response_text": "cli:fallback",
+                "source": "hermes-cli",
+                "session_id": SID_OLD,
+                "acp_empty_response": True,
+                "acp_recovery_skipped": True,
+                "acp_stop_reason": "end_turn",
+            }
+
+    monkeypatch.setattr("ws_chat.get_acp_process", lambda: _FakeACP())
+    resp = run(acp_send({"text": "hi", "session_id": SID_OLD}))
+    assert resp["ok"] is True
+    assert resp["acp_empty_response"] is True, resp
+    assert resp["acp_recovery_skipped"] is True, resp
+    assert resp["acp_stop_reason"] == "end_turn", resp
+    # 原session保留（收紧语义：非stale签名不换session）
+    assert resp["session_id"] == SID_OLD, resp
+
 
 # ════════════════════════════════════════════════════════════════
 # 3. HTTP端点：None-safe content + recovered标记透传

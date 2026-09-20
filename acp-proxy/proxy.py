@@ -460,6 +460,9 @@ class ACPProcess:
         # (as opposed to raising pipe/timeout errors) — stale-session
         # recovery is only meaningful in the former case.
         got_empty_acp_response = False
+        # 收紧（2026-09-20晚轮，d439f163遗留#5销账）：记录空响应时的stop_reason，
+        # 恢复策略据此区分「stale-session签名」vs「模型侧合法空输出」。
+        last_stop_reason = ""
         for attempt in range(2):
             try:
                 result = await self._prompt(text, sid)
@@ -467,6 +470,7 @@ class ACPProcess:
                     result["session_id"] = sid
                     return result
                 got_empty_acp_response = True
+                last_stop_reason = str(result.get("stop_reason") or "")
                 logger.warning(
                     f"No chunks captured (attempt {attempt+1}, "
                     f"stopReason={result.get('stop_reason')}, session={sid})"
@@ -503,7 +507,16 @@ class ACPProcess:
         # 客户端持旧session_id时旧代码返回ok:true空响应。显式恢复：新建session
         # 重发一次，返回新sid+recovered_from_stale_session标记（AIHawk原则：
         # 失败/恢复必须显式可见），客户端据响应中的新session_id重新绑定。
-        if got_empty_acp_response:
+        # ── 策略收紧（2026-09-20晚轮）：仅stale-session签名触发恢复 ──
+        # live实证签名：adapter "prompt: session xxx not found" →
+        # stopReason=refusal + 0 chunks（/tmp/ws_recovery_e2e.py基线）。
+        # 非refusal空响应（end_turn空文本/仅tool-call回合等）=模型侧合法空输出，
+        # 此时销毁有效session上下文重建新会话是净损失 → 跳过恢复直接CLI兜底，
+        # 但结果必须显式携带acp_recovery_skipped+acp_stop_reason标记
+        # （AIHawk显式标记原则 + mem0"禁止静默降级"，evolution-engine-patterns §1.1）。
+        recovery_attempted = False
+        if got_empty_acp_response and last_stop_reason == "refusal":
+            recovery_attempted = True
             try:
                 resp = await self.new_session()
                 new_sid = resp.get("sessionId") or resp.get("session_id") or self._default_session_id
@@ -520,9 +533,21 @@ class ACPProcess:
                     sid = new_sid
             except Exception as e:
                 logger.error(f"Stale-session recovery failed: {e}")
+        elif got_empty_acp_response:
+            logger.warning(
+                f"Empty ACP response with non-stale stopReason="
+                f"{last_stop_reason or 'n/a'} — stale-session recovery skipped "
+                f"(session {sid} preserved), CLI fallback with explicit markers"
+            )
         # Fallback to CLI — 结果必须携带session_id，客户端才能续接会话
         result = await self._cli(text)
         result["session_id"] = sid
+        if got_empty_acp_response:
+            # ACP侧空响应对客户端可见（禁止静默降级）；恢复策略决策同样可见
+            result["acp_empty_response"] = True
+            result["acp_stop_reason"] = last_stop_reason or None
+            if not recovery_attempted:
+                result["acp_recovery_skipped"] = True
         return result
 
     async def send_message_with_image(
