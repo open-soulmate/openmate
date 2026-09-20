@@ -377,7 +377,50 @@ async def _safe_send_ws(websocket: WebSocket, data: dict) -> bool:
 
 @router.get("/health")
 async def ws_chat_health():
-    return {"status": "ok", "component": "WSChat"}
+    """live /health — 观测性数据聚合应答方。
+
+    路由遮蔽修正（本轮集成校验live取证发现）：app.py:224 include_router(ws_router)
+    先于app.py:319自身的@app.get("/health")注册，FastAPI首匹配胜出——本路由才是
+    /health的真实应答方，app.py同名路由为死路由（此前多轮加进app.py health的
+    agent_activity/tool_output/token_attribution键实际从未对外可见，live curl返回
+    {"component":"WSChat"}无任何统计键）。
+
+    观测性数据在此承载：懒import app.py的统计helper（运行时导入无循环依赖），逐key
+    fail-safe——任何统计失败只丢该key不影响status=ok存活判定（evolution.py:360/
+    dna_evolution.py:1233只消费status_code==200）。新增health观测字段请加在本handler。
+    """
+    payload = {"status": "ok", "component": "WSChat"}
+    # P0-4 peek三指标（"不知道它在干嘛"的行业首个完整实现——goose peek移植）
+    try:
+        from app import _activity_store
+        payload["agent_activity"] = _activity_store().peek_all()["summary"]
+    except Exception:
+        pass
+    # P0-2 工具结果溢出统计（AIHawk SHOWN/SENT双预算可观测）
+    try:
+        from app import _tool_output_stats
+        _ts = _tool_output_stats()
+        payload["tool_output"] = {
+            k: _ts.get(k)
+            for k in ("total_spills", "total_calls", "truncated_calls",
+                      "sent_chars_total", "shown_chars_total",
+                      "char_threshold", "line_threshold")
+        }
+    except Exception:
+        pass
+    # P1 token逐项归因摘要 + d439f163遗留#3估算校准状态（sample_count/calibrated/factor）
+    try:
+        from app import _token_attribution_stats
+        _ta = _token_attribution_stats()
+        payload["token_attribution"] = {
+            "total_records": _ta.get("total_records", 0),
+            **{k: _ta.get("summary", {}).get(k)
+               for k in ("over_limit_records", "avg_total_tokens", "max_total_tokens",
+                         "backfill_count", "avg_estimate_gap", "calibration")},
+        }
+    except Exception:
+        pass
+    return payload
 
 
 @router.get("/acp/status")

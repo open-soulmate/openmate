@@ -318,6 +318,12 @@ async def agent_token_attribution(limit: int = 20):
 
 @app.get("/health")
 async def health():
+    """⚠️ 本路由被ws_chat.py的/health遮蔽——app.py:224 include_router(ws_router)先注册，
+    FastAPI首匹配胜出，live /health应答方是ws_chat.ws_chat_health（本轮live curl取证：
+    :8092/health返回{"status":"ok","component":"WSChat"}，本handler从未被命中）。
+    观测性聚合（agent_activity/tool_output/token_attribution+calibration）已迁至
+    ws_chat侧live路由承载；本handler保留作include顺序变化时的兜底镜像。
+    新增health观测字段请同时/优先加到ws_chat.ws_chat_health。"""
     instance_id = os.environ.get("INSTANCE_ID", "a")
     payload = {"status": "ok", "service": "acp-proxy", "instance": instance_id}
     # P0-4: peek统计并入health——既有monitoring页探测health即可看到agent活动状态，不新建页面
@@ -342,7 +348,9 @@ async def health():
             "total_records": _ta.get("total_records", 0),
             **{k: _ta.get("summary", {}).get(k)
                for k in ("over_limit_records", "avg_total_tokens", "max_total_tokens",
-                         "backfill_count", "avg_estimate_gap")},
+                         "backfill_count", "avg_estimate_gap",
+                         # d439f163遗留#3：估算校准状态（sample_count/calibrated/factor）
+                         "calibration")},
         }
     except Exception:
         pass

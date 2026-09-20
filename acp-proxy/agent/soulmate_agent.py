@@ -1051,7 +1051,12 @@ You can send files to the user natively: to deliver a file, write a brief confir
                         kind=KIND_TOOL_RESULT, name="tool_results_in_context",
                         source="tool_loop", tokens=_tres,
                     ))
-                _usage = build_context_usage(_msg_items, max_tokens=_window, model=_model)
+                _usage = build_context_usage(
+                    _msg_items, max_tokens=_window, model=_model,
+                    # d439f163遗留#3估算校准：provider回填推出的Σactual/Σestimated因子
+                    # 进入归因记录（calibrated_*字段与raw并排，估算偏差对观测者可见）
+                    calibration_factor=self._token_attr_ledger.calibration_factor(),
+                )
                 self._token_attr_ledger.record(_usage, session_id=session_id, model=_model)
             except Exception as _ta_exc:
                 logger.debug(f"[token-attribution] record failed (non-fatal): {_ta_exc}")
@@ -1911,15 +1916,21 @@ You can send files to the user natively: to deliver a file, write a brief confir
         except Exception:
             pass
 
-        # ── 上下文预算管理 ──
+        # ── 上下文预算管理：刷新估算校准因子（d439f163遗留#3）──
+        # provider回填的estimate_gap→Σactual/Σestimated校准因子，本轮归因record与
+        # 消息组装处的manage()裁剪共用（TTL缓存由AttributionLedger内部节流）。
+        # P0静默死路径修复记录：原此处调用self._context_budget.manage(...)，但该方法
+        # 在ContextBudgetManager上并不存在——AttributeError被except:pass静默吞掉，
+        # 上下文预算裁剪从未生效。manage()现已真实实现，裁剪接线位置见下方
+        # "构建上下文消息"处（作用于LLM请求副本，持久化历史不动）。
         try:
-            session_msgs = session.get("messages", [])
-            if len(session_msgs) > 20:
-                managed = self._context_budget.manage(session_msgs, max_tokens=8000)
-                if managed and len(managed) < len(session_msgs):
-                    logger.info(f"[context-budget] 压缩历史: {len(session_msgs)}→{len(managed)}条")
-        except Exception:
-            pass
+            self._context_budget.calibration_factor = (
+                self._token_attr_ledger.calibration_factor()
+            )
+        except Exception as _cf_exc:
+            logger.debug(
+                f"[context-budget] calibration factor refresh failed (fail-safe 1.0): {_cf_exc}"
+            )
 
         # ── 会话状态机：记录状态转换 ──
         try:
@@ -2056,6 +2067,26 @@ You can send files to the user natively: to deliver a file, write a brief confir
 
         # 构建上下文消息
         messages = session["messages"].copy()
+
+        # ── 上下文预算裁剪（估算校准闭环·真实接线点）──
+        # P0静默死路径修复：此前的manage()调用指向不存在的方法（AttributeError被
+        # except:pass吞掉，裁剪从未生效）。现在manage()真实存在，且估算=canonical
+        # estimate_tokens×provider回填推出的校准因子（calibration_factor在_prompt_inner
+        # 入口处刷新）。裁剪只作用于本次LLM请求副本——session["messages"]持久化历史
+        # 不动（DB/回放/标题生成不受影响）；>20条才触发，预算8000 tokens同原意图。
+        if len(messages) > 20:
+            try:
+                trimmed = self._context_budget.manage(messages, max_tokens=8000)
+                if trimmed and len(trimmed) < len(messages):
+                    logger.info(
+                        f"[context-budget] LLM历史裁剪生效: {len(messages)}→{len(trimmed)}条 "
+                        f"(calibration_factor={self._context_budget.calibration_factor:.4f})"
+                    )
+                    messages = trimmed
+            except Exception as _cb_exc:
+                logger.debug(
+                    f"[context-budget] manage failed (fail-safe, history unchanged): {_cb_exc}"
+                )
 
         # 注入进化引擎创建的技能到系统提示
         if self._evolution_engine:

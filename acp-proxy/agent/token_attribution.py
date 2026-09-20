@@ -68,6 +68,65 @@ MODEL_CONTEXT_LIMITS: dict[str, int] = {
 DEFAULT_CONTEXT_WINDOW = 32000
 DEFAULT_COMPACTION_RATIO = 0.75  # agent.context_budget.TokenBudget.compression_threshold同值
 
+# ── estimate_tokens公式校准（d439f163遗留#3：estimate_gap信号此前只采集不消费）──
+# 校准语义（两侧镜像一致，opensoul/src/cortex/token_attribution.py同值同逻辑）：
+# factor = Σactual / Σestimated — provider权威prompt_tokens与启发式估算总量之比。
+# estimated≤0或actual为None的样本剔除；样本数<MIN_CALIBRATION_SAMPLES → calibrated=False
+# 且factor=1.0（fail-safe：样本不足时估算器行为完全不变，只观测不校正）；
+# factor夹在CALIBRATION_FACTOR_BOUNDS内防脏数据把估算拉飞。
+# 消费点：①build_context_usage(calibrated_*字段) ②ContextBudgetManager.manage裁剪决策
+# （canonical估算×factor——系统性低估时provider视角提前触发裁剪）。
+MIN_CALIBRATION_SAMPLES = 3
+CALIBRATION_FACTOR_BOUNDS = (0.5, 4.0)
+CALIBRATION_CACHE_TTL = 300.0  # 秒：账本校准因子缓存（agent每轮record，避免每轮重读账本尾部）
+
+
+def compute_calibration(pairs: list[dict]) -> dict:
+    """从(estimated, actual)样本对计算估算器校准因子（两侧镜像公式一致）。
+
+    pairs: [{"estimated": int, "actual": int}, ...]（estimated=usage.total_tokens估算值，
+    actual=provider权威prompt_tokens）。返回：
+    - sample_count: 有效样本数（estimated>0且actual非None）
+    - calibrated: 是否达到最小样本数（不足时factor恒1.0）
+    - factor: 夹限后的校准因子（未校准时1.0）
+    - avg_estimate_gap: 平均偏差(actual-estimated)，无有效样本为None
+    - calibrated时附加raw_factor/sum_estimated/sum_actual（审计溯源）
+    """
+    valid: list[tuple[int, int]] = []
+    for p in pairs or []:
+        e = (p or {}).get("estimated")
+        a = (p or {}).get("actual")
+        if e is None or a is None:
+            continue
+        e, a = int(e), int(a)
+        if e > 0 and a >= 0:
+            valid.append((e, a))
+    sample_count = len(valid)
+    if sample_count < MIN_CALIBRATION_SAMPLES:
+        avg_gap = (
+            sum(a - e for e, a in valid) // sample_count if sample_count else None
+        )
+        return {
+            "sample_count": sample_count,
+            "calibrated": False,
+            "factor": 1.0,
+            "avg_estimate_gap": avg_gap,
+        }
+    sum_est = sum(e for e, _ in valid)
+    sum_act = sum(a for _, a in valid)
+    raw_factor = sum_act / sum_est
+    lo, hi = CALIBRATION_FACTOR_BOUNDS
+    factor = round(min(hi, max(lo, raw_factor)), 4)
+    return {
+        "sample_count": sample_count,
+        "calibrated": True,
+        "factor": factor,
+        "raw_factor": round(raw_factor, 4),
+        "avg_estimate_gap": (sum_act - sum_est) // sample_count,
+        "sum_estimated": sum_est,
+        "sum_actual": sum_act,
+    }
+
 
 def resolve_context_window(model: str | None, default: int = DEFAULT_CONTEXT_WINDOW) -> int:
     if not model:
@@ -136,8 +195,15 @@ def build_context_usage(
     max_tokens: int | None = None,
     compaction_tokens: int | None = None,
     model: str | None = None,
+    calibration_factor: float | None = None,
 ) -> dict:
-    """构建SDKContextUsage形态归因结果（与opensoul侧同构）。"""
+    """构建SDKContextUsage形态归因结果（与opensoul侧同构）。
+
+    calibration_factor（d439f163遗留#3估算校准）：provider回填推出的Σactual/Σestimated
+    因子；提供时输出calibrated_total_tokens/calibrated_percentage/calibrated_over_limit
+    三个校准后字段（raw字段保持启发式原值不变——两套数字并存，估算器偏差对观测者可见）。
+    None/未校准时factor按1.0处理（校准值与raw值一致，schema稳定）。
+    """
     if max_tokens is None:
         max_tokens = resolve_context_window(model)
     max_tokens = max(1, int(max_tokens))
@@ -152,6 +218,20 @@ def build_context_usage(
         over_limit = {"tokens_over": total - max_tokens, "kind": "hard_limit"}
     elif total > compaction_tokens:
         over_limit = {"tokens_over": total - compaction_tokens, "kind": "compaction_window"}
+
+    # ── 估算校准后判定（d439f163遗留#3）：raw over_limit不动，校准值并排输出 ──
+    _factor = 1.0 if not calibration_factor else max(0.01, float(calibration_factor))
+    calibrated_total = int(round(total * _factor))
+    calibrated_percentage = round(calibrated_total * 100.0 / max_tokens, 1)
+    calibrated_over_limit: dict | None = None
+    if calibrated_total > max_tokens:
+        calibrated_over_limit = {
+            "tokens_over": calibrated_total - max_tokens, "kind": "hard_limit",
+        }
+    elif calibrated_total > compaction_tokens:
+        calibrated_over_limit = {
+            "tokens_over": calibrated_total - compaction_tokens, "kind": "compaction_window",
+        }
 
     lists: dict[str, list] = {k: [] for k in _LIST_KEYS.values()}
     sections: dict[str, int] = {}
@@ -180,6 +260,10 @@ def build_context_usage(
         "compaction_tokens": compaction_tokens,
         "percentage": percentage,
         "over_limit": over_limit,
+        "calibration_factor": round(_factor, 4),
+        "calibrated_total_tokens": calibrated_total,
+        "calibrated_percentage": calibrated_percentage,
+        "calibrated_over_limit": calibrated_over_limit,
         **lists,
         "sections": sections,
         "top_consumers": top,
@@ -200,6 +284,8 @@ class AttributionLedger:
         self.ledger_dir = Path(ledger_dir)
         self.max_recent = max_recent
         self.ledger_path = self.ledger_dir / "attribution_ledger.jsonl"
+        # 校准因子缓存（agent工具循环每轮record，校准因子按TTL缓存避免每轮重读账本）
+        self._calibration_cache: tuple[float, float] | None = None
         try:
             self.ledger_dir.mkdir(parents=True, exist_ok=True)
         except Exception:
@@ -335,6 +421,7 @@ class AttributionLedger:
             return None
 
         gaps: list[int] = []
+        cal_pairs: list[dict] = []  # 估算校准样本对（estimated=归因估算, actual=provider权威）
         for r in recs:
             bf = _match_backfill(r)
             if bf is not None:
@@ -344,6 +431,11 @@ class AttributionLedger:
                     r["backfill_round"] = bf.get("round")
                 if bf.get("estimate_gap") is not None:
                     gaps.append(int(bf["estimate_gap"]))
+                if bf.get("actual_prompt_tokens") is not None:
+                    cal_pairs.append({
+                        "estimated": int(r.get("usage", {}).get("total_tokens", 0)),
+                        "actual": int(bf["actual_prompt_tokens"]),
+                    })
 
         totals = [r.get("usage", {}).get("total_tokens", 0) for r in recs]
         over = sum(1 for r in recs if r.get("usage", {}).get("over_limit"))
@@ -388,6 +480,32 @@ class AttributionLedger:
                 "top_consumers": top,
                 "backfill_count": len(backfills),
                 "avg_estimate_gap": (sum(gaps) // len(gaps)) if gaps else None,
+                # d439f163遗留#3：估算器校准（gap信号的消费端）
+                "calibration": compute_calibration(cal_pairs),
             },
             "ledger_path": str(self.ledger_path),
         }
+
+    def calibration_factor(self, force_refresh: bool = False) -> float:
+        """当前校准因子（Σactual/Σestimated，样本不足返回1.0）——估算校准的消费端API。
+
+        消费点：soulmate_agent工具循环record时传入build_context_usage；上下文预算
+        ContextBudgetManager.manage的裁剪估算。TTL缓存（CALIBRATION_CACHE_TTL秒）：
+        agent每轮都record，账本读取按缓存节流。任何异常fail-safe返回1.0
+        （校准是估算修正，绝不阻断消息路径——本项目fail-safe惯例）。
+        """
+        try:
+            now = time.time()
+            if (
+                not force_refresh
+                and self._calibration_cache is not None
+                and now - self._calibration_cache[1] < CALIBRATION_CACHE_TTL
+            ):
+                return self._calibration_cache[0]
+            cal = self.get_stats().get("summary", {}).get("calibration") or {}
+            factor = float(cal.get("factor", 1.0)) if cal.get("calibrated") else 1.0
+            self._calibration_cache = (factor, now)
+            return factor
+        except Exception as exc:
+            logger.debug("calibration factor unavailable (fail-safe 1.0): %s", exc)
+            return 1.0

@@ -69,6 +69,71 @@ class ContextBudgetManager:
         self._messages: list[ManagedMessage] = []
         self._total_tokens: int = 0
         self._compression_count: int = 0
+        # 估算校准因子（d439f163遗留#3）：由token_attribution账本provider回填推出
+        # （Σactual/Σestimated），manage()的裁剪估算=canonical estimate_tokens×此因子。
+        # 默认1.0；调用方（soulmate_agent）在真实消息路径按TTL缓存刷新。
+        self.calibration_factor: float = 1.0
+
+    def manage(self, messages: list, max_tokens: Optional[int] = None) -> list:
+        """按预算裁剪会话历史，返回供LLM请求使用的子集（原顺序保留）。
+
+        背景（P0静默死路径修复）：soulmate_agent._prompt_inner此前调用本方法，但
+        ContextBudgetManager上并不存在manage——AttributeError被except:pass静默吞掉，
+        上下文预算裁剪从未生效（"写了≠接线了"）。本方法为该调用点的真实实现。
+
+        估算公式（估算校准闭环）：token数用agent.token_attribution.estimate_tokens
+        （canonical CJK感知公式，与归因/回填/校准同一公式——ManagedMessage的len//2
+        旧估算仅用于add_message路径），再乘calibration_factor：provider视角系统性
+        低估时提前触发裁剪，压缩决策与权威计数对齐。
+
+        裁剪策略：从最旧的非保留消息开始丢弃；始终保留system消息与最后一条消息
+        （即使其本身超预算——最新用户输入不可丢）；预算内不裁剪（原样返回副本）。
+        空输入返回[]。fail-safe：方法内部不抛异常语义由调用方try/except兜底。
+        """
+        if not messages:
+            return []
+        from agent.token_attribution import estimate_tokens as _canonical_estimate
+
+        target = max_tokens or self.budget.available_for_history
+        factor = (
+            self.calibration_factor
+            if self.calibration_factor and self.calibration_factor > 0
+            else 1.0
+        )
+
+        def _calibrated(msg) -> int:
+            content = str((msg or {}).get("content", "") or "")
+            return int(_canonical_estimate(content) * factor)
+
+        last_idx = len(messages) - 1
+        must_keep = {
+            i
+            for i, m in enumerate(messages)
+            if str((m or {}).get("role", "") or "") == "system"
+        } | {last_idx}
+
+        total = sum(_calibrated(m) for m in messages)
+        if total <= target:
+            return list(messages)
+
+        selected = set(must_keep)
+        used = sum(_calibrated(messages[i]) for i in selected)
+        for i in range(last_idx - 1, -1, -1):  # 次新→旧依次保留，预算尽即止（最旧先丢）
+            if i in selected:
+                continue
+            tok = _calibrated(messages[i])
+            if used + tok > target:
+                break
+            selected.add(i)
+            used += tok
+        result = [m for i, m in enumerate(messages) if i in selected]
+        self._compression_count += 1
+        logger.info(
+            f"[context-budget] manage #{self._compression_count}: "
+            f"{len(messages)}→{len(result)}条 "
+            f"(~{total}→~{used} tokens, factor={factor:.4f}, target={target})"
+        )
+        return result
 
     def add_message(
         self,

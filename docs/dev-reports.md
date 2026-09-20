@@ -1030,3 +1030,47 @@
 5. 前端页面视觉渲染人工确认受登录墙限制（cron无凭证）
 6. systemic_test首轮27/29的2项瞬时失败细节未留存（复跑覆盖了结果文件）——下轮systemic_test结果文件先备份再复跑
 7. gene skill_learner上报见本轮末尾执行
+
+## [2026-09-21 01:15 CST] estimate_tokens公式校准闭环（d439f163遗留#3销账）+ P0上下文预算manage静默死路径修复 + /health路由遮蔽修复
+**目标**：①销多轮挂账的遗留#3——provider回填的estimate_gap信号此前只采集不消费，估算器无校准闭环；②修复调研中发现的P0静默死路径：soulmate_agent调用的`ContextBudgetManager.manage()`方法根本不存在，AttributeError被`except:pass`吞掉，上下文预算裁剪从未生效（"写了≠接线了"的教科书案例）；③修复集成校验live取证发现的/health路由遮蔽：app.py的/health被ws_chat.py同名路由遮蔽为死路由，此前多轮加进app.py health的观测性键从未对外可见。
+**调研来源**：SUMMARY.md P0-4/P1 token逐项归因（claude-code SDKContextUsage，"用户极度重视可观测性→此P0含金量最高"）+ P0-1估算与provider权威计数的gap量化；evolution-engine-patterns.md §1.1 mem0"失败必须可见，禁止静默降级"（except:pass死路径正是其反例）+ §2.1 agno"对比前先校准/指纹"思想；dev-report遗留链（22:50轮遗留#3标注"仍未做"）。
+**改动文件**：
+- openmate/acp-proxy/agent/token_attribution.py（+120：compute_calibration/常量/build_context_usage校准字段/AttributionLedger.calibration_factor+TTL缓存/get_stats summary.calibration）
+- openmate/acp-proxy/agent/context_budget.py（+65：calibration_factor属性+manage()真实实现——死路径修复核心）
+- openmate/acp-proxy/agent/soulmate_agent.py（+49/-11：:1058 record消费校准因子；:1914死调用块→校准因子刷新；:2068消息组装处真实接线manage裁剪）
+- openmate/acp-proxy/app.py（+10：health allowlist加calibration键+死路由遮蔽警示docstring）
+- openmate/acp-proxy/ws_chat.py（+45：ws_chat_health观测性聚合迁移——live应答方承载agent_activity/tool_output/token_attribution+calibration，逐key fail-safe）
+- openmate/acp-proxy/tests/test_token_calibration.py（新增19测试）
+- openmate/acp-proxy/e2e_ws_calibration.py（新增：WS /ws/acp soulmate路由live E2E脚本）
+- opensoul/src/cortex/token_attribution.py（+106：镜像compute_calibration/build_context_usage校准字段/ContextAttributor.calibration/summary携带）
+- opensoul/src/api/chat.py（+10：record与/api/chat/token-attribution端点消费校准）
+- opensoul/tests/test_token_calibration.py（新增17测试，镜像字面量与acp侧同组）
+**改动内容**：
+1. **校准闭环**：`compute_calibration(pairs)`=Σactual/Σestimated（provider权威prompt_tokens vs 归因估算总量）；样本数<MIN_CALIBRATION_SAMPLES=3 → calibrated=False且factor=1.0（fail-safe：样本不足估算器行为完全不变，只观测不校正）；factor夹限(0.5,4.0)防脏数据；`build_context_usage(calibration_factor=)`输出calibrated_total_tokens/calibrated_percentage/calibrated_over_limit三个校准后字段，raw字段保持启发式原值不变（两套数字并排，估算偏差对观测者可见）；`AttributionLedger.calibration_factor()`带300s TTL缓存（agent每轮record，账本读取按缓存节流），异常fail-safe返回1.0
+2. **manage()死路径修复**：真实实现=canonical estimate_tokens（CJK感知公式，与归因/回填/校准同一公式，弃用ManagedMessage的len//2旧估算）×校准因子；裁剪策略=从最旧非保留消息丢弃，system消息与最后一条必保留（最新用户输入不可丢），预算内原样返回副本；>20条触发/预算8000 tokens同原意图；接线点在消息组装处（`messages = session["messages"].copy()`之后），**只作用于LLM请求副本，session持久化历史不动**（DB/回放/标题生成不受影响）
+3. **/health遮蔽修复**：app.py:224 `include_router(ws_router)`先于app.py:319自身@app.get("/health")注册，FastAPI首匹配胜出→app.py /health从未被命中（live curl取证：8092/health返回{"component":"WSChat"}）。观测性聚合迁至ws_chat.ws_chat_health（懒import app.py统计helper，运行时导入无循环依赖，逐key fail-safe），status=ok保留（evolution.py:360/dna_evolution.py:1233只消费status_code==200，兼容确认）
+**接线位置**（grep证据，文件:行号）：
+- soulmate_agent.py:1058 `calibration_factor=self._token_attr_ledger.calibration_factor()`（build_context_usage调用点，工具循环内每轮LLM请求一次——真实ws聊天路径）
+- soulmate_agent.py:1927-1928 `_context_budget.calibration_factor = _token_attr_ledger.calibration_factor()`（_prompt_inner入口刷新）
+- soulmate_agent.py:2079 `trimmed = self._context_budget.manage(messages, max_tokens=8000)`（消息组装处真实裁剪接线）
+- context_budget.py:77 `def manage(self, messages, max_tokens)`（定义，此前不存在）; :75 `self.calibration_factor`属性
+- token_attribution.py:84 `def compute_calibration`; :484 get_stats summary["calibration"]; :489 `def calibration_factor`
+- ws_chat.py:378 `ws_chat_health`（live /health应答方，app.py:224 include_router挂载链确认）; app.py:234 `@app.websocket("/ws/acp")`→ws_acp.py:166 agent_id路由（soulmate=`python -m agent.start --stdio`→agent/acp_server.py:139 `SoulMateAgent(llm_engine=...)`→prompt→_prompt_inner完整链）
+- opensoul: chat.py:318 `calibration_factor=get_attributor().calibration().get("factor")`（rag_stream归因record点）; chat.py:262 端点顶层calibration键; token_attribution.py:385 `def calibration`/:452 summary携带
+- **运行时证据（live）**：WS E2E（e2e_ws_calibration.py）soulmate路由session om-5a0c56faa274 prompt→"OK"回复，账本新增record携带`calibration_factor:1.0, calibrated_total:4121, total:4121`——soulmate_agent.py:1058接线live实证非死代码
+**验证结果**：
+- 完整性✅：git diff确认openmate 6文件+344/-13、opensoul 3文件+274/-1真实落盘（+2新测试文件+1 E2E脚本）
+- 集成✅：grep证据如上（每个新符号有定义行+消费行，位于/ws/acp soulmate真实聊天路径与/api/chat真实rag路径，非死代码）；live取证三组：①/api/agent/token-attribution→`summary.calibration={"sample_count":1,"calibrated":false,"factor":1.0,"avg_estimate_gap":259}`（生产账本真实数据，样本1<3诚实fail-safe）②/health双实例(8092/8095)→WSChat+agent_activity(total_sessions=11,durable_turns=65)+tool_output 7键+token_attribution.calibration全部live可见③WS E2E见上
+- 测试✅：acp-proxy `pytest tests/ -q`全量**228 passed**（基线209+新增19：compute_calibration镜像值1.0856/avg_gap186、样本不足fail-safe、无效样本剔除、夹限0.5/4.0、calibrated字段raw不动、hard_limit/compaction_window两态、账本stats校准、TTL缓存+force_refresh、manage预算内不裁剪/超预算丢最旧10条/system+last必保留/factor=2.0收紧到5条/canonical公式验证/空输入）；opensoul `pytest tests/test_token_calibration.py tests/test_token_attribution.py tests/test_token_usage_backfill.py -q`**60 passed**（新增17含镜像字面量断言+ContextAttributor.record/backfill→calibration）；两侧镜像测试断言同一组数字（factor=1.0856/avg_gap=186/sum_est=6528/sum_act=7087）；systemic_test.py（改动涉及soulmate_agent+ws_chat+app+context_budget多模块，按铁律执行，结果文件先备份）**29/29 (100%)**（S4并发3/3+S5降级5/5+S6负载4/4）；ast.parse 9文件全OK
+- live E2E：HTTP /acp/send（走proxy.py:129硬编码`hermes acp`路由，非soulmate路径）→ok=True content='OK'（服务健康证明）；WS /ws/acp soulmate路由E2E→PASS（见接线位置运行时证据）
+**服务重启**：acp-proxy-a(:8092)+acp-proxy-b(:8095)+opensoul(:8090)重启→systemctl is-active三服务active→health双实例status ok且携带完整观测键→opensoul /api/chat/health ok→重启后E2E+systemic全过
+**commit**：opensoul `2fad2b99`；openmate（本报告随代码同commit提交，见git log）；push前git diff --cached密钥扫描0命中
+**遗留问题**：
+1. 生产校准样本仅1条（est=3528/actual=3787/gap=259），<MIN=3故factor暂为1.0 fail-safe——随soulmate聊天流量自然积累，≥3样本后校准自动生效；不伪造usage数据加速
+2. 本轮E2E该次prompt未产生新backfill行（usage chunk→backfill在纯文本单轮的发射条件待查——llm_engine usage发射逻辑下轮专项核对）；校准样本积累速度可能偏慢
+3. /acp/send HTTP路径硬编码hermes acp（proxy.py:129），不经过soulmate归因/预算路径——HTTP侧无校准消费方（hermes为外部binary，其token归因需hermes侧能力）；ws /ws/acp soulmate路由才是归因真实路径
+4. opensoul侧ContextAttributor进程内单例无ledger持久化（ledger_path=None），重启清零——/api/chat/token-attribution校准样本依赖chat流量持续积累；是否给opensoul attributor配置ledger_path与acp侧同款JSONL账本，待用户意见（涉及新文件落盘位置）
+5. /health遮蔽问题影响历史轮结论：此前dev-report中"health携带agent_activity/tool_output/token_attribution键"的live性表述实际未生效（键在死路由上）——本轮已迁live应答方并live取证修正；若monitoring前端页面曾按app.py health字段格式开发，需核对前端实际消费的endpoint（前端health-widget消费opensoul侧/api/health/*，未受影响）
+6. evo工作区残留（acp-proxy下stability_test_*/state_manager.py等untracked文件+data目录改动）非本轮产物，未纳入commit，待用户意见
+7. 复跑解释器坑（记入技能）：acp-proxy测试必须用/home/climbing/.hermes/hermes-agent/venv/bin/python（PATH的python3=search-engine venv无pytest）；systemic_test结果文件已按上轮遗留#6先备份再复跑
+8. gene skill_learner上报见本轮末尾执行
