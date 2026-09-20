@@ -42,6 +42,37 @@ IMMUTABLE_FILES = [
     "acp-proxy/evolution_pipeline.py",  # 自身不可改
 ]
 
+# Hermes审核队列（evo达标commit后写入此队列，由Hermes cron审核后才push GitHub）
+REVIEW_QUEUE_FILE = "data/hermes_review_queue.json"
+# 审核反馈文件（Hermes审核驳回时写入，evo的planner下轮读取学习）
+EVO_FEEDBACK_FILE = "data/evo_feedback.json"
+
+# 编码规范（注入_implement/_code_review的prompt——evo跟Hermes学习编程思维的核心教材）
+CODING_STANDARDS = """【编码规范 — 必须严格遵守】
+1. import规范：
+   - 所有import放在文件顶部（可选依赖的延迟导入除外），禁止在import块中间插入非import代码
+   - import必须写完整模块路径，如：from agent.prompt_manager import PromptTemplateManager
+   - 禁止截断/简写import（历史事故：'import P'是半个词，'__DEBUG_VALIDATION__'是拼接残片——直接导致进程import即死）
+2. 命名规范：
+   - 函数/变量名 snake_case，用完整英文单词：get_user_by_id、parse_config、validate_input
+   - 类名 PascalCase：SoulMateAgent、ConfigManager
+   - 常量 UPPER_CASE：MAX_RETRIES、DEFAULT_TIMEOUT
+   - 禁止拼接残片标识符（历史事故：TrueromptTemplateManager = True+romptTemplate的垃圾拼接）
+   - 标识符超过3个单词时用下划线分段，不要粘连
+3. 函数设计：
+   - 单一职责，一个函数只做一件事
+   - 保持现有函数签名不变，除非修改要求明确要求改签名
+   - 外部调用（IO/网络/子进程）必须有try/except，禁止裸except: pass
+4. 修改边界：
+   - 只修改与要求直接相关的代码，不动无关代码
+   - 保留现有代码的结构、风格、import顺序
+   - 禁止删除与本次修改无关的import和代码行
+5. 输出前自检（逐项核对后再输出）：
+   - 所有import完整、位于文件顶部、路径真实存在？
+   - 每个新标识符都是完整单词、符合命名规范？
+   - 没有向import块中插入非import代码？
+   - 没有截断任何单词？"""
+
 
 class EvolutionLock:
     """全局进化锁 — 文件锁，同时只允许一个实例进化"""
@@ -189,11 +220,16 @@ class EvolutionPipeline:
                 self.audit.log({"round_id": round_id, "event": "verdict", **verdict})
 
                 if verdict["converged"]:
-                    # 达标 → git commit
+                    # 达标 → git commit（本地保留成果）
                     for p in applied:
                         self._git_commit(p["target_file"], f"[evo:{self.instance_id}] {round_id}")
+                    # 提交Hermes审核队列（用户指示：evo开发的代码提交给Hermes审核，审核通过才push GitHub）
+                    try:
+                        self._enqueue_hermes_review(round_id, applied, verdict)
+                    except Exception as e:
+                        logger.warning(f"审核队列写入失败: {e}")
                     result["success"] = True
-                    self.strand._log("verdict", f"🎉 进化成功! score={verdict['score']}")
+                    self.strand._log("verdict", f"🎉 进化成功! score={verdict['score']}（已提交Hermes审核队列）")
                     break
                 else:
                     # 不达标 → 回滚
@@ -258,8 +294,10 @@ class EvolutionPipeline:
                 except Exception:
                     pass
 
+        feedback = self._load_recent_feedback(self.repo_root)
         prompt = f"""你是一个代码修复专家。根据诊断结果生成修复方案。
 
+{feedback}
 根因：{diagnosis.get('root_cause', '')}
 影响文件：{', '.join(affected)}
 修复策略：{diagnosis.get('fix_strategy', '')}
@@ -348,10 +386,13 @@ class EvolutionPipeline:
             if full_path.exists():
                 existing = full_path.read_text(encoding="utf-8")
 
-            # 用LLM生成代码
+            # 用LLM生成代码（注入编码规范——evo编程思维教学）
             prompt = f"""你是一个代码修改专家。根据以下要求修改文件。
 
+{CODING_STANDARDS}
+
 目标文件：{target}
+{('⚠️ 核心文件：改动此文件将被Hermes严格审核，import错误直接否决。' if any(target.endswith(k.split('/')[-1]) or k.endswith(target) for k in KERNEL_FILES) else '')}
 现有代码：
 {existing[:3000]}
 
@@ -420,7 +461,13 @@ class EvolutionPipeline:
 1. 是否引入明显bug
 2. 是否有安全风险（注入、越权、敏感信息泄露）
 3. 代码质量（命名、结构、重复）
-4. 是否符合最小改动原则
+4. 编码规范符合性：
+   - import是否完整、位于文件顶部、路径真实？（截断import如'import P'、import块中混入非import代码=立即驳回）
+   - 标识符是否完整英文单词？（拼接残片如'TrueromptTemplateManager'=立即驳回）
+   - 函数是否单一职责？外部调用是否有try/except？
+5. 修改是否越界（动了与要求无关的代码/删了无关import）
+
+核心文件（{', '.join(KERNEL_FILES)}）的改动：任何import问题、签名变更、删除代码行都必须驳回。
 
 输出JSON: {{"approved": true/false, "reason": "原因", "issues": ["问题1"]}}"""
 
@@ -435,7 +482,8 @@ class EvolutionPipeline:
         except json.JSONDecodeError:
             pass
 
-        return {"approved": True, "reason": "LLM review parse failed, defaulting to approve"}
+        # 评审解析失败 = 驳回（默认放行是历史漏洞，导致坏代码溜进主线）
+        return {"approved": False, "reason": "LLM review parse failed — 默认驳回（解析失败不放行）", "issues": ["review_parse_failed"]}
 
     # ── ⑥ Task-Evaluate ──
 
@@ -463,19 +511,31 @@ class EvolutionPipeline:
                     score -= 0.2
                     details.append(f"语法检查异常: {target}: {e}")
 
-                # 导入测试
+                # 导入测试（完整模块路径 import + cwd=repo_root，修复旧版只import最后一段的bug）
                 module_path = target.replace("/", ".").replace(".py", "")
+                is_core = any(target.endswith(k.split("/")[-1]) or k.endswith(target) for k in KERNEL_FILES)
+                import_ok = True
                 try:
                     result = subprocess.run(
-                        ["python3", "-c", f"import {module_path.split('.')[-1]}"],
+                        ["python3", "-c", f"import {module_path}"],
                         capture_output=True, text=True, timeout=10,
-                        cwd=str(full_path.parent),
+                        cwd=str(self.repo_root),
                     )
                     if result.returncode != 0:
-                        score -= 0.2
-                        details.append(f"导入失败: {target}: {result.stderr[:200]}")
-                except Exception:
-                    pass
+                        import_ok = False
+                        if is_core:
+                            # 核心文件import失败 = 一票否决（历史上soulmate_agent.py被改坏就是import即死）
+                            details.append(f"❌核心文件导入失败(一票否决): {target}: {result.stderr[:200]}")
+                        else:
+                            score -= 0.5
+                            details.append(f"导入失败: {target}: {result.stderr[:200]}")
+                except Exception as e:
+                    import_ok = False
+                    score -= 0.3
+                    details.append(f"导入测试异常: {target}: {e}")
+
+                if not import_ok and is_core:
+                    return {"passed": False, "score": 0.0, "details": details}
 
         score = max(0.0, score)
         return {
@@ -513,6 +573,66 @@ class EvolutionPipeline:
         }
 
     # ── 辅助方法 ──
+
+    def _enqueue_hermes_review(self, round_id: str, applied: list[dict], verdict: dict):
+        """把evo的产出提交给Hermes审核队列（用户指示：开发的代码提交给Hermes审核）"""
+        queue_path = self.repo_root / REVIEW_QUEUE_FILE
+        queue_path.parent.mkdir(parents=True, exist_ok=True)
+
+        entries = []
+        if queue_path.exists():
+            try:
+                entries = json.loads(queue_path.read_text(encoding="utf-8"))
+            except json.JSONDecodeError:
+                entries = []
+
+        # 获取当前commit hash（evo刚commit的）
+        try:
+            commit_hash = subprocess.run(
+                ["git", "rev-parse", "--short", "HEAD"],
+                capture_output=True, text=True, timeout=10, cwd=str(self.repo_root),
+            ).stdout.strip()
+        except Exception:
+            commit_hash = "unknown"
+
+        files = [p.get("target_file", "") for p in applied]
+        has_core = any(
+            any(f.endswith(k.split("/")[-1]) or k.endswith(f) for k in KERNEL_FILES)
+            for f in files
+        )
+
+        entries.append({
+            "round_id": round_id,
+            "instance_id": self.instance_id,
+            "commit_hash": commit_hash,
+            "files": files,
+            "has_core_file": has_core,
+            "score": verdict.get("score", 0),
+            "enqueued_at": datetime.now(timezone.utc).isoformat(),
+            "reviewed": False,
+            "review_result": None,
+        })
+
+        queue_path.write_text(json.dumps(entries, ensure_ascii=False, indent=2), encoding="utf-8")
+        logger.info(f"Hermes审核队列已提交: {round_id} ({len(files)}个文件, 核心文件={has_core})")
+
+    @staticmethod
+    def _load_recent_feedback(repo_root: Path, limit: int = 5) -> str:
+        """读取Hermes最近的审核反馈——evo的学习材料（编程思维教学闭环）"""
+        feedback_path = repo_root / EVO_FEEDBACK_FILE
+        if not feedback_path.exists():
+            return ""
+        try:
+            items = json.loads(feedback_path.read_text(encoding="utf-8"))
+            recent = items[-limit:]
+            if not recent:
+                return ""
+            lines = []
+            for fb in recent:
+                lines.append(f"- [{fb.get('verdict', '?')}] {fb.get('reason', '')[:120]}")
+            return "\n【Hermes最近审核反馈 — 必须避免重复犯错】\n" + "\n".join(lines) + "\n"
+        except Exception:
+            return ""
 
     async def _read_relevant_code(self, failure_batch: list[dict]) -> str:
         """读取失败样本相关的代码"""
