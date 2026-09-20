@@ -1074,3 +1074,37 @@
 6. evo工作区残留（acp-proxy下stability_test_*/state_manager.py等untracked文件+data目录改动）非本轮产物，未纳入commit，待用户意见
 7. 复跑解释器坑（记入技能）：acp-proxy测试必须用/home/climbing/.hermes/hermes-agent/venv/bin/python（PATH的python3=search-engine venv无pytest）；systemic_test结果文件已按上轮遗留#6先备份再复跑
 8. gene skill_learner上报见本轮末尾执行
+## [2026-09-21 03:25 CST] P0专项：llm_engine流式usage发射死路径闭环——单遍消费修复+stream_options标准接线（上轮遗留#2【下轮专项核对】销账）
+**目标**：上轮遗留#2明确挂账"本轮E2E该次prompt未产生新backfill行（usage chunk→backfill在纯文本单轮的发射条件待查——llm_engine usage发射逻辑下轮专项核对）"。校验失败项自动成为本轮第1优先目标：provider usage→backfill→校准样本链路在真实路径上从未产出样本，估算器校准闭环形同虚设。
+**调研来源**：SUMMARY.md P0-4 token逐项归因（claude-code SDKContextUsage）+ P0-1估算校准；evolution-engine-patterns.md §1.1 mem0"失败必须可见，禁止静默降级"（StreamConsumed被debug级吞掉正是反例）+ §2.1 agno"对比前先校准"（校准样本积累是评估闭环前提）。行业标准：OpenAI API流式usage默认不发，须`stream_options: {"include_usage": true}`显式请求。
+**根因（live取证，非推测）**：
+1. **httpx流不可二次迭代**：`chat_stream_with_tools`在finish_reason处break出`aiter_bytes()`后，用第二次`aiter_bytes()`做"尾部usage排空"——真实httpx立即抛StreamConsumed（"Attempting to stream the response content more than once"），被`except Exception: logger.debug(非致命)`吞掉。OpenAI标准usage位置=finish_reason之后的trailing chunk（choices:[]+usage）→**结构性丢失**。live复现：raw单遍消费provider每次都发usage，真实LLMEngine发射率**0/5**；账本16条record仅1条backfill。旧测试mock（_FakeStreamResp）aiter_bytes可二次调用（list续弹），mock与真实httpx行为分歧掩盖了死代码
+2. **payload缺stream_options.include_usage**：OpenAI标准规定流式默认不带usage，对严格实现的provider连usage chunk都不会来
+3. **chat_stream plain路径全程不消费usage**：无usage捕获、无last_usage更新、finish_reason处直接return
+4. **顺带发现的连带死路径**：①重试分支`break`误用——直接退出for重试循环且零yield，瞬时429/5xx→消费方静默空响应；②重试复用`async with`已aclose的httpx client——二次请求必然失败，"重试"从未真实生效；③401等不可重试状态被外层except无差别重试，烧3次调用后才报错
+**改动文件**：
+- openmate/acp-proxy/agent/llm_engine.py（+97/-54）
+- openmate/acp-proxy/tests/test_llm_stream_usage_emission.py（新增15测试，严格httpx语义mock）
+**改动内容**：
+1. **单遍消费修复（核心）**：finish_reason后不再break+二次排空，改为`_stream_finished` tail模式——同一aiter_bytes iterator继续读到[DONE]/流耗尽，tail模式只认usage/[DONE]不产出content/tool_calls；[DONE]路径与流耗尽路径统一发射（usage先行→tool_calls，顺序协议不变）；同network read内buffer残留的usage同样被解析（不依赖后续网络数据到达）
+2. **stream_options接线**：chat_stream与chat_stream_with_tools payload均携带`stream_options: {"include_usage": True}`（标准流式usage保障）；provider报错提及stream_options时`_stream_options_ok=False`永久回退（tools路径pop后continue重试、plain路径递归重试一次，flag防无限递归），live探测token-plan接受该字段（http 200）
+3. **chat_stream plain路径usage回填**：choices判空前捕获usage、finish_reason后tail模式排空、[DONE]/流耗尽均写`self.last_usage`（本轮无usage的调用显式置None，不残留上轮旧值）；文本yield协议不变（engine.py:132消费方按str迭代不受影响）
+4. **重试链路修复**：每次attempt重建httpx client（aclose后不可复用）；重试able状态(400/429/500/502/503)用continue真实重试；新增`LLMNonRetryableError`（401/403/404等凭证级错误fail-fast可见失败，外层except先于RuntimeError捕获）
+**接线位置**（grep证据，文件:行号）：
+- 引擎侧：llm_engine.py:96 `_stream_options_ok=True`（init）；:176/:297 payload携带stream_options；:220 chat_stream usage捕获；:212/:243 last_usage写入；:326 stream_options回退；:333 LLMNonRetryableError fail-fast；tail模式统一发射块（~:440）
+- 消费方（真实消息路径）：soulmate_agent.py:1063 `async for chunk in self.llm_engine.chat_stream_with_tools(...)` → :1076 `self._token_attr_ledger.backfill_actual(session_id, int(_pt), round_index=_round)`；plain路径消费方engine.py:132 `chat_stream`
+- 运行时链路：ws /ws/acp soulmate → acp_server.py SoulMateAgent(llm_engine=...) → _run_llm_with_tools → llm_engine.chat_stream_with_tools → usage chunk → backfill_actual → 账本JSONL → ws_chat.py:419 health token_attribution键
+- **运行时证据（live）**：①引擎直连provider 5轮：修复前usage发射率0/5 → **修复后5/5**（每次prompt_tokens=229）②WS E2E（e2e_ws_calibration.py，重启后）：session om-6bce96d738ae prompt→"OK"回复，账本新增2行——record（calibrated_total=4121）+**backfill行`{"backfill": true, "actual_prompt_tokens": 4494, "estimate_gap": 373, "round": 0}`**——上轮E2E同一路径产出0条backfill的失败形态本轮live闭环③:8092/health token_attribution: `backfill_count=2, avg_estimate_gap=316, calibration={sample_count:2, calibrated:false, factor:1.0}`（样本2<MIN=3诚实fail-safe，随真实流量自然积累）
+**验证结果**：
+- 完整性✅：git diff确认llm_engine.py +97/-54真实落盘 + 新测试文件17703字节；ast.parse两文件OK
+- 集成✅：grep证据如上——每个新符号有定义行+运行时消费行，位于/ws/acp soulmate真实聊天路径非死代码；live 5/5+backfill行落账本为运行时实证
+- 测试✅：acp-proxy `pytest tests/ -q`全量**243 passed**（基线228+新增15：严格流trailing usage×stop/tool_calls/同network read/流耗尽无DONE、无usage provider不变、stream_options入payload×2路径、不支持时永久回退且第二次payload不携带×2路径、429重试后文本+usage到达消费方、500耗尽3次后LLM错误可见、401 fail-fast仅1次请求、plain路径usage捕获×finish chunk/trailing/None置位）；token相关三套（emission+backfill+calibration）57 passed；systemic_test.py（改动经llm_engine→soulmate_agent消费路径，多模块按铁律执行，结果文件先备份.bak-$(date)）**29/29 (100%)**（S4并发3/3+S5降级5/5+S6负载4/4）
+**服务重启**：acp-proxy-a(:8092)+acp-proxy-b(:8095)重启→is-active均active→/health双实例status ok携带完整token_attribution观测键→重启后WS E2E PASS+systemic 29/29
+**commit**：见git log（本报告随代码同commit提交；openmate仓库，push前密钥扫描）；本轮改动无真实key（测试用fake key/base_url）
+**遗留问题**：
+1. 校准样本live仅2条（<MIN=3，factor=1.0 fail-safe）——usage回填链路已通，随soulmate聊天流量自然积累，≥3后校准自动生效；不伪造数据加速（opensoul侧attributor ledger_path是否配置仍待用户意见，上轮遗留#4顺延）
+2. 上轮遗留#3顺延：/acp/send HTTP路径硬编码hermes acp，不经过soulmate归因/预算路径——hermes为外部binary，其token归因需hermes侧能力，非本仓可闭环
+3. evo工作区残留（acp-proxy下state_manager.py/stability_test_*/data目录改动/evolution_cycle_validator.py等untracked或modified文件）非本轮产物，未纳入commit，待用户意见
+4. chat_stream plain路径的last_usage目前无下游消费方做backfill（engine.py路径无归因账本）——能力已就位，engine.py路径接入归因是后续增强项（P2）
+5. 复跑解释器坑持续有效：acp-proxy测试必须用/home/climbing/.hermes/hermes-agent/venv/bin/python；systemic_test结果文件已先备份再复跑
+6. gene skill_learner上报见本轮末尾执行

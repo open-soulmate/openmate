@@ -20,6 +20,11 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger("acp-agent.llm")
 
+
+class LLMNonRetryableError(RuntimeError):
+    """HTTP状态明确不可重试（401/403/404等凭证/请求级错误）：
+    fail-fast直接可见失败，不进入重试环烧掉3次调用（mem0：失败必须可见）"""
+
 # 默认系统提示词 — 包含SOUL强制注释规则和迭代复盘规则
 DEFAULT_SYSTEM_PROMPT = """你是OpenMate内置Vibe Coding Agent，一个专业的AI编程助手。
 
@@ -85,6 +90,10 @@ class LLMEngine:
         # P1 provider usage回填：最近一次LLM调用的provider权威usage（chat_stream_with_tools
         # / chat写入；token归因estimate→真实校准的信号源，无usage时为None）
         self.last_usage: Optional[dict] = None
+        # OpenAI标准流式usage保障：stream_options.include_usage（标准规定流式默认不带
+        # usage，除非显式请求）。部分OpenAI兼容server不认该字段会400——首次报错后
+        # 置False永久回退，探测只发生一次，不影响后续请求
+        self._stream_options_ok = True
 
         logger.info(f"LLM Engine init: base_url={self.base_url}, model={self.model}, router={'enabled' if model_router else 'disabled'}")
 
@@ -163,6 +172,9 @@ class LLMEngine:
             "temperature": 0.7,
             "max_tokens": get_max_output_tokens(),
         }
+        # OpenAI标准：流式usage默认不发，stream_options.include_usage显式请求
+        if self._stream_options_ok:
+            payload["stream_options"] = {"include_usage": True}
         try:
             async with client:
                 req = client.build_request("POST", "/chat/completions", json=payload)
@@ -170,8 +182,19 @@ class LLMEngine:
                 try:
                     if response.status_code != 200:
                         body = await response.aread()
-                        raise RuntimeError(f"LLM API error {response.status_code}: {body.decode()[:200]}")
+                        _err = body.decode()[:200]
+                        if "stream_options" in _err and self._stream_options_ok:
+                            # provider不支持stream_options：永久回退并重试一次
+                            # （flag已置False，递归不会二次进入本分支）
+                            self._stream_options_ok = False
+                            logger.warning("[LLM] provider不支持stream_options，已回退并重试")
+                            async for _c in self.chat_stream(messages, cancel_event, system_prompt):
+                                yield _c
+                            return
+                        raise RuntimeError(f"LLM API error {response.status_code}: {_err}")
                     buffer = ""
+                    latest_usage = None
+                    stream_finished = False
                     async for chunk in response.aiter_bytes():
                         if cancel_event and cancel_event.is_set():
                             logger.info("LLM stream cancelled by event")
@@ -184,9 +207,20 @@ class LLMEngine:
                                 continue
                             data_str = line[6:].strip()
                             if data_str == "[DONE]":
+                                # P1 provider usage回填：plain路径同样回填last_usage
+                                # （此前chat_stream全程不消费usage，plain路径校准样本为零）
+                                self.last_usage = latest_usage
                                 return
                             try:
                                 obj = json.loads(data_str)
+                                # usage捕获必须在choices判空之前——OpenAI标准流式形态
+                                # usage在choices:[]的尾部chunk里
+                                _obj_usage = obj.get("usage")
+                                if isinstance(_obj_usage, dict) and _obj_usage:
+                                    latest_usage = _obj_usage
+                                if stream_finished:
+                                    # tail模式（finish_reason已处理）：只认usage/[DONE]
+                                    continue
                                 choices = obj.get("choices", [])
                                 if not choices:
                                     continue
@@ -198,9 +232,15 @@ class LLMEngine:
                                     logger.debug(f"[LLM RAW] content='{content}'")
                                     yield content
                                 if choices[0].get("finish_reason") in ("stop", "tool_calls", "length"):
-                                    return
+                                    # 不直接return：finish_reason之后provider可能还有
+                                    # trailing usage-only chunk（OpenAI标准usage位置）。
+                                    # 单遍消费：httpx流不可二次aiter_bytes（StreamConsumed），
+                                    # 同一iterator继续读到[DONE]/流耗尽再结束
+                                    stream_finished = True
                             except json.JSONDecodeError:
                                 continue
+                    # 流耗尽（无[DONE]的非标准provider）：已捕获usage照样回填
+                    self.last_usage = latest_usage
                 finally:
                     await response.aclose()
         except httpx.ReadTimeout:
@@ -252,6 +292,10 @@ class LLMEngine:
             "temperature": 0.7,
             "max_tokens": int(os.environ.get("LLM_MAX_TOKENS", "65536")),
         }
+        # OpenAI标准：流式usage默认不发，stream_options.include_usage显式请求
+        # （usage回填/校准样本积累的结构性前提；不支持的server报错后永久回退）
+        if self._stream_options_ok:
+            payload["stream_options"] = {"include_usage": True}
         # 如果提供了工具定义，加入payload
         if tools:
             payload["tools"] = tools
@@ -264,6 +308,14 @@ class LLMEngine:
 
         for _retry in range(3):
             try:
+                # 每次attempt重建client：httpx AsyncClient在async with退出时aclose，
+                # 关闭后不可复用（旧代码retry复用已关闭client，二次请求必然失败——
+                # "重试"从未真实生效的隐性死路径）
+                client = httpx.AsyncClient(
+                    base_url=resolved_base_url,
+                    headers={"Authorization": f"Bearer {resolved_api_key}"} if resolved_api_key else {},
+                    timeout=httpx.Timeout(connect=10, read=120, write=10, pool=10),
+                )
                 async with client:
                     req = client.build_request("POST", "/chat/completions", json=payload)
                     response = await client.send(req, stream=True)
@@ -271,10 +323,22 @@ class LLMEngine:
                         if response.status_code != 200:
                             body = await response.aread()
                             error_msg = body.decode()[:300]
-                            if _retry < 2 and response.status_code in (400, 429, 500, 502, 503):
+                            if "stream_options" in error_msg and self._stream_options_ok:
+                                # provider不支持stream_options：永久回退，下一次retry不再携带
+                                self._stream_options_ok = False
+                                payload.pop("stream_options", None)
+                                logger.warning("[LLM] provider不支持stream_options，已回退重试（usage依赖provider默认行为）")
+                                continue  # 回到for _retry重试（已去掉不支持的字段）
+                            if response.status_code not in (400, 429, 500, 502, 503):
+                                # 凭证/请求级错误（401/403/404等）重试不会自愈：
+                                # fail-fast可见失败，不烧3次调用（外层except区分处理）
+                                raise LLMNonRetryableError(f"LLM API error {response.status_code}: {error_msg}")
+                            if _retry < 2:
                                 logger.warning(f"[LLM] API {response.status_code}, retry {_retry+1}/3: {error_msg[:100]}")
                                 await asyncio.sleep(2 ** _retry)
-                                break  # 跳出内层try，回到for重试
+                                # 修复：此前误用break——直接退出重试循环且零yield，
+                                # 消费方拿到空响应（"瞬时限流→静默空白"死路径）
+                                continue  # 回到for _retry重试
                             raise RuntimeError(f"LLM API error {response.status_code}: {error_msg}")
                         buffer = ""
                         _stream_finished = False
@@ -297,7 +361,9 @@ class LLMEngine:
                                     self.last_usage = latest_usage
                                     if latest_usage:
                                         yield {"usage": latest_usage}
-                                    if accumulated_tool_calls:
+                                    if _final_tc_payload is not None:
+                                        yield _final_tc_payload
+                                    elif accumulated_tool_calls:
                                         yield {"tool_calls": [
                                             accumulated_tool_calls[i]
                                             for i in sorted(accumulated_tool_calls.keys())
@@ -311,6 +377,10 @@ class LLMEngine:
                                     _obj_usage = obj.get("usage")
                                     if isinstance(_obj_usage, dict) and _obj_usage:
                                         latest_usage = _obj_usage
+                                    if _stream_finished:
+                                        # tail模式（finish_reason已处理）：只认usage/[DONE]，
+                                        # 不再产出content/tool_calls（单遍消费，不二次aiter_bytes）
+                                        continue
                                     choices = obj.get("choices", [])
                                     if not choices:
                                         continue
@@ -370,66 +440,39 @@ class LLMEngine:
                                             else:
                                                 _final_tc_payload = {"tool_calls": _tc_list}
                                         # 不在此处直接return：finish_reason之后provider可能还有
-                                        # trailing usage-only chunk（OpenAI标准流式usage所在位置），
-                                        # 需先排空尾部流捕获usage再统一发射
+                                        # trailing usage-only chunk（OpenAI标准流式usage所在位置）。
+                                        # 单遍消费：设tail模式后同一aiter_bytes iterator继续读到
+                                        # [DONE]/流耗尽——httpx流不可二次迭代（StreamConsumed），
+                                        # 旧"break后二次排空"分支对真实httpx是死代码（live 0/5复现，
+                                        # usage在finish_reason之后=结构性丢失→backfill零样本）
                                         _stream_finished = True
-                                        break  # 跳出while "\n"解析循环
+                                        continue  # tail模式：继续解析缓冲区/后续字节，只认usage/[DONE]
                                 except json.JSONDecodeError:
                                     continue
-                            if _stream_finished:
-                                break  # 跳出async for，进入尾部usage排空
-                        if _stream_finished:
-                            # P1 provider usage回填：排空finish_reason之后的尾部SSE流，
-                            # 捕获trailing usage-only chunk（choices:[] + usage的OpenAI标准形态）
-                            _drain_done = False
-                            try:
-                                async for _extra in response.aiter_bytes():
-                                    buffer += _extra.decode("utf-8", errors="replace")
-                                    while "\n" in buffer:
-                                        _eline, buffer = buffer.split("\n", 1)
-                                        _eline = _eline.strip()
-                                        if not _eline.startswith("data: "):
-                                            continue
-                                        _edata = _eline[6:].strip()
-                                        if _edata == "[DONE]":
-                                            _drain_done = True
-                                            break
-                                        try:
-                                            _eobj = json.loads(_edata)
-                                        except json.JSONDecodeError:
-                                            continue
-                                        _eusage = _eobj.get("usage")
-                                        if isinstance(_eusage, dict) and _eusage:
-                                            latest_usage = _eusage
-                                    if _drain_done:
-                                        break
-                            except Exception as _drain_err:
-                                logger.debug(f"[LLM] 尾部usage排空失败(非致命): {_drain_err}")
-                            # 发射顺序：usage先于tool_calls（消费方收到tool_calls即break出
-                            # async for，后到chunk被丢弃——usage必须先行）
-                            self.last_usage = latest_usage
-                            if latest_usage:
-                                yield {"usage": latest_usage}
-                            if _final_tc_payload is not None:
-                                yield _final_tc_payload
-                            return
+                        # 流自然结束（[DONE]路径已在上方return）：统一发射已捕获的
+                        # usage/tool_calls（非标准provider无finish_reason/[DONE]同样覆盖）
+                        self.last_usage = latest_usage
                         if latest_usage:
-                            # 流自然结束但无finish_reason/[DONE]（非标准provider）：
-                            # 仍发射已捕获usage + 累积tool_calls，避免信息丢失
-                            self.last_usage = latest_usage
                             yield {"usage": latest_usage}
-                            if accumulated_tool_calls:
-                                yield {"tool_calls": [
-                                    accumulated_tool_calls[i]
-                                    for i in sorted(accumulated_tool_calls.keys())
-                                ]}
-                            return
+                        if _final_tc_payload is not None:
+                            yield _final_tc_payload
+                        elif accumulated_tool_calls:
+                            yield {"tool_calls": [
+                                accumulated_tool_calls[i]
+                                for i in sorted(accumulated_tool_calls.keys())
+                            ]}
+                        return
                     finally:
                         await response.aclose()
                 break  # 成功，退出重试循环
             except httpx.ReadTimeout:
                 logger.warning("LLM stream read timeout")
                 yield "\n[LLM响应超时]"
+                return
+            except LLMNonRetryableError as e:
+                # 401/403/404等：重试不会自愈，直接可见失败（fail-fast）
+                logger.error(f"LLM non-retryable error: {e}")
+                yield f"\n[LLM错误: {e}]"
                 return
             except RuntimeError as e:
                 if "LLM API error" in str(e) and _retry < 2:
