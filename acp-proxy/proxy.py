@@ -456,13 +456,21 @@ class ACPProcess:
 
     async def _send_message_inner(self, text: str, sid: str) -> dict[str, Any]:
         """send_message的实际执行逻辑（不含插话队列管理）"""
+        # Track whether the adapter responded with an empty/failed result
+        # (as opposed to raising pipe/timeout errors) — stale-session
+        # recovery is only meaningful in the former case.
+        got_empty_acp_response = False
         for attempt in range(2):
             try:
                 result = await self._prompt(text, sid)
-                if result.get("response_text") is not None:
+                if result.get("response_text"):
                     result["session_id"] = sid
                     return result
-                logger.warning(f"No chunks captured (attempt {attempt+1})")
+                got_empty_acp_response = True
+                logger.warning(
+                    f"No chunks captured (attempt {attempt+1}, "
+                    f"stopReason={result.get('stop_reason')}, session={sid})"
+                )
             except TimeoutError as te:
                 logger.warning(f"Prompt timeout (attempt {attempt+1}): {te}")
                 if attempt == 0:
@@ -490,8 +498,32 @@ class ACPProcess:
                 logger.error(f"Unexpected error (attempt {attempt+1}): {e}", exc_info=True)
                 break
             break
-        # Fallback to CLI
-        return await self._cli(text)
+        # ── P0修复（2026-09-20）：过期session恢复（kilocode/goose会话恢复模式）──
+        # adapter重启后旧session全部失效（"session not found"→refusal+0 chunks），
+        # 客户端持旧session_id时旧代码返回ok:true空响应。显式恢复：新建session
+        # 重发一次，返回新sid+recovered_from_stale_session标记（AIHawk原则：
+        # 失败/恢复必须显式可见），客户端据响应中的新session_id重新绑定。
+        if got_empty_acp_response:
+            try:
+                resp = await self.new_session()
+                new_sid = resp.get("sessionId") or resp.get("session_id") or self._default_session_id
+                if new_sid and new_sid != sid:
+                    logger.warning(
+                        f"Stale-session recovery: {sid} → fresh session {new_sid}, re-prompting"
+                    )
+                    result = await self._prompt(text, new_sid)
+                    if result.get("response_text"):
+                        result["session_id"] = new_sid
+                        result["recovered_from_stale_session"] = sid
+                        return result
+                    # fresh session仍空 → 更新sid继续走CLI兜底
+                    sid = new_sid
+            except Exception as e:
+                logger.error(f"Stale-session recovery failed: {e}")
+        # Fallback to CLI — 结果必须携带session_id，客户端才能续接会话
+        result = await self._cli(text)
+        result["session_id"] = sid
+        return result
 
     async def send_message_with_image(
         self, text: str, image_data: str, mime_type: str = "image/png", session_id: str | None = None,
@@ -536,10 +568,14 @@ class ACPProcess:
             with os.fdopen(fd, "wb") as f:
                 f.write(base64.b64decode(b64_clean))
             prompt = f"{text or '用户发送了一张图片'}\n\n[图片已保存到: {tmp_path}]"
-            return await self._cli(prompt)
+            result = await self._cli(prompt)
+            result["session_id"] = sid
+            return result
         except Exception as e:
             logger.error(f"Image fallback error: {e}")
-            return await self._cli(text or "用户发送了一张图片")
+            result = await self._cli(text or "用户发送了一张图片")
+            result["session_id"] = sid
+            return result
         finally:
             if tmp_path:
                 asyncio.get_running_loop().call_later(
@@ -608,12 +644,16 @@ class ACPProcess:
                     logger.error(f"File prompt error: {e}", exc_info=True)
                 break
 
-            # Fallback to CLI
-            return await self._cli(prompt_text)
+            # Fallback to CLI — CLI结果携带session_id（过期session时客户端可续接）
+            result = await self._cli(prompt_text)
+            result["session_id"] = sid
+            return result
 
         except Exception as e:
             logger.error(f"File send error: {e}")
-            return await self._cli(text or f"用户发送了文件: {file_name}")
+            result = await self._cli(text or f"用户发送了文件: {file_name}")
+            result["session_id"] = sid
+            return result
         finally:
             # Schedule cleanup after 10 minutes
             if tmp_path:
@@ -846,6 +886,28 @@ class ACPProcess:
             raise Exception(str(response["error"]))
 
         response_text = "".join(collected)
+        stop_reason = str(response.get("stopReason", "") or "")
+        # ── P0修复（2026-09-20）：空响应必须显式标记为失败，禁止静默空串 ──
+        # 实证根因：adapter对不存在的session返回stopReason=refusal+0 chunks
+        # （stderr: "prompt: session xxx not found"）；adapter重启后旧session
+        # 全部失效，客户端持旧session_id → 100%命中。旧代码无条件设
+        # response_text=""，调用方`is not None`判断永真 → CLI fallback成
+        # 死代码 → 客户端收到 {"ok":true,"content":""} 无任何错误标记。
+        # 参照：AIHawk SHOWN/SENT双预算原则"截断/失败必须显式标记"+
+        # open-webui"拒绝=合成错误结果，不能静默断流"（SUMMARY.md P0-2/P0-4）。
+        # 空响应→response_text=None激活调用方既有fallback链
+        # （_send_message_inner的过期session恢复→CLI兜底）。
+        if not response_text.strip():
+            logger.warning(
+                f"Empty ACP response marked as FAILED "
+                f"(stopReason={stop_reason or 'n/a'}, chunks={len(collected)}, "
+                f"session={session_id}) — fallback chain will activate"
+            )
+            response["response_text"] = None
+            response["stop_reason"] = stop_reason
+            response["empty_response"] = True
+            response["source"] = "acp"
+            return response
         logger.info(f"Prompt completed: {len(collected)} chunks, {len(response_text)} chars")
         response["response_text"] = response_text
         response["source"] = "acp"

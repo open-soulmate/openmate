@@ -406,14 +406,18 @@ async def acp_send(data: dict):
         result = await acp.send_message(data.get("text", ""), data.get("session_id"))
         return {
             "ok": True,
-            "content": result.get("response_text", ""),
+            # response_text可能为None（空响应显式标记，P0修复）——coalesce为空串
+            "content": result.get("response_text") or "",
             "source": result.get("source", "acp"),
             # Return the session id so HTTP clients can continue the same
             # session on follow-up requests (previously dropped — clients
             # had no way to do multi-turn over this endpoint, and the S4
             # systemic test's "same session" case silently created 3 new
             # sessions instead of exercising the interrupt queue).
+            # 过期session恢复时此字段携带NEW session_id，客户端须重新绑定。
             "session_id": result.get("session_id") or data.get("session_id") or "",
+            # 可观测性：过期session恢复标记（原session_id），None=无恢复发生
+            "recovered_from_stale_session": result.get("recovered_from_stale_session"),
         }
     except TimeoutError:
         return {"ok": False, "error": "请求超时，请重试"}
@@ -440,9 +444,10 @@ async def acp_send_image(data: dict):
         )
         return {
             "ok": True,
-            "content": result.get("response_text", ""),
+            "content": result.get("response_text") or "",
             "source": result.get("source", "acp"),
             "session_id": result.get("session_id") or data.get("session_id") or "",
+            "recovered_from_stale_session": result.get("recovered_from_stale_session"),
         }
     except TimeoutError:
         return {"ok": False, "error": "图片处理超时，请重试"}
@@ -466,9 +471,10 @@ async def acp_send_file(data: dict):
         )
         return {
             "ok": True,
-            "content": result.get("response_text", ""),
+            "content": result.get("response_text") or "",
             "source": result.get("source", "acp"),
             "session_id": result.get("session_id") or data.get("session_id") or "",
+            "recovered_from_stale_session": result.get("recovered_from_stale_session"),
         }
     except TimeoutError:
         return {"ok": False, "error": "文件处理超时，请重试"}
