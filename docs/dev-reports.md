@@ -995,3 +995,38 @@
 4. POST /sync/agents的agent registry index格式定义（上轮遗留#2）、builtin skill源降噪（#3）仍待用户意见/调研
 5. 前端页面视觉渲染人工确认仍受登录墙限制（cron无凭证）
 6. gene skill_learner上报见本轮末尾执行
+
+## [2026-09-20 22:50 CST] P0遗留销账：/acp/send恢复策略收紧——仅stale签名(refusal)触发session重建 + 空响应决策全链路可见标记 + test_safety_1000收集ERROR清零
+**目标**：销d439f163遗留#5（连续4轮标注）：旧恢复逻辑对**任何**ACP空响应都触发new_session重建——模型侧合法空输出（end_turn空文本/仅tool-call回合）也会销毁有效会话上下文换新session（新会话无历史=净损失）。收紧为：仅live实证的stale-session签名（stop_reason=="refusal"+0chunks，stderr "prompt: session not found"）触发恢复；非refusal空响应跳过恢复保上下文、CLI兜底，且恢复决策本身对客户端显式可见。附带清零tests/test_safety_1000.py长期挂账的7个pytest收集ERROR。
+**调研来源**：dev-report遗留链（d439f163遗留#5，上轮报告遗留#3标注"下轮优先"）；原则=SUMMARY.md P0-2 AIHawk SHOWN/SENT"截断/失败必须显式标记"+evolution-engine-patterns.md §1.1 mem0"失败必须可见，禁止静默降级"；签名判定依据=上轮/ws_recovery_e2e.py基线实证+本轮live日志复证（refusal+chunks=0）。
+**改动文件**：
+- acp-proxy/proxy.py（`_send_message_inner`：+27/-1，增量3处）
+- acp-proxy/ws_chat.py（`acp_send`响应透传：+7）
+- acp-proxy/tests/test_acp_stale_session_recovery.py（+5测试，2b节）
+- acp-proxy/tests/test_safety_1000.py（fixture `c`+脚本模式非零退出，+18量级）
+**改动内容**：
+1. proxy.py `_send_message_inner`：空响应时记录`last_stop_reason`；恢复块条件从`got_empty_acp_response`收紧为`got_empty_acp_response and last_stop_reason == "refusal"`（`recovery_attempted`跟踪）；refusal恢复路径行为不变（new_session→重发→`recovered_from_stale_session`标记）
+2. 非refusal空响应：跳过new_session（session上下文保留，session_id原值返回客户端），日志可见"stale-session recovery skipped (session preserved)"；CLI兜底结果显式携带三标记：`acp_empty_response=True`+`acp_stop_reason=实际值(空归一None)`+`acp_recovery_skipped=True`（refusal恢复失败走CLI时不置skipped——恢复被尝试过≠被跳过）
+3. ws_chat.py `acp_send`：HTTP响应透传`acp_empty_response`/`acp_recovery_skipped`/`acp_stop_reason`三字段（默认False/False/None，向后兼容）
+4. test_safety_1000.py：新增`@pytest.fixture def c()`（yield Counter，teardown断言`counter.failed==0`——场景失败在pytest下不再静默）；`main()`脚本模式`c.failed>0`时`sys.exit(1)`（此前恒exit 0）
+**接线位置**（grep证据，文件:行号）：
+- proxy.py:465/:473 `last_stop_reason`初始化/赋值（空响应捕获点）；:518 `if got_empty_acp_response and last_stop_reason == "refusal":`（收紧条件，恢复块入口）；:519 `recovery_attempted=True`；:536-541 elif非stale日志；:547-550 CLI结果三标记写入
+- 真实消息路径调用链：proxy.py:420/:425 `send_message`（插话队列循环内）→`_send_message_inner`；ws_chat.py:402 `@router.post("/acp/send") acp_send`→:425-427 三标记透传；app.py:224 `include_router(ws_router)`挂载确认
+- 运行时调用证据（/tmp/acp-proxy-a.log live日志链，重启后伪造sid E2E）：`prompt: session 00000000-... not found` → `Prompt response id=5, stopReason=refusal, chunks=0` → `Empty ACP response marked as FAILED (stopReason=refusal...)` → `Stale-session recovery: 00000000-... → fresh session 43023505-..., re-prompting` ——refusal签名在收紧后仍正确触发恢复（live复证签名恒为refusal）
+**验证结果**：
+- 完整性✅：git diff --cached确认4文件+143/-1真实落盘；commit a34769a2 git show确认
+- 集成✅：grep证据如上（每个新符号有定义行+消费行，位于/acp/send真实消息路径非死代码）；live E2E见下
+- 测试✅：`pytest tests/ -q`全量**209 passed, 0 errors**（收紧前基线202 passed+7 errors；新增5测试：非refusal跳过恢复(new_session=0+三标记+session_id不变)/缺失stop_reason跳过(""→None)/refusal恢复失败CLI标记(acp_recovery_skipped不置位)/HTTP端点透传/既有stale恢复回归不变；test_safety_1000修复后7个ERROR→全passed即场景级检查真实全过非空跑）
+- systemic_test.py：首轮27/29（2项瞬时失败，首跑结果文件已被复跑覆盖未能留存细节，与服务在线负载相关）→复跑**29/29 (100%)**（S4并发3/3+S5降级5/5+S6负载4/4）；改动涉及proxy.py+ws_chat.py多模块按铁律执行
+- ast.parse三文件OK
+- live E2E（重启后）：①非回归：POST /acp/send正常文本→`ok:True, content:'正常', acp_empty_response:False, acp_recovery_skipped:False, acp_stop_reason:None, recovered_from_stale_session:None`（新字段默认值正确）②refusal恢复路径：伪造36位sid→`ok:True, content:'恢复', recovered_from_stale_session:'<伪造sid>', session_id:<新sid>`+日志链完整（如上）③非refusal跳过路径：live无法低成本诱发（需模型返回非refusal空输出），由单元测试覆盖（2 passed）——如实标注，不声称live验证
+**服务重启**：acp-proxy-a(:8092)+acp-proxy-b(:8095)重启→双实例health均200→重启后live E2E①②通过；opensoul与前端本轮零改动无需重启/build
+**commit**：openmate `a34769a2`（push已确认：gh api直读远程main=a34769a2，非ghfast缓存；push前git grep密钥扫描0命中）
+**遗留问题**：
+1. 非refusal空响应跳过路径未做live诱发验证（成本原因，单元测试已覆盖；下轮如遇真实空输出案例从日志`recovery skipped`行取证回填）
+2. 遗留#2审计（代码级完成，live未验证）：ws_acp.py AGENT_ROUTES确认3路由（soulmate/hermes `hermes acp`/openclaw `openclaw acp`+动态fallback，:45-47），session/load重放代码路由无关（:431对所有路由统一重放，失败日志可见:441）；hermes/openclaw两个外部ACPadapter是否支持session/load需专项ws live验证（`hermes acp --help`确认子命令存在，adapter协议行为未测）；且soulmate_agent.py的DB自愈仅soulmate路由有，hermes/openclaw路由stale-session只有proxy侧恢复
+3. estimate_tokens公式校准（d439f163遗留）仍未做
+4. POST /sync/agents的agent registry index格式定义（需用户意见）仍待
+5. 前端页面视觉渲染人工确认受登录墙限制（cron无凭证）
+6. systemic_test首轮27/29的2项瞬时失败细节未留存（复跑覆盖了结果文件）——下轮systemic_test结果文件先备份再复跑
+7. gene skill_learner上报见本轮末尾执行
