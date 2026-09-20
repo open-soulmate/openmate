@@ -1139,3 +1139,35 @@
 4. 标准层触发词为确定性派生（中文2/3字滑窗），无LLM抽取——通用词停用表为最小集（28词），真实使用中误注入/漏注入案例出现时再调
 5. /acp/send hermes路径、opensoul attributor ledger_path、agent registry index格式等前几轮遗留仍待用户意见/外部条件（本轮未触碰）
 6. gene skill_learner上报见下方执行
+
+## [2026-09-21 14:20 CST] P1 Code Mode工具批量化：goose+kilocode两方定案N→1执行，权限gate逐条内层审计
+**目标**：解决SUMMARY.md §五 cortex差距表确认的P1差距——"Code Mode工具批量化（N次调用批成1个execute）| goose code_execution+kilocode code-mode（两方定案）"。acp-proxy此前grep `code_mode|batch_tools`=0命中（完全没有）：agent连续读5个文件=5轮LLM round trip×每轮全套上下文重发，token/延迟成本线性放大；63-goose-source-supplement6.md #4明确标注"P0省钱省轮次"。
+**调研来源**：63-goose-source-supplement6.md #4（全部工具变成沙箱内可调函数，N次调用批成1个execute脚本）+#5 tool_graph声明式DAG（"批量化后仍能审计每步工具调用结构"）+#6 Deno/V8执行工程（"a hung script would wedge code execution for every session: bound the wait"挂死脚本教训+timeout/cancel/AbortOnDrop）；SUMMARY.md五方定案行业信号同款"照此实现不自创"纪律；evolution-engine-patterns.md §1.1 mem0"失败必须可见禁止静默降级"+§4.2/4.4自修改安全（受限执行+护栏）；P0-3权限引擎既有成果（批量化绝不绕过gate）。
+**改动文件**：
+- openmate/acp-proxy/agent/code_mode.py（新建，~270行：CodeModeExecutor+受限namespace+stub桥接+format_result）
+- openmate/acp-proxy/agent/soulmate_agent.py（+201/-0增量：import/工具schema/system prompt策略/dispatch分支/内层执行方法）
+- openmate/acp-proxy/tests/test_code_mode.py（新建30测试）
+**改动内容**：
+1. CodeModeExecutor（agent/code_mode.py）：LLM生成的Python脚本在受限namespace内exec——每个会话工具名=stub函数，调用即跨线程桥接（daemon线程+run_coroutine_threadsafe）到主事件循环的异步dispatch，返回工具结果字符串；N次工具调用1轮完成。护栏照抄goose工程教训：批级超时90s（超时→threading.Event取消标记置位，后续stub直接raise CodeModeCancelled不再产生副作用=AbortOnDrop语义）+单次调用超时30s（stub返回超时标记，脚本继续，单次挂死不楔住整批）+批内调用上限40（失控循环熔断，CodeModeCallLimit显式错误）+脚本异常→部分call_log+stdout+traceback全部显式返回（mem0失败必须可见）。受限builtins：__import__/open/exec/eval不注入（脚本要跑任意代码须调terminal/execute_code工具过gate），json/re/math可用；工具名与安全键冲突/非法标识符跳过注入并日志（防遮蔽防注入）。执行用daemon线程而非run_in_executor（后者非daemon线程在asyncio.run收尾被join——挂死脚本永久阻塞解释器退出，本轮实测踩坑后修复）
+2. 可观测（goose #5 tool_graph轻量版）：call_log逐条{name,args_preview,ok,blocked,duration_ms,result_len,error}；format_result统一文本协议（✅N次合并/超时/异常三种头部+调用日志+脚本输出）；dispatch分支把call_log逐条写入all_tool_calls轨迹账本（batch:工具名）
+3. soulmate_agent.py接线：①builtin_tools新增batch_execute schema（描述内写明适用边界：≥3次独立调用适用、串行强依赖不适用）②system prompt工具调用策略+可用工具清单两处注入使用策略 ③dispatch分支（:1694）：批量执行→format_result→call_log进轨迹 ④新方法_code_mode_tool_call（:558）：内层每次stub调用先过permission_gate（AgentScope引擎语义，deny→[被拦截]文本、真实副作用不发生——批量化不绕过权限）→gate放行后builtin子集（read_file/read_file_segment/search_files/terminal/write_file/patch/execute_code/web_search/web_extract）按主循环内联分支同款语义执行→其余工具路由_call_mcp_tool（MCP调用同样过gate）；gate自身异常fail-closed向上抛（与主循环一致，绝不静默放行）
+**接线位置**（grep证据，文件:行号）：
+- soulmate_agent.py:55 `from agent.code_mode import CodeModeExecutor`（模块顶层import，服务启动即加载）
+- :558 `async def _code_mode_tool_call`（方法定义）/:759+:772（system prompt两处策略注入）/:1069 `"name": "batch_execute"`（builtin_tools schema）/:1694 `elif func_name == "batch_execute":`（真实工具分发分支）/:1707 `CodeModeExecutor()`（分支内实例化）/:1711 `await self._code_mode_tool_call(...)`（内层dispatch接线点）/:1714 `CodeModeExecutor.format_result`（结果回注tool协议）
+- code_mode.py:84 `class CodeModeExecutor`（定义）；tests/test_code_mode.py:28/:31（消费方import）
+- 运行时调用链：ws /ws/acp soulmate → _run_llm_with_tools工具循环 → LLM返回batch_execute tool_call → :1694分支 → CodeModeExecutor.execute → stub → _code_mode_tool_call → permission_gate → builtin/MCP真实执行 → format_result → tool消息回注 → LLM继续
+- 运行时实证（live）：①harness E2E（tests/test_code_mode.py::test_batch_execute_real_message_path，FakeLLM脚本走_run_llm_with_tools真实分支代码）：batch_execute一轮→脚本内read_file+terminal真实执行→tool消息含"[CODE_MODE] 2次工具调用已合并为1轮执行"+文件marker+echo输出；gate.calls==["batch_execute","read_file","terminal"]（batch本体+内层逐条过门禁）；all_tool_calls含batch:read_file/batch:terminal可观测条目②生产模块live直连E2E（venv python直跑CodeModeExecutor+真实SoulMateAgent._code_mode_tool_call+真实subprocess）："3次工具调用已合并为1轮执行（10ms）"，输出`code-mode-live-e2e || 1|ArchLinux || grep_hits=1`，GATE_CALLS=['terminal','read_file','search_files']③服务重启后acp-proxy-a/b active=生产进程成功import agent.code_mode（顶层import失败服务起不来——active即import存活证明）④:8092/:8095 /health双实例status ok
+**验证结果**：
+- 完整性✅：git diff确认soulmate_agent.py +201/-0（增量additive，零删改既有行为——201行新增全部为import/schema/prompt行/新分支/新方法）+code_mode.py+tests/test_code_mode.py两个新文件真实落盘；ast.parse三文件OK
+- 集成✅：grep证据如上（每个新符号有定义行+运行时消费行，位于/ws/acp soulmate真实工具循环分支，非死代码）；live实证四项如上
+- 测试✅：tests/test_code_mode.py **30/30 passed**（executor 9：N→1契约/dict+kwargs参数/非dict位置参数拒绝且零dispatch/stdout捕获/result优先；失败可见性7：异常保留部分log+result/import被拒可见/__import__可见/未知工具NameError/上限熔断3/批超时部分结果+有界退出/cancel后stub拒绝且副作用零发生/单次超时标记脚本继续；namespace安全2：ns层不遮蔽+__builtins__保留/无__import__-open-exec-eval；格式化3：成功头部+拦截状态/超时+异常头部+空日志/失败调用error展示；内层dispatch 9：deny→touch探测文件不存在（副作用未发生）/选择性deny/放行terminal真实执行/read_file行号语义/write+patch roundtrip/search_files grep/execute_code输出+exit code/MCP fallback同过gate/gate故障fail-closed+executor路径可见文本；接线E2E 3：静态接线6断言/真实消息路径（gate.calls三层+轨迹账本batch:条目+tool消息内容）/内层全deny→[被拦截]×2不崩/缺script错误可见）；组合回归**307 passed**（277既有+30新增，既有测试零修改通过）；systemic_test.py（改动经soulmate_agent真实消息路径，多模块按铁律执行，结果文件先备份.bak-时间戳）**29/29 (100%)**（S4并发3/3+S5降级5/5+S6负载4/4，S4同session并发3条49.8s全过）
+**服务重启**：systemctl --user restart acp-proxy-a.service acp-proxy-b.service→双实例is-active均active→/health双实例status ok（agent_activity/tool_output观测键完整）→重启后live E2E PASS
+**commit**：见git log（本报告随代码同commit提交；openmate仓库；push前git grep密钥扫描）
+**遗留问题**：
+1. 全LLM端到端"用户提问→模型自主选择batch_execute→批量执行"未live闭环（provider依赖：本轮sys prompt+schema已就位，模型是否选用批量工具需真实流量观察）；已用"harness真实消息路径分支代码执行+生产模块live直连+服务import存活"三层证据覆盖。provider稳定后可发"读取X/Y/Z三个文件并总结"观察journalctl是否出现[CODE_MODE]
+2. _code_mode_tool_call的builtin子集实现与_run_llm_with_tools内联分支为同款语义双份（~100行）——本轮为增量安全刻意不重构2895行核心文件的既有inline链；后续轮可把inline dispatch提取为共享方法消除双份（重构前先补测试锚定行为）
+3. batch内层不支持的工具（sense_*/request_evolution/clarify/todo）路由_call_mcp_tool会返回[错误]未知工具文本——tool description已限定适用范围；clarify（需人机交互挂起60s）在批内语义不当，明确不支持是正确设计
+4. 真实LLM流量下模型对batch_execute的采纳率/使用恰当性未知——若出现误用（单次调用也走批量）或拒用，需按真实案例调schema description与prompt策略（与上轮skill触发词停用表同款"真实案例出现再调"纪律）
+5. 前轮遗留顺延：opensoul attributor ledger_path配置、/acp/send hermes路径归因、std技能token归因source细分、evo工作区残留untracked文件——均待用户意见/外部条件，本轮未触碰
+6. 复跑解释器坑持续有效：acp-proxy测试必须用/home/climbing/.hermes/hermes-agent/venv/bin/python；systemic_test结果文件已先备份再复跑；run_in_executor挂死线程坑（本轮实测）记入code_mode.py注释
+7. gene skill_learner上报见本轮末尾执行

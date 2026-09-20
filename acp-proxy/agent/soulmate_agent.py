@@ -52,6 +52,7 @@ from utils.task_state_manager import TaskStateManager, judge_task_continuation
 from agent.semantic_cache import SemanticCache
 from agent.context_compression import ContextCompressor
 from agent.loop_guard import LoopGuard
+from agent.code_mode import CodeModeExecutor
 from agent.dynamic_prompt import DynamicPromptBuilder
 from agent.memory_retrieval import MemoryRetrievalEngine
 from agent.tool_cache import ToolResultCache
@@ -546,6 +547,153 @@ class SoulMateAgent:
         guard.reset()
         return guard
 
+    # ── Code Mode内层工具执行（goose code_execution+kilocode code-mode两方定案）──
+    # builtin子集实现与_run_llm_with_tools内联分支同款语义（遗留：后续可重构共享）；
+    # 未列出的工具（MCP/进化/sense等）路由_call_mcp_tool。
+    _CODE_MODE_BUILTIN_TOOLS = (
+        "read_file", "read_file_segment", "search_files", "terminal",
+        "write_file", "patch", "execute_code", "web_search", "web_extract",
+    )
+
+    async def _code_mode_tool_call(self, session_id: str, func_name: str, func_args: dict, cwd: str) -> str:
+        """批量化内层工具调用：每次stub调用同样过permission_gate（AgentScope引擎语义，
+        deny→返回[被拦截]文本、绝不真实执行——批量化不绕过权限引擎），gate放行后按主
+        循环同款语义执行builtin子集，其余路由MCP。"""
+        gate_result = await self._permission_gate.check(
+            session_id, func_name, func_args,
+            working_dir=str(cwd or ""),
+            request_approval=(
+                lambda tn, ta, dec, _sid=session_id:
+                    self._request_tool_approval(_sid, tn, ta, dec)),
+        )
+        if not gate_result.allowed:
+            return f"[被拦截:{gate_result.behavior}] {gate_result.blocked_reason}"
+        try:
+            if func_name == "read_file":
+                path = func_args.get("path", "")
+                offset = int(func_args.get("offset", 1) or 1)
+                limit = int(func_args.get("limit", 100) or 100)
+                proc = subprocess.run(
+                    ["sed", "-n", f"{offset},{offset + limit - 1}p", path],
+                    capture_output=True, text=True, errors="replace", timeout=10,
+                )
+                if proc.returncode == 0 and proc.stdout:
+                    lines = proc.stdout.split("\n")
+                    return "\n".join(f"{offset + i}|{line}" for i, line in enumerate(lines))
+                return f"错误: {proc.stderr or '文件不存在或为空'}"
+            if func_name == "read_file_segment":
+                _seg = getattr(self, "_output_handler", None)
+                if _seg is None:
+                    from agent.tool_output_handler import ToolOutputHandler as _TOH
+                    _seg = _TOH()
+                    self._output_handler = _seg
+                return _seg.read_segment(
+                    str(func_args.get("path", "")),
+                    start_line=int(func_args.get("start_line", 1) or 1),
+                    end_line=int(func_args.get("end_line", 200) or 200),
+                )
+            if func_name == "search_files":
+                import shlex
+                pattern = func_args.get("pattern", "")
+                path = func_args.get("path", cwd) or cwd
+                if path in ("/", ""):
+                    path = cwd
+                target = func_args.get("target", "content")
+                if target == "files":
+                    cmd = f"find {shlex.quote(path)} -name {shlex.quote(pattern)} -type f"
+                else:
+                    cmd = (f"grep -rn -i --include='*.py' --include='*.ts' --include='*.tsx'"
+                           f" --include='*.js' --include='*.json' --include='*.md'"
+                           f" {shlex.quote(pattern)} {shlex.quote(path)}")
+                proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, errors="replace", timeout=10)
+                return proc.stdout[:3000] if proc.stdout else "(无结果)"
+            if func_name == "terminal":
+                cmd = func_args.get("command", "")
+                if not cmd:
+                    return "错误: command 不能为空"
+                import shlex, re as _re
+                def _quote_p(m):
+                    return shlex.quote(m.group(0))
+                cmd = _re.sub(r'(/[\w/.\-]*[()][\w/.\-()]*)', _quote_p, cmd)
+                proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, errors="replace", timeout=30, cwd=cwd)
+                output = proc.stdout + proc.stderr
+                result = output[:3000] if output else "(无输出)"
+                if proc.returncode != 0:
+                    result += f"\n[exit code: {proc.returncode}]"
+                return result
+            if func_name == "write_file":
+                path = func_args.get("path", "")
+                content = func_args.get("content", "")
+                if not path or not content:
+                    return (f"错误: write_file 参数不完整（path='{path}', "
+                            f"content长度={len(content)}）")
+                from utils.file_safety import atomic_write
+                ok, err = atomic_write(path, content)
+                return f"已写入 {path} ({len(content)} 字节)" if ok else f"写入失败: {err}"
+            if func_name == "patch":
+                path = func_args.get("path", "")
+                old_string = func_args.get("old_string", "")
+                new_string = func_args.get("new_string", "")
+                with open(path, "r", encoding="utf-8") as f:
+                    file_content = f.read()
+                if old_string not in file_content:
+                    return f"错误: 在 {path} 中未找到匹配文本"
+                from utils.file_safety import atomic_write
+                ok, err = atomic_write(path, file_content.replace(old_string, new_string, 1))
+                return f"已修改 {path}" if ok else f"修改失败: {err}"
+            if func_name == "execute_code":
+                code = func_args.get("code", "")
+                with tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, dir="/tmp") as f:
+                    f.write(code)
+                    tmp_path = f.name
+                try:
+                    proc = subprocess.run(
+                        ["python3", tmp_path],
+                        capture_output=True, text=True, errors="replace",
+                        timeout=60, cwd=cwd,
+                    )
+                finally:
+                    try:
+                        os.unlink(tmp_path)
+                    except OSError:
+                        pass
+                output = proc.stdout + proc.stderr
+                result = output[:5000] if output else "(无输出)"
+                if proc.returncode != 0:
+                    result += f"\n[exit code: {proc.returncode}]"
+                return result
+            if func_name == "web_search":
+                query = func_args.get("query", "")
+                limit = func_args.get("limit", 5)
+                proc = subprocess.run(
+                    ["curl", "-s", f"http://localhost:8888/search?q={query}&format=json&pageno=1"],
+                    capture_output=True, text=True, errors="replace", timeout=15,
+                )
+                if proc.returncode == 0 and proc.stdout:
+                    data = json.loads(proc.stdout)
+                    results = data.get("results", [])[:limit]
+                    lines = [f"- {r.get('title', '')}: {r.get('url', '')}\n  {r.get('content', '')[:100]}" for r in results]
+                    return "\n".join(lines) if lines else "无搜索结果"
+                return f"搜索不可用: {proc.stderr or 'SearXNG未启动'}"
+            if func_name == "web_extract":
+                url = func_args.get("url", "")
+                proc = subprocess.run(
+                    ["curl", "-sL", "--max-time", "15", "-H", "User-Agent: Mozilla/5.0", url],
+                    capture_output=True, text=True, errors="replace", timeout=20,
+                )
+                if proc.returncode == 0:
+                    text = re.sub(r'<script[^>]*>[\s\S]*?</script>', '', proc.stdout)
+                    text = re.sub(r'<style[^>]*>[\s\S]*?</style>', '', text)
+                    text = re.sub(r'<[^>]+>', ' ', text)
+                    return re.sub(r'\s+', ' ', text).strip()[:5000]
+                return f"抓取失败: {proc.stderr}"
+            # 其余工具路由MCP执行器（未知工具由其返回[错误]文本）
+            return await self._call_mcp_tool(func_name, func_args)
+        except subprocess.TimeoutExpired:
+            return f"[CODE_MODE] 工具执行超时: {func_name}"
+        except Exception as e:
+            return f"[CODE_MODE] 工具执行异常: {func_name}: {e}"
+
     async def _run_llm_with_tools(
         self,
         messages: list[dict],
@@ -608,6 +756,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 
 ### 执行规范
 - 优先专用工具，不用通用命令代替
+- 需要连续调用≥3次工具收集信息（批量读文件/批量搜索/多条命令）→ 用 batch_execute 写成一个脚本批量执行，N次调用合并为1轮；后续参数严格依赖前次结果的串行调用不要批量化
 - 需要能力但未加载 → 按需加载后立即真实调用
 - 执行后必须验证：用不同于生成路径的方式回读产物、重算关键数字
 - 最终产物通过交付通道交付；搜索结果只作引用
@@ -620,6 +769,7 @@ ACP代理目录: {cwd}/acp-proxy（后端 Python 代码在此）
 - search_files: 搜索文件，pattern 参数必填，path 默认为当前目录
 - terminal: 执行命令，command 参数必填
 - execute_code: 执行 Python 代码，code 参数必填
+- batch_execute: Code Mode批量执行，script 参数必填——Python脚本，会话内工具函数可直接调用（如 read_file(path=...), terminal(command=...)），最终结果赋给 result 变量。≥3次独立工具调用时优先使用；每次内层工具调用仍逐条过权限审核
 
 You can send files to the user natively: to deliver a file, write a brief confirmation message (e.g. "文件已发送，请查收"), then include MEDIA:/absolute/path/to/file on a new line. The gateway extracts the tag, strips it, and sends the file as a download card. Always write some text before the MEDIA: tag — never output a bare MEDIA: tag alone. Use search_files first if you don't know the exact path. Do NOT paste file contents into chat."""
 
@@ -909,6 +1059,24 @@ You can send files to the user natively: to deliver a file, write a brief confir
                         "language": {"type": "string", "description": "语言代码如zh/en（可选，默认自动检测）"},
                     },
                     "required": ["path"],
+                },
+            },
+        }, {
+            # ── P1 Code Mode工具批量化（goose code_execution+kilocode code-mode
+            # 两方定案）：N次工具调用批成1个脚本执行，省token省LLM轮次 ──
+            "type": "function",
+            "function": {
+                "name": "batch_execute",
+                "description": "Code Mode批量执行：当任务需要连续调用3次以上工具（批量读文件/批量搜索/多条命令收集信息）时，把它们写成一个Python脚本一次执行——N次工具调用合并为1轮。脚本内可直接调用当前会话的每个工具函数（函数名=工具名，参数用关键字），返回值是该工具的结果字符串；把最终结论赋给变量result。每次工具调用仍逐条经过权限审核，被拦截的调用返回[被拦截]文本且不会真实执行；脚本内print也会被捕获进输出。适用：批量读文件、批量grep、多命令收集信息。不适用：单次调用、后续参数严格依赖前次结果的串行场景。",
+                "parameters": {
+                    "type": "object",
+                    "properties": {
+                        "script": {
+                            "type": "string",
+                            "description": "Python脚本。工具函数直接调用，如 a = read_file(path='/x.py'); b = terminal(command='ls /tmp'); result = a + b。工具参数必须用关键字或单个dict。",
+                        },
+                    },
+                    "required": ["script"],
                 },
             },
         }]
@@ -1523,6 +1691,39 @@ You can send files to the user natively: to deliver a file, write a brief confir
                             else:
                                 status, skills, quality = {}, [], {}
                             result = json.dumps({"status": status, "skills": skills, "quality": quality}, ensure_ascii=False, indent=2)
+                        elif func_name == "batch_execute":
+                            # ── P1 Code Mode工具批量化（goose code_execution+kilocode
+                            # code-mode两方定案）：N次工具调用批成1个脚本执行。内层每次
+                            # stub调用经_code_mode_tool_call→permission_gate（批量化不
+                            # 绕过权限引擎）；call_log逐条进all_tool_calls（goose #5
+                            # tool_graph"批量化后仍能审计每步调用结构"）──
+                            _cm_script = func_args.get("script", "") or func_args.get("code", "")
+                            if not str(_cm_script).strip():
+                                result = "错误: batch_execute 需要 script 参数（Python脚本，会话工具函数可直接调用，最终结果赋给result变量）"
+                            else:
+                                try:
+                                    _cm = getattr(self, "_code_mode", None)
+                                    if _cm is None:
+                                        _cm = CodeModeExecutor()
+                                        self._code_mode = _cm
+                                    _cm_tools = [t["function"]["name"] for t in all_tools]
+                                    async def _cm_dispatch(_n, _a, _sid=session_id, _cwd=cwd):
+                                        return await self._code_mode_tool_call(_sid, _n, _a, _cwd)
+                                    _cm_res = await _cm.execute(
+                                        str(_cm_script), available_tools=_cm_tools, dispatch=_cm_dispatch)
+                                    result = CodeModeExecutor.format_result(_cm_res)
+                                    # tool_graph可观测：批内每步调用进轨迹账本
+                                    for _e in _cm_res.call_log:
+                                        all_tool_calls.append({
+                                            "name": f"batch:{_e['name']}",
+                                            "arguments": _e["args_preview"],
+                                            "result_preview": (
+                                                "blocked" if _e.get("blocked")
+                                                else ("ok" if _e.get("ok") else "failed")
+                                            ) + f" {_e['duration_ms']}ms len={_e['result_len']}",
+                                        })
+                                except Exception as _cm_err:
+                                    result = f"[CODE_MODE] 批量执行失败: {_cm_err}"
                         else:
                             result = await self._call_mcp_tool(func_name, func_args)
                         tool_results.append({
