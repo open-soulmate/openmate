@@ -896,3 +896,40 @@
 2. evo管线第三次破坏生产代码（30b5de76已commit进HEAD）——evo supervisor侧对Python改动无import级校验gate（build/import失败要到cron开发轮或用户使用时才暴露）；evo属基建铁律"不改evo自身bootstrap"，建议用户讨论在evo round收尾加`python -m py_compile + import smoke`门禁
 3. openmate工作区存在其他未跟踪evo产物（evolution_cycle_validator.py/state_manager.py/stability_test_*.py等）与未提交data文件改动，本轮按范围纪律未触碰
 4. gene skill上报见下方执行
+
+## [2026-09-20 15:45] P0修复：/acp/send静默空响应闭环——过期session恢复+空响应显式失败标记（上轮遗留#1【下轮第1优先】）
+**目标**：闭合上轮（09-20 P0 evo破坏修复轮）标注的【下轮第1优先】缺陷——`/acp/send` hermes-acp HTTP路径返回`{"ok":true,"content":""}`静默空响应：stopReason=end_turn/refusal但chunks=0，无任何错误标记，客户端无法区分"agent真的没说话"和"系统坏了"。生产触发场景：acp-proxy重启（部署/健康循环自愈/崩溃）后adapter子进程的旧session全部失效，前端/HTTP客户端仍持旧session_id发消息→100%命中→聊天页消息全部空白。
+**调研来源**：
+- 根因定位方法=本轮live复现实证（非猜测）：POST假UUID session_id到live :8092 → `/tmp/acp-proxy.log` DEBUG日志完整链：adapter stderr `prompt: session aaaaaaaa... not found` → `stopReason=refusal, chunks=0` → proxy无条件设`response_text=""` → outer retry同一死路径 → `ok:true content:""`——与上轮症状逐字节一致
+- 修复原则参照：SUMMARY.md P0-2 **AIHawk SHOWN/SENT双预算原则（"截断/失败必须显式标记"）** + open-webui tool_approval三态（"拒绝=合成错误工具结果，不能静默断流"）+ P0-4可观测性（用户痛点"我都不知道他们在干嘛"）；过期session恢复参照kilocode/goose会话恢复模式（P0-10会话资产化：恢复后返回新sid让客户端重新绑定）
+**改动文件**：
+- acp-proxy/proxy.py（+80/-12，增量5处）
+- acp-proxy/ws_chat.py（+12/-4，增量3端点）
+- acp-proxy/tests/test_acp_stale_session_recovery.py（新建，7测试）
+- acp-proxy/tests/__init__.py（新建，环境修复）
+**改动内容**：
+1. proxy.py `_prompt_parts`末尾：空chunks不再静默返回空串——`response_text=None`+`empty_response=True`+`stop_reason`显式标记+WARNING日志（含stopReason/chunks/session三要素）。单一改动点激活所有调用方（send_message/send_message_with_image/send_message_with_file）的既有fallback链——此前`is not None`判断对空串永真，image路径的temp-file CLI兜底和file路径的CLI兜底同样是死代码，本次一并激活
+2. proxy.py `_send_message_inner`：新增`got_empty_acp_response`追踪+**过期session恢复块**——ACP空响应时new_session()建新session重发一次，成功→返回新sid+`recovered_from_stale_session`=原sid标记（AIHawk显式标记原则）；仍失败→CLI兜底且结果携带session_id。**管道异常（BrokenPipe/timeout）路径不触发恢复块**（restart路径已负责session重建，避免双重new_session）
+3. proxy.py image/file路径CLI fallback结果补携带session_id（此前CLI兜底结果无session_id，端点层回落到请求里的旧stale sid→下一消息继续命中死路径）
+4. ws_chat.py `/acp/send` `/acp/send-image` `/acp/send-file`三端点：`result.get("response_text") or ""`（None-safe，JSON content绝不为null）+响应新增`recovered_from_stale_session`字段（可观测性：恢复发生时客户端/监控可见，值=原stale sid）
+5. tests/__init__.py：opensoul/.venv的editable install使`/home/climbing/opensoul`进sys.path，opensoul/tests/（有__init__.py的regular package）遮蔽acp-proxy/tests/（namespace目录），4个wiring测试（loop_guard/token_attribution/token_usage_backfill/tool_output_wiring）collection报`ModuleNotFoundError: tests.test_steering`——补__init__.py使cwd下的tests成为regular package按路径顺序优先命中（此前轮次"8模块174 passed"应为分模块跑未触发遮蔽）
+**接线位置**（grep证据，文件:行号）：
+- proxy.py:462/:469 `got_empty_acp_response`追踪；:506恢复块入口；:512 `Stale-session recovery: {sid} → fresh session`日志（live日志实证出现）；:517 `result["recovered_from_stale_session"] = sid`；:522恢复失败日志；:908 `response["empty_response"] = True`（_prompt_parts空响应标记，live触发实证）
+- ws_chat.py:420/:450/:477 三端点`recovered_from_stale_session`透传
+- 运行时调用链实证（非死代码）：ws_chat.py:401 `/acp/send`端点→`get_acp_process()`(proxy.py:892单例)→`send_message`(proxy.py:393)→`_send_message_inner`(:457)→`_prompt_parts`(:852)→恢复块(:506)；router已在app.py注册（live curl实证非404）
+- live日志调用证据（/tmp/acp-proxy.log 15:34:48）：`Prompt response id=4, stopReason=refusal, chunks=0` → `Empty ACP response marked as FAILED (stopReason=refusal, chunks=0, session=aaaaaaaa...)` → `Stale-session recovery: aaaaaaaa... → fresh session 4baa48ba-7961-4676-8ead-bcb7a0db90c1, re-prompting` → `Prompt completed: 3 chunks, 11 chars`
+**验证结果**：
+- 完整性✅：`git diff --stat`确认proxy.py +80/-12、ws_chat.py +12/-4真实落盘；commit d439f163 git show确认4文件340 insertions
+- 集成✅：grep证据如上（恢复块/标记字段/端点透传全部有调用行号）；live HTTP实证（非mock）：①修复前复现：POST假UUID session_id→`{"ok":true,"content":""}`（缺陷实锤）②修复后同请求→`{"ok":true,"content":"RECOVERED77","session_id":"4baa48ba-...","recovered_from_stale_session":"aaaaaaaa-..."}`——内容非空+恢复标记+新sid三者齐备③正常路径`{"content":"NORMAL88","recovered_from_stale_session":null}`无回归④用恢复返回的新sid多轮续接→正确回答上轮code word（session连续性实证）；integration_test run_integration_tests **SCORE=1.0**（health×3+python-imports 4文件+ws-protocol+contract+ws-send-receive全过）
+- 测试✅：新增tests/test_acp_stale_session_recovery.py **7/7 passed**（空响应显式失败契约/正常契约不变/过期session恢复+标记/恢复失败CLI兜底带sid/管道异常不触发恢复/端点marker透传/None→空串coalesce）；组合回归**181 passed**（新7+既往8模块174：acp_concurrency+steering+permission_gate+loop_guard_wiring+tool_output_handler+tool_output_wiring+token_attribution_wiring+token_usage_backfill_acp）；systemic_test.py **29/29 (100%)**（S4同session并发3/3+ACP running=True+S5降级5/5+S6负载4/4全过）
+- 既有测试零修改通过（新契约对既有stub-based测试为加法变更；test_empty_response_triggers_single_retry等用monkeypatch stub掉_send_message_inner，不受内部实现变化影响）
+**服务重启**：systemctl --user restart acp-proxy-a.service acp-proxy-b.service→双实例/health 200（WSChat ok）→/acp/status预热后running=true→live E2E四项全过（见上）；opensoul与前端本轮零改动，无需重启/build
+**commit**：openmate d439f163（本报告为docs追加commit）
+**测试环境发现（如实记录）**：tests/test_safety_1000.py非pytest兼容模块（`fixture 'c' not found`×7，其函数签名用自定义Counter类当fixture）——系独立运行脚本误放tests/目录，**pre-existing与本轮改动无关**（本轮改动不触及safety模块；既往轮次"8模块174 passed"口径亦未含它）。是否改造/移出tests/待用户确认，本轮不擅自处理。
+**遗留问题**：
+1. **前端session_id重绑定**：后端恢复后返回新session_id，OpenMate聊天页客户端是否已将响应中的session_id写回会话状态需确认——若前端忽略响应session_id，下一条消息仍会用旧stale sid→再次触发恢复（功能不坏但每条消息多一次new_session开销）。前端chat-client消费`session_id`字段的行为下轮核查（对话页面按用户要求不改造，仅核查数据流）
+2. acp-proxy镜像侧provider usage回填（多轮遗留#5）本轮未做，仍为下轮候选
+3. marketplace skill_sources UI显示last_sync_error（上上轮遗留）本轮未做
+4. ws_acp.py的/ws/acp WebSocket路径（soulmate agent stdio子进程）与proxy.py是两套独立子进程管理——本轮修复覆盖proxy.py HTTP路径；ws_acp路径的session生命周期管理未审计，下轮可对照检查是否存在同类stale-session问题
+5. 恢复策略当前为"任何ACP空响应→恢复一次"——agent真实空回复（罕见）也会触发一次额外LLM调用；如需收紧可限定`stop_reason=="refusal"`才恢复，当前选择宽策略因为静默空响应的代价（用户看到空白）远大于一次冗余调用
+
