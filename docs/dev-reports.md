@@ -829,3 +829,70 @@
 7. live验证残留在prod库的测试记忆已清理3条（pipeline run/dream/job写入），版本链/审计/pipeline_runs.jsonl留痕属设计内审计数据未清理
 **遗留问题处理原则**：任何一关不过如实标记❌禁止声称完成——本轮首轮live E2E即抓到provider解包P0（fake-LLM测试全绿但真实provider静默失效），修复后9/9复验通过才写"已完成"。
 
+
+## [2026-09-20 11:00 CST] P1 Goal自主目标循环：kilocode goal/runner.ts五状态机移植
+**目标**：实现agent自主持续干活的核心机制——用户设定目标后agent自动循环执行直到完成/阻塞/失败，解决"让它自己干活"的愿景需求
+**调研来源**：kilocode-source-supplement2.md 核心发现A（goal/runner.ts 492行+tool.ts+state.ts+policy.ts）— 五状态机+事件驱动结果判定+goal_report自报协议+准入检查+失败即停+用户抢占不打断
+**改动文件**：
+- src/will/goal_runner.py（新建，486行）— GoalRunner核心引擎
+- src/will/__init__.py（增量修改）— 导出GoalRunner/GoalState/GoalOutcome/Goal/GoalEvent/get_goal_runner
+- src/api/will.py（增量修改，+124行）— 10个REST API端点
+- tests/test_goal_runner.py（新建）— 29个测试用例
+
+**改动内容**：
+1. 五状态机：ACTIVE/PAUSED/BLOCKED/COMPLETED/FAILED（kilocode state.ts对应）
+2. 事件驱动结果判定：工具执行结果分类四态（SUCCESS/FAILED/BLOCKED/NONE），bash exit_code判定、error字段判定、不计分工具名单
+3. goal_report自报协议：agent可自报complete/blocked，但"自报≠独立验证"——complete需success>failure事件证据才真正COMPLETED
+4. 失败即停：连续3次failed事件→auto-paused；20+事件零success→auto-paused；loop超限→FAILED
+5. 准入检查：同session已有ACTIVE/BLOCKED goal时拒绝新goal创建（409）
+6. 用户抢占：pause_goal标记superseded_count+state→PAUSED（非终态），resume_goal恢复
+7. BLOCKED不可直接resume：需goal_report显式clear后才能恢复
+8. JSON持久化：data/will_goals.json，重启后goal状态保留
+9. 状态审计：state_history记录每次转换的from/to/reason/timestamp
+
+**接线位置**：
+- `src/api/will.py:455-575` — from src.will.goal_runner import ...，10个endpoint全部调用get_goal_runner()
+- `src/main.py:515` — app.include_router(will_router, prefix="/api/will") — 已注册
+- `src/will/__init__.py:7` — from src.will.goal_runner import ...
+- grep证据：`grep -rn "get_goal_runner" --include="*.py"` → src/api/will.py 10处调用
+
+**验证结果**：
+- 完整性✅：git diff确认4个文件改动真实存在（993 insertions）
+- 集成✅：will_router已在main.py:515注册；curl实测所有端点返回200：
+  - POST /api/will/goals → 200, goal_id=goal_6e4f7336da42, state=active
+  - POST /api/will/goals/{id}/events → 200, outcome=success
+  - POST /api/will/goals/{id}/report → 200, state=completed (event-driven验证通过)
+  - GET /api/will/goals-stats → 200
+  - DELETE /api/will/goals/{id} → 200
+- 测试✅：pytest 29/29 passed (0.24s) — 状态机/准入/事件判定/report协议/持久化/统计/循环计数/用户抢占全覆盖
+
+**服务重启**：opensoul.service重启 + curl /api/will/health返回status:ok + API端点全链路实测通过
+**commit**：5b9a6818
+**遗留问题**：
+- goal runner与acp-proxy的实时agent执行路径尚未接线（当前是独立API，可被外部系统调用）— 下轮可将goal事件记录接入chat/trajectory路径
+- 前端monitoring面板尚未显示goal状态 — 可在openmate monitoring页加goal面板
+- Code Mode工具批量化（P1 cortex）仍待实现
+- gene skill_learner上报在本轮末尾执行
+
+## [2026-09-20 13:30 CST] P0修复：evo round 30b5de76破坏soulmate_agent.py——OpenMate聊天页真实agent路径import崩溃闭环
+**目标**：修复本轮调研起点检查中发现的P0——evo round 30b5de76（commit 30b5de76 "evo: round-evo_v2_1789862544_a"）对acp-proxy/agent/soulmate_agent.py的破坏性编辑：①`from agent.prompt_manager import PromptTemplateManager`被改成不存在的`from agent.prompt_manager import P`（ImportError）②import块中间被插入损坏残片`class SoulMateAgent: __DEBUG_VALIDATION__: bool = TrueromptTemplateManager`（"True"+"romptTemplateManager"拼接残+多余类提前定义，即使import过了也会NameError）。后果：ws :8092/:8095的soulmate路由spawn的agent stdio子进程import即死，OpenMate聊天页真实路径100%不可用，/acp/status恒为running=false。这是dev-reports.md 09-19 00:10轮"evo stash事故"与09-19 23:35轮"evo破坏chat-client.tsx"之后第三次evo管线破坏生产代码——且本次破坏已被commit进HEAD。
+**调研来源**：本轮为P0 bug修复（优先级最高档），调研参照=本项目三重校验纪律"写了≠接线了≠能跑了"+git历史中evo破坏先例（chat-client.tsx修复模式：按运行时用法恢复原实现）。SUMMARY.md P0-4可观测性痛点佐证（agent路径死了用户第一时间应该能看见——peek/journal是证据源）。
+**改动文件**：- acp-proxy/agent/soulmate_agent.py（增量1处：-5/+1行）
+**改动内容**：恢复`from agent.prompt_manager import PromptTemplateManager`（prompt_manager.py:45实证类名），删除import块中间误插入的损坏class块。修复后文件与pre-evo好版本24f32bb5逐字节一致（git diff 24f32bb5 = 0行）。validation/test_smoke.py（evo同轮新增237行）py_compile通过未动。
+**接线位置**（grep/运行时证据，文件:行号）：
+- 损坏点：agent/soulmate_agent.py:85修复前`from agent.prompt_manager import P`（journal崩溃栈精确指向此行）；:88-89损坏class块
+- 运行时调用链（修复后实证）：ws :8092 /ws/acp → ws_acp.py:45 AGENT_ROUTES["soulmate"]=[sys.executable,"-m","agent.start","--stdio"] → agent/start.py:60 `from agent.soulmate_agent import SoulMateAgent` → SoulMateAgent.prompt()全程跑通
+- 修复前运行时证据：journalctl acp-proxy-a 13:04:18-13:04:25 ImportError循环崩溃（agent/start.py:60 → soulmate_agent.py:85 "cannot import name 'P'"）；/acp/status双实例{"running":false,"warming":true}
+- 修复后运行时证据：journal 13:05重启后ImportError=0；live E2E（/tmp/p0_soulmate_e2e.py真实ws全链路）session=om-af3cd2ece332 chunks=1 stopReason=end_turn content='7' PASS；GET /api/agent/peek/om-af3cd2ece332返回durable_turns=1（活动由修复后的模块在生产子进程内记账）
+**验证结果**：
+- 完整性✅：git diff确认1 insertion/5 deletions真实落盘；与pre-evo 24f32bb5版本git diff=0（逐字节一致）；commit 783c2651 git show确认
+- 集成✅：生产venv python import agent.soulmate_agent成功（SoulMateAgent类正确解析，class定义数=1，损坏标记=0）；compileall agent/全目录OK；grep证据与运行时证据如上（崩溃→修复的journal对比+真实ws E2E+peek记账）
+- 测试✅：acp-proxy pytest 8模块174 passed（steering/permission_gate/tool_output_handler/tool_output_wiring/token_attribution_wiring/token_usage_backfill_acp/acp_concurrency/loop_guard_wiring）；systemic_test.py **29/29 (100%)**（S4同session并发3/3+ACP进程running=True+S5 chat降级5/5等全过）；integration_test SCORE=1.0（health×3+python-imports+ws-protocol+contract+ws-send-receive 7项全True）
+**服务重启**：acp-proxy-a(:8092)+acp-proxy-b(:8095)重启→/health双200；/acp/status重启后t+10s起双实例{"running":true,"warming":false}；opensoul/前端本轮零改动无需重启/build
+**commit**：openmate 783c2651
+**⚠️本轮发现的第二个缺陷（诚实标注，非本轮修复范围）**：/acp/send HTTP fallback路径（proxy.py spawn `hermes acp --accept-hooks`路由）返回{"ok":true,"content":""}——prompt响应stopReason=end_turn但chunks=0，且adapter侧journal无"Prompt on session"日志（prompt未到达adapter处理）。隔离诊断：同一二进制（~/.local/bin/hermes v0.15.2）直接stdio驱动（int id与proxy同款string id两种线格式）均正常返回content='10'（完整LLM调用日志in=21328 out=22 latency=1.9s）→hermes acp adapter+provider健康，缺陷在proxy进程与其warmup子进程的交互（read_loop路由/子进程状态），根因未定位。该路径非OpenMate聊天页真实路径（页面走/ws/acp→soulmate，已验证正常）；systemic S4的success=3/3只判HTTP层不判content，故此缺陷对systemic不可见。
+**遗留问题**：
+1. **【下轮第1优先】/acp/send hermes-acp路径空响应**：如上隔离诊断，方向=proxy.py read_loop对warmup子进程的prompt交付/响应路由（对比fresh spawn vs warmup子进程行为差异，可在proxy侧临时debug日志记录发出的request与adapter stderr全量）
+2. evo管线第三次破坏生产代码（30b5de76已commit进HEAD）——evo supervisor侧对Python改动无import级校验gate（build/import失败要到cron开发轮或用户使用时才暴露）；evo属基建铁律"不改evo自身bootstrap"，建议用户讨论在evo round收尾加`python -m py_compile + import smoke`门禁
+3. openmate工作区存在其他未跟踪evo产物（evolution_cycle_validator.py/state_manager.py/stability_test_*.py等）与未提交data文件改动，本轮按范围纪律未触碰
+4. gene skill上报见下方执行
