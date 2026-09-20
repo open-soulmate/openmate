@@ -777,3 +777,55 @@
 4. API层无deermem统计/标签展示UI（/ltm/deermem/stats后端已就绪）——用户反感擅自加UI，是否在monitoring/skills页展示待确认
 5. acp-proxy镜像侧provider usage回填（上上轮遗留#1）本轮未做，仍为下轮候选
 6. gene skill上报见下方执行
+
+---
+
+## [2026-09-20 16:10] OpenSoul P0-6 codex两阶段记忆管线落地（Phase1提取+Phase2 consolidation agent+MemoryVersion版本化+workspace diff+资源修剪）+ P0 provider响应解包live实证修复
+**目标**：闭合连续两轮dev-report遗留#1——P0-6 hippo最后一块拼图"codex两阶段记忆管线"（功能矩阵P0-6最后一项"codex两阶段记忆管线"）。codex同源Rust三文件（memories/write/src/{phase1,phase2,workspace}.rs，agent-research/11-openai-codex-source.md #1）拆出的可移植设计：Phase1结构化抽取候选→Phase2 consolidation agent增量决策（merge_to/add_new/conflict_mark/reject_no_reason）→带版本与资源修剪的持久化。顺带在live验证中实证并修复一个P0级provider响应解包bug（dream gland路径自诞生起live静默失效，历轮证据全部来自fake-LLM测试——"写了≠接线了≠能跑了"三关的最后一关在本轮live流量下才暴露）。
+**调研来源**：
+- codex两阶段管线：agent-research/11-openai-codex-source.md #1（phase1/phase2/workspace三模块：抽取候选→consolidation agent逐候选决策（merge→importance=max+留痕；new→建新条目带自增版本号；contradiction→标冲突而非静默删除）→版本化落库→仅修剪agent-created扩展资源不越界用户原生文件）；同文件记忆版本化结论"记忆可合并/重写/修剪，但用户必须能在写坏一行时回滚/对比"
+- feature-matrix/SUMMARY.md P0-6最后一项 + evolution-engine-patterns.md §5（"记忆版本化"模式：MemoryVersion版本链/合并留痕/importance取max/冲突标记不静默覆盖/workspace diff/资源修剪边界）
+- CAMEL #223 verifiers理念：Phase1抽取候选=提案者、Phase2决策+三重校验=验证者，LLM不让未经审查的输出直接落库（调用方须检查decision再落库）
+- mem0 §1.1 "失败必须可见" + mem0 audit event（DDL/create_meta round先例）：版本链=写路径自身审计；version写失败logger.error不静默
+- Letta §4.2：API/作业两形态同一单例（_memory_pipeline），与hippo.dream job同一模式（调研P1阶段1："会话内记忆压缩+后台记忆整理"）
+**改动文件**：
+- opensoul/src/hippo/long_term_memory.py（+312/-11）：MemoryVersion版本链schema+写路径+回滚
+- opensoul/src/hippo/memory_pipeline.py（新建624→796行）：Phase1抽取/Phase2 consolidation agent/管线运行/pipeline_runs持久化/workspace diff/prune资源修剪
+- opensoul/src/hippo/__init__.py：导出MemoryPipeline等7符号
+- opensoul/src/api/hippo.py（+52）：extract/run/runs/{id}/prune/stats端点+health聚合memory_pipeline（stat路由注册在/ltm/{memory_id}之前防路径吞并）
+- opensoul/src/will/job_handlers.py：HANDLER_SPECS新增"hippo.memory_pipeline"（api/hippo.py run background=true路径的真实生产者）
+- opensoul/src/gland/router.py（+37/-0）：extract_chat_text()唯一权威解包点（P0修复）
+- opensoul/src/hippo/dream_distiller.py（+12/-4）：gland路径解包修复+raw_response可观测（P0修复）
+- opensoul/tests/test_memory_pipeline.py（新建631行39测试）
+**改动内容**：
+1. long_term_memory.py MemoryVersion（调研映射：codex合并/importance=max/版本号递增/冲突可见/回滚）：新表memory_versions（version_id/memory_id/version/event/content/memory_type/importance/tags/metadata/reason/created_at）+索引idx_versions_memory(memory_id,version)；三写路径auto版本化——store()→v1 event=ADD、merge路径（上轮DeerMem _merge_into_existing）→目标fact新增event=MERGE版本条目（reason=fact_dedup:<rule>，保留上轮metadata.deermem_merges共存互补）、update_memory()→event=UPDATE版本（旧值new_value=json.dumps(updated)已是完整快照）；版本表为真源，memories表不加列（免迁移）；get_versions()/get_current_version()；rollback_version(memory_id,version)——回滚=经update_memory恢复指定版本快照（reason=rollback_to_vN）→写NEW版本+UPDATE审计，**绝不覆写历史**（与codex设计原话一致）；版本写失败logger.error不阻塞主写路径（CowAgent"记账失败永不阻塞spawn"同款哲学+失败可见）
+2. memory_pipeline.py：Phase1Candidate（content/memory_type/importance/tags/DeerMem三标签/evidence）+Phase1Result+PipelineResult+ConsolidationDecision（ADD_NEW/MERGE_INTO/CONFLICT_MARK/REJECT_NO_REASON四决策，DECISION_MAP映射diff的added/merged/conflict/rejected）；PHASE1_EXTRACT_PROMPT（五要素抽取+DeerMem三标签确定性标注+"不确定倾向SKIP，宁缺毋滥"+evidence溯源）+PHASE2_CONSOLIDATE_PROMPT（EXISTING/CANDIDATES模板注入：importance=max+merge留痕+冲突标记不静默删除+reject_no_reason强制给理由）；parse_phase1/parse_phase2宽容解析（```json代码块→裸[...]→回退空；候选无content→过滤；决策op字段缺失→skipped_invalid_op计数可见，**无效输出可审计**）；MemoryPipeline.run()：Phase1来源双路——llm_call/无候选时走gland router生产路径（ModelRouter chat，深拷贝ro双阶段注入+reasoning_content兼容）或调用方直供候选（import直通跳过LLM）→Phase2 consolidation（use_llm_phase2=True且LLM可用走LLM决策，**LLM未返回任何有效决策→回退确定性规则**（字面重复→merge/importance=max/新增，LLM不可用时管线降级不瘫痪）→逐决策落库（ADD_NEW→store(metadata={source:consolidation,decision,candidate_id},write_mode=auto,dup_policy=merge)自动路径；MERGE→store触发上轮fact_dedup并入；CONFLICT_MARK→写conflict条目标签"conflict"；REJECT→审计reason=reject_no_reason:<LLM理由>）→pipeline_runs JSONL持久化（~/.hermes/opensoul/hippo/pipeline_runs.jsonl，stats/get_runs聚合审计）；extract()=仅Phase1不落库（"这轮没什么可记的"→诚实零条目）；prune(max_age_hours=0,session_id="")——**资源修剪边界**（codex只修剪agent-created扩展资源，绝不越界）：仅consolidation创建且过期且importance<0.6且**非用户手写**（memory_type="working"=用户回合注入的retrieved memory，严禁清理——工作记忆保护）→soft delete（consolidated=1，审计链可追溯）
+3. P0修复·provider响应解包（本轮live E2E实证发现）：router.chat()/_call_chat返回provider原始响应体resp.json()（choices[0].message.content结构，opensoul src/gland/router.py:554 `return resp.json()`）；memory_pipeline与dream_distiller的_call_llm用`result.get("content", result.get("text", str(result)))`猜测形状→真实provider上永远落空→str(整个响应体)喂给JSON解析器→**Phase1提取/dream gland路径live产出0条目且无error**（live实证：/tmp/phase1_probe.py显示raw=整个choices响应repr；dream同款缺陷自诞生起live即静默失效，历轮dream证据全部来自fake-LLM测试——这就是三关校验"能跑了"关的价值）；修复=gland/router.py新增extract_chat_text()唯一权威解包点（正确形态参照eval_loop.py:754既有choices解包，当时只有benchmark模块写对了）：str直通→顶层content/text（测试桩兼容）→choices[0].message.content→choices[0].text→无法识别时repr保留（失败可见不静默空串）；memory_pipeline extract/consolidate入口非str响应经解包+_call_llm改走解包点+Phase1Result.to_dict新增raw_response[:500]（count=0时可审计LLM原始返回）；dream_distiller dream()入口解包+_call_gland_llm改走解包点+DreamResult.to_dict新增raw_response[:500]——**同一缺陷两模块同步修**（防"修新忘旧"）
+4. API接线：/ltm/pipeline/extract（POST，仅Phase1）、/ltm/pipeline/run（POST，messages/candidates/session_id/apply/use_llm_phase2/background，background=true→job_queue.submit({"name":"hippo.memory_pipeline"})与dream background同款、handler名=归属声明<organ>.<action>）、/ltm/pipeline/runs、/ltm/pipeline/{run_id}、/ltm/pipeline/prune、/ltm/pipeline/stats；全部stat路由注册在/ltm/{memory_id}之前（542行既有注释的路由吞并陷阱第三次规避：memory_id/…后插的/{memory_id}让位）；/api/hippo/health聚合memory_pipeline统计
+**接线位置**（grep证据，文件:行号）：
+- src/hippo/long_term_memory.py:23 import extract相关；:47-61建表memory_versions+索引；:336-349 store路径_write_version(event="ADD")；:418-419 merge路径_write_version(memory_id=duplicate_of,event="MERGE",reason=f"fact_dedup:{dup_rule}")；:632-643 update路径_write_version(event="UPDATE",updated快照)；:534 get_versions；:547 get_current_version；:563 rollback_version→:580 update_memory(reason=f"rollback_to_v{version}")；:374 _write_version（失败logger.error返回0）
+- src/hippo/memory_pipeline.py:414 MemoryPipeline.consolidate（Phase2）；:423/:425/:427/:429/:435非str响应extract_chat_text解包（extract+consolidate两处）；:477-507 _execute_decision逐决策落库（store→LTM实际写入路径）；:530-565 _persist_run/get_runs/_init_runs_db（pipeline_runs.jsonl）；:592 prune资源修剪（working记忆保护+importance<0.6+consolidated=0三重条件）；:381/:455 metadata={source:consolidation,...}
+- src/gland/router.py:38-75 extract_chat_text权威解包点；:76 _REDACTOR_INIT既有行完整保留（增量插入未破坏兄弟subagent改动，git diff仅+37行插入）
+- src/hippo/dream_distiller.py:26 from src.gland.router import extract_chat_text；:174-175 dream()入口解包；:246/:251 _call_gland_llm改走解包点；:78-79 DreamResult.to_dict raw_response[:500]
+- src/api/hippo.py:20 _memory_pipeline单例+extract_chat_text导入；:571-612 _pipeline_extract/_pipeline_run/_pipeline_prune/_pipeline_stats；:631-705 五端点（extract/run/runs/{run_id}/prune/stats，注册位在/ltm/{memory_id}之前）；:678-692 background作业→job_queue.submit(name="hippo.memory_pipeline")；health:227 memory_pipeline聚合
+- src/will/job_handlers.py:32/:38/:81/:94 "hippo.memory_pipeline"注册（HANDLER_SPECS+register_default_handlers返回列表），job executor经LazyStore→memory_pipeline.run真实写LTM（非空转）
+- 运行时调用实证（非死代码，真实HTTP流量）：live :8090两轮E2E——首轮/tmp/pipeline_e2e.py 17/18（版本链/v1回滚/pipeline diff/merge跨run核对/job queue供体/prune working保护/stats聚合全过；唯一FAIL为脚本断言笔误——step8未传session_id导致前缀匹配不中，非代码缺陷，第二轮stats实证runs持久化total_runs=5/7正常）；修复后/tmp/pipeline_live2.py **9/9 PASS**：①health含memory_pipeline统计②Phase1真实LLM提取count=2（候选带evidence"我的服务器用Arch Linux"+DeerMem标签user/durable/descriptive）③raw_response=解包后JSON数组非响应体repr④端到端LLM管线phase1_count=2+**phase2=llm**（真实consolidation agent决策ADD_NEW×2+diff落库+version_after=1）⑤dream gland路径修复后total_actions=1/ADD×1/applied=1（修复前0 actions无error）⑥pipeline runs持久化6条pipe_*⑦background LLM作业completed+phase2=llm+真实diff⑧stats llm_runs=3+diff_added=4⑨清理3条live残留记忆（project域"8090端口"候选被DeerMem标签门正确拦截未入库——上轮deermem标签门与本轮管线协同实证）
+**验证结果**：
+- 完整性✅：git show --stat opensoul 1d6001ec（6 files +1559/-0含2新建）+756c8bce（4 files +107/-7）逐文件落盘；git diff确认改动真实存在（gland/router.py插入段+_REDACTOR_INIT邻居行完整）
+- 集成✅：grep证据如上（job_handlers HANDLER_SPECS注册+api五端点+versioning三写路径接线+解包点两模块接入全部有调用行号）；live HTTP实证：/ltm/pipeline/*五端点curl 200+真实LLM流量phase2=llm决策落库+job queue hippo.memory_pipeline处理器completed返回真实diff（供体路径非死代码）
+- 测试✅：tests/test_memory_pipeline.py 39/39 passed（版本化10+Phase1/Phase2解析7+管线9+API接线/job接线2+stats聚合1+provider解包回归4+prune 6）；组合回归**344 passed**（memory_pipeline 39+dream_distiller 8+memory_crud 11+deermem_tags 54+memory_three_factor 20+nl_filters 57+hippo 25+hippo_gatekeeper 27+job_queue_wiring 33+heredity 22+llm_retry 26+fallback_chain 23——router.py改动经llm_retry/fallback_chain确认无回归）
+- 既有测试契约：零修改通过（版本化对既有store/update/delete测试全部additive；唯一例外DreamResult/Phase1Result.to_dict新增raw_response键为加法不破坏断言）
+- 集成测试✅：acp-proxy run_integration_tests(changed_files=[6 opensoul文件], include_build=False) **SCORE=1.0**（health×3+python-imports 6文件+ws-protocol-alignment+contract-registry+ws-send-receive全过）
+- 系统性测试：本轮未跑systemic_test.py——改动全在opensoul（hippo/gland/will/api层），未触碰acp-proxy代码；integration_test SCORE=1.0覆盖三服务健康+WS协议（opensoul-only轮次同口径）
+**服务重启**：systemctl --user restart opensoul.service→/api/system/health {"status":"ok"}+/api/hippo/health ok+memory_pipeline统计可见；live复验9/9全过；前端/openmate与acp-proxy(:8092/:8095)代码零改动，无需重启/build
+**commit**：opensoul 1d6001ec（feat管线主体）+ 756c8bce（fix P0 provider响应解包）；openmate本轮仅docs/dev-reports.md
+**遗留问题**：
+1. Phase1抽取prompt的provider遵循度：deepseek-r1/小模型下三标签/evidence字段完整性依赖模型能力——当前解析宽容（缺失→空→store推断），无量化遵循率统计；下轮可在pipeline_runs聚合中增加字段完整率指标
+2. prune的资源修剪条件importance<0.6+仅consolidated创建+working保护是保守策略；用户实际使用后或需调参（当前默认max_age_hours=0关闭修剪，需显式参数触发）
+3. 版本化只覆盖LTM store/update/merge三写路径——session_importer批量导入的store()写入天然被覆盖（同一store路径），但gateway记忆/working记忆无版本化（working=会话内注入，设计上不入版本链）
+4. acp-proxy镜像侧provider usage回填（遗留#1，opensoul已在b0ed5b50完成）仍未做，下轮候选；marketplace skill_sources UI显示last_sync_error同为下轮候选
+5. dream gland路径修复后dream的live行为首次真实可见（actions解析+applied）——但dream prompt的三标签输出遵循率同问题1待量化；echo blocker在真实provider下的拦截率未live验证
+6. pipeline端点无前端UI（/ltm/pipeline/runs数据已就绪）——用户反感擅自加UI，是否展示待确认
+7. live验证残留在prod库的测试记忆已清理3条（pipeline run/dream/job写入），版本链/审计/pipeline_runs.jsonl留痕属设计内审计数据未清理
+**遗留问题处理原则**：任何一关不过如实标记❌禁止声称完成——本轮首轮live E2E即抓到provider解包P0（fake-LLM测试全绿但真实provider静默失效），修复后9/9复验通过才写"已完成"。
+
