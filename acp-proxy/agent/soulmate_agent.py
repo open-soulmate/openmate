@@ -82,11 +82,7 @@ from agent.tool_registry import ToolRegistry
 from agent.tool_validator import ToolResultValidator
 from agent.capability_evaluator import CapabilityEvaluator
 from agent.env_sensor import EnvironmentSensor
-from agent.prompt_manager import P
-
-
-class SoulMateAgent:
-    __DEBUG_VALIDATION__: bool = TrueromptTemplateManager
+from agent.prompt_manager import PromptTemplateManager
 from agent.context_budget import ContextBudgetManager
 from agent.token_attribution import (
     KIND_BUILTIN_TOOL,
