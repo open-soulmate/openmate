@@ -933,3 +933,34 @@
 4. ws_acp.py的/ws/acp WebSocket路径（soulmate agent stdio子进程）与proxy.py是两套独立子进程管理——本轮修复覆盖proxy.py HTTP路径；ws_acp路径的session生命周期管理未审计，下轮可对照检查是否存在同类stale-session问题
 5. 恢复策略当前为"任何ACP空响应→恢复一次"——agent真实空回复（罕见）也会触发一次额外LLM调用；如需收紧可限定`stop_reason=="refusal"`才恢复，当前选择宽策略因为静默空响应的代价（用户看到空白）远大于一次冗余调用
 
+## [2026-09-20 18:00 CST] P1 marketplace同步死按钮闭环：POST /sync/skills+/sync/agents聚合端点 + P2 last_sync_error UI可见（3轮遗留#3/#5销账）+ 24f32bb5镜像侧usage回填证据补账
+**目标**：①P1真实bug——前端marketplace页"同步全部"按钮是死按钮：syncAllSkills()/syncAllAgents() POST `/api/marketplace/sync/skills|agents`，而opensoul该路径此前只有GET（列表轮询端点get_synced_skills/get_synced_agents）→POST必然405→按钮永远"Sync failed"（live curl修复前实证405）；②P2遗留——marketplace-client.tsx源卡片不展示last_sync_error（后端契约自fd21d578/625cf185起已带此字段，UI侧连续3轮列为"下轮P2候选"未做）；③证据补账——commit 24f32bb5（09-20 02:00，acp-proxy镜像侧provider usage回填）当时未写dev-report，后续两轮报告误标"仍未做"，本轮live核实并补记。
+**调研来源**：①②均源自本项目dev-report遗留链（09-19 07:20/19:10/23:35、09-20 08:54/15:45共5轮标注候选）；失败可见原则=SUMMARY.md P0-2 AIHawk显式标记+mem0 §1.1"失败必须可见，禁止静默降级"（evolution-engine-patterns.md §1.1：静默吞错误=失败记忆失真——sync失败返回200+success=false，前端此前忽略响应体同属静默）；单源失败不阻断整批=registry_sync.py既有per-entry fail-closed语义上推到per-source级；agent管线不假装成功=CAMEL"程序化验证优先"+诚实声明原则。
+**改动文件**：
+- opensoul/src/api/marketplace.py（+90/-14，增量3处：提取_sync_registry_source共用管线+新增POST /sync/skills与POST /sync/agents两聚合端点）
+- openmate/src/app/(app)/marketplace/marketplace-client.tsx（+34/-3，增量4处：SkillSource/SourceItem接口补last_sync_error字段、SourceCard渲染失败原因条、handleSyncSource/handleSyncAll消费success=false响应进错误条）
+**改动内容**：
+1. marketplace.py：sync_skill_source端点的registry管线主体提取为_sync_registry_source(db, row)——单源端点与sync-all聚合端点共用（行为不变，既有测试38 passed零修改通过）；helper新增意外异常兜底except（RegistrySyncError之外的异常同样落last_sync_error+typed reason=unexpected，sync-all循环里单源异常绝不炸整批）
+2. 新增POST /sync/skills：逐enabled源执行同一管线，per-source fail-isolated，聚合返回{success,synced,failed,total,results[],message}
+3. 新增POST /sync/agents：诚实typed not_implemented（agent源无index.json摄取格式定义，不假装成功不静默更新时间戳，success=false+error.reason=not_implemented回前端错误条）
+4. 前端：SourceCard在描述下方渲染last_sync_error（destructive边框条+XCircle图标+line-clamp-2，title属性全文）；handleSyncSource/handleSyncAll解析响应体，success=false→错误条显示message+第一个失败源error.detail（此前HTTP 200+success=false被前端吞掉，用户无感知）
+**接线位置**（grep/运行时证据，文件:行号）：
+- opensoul/src/api/marketplace.py:392 `def _sync_registry_source`；:479 单源端点`return _sync_registry_source(db, existing)`；:483 `async def sync_all_skill_sources`（@router.post("/sync/skills")）；:496 `results = [_sync_registry_source(db, r) for r in rows]`；:511 `async def sync_all_agent_sources`（@router.post("/sync/agents")）；router已在main.py:527 `app.include_router(marketplace_router, prefix="/api/marketplace")`注册
+- 前端marketplace-client.tsx:33/:367 接口字段；:178 handleSyncSource `result.success === false`→setError；:205 handleSyncAll同；:430-435 SourceCard `{source.last_sync_error && (...)}`渲染块；调用链=page.tsx dynamic import→MarketplaceClient→SourceGrid→SourceCard（onClick=handleSyncSource/handleSyncAll既有接线）
+- 运行时证据（live curl，非mock）：修复前POST /api/marketplace/sync/skills→**405**；修复后同请求→**200**+per-source results；动态import chunk接线：next-server重启后GET :3000/_next/static/chunks/37cntrtrgn01s.js→200且含last_sync_error（重启前旧server对该chunk返回404——旧进程内存manifest指向旧build，重启实证必要）
+**验证结果**：
+- 完整性✅：git diff确认opensoul marketplace.py +90/-14、openmate tsx +34/-3真实落盘（两repo分别commit）
+- 集成✅：grep证据如上；live E2E全链路（opensoul auth create_access_token铸造JWT→注册好/坏两个自定义源→POST /sync/skills）：好源custom-registry-9193 `[OK] accepted=2 skills=['demo-skill-a','demo-skill-b']`，GET /skills/sources显示skill_count=2+last_sync_error=None（成功清错误）；坏源custom-registry-0573 `[FAIL] reason=fetch_failed detail=本地registry无index.json`且last_sync_error落库可见（失败可见）；builtin远程源clawhub/hermes-official/openmate-community因网络受限各自typed reason失败但不阻断好源（per-source fail-isolated实证）；POST /sync/agents→200 success=false reason=not_implemented；前端:3000/marketplace→200，新chunk 200含新代码
+- 测试✅：opensoul pytest **50 passed**（test_registry_sync.py 38+test_marketplace.py/test_registry.py 12，既有测试零修改过重构）；ast.parse OK；openmate npm run build **exit 0**（/marketplace路由构建成功）；acp-proxy回归 **49 passed**（test_token_attribution_wiring+test_token_usage_backfill_acp+test_acp_stale_session_recovery，本轮未改acp-proxy，作24f32bb5补账证据）
+- **24f32bb5证据补账**（本轮未改动该commit代码）：live GET :8092/api/agent/token-attribution→200，summary `backfill_count=1 avg_estimate_gap=259 total_records=9`——provider权威prompt_tokens→estimate_gap回填在生产ws聊天路径真实发生（soulmate_agent.py:1016-1027消费usage chunk→token_attribution.py backfill_actual→stats合并），非死代码。此commit（09-20 02:00，llm_engine.py usage先行发射+尾部usage排空+AttributionLedger.backfill_actual+每轮归因记录）已随24f32bb5提交，缺当轮报告系cron轮日志缺失，后续轮"仍未做"表述失实，以本轮live证据为准：**该项已完成且生产在用**
+**服务重启**：opensoul.service重启→/api/marketplace/health 200→live E2E如上；前端next-server重启（原npm start进程serve旧build内存manifest，新chunk 404实证）→改为systemd-run --user瞬态单元**openmate-web**（working_directory=/home/climbing/openmate，npm start）→:3000 LISTEN+marketplace页200+新chunk 200；acp-proxy本轮零改动无需重启
+**commit**：opensoul 37cb5f5b（POST /sync/skills+/sync/agents聚合端点+_sync_registry_source提取）+ openmate（docs+frontend，hash见git log）
+**前端session_id重绑定核查（上轮遗留#1销账，仅核查未改对话页）**：grep全src/目录`acp/send|recovered_from_stale_session`命中=0——OpenMate前端不调用/acp/send（聊天页真实路径=/ws/acp WebSocket→ws_acp.py→soulmate stdio子进程），/acp/send HTTP消费方为gateway/微信等外部客户端，故"前端忽略响应session_id导致每条消息触发恢复"的担忧在前端侧不存在；外部消费方是否重绑session_id属gateway侧审计（见遗留）
+**遗留问题**：
+1. ws_acp.py（/ws/acp真实聊天路径）的session生命周期未审计（上上轮遗留#4仍在）：子进程崩溃重启后proxy不解析ACP sessionId（ws_acp.py:376-382诚实注释），由客户端session/load恢复——恢复契约是否被前端消费待审计
+2. POST /sync/agents为诚实not_implemented——agent registry index格式未定义（调研报告未覆盖），实现管线前需先定格式（调研候选：查clawhub/openclaw agent registry真实格式）
+3. builtin skill源（clawhub/hermes-official/openmate-community）在本机网络全部拉取失败（clawhub返回非skill数组index、github raw超时）——registry可达性是用户环境问题非代码问题，但"同步全部"对builtin源的长期失败会持续显示错误条，是否对builtin源降噪（如折叠为统计行）待用户意见
+4. 前端页面视觉渲染仍未人工确认（登录墙，cron无凭证）——错误条样式为代码级实现，实际渲染效果待用户打开marketplace页确认
+5. /acp/send外部消费方（gateway/微信路径）的session_id重绑行为未核查（前端侧已确认无此路径）
+6. 恢复策略收紧（stop_reason=="refusal"才恢复，上轮遗留#5）与acp-proxy镜像侧estimate_tokens公式校准本轮未做
+

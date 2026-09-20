@@ -30,6 +30,7 @@ interface SkillSource {
   auto_sync: boolean;
   sync_interval: number;
   last_sync: string | null;
+  last_sync_error: string | null;
   skill_count: number;
 }
 
@@ -167,7 +168,17 @@ export function MarketplaceClient() {
   const handleSyncSource = async (sourceId: string) => {
     setSyncing((prev) => new Set(prev).add(sourceId));
     try {
-      await syncSkillSource(sourceId);
+      const result = (await syncSkillSource(sourceId)) as {
+        success?: boolean;
+        message?: string;
+        error?: { reason?: string; detail?: string };
+      };
+      // mem0 §1.1失败必须可见：后端sync失败返回HTTP 200+success=false，
+      // 此前前端忽略响应体→用户对失败无感知（只有卡片last_sync_error兜底）
+      if (result && result.success === false) {
+        const detail = result.error?.detail ? `: ${result.error.detail}` : "";
+        setError(`${result.message || (t("marketplace.syncFailed") || "Sync failed")}${detail}`);
+      }
       await loadData();
     } catch (e) {
       setError(e instanceof Error ? e.message : (t("marketplace.syncFailed") || "Sync failed"));
@@ -184,8 +195,17 @@ export function MarketplaceClient() {
     const key = `all-${activeTab}`;
     setSyncing((prev) => new Set(prev).add(key));
     try {
-      if (activeTab === "skills") await syncAllSkills();
-      else await syncAllAgents();
+      const result = ((activeTab === "skills" ? await syncAllSkills() : await syncAllAgents()) || {}) as {
+        success?: boolean;
+        message?: string;
+        results?: Array<{ error?: { detail?: string } }>;
+      };
+      // 聚合同步结果可见：success=false（含agents not_implemented诚实响应）
+      // → 错误条显示聚合消息+第一个失败源的detail
+      if (result.success === false) {
+        const firstErr = (result.results || []).find((r) => r.error)?.error?.detail;
+        setError(`${result.message || (t("marketplace.syncFailed") || "Sync failed")}${firstErr ? `: ${firstErr}` : ""}`);
+      }
       await loadData();
     } catch (e) {
       setError(e instanceof Error ? e.message : (t("marketplace.syncFailed") || "Sync failed"));
@@ -344,6 +364,7 @@ interface SourceItem {
   enabled: boolean;
   builtin: boolean;
   last_sync: string | null;
+  last_sync_error?: string | null;
   skill_count?: number;
   agent_count?: number;
   auto_sync?: boolean;
@@ -404,6 +425,16 @@ function SourceCard({ source, syncing, onSync }: { source: SourceItem; syncing: 
       </div>
 
       <p className="mt-2 flex-1 text-xs text-muted-foreground line-clamp-2">{source.description}</p>
+
+      {/* last_sync_error：同步失败原因直接可见（mem0 §1.1失败必须可见，后端契约已带此字段） */}
+      {source.last_sync_error && (
+        <div className="mt-2 flex items-start gap-1.5 rounded-md border border-destructive/30 bg-destructive/10 px-2 py-1.5 text-[11px] text-destructive">
+          <XCircle className="mt-0.5 h-3 w-3 shrink-0" />
+          <span className="line-clamp-2 break-all" title={source.last_sync_error}>
+            {t("marketplace.lastSyncFailed") || "Last sync failed"}: {source.last_sync_error}
+          </span>
+        </div>
+      )}
 
       <div className="mt-3 flex items-center justify-between text-[11px] text-muted-foreground">
         <div className="flex items-center gap-1">
