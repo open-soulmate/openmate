@@ -1108,3 +1108,34 @@
 4. chat_stream plain路径的last_usage目前无下游消费方做backfill（engine.py路径无归因账本）——能力已就位，engine.py路径接入归因是后续增强项（P2）
 5. 复跑解释器坑持续有效：acp-proxy测试必须用/home/climbing/.hermes/hermes-agent/venv/bin/python；systemic_test结果文件已先备份再复跑
 6. gene skill_learner上报见本轮末尾执行
+
+## [2026-09-21 09:50 CST] P1 .agents/skills五方定案标准层接进真实聊天路径运行时消费 + CJK-aware检索/注入门槛修复
+**目标**：解决SUMMARY.md §二行业信号#3+§六路线图第10项确认的差距在运行时的"写了≠接线了"形态——`.agents/skills/`目录约定五方定案（goose/ChatDev2.0/FastGPT/OpenHands/Warp，"无可争议事实标准"）。opensoul API列表层（src/api/skills.py AGENTS_STANDARD_DIRS）此前已对齐，但真实聊天路径（soulmate_agent.py:2052 `SkillManager.search_skills`→:638 system prompt技能注入）只读acp-proxy/skills/*.json——226个标准/供应链技能"API列表可见、运行时不可见"。附带修复：既有检索/注入gate的len>2/len>4门槛按英文词标定，系统性排除中文2字词（邮件/发票），标准技能对中文查询永远打不中。
+**调研来源**：SUMMARY.md §二#3（五方定案）+§五/§六第10项"OpenSoul skills.py需对齐"；Letta §4.2 READ_ONLY保护区（标准目录由外部管理，agent CRUD绝不写）+deepagents"调用时拒绝"防递归哲学；AIHawk SHOWN/SENT（preview截断必须显式标记）；hermes skill index"索引+按需read_file读全文"注入模式；evolution-engine-patterns.md §1.1 mem0"失败必须可见"（fail-closed校验+日志）。
+**改动文件**：
+- openmate/acp-proxy/skill_manager.py（+增量：标准层扫描/合并去重/只读保护/CJK-aware策略，+355/-14量级）
+- openmate/acp-proxy/agent/soulmate_agent.py（+3/-2：import is_injectable_trigger + :2061-2066注入gate改用共享策略）
+- openmate/acp-proxy/tests/test_skill_standard_layer.py（新建34测试）
+**改动内容**：
+1. skill_manager.py标准层：STANDARD_SKILL_DIRS四层（agents-global ~/.agents/skills + 项目级openmate/opensoul + shared ~/.openmate/shared-skills）；scan_standard_skills()（flat+category嵌套两层扫描、.staging-*/.backup-*跳过、缺name/description fail-closed跳过+日志、无权限目录OSError fail-safe——测试实证pathlib exists()对PermissionError会raise）、60s TTL缓存（聊天路径每条消息search避免反复读盘）；SKILL.md frontmatter宽容解析（block scalar支持，opensoul seed_standard_skills同款）；content=路径header+正文4000字符preview+显式[TRUNCATED]标记（全文可read_file读回，soulmate prompt :597"先读SKILL.md再执行"同款语义）；触发词派生（name分段+category+英文词>=3+中文2/3字滑窗，与注入gate兼容）
+2. list_skills合并：标准层+JSON层+跨label（agents-global vs shared同名）全去重，先出现者胜出（目录顺序agents-global优先）；search_skills自动覆盖标准层（消费方零改动）
+3. std: id只读保护区：get_skill支持std:前缀；update/delete拒绝（返回None/False+warning日志，路径绝不拼接——防穿越测试实证）；record_usage no-op（标准目录不落agent状态文件）——Letta READ_ONLY+deepagents调用时拒绝
+4. CJK-aware检索策略：is_injectable_trigger()（英文len>2原行为不变；中文2字即完整词，_CJK_GENERIC_TRIGGERS停用表防"操作/管理"通用词注入误报）+_cjk_aware_len()（search_skills触发词/描述打分门槛）；soulmate_agent注入gate从`len(t)>2`改用共享策略（策略集中skill_manager一处）
+**接线位置**（grep证据，文件:行号）：
+- skill_manager.py:27 STANDARD_SKILL_DIRS/:52 def is_injectable_trigger/:209 def scan_standard_skills/:274 list_skills内调用/:324 get_skill内调用
+- soulmate_agent.py:43 `from skill_manager import SkillManager, is_injectable_trigger`/:2052 `search_skills`（真实消息路径）/:2065 `is_injectable_trigger(t)`（注入gate运行时调用）
+- routes/skills.py:10/:13 `manager = SkillManager()`/:46 list端点/:88 search端点 → app.py:228 include_router → :8092 /api/skills/*（live HTTP实证非404）
+- 运行时调用实证（非死代码，真实HTTP流量经重启后新代码）：①POST :8092/api/skills/search {"query":"帮我处理邮件"} → `std:agents-global:agently-mail`（CJK 2字触发词命中，content含完整SKILL.md preview+路径）②同端点{"query":"发票报销"} → `std:shared:dhcc-reimbursement`（category嵌套扫描：shared-skills/productivity/dhcc-reimbursement/SKILL.md两层结构命中）③注入gate生产模拟（生产SkillManager默认目录+soulmate同款逻辑）：user_text="帮我搜索收件箱里的邮件并整理"→matched=[agently-mail(std:agents-global), file-organizer(std:shared), gov-procurement-download(std:shared)]——修复前该中文query raw_skills即为[]，matched恒空④live只读保护：DELETE/PUT std:agents-global:agently-mail→404拒绝，~/.agents/skills/agently-mail/SKILL.md原封不动
+**验证结果**：
+- 完整性✅：git show 92f1d11f——3 files +653/-14（skill_manager.py+soulmate_agent.py+新测试），远程gh api直读main=92f1d11f（非ghfast缓存）；push前git grep密钥扫描0命中
+- 集成✅：grep证据如上（每个新符号有定义行+运行时消费行，位于/ws/acp soulmate真实聊天路径与:8092真实HTTP端点，非死代码）；live运行时证据四项如上
+- 测试✅：tests/test_skill_standard_layer.py **34/34 passed**（扫描6：flat/嵌套/缺描述fail-closed/dot目录/不可达目录/TTL缓存、解析触发词5：block scalar/frontmatter triggers/派生CJK/截断标记/短正文、合并3：标准+JSON/重名标准优先/跨label去重+use_count排序、检索4：英文name token/中文2字触发词/中文描述token/通用词不打分但精确匹配+15、只读保护5：get/update/delete/record_usage零落盘/路径穿越拒绝、gate形状2：注入所需name+content形状兼容+record_usage std安全、注入gate策略5：英文/中文/通用词/空值、JSON回归3：CRUD roundtrip/中文触发词同享/坏文件跳过）；组合回归**277 passed**（34新+243既有全量tests/目录，既有测试零修改通过——standard_dirs注入参数默认None=生产行为，JSON层契约不变）；systemic_test.py（改动经skill_manager→soulmate_agent真实消息路径，多模块按铁律执行，结果文件先备份.bak-时间戳）**29/29 (100%)**（S4同session并发3/3+ACP running=True+S5降级5/5+S6负载4/4）；integration_test run_integration_tests(changed_files=[3文件], include_build=False) **SCORE=1.0 passed=True**（health×3+python-imports 3文件+ws-protocol+contract+ws收发全过）
+**服务重启**：systemctl --user restart acp-proxy-a.service acp-proxy-b.service→双实例/health 200（WSChat ok+agent_activity聚合正常）→重启后live HTTP/gate模拟/只读保护实证全过；opensoul与前端本轮零改动，无需重启/build
+**commit**：openmate 92f1d11f（push已确认：gh api直读opensoulmate/openmate main=92f1d11f）
+**遗留问题**：
+1. std层技能的token归因source标注为"skill_manager.search"（soulmate_agent:646既有字段，未区分标准层/JSON层来源）——归因面板如需区分skill来源属P2 UI增强，待用户确认（不擅自加UI）
+2. 全LLM端到端"用户中文提问→标准技能注入→LLM按SKILL.md执行"未在本轮live闭环（provider依赖；已用"生产模块+生产目录+真实HTTP端点+注入gate模拟"四段证据覆盖代码路径，llm_engine轮同口径先例）；provider稳定后可用"帮我搜索收件箱里的邮件"补跑journalctl grep "Matched skills"
+3. shared-skills里category容器目录（如creative/bidding等含DESCRIPTION.md的伞目录）自身的DESCRIPTION.md未作为技能消费——伞目录是opensoul marketplace的组织结构，非标准技能；如需"技能集合"语义待调研
+4. 标准层触发词为确定性派生（中文2/3字滑窗），无LLM抽取——通用词停用表为最小集（28词），真实使用中误注入/漏注入案例出现时再调
+5. /acp/send hermes路径、opensoul attributor ledger_path、agent registry index格式等前几轮遗留仍待用户意见/外部条件（本轮未触碰）
+6. gene skill_learner上报见下方执行
