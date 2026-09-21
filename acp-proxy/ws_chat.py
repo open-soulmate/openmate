@@ -54,13 +54,27 @@ def _create_or_get_agent_session(agent_id: str, session_id: str | None = None) -
 
 
 def _store_agent_message(session_id: str, role: str, content: str):
-    """Store a message in an agent session."""
+    """Store a message in an agent session.
+
+    P0-10消息树parentId（open-webui chat_fork + pi追加树）：parent_message_id=
+    会话内上一条消息id（线性追加=树的主干），前端/接口据此重建消息树与fork分支。
+    缺列时probe+ALTER幂等迁移（attachments列既有模式同款）。
+    """
     db = _get_agent_db()
     try:
         now = time.time()
+        try:
+            db.execute("SELECT parent_message_id FROM agent_messages LIMIT 1")
+        except sqlite3.OperationalError:
+            db.execute("ALTER TABLE agent_messages ADD COLUMN parent_message_id INTEGER")
+        last = db.execute(
+            "SELECT id FROM agent_messages WHERE session_id = ? ORDER BY id DESC LIMIT 1",
+            (session_id,),
+        ).fetchone()
+        parent_id = last["id"] if last else None
         db.execute(
-            "INSERT INTO agent_messages (session_id, role, content, timestamp) VALUES (?, ?, ?, ?)",
-            (session_id, role, content, now),
+            "INSERT INTO agent_messages (session_id, role, content, timestamp, parent_message_id) VALUES (?, ?, ?, ?, ?)",
+            (session_id, role, content, now, parent_id),
         )
         db.execute(
             "UPDATE agent_sessions SET last_activity_at = ?, message_count = message_count + 1 WHERE id = ?",

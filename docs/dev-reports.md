@@ -1204,3 +1204,42 @@
 5. Codex ResponseOutputItem完整provider类型解码未移植（goose复用openai_responses crate解码器）——本轮按payload.type逐一手工映射覆盖message/reasoning/function_call/function_call_output/web_search_call，未知类型skipped_lines显式计数；真实Codex rollout文件若有边缘类型，skipped计数会暴露
 6. 真实用户transcript未验证：本轮用例全部来自goose源码测试fixture（格式契约的权威文档）；~/.claude/projects/、~/.codex/sessions/真实文件若有schema漂移，导入stats的skipped/malformed计数会显式暴露——真实案例出现再调（同款纪律）
 7. gene skill_learner上报见本轮末尾执行（若上报失败记录于此）
+
+## [2026-09-21 12:50 CST] P0-10 消息树parentId升级：open-webui build_fork_history+pi追加树——canonical agent_messages从扁平列表升级为parentId树+fork分支复制（上轮17:40轮遗留#3【留待专门轮次】销账）
+**目标**：上轮会话导入闭环后明确挂账"消息树parentId未做：pi会话=追加树(id/parentId)+切分支自动摘要、open-webui parentId消息树+fork环检测——canonical agent_messages无parent列，schema升级留待专门轮次"。SUMMARY.md P0-10"OpenMate已有trajectory fork/replay，升级方向=消息树parentId+跨agent格式导入"+§六第11项"会话导入（已闭环）+消息树fork升级"（本轮补后半边）。
+**调研来源**：open-webui本地源码~/agent-research-src/open-webui/backend/open_webui/utils/chat_fork.py build_fork_history 41行全文精读（parentId回溯seen set环检测+分支deepcopy复制为新chat+消息不存在/空chat显式raise；16-open-webui-source.md #1标注P0"parentId方案是行业共识，直接抄"+#35"环检测防parentId数据损坏，工程防御到位"）+ pi追加树(id/parentId)（SUMMARY.md P0-10四方定案，与open-webui同构）+ agno idempotency_key（evolution-engine-patterns §5.2"注释即规格"：确定性键去重）+ mem0 §1.1失败可见（环/不存在/空全部显式抛错）。
+**改动文件**：
+- opensoul/src/trajectory/message_tree.py（新建~230行：ensure_parent_column/backfill_linear_parents/build_branch/fork_session+4异常类）
+- opensoul/src/trajectory/import_formats.py（DDL加列+import_to_db顺序插入写parent链+顶部import）
+- opensoul/src/api/sessions_api.py（读路径parent_id字段+迁移触发；新增POST /{session_id}/fork端点+SessionForkRequest）
+- opensoul/tests/test_message_tree.py（新建31测试）
+- openmate/acp-proxy/ws_chat.py（_store_agent_message：probe+ALTER+parent=会话内上一条id）
+- openmate/acp-proxy/agent/soulmate_agent.py（_save_message同款parent链，:2201/:2793两个真实聊天调用点共用）
+- openmate/acp-proxy/agent/schema_doctor.py（v6迁移：ALTER+索引+历史回填UPDATE；migrate()对duplicate column幂等跳过——本轮schema_doctor补丁一度误删v5 tool_error_logs条目，diff审读发现后立即恢复，回归测试锚定v5表仍被创建）
+- openmate/acp-proxy/tests/test_message_tree_wiring.py（新建9测试）
+**改动内容**：
+1. message_tree.py（open-webui语义移植）：build_branch=从source沿parent回溯到根，seen set环检测（CycleError，损坏数据不挂死调用方），只带分支链不带兄弟/后续消息；fork_session=分支复制为新会话——新行id自增+parent在新会话内重新链接（首条NULL），fork产物是独立追加树可再次fork；确定性主键fork:{source}:{message_id}，同分支点重复fork返回status=duplicate零重复写入（agno幂等键）；ensure_parent_column=probe+ALTER幂等迁移（attachments列既有模式同款），缺列时ALTER+backfill历史线性链（pi追加树：旧数据本就顺序写入，主干=历史真实顺序，525/756行回填，每会话首条保持NULL根节点）
+2. 列类型INTEGER亲和性：开发中实测TEXT列把整数id转存为'1'字符串（5个测试assert '1'==1失败）——5处DDL统一改parent_message_id INTEGER（agent_messages.id本就是INTEGER rowid，引用列类型一致）
+3. 三写入路径全覆盖：ws_chat._store_agent_message（/ws/chat agent_proxy持久化）、soulmate_agent._save_message（/ws/acp soulmate真实聊天路径，用户:2201/助手:2793）、import_to_db（外部transcript导入，顺序插入lastrowid链）——全部parent=会话内上一条消息id
+4. sessions_api：GET /{id}/messages agent分支响应新增parent_id字段（str或None，Hermes state.db路径无parentId概念不携带）；POST /{id}/fork异常→HTTP状态码映射（SessionNotFound/MessageNotFound→404、Cycle/EmptyChat→409、缺message_id→400、DB缺失→500）
+**接线位置**（grep证据，文件:行号）：
+- opensoul src/api/sessions_api.py:585/:587 `from src.trajectory.message_tree import ensure_parent_column`→`ensure_parent_column(adb)`（读路径GET /messages运行时迁移触发点）；:590 SELECT携带parent_message_id；:629-630 响应parent_id字段；:649 `@router.post("/{session_id}/fork")`→:684 `fork_session_tree(_OPENSOUL_DB, session_id, body.message_id)`（新端点→核心函数）
+- src/trajectory/import_formats.py:37 顶部import→:718 import_to_db内`ensure_parent_column(conn)`→:743 INSERT携带parent_message_id
+- message_tree.py:52 def ensure_parent_column / :71 def backfill_linear_parents / :88 def build_branch / :127 def fork_session（定义行）；消费方= sessions_api:587/:684 + import_formats:718 + 测试文件
+- main.py挂载链：src/main.py:73 `from src.api.sessions_api import router as sessions_router`+`:583 include_router(sessions_router, prefix="/api/sessions")`（fork端点继承既有挂载，无需改main.py）
+- acp-proxy ws_chat.py:67/:69 probe+ALTER / :72-77 last-id查询+INSERT携带parent_message_id（:626/:635/:651三个_store_agent_message调用点=ws消息持久化真实路径）；soulmate_agent.py:289/:291 probe+ALTER / :292-306 last-id+INSERT（方法被:2201 user/:2793 assistant真实prompt路径调用）；schema_doctor.py:130-138 v6 DDL
+- **运行时证据（live，重启后生产库+生产模块）**：①生产opensoul.db迁移前无parent列（column_before_touch=false）→生产读路径get_session_messages触达后列出现+全库回填（column_after_touch=true，525/756行nonnull，每会话首条NULL）②真实会话om-7b16a11ed180（69条消息）读路径live返回parent_id链：首条null、第二条"348"==期望值348③**live fork**：真实会话fork@msg382→status=forked复制35条，fork会话内parent链NULL→1043→1044→…1077逐行正确；同分支点再fork→status=duplicate（幂等live实证）；验证后fork会话已从生产DB清理（cleanup_remaining=0）④**live写路径**：生产ws_chat模块+生产DB，3条消息parent链null→1078→1079，清理复查0残留⑤路由live注册：POST :8090/api/sessions/x/fork无token→401（真实路由+auth gate执行），对照POST不存在路径→404
+**验证结果**：
+- 完整性✅：opensoul git diff确认sessions_api.py +75/import_formats.py +20修改+message_tree.py+test两新文件真实落盘；openmate diff确认ws_chat.py+soulmate_agent.py+schema_doctor.py修改仅含本轮hunk（soulmate_agent.py的git diff审读确认无并行cron混入）；ast.parse 6文件全OK
+- 集成✅：grep证据如上（每个新符号有定义行+运行时消费行，位于/api/sessions真实HTTP路由+ws/soulmate真实聊天持久化路径，非死代码）；live运行时证据五项如上
+- 测试✅：opensoul tests/test_message_tree.py **31/31 passed**（迁移4：ALTER+回填链/幂等/新schema no-op/多会话独立+非NULL不动；build_branch 8：线性序/分支点排除兄弟/根节点/环/自环/不存在/空/列名别名；fork 9：复制+parent重链接/会话元数据继承/幂等零写入/根节点/未知会话/未知消息/DB内环/缺attachments列自愈/fork产物再fork；导入2：parent链写入/老库自愈；endpoint直调8：ok/duplicate/400/404×2/409/读路径parent_id）；回归：test_session_import_formats.py **54 passed**（既有导入测试零修改通过）、test_sessions_api.py live server重启后 **16 passed**（既有API契约不变）；acp-proxy tests/test_message_tree_wiring.py **9/9 passed**（ws写路径老schema自愈+线性链/会话间链独立/message_count行为回归/probe加列、soulmate _save_message链+attachments共存、schema_doctor v1→v6迁移+v5 tool_error_logs回归保留+索引+运行时probe先行时幂等+二次migrate up_to_date）；acp-proxy全量tests/ **316 passed**（307既有+9新增，既有测试零修改）；systemic_test.py（改动经ws_chat+soulmate_agent真实消息持久化路径，多模块按铁律执行，结果文件先备份.bak-时间戳）**29/29 (100%)**（S4并发3/3+ACP running=True+S5降级5/5+S6负载4/4）
+**服务重启**：systemctl --user restart opensoul+acp-proxy-a+acp-proxy-b→三服务is-active均active→opensoul /api/sessions/health {"status":"ok","component":"SessionsAPI"}→acp-proxy :8092/:8095 /health双实例status ok（agent_activity/tool_output观测键完整）→重启后live E2E+systemic+live测试全过
+**commit**：opensoul `20ed529c`（push已确认：gh api直读repos/opensoulmate/opensoul/commits/main=20ed529c非CDN缓存；push前git diff --cached密钥扫描0命中）；openmate本报告随代码同commit path-scoped提交（同仓库并行cron的gene_loop WIP：app.py/routes/gene_loop/plugins/data等未触碰未提交）
+**遗留问题**：
+1. pi"切分支自动摘要"未做：本轮fork语义=open-webui"分支复制为新会话"；pi的同会话内branch point+切换时自动摘要需要LLM调用+会话内多children支持，schema已就位（parent列+fork API）但摘要管线待专门轮次
+2. OpenMate前端无fork UI入口：POST /api/sessions/{id}/fork API已就绪+读路径已带parent_id，前端消息树渲染/fork按钮属UI改动——按用户规则须先讨论/截图确认，cron不擅自加UI（同上轮导入UI遗留#1口径）
+3. run_integration_tests.py在仓库中已不存在（grep全仓0命中，疑似evo清理时移除）——本轮集成校验以"live路由401/404对照+health×3+全量pytest+systemic 29/29+live E2E五项"覆盖；若该脚本对用户有保留价值需重新落盘
+4. Hermes state.db路径的sessions/messages无parentId概念（hermes为外部binary）——fork端点仅支持agent_sessions路径，Hermes会话fork需hermes侧schema配合，非本仓可闭环
+5. schema_doctor运行时实例化为SchemaDoctor(db_path=':memory:')（soulmate_agent.py:253）——生产迁移实际由三写入路径+读路径的probe+ALTER承担（live实证已生效），doctor v6为一致性补全非生产迁移载体；如需doctor承载生产迁移需改实例化db_path（待用户意见）
+6. 复跑解释器坑持续有效：acp-proxy测试必须用/home/climbing/.hermes/hermes-agent/venv/bin/python；systemic_test结果文件已先备份再复跑
+7. gene skill_learner上报见本轮末尾执行（若上报失败记录于此）

@@ -123,6 +123,21 @@ class SchemaDoctor:
                 "CREATE INDEX IF NOT EXISTS idx_errors_session ON tool_error_logs(session_id)",
             ],
         },
+        {
+            "version": 6,
+            "description": "消息树parentId（open-webui fork + pi追加树，P0-10）",
+            "tables": [
+                "ALTER TABLE agent_messages ADD COLUMN parent_message_id INTEGER",
+                "CREATE INDEX IF NOT EXISTS idx_messages_parent ON agent_messages(parent_message_id)",
+                # 历史行回填：会话内按id序parent=前一条（pi追加树线性主干），幂等
+                """UPDATE agent_messages SET parent_message_id = (
+                       SELECT m2.id FROM agent_messages m2
+                       WHERE m2.session_id = agent_messages.session_id
+                         AND m2.id < agent_messages.id
+                       ORDER BY m2.id DESC LIMIT 1
+                   ) WHERE parent_message_id IS NULL""",
+            ],
+        },
     ]
     
     CURRENT_VERSION = len(SCHEMA_VERSIONS)
@@ -227,7 +242,17 @@ class SchemaDoctor:
                 )
                 
                 for sql in version_info["tables"]:
-                    db.execute(sql)
+                    try:
+                        db.execute(sql)
+                    except sqlite3.OperationalError as sql_exc:
+                        # 幂等迁移：ALTER重复列（运行时probe已迁移过）安全跳过，
+                        # 其他SQL错误照常raise（失败可见，禁止静默吞）
+                        if "duplicate column" in str(sql_exc).lower():
+                            logger.info(
+                                f"[schema-doctor] skip (already applied): {sql[:60]}..."
+                            )
+                            continue
+                        raise
                 
                 self._record_version(
                     db,

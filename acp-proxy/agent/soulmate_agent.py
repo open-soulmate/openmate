@@ -284,9 +284,25 @@ class SoulMateAgent:
                 db.execute("SELECT attachments FROM agent_messages LIMIT 1")
             except sqlite3.OperationalError:
                 db.execute("ALTER TABLE agent_messages ADD COLUMN attachments TEXT")
+            # P0-10消息树parentId（open-webui/pi追加树）：parent=会话内上一条消息id
+            try:
+                db.execute("SELECT parent_message_id FROM agent_messages LIMIT 1")
+            except sqlite3.OperationalError:
+                db.execute("ALTER TABLE agent_messages ADD COLUMN parent_message_id INTEGER")
+            _last_row = db.execute(
+                "SELECT id FROM agent_messages WHERE session_id = ? ORDER BY id DESC LIMIT 1",
+                (session_id,),
+            ).fetchone()
             db.execute(
-                "INSERT INTO agent_messages (session_id, role, content, timestamp, attachments) VALUES (?, ?, ?, ?, ?)",
-                (session_id, role, content, time.time(), attachments),
+                "INSERT INTO agent_messages (session_id, role, content, timestamp, attachments, parent_message_id) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    session_id,
+                    role,
+                    content,
+                    time.time(),
+                    attachments,
+                    _last_row["id"] if _last_row else None,
+                ),
             )
             # 更新会话的 message_count 和 last_activity_at
             db.execute(
