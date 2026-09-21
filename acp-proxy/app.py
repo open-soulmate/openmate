@@ -366,9 +366,10 @@ async def serve_file(path: str):
     from fastapi.responses import FileResponse
     if not path or not os.path.exists(path):
         return {"error": "File not found"}
-    # Security: only allow files under /home/climbing
+    # Security: only allow files under user home（2026-09-21治理：env可覆盖，默认不变）
+    _allowed_root = os.environ.get("USER_HOME", "/home/climbing")
     real_path = os.path.realpath(path)
-    if not real_path.startswith("/home/climbing"):
+    if not real_path.startswith(_allowed_root):
         return {"error": "Access denied"}
     mime_type = mimetypes.guess_type(real_path)[0] or "application/octet-stream"
     return FileResponse(real_path, media_type=mime_type, filename=os.path.basename(real_path))

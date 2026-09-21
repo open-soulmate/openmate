@@ -22,9 +22,14 @@ from starlette.websockets import WebSocket, WebSocketDisconnect
 
 logger = logging.getLogger("acp-proxy.ws_acp")
 
+# 路径根（2026-09-21硬编码治理：env可覆盖，默认值=原路径，行为不变）
+_OPENSOUL_ROOT = os.environ.get("OPENSOUL_ROOT", "/home/climbing/opensoul")
+_ACPPROXY_DIR = os.path.dirname(os.path.abspath(__file__))
+_USER_HOME = os.environ.get("USER_HOME", "/home/climbing")
+
 # JWT配置
 _OPSOUL_ENV = {}
-_env_path = "/home/climbing/opensoul/.env"
+_env_path = f"{_OPENSOUL_ROOT}/.env"
 try:
     with open(_env_path) as f:
         for line in f:
@@ -42,15 +47,15 @@ JWT_ALGORITHM = "HS256"
 # soulmate/default用sys.executable（proxy自身解释器=依赖齐全的venv python）：
 # 裸"python"在systemd环境下解析到系统python3.14（无aiohttp等依赖）→ agent子进程import即死
 AGENT_ROUTES = {
-    "soulmate": {"cmd": [sys.executable, "-m", "agent.start", "--stdio"], "cwd": "/home/climbing/openmate/acp-proxy"},
-    "hermes": {"cmd": ["hermes", "acp"], "cwd": "/home/climbing"},
-    "openclaw": {"cmd": ["openclaw", "acp"], "cwd": "/home/climbing"},
-    "opencode": {"cmd": ["opencode", "acp"], "cwd": "/home/climbing"},
-    "mimo": {"cmd": ["mimo", "acp"], "cwd": "/home/climbing"},
+    "soulmate": {"cmd": [sys.executable, "-m", "agent.start", "--stdio"], "cwd": _ACPPROXY_DIR},
+    "hermes": {"cmd": ["hermes", "acp"], "cwd": _USER_HOME},
+    "openclaw": {"cmd": ["openclaw", "acp"], "cwd": _USER_HOME},
+    "opencode": {"cmd": ["opencode", "acp"], "cwd": _USER_HOME},
+    "mimo": {"cmd": ["mimo", "acp"], "cwd": _USER_HOME},
 }
 
 # 默认路由
-DEFAULT_ROUTE = {"cmd": [sys.executable, "-m", "agent.start", "--stdio"], "cwd": "/home/climbing/openmate/acp-proxy"}
+DEFAULT_ROUTE = {"cmd": [sys.executable, "-m", "agent.start", "--stdio"], "cwd": _ACPPROXY_DIR}
 
 
 def decode_token(token: str) -> str | None:
@@ -169,7 +174,7 @@ async def ws_acp_endpoint(client_ws: WebSocket):
         # 未知agent自动尝试 {agent_id} acp，fallback到soulmate
         import shutil
         if shutil.which(agent_id):
-            route = {"cmd": [agent_id, "acp"], "cwd": "/home/climbing"}
+            route = {"cmd": [agent_id, "acp"], "cwd": _USER_HOME}
             logger.info(f"Dynamic route for '{agent_id}': {route['cmd']}")
         else:
             route = DEFAULT_ROUTE
@@ -235,7 +240,7 @@ async def ws_acp_endpoint(client_ws: WebSocket):
                 # 注入子进程需要的必填字段（cwd, mcpServers）
                 p = msg["params"]
                 if "cwd" not in p:
-                    p["cwd"] = route.get("cwd", "/home/climbing")
+                    p["cwd"] = route.get("cwd", _USER_HOME)
                 if "mcpServers" not in p:
                     p["mcpServers"] = []
             _msg = json.dumps(msg, ensure_ascii=False)
@@ -430,7 +435,7 @@ async def ws_acp_endpoint(client_ws: WebSocket):
                         {"jsonrpc": "2.0", "id": f"proxy-reload-{restart_count}",
                          "method": "session/load",
                          "params": {"sessionId": sid_for_restart,
-                                    "cwd": route.get("cwd", "/home/climbing"),
+                                    "cwd": route.get("cwd", _USER_HOME),
                                     "mcpServers": []}},
                     ]
                     for _m in replay:

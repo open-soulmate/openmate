@@ -9,6 +9,7 @@
 核心改变：evo的验证从"语法检查+import"升级为"真实功能测试"
 """
 import asyncio
+import os
 import json
 import logging
 import time
@@ -107,7 +108,8 @@ async def _test_ws_send_receive(session_id: str = None) -> dict:
 
     # 生成测试token
     from pathlib import Path as P
-    env_file = P("/home/climbing/opensoul/.env")
+    import os
+    env_file = P(os.path.join(os.environ.get("OPENSOUL_ROOT", "/home/climbing/opensoul"), ".env"))
     jwt_secret = "change-me-in-production"
     if env_file.exists():
         for line in env_file.read_text().splitlines():

@@ -14,6 +14,7 @@
 """
 
 import logging
+import os
 from dataclasses import dataclass, field
 from enum import Enum
 from typing import Any
@@ -123,9 +124,10 @@ class PermissionManager:
             )
         
         # 设置路径限制
+        _user_home = os.environ.get("USER_HOME", "/home/climbing")
         self._tool_policies["delete_file"].denied_paths = [
             "/etc", "/usr", "/bin", "/sbin", "/boot",
-            "/home/climbing/.ssh", "/home/climbing/.gnupg",
+            f"{_user_home}/.ssh", f"{_user_home}/.gnupg",
         ]
         self._tool_policies["write_file"].denied_paths = [
             "/etc", "/usr", "/bin", "/sbin", "/boot",

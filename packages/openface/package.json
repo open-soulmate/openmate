@@ -42,7 +42,8 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/open-soulmate/openface.git"
+    "url": "https://github.com/opensoulmate/openmate.git",
+    "directory": "packages/openface"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com"

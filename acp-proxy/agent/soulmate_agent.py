@@ -141,7 +141,8 @@ class SoulMateAgent:
         self._client = None  # AgentSideConnection，由 on_connect 设置
         # 自动检测项目根目录：agent/ 在 acp-proxy/ 下，acp-proxy/ 在项目根目录下
         self._project_root = str(Path(__file__).resolve().parent.parent.parent)
-        self._db_path = Path("/home/climbing/opensoul/data/opensoul.db")
+        self._opensoul_root = Path(os.environ.get("OPENSOUL_ROOT", "/home/climbing/opensoul"))
+        self._db_path = self._opensoul_root / "data" / "opensoul.db"
         # 技能系统
         self._skill_manager = SkillManager()
         # 进化引擎（延迟初始化，由 app.py 注入）
@@ -2205,7 +2206,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
         attachments_meta = []
         if file_parts:
             import base64 as b64mod
-            persist_dir = f"/home/climbing/opensoul/data/attachments/{session_id}"
+            persist_dir = str(self._opensoul_root / "data" / "attachments" / session_id)
             os.makedirs(persist_dir, exist_ok=True)
             for f in file_parts:
                 try:
@@ -2812,7 +2813,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
         # ── 网关后处理：提取MEDIA标签、校验路径、下发文件 ──────
         media_paths = re.findall(r"MEDIA:([\w\-\/\.]+)", full_response)
         if media_paths:
-            _ALLOWED_ROOT = "/home/climbing"
+            _ALLOWED_ROOT = os.environ.get("USER_HOME", os.path.expanduser("~"))
             validated = []
             for mp in media_paths:
                 # 路径穿越防护

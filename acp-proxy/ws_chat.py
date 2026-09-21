@@ -23,7 +23,8 @@ from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 
 from proxy import get_acp_process
 
-_OPENSOUL_DB = "/home/climbing/opensoul/data/opensoul.db"
+_OPENSOUL_ROOT = os.environ.get("OPENSOUL_ROOT", "/home/climbing/opensoul")
+_OPENSOUL_DB = f"{_OPENSOUL_ROOT}/data/opensoul.db"
 
 
 def _get_agent_db():
@@ -89,7 +90,7 @@ router = APIRouter()
 
 # Read JWT config from OpenSoul's .env (shared secret)
 _OPSOUL_ENV = {}
-_env_path = "/home/climbing/opensoul/.env"
+_env_path = f"{_OPENSOUL_ROOT}/.env"
 try:
     with open(_env_path) as f:
         for line in f:
@@ -278,7 +279,7 @@ async def forward_to_agent_engine(
 
             # Step 2: session.create
             result = await rpc(engine_ws, "session.create", {
-                "cwd": "/home/climbing",
+                "cwd": os.environ.get("USER_HOME", "/home/climbing"),
             })
             engine_session_id = result.get("session_id") or result.get("sessionId", "")
             if not engine_session_id:

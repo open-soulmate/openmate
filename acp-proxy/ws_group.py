@@ -20,6 +20,7 @@ WebSocket 路由: /ws/group/{group_id}?token=xxx
 import asyncio
 import json
 import logging
+import os
 import sqlite3
 import time
 from datetime import datetime, timezone
@@ -44,7 +45,8 @@ _discussion_orchestrator = DiscussionOrchestrator()
 # ============================================================
 # 数据库配置 — 群组数据在 OpenSoul 的 ai_groups.db
 # ============================================================
-_OPENSOUL_DB = "/home/climbing/opensoul/data/ai_groups.db"
+_OPENSOUL_ROOT = os.environ.get("OPENSOUL_ROOT", "/home/climbing/opensoul")
+_OPENSOUL_DB = f"{_OPENSOUL_ROOT}/data/ai_groups.db"
 
 
 def _get_db():
@@ -58,7 +60,7 @@ def _get_db():
 # JWT 认证 — 与 ws_chat.py 共享同一套密钥
 # ============================================================
 _OPSOUL_ENV: dict[str, str] = {}
-_env_path = "/home/climbing/opensoul/.env"
+_env_path = f"{_OPENSOUL_ROOT}/.env"
 try:
     with open(_env_path) as f:
         for line in f:

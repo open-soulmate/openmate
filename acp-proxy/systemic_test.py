@@ -15,6 +15,7 @@
   S6: 多服务协同（opensoul + acp-proxy + immune + will同时负载）
 """
 import asyncio
+import os
 import json
 import time
 import sys
@@ -554,7 +555,7 @@ async def run_system_tests():
     print(f"\n  总计: {passed}/{total} ({passed/total*100:.0f}%)")
     
     # Save results
-    output_path = "/home/climbing/openmate/acp-proxy/systemic_test_results.json"
+    output_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "systemic_test_results.json")
     with open(output_path, "w") as f:
         json.dump({"summary": {"total": total, "passed": passed, "failed": failed},
                    "results": results}, f, ensure_ascii=False, indent=2)

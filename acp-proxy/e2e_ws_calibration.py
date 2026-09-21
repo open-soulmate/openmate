@@ -7,6 +7,7 @@ HTTP /acp/send走的是proxy.py硬编码的hermes acp路由（不写soulmate账�
 前端聊天路径=本/ws/acp soulmate路由，故E2E必须走WS。
 """
 import asyncio
+import os
 import json
 import sys
 import time
@@ -19,7 +20,8 @@ LEDGER = Path.home() / ".hermes" / "soulmate" / "token_attribution" / "attributi
 
 
 def _load_jwt_secret() -> str:
-    for line in open("/home/climbing/opensoul/.env"):
+    _env = os.path.join(os.environ.get("OPENSOUL_ROOT", "/home/climbing/opensoul"), ".env")
+    for line in open(_env):
         line = line.strip()
         if line.startswith("JWT_SECRET="):
             return line.split("=", 1)[1].strip().strip('"').strip("'")
@@ -59,7 +61,7 @@ async def main():
         }))
         await ws.send(json.dumps({
             "jsonrpc": "2.0", "id": 2, "method": "session/new",
-            "params": {"cwd": "/home/climbing", "mcpServers": [],
+            "params": {"cwd": os.environ.get("USER_HOME", "/home/climbing"), "mcpServers": [],
                        "agent_id": "soulmate"},
         }))
         deadline = time.time() + 60

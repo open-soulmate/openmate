@@ -12,6 +12,7 @@ PRD P0-1: 分层任务规划、自省校验、断点续跑
 
 import json
 import sqlite3
+import os
 import time
 import uuid
 import logging
@@ -77,8 +78,8 @@ class TaskPlan:
 class TaskStore:
     """任务状态持久化到 SQLite"""
 
-    def __init__(self, db_path: str = "/home/climbing/opensoul/data/opensoul.db"):
-        self.db_path = db_path
+    def __init__(self, db_path: str | None = None):
+        self.db_path = db_path or os.environ.get("OPENSOUL_DB", "/home/climbing/opensoul/data/opensoul.db")
         self._init_tables()
 
     def _init_tables(self):

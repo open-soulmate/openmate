@@ -17,6 +17,7 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import json
 import logging
 import uuid
@@ -207,7 +208,7 @@ class AgentEngineBridge:
             新创建的session_id
         """
         result = await self._rpc(ws, "session.create", {
-            "cwd": "/home/climbing",
+            "cwd": os.environ.get("USER_HOME", "/home/climbing"),
         })
         session_id = result.get("session_id") or result.get("sessionId", "")
         if not session_id:
