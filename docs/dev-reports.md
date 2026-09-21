@@ -1171,3 +1171,36 @@
 5. 前轮遗留顺延：opensoul attributor ledger_path配置、/acp/send hermes路径归因、std技能token归因source细分、evo工作区残留untracked文件——均待用户意见/外部条件，本轮未触碰
 6. 复跑解释器坑持续有效：acp-proxy测试必须用/home/climbing/.hermes/hermes-agent/venv/bin/python；systemic_test结果文件已先备份再复跑；run_in_executor挂死线程坑（本轮实测）记入code_mode.py注释
 7. gene skill_learner上报见本轮末尾执行
+
+## [2026-09-21 17:40 CST] P0-10 跨agent会话导入：goose import_formats移植——Claude Code/Codex/Pi .jsonl嗅探+转换+canonical落库
+**目标**：解决SUMMARY.md §三 P0-10会话资产化的升级方向"跨agent格式导入"——"用了Claude Code/Codex的用户迁移进来"=行业获客功能，goose研究（63-goose-source-supplement2.md #1）标注**P0**且grep确认OpenSoul完全没有（src下唯一沾边的hippo/session_importer.py是"内部会话→记忆"，与"外部agent transcript→会话"是两回事）。三方定案：goose session/import_formats 1463行（嗅探+三转换器）+ kilocode session-import双向 + pi追加树——"照此实现不自创"。
+**调研来源**：~/agent-research-src/goose本地源码逐文件精读（mod.rs 223行detect_format嗅探分层全文、claude_code.rs 410行、codex.rs 382行、pi.rs 448行、utils.rs sanitize_unicode_tags）+ 63-goose-source-supplement2.md #1 + supplement3.md #9嗅探细节 + supplement2源码亮点"Unicode tag清洗：导入路径也是攻击面"。
+**改动文件**：
+- opensoul/src/trajectory/import_formats.py（新建~590行：detect_format+三转换器+import_to_db+sanitize）
+- opensoul/src/api/sessions_api.py（+55行增量：SessionImportRequest + POST /api/sessions/import，插入search_sessions之后、GET /{session_id}之前）
+- opensoul/tests/test_session_import_formats.py（新建54测试）
+**改动内容**：
+1. detect_format（mod.rs分层同款）：首行JSON探测——session_meta→codex / type:session+version(or cwd+id)→pi / sessionId+(type|uuid)→claude_code；fallback扫前5行任一JSON行含sessionId→claude_code；其余→unknown→ImportFormatError显式报错
+2. 三转换器→canonical消息（agent_sessions/agent_messages生产schema，acp-proxy ws_chat同库同表）：tool_use/tool_result/thinking/image全映射；工具请求随assistant消息、工具响应随user消息（goose同款语义），文本标记序列化（[tool_call {name} id={id}]/[tool_result id=.. error=1]/[thinking]..[/thinking]）；cache token归并（claude: input+=cache_read+cache_write=测试6007✓；codex: input已含cache只记cache_read；pi: input+=cacheRead+cacheWrite+cost.total记账）；codex developer/system跳过+is_context_blob启发式（环境上下文blob保留进transcript但不配当会话名）+reasoning/web_search_call/function_call(_output)映射+event_msg收割usage；pi bashExecution合成bash工具往返+exit非0前缀+compactionSummary等保留为assistant注记；标题=ai-title(claude)或首行用户文本80字符CJK安全截断；sanitize_unicode_tags=NFC+剥除Unicode Tags Block（U+E0000-E007F，goose测试语义：导入路径防不可见字符注入）
+3. import_to_db：确定性主键`import:{format}:{source_id}`天然去重（同transcript重复导入status=duplicate零写入）；空会话status=empty不建表不写库但显式报告；畸形行/跳过行/图片占位全部计数随stats返回（mem0 §1.1失败必须可见）
+4. API：POST /api/sessions/import（body: file_path/content/agent_id三字段，与create_session同款Depends(get_current_user)）；缺失参数400/文件不存在404/超100MB 413/未知格式400显式detail；挂在既有sessions_router（main.py:583 prefix=/api/sessions）——导入结果经前端现有GET /api/sessions读路径零改动直接可见
+**接线位置**（grep证据，文件:行号）：
+- src/api/sessions_api.py:339 `class SessionImportRequest` / :345 `@router.post("/import")` / :346 `async def import_external_session` / :356 `from src.trajectory.import_formats import (MAX_IMPORT_BYTES, ImportFormatError, convert, import_to_db)`（运行时消费点）
+- src/main.py:73 `from src.api.sessions_api import router as sessions_router` + :583 `app.include_router(sessions_router, prefix="/api/sessions")`（路由挂载，新端点继承挂载无需改main.py）
+- tests/test_session_import_formats.py:17（消费方import）:508-511（endpoint离线直调）
+- 运行时调用链：POST /api/sessions/import → import_external_session → convert（嗅探+转换）→ import_to_db（写agent_sessions/agent_messages）→ 前端GET /api/sessions列表读取（_get_agent_sessions :95现成读路径）
+- 运行时实证（live）：①服务重启后POST /import无token→**401**（路由匹配+auth依赖执行；对照伪路由POST /nonexistent→405——证明/import是真实注册的POST路由非死代码）②生产模块live直连：fixture jsonl（含ai-title/thinking/tool往返/cache usage）→嗅探claude_code→4消息转换→写入真实opensoul.db→stats imported/4条/input_tokens=1300(300+100+900归并✓)③**HTTP读路径闭环**：curl GET :8090/api/sessions?limit=500返回含`{"id":"import:claude_code:e2e-import-proof","title":"E2E导入验证fixture","source":"claude-code-import","message_count":4}`——导入会话经live服务现有列表端点可见（接线非死代码）④DB行级验证：4条消息role=user/assistant/user/assistant，content含[thinking]/[tool_call Bash id=toolu_9]/[tool_result id=toolu_9]序列化文本⑤重复导入status=duplicate messages_written=0⑥验证后fixture已从生产DB清理（COUNT=0+live列表复查import:%为空）——用户会话列表无测试污染
+**验证结果**：
+- 完整性✅：git diff确认sessions_api.py +55/-0纯增量；import_formats.py+test两个新文件真实落盘（git status ??+commit 3 files changed 1399 insertions）；ast.parse三文件OK；ruff check三文件All checks passed
+- 集成✅：grep证据如上每个新符号有定义行+运行时消费行+路由挂载行；live实证六项如上（401/405路由对照、live import stats、HTTP读路径命中、DB行级、dedupe、清理复查）
+- 测试✅：tests/test_session_import_formats.py **54/54 passed**（sanitize 3：Tags Block剥除/合法Unicode保留/纯恶意清空；summarize 3：短行/CJK字符级截断80/跳过空行；detect 8：codex/pi/legacy pi/claude首行/fallback扫5行/unknown/convert unknown显式抛/首行空行；claude转换12：goose用例tool_roundtrip/unicode净化/error标记/cache归并6007/噪声行计数/畸形行计数/ai-title优先/首行标题/thinking序列化/image占位+计数/空文件显式抛/timestamps；codex 8：function_call往返含JSON字符串args解析/developer+system跳过+标题/上下文blob不当标题/event_msg usage收割/web_search成对/unicode净化/reasoning保留/空文件抛；pi 8：往返/usage含cache+cost/bash往返合成/非0exit前缀/toolResult error标记/缺header显式抛/空文件抛/summary角色保留；import_to_db 5：canonical行写入+role序列+timestamp float类型/确定性id+dedupe零写入/空会话零写入连schema都不建/三格式role全收敛到user+assistant/三格式各自导入；endpoint离线直调7：content/file_path双入口/dedupe/400缺参/404缺文件/400未知格式/pi错误转400）；组合回归：tests/test_sessions_api.py（live server 8090）+新测试 **70/70 passed**（既有sessions API测试零修改通过=无回归）；systemic_test.py本轮不适用（opensoul单模块+API层改动，不经acp-proxy消息路径）
+**服务重启**：systemctl --user restart opensoul.service→is-active=active→GET /api/sessions/health `{"status":"ok","component":"SessionsAPI"}`→重启后live E2E全部通过
+**commit**：opensoul 8c3b41e4（已push GitHub，gh api直读repos/opensoulmate/opensoul/commits/main确认远程HEAD=8c3b41e4非CDN缓存；push前密钥扫描clean）；openmate仓库本报告随docs/dev-reports.md单独path-scoped commit（同仓库另一cron的gene_loop WIP未触碰）
+**遗留问题**：
+1. OpenMate前端未提供导入UI入口（上传jsonl/粘贴内容的表单卡）——API已就绪，前端加表单调POST /api/sessions/import即可；属下轮P2候选（UI改动须按用户规则先讨论/截图确认，cron不擅自加UI）
+2. attachments列未利用：image block目前以[image: mime]占位文本进content，图片二进制未落盘未写attachments JSON——需与现有附件路径约定（att.path文件+attachments JSON）对齐后再补，避免破坏get_session_messages的base64读取契约
+3. 消息树parentId未做：goose/pi研究明确"pi会话=追加树(id/parentId)+切分支自动摘要"、open-webui parentId消息树+fork环检测——canonical agent_messages无parent列，schema升级（ALTER TABLE加parent_message_id+branch点）留待专门轮次
+4. goose原生Session JSON格式未支持（detect到working_dir+conversation的自家导出格式）——当前unknown显式报错；若OpenSoul未来有会话导出功能需成对实现
+5. Codex ResponseOutputItem完整provider类型解码未移植（goose复用openai_responses crate解码器）——本轮按payload.type逐一手工映射覆盖message/reasoning/function_call/function_call_output/web_search_call，未知类型skipped_lines显式计数；真实Codex rollout文件若有边缘类型，skipped计数会暴露
+6. 真实用户transcript未验证：本轮用例全部来自goose源码测试fixture（格式契约的权威文档）；~/.claude/projects/、~/.codex/sessions/真实文件若有schema漂移，导入stats的skipped/malformed计数会显式暴露——真实案例出现再调（同款纪律）
+7. gene skill_learner上报见本轮末尾执行（若上报失败记录于此）
