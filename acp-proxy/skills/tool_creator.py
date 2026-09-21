@@ -19,7 +19,7 @@ class ToolCreator:
         self.temp_dir = tempfile.mkdtemp(prefix="tool_creator_")
         self.llm_client = self._init_llm_client()
         self.project_root = Path(__file__).parent.parent
-        self.plugins_dir = self.project_root / "plugins"
+        self.plugins_dir = self.project_root / "agent" / "experiments"  # 2026-09-21目录统一：evo产出实验区
         self.examples_dir = self.plugins_dir / "examples"
         
     def _init_llm_client(self):

@@ -181,7 +181,7 @@ class DNAStrand:
 
     EVOLVABLE_DIRS = [
         "acp-proxy/skills/",
-        "acp-proxy/plugins/",
+        "acp-proxy/agent/experiments/",  # evo实验区（2026-09-21目录统一：正式插件在<root>/plugins/，evo产出落此目录待gene-loop审核转正）
         "acp-proxy/routes/",
     ]
 
@@ -796,7 +796,7 @@ class DNAStrand:
                 )
 
         prompt = f"""基于反思生成改进方案（最多{self.max_improvements}个）。
-只改：acp-proxy/skills/, acp-proxy/plugins/
+只改：acp-proxy/skills/, acp-proxy/agent/experiments/
 
 重要：你的方案将由另一个AI来执行代码编写，所以要写得足够详细。
 {goals_context}

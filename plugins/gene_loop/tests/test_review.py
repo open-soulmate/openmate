@@ -1,6 +1,6 @@
 """S4测试 — Review通道：自动放行/ASK升级/用户拍板/故障降级
 
-运行: /home/climbing/opensoul/.venv/bin/pytest acp-proxy/plugins/gene_loop/tests/ -v
+运行: cd ~/openmate && /home/climbing/opensoul/.venv/bin/pytest plugins/gene_loop/tests/ -v
 """
 import json
 import sys

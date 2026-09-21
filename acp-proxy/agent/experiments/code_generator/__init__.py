@@ -100,7 +100,7 @@ export class {name} extends BaseSkill {{
         def plugin_template_ts(params: Dict[str, Any]) -> str:
             name = params.get('name', 'MyPlugin')
             description = params.get('description', 'A plugin implementation')
-            return f'''import {{ BasePlugin }} from 'acp-proxy/plugins/base';
+            return f'''import {{ BasePlugin }} from 'acp-proxy/agent/experiments/base';
 
 /**
  * {description}

@@ -10,6 +10,11 @@ import logging
 import os
 import sys
 import uvicorn
+from pathlib import Path
+
+# plugins/包解析：项目根（openmate/）入sys.path——正式插件统一存放于<root>/plugins/
+# （2026-09-21目录统一：acp-proxy/plugins/已迁入<root>/plugins/，evo实验品在acp-proxy/agent/experiments/）
+sys.path.append(str(Path(__file__).resolve().parent.parent))
 
 # Configure root logging
 instance_id = os.environ.get("INSTANCE_ID", "")

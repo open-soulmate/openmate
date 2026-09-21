@@ -30,7 +30,7 @@ try:
 except ImportError:
     import review_queue  # noqa: E402
 
-ACPPROXY_ROOT = Path(__file__).resolve().parents[3]  # tools/深一层：parents[3]=acp-proxy/（2026-09-21修正）
+ACPPROXY_ROOT = Path(__file__).resolve().parents[3] / "acp-proxy"  # parents[3]=项目根openmate/，数据在acp-proxy/data（2026-09-21目录统一）
 DATA_DIR = ACPPROXY_ROOT / "data"
 FEEDBACK_PATH = Path(os.environ.get("GENE_LOOP_FEEDBACK") or DATA_DIR / "evo_feedback.json")
 AUDIT_PATH = Path(os.environ.get("GENE_LOOP_AUDIT") or DATA_DIR / "audit_log.jsonl")

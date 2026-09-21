@@ -27,7 +27,7 @@ try:
 except ImportError:
     import review_queue  # noqa: E402
 
-DATA_DIR = Path(__file__).resolve().parents[3] / "data"  # parents[3]=acp-proxy/（2026-09-21修正）
+DATA_DIR = Path(__file__).resolve().parents[3] / "acp-proxy" / "data"  # parents[3]=项目根openmate/（2026-09-21目录统一）
 FEEDBACK_PATH = Path(os.environ.get("GENE_LOOP_FEEDBACK") or DATA_DIR / "evo_feedback.json")
 GENE_BASE = os.environ.get("GENE_API_BASE", "http://127.0.0.1:8090")
 

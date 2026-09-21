@@ -7,7 +7,7 @@ const nextConfig: NextConfig = {
   devIndicators: false,
   allowedDevOrigins: ["192.168.31.82", "100.76.2.155", "172.17.0.1", "172.18.0.1"],
   turbopack: {
-    root: '/home/climbing/openmate',
+    root: '.', // 相对项目根（2026-09-21：去除硬编码绝对路径）
   },
   async rewrites() {
     return [

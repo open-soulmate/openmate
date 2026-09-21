@@ -45,13 +45,16 @@
 
 ## 五、plugins目录统一方案（待用户拍板）
 
-现状三处：`openmate/plugins/`（13规范指定的registry：plugin.json+前端包）、`acp-proxy/plugins/`（31-Evolution规范evo白名单：Python后端+实验品）、`openmate/src/plugins/`（Next.js @/别名编译区）。
+现状（2026-09-21核实）：**实质分裂只剩一处**。
+- `openmate/plugins/` = 唯一实体目录（plugin.json+前端组件全在此，git真实跟踪）
+- `openmate/src/plugins` = **symlink**（mode 120000，commit 33af77f4招标插件重构时引入，指向/home/climbing/openmate/plugins）——同一份文件的第二路径，非独立代码
+- `acp-proxy/plugins/` = 31-Evolution规范白名单（evo实验区+gene-loop后端，**唯一真正的分裂点**）
 
 建议目标：**`openmate/plugins/{id}/`唯一**（13规范L47原旨），子结构：`plugin.json + backend/ + frontend/page.tsx`。
-- tsconfig加`"@/plugins/*": ["./plugins/*"]`，src/plugins/并入后删除
-- acp-proxy侧loader/routes导入路径改指openmate/plugins（sys.path或包路径）
+- **删除src/plugins symlink**，tsconfig改路径别名`"@/plugins/*": ["../plugins/*"]`直接指向根目录（Next.js/Turbopack支持别名指向src外；配置解决，不要文件系统魔术；绝对路径symlink换环境即死链+git pathspec不跟随，均属坏味道）
+- acp-proxy侧loader/routes导入路径改指openmate/plugins（gene-loop后端随之迁入plugins/gene_loop/backend/）
 - **31-Evolution规范L292白名单需修订**（acp-proxy/plugins→openmate/plugins）——规范变更，须用户确认后先改规范再迁代码
-- bidding/gene-loop/loader/前端映射一次迁到位，迁移后全量测试+build回归
+- bidding/gene-loop/前端映射一次迁到位，迁移后27/27测试+Next build全量回归
 
 回复"改吧"即执行（先改31规范再迁移），或"先不动"保持现状完Phase A验收。
 

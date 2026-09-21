@@ -1,6 +1,6 @@
 """S2测试 — Propose工具：feedback/audit→提案，去重，分类，INV1独立防线
 
-运行: /home/climbing/opensoul/.venv/bin/pytest acp-proxy/plugins/gene_loop/tests/ -v
+运行: cd ~/openmate && /home/climbing/opensoul/.venv/bin/pytest plugins/gene_loop/tests/ -v
 """
 import json
 import sqlite3

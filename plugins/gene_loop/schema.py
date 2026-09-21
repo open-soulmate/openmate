@@ -10,8 +10,8 @@ import sqlite3
 from pathlib import Path
 
 MIGRATIONS_DIR = Path(__file__).resolve().parent / "migrations"
-# acp-proxy/plugins/gene_loop/schema.py → parents[2] = acp-proxy
-DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "gene_loop.db"
+# plugins/gene_loop/schema.py → parents[2] = 项目根openmate/，DB在acp-proxy/data/（2026-09-21目录统一）
+DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "acp-proxy" / "data" / "gene_loop.db"
 
 
 def get_db_path() -> Path:

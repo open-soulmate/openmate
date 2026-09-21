@@ -34,7 +34,7 @@ class MCPToolCreatorPlugin(BasePlugin):
         
         # 工具生成目录
         self._generated_tools_dir = Path(
-            config.get("generated_tools_dir", "acp-proxy/plugins/mcp_tool_creator/generated_tools")
+            config.get("generated_tools_dir", "acp-proxy/agent/experiments/mcp_tool_creator/generated_tools")
         )
         self._generated_tools_dir.mkdir(parents=True, exist_ok=True)
         

@@ -1,0 +1,212 @@
+{
+  "summary": {
+    "total": 29,
+    "passed": 29,
+    "failed": 0
+  },
+  "results": [
+    {
+      "suite": "S1",
+      "name": "chat非流式全链路",
+      "passed": true,
+      "detail": "status=200, has_answer=True, has_sources=True",
+      "latency_s": 8.04
+    },
+    {
+      "suite": "S1",
+      "name": "chat流式SSE",
+      "passed": true,
+      "detail": "chunks=19",
+      "latency_s": 10.81
+    },
+    {
+      "suite": "S1",
+      "name": "hippo记忆系统",
+      "passed": true,
+      "detail": "ltm=489 memories, avg_importance=0.352",
+      "latency_s": 0.01
+    },
+    {
+      "suite": "S1",
+      "name": "trajectory可观测性",
+      "passed": true,
+      "detail": "status=200",
+      "latency_s": 0.0
+    },
+    {
+      "suite": "S2",
+      "name": "权限检查: read_file",
+      "passed": true,
+      "detail": "behavior=allow, reason=Read-only tools are auto-allowed in all modes",
+      "latency_s": 0.04
+    },
+    {
+      "suite": "S2",
+      "name": "权限检查: write_file",
+      "passed": true,
+      "detail": "behavior=allow, reason=Bypass mode allows all operations not covered by deny/hard r",
+      "latency_s": 0.04
+    },
+    {
+      "suite": "S2",
+      "name": "权限检查: execute_code",
+      "passed": true,
+      "detail": "behavior=allow, reason=Rule[user]: (tool-level)",
+      "latency_s": 0.03
+    },
+    {
+      "suite": "S2",
+      "name": "权限检查: browser_navigate",
+      "passed": true,
+      "detail": "behavior=allow, reason=Bypass mode allows all operations not covered by deny/hard r",
+      "latency_s": 0.03
+    },
+    {
+      "suite": "S2",
+      "name": "权限检查: unknown_tool_xyz",
+      "passed": true,
+      "detail": "behavior=allow, reason=Bypass mode allows all operations not covered by deny/hard r",
+      "latency_s": 0.03
+    },
+    {
+      "suite": "S2",
+      "name": "ACP工具执行链路",
+      "passed": true,
+      "detail": "content_len=837, source=acp",
+      "latency_s": 36.05
+    },
+    {
+      "suite": "S2",
+      "name": "权限规则CRUD→引擎生效",
+      "passed": true,
+      "detail": "rule_added=True, behavior_after_add=deny",
+      "latency_s": 0.08
+    },
+    {
+      "suite": "S3",
+      "name": "并发提交10个作业",
+      "passed": true,
+      "detail": "submitted=10/10",
+      "latency_s": 0.54
+    },
+    {
+      "suite": "S3",
+      "name": "不存在的job→404",
+      "passed": true,
+      "detail": "status=404",
+      "latency_s": 0.13
+    },
+    {
+      "suite": "S3",
+      "name": "作业列表查询",
+      "passed": true,
+      "detail": "jobs=20",
+      "latency_s": 0.01
+    },
+    {
+      "suite": "S3",
+      "name": "队列健康统计",
+      "passed": true,
+      "detail": "total=273, workers=3, handlers=['heredity.evaluate_triggers', 'hippo.dream', 'hippo.memory_pipeline']",
+      "latency_s": 0.0
+    },
+    {
+      "suite": "S3",
+      "name": "取消pending作业",
+      "passed": true,
+      "detail": "job=job_570f489c46e8, cancelled=False",
+      "latency_s": 0.07
+    },
+    {
+      "suite": "S3",
+      "name": "evo进化系统状态",
+      "passed": true,
+      "detail": "status=200",
+      "latency_s": 0.01
+    },
+    {
+      "suite": "S4",
+      "name": "同session并发3条消息",
+      "passed": true,
+      "detail": "session=c7a3c3b1-5ecf-41eb-b, success=3/3, total_latency=18.7s",
+      "latency_s": 18.66
+    },
+    {
+      "suite": "S4",
+      "name": "不同session并发",
+      "passed": true,
+      "detail": "success=3/3, latency=25.0s",
+      "latency_s": 25.04
+    },
+    {
+      "suite": "S4",
+      "name": "ACP进程状态",
+      "passed": true,
+      "detail": "running=True",
+      "latency_s": 0.0
+    },
+    {
+      "suite": "S5",
+      "name": "RAG不可用时chat降级",
+      "passed": true,
+      "detail": "status=200, has_response=True",
+      "latency_s": 8.0
+    },
+    {
+      "suite": "S5",
+      "name": "器官健康检查",
+      "passed": true,
+      "detail": "healthy=8/8",
+      "latency_s": 0.06
+    },
+    {
+      "suite": "S5",
+      "name": "benchmark评估系统",
+      "passed": true,
+      "detail": "capability_evaluations=38",
+      "latency_s": 0.01
+    },
+    {
+      "suite": "S5",
+      "name": "LLM配置",
+      "passed": true,
+      "detail": "base_url=https://token-plan-cn.xiaomimimo.com/v1, model=xiaomi/mimo-v2.5-pro",
+      "latency_s": 0.0
+    },
+    {
+      "suite": "S5",
+      "name": "模型路由配置",
+      "passed": true,
+      "detail": "mode=balance, models={'cost': ['mimo-7b-local', 'mimo-v2.5-lite'], 'balance': ['mimo-v2.5-pro', 'mimo-7b-local'], 'intelligence': ['mimo-v2.5-pro', 'mimo-v2.5-pro-beta'], 'auto': ['mimo-v2.5-pro', 'mi",
+      "latency_s": 0.0
+    },
+    {
+      "suite": "S6",
+      "name": "10端点并发请求",
+      "passed": true,
+      "detail": "ok=10/10, latency=0.06s",
+      "latency_s": 0.06
+    },
+    {
+      "suite": "S6",
+      "name": "高频20次health检查",
+      "passed": true,
+      "detail": "ok=20/20, latency=0.04s",
+      "latency_s": 0.04
+    },
+    {
+      "suite": "S6",
+      "name": "混合负载（health+job+perm+ACP）",
+      "passed": true,
+      "detail": "ok=4/4, latency=8.4s",
+      "latency_s": 8.35
+    },
+    {
+      "suite": "S6",
+      "name": "系统资源使用",
+      "passed": true,
+      "detail": "python服务总内存=1090MB",
+      "latency_s": 0.02
+    }
+  ]
+}

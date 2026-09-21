@@ -13,7 +13,7 @@ import json
 import time
 from pathlib import Path
 
-DATA_DIR = Path(__file__).resolve().parents[3] / "data"  # parents[3]=acp-proxy/（2026-09-21修正）
+DATA_DIR = Path(__file__).resolve().parents[3] / "acp-proxy" / "data"  # parents[3]=项目根openmate/（2026-09-21目录统一）
 QUEUE_PATH = DATA_DIR / "gene_proposal_queue.json"
 LOCK_PATH = DATA_DIR / "gene_proposal_queue.lock"
 

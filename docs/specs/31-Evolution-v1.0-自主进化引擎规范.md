@@ -11,7 +11,7 @@
 **0.2 适用范围**
 
 * SoulMate 自主技能创建、优化、淘汰
-* SoulMate 自主代码变更（skills/plugins/routes目录）
+* SoulMate 自主代码变更（skills/agent-experiments/routes目录）
 * SoulMate 自主反思与模式学习
 * 双螺旋DNA容错进化机制
 * 进化引擎与记忆系统、技能系统、事件总线联动
@@ -25,7 +25,7 @@
 
 **0.4 强制约束（永久冻结）**
 
-1. 进化引擎只能修改白名单目录（skills/、plugins/、routes/），禁止修改核心引擎文件。
+1. 进化引擎只能修改白名单目录（skills/、agent/experiments/、routes/），禁止修改核心引擎文件。正式插件目录`plugins/`不在白名单内：evo产出落`acp-proxy/agent/experiments/`，经gene-loop审核promote后方可转正。（2026-09-21目录统一修订）
 2. 所有代码变更必须经过语法检查门控，失败自动回滚。
 3. 所有代码变更必须自动Git commit，确保可追溯、可回滚。
 4. 双螺旋两条链必须独立运行，任何一条链崩溃不影响另一条。
@@ -289,7 +289,7 @@ Strand B 检查：
 
 **白名单目录**（允许进化修改）：
 * `acp-proxy/skills/` — 技能存储
-* `acp-proxy/plugins/` — 插件目录
+* `acp-proxy/agent/experiments/` — evo实验目录（2026-09-21目录统一：正式插件统一存项目根`plugins/`，evo不得直接写入；实验产出经gene-loop审核promote转正）
 * `acp-proxy/routes/` — API路由
 
 **黑名单文件**（禁止修改）：
@@ -433,7 +433,7 @@ acp-proxy/
 
 | 机制 | 说明 |
 |---|---|
-| 白名单目录 | 只允许修改skills/plugins/routes |
+| 白名单目录 | 只允许修改skills/agent/experiments/routes |
 | 黑名单文件 | 核心引擎文件禁止修改 |
 | 语法门控 | 写入后立即语法检查，失败删除 |
 | JSON门控 | JSON文件写入后立即解析验证 |

@@ -1,18 +1,33 @@
+# === 运行时数据（一律不入库）===
+acp-proxy/data/
+plugins/data/
+*.db
+*.db-journal
+*.sqlite
+
+# === 构建/编译产物 ===
+__pycache__/
+*.pyc
+*.log
 node_modules/
 .next/
-out/
-dist/
+src-tauri/gen/
+target/
+src-tauri/target/
+admin-ui/.tmp/
+*.tmp
+*.bak
+
+# === 密钥/证书（严禁入库）===
+certs/
+*.pem
+*.key
 .env
 .env.local
-*.log
-src-tauri/target/
-*.tsbuildinfo
 
-# 运行时状态与数据文件
-acp-proxy/data/dna_*.json
-acp-proxy/data/dna_*.jsonl
-acp-proxy/data/data/audit_log.jsonl
-acp-proxy/data/dna_goals.json
+# === 缓存 ===
+.repomap.tags.cache.v1/
+
+# === 其他 ===
 acp-proxy/skills/*.json
-# 如果 skills 目录下只有此类运行时生成的配置文件，也可以直接忽略整个目录
-# acp-proxy/skills/
+acp-proxy/stability_test_results*

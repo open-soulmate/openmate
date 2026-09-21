@@ -1,6 +1,6 @@
 """S3测试 — Promote工具：Gene写入+溯源+feedback闭环+故障降级
 
-运行: /home/climbing/opensoul/.venv/bin/pytest acp-proxy/plugins/gene_loop/tests/ -v
+运行: cd ~/openmate && /home/climbing/opensoul/.venv/bin/pytest plugins/gene_loop/tests/ -v
 """
 import json
 import sqlite3
