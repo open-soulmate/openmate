@@ -21,6 +21,7 @@ from gateway.router import router as gateway_router
 from model_router import get_model_router
 from routes.skills import router as skills_router
 from routes.evolution import router as evolution_router
+from routes.gene_loop import router as gene_loop_router
 from routes.architecture import router as architecture_router
 from routes.routing import router as routing_router
 
@@ -227,6 +228,7 @@ app.include_router(mcp_router)
 app.include_router(gateway_router)
 app.include_router(skills_router)
 app.include_router(evolution_router)
+app.include_router(gene_loop_router)
 app.include_router(architecture_router)
 app.include_router(routing_router)
 

@@ -15,10 +15,12 @@ import { Loader2 } from "lucide-react";
 
 // 直接导入插件页面组件（避免动态导入问题）
 import BiddingPage from "@/plugins/bidding/frontend/page";
+import GeneLoopPage from "@/plugins/gene_loop/frontend/page";
 
 // 插件页面映射表
 const PLUGIN_PAGES: Record<string, React.ComponentType> = {
   "bidding": BiddingPage,
+  "gene-loop": GeneLoopPage,
 };
 
 export default function PluginPage() {
