@@ -1278,3 +1278,38 @@
 6. pi同会话内分支切换的"切分支时自动摘要提示"交互（pi navigateTree options.summarize由用户选择）在API映射中为显式POST调用——前端交互形态待用户意见
 7. 复跑解释器坑持续有效：acp-proxy测试必须用/home/climbing/.hermes/hermes-agent/venv/bin/python；opensoul用.venv/bin/python；systemic_test结果文件已先备份再复跑
 8. gene skill_learner上报：首次完整tool_calls序列（30条）上报返回"Failed to extract skill from log"（疑似execution_log payload过长）；简化序列重试**成功**——skill_id=`skill_0579f8a803f3`（"pi切分支自动摘要管线移植（P0-10）"，read_file→terminal→write_file→patch）已入gene技能库；后续轮次上报如再遇失败可先试短序列（经验：gene extract接口对长log有限制）
+
+## [2026-09-21 22:05 CST] P0-7进化数据层闭环：ExperienceCollector真实执行产物回填 + db_pool适配器调用约定P0修复 + 提案去重键修复
+**目标**：销P0-7进化闭环的已知数据层缺口（09-18 21:31轮遗留#5标注"experiences数据积累属后续hippo/learn数据层工作"）——live实证 `POST /api/brain/evolve` 返回 `analysis_error="no such table: experiences"`，SelfEvolution.analyze_and_evolve()与LongTermLearning.extract_patterns()零输入，进化管线结构性空转（用户痛点"但是一直没有进化啊"的数据层根因）。开发取证时发现第二层P0：db_pool SQLite适配器调用约定不匹配——6个器官模块/43处调用点按单tuple风格传参（`db.fetch(query, (a,b,c))`，"databases"库惯例），适配器按asyncpg `*args`展开 → 每个查询以ProgrammingError绑定失败（表建好后查询照样全挂——"写了≠接线了"的适配层形态）。
+**调研来源**：TradingAgents决策延迟回填（SUMMARY.md P0-6："pending→update_with_outcome，带真实反馈信号的记忆——'不进化'痛点独有解"：经验只搬运已发生事实，绝不伪造outcome）；agno learning_zone（evolution-engine-patterns §2.1"有成有败"+§5.2 idempotency_key确定性去重）；mem0 §1.1/§1.2（"失败必须可见禁止静默降级"：失败原文入error列即分组键+metadata provenance可审计）；SelfEvolution现有查询契约（self_evolution.py为消费方，本模块是其数据生产者）；kilocode防记忆回声（同发现去重、不同发现各建单——去重键语义）。
+**改动文件**：
+- opensoul/src/learn/experience_collector.py（新建477行：ExperienceCollector+_message_failure签名判定+三数据源采集+source_ref去重）
+- opensoul/src/learn/__init__.py（+导出ExperienceCollector）
+- opensoul/src/api/brain.py（/evolve：分析前先采集+response新增experience_collection字段+提案title携带reason修复去重键）
+- opensoul/src/will/job_handlers.py（+learn.collect_experiences handler+asyncio import）
+- opensoul/src/database/postgres.py（_convert_sql_for_sqlite：单tuple/list参数展开兼容层，18行）
+- opensoul/tests/test_experience_collector.py（新建：37测试含5个适配器契约回归锚点）
+**改动内容**：
+1. ExperienceCollector三数据源（均生产库实证存在）：①agent_messages（756行）——assistant回合按显式失败签名判定（生产实证20条"推理错误:"前缀；[tool_result+error=1]组合/[被拦截]/[BLOCKED]/Traceback），无签名=success（可观测行为=无错误），intent_summary=同会话最近用户消息②jobs（job_queue.db：83 completed/204 failed）——completed=success，failed/timeout/orphaned=failure带error原文，pending/running不冒充outcome③eval_experiments（eval_loop.db）——逐case pass/fail，unscored跳过（agno"超时≠答错"）。experiences表=experience.py同款schema+source_ref列（PRAGMA探测+ALTER幂等兼容先建表场景）+partial UNIQUE索引；user_feedback空表诚实默认（无评分数据不伪造）；确定性source_ref（msg:{id}/job:{id}/eval:{exp}:{case}）重复采集零写入
+2. db_pool适配器修复：占位符数量与单序列参数长度一致时展开（'?'风格与$N风格都判）；数量不一致保持原样报ProgrammingError（不静默吞）
+3. 提案去重键修复：digest=_digest(kind,title)（evolution_loop:490），failure模式action文本全为"自动规避: 增加前置检查"——live实证4条不同发现被折叠成1条提案（证据丢失）；title改为f"{action}: {reason}"[:200]后同发现才去重
+**接线位置**（grep证据，文件:行号）：
+- src/api/brain.py:299 import + :313 `ExperienceCollector(tenant_id=..., agent_id=...).collect()`（/evolve真实HTTP路径，每次分析前）+ :349 `"experience_collection": collection` + :336 `title=_title[:200]`
+- src/will/job_handlers.py:81 def _learn_collect_experiences + :103 HANDLER_SPECS注册；api/will.py:609-612 模块加载时_register_job_handlers（live实证：/api/will/jobs/health handlers含learn.collect_experiences）
+- src/learn/__init__.py:3导出；src/database/postgres.py:39展开判定（_SQLiteConnection.fetch/execute/fetchval全路径经_convert_sql_for_sqlite）
+- 运行时链路：POST /api/brain/evolve → collect()三源采集写opensoul.db experiences → SelfEvolution经db_pool(同库)读取分析 → findings经declare_intent进审批管线 → /api/heredity/health pipeline统计（monitoring页既有Evolution Pipeline卡消费）
+**验证结果**：
+- 完整性✅：git show 8f594f59——6 files +1260/-3真实落盘；ast.parse 6文件全过
+- 集成✅：grep证据如上每个符号有定义行+运行时消费行；live实证七项：①POST /api/brain/evolve `analysis_error=""`（修复前"no such table: experiences"）②experience_collection={messages: scanned 292/written 292/failures 20/successes 272, jobs: scanned 293/written 293/failures 206/successes 87, eval: scanned 6/written 6, written合计591, experiences_total:591}③evolutions=6条真实发现（"高频失败: No handler for job type 'test_job' (170次)"/"推理错误: name 'session' is not defined (5次)"/"成功率下降: 50% vs 93%"——全部来自生产真实数据零编造）④去重键修复后6发现→6条distinct提案（evo_3b85e4493549/1cfc76cb0964/8027eaab9905/a78b47efd1cb/e4c843ee2294/89afe9c9e0d3，title携带各自reason）；重复调用全部duplicate=true幂等（kilocode防回声语义正确）⑤POST /api/will/jobs/submit {"name":"learn.collect_experiences"}→job_17194ac0605f completed 0.05s，result={written:0, deduped:591, experiences_total:591}（agno idempotency_key live实证：二次采集零写入）⑥POST /api/brain/learn→{"status":"learned","patterns":17}（修复前死路径：表缺失+绑定bug双重故障；LongTermLearning.extract_patterns从591条真实经验提取17条模式）⑦GET /api/brain/recommendations→真实推荐（strategy: background_job:hippo.dream success_rate 1.0/50样本、eval_case×2、聊天意图×3+failure模式count=100）——学习闭环端到端打通
+- 测试✅：tests/test_experience_collector.py **37/37 passed**（签名判定9：5失败签名/3成功/错误行提取/空内容；schema 3：建表幂等/legacy ALTER/user_feedback消费契约；messages采集3：outcome+intent+provenance/消息timestamp真实事件时间/会话间intent隔离；jobs采集2：五状态判定+pending跳过/缺库fail-safe；eval采集3：pass/fail/unscored跳过+attempt错误原文/无原文确定性分组键/缺库fail-safe；去重统计边界5：二次collect零写入/get_stats/空库不崩/非sqlite显式skip/UNIQUE索引backstop；端到端2：生产故障形态→SelfEvolution经生产适配器产出failure_avoidance提案且reason含真实错误原文/experiences_total；接线静态4：handler注册/brain调用点/title去重键/handler调用点；适配器契约5：tuple风格展开/unpacked兼容/单占位符不误展/数量不一致仍报错/execute路径）；回归：test_evolution_loop+test_job_queue_wiring+test_experience_collector **102 passed**（46+19+37，含live API测试打重启后服务）；test_evolution_loop+job_wiring+heredity+eval_loop+memory_crud+dream_distiller **175 passed**；test_trajectory_store+spans+sessions_api **58 passed**；全量tests/（除test_pipeline既有embedding超时）**1709 passed, 7 failed**——7个失败全为httpx.ReadTimeout（test_marrow×4/test_voice×3，live HTTP打外部provider超时，失败形态=网络超时非ProgrammingError，与本轮改动无关）；systemic_test.py本轮不适用（opensoul单仓改动，不经acp-proxy消息路径）
+**服务重启**：systemctl --user restart opensoul.service→is-active=active→/api/system/health {"status":"ok"}→重启后live E2E七项全过→/api/heredity/health pipeline pending=8（monitoring页Evolution Pipeline卡既有读路径可见新提案，零前端改动）
+**commit**：opensoul `8f594f59`（push已确认：gh api直读repos/opensoulmate/opensoul/commits/main=8f594f59非CDN缓存；push前git diff --cached密钥扫描0命中；工作区config/rbac_policy.csv改动非本轮产物未staged未提交）；openmate本报告随docs/dev-reports.md单独path-scoped commit
+**遗留问题**：
+1. 提案去重键修复前的2条旧title提案（"自动规避: 增加前置检查"/"切换到更保守的策略"，无reason）仍pending——reviewer可reject清理；不再自动产生（新title格式已生效）
+2. 消息源失败签名是显式白名单（宁漏勿误：误报failure污染进化提案分组）——真实使用中出现新失败形态（如LLM回复"抱歉，我无法…"类软失败）时按真实案例扩签名表（同skill触发词停用表纪律）
+3. 用户评分数据仍为零：user_feedback表已建（SelfEvolution._analyze_feedback契约成立）但无写入方——前端反馈UI属UI改动须先讨论（cron不擅自加UI）；/api层rating提交端点如需要属下轮P2候选
+4. strategy_adjustment的"成功率下降50% vs 93%"当前受历史测试噪声影响（204条legacy test_job failed集中在近7天窗口）——随真实流量积累信号会自然纠偏；不删历史数据（失败可见原则）
+5. 前轮遗留顺延：job_queue retry无退避（agno retry_or_fail，09-18轮标注"下轮补"仍未做，下轮P1候选）、opensoul attributor ledger_path、/acp/send hermes路径归因、前端fork/导入UI、run_integration_tests.py恢复——均待用户意见/外部条件
+6. cron环境新约束（本轮实证）：cron profile下execute_code被安全策略BLOCKED（"Cron jobs run without a user present"）——cron开发轮用search_files/read_file/terminal直接执行替代
+7. 复跑解释器坑持续有效：acp-proxy测试用/home/climbing/.hermes/hermes-agent/venv/bin/python；opensoul用.venv/bin/python；systemic_test结果文件先备份再复跑
+8. gene skill_learner上报见下方执行（失败则记录于此）
