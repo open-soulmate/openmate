@@ -320,15 +320,43 @@ class SoulMateAgent:
 
 
     def _load_messages_from_db(self, session_id: str) -> list[dict]:
-        """从 DB 加载历史消息"""
+        """从 DB 加载历史消息
+
+        pi branch-summarization（P0-10遗留#1）：会话带切分支摘要时，摘要作为
+        上下文注记前置注入LLM消息序列——pi createBranchSummaryMessage语义
+        （BranchSummaryEntry参与LLM上下文，branch-summarization.ts
+        BRANCH_SUMMARY_PREAMBLE "The user explored a different conversation
+        branch before returning here."）。摘要只注入内存上下文，不落
+        agent_messages（不污染role/content持久化契约）。
+        agent_branch_summaries表不存在/该会话无摘要=零注入零影响。
+        """
         try:
             db = self._get_db()
             rows = db.execute(
                 "SELECT role, content FROM agent_messages WHERE session_id = ? ORDER BY id",
                 (session_id,),
             ).fetchall()
+            messages = [{"role": r["role"], "content": r["content"]} for r in rows]
+            # 切分支摘要上下文注入（opensoul src/trajectory/branch_summary.py写入，
+            # 同库同表：fork自动生成 / POST /api/sessions/{id}/branch-summaries）
+            try:
+                sum_rows = db.execute(
+                    "SELECT summary FROM agent_branch_summaries "
+                    "WHERE session_id = ? ORDER BY created_at, id",
+                    (session_id,),
+                ).fetchall()
+                if sum_rows:
+                    note = (
+                        "[会话分支上下文 — 系统注入，非用户发言]\n"
+                        "The user explored a different conversation branch before "
+                        "returning here.\nSummary of that exploration:\n\n"
+                        + "\n\n---\n\n".join(r["summary"] for r in sum_rows)
+                    )
+                    messages.insert(0, {"role": "user", "content": note})
+            except sqlite3.OperationalError:
+                pass  # 表未创建=该部署尚无分支摘要数据，非错误
             db.close()
-            return [{"role": r["role"], "content": r["content"]} for r in rows]
+            return messages
         except Exception as e:
             logger.error(f"Failed to load messages: {e}")
             return []
