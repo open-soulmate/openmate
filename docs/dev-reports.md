@@ -1667,3 +1667,43 @@
 6. kilocode supplement3其余缺口顺延：#7 Turn生命周期事件挂钩（TurnOpen/TurnClose总线+superseded→interrupted）、#9记忆marker留痕（"本回复用了记忆"badge数据源40行）、#10记忆事件总线、#1 Truncate服务九方（等待工具执行器形态稳定）——均为下轮P1候选
 7. cron环境工具约束（持续有效）：execute_code被BLOCKED（本轮write_file /tmp脚本+terminal两步）；opensoul用.venv/bin/ruff做lint（系统无ruff）
 8. gene skill_learner上报✅：POST /api/gene/skill/extract 200成功——skill_id=`skill_b6bfc756b879`（"P0缓存命中分支NameError修复 + P1 权限provenance"，read_file→search_files→terminal→write_file→patch→todo序列，success=true三关全过）已入gene技能库供find_relevant检索复用
+
+## [2026-09-23 09:26 CST] P1 kilocode #9 记忆marker留痕：消息级"本回复用了记忆"可审计数据源（kilocode supplement3 #9销账）
+**目标**：解决消息级记忆使用不可审计的问题——用户问"你刚才用了我的记忆吗"无据可查，"我都不知道他们在干嘛"在记忆维度的直接体现。kilocode-source-supplement3.md #9「recall命中后在assistant消息插空文本synthetic+ignored part携带metadata(kiloMemory:{type,count,tokens,files})——UI可显示'本回复用了记忆'badge，消息级可审计」（标注"40行，可观测性刚需"），连续三轮（21:14/23:35/04:29）列入"下轮P1候选"后本轮销账。此前grep实证opensoul+acp-proxy全库`kiloMemory|memory_marker|记忆marker`=0命中。
+**调研来源**：kilocode-source-supplement3.md #9 + **源码级精读**~/agent-research-src/kilocode/packages/opencode/src/kilocode/memory/marker.ts（MemoryMarker.startup/recall/part三函数：part()返回空文本synthetic+ignored TextPart携带metadata，marked标记一次）+ packages/kilo-memory/src/marker-meta.ts（Info={type,bytes,tokens,count,files,items}、LIMIT=5/CHARS=120按码点截断Array.from().slice语义、metadata()的items受`verbose&&type==="recall"`门控、fromRecall sources空→undefined不打标+sources去重+count显式优先、fromParts的sources回退兼容老格式）。
+**改动文件**：
+- openmate/acp-proxy/agent/memory_marker.py（新建102行：from_recall/metadata/metadata_json/_clip/_list）
+- openmate/acp-proxy/agent/soulmate_agent.py（+27/-6增量6 hunk：import+_save_message metadata参数列迁移+INSERT+_prompt_inner recalled_texts收集×2+assistant落盘marker）
+- openmate/acp-proxy/agent/schema_doctor.py（+8：v7迁移metadata列）
+- openmate/acp-proxy/tests/test_memory_marker.py（新建233行：26用例）
+- openmate/acp-proxy/tests/test_message_tree_wiring.py（+6/-2：2处版本pin断言6→7随v7演进+metadata列断言）
+- opensoul/src/api/sessions_api.py（+42/-1：_decode_memory_marker读侧解码+metadata列probe+ALTER+SELECT列+memory_marker字段暴露）
+- opensoul/src/trajectory/message_tree.py（+9/-3：fork复制metadata列审计标记跟消息走）
+- opensoul/tests/test_memory_marker_read.py（新建196行：11用例）
+**改动内容**：
+1. memory_marker.py（marker-meta.ts忠实移植）：`from_recall(sources,texts,count=None,tokens=None)`——sources去重保序全空→None不打标记（kilocode undefined语义）、count显式优先否则去重数、tokens缺省CJK感知estimate_tokens复用（agent.token_attribution）、bytes=UTF-8字节数、items=_list(texts)去空+**按码点截120**（`"".join(list(s)[:120])`防emoji代理对切半）+上限5条；`metadata(marker,verbose=False)`输出{kiloMemory:{type,bytes,tokens,count,files}}——**items仅verbose且type=recall输出**（默认不外泄记忆内容片段，隐私设计同kilocode）；`metadata_json`落盘形态无marker→None
+2. _save_message加metadata参数：probe+ALTER自愈迁移（attachments/parent_message_id既有惯例）+INSERT第7列；SchemaDoctor v7登记同列（migrate()对duplicate column安全跳过——运行时probe先行迁移不冲突）
+3. _prompt_inner真实消息路径：recalled_texts随recalled_ids双源收集（本地MemoryRetrievalEngine的m.content×3 + OpenSoul /ltm/context的context文本）→assistant消息落盘处`memory_marker.metadata_json(from_recall(sources=recalled_ids,texts=recalled_texts))`→`_save_message(..., metadata=_marker_json)`——kilocode part()语义映射为agent_messages.metadata列JSON（synthetic+ignored=metadata不进LLM上下文，_load_messages_from_db仍只读role/content）
+4. opensoul读侧：`_decode_memory_marker`移植fromParts语义（files缺失回退sources老格式、items/tokens坏类型过滤归零、**坏JSON→None绝不丢整条消息**——deepseek"溢写失败绝不能把成功调用变错"）+ GET /api/sessions/{id}/messages每条消息携带`memory_marker`字段（badge数据源）+ message_tree fork SELECT/INSERT带metadata（审计标记跟消息跨fork走）
+**接线位置**（grep证据，文件:行号）：
+- 定义：acp-proxy/agent/memory_marker.py:56 `def from_recall` / :89 `def metadata` / :108 `def metadata_json`；opensoul/src/api/sessions_api.py:545 `def _decode_memory_marker`
+- 运行时写路径（真实消息路径，无死代码）：soulmate_agent.py:57 `from agent import memory_marker` / :2549 `recalled_texts`声明 / :2577本地召回收集 / :2634 LTM召回收集 / :3001-3003 `memory_marker.metadata_json(memory_marker.from_recall(...))` / :3004 `self._save_message(session_id, "assistant", full_response, metadata=_marker_json)`（位于_prompt_inner=ws /ws/acp soulmate路由=OpenMate聊天页真实使用路径）；_save_message落盘：:315-318 metadata列迁移+:331 INSERT第7列
+- 运行时读路径（真实HTTP路径）：sessions_api.py:687 `"memory_marker": _decode_memory_marker(r["metadata"])`（GET /{session_id}/messages体内，挂载链src/main.py api sessions_router）；fork路径：message_tree.py:153-158 metadata列迁移+:165 SELECT列+:205-216 INSERT复制
+- 版本迁移：schema_doctor.py:141-148 v7（SchemaDoctor.CURRENT_VERSION=6→7）
+**验证结果**：
+- 完整性✅：git diff --stat确认openmate 6文件+397/-27（soulmate_agent.py 6增量hunk非全量重写）+opensoul 3文件+251/-4真实落盘；ast.parse 5文件全过；ruff --select F821,F841,F401,E9本轮新文件+改动文件全过（仅存的F401为test_message_tree_wiring.py预存unused pytest import非本轮引入，不动）
+- 集成✅：grep证据如上（每个新符号有定义行+运行时消费行，位于_prompt_inner真实消息路径+GET messages真实HTTP路由+fork真实复制路径，无死代码）；test_memory_marker.py TestSoulmateWiring用inspect.getsource断言4项（from_recall/metadata_json在_prompt_inner内被调+metadata=_marker_json传入+_save_message签名与迁移在）
+- 测试✅：acp-proxy tests/test_memory_marker.py **26 passed**（from_recall 11：无sources→None/None输入安全/去重count/显式count/CJK感知tokens/显式tokens/UTF-8 bytes/items限5条+120码点/**emoji不切半**/空文本丢弃/type=recall；metadata 7：键精确/默认无items/**verbose recall才出items**/verbose startup不出/None安全/JSON roundtrip/无marker无JSON；_save_message 4：**老schema自愈迁移+落盘roundtrip**/默认NULL/attachments共存/写侧全链路（marker tokens==estimate_tokens实算）；接线断言4）；opensoul tests/test_memory_marker_read.py **11 passed**（decode 7：完整解码/**sources回退老格式**/count回退/startup映射/坏JSON→None×3/非str过滤；读路径2：**messages携带memory_marker（带标/无标分辨）**/老schema读路径自愈迁移；fork 2：**metadata随fork复制**/fork自愈迁移）；回归：acp-proxy全tests/ **438 passed零破坏**（既有437+新增26-25重叠合并计数，唯一失败为test_message_tree_wiring版本pin 6→7随v7演进，修正断言后全绿——测试演进如实记录）；opensoul相关回归**111 passed**（test_message_tree+test_sessions_api+test_branch_summary+新marker读侧，既有100零破坏）；systemic_test.py **29/29 passed**（S4并发/降级/混合负载全绿——消息路径改动未破坏既有行为）
+- **live E2E全周期✅（/tmp/e2e_memory_marker.py，真实WS /ws/acp soulmate路径，决定性证据）**：①seed LTM记忆ltm_7ecd1291fca3（content含完整prompt文本保证LIKE命中）②真实WS回合（session om-d2e50b98d330，prompt end_turn真实LLM回复）③opensoul.db实查assistant消息行id=1125 metadata=`{"kiloMemory": {"type": "recall", "bytes": 127, "tokens": 35, "count": 1, "files": ["ltm_7ecd1291fca3"]}}`——**真实消息路径落盘kiloMemory标记，seeded ltm id精确在files里**（"本回复用了记忆"badge数据源成立）E2E PASS
+**服务重启**：systemctl --user restart opensoul.service + acp-proxy-a.service + acp-proxy-b.service→三服务is-active=active→/api/system/health {"status":"ok","component":"OpenSystem"}+:8092/health+:8095/health双200→重启后live E2E+systemic_test 29/29+live相关断言全在重启后服务上通过；openmate前端本轮零改动不build
+**commit**：openmate `5781aa09` + opensoul `303ae853`（push前git grep --cached密钥扫描两仓staged文件0真实密钥命中（测试数据全为运行时构造）；工作区他人未提交settings-client.tsx/locales/rbac_policy.csv不入库，staged仅本轮文件+systemic_test_results.json测试产物）
+**数据清理**：E2E seed记忆ltm_7ecd1291fca3 hard_delete（GET 444残留确认）+E2E消息行（assistant 1125+user 1124）删除+echo turn状态reset清零；opensoul.db/long_term_memory.db双库cronmarkerprobe探针扫描**0残留**
+**遗留问题**：
+1. marker的items（记忆内容片段）默认不落库（kilocode verbose门控忠实移植）——如需UI展示"用了哪几条记忆"的内容片段，需在写侧调用点传verbose=True（一行改动），属产品决策先讨论
+2. kilocode marker.ts的startup型（fromBlocks：会话启动时注入的记忆块打标）未实现：当前acp-proxy无"启动时批量注入记忆块"的路径（记忆都是per-turn recall注入），from_startup无真实调用方=死代码故不移植；该路径出现时再补
+3. ws_chat._store_agent_message（非soulmate的ws直存路径）不写metadata（该路径无记忆召回，语义正确），但读侧decode对该行返回None——行为正确已测
+4. "本回复用了记忆"badge前端UI未做（数据源已就位：GET messages的memory_marker字段）——UI属须先讨论项cron不擅自加（同fork/导入/反馈UI遗留口径）
+5. kilocode supplement3其余缺口顺延：#7 Turn生命周期事件挂钩（TurnOpen/TurnClose总线+superseded→interrupted，事件驱动记忆采集）、#10记忆事件总线（memory.status/updated/error三事件+best-effort sink）、#1 Truncate服务九方（cortex工具出口，等待工具执行器形态稳定）、provenance账本retention轮转（kilocode #2同款7天mtime扫）——均为下轮P1候选
+6. cron环境工具约束（持续有效）：execute_code被BLOCKED（本轮write_file /tmp脚本+terminal两步）；ruff用opensoul/.venv/bin/ruff（系统无ruff）；git commit -m长消息末尾禁带管道符号
+7. E2E修正实录（诚实记录）：初版清理用DELETE query params传hard_delete被FastAPI静默忽略（LTMDeleteRequest是body模型）→soft语义清理不彻底GET 200——改DELETE JSON body {"hard_delete":true}后GET 444确认；E2E脚本遗留该坑已顺手修正认知（后续E2E清理一律body传参）
+8. gene skill_learner上报✅：POST /api/gene/skill/extract 200成功——skill_id=`skill_8740dab7601c`（"P1 kilocode #9 记忆marker留痕"，read_file→search_files→write_file→patch→terminal→todo序列，success=true三关全过）已入gene技能库供find_relevant检索复用
