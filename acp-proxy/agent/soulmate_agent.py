@@ -54,6 +54,7 @@ from agent.context_compression import ContextCompressor
 from agent.loop_guard import LoopGuard
 from agent.code_mode import CodeModeExecutor
 from agent import memory_echo
+from agent import memory_marker
 from agent import session_recall
 from agent.dynamic_prompt import DynamicPromptBuilder
 from agent.memory_retrieval import MemoryRetrievalEngine
@@ -284,8 +285,16 @@ class SoulMateAgent:
         db.row_factory = sqlite3.Row
         return db
 
-    def _save_message(self, session_id: str, role: str, content: str, attachments: str | None = None) -> int | None:
-        """保存消息到 agent_messages 表（attachments为JSON字符串：附件元数据列表）
+    def _save_message(
+        self,
+        session_id: str,
+        role: str,
+        content: str,
+        attachments: str | None = None,
+        metadata: str | None = None,
+    ) -> int | None:
+        """保存消息到 agent_messages 表（attachments为JSON字符串：附件元数据列表；
+        metadata为JSON字符串：kilocode #9记忆marker等消息级合成part元数据）
 
         返回新消息行id（search_chat_history boundary锚点）；失败返回None。
         """
@@ -300,12 +309,18 @@ class SoulMateAgent:
                 db.execute("SELECT parent_message_id FROM agent_messages LIMIT 1")
             except sqlite3.OperationalError:
                 db.execute("ALTER TABLE agent_messages ADD COLUMN parent_message_id INTEGER")
+            # kilocode #9记忆marker（marker-meta.ts）：metadata列存kiloMemory元数据
+            # JSON（synthetic+ignored part语义——不进LLM上下文，消息级可审计）
+            try:
+                db.execute("SELECT metadata FROM agent_messages LIMIT 1")
+            except sqlite3.OperationalError:
+                db.execute("ALTER TABLE agent_messages ADD COLUMN metadata TEXT")
             _last_row = db.execute(
                 "SELECT id FROM agent_messages WHERE session_id = ? ORDER BY id DESC LIMIT 1",
                 (session_id,),
             ).fetchone()
             _cur = db.execute(
-                "INSERT INTO agent_messages (session_id, role, content, timestamp, attachments, parent_message_id) VALUES (?, ?, ?, ?, ?, ?)",
+                "INSERT INTO agent_messages (session_id, role, content, timestamp, attachments, parent_message_id, metadata) VALUES (?, ?, ?, ?, ?, ?, ?)",
                 (
                     session_id,
                     role,
@@ -313,6 +328,7 @@ class SoulMateAgent:
                     time.time(),
                     attachments,
                     _last_row["id"] if _last_row else None,
+                    metadata,
                 ),
             )
             _new_id = _cur.lastrowid
@@ -2530,6 +2546,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
         # ── P2前置处理：语义缓存+上下文压缩+记忆检索 ──────────
         # kilocode防记忆回声：收集本回合所有召回源的记忆id（collect→mark→digest跳过）
         recalled_ids: list[str] = []
+        recalled_texts: list[str] = []  # kilocode #9 marker items（实际注入的召回内容）
         try:
             # 1. 语义缓存：相似问题直接返回缓存
             cached = self._semantic_cache.get(user_text)
@@ -2557,6 +2574,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
             # 3. 本地记忆检索引擎（与OpenSoul LTM互补）
             local_memories = self._memory_engine.retrieve(user_text, limit=3)
             recalled_ids.extend(memory_echo.collect_recalled_ids(local_memories=local_memories))
+            recalled_texts.extend(getattr(m, "content", "") for m in local_memories[:3])
             if local_memories:
                 mem_ctx = "\n".join([f"- {m.content}" for m in local_memories[:3]])
                 messages.insert(0, {"role": "system", "content": f"\n## 相关记忆\n{mem_ctx}\n"})
@@ -2613,6 +2631,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
                     recalled_ids.extend(memory_echo.collect_recalled_ids(ltm_data=ltm_data))
                     if ltm_data.get("context"):
                         messages.insert(0, {"role": "system", "content": ltm_data["context"]})
+                        recalled_texts.append(ltm_data["context"])
 
                 # 2.5 记忆echo标记：本回合召回过记忆→digest必须跳过（kilocode防自我污染）
                 if recalled_ids:
@@ -2976,7 +2995,13 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 logger.info(f"[media] {len(validated)} file(s) validated for delivery")
 
         session["messages"].append({"role": "assistant", "content": full_response})
-        self._save_message(session_id, "assistant", full_response)
+        # kilocode #9 记忆marker留痕（marker.ts part()语义）：本回复注入过记忆→
+        # assistant消息metadata带kiloMemory标记（synthetic+ignored：不进LLM上下文，
+        # 消息级可审计，UI可据此显示"本回复用了记忆"badge）；无召回→None不打标。
+        _marker_json = memory_marker.metadata_json(
+            memory_marker.from_recall(sources=recalled_ids, texts=recalled_texts)
+        )
+        self._save_message(session_id, "assistant", full_response, metadata=_marker_json)
         logger.info(f"Response [{session_id}]: {full_response[:100]}")
         logger.info(f"[prompt] done, response_len={len(full_response)}, tools={tool_calls_log}")
 

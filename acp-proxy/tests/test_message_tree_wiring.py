@@ -170,10 +170,12 @@ class TestSchemaDoctorV6:
         doctor = SchemaDoctor(db_path=db)
         result = doctor.migrate()
         assert result["status"] == "migrated"
-        assert SchemaDoctor.CURRENT_VERSION == 6
+        # v7（kilocode #9记忆marker）起CURRENT_VERSION=7；本用例覆盖v1→全量迁移
+        assert SchemaDoctor.CURRENT_VERSION == 7
         conn = _connect(db)
         cols = [r["name"] for r in conn.execute("PRAGMA table_info(agent_messages)")]
         assert "parent_message_id" in cols
+        assert "metadata" in cols  # v7记忆marker列
         rows = conn.execute(
             "SELECT id, parent_message_id FROM agent_messages ORDER BY id"
         ).fetchall()
@@ -216,5 +218,5 @@ class TestSchemaDoctorV6:
         db = _make_old_db(tmp_path)
         doctor = SchemaDoctor(db_path=db)
         status = doctor.check()
-        assert status["target_version"] == 6
+        assert status["target_version"] == 7  # v7记忆marker
         assert status["needs_migration"] is True

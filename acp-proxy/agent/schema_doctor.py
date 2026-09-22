@@ -138,6 +138,14 @@ class SchemaDoctor:
                    ) WHERE parent_message_id IS NULL""",
             ],
         },
+        {
+            "version": 7,
+            "description": "消息级记忆marker元数据（kilocode #9 MemoryMarker synthetic part）",
+            "tables": [
+                # probe+ALTER运行时已迁移则duplicate column安全跳过（migrate()语义）
+                "ALTER TABLE agent_messages ADD COLUMN metadata TEXT",
+            ],
+        },
     ]
     
     CURRENT_VERSION = len(SCHEMA_VERSIONS)
