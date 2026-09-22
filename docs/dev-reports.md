@@ -1568,3 +1568,37 @@
 6. kilocode-source-supplement3其余缺口顺延：#1 Truncate服务九方（cortex工具出口）、#6采集前脱敏redact接进hippo写入口、#14权限provenance、#7 Turn生命周期事件挂钩——均为下轮P1候选
 7. cron环境工具约束（持续有效）：execute_code被BLOCKED（本轮用write_file+/tmp脚本+terminal两步规避）；terminal复合`$(grep...)`内联命令触发hardline blocklist（本轮2次实证：拆成search_files定位行号+read_file定读即过）；opensoul用.venv/bin/python3跑pytest
 8. gene skill_learner上报✅：POST /api/gene/skill/extract 200成功——skill_id=`skill_69215b44ef24`（"P1 记忆回声阻断真实路径接线：kilocode recalledMemory防记忆自我污染"，read_file→terminal→search_files→patch→write_file→todo序列，success=true三关全过）已入gene技能库供find_relevant检索复用
+
+## [2026-09-22 23:35 CST] P1 hippo 采集前脱敏 MemoryRedact：凭据/高危PII绝不落进记忆库（kilocode supplement3 #6销账）
+**目标**：解决记忆库明文SQLite会持久化凭据的问题——kilocode-source-supplement3.md #6「采集前脱敏（MemoryRedact）：进入记忆的文本先过redact，命中→[redacted]」，缺口现状标注"immune/moderator有PII但不接记忆"（grep实证opensoul全库此前`redact`仅接gland/router出站LLM路径，hippo写入口零接线）。用户对话/回合digest里出现的API key、身份证号、JWT会原样写进~/.hermes/opensoul/hippo/long_term_memory.db（memories/memories_fts/memory_audit/memory_versions四表）。
+**调研来源**：kilocode-source-supplement3.md #6 MemoryRedact（"进入记忆的文本先过redact"+工具摘要裁剪）；Warp secret_redaction 20正则（已在immune/moderator.py ContentModerator落地并被gland出站路径验证，本轮复用不重复造）；mem0 §1.1"失败必须可见禁止静默降级"（脱敏器故障放行原文必须打WARNING可见，不静默）；SUMMARY.md §五 immune行"输出侧护栏（流式脱敏20正则）"接进记忆写侧。E2E中发现的gatekeeper 6条secret规则与moderator的覆盖差（AIza/JWT/身份证/Stripe/Slack/Firebase等gatekeeper不管）正是本改进的存在性证明。
+**改动文件**：
+- opensoul/src/hippo/memory_redact.py（新建96行：_get_redactor懒加载单例+redact_for_memory(min_risk阈值过滤+重叠合并掩码+findings只留type/risk/label)）
+- opensoul/src/hippo/long_term_memory.py（+34/-2：store()入口脱敏+gatekeeper看原文语义分工+metadata memory_redact观测摘要+update_memory()内容脱敏）
+- opensoul/src/hippo/memory_store.py（+12：add()/update()短期记忆写入口脱敏）
+- opensoul/tests/test_memory_redact.py（新建187行：17个用例）
+**改动内容**：
+1. memory_redact.py：复用ContentModerator（Warp 20正则），`redact_for_memory(text, min_risk="high")`返回(脱敏文本, findings摘要)——阈值"high"=凭据类critical+高危PII（身份证/银行卡/JWT/带凭据URL）必掩码，**email/电话/IP保留**（"记住我的邮箱"是合法记忆，掩码毁记忆可用性；min_risk="low"可全掩码）；findings只回传type/risk/label绝不带命中原文（对齐redact_messages安全日志约定）；重叠命中合并掩码（openai key同时命中generic sk-规则只出一个[REDACTED:openai_api_key]，Warp merge_sorted_ranges语义）；fail-safe：初始化/执行异常→放行原文+WARNING（阻断记忆写入比漏脱敏更伤，但绝不静默）。
+2. long_term_memory.store()语义分工（实测回归后修正的关键设计）：**gatekeeper准入判定看原文**（secret_detected拒绝规则需要"password=..."/"sk-..."真身才拦得住——记忆库不是密钥库，凭据笔记整体拒绝不入库），**落库/审计/memory_id哈希/FTS/版本/合并一律用脱敏后文本**（GATE_REJECT审计记的也是脱敏文本——拒绝可见且不二次泄漏）；force=True也照常脱敏（脱敏无条件，不受人工旁路影响）；metadata["memory_redact"]={count,types}可观测+INFO日志。update_memory()（Khoj CRUD用户编辑）内容同样先脱敏。
+3. memory_store.add()/update()：短期记忆写入口同语义脱敏+metadata观测。
+**接线位置**（grep证据，文件:行号）：
+- 定义：src/hippo/memory_redact.py:62 `def redact_for_memory`
+- 运行时消费（真实写路径，无死代码）：src/hippo/long_term_memory.py:239 `content, redact_findings = redact_for_memory(raw_content)`（store()体内=**全部LTM写入的单一咽喉**：/ltm/add→api/hippo.py:415 _lt_store.store / dream_distiller.py:380 self._store.store / memory_pipeline.py:499 self._store.store / session_importer.py:149,182 self.ltm.store 四个真实入口全经过）+:735 `redact_for_memory(content)`（update_memory用户编辑路径）；src/hippo/memory_store.py:66（add）+:131（update）；gatekeeper原文判定：long_term_memory.py:245 `self.gatekeeper.evaluate(raw_content,...)` / :311 `evaluate(raw_content, force=True)`
+**验证结果**：
+- 完整性✅：git diff --cached 4文件+327/-2真实落盘（2存量文件共7增量hunk非全量重写+2新建文件）；ast.parse 4文件全过；ruff"All checks passed"
+- 集成✅：grep证据如上（每个新符号有定义行+运行时消费行，位于store()/add()真实入库咽喉，覆盖ltm_add/dream/pipeline/import四入口）；live实证见下E2E步骤2-4（/ltm/add真实HTTP路径写入后10表0泄漏）
+- 测试✅：tests/test_memory_redact.py **17 passed**（单元8：openai key掩码+摘要无原文/重叠规则合并单掩码/ghp_掩码/身份证掩码/**默认阈值保留email+phone记忆可用性**/low阈值掩email/干净文本原样/空+None安全；LTM store 5：**全表无泄漏（memories+memories_fts+memory_audit串扫）**/force=True仍脱敏/干净文本无memory_redact metadata/**gatekeeper看原文+落库脱敏语义分工（spy断言evaluate收到含key原文、mem.content无key）**/update_memory脱敏；fail-safe 1：redactor爆异常→写入照常+WARNING可见；短期store 3：add脱敏+metadata/干净无metadata/update脱敏）；广义回归**全仓1901 passed零破坏**（含既有test_hippo_gatekeeper/test_memory_crud/test_deermem_tags/test_dream_distiller/test_memory_pipeline/test_memory_echo_guard等298个记忆簇用例+其余全量）
+- **回归修正实录（诚实记录）**：初版把脱敏放在gatekeeper之前导致test_hippo_gatekeeper::test_store_reject_returns_none_and_not_stored失败（"my password=..."被先掩码成"[REDACTED:password_leak]"后secret_detected规则扑空→错误入库）——修正为"gatekeeper判原文、落库脱敏"语义分工后1901全绿。教训：安全叠加层接进既有判定链时，判定输入与持久化输出要分开考虑
+- **live E2E全周期✅（/tmp/e2e_memory_redact.sh，真实HTTP /ltm/*路径，决定性证据）**：探针选型=AIza Google key+身份证号（gatekeeper 6条secret规则不覆盖、moderator必中——覆盖差即本改进存在性证明）：①POST /ltm/add→**added=True**（准入通过）②GET /ltm/{id}→content=`cron redact probe note: gcloud key [REDACTED:google_api_key] and id 1101**********1234 for e2e`（凭据全掩码+身份证部分掩码）+metadata.memory_redact={'count': 2, 'types': ['id_card_cn','google_api_key']}③生产SQLite 10表逐列LIKE扫描原始探针值→**0泄漏**④POST /ltm/add"my password=supersecret9999e2e"→added=False+rule=**secret_detected**（gatekeeper原文判定live确认不回归）⑤DELETE hard_delete清理+GET 444残留检查通过⑥数据零残留 E2E ALL PASS
+**服务重启**：systemctl --user restart opensoul.service→is-active=active→/api/system/health {"status":"ok","component":"OpenSystem"}（重启后live E2E 8步全在重启后服务上通过，新代码在运行进程中）；acp-proxy/openmate前端本轮零改动不重启不build（systemic_test.py不适用：opensoul单仓hippo改动不经acp-proxy消息路径）
+**commit**：opensoul `868bb5ad`（push已确认：**token直连api.github.com官方API**repos/opensoulmate/opensoul/commits/main=868bb5ad65570f8369c3c0eacf0c4871c76e614c MATCH非CDN缓存，push第1次成功；push前git grep --cached密钥扫描：staged 4文件0真实密钥命中（测试fake key全部运行时拼接构造非字面量）；工作区他人未提交改动config/rbac_policy.csv未入库）
+**数据清理**：E2E探针记忆ltm_a05a67b0eb50 hard_delete+444残留确认；生产库10表0探针残留；echo turn状态reset-turn清零
+**遗留问题**：
+1. kilocode #6的另一半"工具摘要只留command/file/pattern/query+exit code+error brief(220字符)"未做：当前opensoul无工具执行结果直接进记忆的路径（工具执行器未落地，前轮已述），工具摘要裁剪器待工具执行器出现时在采集端接线
+2. 拒绝/审计的reason字符串含gatekeeper pattern描述（非命中原文）——已核对无泄漏；但GATE_REJECT审计content字段记的是脱敏文本，如需人工排查"到底是什么被拒了"只能看到[REDACTED:xxx]标记（安全优先的取舍，如需可加salted hash指纹辅助排查）
+3. update_memory的metadata字段透传未做内容级脱敏（metadata是调用方结构化字段非自由文本，risk低；如真实案例出现metadata藏密钥再补）
+4. 本地记忆引擎（acp-proxy MemoryRetrievalEngine）写侧未接本闸（上轮echo遗留#3同源）；acp-proxy回合digest经/api/hippo/ltm/add→store()已自动被本闸覆盖（同一咽喉）
+5. monitoring前端未展示memory_redact观测键（metadata.memory_redact+INFO日志已就位）——UI属须先讨论项cron不擅自加
+6. 前轮遗留顺延：#1 Truncate服务九方（cortex工具出口，同样等待工具执行器）、#14权限provenance、#7 Turn生命周期事件挂钩、monitoring观测键UI、consumer token TTL等——均为下轮P1候选
+7. cron环境工具约束（持续有效）：execute_code被BLOCKED（本轮用write_file /tmp脚本+terminal两步）；opensoul用.venv/bin/python3
+8. gene skill_learner上报✅：POST /api/gene/skill/extract 200成功——skill_id=`skill_99bfdbbce840`（"P1 hippo 采集前脱敏 MemoryRedact"，read_file→search_files→todo→write_file→patch→terminal序列，success=true三关全过）已入gene技能库供find_relevant检索复用
