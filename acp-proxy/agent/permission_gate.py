@@ -25,8 +25,8 @@ import json
 import logging
 import re
 import time
-from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Optional
+from dataclasses import dataclass
+from typing import Awaitable, Callable, Optional
 
 import httpx
 
@@ -69,6 +69,9 @@ class GateResult:
     rule_content: str = ""
     mode: str = ""
     human_approved: bool = False
+    # kilocode #14 classifyDenial：拒绝分层（哪一层拦的——本类构造处最清楚，
+    # permission_provenance.classify_denial优先采用，缺失时才推断回退）
+    denial_class: str = ""
 
     def to_dict(self) -> dict:
         return {
@@ -76,6 +79,7 @@ class GateResult:
             "blocked_reason": self.blocked_reason, "decision_id": self.decision_id,
             "rule_source": self.rule_source, "rule_content": self.rule_content,
             "mode": self.mode, "human_approved": self.human_approved,
+            "denial_class": self.denial_class,
         }
 
 
@@ -105,6 +109,7 @@ def degraded_decision(tool_name: str, tool_args: dict) -> GateResult:
                     f"灾难性命令命中本地降级硬否决规则（opensoul权限引擎不可达）。"
                     f"参数: {json.dumps(tool_args, ensure_ascii=False)[:300]}"),
                 rule_source="degraded-local", rule_content=pat.pattern,
+                denial_class="patterns:degraded-local",
             )
     if tool_name in DEGRADED_READONLY_TOOLS:
         return GateResult(allowed=True, behavior="allow", rule_source="degraded-local")
@@ -238,6 +243,7 @@ class PermissionGate:
             return GateResult(
                 allowed=False, behavior="deny", decision_id=decision_id,
                 rule_source=rule_source, rule_content=rule_content, mode=mode,
+                denial_class=f"ruleset:{rule_source or 'unknown'}",
                 blocked_reason=(
                     f"[PERMISSION DENIED] {tool_name} 被OpenSoul权限引擎拦截。\n"
                     f"原因: {reason}\n"
@@ -256,11 +262,13 @@ class PermissionGate:
             return GateResult(
                 allowed=False, behavior="ask-denied", decision_id=decision_id,
                 rule_source=rule_source, rule_content=rule_content, mode=mode,
+                denial_class="approval:unattended",
                 blocked_reason=(
                     f"[PERMISSION DENIED] {tool_name} 需要人工审批但当前无人值守"
                     f"（机器审批静默拒绝）。原因: {reason}"))
 
         approved = False
+        ask_resolution = "human-rejected"  # kilocode #14：区分超时/真人拒绝
         try:
             approved = await asyncio.wait_for(
                 request_approval(tool_name, tool_args, decision),
@@ -269,9 +277,11 @@ class PermissionGate:
         except asyncio.TimeoutError:
             logger.warning("[gate] approval timeout (%.0fs): %s", self.approval_timeout, tool_name)
             approved = False
+            ask_resolution = "timeout"
         except Exception as e:
             logger.error("[gate] approval request failed: %s", e)
             approved = False
+            ask_resolution = "request-failed"
 
         if approved:
             self.stats["approved"] += 1
@@ -286,6 +296,7 @@ class PermissionGate:
         return GateResult(
             allowed=False, behavior="ask-denied", decision_id=decision_id,
             rule_source=rule_source, rule_content=rule_content, mode=mode,
+            denial_class=f"approval:{ask_resolution}",
             blocked_reason=(
                 f"[PERMISSION DENIED - USER REJECTED] {tool_name} 的审批被用户拒绝或超时。\n"
                 f"请求原因: {reason}\n"

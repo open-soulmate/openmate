@@ -112,6 +112,7 @@ from agent.file_index import SessionFileIndex
 from agent.permission import PermissionManager
 from agent.permissions import ToolPolicy
 from agent.permission_gate import PermissionGate
+from agent.permission_provenance import PermissionProvenanceRecorder, build_provenance
 from agent.tool_errors import ToolError, ToolErrorHandler
 from agent.writer_fence import SessionWriterFence, WriteAction
 from agent.steering import (
@@ -246,6 +247,8 @@ class SoulMateAgent:
         # 权限管理器
         self._permission_manager = PermissionManager()
         self._permission_gate = PermissionGate()  # P0-3 工具级权限门禁（opensoul immune引擎客户端）
+        # kilocode #14 权限provenance账本（每次门禁判定含拒绝都留痕，"为什么允许/拒绝"可审计）
+        self._perm_provenance = PermissionProvenanceRecorder()
         # 工具策略（per-tool配置，按需创建）
         self._tool_policies: dict = {}
         # 分层超时配置
@@ -622,6 +625,17 @@ class SoulMateAgent:
                 lambda tn, ta, dec, _sid=session_id:
                     self._request_tool_approval(_sid, tn, ta, dec)),
         )
+        # ── kilocode #14 权限provenance：批量化内层每次判定同样留痕（含拒绝，
+        # via=code_mode标注来源——"批量化后仍能审计每步调用为什么被允许/拒绝"）──
+        try:
+            _cm_prov = build_provenance(
+                func_name, func_args, gate_result,
+                working_dir=str(cwd or ""), session_id=session_id, via="code_mode")
+            _prov_rec = getattr(self, "_perm_provenance", None)
+            if _prov_rec is not None:
+                _prov_rec.record(_cm_prov)
+        except Exception as _prov_err:
+            logger.debug(f"[perm-provenance] 记录失败(非致命): {_prov_err}")
         if not gate_result.allowed:
             return f"[被拦截:{gate_result.behavior}] {gate_result.blocked_reason}"
         try:
@@ -1446,6 +1460,20 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                 lambda tn, ta, dec, _sid=session_id:
                                     self._request_tool_approval(_sid, tn, ta, dec)),
                         )
+                        # ── kilocode #14 权限provenance：每次门禁判定（含拒绝）写回
+                        # tool part metadata——approval来源+tagOutsideWorkspace+
+                        # classifyDenial（"为什么允许/为什么拒绝"消息级可审计）──
+                        try:
+                            gate_provenance = build_provenance(
+                                func_name, func_args, gate_result,
+                                working_dir=str(self._session_cwds.get(session_id, self._project_root) or ""),
+                                session_id=session_id, via="main_loop")
+                            _prov_rec = getattr(self, "_perm_provenance", None)
+                            if _prov_rec is not None:
+                                _prov_rec.record(gate_provenance)
+                        except Exception as _prov_err:
+                            logger.debug(f"[perm-provenance] 记录失败(非致命): {_prov_err}")
+                            gate_provenance = {}
                         if not gate_result.allowed:
                             blocked_reason = gate_result.blocked_reason
                             logger.warning(
@@ -1461,6 +1489,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                 "arguments": func_args,
                                 "result_preview": blocked_reason[:200],
                                 "permission": gate_result.behavior,
+                                "permission_provenance": gate_provenance,
                             })
                             continue
 
@@ -1473,10 +1502,26 @@ You can send files to the user natively: to deliver a file, write a brief confir
                             if _cached_result is not None:
                                 logger.info(f"[tool-cache] 命中: {func_name}")
                                 result = _cached_result
-                                # 跳过实际执行，直接进入结果处理
-                                tool_calls_log.append({"tool": func_name, "args": func_args, "result": result[:200], "cached": True})
-                                messages.append({"role": "assistant", "tool_calls": [tc]})
-                                messages.append({"role": "tool", "tool_call_id": tc.get("id", ""), "content": self._process_tool_output(func_name, tc.get("id", ""), result)})
+                                # 跳过实际执行，直接进入结果处理。
+                                # P0修复：原实现append到本函数未定义的tool_calls_log
+                                # （NameError——该分支从未被测试覆盖，一旦缓存命中即炸整个
+                                # 回合），且在循环内直接append messages会打乱assistant
+                                # tool_calls→tool结果的协议顺序。改为与正常路径同构：
+                                # 结果进tool_results（循环尾统一入history），调用记录进
+                                # all_tool_calls轨迹账本（含kilocode #14 provenance）
+                                tool_results.append({
+                                    "tool_call_id": tc.get("id", ""),
+                                    "role": "tool",
+                                    "content": self._process_tool_output(func_name, tc.get("id", ""), str(result)),
+                                })
+                                all_tool_calls.append({
+                                    "name": func_name,
+                                    "arguments": func_args,
+                                    "result_preview": str(result)[:200],
+                                    "cached": True,
+                                    "permission": gate_result.behavior,
+                                    "permission_provenance": gate_provenance,
+                                })
                                 continue
 
                         # ── 基础工具执行 ───────────────────────────────
@@ -1861,6 +1906,8 @@ You can send files to the user natively: to deliver a file, write a brief confir
                             "name": func_name,
                             "arguments": func_args,
                             "result_preview": result[:200] if result else "",
+                            "permission": gate_result.behavior,
+                            "permission_provenance": gate_provenance,
                         })
 
                         # P2工具审计 + 结果缓存
