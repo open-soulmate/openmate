@@ -16,8 +16,8 @@
       "suite": "S1",
       "name": "chat流式SSE",
       "passed": true,
-      "detail": "chunks=15",
-      "latency_s": 12.33
+      "detail": "chunks=7",
+      "latency_s": 9.99
     },
     {
       "suite": "S1",
@@ -31,14 +31,14 @@
       "name": "trajectory可观测性",
       "passed": true,
       "detail": "status=200",
-      "latency_s": 0.0
+      "latency_s": 0.01
     },
     {
       "suite": "S2",
       "name": "权限检查: read_file",
       "passed": true,
       "detail": "behavior=allow, reason=Read-only tools are auto-allowed in all modes",
-      "latency_s": 0.04
+      "latency_s": 0.03
     },
     {
       "suite": "S2",
@@ -72,29 +72,29 @@
       "suite": "S2",
       "name": "ACP工具执行链路",
       "passed": true,
-      "detail": "content_len=783, source=acp",
-      "latency_s": 28.81
+      "detail": "content_len=1217, source=acp",
+      "latency_s": 24.09
     },
     {
       "suite": "S2",
       "name": "权限规则CRUD→引擎生效",
       "passed": true,
       "detail": "rule_added=True, behavior_after_add=deny",
-      "latency_s": 0.08
+      "latency_s": 0.12
     },
     {
       "suite": "S3",
       "name": "并发提交10个作业",
       "passed": true,
       "detail": "submitted=10/10",
-      "latency_s": 0.58
+      "latency_s": 0.48
     },
     {
       "suite": "S3",
       "name": "不存在的job→404",
       "passed": true,
       "detail": "status=404",
-      "latency_s": 0.13
+      "latency_s": 0.19
     },
     {
       "suite": "S3",
@@ -107,14 +107,14 @@
       "suite": "S3",
       "name": "队列健康统计",
       "passed": true,
-      "detail": "total=286, workers=3, handlers=['heredity.evaluate_triggers', 'hippo.dream', 'hippo.memory_pipeline']",
+      "detail": "total=344, workers=3, handlers=['heredity.evaluate_triggers', 'hippo.dream', 'hippo.memory_pipeline', 'learn.collect_experiences']",
       "latency_s": 0.0
     },
     {
       "suite": "S3",
       "name": "取消pending作业",
       "passed": true,
-      "detail": "job=job_dbcb118f7463, cancelled=False",
+      "detail": "job=job_1556e61bfe9e, cancelled=False",
       "latency_s": 0.07
     },
     {
@@ -122,21 +122,21 @@
       "name": "evo进化系统状态",
       "passed": true,
       "detail": "status=200",
-      "latency_s": 0.01
+      "latency_s": 0.0
     },
     {
       "suite": "S4",
       "name": "同session并发3条消息",
       "passed": true,
-      "detail": "session=2c72860e-544f-4f94-a, success=3/3, total_latency=6.1s",
-      "latency_s": 6.14
+      "detail": "session=3c945965-fe65-4676-a, success=3/3, total_latency=7.8s",
+      "latency_s": 7.84
     },
     {
       "suite": "S4",
       "name": "不同session并发",
       "passed": true,
-      "detail": "success=3/3, latency=27.2s",
-      "latency_s": 27.2
+      "detail": "success=3/3, latency=12.4s",
+      "latency_s": 12.41
     },
     {
       "suite": "S4",
@@ -150,7 +150,7 @@
       "name": "RAG不可用时chat降级",
       "passed": true,
       "detail": "status=200, has_response=True",
-      "latency_s": 8.01
+      "latency_s": 8.0
     },
     {
       "suite": "S5",
@@ -184,29 +184,29 @@
       "suite": "S6",
       "name": "10端点并发请求",
       "passed": true,
-      "detail": "ok=10/10, latency=0.06s",
-      "latency_s": 0.06
+      "detail": "ok=10/10, latency=0.07s",
+      "latency_s": 0.07
     },
     {
       "suite": "S6",
       "name": "高频20次health检查",
       "passed": true,
-      "detail": "ok=20/20, latency=0.03s",
-      "latency_s": 0.03
+      "detail": "ok=20/20, latency=0.04s",
+      "latency_s": 0.04
     },
     {
       "suite": "S6",
       "name": "混合负载（health+job+perm+ACP）",
       "passed": true,
-      "detail": "ok=4/4, latency=8.7s",
-      "latency_s": 8.7
+      "detail": "ok=4/4, latency=1.8s",
+      "latency_s": 1.8
     },
     {
       "suite": "S6",
       "name": "系统资源使用",
       "passed": true,
-      "detail": "python服务总内存=1028MB",
-      "latency_s": 0.03
+      "detail": "python服务总内存=965MB",
+      "latency_s": 0.02
     }
   ]
 }

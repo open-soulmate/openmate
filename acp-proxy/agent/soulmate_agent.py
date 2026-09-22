@@ -53,6 +53,7 @@ from agent.semantic_cache import SemanticCache
 from agent.context_compression import ContextCompressor
 from agent.loop_guard import LoopGuard
 from agent.code_mode import CodeModeExecutor
+from agent import memory_echo
 from agent.dynamic_prompt import DynamicPromptBuilder
 from agent.memory_retrieval import MemoryRetrievalEngine
 from agent.tool_cache import ToolResultCache
@@ -2398,6 +2399,8 @@ You can send files to the user natively: to deliver a file, write a brief confir
             logger.debug(f"[brain] 认知层调用失败(非致命): {e}")
 
         # ── P2前置处理：语义缓存+上下文压缩+记忆检索 ──────────
+        # kilocode防记忆回声：收集本回合所有召回源的记忆id（collect→mark→digest跳过）
+        recalled_ids: list[str] = []
         try:
             # 1. 语义缓存：相似问题直接返回缓存
             cached = self._semantic_cache.get(user_text)
@@ -2424,6 +2427,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
 
             # 3. 本地记忆检索引擎（与OpenSoul LTM互补）
             local_memories = self._memory_engine.retrieve(user_text, limit=3)
+            recalled_ids.extend(memory_echo.collect_recalled_ids(local_memories=local_memories))
             if local_memories:
                 mem_ctx = "\n".join([f"- {m.content}" for m in local_memories[:3]])
                 messages.insert(0, {"role": "system", "content": f"\n## 相关记忆\n{mem_ctx}\n"})
@@ -2440,6 +2444,9 @@ You can send files to the user natively: to deliver a file, write a brief confir
         try:
             import httpx as _httpx
             async with _httpx.AsyncClient() as _client:
+                # -1. 记忆echo守卫：回合边界清零（kilocode TurnOpen语义）
+                await memory_echo.reset_turn(_client)
+
                 # 0. 会话状态机：创建 + idle → thinking
                 await _client.post(
                     "http://127.0.0.1:8090/api/trajectory/fsm/create",
@@ -2474,8 +2481,13 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 )
                 if ltm_resp.status_code == 200:
                     ltm_data = ltm_resp.json()
+                    recalled_ids.extend(memory_echo.collect_recalled_ids(ltm_data=ltm_data))
                     if ltm_data.get("context"):
                         messages.insert(0, {"role": "system", "content": ltm_data["context"]})
+
+                # 2.5 记忆echo标记：本回合召回过记忆→digest必须跳过（kilocode防自我污染）
+                if recalled_ids:
+                    await memory_echo.mark_recall(_client, recalled_ids)
 
                 # 3. 用户偏好注入
                 pref_resp = await _client.get(
@@ -2933,18 +2945,28 @@ You can send files to the user natively: to deliver a file, write a brief confir
                         },
                         timeout=2,
                     )
-                # 3. 长期记忆存储（重要对话）
+                # 3. 长期记忆存储（重要对话）——kilocode防记忆回声：
+                # 本轮召回过记忆则服务端跳过digest（"答案来自记忆的回合不能再蒸馏回记忆"）
                 if len(user_text) > 50 or len(full_response) > 100:
-                    await _client.post(
+                    add_resp = await _client.post(
                         "http://127.0.0.1:8090/api/hippo/ltm/add",
-                        json={
-                            "content": f"用户: {user_text[:200]}\n助手: {full_response[:200]}",
-                            "memory_type": "episodic",
-                            "importance": 0.5,
-                            "session_id": session_id,
-                        },
+                        json=memory_echo.build_digest_payload(
+                            content=f"用户: {user_text[:200]}\n助手: {full_response[:200]}",
+                            memory_type="episodic",
+                            importance=0.5,
+                            session_id=session_id,
+                        ),
                         timeout=2,
                     )
+                    try:
+                        add_json = add_resp.json() if add_resp.status_code == 200 else {}
+                    except Exception:
+                        add_json = {}
+                    if memory_echo.is_echo_blocked(add_json):
+                        logger.info(
+                            "[memory-echo] 回声阻断：本轮召回过记忆，digest跳过"
+                            "（kilocode防自我污染）"
+                        )
             logger.info("[opensoul] 偏好学习+技能提取+长期记忆完成")
         except Exception as e:
             logger.debug(f"[opensoul] 后处理失败(非致命): {e}")
