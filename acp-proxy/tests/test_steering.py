@@ -313,6 +313,10 @@ def make_agent(tmp_path, acquired=False, scripts=None) -> SoulMateAgent:
     agent._pending_choices = {}
     agent.sessions = {"s1": {"workspace": "/tmp"}}  # prompt()用真值检查，空dict会被当not found
     agent._steering = SteeringQueue()
+    # kilocode #7 Turn生命周期（abort路径写close_reason，_prompt_inner open/close）
+    from agent import turn_lifecycle as _tl
+    agent._turn_lifecycle = _tl.TurnLifecycleBus()
+    agent._turn_close_reason = {}
     agent._activity_store = ActivityStore(db_path=tmp_db(tmp_path))
     agent._activities = {}
     agent._client = None

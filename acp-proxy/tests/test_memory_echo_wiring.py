@@ -180,6 +180,9 @@ class TestDigestPayload:
 
 # ════════════════════════════════════════════════════════════════
 # 接线断言 — _prompt_inner真实消息路径必须调用memory_echo（写了≠接线了）
+# （kilocode #7轮测试演进：回合digest从内联块迁移到TurnClose订阅器
+#  MemoryDigestCollector——assert同步迁移：digest断言=订阅器内使用
+#  memory_echo.build_digest_payload/is_echo_blocked + _prompt_inner真实close接线） ═
 # ════════════════════════════════════════════════════════════════
 
 class TestPromptInnerWiring:
@@ -199,11 +202,23 @@ class TestPromptInnerWiring:
 
     def test_digest_payload_wired(self):
         src = self._src()
-        assert "memory_echo.build_digest_payload(" in src
-        assert "memory_echo.is_echo_blocked(add_json)" in src
+        # digest已事件驱动化：_prompt_inner收尾必须close turn（订阅器在此触发）
+        assert "self._turn_lifecycle.aclose_turn(" in src
+        assert "user_text=user_text" in src and "full_response=full_response" in src
+        # 载荷构造与回声可见语义迁入MemoryDigestCollector（同款memory_echo复用）
+        from agent import turn_lifecycle
+        import inspect as _inspect
+        col_src = _inspect.getsource(turn_lifecycle.MemoryDigestCollector)
+        assert "memory_echo.build_digest_payload(" in col_src
+        assert "memory_echo.is_echo_blocked(" in col_src
 
     def test_wiring_order_reset_before_mark(self):
-        """reset（回合边界清零）必须先于mark（否则清掉本回合标记=阻断失效）"""
+        """reset（回合边界清零）必须先于mark（否则清掉本回合标记=阻断失效）；
+        mark必须先于最终TurnClose（digest时机在mark之后=回声标记先行）"""
         src = self._src()
         assert src.index("memory_echo.reset_turn") < src.index("memory_echo.mark_recall")
-        assert src.index("memory_echo.mark_recall") < src.index("memory_echo.build_digest_payload")
+        assert src.index("memory_echo.mark_recall") < src.rindex("self._turn_lifecycle.aclose_turn")
+
+    def test_digest_no_longer_inline(self):
+        """digest禁止回到内联块（事件驱动采集是唯一形态——kilocode turn.ts）"""
+        assert "/api/hippo/ltm/add" not in self._src()

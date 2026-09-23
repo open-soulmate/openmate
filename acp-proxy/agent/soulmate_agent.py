@@ -56,6 +56,7 @@ from agent.code_mode import CodeModeExecutor
 from agent import memory_echo
 from agent import memory_marker
 from agent import session_recall
+from agent import turn_lifecycle
 from agent.dynamic_prompt import DynamicPromptBuilder
 from agent.memory_retrieval import MemoryRetrievalEngine
 from agent.tool_cache import ToolResultCache
@@ -266,6 +267,14 @@ class SoulMateAgent:
         self._steering = SteeringQueue()                     # Khoj interrupt_queue + goose Steer
         self._activity_store = ActivityStore()               # SQLite持久化，HTTP peek端点跨进程读
         self._activities: dict[str, SessionActivity] = {}    # session_id -> 活动观测
+        # ── kilocode #7 Turn生命周期事件 + 事件驱动记忆采集 ──
+        # （superseded→按interrupted处理，不完整turn不digest；订阅器失败永不破坏会话流）
+        self._turn_lifecycle = turn_lifecycle.TurnLifecycleBus()
+        self._turn_lifecycle.subscribe(
+            turn_lifecycle.EVENT_TURN_CLOSE,
+            turn_lifecycle.MemoryDigestCollector(),
+        )
+        self._turn_close_reason: dict[str, str] = {}  # session_id -> 非正常收尾原因
         
         # ── Writer Fence：per-session写入锁（替代全局_processing标志）──
         self._writer_fence = SessionWriterFence(action=WriteAction.REJECT, timeout=30)
@@ -1328,6 +1337,13 @@ You can send files to the user natively: to deliver a file, write a brief confir
                     activity.mark_aborted()
                     self._activity_store.upsert(activity)
                     logger.info(f"[steer] session {session_id} aborted via interrupt queue")
+                    # kilocode #7：被排队消息顶掉=superseded（按interrupted处理不digest）；
+                    # 纯用户中断=interrupted。收尾时由TurnClose订阅器裁决是否digest
+                    self._turn_close_reason[session_id] = (
+                        turn_lifecycle.CLOSE_SUPERSEDED
+                        if self._steering.pending(session_id)
+                        else turn_lifecycle.CLOSE_INTERRUPTED
+                    )
                     return full_response + "\n\n[任务被用户插话中断]", all_tool_calls
             got_tool_call = False
             round_had_text = False
@@ -2220,7 +2236,16 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 await self._steer_notify(session_id, notice)
                 return PromptResponse(stop_reason="end_turn")
             
-            return await self._prompt_inner(prompt, session_id, message_id, **kwargs)
+            try:
+                return await self._prompt_inner(prompt, session_id, message_id, **kwargs)
+            except Exception:
+                # kilocode #7：异常路径turn必须收尾（close_reason=error→按interrupted不digest），
+                # 否则session残留active turn阻塞生命周期记账
+                self._turn_close_reason.pop(session_id, None)
+                await self._turn_lifecycle.aclose_turn(
+                    session_id, turn_lifecycle.CLOSE_ERROR
+                )
+                raise
 
     async def _prompt_inner(
         self,
@@ -2384,6 +2409,11 @@ You can send files to the user natively: to deliver a file, write a brief confir
         if not user_text.strip():
             return PromptResponse(stop_reason="end_turn")
 
+        # ── kilocode #7 TurnOpen：turn生命周期开始（订阅器驱动观测+记忆采集）──
+        self._turn_close_reason.pop(session_id, None)
+        self._turn_lifecycle.open_turn(
+            session_id, message_id=message_id or "", user_text_len=len(user_text)
+        )
         session["messages"].append({"role": "user", "content": user_text})
         _user_msg_id = self._save_message(
             session_id, "user", user_text,
@@ -2561,6 +2591,10 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 self._cost_tracker.record_usage(
                     model="cache", session_id=session_id,
                     input_tokens=0, output_tokens=0, custom_cost=0.0,
+                )
+                # kilocode #7 TurnClose：缓存命中回合无新信息（cached=True→订阅器不digest）
+                await self._turn_lifecycle.aclose_turn(
+                    session_id, turn_lifecycle.CLOSE_COMPLETED, cached=True
                 )
                 return PromptResponse(stop_reason="end_turn")
 
@@ -3101,27 +3135,10 @@ You can send files to the user natively: to deliver a file, write a brief confir
                     )
                 # 3. 长期记忆存储（重要对话）——kilocode防记忆回声：
                 # 本轮召回过记忆则服务端跳过digest（"答案来自记忆的回合不能再蒸馏回记忆"）
-                if len(user_text) > 50 or len(full_response) > 100:
-                    add_resp = await _client.post(
-                        "http://127.0.0.1:8090/api/hippo/ltm/add",
-                        json=memory_echo.build_digest_payload(
-                            content=f"用户: {user_text[:200]}\n助手: {full_response[:200]}",
-                            memory_type="episodic",
-                            importance=0.5,
-                            session_id=session_id,
-                        ),
-                        timeout=2,
-                    )
-                    try:
-                        add_json = add_resp.json() if add_resp.status_code == 200 else {}
-                    except Exception:
-                        add_json = {}
-                    if memory_echo.is_echo_blocked(add_json):
-                        logger.info(
-                            "[memory-echo] 回声阻断：本轮召回过记忆，digest跳过"
-                            "（kilocode防自我污染）"
-                        )
-            logger.info("[opensoul] 偏好学习+技能提取+长期记忆完成")
+                # （kilocode #7：回合digest已迁移到TurnClose订阅器 MemoryDigestCollector——
+                #  事件驱动记忆采集，只有完整turn才digest，superseded/interrupted不进记忆；
+                #  echo_guard语义不变：build_digest_payload显式echo_guard=True+is_echo_blocked可见）
+            logger.info("[opensoul] 偏好学习+技能提取完成（记忆采集由TurnClose订阅器驱动）")
         except Exception as e:
             logger.debug(f"[opensoul] 后处理失败(非致命): {e}")
 
@@ -3142,6 +3159,17 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 self._observability.finish_span(run_span.span_id, SpanStatus.SUCCESS)
         except Exception:
             pass
+
+        # ── kilocode #7 TurnClose：事件驱动记忆采集（订阅器隔离，失败不破坏会话流）──
+        # close_reason语义：steer中断/取消等非正常收尾标记在此收尾；
+        # superseded→按interrupted处理（"被排队消息顶掉的turn=被中断，不完整不digest"）
+        await self._turn_lifecycle.aclose_turn(
+            session_id,
+            self._turn_close_reason.pop(session_id, turn_lifecycle.CLOSE_COMPLETED),
+            user_text=user_text,
+            full_response=full_response,
+            tool_calls=len(tool_calls_log),
+        )
 
         return PromptResponse(stop_reason="end_turn")
 
@@ -3165,6 +3193,9 @@ You can send files to the user natively: to deliver a file, write a brief confir
     async def cancel(self, session_id: str, **kwargs) -> None:
         """取消当前操作"""
         logger.info(f"Cancel: {session_id}")
+        # kilocode #7：cancel收尾的turn按cancelled处理（不完整不digest）；
+        # 此前cancel是纯no-op——turn生命周期接管后有真实语义
+        self._turn_lifecycle.cancel_turn(session_id)
 
     async def load_session(
         self, cwd: str, session_id: str, mcp_servers=None, **kwargs
