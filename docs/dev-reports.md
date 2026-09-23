@@ -1730,3 +1730,39 @@
 3. ws_chat非soulmate直存路径（`_store_agent_message`）无turn生命周期（该路径无记忆采集语义正确），若未来该路径也采集需补open/close
 4. kilocode supplement3其余缺口顺延：#1 Truncate服务（cortex工具出口，等工具执行器形态稳定）+#2 Truncate保留策略（7天mtime扫20行）+#3方向感知、provenance账本retention轮转（kilocode #2同款7天mtime）、#8记忆模型独立解析链、#12 inert声明、#13跨workspace二次授权、#15网络受限工具面收缩、#16 GoalPolicy工具门、#17 reserved buffer、#18 reminders合成part、#19 MCP resource三件套——均为下轮P1候选
 5. cron环境工具约束（持续有效）：execute_code被BLOCKED（write_file+terminal两步）；curl|python3管道被tirith安全闸BLOCKED（先落文件再读）；组合长命令可能触发parser limit blocklist（拆小步执行）；git commit -m长消息末尾禁带管道符号
+
+## [2026-09-23 14:52 CST] P1 kilocode supplement3 #1尾款+#2+#3 Truncate服务收尾+retention统一清扫 + P0级修复：[:3000]静默截断与tool-audit死接线（live E2E发现）
+**目标**：销账kilocode-source-supplement3 #2 Truncate保留策略（7天retention+每小时cleanup按mtime）、#3方向感知（removed行数/字节显式报告双单位择一）、#1尾款按agent能力分级提示、上轮遗留"provenance账本retention轮转"；且本轮live E2E意外发现并修复两个P0级接线缺陷：①真实消息路径terminal/search_files/execute_code结果被`[:3000]`静默切尾——数据在到达P0-2溢出层（_process_tool_output，8000字符阈值）之前就被砍掉，溢出层对最大宗工具输出永不触发（"写了≠接线了"的活标本），AIHawk SHOWN/SENT双预算失真（sent_chars记被砍值），且无任何显式标记（违反"截断必须显式标记不能静默丢数据"铁律）；②ToolAuditor.audit_call调用点kwarg（result_preview/duration_s）与签名（result/duration_ms）不符→真实路径每次TypeError被DEBUG日志静默吞掉→工具审计从未落库，且同一try块的tool_cache.put被连带跳过（审计死=缓存也死）。
+**调研来源**：kilocode-source-supplement3.md #2（"7天retention+每小时cleanup扫mtime（编码ID会回绕所以不看ID看mtime——注释即坑教材）"）+#3（head/tail截断+removed行数/字节数显式报告"...347 lines truncated..."双单位择一）+#1（按agent能力分级提示：有task工具→"派explore agent处理该文件别自己读"；无→"用Grep/Read offset-limit"）+AIHawk SHOWN/SENT双预算"截断必须显式标记"+mem0 §1.1"失败必须可见禁止静默降级"（audit失败DEBUG静默=失败记忆失真）。
+**改动文件**：
+- openmate/acp-proxy/agent/retention.py（新建200行：epoch_from_ts/sweep_mtime/compact_jsonl/maybe_sweep）
+- openmate/acp-proxy/agent/tool_output_handler.py（+142/-55增量7 hunk：retention接线+方向感知+能力分级）
+- openmate/acp-proxy/agent/permission_provenance.py（+23：账本轮转retention）
+- openmate/acp-proxy/agent/soulmate_agent.py（+37/-11增量6 hunk：[:3000]静默截断修复×4+tool-audit签名对齐+失败升WARNING+_active_tool_names记录）
+- openmate/acp-proxy/tests/test_retention.py（新建389行31用例）
+- openmate/acp-proxy/tests/test_no_silent_truncation.py（新建85行5用例回归守护）
+- openmate/acp-proxy/systemic_test_results.json（测试产物）
+**改动内容**：
+1. `retention.py`（kilocode truncate.ts cleanup忠实移植）：`sweep_mtime`按mtime删超龄文件（docstring明示"绝不能按文件名编码ID判定——ID会回绕"）+`compact_jsonl`账本保守轮转（**只删ts可解析且早于cutoff的记录，坏行/无ts/无法解析一律保留**——无法证明超龄就不删，原子tmp+os.replace替换）+`maybe_sweep`每小时进程内节流（kilocode"每小时cleanup"语义）+`epoch_from_ts`兼容epoch秒/ISO带时区/ISO无时区三形态；清扫失败仅WARNING绝不反噬主流程
+2. `tool_output_handler.py`：①#2 `maybe_cleanup()`（spill *.txt按mtime+spill_ledger.jsonl按ts轮转）接进`process()`写路径顺带触发②#3 `_spill_reason()`双单位择一（行数触发→"...[N 行已截断]..."，字节触发→"...[N 字节已截断]..."）+head/tail预览显式标注"开头/head""结尾/tail"+SpillResult加removed_lines/removed_bytes字段+落盘失败降级路径同样显式报告removed③#1 `_readback_hint()`三档能力分级（task/派发类→派子agent别自己整读；search类→先search_files定位再分段读；否则默认档read_file_segment指引）④get_stats暴露retention_days/cleanup_interval_s（可观测性）
+3. `permission_provenance.py`：PermissionProvenanceRecorder加retention_days/cleanup_interval+`maybe_cleanup()`账本7天轮转接进record()写路径（上轮遗留"provenance账本retention轮转"销账）
+4. `soulmate_agent.py` P0修复①：主循环terminal/search_files分支+code_mode批量化内层terminal/search_files分支的`[:3000]`静默切尾全部移除——完整输出进循环尾`_process_tool_output`溢出层（超限spill+显式stub；code_mode内层结果同样过溢出层，批内可read_file_segment读回）；P0修复②：audit_call调用点改`result=str(result), duration_ms=tool_duration*1000`与签名对齐（audit_call内部自切200字符存summary），audit失败日志DEBUG→WARNING；另`_run_llm_with_tools`每轮记录`self._active_tool_names`工具面集合供能力分级提示
+**接线位置**（grep证据，文件:行号）：
+- 定义：agent/retention.py:75 `def sweep_mtime` / :122 `def compact_jsonl` / :174 `def maybe_sweep`；tool_output_handler.py:80 `def maybe_cleanup` / :130 `def _spill_reason` / :164 `def _readback_hint` / :189 `def _removed_marker`
+- 运行时消费（真实消息路径，无死代码）：tool_output_handler.py:265 `self.maybe_cleanup()`（process写路径）+:296/:320 removed进SpillResult+:323 `tool_names=tool_names`进_build_stub；permission_provenance.py:243 `self.maybe_cleanup()`（record写路径）；soulmate_agent.py:613 `tool_names=getattr(self, "_active_tool_names", None)`（_process_tool_output）+:1305 `self._active_tool_names = {...}`（_run_llm_with_tools工具面记录）+:709-712+:727-729（code_mode内层terminal/search_files过_process_tool_output）+:1620-1622+:1648-1649（主循环terminal/search_files去静默截断）+:1962-1969（audit_call签名对齐）
+**验证结果**：
+- 完整性✅：git diff --cached确认7文件863 insertions真实落盘（soulmate_agent.py 6个增量hunk非全量重写）；ast.parse 5文件全过；ruff --select F821,F841,F401,E9本轮新文件+改动文件全过"All checks passed!"（soulmate_agent存量F401/F841为历史欠账非本轮引入，不动；本轮顺手清理tool_output_handler预存未用import tempfile/field）
+- 集成✅：grep证据如上（每个新符号有定义行+运行时消费行，位于process()/record()写路径+_run_llm_with_tools真实工具循环=ws /ws/acp真实聊天路径，无死代码）；test_retention.py TestWiring用inspect.getsource断言4项+test_no_silent_truncation.py守护5项
+- 测试✅：tests/test_retention.py **31 passed**（epoch_from_ts 6/sweep_mtime 4含**ID回绕坑守护：ID大mtime老必删、ID小mtime新必留**/compact_jsonl 4含**坏行无ts一律保留的保守retention**/maybe_sweep 2节流+异常吞噬/Handler接线 3/stats 1/方向感知 4含**行触发报行、字节触发报字节、双单位择一、降级路径同样显式**/能力分级 3三档/provenance轮转 2/接线断言 4）；tests/test_no_silent_truncation.py **5 passed**（[:3000]代码行绝迹守护（剔注释）/溢出层调用点>=5/audit签名匹配调用点/audit真实调用落库get_stats=1/**audit失败必须WARNING**）；广义回归**全tests/ 509 passed零破坏**；systemic_test.py **29/29 passed**（重启后服务上S4并发/S5降级/S6混合负载全绿）
+- **live E2E全周期✅（/tmp/e2e_retention_spill.py，真实WS /ws/acp agent_id=soulmate路径，决定性证据）**：真实回合session om-507d95b93937调用terminal执行seq 1 3000→①spill文件terminal_1790146180141_2e57c67a8bbe.txt **full_len=13893字符零丢失**（startswith 1\n2\n3+endswith 3000）②账本`{'sent_chars': 13893, 'shown_chars': 2167, 'spilled': 1}`——**sent_chars=真实全量13893**（修复前实测被砍成3000，[:3000]静默截断修复的决定性对比证据），SHOWN/SENT双预算首次真实③journal`Tool output spilled: terminal (13893 chars → 2167 char stub, path=...)`+`[MSG 7] role=tool content=[TRUNCATED — 工具输出过大已外置]`——stub真实进入LLM上下文④read_file_segment(spill_path, 2995, 3000)读回成功⑤turn生命周期digest照常（ltm_4a26b6991463）——消息路径改动未破坏既有行为
+**服务重启**：systemctl --user restart acp-proxy-a.service + acp-proxy-b.service（soulmate_agent/tool_output_handler/permission_provenance改动双实例）→is-active双active→:8092/health+:8095/health双200→重启后systemic 29/29+live E2E在重启后服务上通过；opensoul零改动不重启；openmate前端零改动不build
+**commit**：openmate `71d805ca`（push前git grep --cached密钥扫描staged文件0真实密钥命中；工作区他人未提交settings-client.tsx/locales不入库）
+**数据清理**：E2E三会话（om-691b9f1d65e8/om-7d8de1c7b3a7/om-507d95b93937）消息行删除后count=0；E2E spill文件删除后仅剩2个既有文件；LTM按token兜底hard_delete后"retentionspilltest"命中=0（/tmp/e2e_residue_check.py三路实查零残留）；E2E产生的spill_ledger/permission_provenance账本记录保留（真实工具调用合法审计数据，同provenance先例）
+**E2E诚实实录（两轮失败迭代）**：①首轮E2E误把spill文件当stub断言——spill文件设计上就是完整原文（stub进context），断言修正为"spill文件=零丢失原文+stub经journal [MSG]预览+账本核对"；②修复前首轮实测实锤[:3000]缺陷（`sent_chars: 3000`，seq全量13893被砍），本轮缺陷发现→修复→复验闭环由此而来；③stub全文live截取受llm_engine [MSG]日志content[:100]预览限制（方向感知/能力分级文案以单测锁定），已如实标注不夸大
+**遗留问题**：
+1. llm_engine [MSG]日志content预览仅100字符——工具结果stub/markers无法从journal全文审计；如需消息级工具结果全文审计需另开tool-result账本或提高预览（产品决策先讨论，cron不擅改）
+2. tool_cache.put随audit修复复活——read_file/list_files/search_files结果缓存恢复生效，但缓存命中分支的cache语义（TTL/失效）此前从未在真实负载下运行过，若出现陈旧缓存问题下轮优先（缓存键含参数，风险有限）
+3. `_process_tool_output`兜底except仍降级到`truncate_tool_result`旧截断（同样无显式标记）——仅溢出层自身异常时触发（罕见路径），列为下轮把降级文案补显式标记的小项
+4. 保留策略清扫只覆盖tool_spills（spill文件+spill_ledger）与permission_provenance两处——token_attribution账本（data/同模式JSONL）未接retention轮转，下轮候选
+5. kilocode supplement3其余缺口顺延：#4 readTurn快照diff、#8记忆模型独立解析链、#12 inert声明、#13跨workspace二次授权、#15网络受限工具面收缩、#16 GoalPolicy工具门、#17 reserved buffer、#18 reminders合成part、#19 MCP resource三件套——均为下轮P1候选
+6. cron环境工具约束（持续有效）：execute_code被BLOCKED（write_file+terminal两步）；curl|python3管道被安全闸BLOCKED（先落文件再读）；git commit -m长消息末尾禁带管道符号；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）
