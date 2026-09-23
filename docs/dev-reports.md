@@ -1766,3 +1766,39 @@
 4. 保留策略清扫只覆盖tool_spills（spill文件+spill_ledger）与permission_provenance两处——token_attribution账本（data/同模式JSONL）未接retention轮转，下轮候选
 5. kilocode supplement3其余缺口顺延：#4 readTurn快照diff、#8记忆模型独立解析链、#12 inert声明、#13跨workspace二次授权、#15网络受限工具面收缩、#16 GoalPolicy工具门、#17 reserved buffer、#18 reminders合成part、#19 MCP resource三件套——均为下轮P1候选
 6. cron环境工具约束（持续有效）：execute_code被BLOCKED（write_file+terminal两步）；curl|python3管道被安全闸BLOCKED（先落文件再读）；git commit -m长消息末尾禁带管道符号；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）
+
+## [2026-09-23 17:25 CST] P0兜底降级不丢数据degraded_spill + P1 token归因账本retention统一轮转（上轮遗留#3/#4双销账）
+**目标**：①上轮遗留#3——`_process_tool_output`兜底except降级到`truncate_tool_result`静默切尾：中段数据永久丢失（不留盘不可读回，违反kilocode spill"全文落盘"）、head/tail无方向标注、removed不报告（违反kilocode #3）、账本无fallback记录（AIHawk SHOWN/SENT双预算在降级路径失真）；②上轮遗留#4——token归因账本attribution_ledger.jsonl（soulmate工具循环每轮record真实写入、app.py跨进程读，实测已42行/83KB无限增长）未接retention轮转，kilocode #2保留策略此前只覆盖tool_spills与permission_provenance两处。
+**调研来源**：kilocode-source-supplement3.md #3（head/tail截断+removed行数/字节数显式报告"...347 lines truncated..."双单位择一）+#2（7天retention+每小时cleanup）+#1（按agent能力分级提示）+AIHawk SHOWN/SENT双预算"截断必须显式标记不能静默丢数据"+mem0 §1.1"失败必须可见禁止静默降级"（落盘失败必须显式声明不可恢复，绝不假装有救）。
+**改动文件**：
+- openmate/acp-proxy/agent/tool_output_handler.py（+132/-5：模块级degraded_spill()约120行 + _readback_hint改classmethod供健康/降级两路径共用）
+- openmate/acp-proxy/agent/soulmate_agent.py（+18/-2增量2 hunk：import degraded_spill + 兜底分支替换）
+- openmate/acp-proxy/agent/token_attribution.py（+38/-2增量4 hunk：retention导入+__init__参数+maybe_cleanup+record/backfill写路径接线×2）
+- openmate/acp-proxy/agent/retention.py（+2：适用对象docstring登记token归因账本）
+- openmate/acp-proxy/tests/test_degraded_spill.py（新建157行10用例）
+- openmate/acp-proxy/tests/test_attribution_retention.py（新建106行6用例）
+- openmate/acp-proxy/tests/test_tool_output_wiring.py（+15/-5：test_helper_fail_safe_fallback测试演进——旧断言锁定静默切尾契约，随本轮有意替换更新）
+- openmate/acp-proxy/systemic_test_results.json（测试产物）
+**改动内容**：
+1. `tool_output_handler.py` 新增模块级`degraded_spill()`（独立于ToolOutputHandler实例——handler可能就是异常源）四条语义对照健康路径逐项补齐：①best-effort全文落盘（degraded_前缀+sha256内容哈希+0o600权限，goose unix模式同款）②head/tail方向显式标注"预览（开头/head）/（结尾/tail）"+removed字节报告（截断按字符预算触发→按字节报告，双单位择一，复用`_removed_marker`）③读回指引复用kilocode #1能力分级（`_readback_hint`改classmethod后健康/降级共用——降级不降智）；落盘失败→显式"[数据未保存 — 降级spill落盘失败，全文不可恢复，以下预览是仅存内容]"+"[END — 全文未保存]"，不给假读回指引④spill_ledger.jsonl记fallback事件（fallback:1+reason，sent=全文、shown=stub不失真）；低于预算文本原样返回不打标记（标记只属于真实截断）；任何内部步骤失败就地吞掉，函数绝不抛出
+2. `soulmate_agent.py` 兜底分支：`truncate_tool_result(str(result))` → `degraded_spill(...reason=str(e), tool_names=self._active_tool_names)`；最内层双保险仍保留truncate_tool_result但包装显式标记"[降级截断 — 溢出处理与降级spill均失败，数据未保存]"（禁静默）
+3. `token_attribution.py` AttributionLedger：新增`maybe_cleanup()`（retention.compact_jsonl 7天ts保守轮转——坏行/无ts一律保留+retention.maybe_sweep每小时节流）接进record()/backfill_actual()写路径顺带触发（与ToolOutputHandler/PermissionProvenanceRecorder同款模式）；__init__加retention_days/cleanup_interval参数（默认kilocode 7天/1小时）
+**接线位置**（grep证据，文件:行号）：
+- 定义：tool_output_handler.py:481 `def degraded_spill` / :478 `DEGRADED_MAX_CHARS`；token_attribution.py:305 `def maybe_cleanup`
+- 运行时消费（真实消息路径，无死代码）：soulmate_agent.py:47 import + :621 `return degraded_spill(`（位于`_process_tool_output`兜底=ws /ws/acp真实聊天路径的工具结果处理出口）；token_attribution.py:341 `self.maybe_cleanup()`（record写路径）+:399（backfill_actual写路径）——record的真实调用点soulmate_agent.py:1391 `self._token_attr_ledger.record(_usage...)`（_run_llm_with_tools真实LLM工具循环）+:1407 `backfill_actual`（provider usage回填）
+- classmethod复用：tool_output_handler.py:168 `_readback_hint`（_build_stub:235与degraded_spill:553两处调用）
+**验证结果**：
+- 完整性✅：git diff --stat确认acp-proxy 7文件+472/-31真实落盘（soulmate_agent/token_attribution均多hunk增量edit非全量重写）；ast.parse 4文件全过；测试文件lint ok
+- 集成✅：grep证据如上（每个新符号有定义行+运行时消费行，位于_process_tool_output真实工具结果路径+AttributionLedger真实record/backfill写路径）；test_degraded_spill.py inspect.getsource断言degraded_spill在_process_tool_output体内+test_attribution_retention.py断言maybe_cleanup在record/backfill体内+soulmate真实写账本调用点在场
+- 测试✅：tests/test_degraded_spill.py **10 passed**（全文落盘零丢失+显式标记/低于预算passthrough/落盘失败显式[数据未保存]/SENT=全文SHOWN=stub双预算/reason进stub/能力分级三档/绝不抛出/源码接线/行为级BoomHandler真实降级/classmethod两用）；tests/test_attribution_retention.py **6 passed**（record触发轮转：超龄删+坏行留+新记录留/backfill对称触发/每小时节流只扫一次/清扫失败不反噬record/无ts保留/接线断言）；广义回归**全tests/ 525 passed零破坏**（唯一测试演进：test_tool_output_wiring.py::test_helper_fail_safe_fallback旧断言"[内容过长，已截断"锁定的是本轮有意替换的静默切尾契约，更新为新契约断言并注明演进理由）；systemic_test.py **29/29 passed**（重启后服务上S4并发/S5降级/S6混合负载全绿）
+- **live E2E全周期✅（/tmp/e2e_degraded_retention.py，决定性证据）**：Part A degraded_spill直接函数调用（服务同代码库）——8021字符文本全文落盘/tmp/e2e_degraded_spill/degraded_e2e_probe_*.txt零丢失（中段哨兵在盘上）+stub过[TRUNCATED — 溢出处理失败，已降级截断]+方向标注+"字节已截断"+read_file_segment指引+账本fallback=1 sent=8021 shown=6621 E2E PASS；Part B **真实WS /ws/acp soulmate回合（session om-dcb3252c5ffc）触发真实账本轮转**——预置30天前超龄记录→真实回合record→maybe_cleanup→账本43→44行且**seeded_left=0（超龄记录被真实消息路径轮转删除）**+fresh_records=2（record+backfill各一）+journal rung-4实锤`[retention] 账本轮转 /home/climbing/.hermes/soulmate/token_attribution/attribution_ledger.jsonl：删除1条超龄记录（7.0天窗口），保留43条` E2E PASS
+**服务重启**：systemctl --user restart acp-proxy-a.service + acp-proxy-b.service（soulmate_agent/tool_output_handler/token_attribution改动双实例）→is-active双active→:8092/health+:8095/health双200（含token_attribution校准统计正常返回）→live E2E+全量pytest+systemic 29/29全在重启后服务上通过；opensoul零改动不重启不跑pytest；openmate前端零改动不build
+**commit**：openmate `878b7acf`（push前git grep --cached密钥扫描staged文件0真实密钥命中；工作区他人未提交settings-client.tsx/locales不入库）
+**数据清理**：E2E预置超龄账本记录已被真实轮转删除（兜底删除分支未触发）；E2E回合消息行2条删除count=0；E2E digest记忆按token hard_delete后命中=0+echo turn reset清零；E2E spill目录/tmp/e2e_degraded_spill整体删除；真实attribution_ledger中E2E回合产生的2条归因记录按先例保留（真实回合合法审计数据，7天后retention自动轮转）
+**测试教训（诚实实录）**：首轮2 failed暴露一个真实算术事实——小文本（323字符）用小预算（100）截断后stub（822字符，含固定指引开销）反而比原文长，"shown<sent"只在真实大输出量级成立；测试修正为HUGE=8021字符默认预算量级（而非放宽断言），顺手把该约束写进测试注释防后人误判
+**遗留问题**：
+1. degraded_spill对低于预算文本也best-effort落盘（步骤①在预算判断前）——罕见路径的磁盘占用换"数据绝不丢"语义，如嫌脏可只在截断时落盘（产品决策先讨论，cron不擅改）
+2. opensoul侧镜像`src/cortex/token_attribution.py`的ContextAttributor账本（ledger_path可选参数）未接retention：经grep确认opensoul运行时`get_attributor()`构造时ledger_path=None（真实账本只在acp-proxy侧），该路径无真实调用方=死代码故本轮不移植（同from_startup先例）；若未来opensoul侧启用账本需补同款maybe_cleanup
+3. truncate_tool_result（utils/token_manager.py）作为最内层双保险保留，其"[内容过长，已截断 X→Y 字符]"标记无方向标注——仅degraded_spill自身异常的双重灾难路径触发，如需补齐是1个小项
+4. kilocode supplement3其余缺口顺延：#4 readTurn快照diff、#8记忆模型独立解析链、#12 inert声明、#13跨workspace二次授权、#15网络受限工具面收缩、#16 GoalPolicy工具门、#17 reserved buffer、#18 reminders合成part、#19 MCP resource三件套——均为下轮P1候选
+5. cron环境工具约束（持续有效）：execute_code被BLOCKED（write_file+terminal两步）；curl|python3管道被安全闸BLOCKED（先落文件再读）；git commit -m长消息末尾禁带管道符号；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）
