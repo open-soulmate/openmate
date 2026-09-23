@@ -327,7 +327,7 @@ async def health():
     ws_chat侧live路由承载；本handler保留作include顺序变化时的兜底镜像。
     新增health观测字段请同时/优先加到ws_chat.ws_chat_health。"""
     instance_id = os.environ.get("INSTANCE_ID", "a")
-    payload = {"status": "ok", "service": "acp-proxy", "instance": instance_id}
+    payload: dict = {"status": "ok", "service": "acp-proxy", "instance": instance_id}
     # P0-4: peek统计并入health——既有monitoring页探测health即可看到agent活动状态，不新建页面
     try:
         payload["agent_activity"] = _activity_store().peek_all()["summary"]
@@ -354,6 +354,12 @@ async def health():
                          # d439f163遗留#3：估算校准状态（sample_count/calibrated/factor）
                          "calibration")},
         }
+    except Exception:
+        pass
+    # kilocode supplement3 #17：双限额上下文预算推导链（与ws_chat.ws_chat_health同步镜像）
+    try:
+        from agent.context_budget import budget_snapshot
+        payload["context_budget"] = budget_snapshot()
     except Exception:
         pass
     return payload

@@ -12,6 +12,10 @@ logger = logging.getLogger(__name__)
 _model_cache = {
     "max_output_tokens": int(os.environ.get("LLM_MAX_TOKENS", "65536")),
     "context_window": int(os.environ.get("LLM_CONTEXT_WINDOW", "131072")),
+    # 模型独立输入限额（kilocode model.limit.input，supplement3 #17双限额）：
+    # 0=未声明（单窗口模型）；双限额模型（如"1M输入/32k输出"分离限额）在此声明，
+    # 上下文预算即走"输入限额优先"分支（agent.context_budget.usable_input）。
+    "input_limit": int(os.environ.get("LLM_INPUT_LIMIT", "0")),
     "probed": False,
 }
 
@@ -27,6 +31,11 @@ def get_max_output_tokens() -> int:
 def get_context_window() -> int:
     """获取模型上下文窗口（缓存值）"""
     return _model_cache["context_window"]
+
+
+def get_input_limit() -> int:
+    """获取模型独立输入限额（kilocode model.limit.input语义，0=未声明单窗口模型）"""
+    return _model_cache["input_limit"]
 
 
 def probe_model_capabilities(base_url: str, api_key: str, model: str) -> dict:

@@ -404,7 +404,7 @@ async def ws_chat_health():
     fail-safe——任何统计失败只丢该key不影响status=ok存活判定（evolution.py:360/
     dna_evolution.py:1233只消费status_code==200）。新增health观测字段请加在本handler。
     """
-    payload = {"status": "ok", "component": "WSChat"}
+    payload: dict = {"status": "ok", "component": "WSChat"}
     # P0-4 peek三指标（"不知道它在干嘛"的行业首个完整实现——goose peek移植）
     try:
         from app import _activity_store
@@ -433,6 +433,12 @@ async def ws_chat_health():
                for k in ("over_limit_records", "avg_total_tokens", "max_total_tokens",
                          "backfill_count", "avg_estimate_gap", "calibration")},
         }
+    except Exception:
+        pass
+    # kilocode supplement3 #17：双限额上下文预算推导链（limits→reserved→usable→history_target）
+    try:
+        from agent.context_budget import budget_snapshot
+        payload["context_budget"] = budget_snapshot()
     except Exception:
         pass
     return payload

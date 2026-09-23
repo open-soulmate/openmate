@@ -88,7 +88,7 @@ from agent.tool_validator import ToolResultValidator
 from agent.capability_evaluator import CapabilityEvaluator
 from agent.env_sensor import EnvironmentSensor
 from agent.prompt_manager import PromptTemplateManager
-from agent.context_budget import ContextBudgetManager
+from agent.context_budget import DEFAULT_HISTORY_TARGET_TOKENS, ContextBudgetManager
 from agent.token_attribution import (
     KIND_BUILTIN_TOOL,
     KIND_IMPROVEMENT,
@@ -2531,14 +2531,35 @@ You can send files to the user natively: to deliver a file, write a brief confir
         # except:pass吞掉，裁剪从未生效）。现在manage()真实存在，且估算=canonical
         # estimate_tokens×provider回填推出的校准因子（calibration_factor在_prompt_inner
         # 入口处刷新）。裁剪只作用于本次LLM请求副本——session["messages"]持久化历史
-        # 不动（DB/回放/标题生成不受影响）；>20条才触发，预算8000 tokens同原意图。
+        # 不动（DB/回放/标题生成不受影响）；>20条才触发。
+        # kilocode supplement3 #17（overflow.ts reserved buffer+输入限额优先）：预算从
+        # 模型双限额推导（usable_input−system_reserve，双限额模型只减reserved=min(20k,
+        # 最大输出)），替代原硬编码max_tokens=8000——预算随模型窗口伸缩，小窗口模型不
+        # 会超发、大窗口模型不再被8k过度裁剪。
         if len(messages) > 20:
             try:
-                trimmed = self._context_budget.manage(messages, max_tokens=8000)
+                try:
+                    from utils.token_manager import (
+                        get_context_window,
+                        get_input_limit,
+                        get_max_output_tokens,
+                    )
+                    _ctx_target = self._context_budget.model_history_target(
+                        context_limit=get_context_window(),
+                        output_limit=get_max_output_tokens(),
+                        input_limit=get_input_limit(),
+                    )
+                except Exception as _tgt_exc:
+                    logger.warning(
+                        f"[context-budget] 模型限额读取失败，回退默认预算: {_tgt_exc}"
+                    )
+                    _ctx_target = DEFAULT_HISTORY_TARGET_TOKENS
+                trimmed = self._context_budget.manage(messages, max_tokens=_ctx_target)
                 if trimmed and len(trimmed) < len(messages):
                     logger.info(
                         f"[context-budget] LLM历史裁剪生效: {len(messages)}→{len(trimmed)}条 "
-                        f"(calibration_factor={self._context_budget.calibration_factor:.4f})"
+                        f"(target={_ctx_target}, "
+                        f"calibration_factor={self._context_budget.calibration_factor:.4f})"
                     )
                     messages = trimmed
             except Exception as _cb_exc:

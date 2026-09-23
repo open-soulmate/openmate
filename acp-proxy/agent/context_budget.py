@@ -12,6 +12,57 @@ from enum import IntEnum
 
 logger = logging.getLogger("acp-proxy.context-budget")
 
+# ── kilocode overflow.ts移植：reserved buffer + 输入限额优先（supplement3 #17）──
+# COMPACTION_BUFFER：kilocode overflow.ts "const COMPACTION_BUFFER = 20_000"——压缩缓冲
+# 的默认预留（为压缩摘要/后续输出留出的输入侧余量）。
+COMPACTION_BUFFER = 20_000
+# 配置失真（限额缺失/自相矛盾）时的fail-safe兜底=既有硬编码8000行为（见model_history_target）。
+DEFAULT_HISTORY_TARGET_TOKENS = 8_000
+
+
+def max_output_tokens(model_output_limit: int, output_cap: int) -> int:
+    """kilocode ProviderTransform.maxOutputTokens：min(model.limit.output, outputTokenMax) || outputTokenMax。
+
+    模型未声明输出上限（0）时回退调用方cap——JS `||` 对0回退的语义逐行对齐（min结果为0即回退）。
+    """
+    return min(int(model_output_limit or 0), int(output_cap or 0)) or int(output_cap or 0)
+
+
+def reserved_tokens(
+    model_output_limit: int, output_cap: int, reserved: Optional[int] = None
+) -> int:
+    """kilocode overflow.ts reserved：cfg.compaction.reserved ?? min(COMPACTION_BUFFER, maxOutputTokens)。
+
+    显式预留（cfg.compaction.reserved语义，含0）始终优先；缺省=min(20k, 模型最大输出)。
+    """
+    if reserved is not None:
+        return max(0, int(reserved))
+    return max(0, min(COMPACTION_BUFFER, max_output_tokens(model_output_limit, output_cap)))
+
+
+def usable_input(
+    context_limit: int,
+    model_output_limit: int = 0,
+    output_cap: int = 0,
+    input_limit: int = 0,
+    reserved: Optional[int] = None,
+) -> int:
+    """kilocode overflow.ts usable()——输入侧可用预算，**输入限额优先**（supplement3 #17）。
+
+    双限额模型（model.limit.input存在，如"1M输入/32k输出"分离限额）：输入预算=input_limit
+    只减压缩预留——输出不占输入窗口；单一context窗口模型：输入预算=context−最大输出——
+    输出从同一窗口出。两个分支的减法对象不同正是"双限额模型比单一context窗口精确"的核心，
+    勿"统一"简化。context_limit==0（模型未声明窗口）→0，与kilocode同。
+    """
+    context_limit = int(context_limit or 0)
+    if context_limit == 0:
+        return 0
+    if input_limit:
+        return max(
+            0, int(input_limit) - reserved_tokens(model_output_limit, output_cap, reserved)
+        )
+    return max(0, context_limit - max_output_tokens(model_output_limit, output_cap))
+
 
 class MessageImportance(IntEnum):
     """消息重要性等级 — 决定裁剪优先级"""
@@ -31,10 +82,27 @@ class TokenBudget:
     response_reserve: int = 8000    # 预留给响应的token
     min_recent_messages: int = 6    # 至少保留的最近消息数
     compression_threshold: float = 0.75  # 触发压缩的阈值
+    # ── 模型双限额（kilocode model.limit，supplement3 #17）──
+    input_limit: int = 0            # 模型独立输入限额（0=未声明→走context−输出分支）
+    model_output_limit: int = 0     # 模型输出上限（0=未声明）
+    output_cap: int = 0             # 调用方输出cap（ProviderTransform.maxOutputTokens第二参）
+    compaction_reserved: Optional[int] = None  # 显式压缩预留（cfg.compaction.reserved语义，None=默认min(20k,输出)）
 
     @property
     def available_for_history(self) -> int:
         return self.total_window - self.system_reserve - self.response_reserve
+
+    @property
+    def usable_input_tokens(self) -> int:
+        """整个输入侧可用预算（kilocode overflow.ts usable()，输入限额优先）——
+        历史+system+工具定义共享此窗口。"""
+        return usable_input(
+            self.total_window,
+            self.model_output_limit,
+            self.output_cap,
+            self.input_limit,
+            self.compaction_reserved,
+        )
 
     @property
     def compression_trigger_at(self) -> int:
@@ -134,6 +202,44 @@ class ContextBudgetManager:
             f"(~{total}→~{used} tokens, factor={factor:.4f}, target={target})"
         )
         return result
+
+    def model_history_target(
+        self,
+        context_limit: int,
+        output_limit: int,
+        input_limit: int = 0,
+        reserved: Optional[int] = None,
+        output_cap: Optional[int] = None,
+        fallback: int = DEFAULT_HISTORY_TARGET_TOKENS,
+    ) -> int:
+        """kilocode overflow.ts usable()推导的会话历史token预算（supplement3 #17）。
+
+        目标 = usable_input(整输入预算) − system_reserve（system提示+工具定义占用的
+        输入侧预留，TokenBudget.system_reserve语义）。输入限额优先：双限额模型只减
+        reserved=min(20k,最大输出)；单窗口模型减全量最大输出。
+
+        fail-safe护栏（**有意偏离kilocode**，此处注明）：kilocode的model限额来自
+        models.dev权威目录；本侧限额是env声明值可能失真（如context<输出上限的自相矛盾
+        配置、0窗口）。推导结果<=0时**不把历史裁到只剩最后一条**，WARNING可见并回退
+        fallback（=既有硬编码8000行为，行为不回退）。
+        """
+        cap = output_limit if output_cap is None else output_cap
+        usable = usable_input(context_limit, output_limit, cap, input_limit, reserved)
+        if usable <= 0:
+            logger.warning(
+                "[context-budget] 模型限额配置失真（context=%s output=%s input_limit=%s）"
+                "→ usable=%s，回退 fallback=%s",
+                context_limit, output_limit, input_limit, usable, fallback,
+            )
+            return fallback
+        target = usable - self.budget.system_reserve
+        if target <= 0:
+            logger.warning(
+                "[context-budget] usable=%s 不足以覆盖 system_reserve=%s，回退 fallback=%s",
+                usable, self.budget.system_reserve, fallback,
+            )
+            return fallback
+        return target
 
     def add_message(
         self,
@@ -256,3 +362,35 @@ class ContextBudgetManager:
     def clear(self):
         self._messages.clear()
         self._total_tokens = 0
+
+
+def budget_snapshot() -> dict:
+    """双限额预算推导链快照（可观测性："预算怎么算出来的"一条响应看全）。
+
+    读utils.token_manager的模型限额缓存（与soulmate真实消息路径**同一真源**），
+    输出 limits→reserved→usable→history_target 完整推导链。fail-safe：任何异常
+    只返回{"error": ...}，绝不反噬health存活判定。
+    """
+    try:
+        from utils.token_manager import (
+            get_context_window,
+            get_input_limit,
+            get_max_output_tokens,
+        )
+        ctx = get_context_window()
+        out = get_max_output_tokens()
+        inl = get_input_limit()
+    except Exception as e:  # pragma: no cover - import/环境异常路径
+        return {"error": str(e)}
+    mgr = ContextBudgetManager()
+    return {
+        "context_window": ctx,
+        "max_output_tokens": out,
+        "input_limit": inl,
+        "input_limit_first": bool(inl),
+        "reserved": reserved_tokens(out, out),
+        "usable_input_tokens": usable_input(ctx, out, out, inl),
+        "history_target": mgr.model_history_target(ctx, out, input_limit=inl),
+        "fallback_target": DEFAULT_HISTORY_TARGET_TOKENS,
+        "system_reserve": mgr.budget.system_reserve,
+    }
