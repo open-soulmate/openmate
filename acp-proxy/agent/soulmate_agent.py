@@ -54,6 +54,13 @@ from agent.context_compression import ContextCompressor
 from agent.loop_guard import LoopGuard
 from agent.code_mode import CodeModeExecutor
 from agent.read_turn import DIFF_MAX_BYTES, TurnReadView, result_ok
+from agent.mcp_resources import (
+    MCP_RESOURCE_TOOL_NAMES,
+    build_read_text,
+    format_resource_entry,
+    format_resource_template_entry,
+    resource_tool_defs,
+)
 from agent import memory_echo
 from agent import memory_marker
 from agent import session_recall
@@ -157,6 +164,8 @@ class SoulMateAgent:
         self._mcp_tools_cache: list[dict] | None = None
         self._mcp_tools_cache_time: float = 0
         self._mcp_base_url = "http://127.0.0.1:8094"
+        # kilocode #19：resource能力Server清单（hasMcpResourceServer工具面门）
+        self._mcp_resource_servers: list[str] = []
         self._mcp_tool_call_id_map: dict[str, dict] = {}  # func_name -> {server_id, tool_name}
         self._session_cwds: dict[str, str] = {}  # session_id -> cwd
         self._streamed_flags: dict[str, bool] = {}  # session_id -> streamed
@@ -510,8 +519,22 @@ class SoulMateAgent:
                 resp = await client.get(f"{self._mcp_base_url}/api/mcp/tools/all")
                 if resp.status_code != 200:
                     logger.warning(f"MCP tools API returned {resp.status_code}")
+                    self._mcp_resource_servers = []
                     return self._mcp_tools_cache or []
                 data = resp.json()
+                # kilocode #19：resource能力Server清单（hasMcpResourceServer门——
+                # 无resource能力的已连接Server时resource三件套不进工具面）
+                try:
+                    _res_resp = await client.get(f"{self._mcp_base_url}/api/mcp/resources/servers")
+                    _res_ids = (
+                        [s.get("id", "") for s in (_res_resp.json().get("servers") or [])]
+                        if _res_resp.status_code == 200
+                        else []
+                    )
+                except Exception as _res_err:
+                    logger.warning(f"MCP resource servers fetch failed: {_res_err}")
+                    _res_ids = []
+                self._mcp_resource_servers = [i for i in _res_ids if i]
 
             tools = []
             self._mcp_tool_call_id_map = {}
@@ -544,6 +567,7 @@ class SoulMateAgent:
 
         except Exception as e:
             logger.warning(f"MCP tools fetch failed (graceful degradation): {e}")
+            self._mcp_resource_servers = []
             return self._mcp_tools_cache or []
 
     async def _call_mcp_tool(self, func_name: str, arguments: dict) -> str:
@@ -591,6 +615,62 @@ class SoulMateAgent:
         except Exception as e:
             logger.error(f"MCP tool call error: {e}", exc_info=True)
             return f"[MCP 工具调用异常] {e}"
+
+    def _mcp_attachment_dir(self) -> str:
+        """通过双闸的resource blob附件落盘目录（kilocode FilePart注入的本侧替代，
+        有意偏离见agent/mcp_resources.py模块docstring）"""
+        return os.path.join(str(Path.home()), ".hermes", "soulmate", "mcp-attachments")
+
+    async def _call_mcp_resource_tool(self, func_name: str, func_args: dict) -> str:
+        """kilocode #19 MCP resource三件套执行（session/tools.ts MCP_RESOURCE_TOOLS）。
+
+        list_mcp_resources / list_mcp_resource_templates / read_mcp_resource →
+        MCP Client(:8094) resources端点；read结果经build_read_text注入安全层
+        （10MB blob上限+附件MIME白名单+显式省略标记，禁静默丢弃）。
+        kilocode的ctx.ask(permission:"read", patterns:["mcp:server:uri"])审批由本侧
+        permission_gate统一承担（工具循环入口门禁，provenance留痕）。
+        """
+        server = str(func_args.get("server", "") or "").strip()
+        try:
+            async with httpx.AsyncClient(timeout=httpx.Timeout(30.0)) as client:
+                if func_name == "read_mcp_resource":
+                    uri = str(func_args.get("uri", "") or "").strip()
+                    if not server or not uri:
+                        return "错误: read_mcp_resource 需要 server 和 uri 参数（请使用 list_mcp_resources 返回的原值）"
+                    resp = await client.post(
+                        f"{self._mcp_base_url}/api/mcp/resources/read",
+                        json={"server_id": server, "uri": uri},
+                    )
+                    if resp.status_code != 200:
+                        return f"[MCP resource读取失败] HTTP {resp.status_code}: {resp.text[:200]}"
+                    return build_read_text(server, uri, resp.json(), self._mcp_attachment_dir())
+                path = (
+                    "/api/mcp/resources/all"
+                    if func_name == "list_mcp_resources"
+                    else "/api/mcp/resources/templates"
+                )
+                resp = await client.get(
+                    f"{self._mcp_base_url}{path}",
+                    params={"server": server} if server else None,
+                )
+                if resp.status_code != 200:
+                    return f"[MCP resource列表失败] HTTP {resp.status_code}: {resp.text[:200]}"
+                data = resp.json()
+                if func_name == "list_mcp_resources":
+                    entries = [format_resource_entry(r) for r in data.get("resources", [])]
+                    key = "resources"
+                else:
+                    entries = [format_resource_template_entry(t) for t in data.get("resourceTemplates", [])]
+                    key = "resourceTemplates"
+                return json.dumps(
+                    {key: entries, "errors": data.get("errors", [])},
+                    ensure_ascii=False, indent=2,
+                )
+        except httpx.ReadTimeout:
+            return f"[MCP resource调用超时] {func_name}"
+        except Exception as e:
+            logger.error(f"MCP resource tool error: {e}", exc_info=True)
+            return f"[MCP resource调用异常] {e}"
 
     async def _llm_plan_call(self, messages: list[dict]) -> str:
         """轻量 LLM 调用，只返回文本（不带工具），用于规划和自省"""
@@ -854,6 +934,9 @@ class SoulMateAgent:
                     current_session_id=session_id,
                     boundary_id=self._turn_boundary.get(session_id),
                 )
+            # kilocode #19 MCP resource三件套：批内同样可用（与主循环同款注入安全层）
+            if func_name in MCP_RESOURCE_TOOL_NAMES:
+                return await self._call_mcp_resource_tool(func_name, func_args)
             # 其余工具路由MCP执行器（未知工具由其返回[错误]文本）
             return await self._call_mcp_tool(func_name, func_args)
         except subprocess.TimeoutExpired:
@@ -1358,13 +1441,17 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 },
             }]
         
-        all_tools = builtin_tools + (mcp_tools or []) + evolution_tools + [clarify_tool]
+        # ── kilocode #19 MCP resource三件套：hasMcpResourceServer门——仅当存在
+        # resource能力的已连接MCP Server时进工具面（无能力不暴露，registry同款裁剪）──
+        mcp_resource_tools = resource_tool_defs() if getattr(self, "_mcp_resource_servers", None) else []
+        all_tools = builtin_tools + (mcp_tools or []) + mcp_resource_tools + evolution_tools + [clarify_tool]
         # kilocode #1能力分级提示：记录本轮工具面（溢出stub按能力给分级读回指引）
         self._active_tool_names = {t.get("function", {}).get("name", "") for t in all_tools}
 
         # P1归因：工具定义逐项（per-tool——"20+工具定义里哪个最吃上下文"；三来源分开归因）
         attr_items += items_from_openai_tools(builtin_tools, source="builtin")
         attr_items += items_from_openai_tools(mcp_tools or [], source="mcp")
+        attr_items += items_from_openai_tools(mcp_resource_tools, source="mcp")
         attr_items += items_from_openai_tools(evolution_tools, source="evolution")
         attr_items += items_from_openai_tools([clarify_tool], source="builtin")
 
@@ -2010,6 +2097,9 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                         })
                                 except Exception as _cm_err:
                                     result = f"[CODE_MODE] 批量执行失败: {_cm_err}"
+                        elif func_name in MCP_RESOURCE_TOOL_NAMES:
+                            # ── kilocode #19 MCP resource三件套（list/read resources）──
+                            result = await self._call_mcp_resource_tool(func_name, func_args)
                         else:
                             result = await self._call_mcp_tool(func_name, func_args)
                         tool_results.append({

@@ -49,6 +49,9 @@ class ServerState(BaseModel):
     config: ServerConfig
     status: ServerStatus = ServerStatus.DISCONNECTED
     tools: list[Tool] = Field(default_factory=list)
+    # initialize握手返回的server能力声明（kilocode getServerCapabilities()?语义：
+    # resources能力是resource三件套的暴露前提，无能力不暴露）
+    capabilities: dict[str, Any] = Field(default_factory=dict)
     error: Optional[str] = None
 
 
@@ -57,3 +60,9 @@ class CallToolRequest(BaseModel):
     server_id: str
     tool_name: str
     arguments: dict[str, Any] = Field(default_factory=dict)
+
+
+class ReadResourceRequest(BaseModel):
+    """MCP resource读取请求（kilocode #19 read_mcp_resource）"""
+    server_id: str
+    uri: str

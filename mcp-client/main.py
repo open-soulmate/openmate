@@ -14,6 +14,7 @@ import uvicorn
 from registry import MCPRegistry
 from routes import servers as servers_routes
 from routes import tools as tools_routes
+from routes import resources as resources_routes
 
 logging.basicConfig(
     level=logging.INFO,
@@ -27,12 +28,14 @@ registry = MCPRegistry()
 # 注入 registry 到路由模块
 servers_routes.init(registry)
 tools_routes.init(registry)
+resources_routes.init(registry)
 
 # ── FastAPI 应用 ────────────────────────────────────────────────
 app = FastAPI(title="MCP Client", version="1.0.0")
 
 app.include_router(servers_routes.router)
 app.include_router(tools_routes.router)
+app.include_router(resources_routes.router)
 
 
 @app.get("/api/mcp/health")
