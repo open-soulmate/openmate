@@ -1837,3 +1837,36 @@
 5. 存量F401两处（app.py:15/token_manager.py:5）历史欠账未动；`budget_snapshot`的reserved/usable快照用(out,out)同值传参（现env单限额旋钮LLM_MAX_TOKENS），ProviderTransform双参语义（model.limit.output vs outputTokenMax分立）待限额探测落地后启用
 6. kilocode supplement3其余缺口顺延：#4 readTurn快照diff、#8记忆模型独立解析链、#13跨workspace二次授权、#15网络受限工具面收缩、#16 GoalPolicy工具门、#18 reminders合成part、#19 MCP resource三件套——均为下轮P1候选
 7. cron环境工具约束（持续有效）：execute_code被BLOCKED（本轮用terminal直接命令）；github.com直连push SSL EOF间歇发作→ghfast镜像push+官方直连ls-remote双重核实；git commit -m长消息末尾禁带管道符号；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）
+
+## [2026-09-23 22:40 CST] P1 kilocode supplement3 #4 readTurn快照diff+toolSummary：记忆从"只看说了什么"升级为"也看改了什么"
+**目标**：销账kilocode-source-supplement3.md #4「kilo-memory ports.ts readTurn提取user文本+assistant输出+**快照diff**（本轮改动了哪些文件进记忆）| 差距：hippo缺diff输入——'记忆看得到文件diff'=能记住'改了什么'而非只'说了什么'」+#6「MemoryRedact工具摘要只留command/file/pattern/query+exit code+error brief(220字符)」。grep实证缺口：MemoryDigestCollector的digest载荷只有`用户: user_text[:200]\n助手: full_response[:200]`纯对话文本——本轮工具改了哪些文件、执行了什么动作，长期记忆里完全没有。
+**调研来源**：kilocode-source-supplement3.md #4（kilo-memory ports.ts 334行readTurn）+#6（MemoryRedact toolSummary一行式`Tool bash completed | command=... | exit=0`）+源码亮点"记忆不需要全output，需要动作轮廓"+AIHawk SHOWN/SENT"截断必须显式标记禁静默丢弃"+mem0 §1.1采集端失败必须fail-safe不反噬宿主。
+**改动文件**：
+- openmate/acp-proxy/agent/read_turn.py（新建250行：TurnReadView+summarize_args+diff_line_stats+result_ok）
+- openmate/acp-proxy/agent/soulmate_agent.py（+73/-3增量15 hunk：import+_turn_read_view lazy property+_read_prev_for_diff+工具循环3路record_tool+write_file/patch 4处record_file_change+_cm_dispatch批内via=code_mode+3收尾clear+主收尾render进aclose_turn元数据）
+- openmate/acp-proxy/agent/turn_lifecycle.py（+11/-3增量1 hunk：MemoryDigestCollector digest载荷追加"本轮文件改动（快照diff）"+"工具动作（toolSummary）"两段）
+- openmate/acp-proxy/tests/test_read_turn.py（新建350行40用例）
+**改动内容**：
+1. `read_turn.py` TurnReadView（kilo-memory readTurn采集端）：①toolSummary（#6）每次工具调用一行动作轮廓——**只留**command/file/path/pattern/query/url白名单参数（值截断220字符）+exit code+error brief(220字符)，工具全量参数（代码/文件内容/prompt）绝不进记忆②快照diff（#4）write_file/patch按路径聚合计difflib行级opcodes +/-行数，同文件多次编辑合并（`新建(write/patch) x2 +4/-1行`形态）；old_text=None（超500KB旧内容不可得）→"增量未知"显式标注不假装0改动③显式截断铁律：工具行超20条/文件超20个→`…(另有N条未列出)`标注禁静默④fail-safe：record_*/render/clear全链try/except不抛出（采集端故障绝不破坏会话流）
+2. `soulmate_agent.py`接线：工具循环3路record_tool（权限拦截ok=False带blocked_reason/缓存命中/正常执行result_ok启发式）+write_file/patch主循环与code_mode内层共4处record_file_change（`_read_prev_for_diff`读旧内容：不存在=""新建、超DIFF_MAX_BYTES=None增量未知）+`_cm_dispatch`批内每次stub调用轮廓标`via=code_mode`+主收尾`render(session_id)`两段随aclose_turn元数据进订阅器+3个turn收尾出口（正常/cached/error）全部clear防跨turn泄漏
+3. `_turn_read_view`做成lazy property（**测试驱动修正**）：`SoulMateAgent.__new__`测试双实例/部分构造无此属性会炸工具循环（首轮全量回归21 failed实锤），property按实例懒构造，生产__init__显式赋值不变
+4. `turn_lifecycle.MemoryDigestCollector`：digest content从两行纯文本扩为条件追加快照diff/工具动作两段（空段不进记忆，无工具回合digest形态不变）
+**接线位置**（grep证据，文件:行号）：
+- 定义：agent/read_turn.py:52 `def summarize_args` / :78 `def result_ok` / :85 `def diff_line_stats` / :128 `def record_tool` / :160 `def record_file_change` / :201 `def render` / :234 `def clear`；soulmate_agent.py:600 `_turn_read_view` property / :613 `def _read_prev_for_diff`
+- 运行时消费（真实消息路径ws /ws/acp soulmate路由，无死代码）：soulmate_agent.py:1590 record_tool(权限拦截路径) / :1624 record_tool(缓存命中路径) / :2030-2033 record_tool(正常执行路径=_run_llm_with_tools真实工具循环) / :1992-1995 record_tool(_cm_dispatch批内调用via=code_mode) / :1662+:1737 record_file_change(主循环write_file/patch) / :783+:798 record_file_change(code_mode内层write_file/patch) / :3285 `render(session_id)`→:3290-3291 aclose_turn带file_changes/tool_actions / :3295+:2716+:2343 clear×3收尾出口；agent/turn_lifecycle.py:341-346 digest载荷消费file_changes/tool_actions两段
+**验证结果**：
+- 完整性✅：git diff --stat确认4文件+696/-3真实落盘（soulmate_agent 15个增量hunk、turn_lifecycle 1个增量hunk，零全量重写）；ast.parse 3文件全过；ruff（/home/climbing/opensoul/.venv/bin/ruff）--select F821,F841,F401,E9：本轮新文件read_turn.py+test_read_turn.py "All checks passed!"（soulmate_agent存量F401×13/F841×2为历史欠账import行非本轮改动不动；本轮唯一新lint问题test里一个walrus F841已当场修复）
+- 集成✅：grep证据如上（每个新符号=定义行+运行时消费行，位于_run_llm_with_tools真实工具循环/_code_mode_tool_call内层/aclose_turn真实收尾=ws /ws/acp真实聊天路径）；test_read_turn.py TestWiring 8项inspect.getsource断言防死接线（record_tool≥3路在场/record_file_change≥2在场/aclose_turn带两段/3路clear/property懒构造）
+- 测试✅：tests/test_read_turn.py **40 passed**（summarize_args 4：白名单外content/code绝不进记忆/全白名单/220截断/空值跳过；result_ok 3；diff_line_stats 6：含**增量未知返回None绝不假装0**；TurnReadView 11：行格式/error brief/via标注/**超限显式"另有N条"**/新建/patch delta/同文件聚合/增量未知显式/文件cap/session隔离+clear不误伤/fail-safe类型失真不炸；digest集成4：两段进载荷/空段不进/部分段/**interrupted不完整turn有diff也不进记忆**；Wiring 8；_read_prev_for_diff 3真实文件）；广义回归**全tests/ 597 passed零破坏**（既有557+新增40，提交树上复跑确认）；systemic_test.py **29/29 passed**（重启后服务上S4并发/S5降级/S6混合负载全绿）
+- **live E2E全周期✅（/tmp/e2e_read_turn.py，真实WS /ws/acp agent_id=soulmate路径，LLM真实调用write_file+patch，决定性证据）**：真实回合（session om-90ccff9691ad）写入+patch /tmp/e2e_rt_*.py→GET /ltm/{memory_id}全量649字符digest内容实锤两段齐备——`本轮文件改动（快照diff）:\n- /tmp/e2e_rt_...py: 新建(write/patch) x2 +4/-1行`（**行数与真实diff数学完全吻合**：新建3行+3/-0、patch改1行+1/-1→聚合+4/-1）+`工具动作（toolSummary）:\nTool write_file completed | path=... | exit=0\nTool patch completed | path=... | exit=0`；journal [turn] open/close reason=completed+[turn-memory] digest collected可见；turn生命周期既有行为零破坏
+**服务重启**：systemctl --user restart acp-proxy-a.service + acp-proxy-b.service（read_turn/soulmate_agent/turn_lifecycle改动双实例）→is-active双active→:8092/health+:8095/health双200→重启后systemic 29/29+live E2E+全量pytest在重启后服务上通过；opensoul零改动不重启；openmate前端零改动不build
+**commit**：openmate `12fc56c1`（push `dda0adcb..12fc56c1`经origin=ghfast镜像成功；**诚实标注**：github.com官方直连ls-remote本轮两度返回空（管道掩盖退出码，疑超时），官方侧落盘未能独立核实，仅ghfast镜像ls-remote=12fc56c1与本地HEAD一致；push前git grep --cached密钥扫描0命中；工作区他人未提交settings-client.tsx/locales不入库）
+**数据清理**：E2E两回合（om-7d6e2e4bd42a/om-90ccff9691ad）agent_messages各2行删除后count=0；两回合LTM digest按memory_id+token兜底hard_delete后"readturnprobe"命中=0；/tmp/e2e_rt_*.py删除后glob=[]（/tmp/e2e_read_turn.py脚本保留作下轮复用，同e2e_*模板先例）
+**E2E诚实实录（两轮失败迭代）**：①首轮全量回归21 failed实锤lazy property缺失缺陷——`SoulMateAgent.__new__`测试双实例无_turn_read_view属性炸工具循环（'SoulMateAgent' object has no attribute '_turn_read_view'），测试驱动修为lazy property后全绿（缺陷发现→修复→复验闭环）②首轮live E2E断言打在ltm/search的content上误判"digest缺快照diff段"——**实为opensoul /api/hippo/ltm/search故意返回content[:200]摘要**（src/api/hippo.py:500），全文须GET /ltm/{memory_id}读；改后649字符全文两段全在PASS。此坑已写进E2E脚本注释防后人误判
+**遗留问题**：
+1. readTurn完整规格的"recent 8轮trace"（#4第四个输入源）未做——本轮只落地工具轮廓+文件快照diff两个输入源，跨轮trace输入列为下轮候选
+2. 快照diff只覆盖write_file/patch两条确定性写路径——terminal/execute_code副作用改的文件不进diff（副作用不确定，宁缺勿滥）；如需覆盖需filesystem watcher或snapshot diff（kilocode原义是快照对比，是本实现的近似）
+3. result_ok成败启发式只看结果头部60字符（与ToolAuditor同族启发式）——个别"正文开头即含失败词"的正常输出会误判failed，仅影响记忆里的exit标记不影响功能
+4. push核实受限：github官方直连本轮不可达，仅镜像侧核实（历史欠账同款，网络恢复后可用ls-remote补验）
+5. kilocode supplement3其余缺口顺延：#8记忆模型独立解析链、#13跨workspace二次授权、#15网络受限工具面收缩、#16 GoalPolicy工具门、#18 reminders合成part、#19 MCP resource三件套——均为下轮P1候选
+6. cron环境工具约束（持续有效）：execute_code被BLOCKED（write_file+terminal两步）；ruff在/home/climbing/opensoul/.venv/bin/ruff（hermes venv无ruff）；管道`cmd | cat`退出码是cat的（git ls-remote核实又犯一次，已如实标注）；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）
