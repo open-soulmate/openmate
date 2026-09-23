@@ -25,6 +25,8 @@ from collections import deque
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from agent import retention
+
 logger = logging.getLogger("acp-proxy.token-attribution")
 
 # ── item kinds（SDKContextUsage四类明细 + OpenSoul/agent侧扩展类别）──
@@ -278,18 +280,41 @@ class AttributionLedger:
     写入方和读取方可以是不同进程/不同实例。
     """
 
-    def __init__(self, ledger_dir: str = "", max_recent: int = 20):
+    def __init__(
+        self,
+        ledger_dir: str = "",
+        max_recent: int = 20,
+        retention_days: float = retention.DEFAULT_RETENTION_DAYS,
+        cleanup_interval: float = retention.DEFAULT_SWEEP_INTERVAL,
+    ):
         if not ledger_dir:
             ledger_dir = str(Path.home() / ".hermes" / "soulmate" / "token_attribution")
         self.ledger_dir = Path(ledger_dir)
         self.max_recent = max_recent
         self.ledger_path = self.ledger_dir / "attribution_ledger.jsonl"
+        # kilocode #2保留策略（上轮遗留#4销账）：账本7天ts轮转+每小时清扫
+        self.retention_days = retention_days
+        self.cleanup_interval = cleanup_interval
         # 校准因子缓存（agent工具循环每轮record，校准因子按TTL缓存避免每轮重读账本）
         self._calibration_cache: tuple[float, float] | None = None
         try:
             self.ledger_dir.mkdir(parents=True, exist_ok=True)
         except Exception:
             pass
+
+    def maybe_cleanup(self):
+        """kilocode #2保留策略统一清扫（上轮遗留#4："token_attribution账本未接
+        retention轮转"销账）：账本按记录ts做7天保守轮转（坏行/无ts一律保留——
+        retention.compact_jsonl语义），每小时最多一次（retention.maybe_sweep节流）。
+        失败仅WARNING绝不反噬归因记录路径。返回清扫结果dict或None（节流跳过）。
+        """
+        def _sweep():
+            return {"ledger": retention.compact_jsonl(
+                self.ledger_path, max_age_days=self.retention_days)}
+
+        return retention.maybe_sweep(
+            f"token-attribution:{self.ledger_path}",
+            _sweep, interval_s=self.cleanup_interval)
 
     def record(
         self,
@@ -311,6 +336,11 @@ class AttributionLedger:
                 f.write(json.dumps(rec, ensure_ascii=False) + "\n")
         except Exception as exc:
             logger.debug("token attribution ledger write failed (non-fatal): %s", exc)
+        # kilocode #2：写路径顺带触发保留策略清扫（每小时最多一次，失败非致命）
+        try:
+            self.maybe_cleanup()
+        except Exception as _cl_err:
+            logger.debug("token attribution retention cleanup skipped (non-fatal): %s", _cl_err)
         return rec
 
     def backfill_actual(
@@ -364,6 +394,12 @@ class AttributionLedger:
                     "token attribution backfill ledger write failed (non-fatal): %s",
                     exc,
                 )
+            # kilocode #2：回填写路径同样顺带触发保留策略清扫（与record对称）
+            try:
+                self.maybe_cleanup()
+            except Exception as _cl_err:
+                logger.debug(
+                    "token attribution retention cleanup skipped (non-fatal): %s", _cl_err)
             return row
         except Exception as exc:
             logger.debug("token attribution backfill unavailable (non-fatal): %s", exc)

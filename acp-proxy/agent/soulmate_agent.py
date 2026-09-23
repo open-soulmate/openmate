@@ -44,7 +44,7 @@ from skill_manager import SkillManager, is_injectable_trigger
 from evolution import EvolutionEngine
 from dna_evolution import DNAEvolutionEngine
 from utils.token_manager import truncate_tool_result
-from agent.tool_output_handler import ToolOutputHandler
+from agent.tool_output_handler import ToolOutputHandler, degraded_spill
 from agent.architecture_enhanced import EnhancedArchitecture
 from agent import arch_monitor
 from utils.task_state_manager import TaskStateManager, judge_task_continuation
@@ -614,7 +614,21 @@ class SoulMateAgent:
             ).processed_text
         except Exception as e:
             logger.warning(f"[tool-output] spill处理失败，降级截断: {e}")
-            return truncate_tool_result(str(result))
+            # 上轮遗留#3销账：降级不再静默切尾+丢数据——degraded_spill=全文落盘可读回+
+            # head/tail方向标注+removed显式报告+fallback记账（独立于handler，handler可能
+            # 就是异常源）。degraded_spill自身绝不抛出，内层try只是最后一道双保险。
+            try:
+                return degraded_spill(
+                    str(result), tool_name=func_name, tool_call_id=tool_call_id,
+                    reason=str(e),
+                    tool_names=getattr(self, "_active_tool_names", None),
+                )
+            except Exception as e2:
+                logger.warning(f"[tool-output] 降级spill也失败，退回最小截断: {e2}")
+                return (
+                    f"[降级截断 — 溢出处理与降级spill均失败，数据未保存]\n"
+                    f"{truncate_tool_result(str(result))}"
+                )
 
     def _loop_guard_for(self, session_id: str) -> "LoopGuard":
         """P0 cortex循环guard：per-session实例，每次任务开始reset（窗口只在本任务工具循环内累积）。

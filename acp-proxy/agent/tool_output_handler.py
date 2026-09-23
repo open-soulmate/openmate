@@ -162,21 +162,24 @@ class ToolOutputHandler:
     _DELEGATE_TOOL_NAMES = ("task", "delegate", "spawn_agent", "dispatch_agent", "explore")
     _SEARCH_TOOL_NAMES = ("search_files", "grep", "search", "search_chat_history")
 
-    def _readback_hint(self, spill_path: str, tool_names) -> list:
+    # 注意classmethod：健康路径（_build_stub）与降级路径（模块级degraded_spill）共用
+    # 同一套能力分级提示——降级不降智，kilocode #1分级语义在兜底路径同样成立。
+    @classmethod
+    def _readback_hint(cls, spill_path: str, tool_names) -> list:
         """kilocode #1能力分级提示（truncate.ts"按agent能力分级提示"忠实泛化）：
         - 有task/派发类工具→"派子agent处理该文件，别自己整读"（kilocode原文语义）
         - 有search类工具→"先定位关键片段再按需分段读"
         - 否则→"用read_file_segment分段读取"（默认档，保持既有文案）
         """
         names = set(tool_names or ())
-        if any(d in names for d in self._DELEGATE_TOOL_NAMES):
+        if any(d in names for d in cls._DELEGATE_TOOL_NAMES):
             return [
                 "输出过大：建议派子agent（task/explore类工具）处理该文件，不要自己整读。",
                 "如确需自己读，用 read_file_segment 工具分段读取:",
                 f"  read_file_segment(path='{spill_path}', start_line=1, end_line=200)",
                 f"  之后按需递增 start_line 继续读取后续段落。",
             ]
-        if any(s in names for s in self._SEARCH_TOOL_NAMES):
+        if any(s in names for s in cls._SEARCH_TOOL_NAMES):
             return [
                 "输出过大：先用 search_files 定位关键片段（用pattern/command缩小范围），不要整读。",
                 "再用 read_file_segment 工具按行范围读取需要的段落:",
@@ -460,3 +463,126 @@ class ToolOutputHandler:
         except Exception as e:
             stats["ledger_error"] = str(e)
         return stats
+
+
+# ══════════════════════════════════════════════════════════════════
+# 降级截断（_process_tool_output兜底路径）— 上轮遗留#3销账
+#
+# 溢出层（ToolOutputHandler.process）自身异常时的最小安全降级。两条铁律在此路径依然成立：
+# - AIHawk"截断必须显式标记，不能静默丢数据"
+# - kilocode spill"全文落盘可读回"（truncate_tool_result旧降级只留头尾、中段永久丢失）
+# handler可能就是异常源，故本函数独立于ToolOutputHandler实例状态、全程不抛出。
+# ══════════════════════════════════════════════════════════════════
+
+# 降级截断保守预算（兜底路径不过handler阈值配置；与utils/token_manager.TOOL_RESULT_MAX_CHARS同量级）
+DEGRADED_MAX_CHARS = 6_000
+
+
+def degraded_spill(
+    text: str,
+    tool_name: str = "tool",
+    tool_call_id: str = "",
+    reason: str = "",
+    spill_dir: str = "",
+    max_chars: int = 0,
+    tool_names=None,
+) -> str:
+    """溢出处理失败时的最小安全降级（上轮遗留#3：旧降级=静默切尾+数据丢失）。
+
+    四条语义（对照健康路径process()逐项补齐）：
+    1. best-effort全文落盘（独立写入，不复用handler方法）——数据不丢，可read_file_segment读回
+    2. head/tail方向显式标注 + removed报告（截断按字符预算触发→按字节报告，双单位择一）
+    3. 读回指引复用kilocode #1能力分级（_readback_hint classmethod）；落盘失败→显式声明
+       "[数据未保存 — 全文不可恢复]"，绝不假装有救（mem0 §1.1失败必须可见）
+    4. AIHawk SHOWN/SENT双预算账本记fallback事件（sent=全文，shown=stub，不失真）
+
+    低于预算的文本原样返回（无需截断则不打标记——标记只属于真实截断）。
+    任何内部步骤失败就地吞掉只影响该步骤，本函数绝不抛出。
+    """
+    if not max_chars:
+        max_chars = DEGRADED_MAX_CHARS
+    if not spill_dir:
+        spill_dir = os.environ.get("TOOL_SPILL_DIR") or str(
+            Path.home() / ".hermes" / "soulmate" / "tool_spills")
+    original_size = len(text)
+    line_count = text.count("\n") + 1
+
+    # ① best-effort全文落盘（handler故障不等于磁盘故障，能救多少救多少）
+    spill_path, spill_id = "", ""
+    try:
+        d = Path(spill_dir)
+        d.mkdir(parents=True, exist_ok=True)
+        timestamp = int(time.time() * 1000)
+        content_hash = hashlib.sha256(text.encode("utf-8")).hexdigest()[:12]
+        spill_id = f"degraded_{tool_name}_{timestamp}_{content_hash}"
+        fp = d / f"{spill_id}.txt"
+        with open(fp, "w", encoding="utf-8") as f:
+            f.write(text)
+        try:
+            os.chmod(fp, 0o600)  # goose unix permission模式同款
+        except OSError:
+            pass
+        spill_path = str(fp)
+    except Exception as e:
+        logger.warning(f"[tool-output] 降级spill落盘失败（全文不可恢复）: {e}")
+
+    # 低于预算→无需截断，原样返回（但仍记账fallback事件，SHOWN/SENT不失真）
+    if original_size <= max_chars:
+        out = text
+    else:
+        # ② head/tail + removed显式报告（字符预算触发→按字节报告，双单位择一）
+        head = text[: max_chars * 2 // 3]
+        tail = text[-(max_chars // 3):]
+        middle = text[len(head): original_size - len(tail)]
+        removed_bytes = len(middle.encode("utf-8"))
+        removed_lines = middle.count("\n") + (1 if middle and not middle.endswith("\n") else 0)
+        parts = [
+            "[TRUNCATED — 溢出处理失败，已降级截断]",
+            f"工具 {tool_name} 返回了 {original_size} 字符（{line_count} 行）；"
+            f"溢出处理异常（{(reason or 'unknown')[:200]}），降级为截断显示。",
+        ]
+        if spill_path:
+            parts += [
+                "",
+                f"完整输出已保存到: {spill_path}",
+                f"Spill ID: {spill_id}",
+                "",
+            ]
+            # ③ 读回指引＝kilocode #1能力分级（降级不降智）
+            parts += ToolOutputHandler._readback_hint(spill_path, tool_names)
+        else:
+            parts += [
+                "",
+                "[数据未保存 — 降级spill落盘失败，全文不可恢复，以下预览是仅存内容]",
+                "",
+            ]
+        parts += [
+            f"=== 预览（开头/head，前 {len(head)} 字符）===",
+            head,
+            ToolOutputHandler._removed_marker(removed_lines, removed_bytes, "bytes"),
+            f"=== 预览（结尾/tail，后 {len(tail)} 字符）===",
+            tail,
+            (f"[END PREVIEW — 完整内容见 {spill_path}]" if spill_path
+             else "[END — 全文未保存]"),
+        ]
+        out = "\n".join(parts)
+
+    # ④ AIHawk双预算账本记fallback事件（sent=全文，shown=out；best-effort绝不抛）
+    try:
+        record = {
+            "ts": time.time(),
+            "tool_name": tool_name,
+            "tool_call_id": tool_call_id,
+            "sent_chars": original_size,
+            "shown_chars": len(out),
+            "spilled": 1 if original_size > max_chars else 0,
+            "spill_id": spill_id,
+            "fallback": 1,
+            "reason": (reason or "")[:200],
+        }
+        ledger = Path(spill_dir) / "spill_ledger.jsonl"
+        with open(ledger, "a", encoding="utf-8") as f:
+            f.write(json.dumps(record, ensure_ascii=False) + "\n")
+    except Exception as e:
+        logger.debug(f"spill ledger fallback record failed (non-fatal): {e}")
+    return out

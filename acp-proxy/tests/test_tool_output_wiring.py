@@ -265,8 +265,12 @@ class TestSoulMateWiring:
         assert stats["by_tool"]["read_file"]["truncated"] >= 1
         assert stats["total_spills"] >= 1
 
-    def test_helper_fail_safe_fallback(self):
-        """handler处理失败→降级旧truncate行为，绝不让工具循环崩溃"""
+    def test_helper_fail_safe_fallback(self, tmp_path, monkeypatch):
+        """handler处理失败→降级degraded_spill（上轮遗留#3销账后的新契约）：
+        全文落盘可读回+显式[TRUNCATED]标记，绝不让工具循环崩溃。
+        （测试演进：旧契约此处断言"[内容过长，已截断"静默切尾——该行为已被
+        本轮有意替换为不丢数据的degraded_spill，详见test_degraded_spill.py）"""
+        monkeypatch.setenv("TOOL_SPILL_DIR", str(tmp_path))
         agent = SoulMateAgent.__new__(SoulMateAgent)
 
         class Boom:
@@ -274,5 +278,8 @@ class TestSoulMateWiring:
                 raise RuntimeError("boom")
 
         agent._output_handler = Boom()
-        out = agent._process_tool_output("terminal", "tc1", "X" * 20000)
-        assert "[内容过长，已截断" in out  # 旧truncate降级路径生效
+        big = "X" * 20000
+        out = agent._process_tool_output("terminal", "tc1", big)
+        assert out.startswith("[TRUNCATED — 溢出处理失败，已降级截断]")
+        files = list(tmp_path.glob("degraded_terminal_*.txt"))
+        assert len(files) == 1 and files[0].read_text(encoding="utf-8") == big
