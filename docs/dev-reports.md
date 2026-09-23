@@ -1802,3 +1802,38 @@
 3. truncate_tool_result（utils/token_manager.py）作为最内层双保险保留，其"[内容过长，已截断 X→Y 字符]"标记无方向标注——仅degraded_spill自身异常的双重灾难路径触发，如需补齐是1个小项
 4. kilocode supplement3其余缺口顺延：#4 readTurn快照diff、#8记忆模型独立解析链、#12 inert声明、#13跨workspace二次授权、#15网络受限工具面收缩、#16 GoalPolicy工具门、#17 reserved buffer、#18 reminders合成part、#19 MCP resource三件套——均为下轮P1候选
 5. cron环境工具约束（持续有效）：execute_code被BLOCKED（write_file+terminal两步）；curl|python3管道被安全闸BLOCKED（先落文件再读）；git commit -m长消息末尾禁带管道符号；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）
+
+## [2026-09-23 20:10 CST] P1 kilocode supplement3 #17 reserved buffer+输入限额优先：上下文预算从模型双限额推导，替代真实消息路径硬编码max_tokens=8000
+**目标**：销账kilocode-source-supplement3.md #17「overflow.ts reserved buffer：compaction.reserved默认min(20k, maxOutputTokens)；**输入限额优先**（model.limit.input存在时用input-reserved而非context-output）| 差距：没有 | 双限额模型比单一context窗口精确」。grep实证缺口：真实消息路径`soulmate_agent._run_llm_with_tools`的上下文裁剪预算为**硬编码max_tokens=8000**（soulmate_agent.py:2537改前），与模型实际窗口完全脱节——128k窗口模型被8k预算过度裁剪（长对话每轮丢掉>90%可用上下文，正是"长会话质量劣化"的结构性原因之一），小窗口模型（context<输出上限的env失真配置）反而可能超发；`utils/token_manager`的模型限额缓存（get_context_window/get_max_output_tokens）**零预算消费方**（只有app.py启动探测写缓存，读侧无人接）。
+**调研来源**：kilocode源码级精读~/agent-research-src/kilocode/packages/opencode/src/session/overflow.ts（usable()/isOverflow()全文35行）+ provider/transform.ts:1723 maxOutputTokens（`min(model.limit.output, outputTokenMax) || outputTokenMax`——JS `||`对0回退）+ supplement3 #17表格行。核心语义=**两分支减法对象不对称**：双限额模型（model.limit.input存在）输入预算=input_limit只减reserved（输出不占输入窗口）；单窗口模型=context−全量最大输出（输出从同一窗口出）——"双限额比单一context精确"的全部含义。
+**改动文件**：
+- openmate/acp-proxy/agent/context_budget.py（+138：模块级max_output_tokens/reserved_tokens/usable_input三件套+COMPACTION_BUFFER 20k/DEFAULT_HISTORY_TARGET_TOKENS 8k常量+TokenBudget双限额4字段+usable_input_tokens属性+ContextBudgetManager.model_history_target+budget_snapshot推导链快照）
+- openmate/acp-proxy/utils/token_manager.py（+9：_model_cache加input_limit（LLM_INPUT_LIMIT env声明，0=未声明单窗口模型）+get_input_limit()）
+- openmate/acp-proxy/agent/soulmate_agent.py（+29/-6增量2 hunk：import扩展+裁剪调用点硬编码8000→model_history_target推导+限额读取失败fail-safe回退+日志带target）
+- openmate/acp-proxy/ws_chat.py（+8：ws_chat_health加context_budget推导链字段——按app.py:328既有指引"新增health观测字段请同时/优先加到ws_chat.ws_chat_health"）
+- openmate/acp-proxy/app.py（+8：health镜像同步加context_budget字段+payload:dict类型标注）
+- openmate/acp-proxy/tests/test_reserved_buffer.py（新建264行32用例）
+- openmate/acp-proxy/systemic_test_results.json（测试产物）
+**改动内容**：
+1. context_budget.py三件套（overflow.ts逐行移植）：①`max_output_tokens`=`min(model输出上限, 调用方cap) || cap`（JS `||`对0回退语义逐行对齐）②`reserved_tokens`=显式预留（cfg.compaction.reserved语义，**含0**——`??`语义非`||`，0是合法显式配置）优先，缺省`min(COMPACTION_BUFFER=20_000, 最大输出)`③`usable_input`：context=0→0（kilocode同）；**输入限额优先**——input_limit存在→`input_limit−reserved`（输出不占输入窗口），否则`context−全量最大输出`（输出从同一窗口出）；两分支减法对象不同的不对称性用docstring+专项测试锁死（防后人"统一"简化）。
+2. `model_history_target`：目标=usable_input−system_reserve（system提示+工具定义的输入侧预留）；**fail-safe护栏（有意偏离kilocode，docstring注明）**——kilocode限额来自models.dev权威目录，本侧是env声明值可能失真（context<输出上限的自相矛盾配置/0窗口），推导结果<=0时WARNING可见并回退fallback=8000（=既有硬编码行为），"不把历史裁到只剩最后一条"。
+3. soulmate真实消息路径：`manage(messages, max_tokens=8000)`→限额读取（utils.token_manager三getter，与health同一真源）→`model_history_target(...)`派生预算→`manage(messages, max_tokens=_ctx_target)`；限额读取异常独立回退DEFAULT_HISTORY_TARGET_TOKENS（不丢裁剪行为）；日志带target可观测。现网env派生值=57536（131072−65536−8000）vs 原8000——大窗口模型不再被过度裁剪。
+4. `budget_snapshot()`推导链快照（limits→reserved→usable→history_target全链一条响应，用户"我都不知道他们在干嘛"的预算维度答案）进ws_chat.ws_chat_health+app.py双health（fail-safe逐key不反噬status=ok）。
+**接线位置**（grep证据，文件:行号）：
+- 定义：agent/context_budget.py:24 `def max_output_tokens` / :31 `def reserved_tokens` / :43 `def usable_input` / :206 `def model_history_target` / :367 `def budget_snapshot`；utils/token_manager.py:36 `def get_input_limit`
+- 运行时消费（真实消息路径，无死代码）：soulmate_agent.py:2547 `self._context_budget.model_history_target(`+:2551 `manage(messages, max_tokens=_ctx_target)`（`_run_llm_with_tools`构建上下文消息处=ws /ws/acp soulmate路由=OpenMate聊天页真实使用路径，>20条消息必经）；soulmate_agent.py:2544-2546 token_manager三getter读限额（与health观测同一真源）；ws_chat.py:440-441 / app.py:361-362 `budget_snapshot()`→payload["context_budget"]（live /health真实应答方+镜像）
+- live运行时证据：重启后curl :8092/health与:8095/health双实例均返回`"context_budget":{"context_window":131072,"max_output_tokens":65536,"input_limit":0,"input_limit_first":false,"reserved":20000,"usable_input_tokens":65536,"history_target":57536,"fallback_target":8000,"system_reserve":8000}`——推导链live可见且与单测精确一致（reserved=20000=min(20k,65536)、usable=65536=131072−65536单窗口分支、target=57536=usable−8000）
+**验证结果**：
+- 完整性✅：git diff --cached 7文件+468/-24真实落盘（context_budget.py +138增量、soulmate_agent.py 2增量hunk非全量重写、token_manager/ws_chat/app各+8~9增量）；ast.parse 6文件全过；ruff --select F821,F841,F401,E9：仅2个**存量F401**（app.py:15 `proxy.get_acp_process`、utils/token_manager.py:5 `json`——import行非本轮改动，历史欠账按先例如实记录不动），本轮新增代码0 lint问题
+- 集成✅：grep证据如上（每个新符号有定义行+运行时消费行，位于_run_llm_with_tools真实裁剪点+/health真实应答路由，无死代码）；tests/test_reserved_buffer.py TestWiring用inspect.getsource断言soulmate调用model_history_target+`max_tokens=_ctx_target`+**`manage(messages, max_tokens=8000)`绝迹**+token_manager三getter在场，ws_chat/app两health含budget_snapshot（防死接线）
+- 测试✅：tests/test_reserved_buffer.py **32 passed**（max_output_tokens 3：min语义/0回退cap/双0；reserved 4：默认min(20k,输出)两向/**显式0预留不被默认顶掉（??语义）**/显式覆盖；usable_input 7：context 0→0/**输入限额优先只减reserved=80k**/单窗口减全量输出/**不对称性锁死**/负值钳0×2/显式reserved透传；model_history_target 8：现网env推导57536/输入优先72k/显式reserved 62k/output_cap≠model_limit/**自相矛盾配置回退8000**/usable<system_reserve回退/自定义fallback；manage集成4：派生小预算真实裁剪30→20条+last必保/**大预算零裁剪**/无max_tokens默认行为零漂移/usable_input_tokens属性；token_manager 2；budget_snapshot 3：推导链完整/**与真实调用路径同源一致**/异常→error不反噬；接线断言3）；广义回归**全tests/ 557 passed零破坏**（既有525+新增32）；systemic_test.py **29/29 passed**（重启后服务上S4并发/S5降级/S6混合负载全绿——消息路径改动未破坏既有行为）
+**服务重启**：systemctl --user restart acp-proxy-a.service + acp-proxy-b.service（context_budget/soulmate_agent/ws_chat/app改动双实例）→is-active双active→:8092/health+:8095/health双200且context_budget推导链在场（上引live证据）→重启后systemic 29/29+全量pytest在重启后服务/代码上通过；opensoul零改动不重启；openmate前端零改动不build
+**commit**：openmate `294492a1`（push已确认：github官方直连`git ls-remote origin main`=**294492a175038ef293c38440fa89c8a360381001** MATCH本地HEAD非镜像自报——github.com直连push两度SSL EOF后经ghfast镜像push `b5a09aea..294492a1`，再以官方直连ls-remote核实真实落盘；push前git grep --cached密钥扫描0命中；工作区他人未提交settings-client.tsx/locales改动不入库，staged仅本轮7文件）
+**遗留问题**：
+1. **行为变化如实声明**：历史裁剪预算从8000→57536（现网env派生）——改前每轮>20条消息的历史被裁到8k tokens（约90%上下文浪费），改后裁剪只在>57k tokens触发。预期长会话质量改善，但真实长负载下的效果（是否触发provider溢出）**未经live长会话E2E实证**（本轮live证据为health推导链+单测行为级manage裁剪），如出现溢出优先下轮把env LLM_CONTEXT_WINDOW钉成模型真实窗口
+2. LLM_INPUT_LIMIT现网未声明（=0走单窗口分支）——双限额模型（如1M输入/32k输出API）部署时需在.env声明LLM_INPUT_LIMIT才会走"输入限额优先"分支；代码路径已就位并被单测覆盖
+3. `probe_model_capabilities`探测是假探测（测试2直接读env未做二分），真实模型限额探测（ollama /api/show读num_ctx等）未做——限额准确性依赖env声明，列为观察项
+4. opensoul侧镜像（gland/harness_profiles.py的TIER_CONTEXT_CHARS预算体系）未接本套usable_input语义——opensoul侧是字符预算非token预算，语义合并需先讨论，非本轮scope
+5. 存量F401两处（app.py:15/token_manager.py:5）历史欠账未动；`budget_snapshot`的reserved/usable快照用(out,out)同值传参（现env单限额旋钮LLM_MAX_TOKENS），ProviderTransform双参语义（model.limit.output vs outputTokenMax分立）待限额探测落地后启用
+6. kilocode supplement3其余缺口顺延：#4 readTurn快照diff、#8记忆模型独立解析链、#13跨workspace二次授权、#15网络受限工具面收缩、#16 GoalPolicy工具门、#18 reminders合成part、#19 MCP resource三件套——均为下轮P1候选
+7. cron环境工具约束（持续有效）：execute_code被BLOCKED（本轮用terminal直接命令）；github.com直连push SSL EOF间歇发作→ghfast镜像push+官方直连ls-remote双重核实；git commit -m长消息末尾禁带管道符号；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）
