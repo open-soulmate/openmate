@@ -335,8 +335,17 @@ class MemoryDigestCollector:
 
         user_text = str(meta.get("user_text") or "")
         full_response = str(meta.get("full_response") or "")
+        # kilocode #4 readTurn：记忆不只看"说了什么"，还要看"改了什么"——
+        # 快照diff（本轮文件改动）+ 工具动作轮廓（toolSummary）随digest进记忆
+        content_parts = [f"用户: {user_text[:200]}", f"助手: {full_response[:200]}"]
+        _fc = str(meta.get("file_changes") or "").strip()
+        if _fc:
+            content_parts.append(f"本轮文件改动（快照diff）:\n{_fc}")
+        _ta = str(meta.get("tool_actions") or "").strip()
+        if _ta:
+            content_parts.append(f"工具动作（toolSummary）:\n{_ta}")
         payload = memory_echo.build_digest_payload(
-            content=f"用户: {user_text[:200]}\n助手: {full_response[:200]}",
+            content="\n".join(content_parts),
             memory_type="episodic",
             importance=0.5,
             session_id=session_id,

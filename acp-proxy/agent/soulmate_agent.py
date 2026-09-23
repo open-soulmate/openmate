@@ -53,6 +53,7 @@ from agent.semantic_cache import SemanticCache
 from agent.context_compression import ContextCompressor
 from agent.loop_guard import LoopGuard
 from agent.code_mode import CodeModeExecutor
+from agent.read_turn import DIFF_MAX_BYTES, TurnReadView, result_ok
 from agent import memory_echo
 from agent import memory_marker
 from agent import session_recall
@@ -275,6 +276,8 @@ class SoulMateAgent:
             turn_lifecycle.MemoryDigestCollector(),
         )
         self._turn_close_reason: dict[str, str] = {}  # session_id -> 非正常收尾原因
+        # ── kilocode #4 readTurn：工具动作轮廓(toolSummary)+文件快照diff进记忆──
+        self._turn_read_view = TurnReadView()
         
         # ── Writer Fence：per-session写入锁（替代全局_processing标志）──
         self._writer_fence = SessionWriterFence(action=WriteAction.REJECT, timeout=30)
@@ -593,6 +596,34 @@ class SoulMateAgent:
         """轻量 LLM 调用，只返回文本（不带工具），用于规划和自省"""
         return await self.llm_engine.chat(messages)
 
+    @property
+    def _turn_read_view(self) -> TurnReadView:
+        """readTurn采集端（kilocode #4）——lazy构造：__new__测试双实例/部分构造
+        场景同样可用（采集端fail-safe，缺失属性绝不炸工具循环）。"""
+        rv = self.__dict__.get("_turn_read_view__impl")
+        if rv is None:
+            rv = TurnReadView()
+            self.__dict__["_turn_read_view__impl"] = rv
+        return rv
+
+    @_turn_read_view.setter
+    def _turn_read_view(self, value: TurnReadView) -> None:
+        self.__dict__["_turn_read_view__impl"] = value
+
+    def _read_prev_for_diff(self, path: str) -> str | None:
+        """快照diff旧内容读取（kilocode #4 readTurn）：文件不存在=空串（新建）；
+        超过DIFF_MAX_BYTES=None（增量未知，TurnReadView显式标注不假装0改动）。"""
+        try:
+            p = os.path.expanduser(str(path or ""))
+            if not p or not os.path.isfile(p):
+                return ""
+            if os.path.getsize(p) > DIFF_MAX_BYTES:
+                return None
+            with open(p, "r", encoding="utf-8", errors="replace") as f:
+                return f.read()
+        except Exception:
+            return None
+
     def _process_tool_output(self, func_name: str, tool_call_id: str, result: str) -> str:
         """P0-2接线：工具结果溢出处理 — goose spill落盘 + deepagents stub + AIHawk双预算
 
@@ -746,7 +777,11 @@ class SoulMateAgent:
                     return (f"错误: write_file 参数不完整（path='{path}', "
                             f"content长度={len(content)}）")
                 from utils.file_safety import atomic_write
+                _prev = self._read_prev_for_diff(path)
                 ok, err = atomic_write(path, content)
+                if ok:
+                    self._turn_read_view.record_file_change(
+                        session_id, path, "write", _prev, content)
                 return f"已写入 {path} ({len(content)} 字节)" if ok else f"写入失败: {err}"
             if func_name == "patch":
                 path = func_args.get("path", "")
@@ -757,7 +792,11 @@ class SoulMateAgent:
                 if old_string not in file_content:
                     return f"错误: 在 {path} 中未找到匹配文本"
                 from utils.file_safety import atomic_write
-                ok, err = atomic_write(path, file_content.replace(old_string, new_string, 1))
+                _new = file_content.replace(old_string, new_string, 1)
+                ok, err = atomic_write(path, _new)
+                if ok:
+                    self._turn_read_view.record_file_change(
+                        session_id, path, "patch", file_content, _new)
                 return f"已修改 {path}" if ok else f"修改失败: {err}"
             if func_name == "execute_code":
                 code = func_args.get("code", "")
@@ -1548,6 +1587,9 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                 "permission": gate_result.behavior,
                                 "permission_provenance": gate_provenance,
                             })
+                            self._turn_read_view.record_tool(
+                                session_id, func_name, func_args,
+                                ok=False, error=blocked_reason)
                             continue
 
                         # ── P2工具执行增强：缓存+审计 ─────────────────
@@ -1579,6 +1621,8 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                     "permission": gate_result.behavior,
                                     "permission_provenance": gate_provenance,
                                 })
+                                self._turn_read_view.record_tool(
+                                    session_id, func_name, func_args, ok=True)
                                 continue
 
                         # ── 基础工具执行 ───────────────────────────────
@@ -1610,10 +1654,13 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                     result = f"错误: write_file 参数不完整（path='{path}', content长度={len(file_content)}）。请重新调用并提供完整的path和content参数。path必须包含文件名和扩展名（如 /home/climbing/project/index.html）。"
                                 else:
                                     from utils.file_safety import atomic_write
+                                    _prev = self._read_prev_for_diff(path)
                                     ok, err = atomic_write(path, file_content)
                                     if not ok:
                                         result = f"写入失败: {err}"
                                     else:
+                                        self._turn_read_view.record_file_change(
+                                            session_id, path, "write", _prev, file_content)
                                         result = f"已写入 {path} ({len(file_content)} 字节)"
                             except Exception as e:
                                 te = self._tool_error_handler.handle_error(
@@ -1680,12 +1727,15 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                 if old_string not in file_content:
                                     result = f"错误: 在 {path} 中未找到匹配文本"
                                 else:
+                                    _before = file_content
                                     file_content = file_content.replace(old_string, new_string, 1)
                                     from utils.file_safety import atomic_write
                                     ok, err = atomic_write(path, file_content)
                                     if not ok:
                                         result = f"修改失败: {err}"
                                     else:
+                                        self._turn_read_view.record_file_change(
+                                            session_id, path, "patch", _before, file_content)
                                         result = f"已修改 {path}"
                             except Exception as e:
                                 result = f"修改失败: {e}"
@@ -1937,7 +1987,14 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                         self._code_mode = _cm
                                     _cm_tools = [t["function"]["name"] for t in all_tools]
                                     async def _cm_dispatch(_n, _a, _sid=session_id, _cwd=cwd):
-                                        return await self._code_mode_tool_call(_sid, _n, _a, _cwd)
+                                        _r = await self._code_mode_tool_call(_sid, _n, _a, _cwd)
+                                        # kilocode #4/#6：批内每次调用同样留工具动作轮廓
+                                        self._turn_read_view.record_tool(
+                                            _sid, _n, _a,
+                                            ok=result_ok(_r),
+                                            error="" if result_ok(_r) else str(_r),
+                                            via="code_mode")
+                                        return _r
                                     _cm_res = await _cm.execute(
                                         str(_cm_script), available_tools=_cm_tools, dispatch=_cm_dispatch)
                                     result = CodeModeExecutor.format_result(_cm_res)
@@ -1969,6 +2026,11 @@ You can send files to the user natively: to deliver a file, write a brief confir
                             "permission": gate_result.behavior,
                             "permission_provenance": gate_provenance,
                         })
+                        # kilocode #4/#6 readTurn：工具动作轮廓（toolSummary）进记忆采集
+                        self._turn_read_view.record_tool(
+                            session_id, func_name, func_args,
+                            ok=result_ok(result),
+                            error="" if result_ok(result) else str(result))
 
                         # P2工具审计 + 结果缓存
                         try:
@@ -2278,6 +2340,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 await self._turn_lifecycle.aclose_turn(
                     session_id, turn_lifecycle.CLOSE_ERROR
                 )
+                self._turn_read_view.clear(session_id)
                 raise
 
     async def _prompt_inner(
@@ -2650,6 +2713,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 await self._turn_lifecycle.aclose_turn(
                     session_id, turn_lifecycle.CLOSE_COMPLETED, cached=True
                 )
+                self._turn_read_view.clear(session_id)
                 return PromptResponse(stop_reason="end_turn")
 
             # 2. 上下文压缩：消息过多时压缩历史
@@ -3217,13 +3281,18 @@ You can send files to the user natively: to deliver a file, write a brief confir
         # ── kilocode #7 TurnClose：事件驱动记忆采集（订阅器隔离，失败不破坏会话流）──
         # close_reason语义：steer中断/取消等非正常收尾标记在此收尾；
         # superseded→按interrupted处理（"被排队消息顶掉的turn=被中断，不完整不digest"）
+        # kilocode #4 readTurn：快照diff+工具动作轮廓随turn元数据进记忆采集
+        _rv = self._turn_read_view.render(session_id)
         await self._turn_lifecycle.aclose_turn(
             session_id,
             self._turn_close_reason.pop(session_id, turn_lifecycle.CLOSE_COMPLETED),
             user_text=user_text,
             full_response=full_response,
             tool_calls=len(tool_calls_log),
+            file_changes=_rv.get("file_changes", ""),
+            tool_actions=_rv.get("tool_actions", ""),
         )
+        self._turn_read_view.clear(session_id)
 
         return PromptResponse(stop_reason="end_turn")
 
