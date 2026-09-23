@@ -607,7 +607,11 @@ class SoulMateAgent:
                     line_threshold=int(os.environ.get("TOOL_SPILL_LINES", "2000")),
                 )
                 self._output_handler = handler
-            return handler.process(func_name, tool_call_id, str(result)).processed_text
+            # kilocode #1能力分级提示：传入当前agent工具面（_run_llm_with_tools每轮记录）
+            return handler.process(
+                func_name, tool_call_id, str(result),
+                tool_names=getattr(self, "_active_tool_names", None),
+            ).processed_text
         except Exception as e:
             logger.warning(f"[tool-output] spill处理失败，降级截断: {e}")
             return truncate_tool_result(str(result))
@@ -701,7 +705,10 @@ class SoulMateAgent:
                            f" --include='*.js' --include='*.json' --include='*.md'"
                            f" {shlex.quote(pattern)} {shlex.quote(path)}")
                 proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, errors="replace", timeout=10)
-                return proc.stdout[:3000] if proc.stdout else "(无结果)"
+                # 禁止静默截断：完整输出过溢出层（超限spill+显式stub，批内可read_file_segment读回）
+                return self._process_tool_output(
+                    "search_files", f"cm_{uuid.uuid4().hex[:8]}",
+                    proc.stdout if proc.stdout else "(无结果)")
             if func_name == "terminal":
                 cmd = func_args.get("command", "")
                 if not cmd:
@@ -712,10 +719,12 @@ class SoulMateAgent:
                 cmd = _re.sub(r'(/[\w/.\-]*[()][\w/.\-()]*)', _quote_p, cmd)
                 proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, errors="replace", timeout=30, cwd=cwd)
                 output = proc.stdout + proc.stderr
-                result = output[:3000] if output else "(无输出)"
+                result = output if output else "(无输出)"
                 if proc.returncode != 0:
                     result += f"\n[exit code: {proc.returncode}]"
-                return result
+                # 禁止静默截断：完整输出过溢出层（超限spill+显式stub）
+                return self._process_tool_output(
+                    "terminal", f"cm_{uuid.uuid4().hex[:8]}", result)
             if func_name == "write_file":
                 path = func_args.get("path", "")
                 content = func_args.get("content", "")
@@ -1297,6 +1306,8 @@ You can send files to the user natively: to deliver a file, write a brief confir
             }]
         
         all_tools = builtin_tools + (mcp_tools or []) + evolution_tools + [clarify_tool]
+        # kilocode #1能力分级提示：记录本轮工具面（溢出stub按能力给分级读回指引）
+        self._active_tool_names = {t.get("function", {}).get("name", "") for t in all_tools}
 
         # P1归因：工具定义逐项（per-tool——"20+工具定义里哪个最吃上下文"；三来源分开归因）
         attr_items += items_from_openai_tools(builtin_tools, source="builtin")
@@ -1611,7 +1622,9 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                         cwd=cwd,
                                     )
                                     output = proc.stdout + proc.stderr
-                                    result = output[:3000] if output else "(无输出)"
+                                    # AIHawk显式标记铁律：禁止[:3000]静默截断（丢数据且无标记）——
+                                    # 完整输出交给循环尾_process_tool_output溢出层（超限spill+显式stub）
+                                    result = output if output else "(无输出)"
                                     if proc.returncode != 0:
                                         result += f"\n[exit code: {proc.returncode}]"
                             except subprocess.TimeoutExpired:
@@ -1637,7 +1650,8 @@ You can send files to the user natively: to deliver a file, write a brief confir
                                 else:
                                     cmd = f"grep -rn -i --include='*.py' --include='*.ts' --include='*.tsx' --include='*.js' --include='*.json' --include='*.md' {shlex.quote(pattern)} {shlex.quote(path)}"
                                 proc = subprocess.run(cmd, shell=True, capture_output=True, text=True, errors="replace", timeout=10)
-                                output = proc.stdout[:3000] if proc.stdout else "(无结果)"
+                                # 同terminal：禁止静默截断，完整输出交给_process_tool_output溢出层
+                                output = proc.stdout if proc.stdout else "(无结果)"
                                 result = output
                             except Exception as e:
                                 result = f"搜索失败: {e}"
@@ -1945,16 +1959,21 @@ You can send files to the user natively: to deliver a file, write a brief confir
                         # P2工具审计 + 结果缓存
                         try:
                             tool_duration = time.time() - tool_start if 'tool_start' in dir() else 0
+                            # 参数与ToolAuditor.audit_call签名对齐（此前result_preview/duration_s
+                            # 错误kwarg导致每次TypeError→审计与缓存双双静默失效；result由audit_call
+                            # 内部自切200字符存summary，完整result只用于风险分析）
                             self._tool_auditor.audit_call(
                                 session_id=session_id, tool_name=func_name,
-                                arguments=func_args, result_preview=str(result)[:200],
-                                duration_s=tool_duration, success="错误" not in str(result),
+                                arguments=func_args, result=str(result),
+                                duration_ms=tool_duration * 1000,
+                                success="错误" not in str(result),
                             )
                             # 缓存只读工具结果
                             if func_name in ("read_file", "list_files", "search_files") and "错误" not in str(result):
                                 self._tool_cache.put(func_name, func_args, str(result))
                         except Exception as _audit_err:
-                            logger.debug(f"[tool-audit] 失败(非致命): {_audit_err}")
+                            # mem0 §1.1失败必须可见：审计失效是安全事件，禁止DEBUG级静默
+                            logger.warning(f"[tool-audit] 失败(非致命，但审计缺失): {_audit_err}")
 
                         # ── SoulBrain反思学习 ──────────────
                         try:

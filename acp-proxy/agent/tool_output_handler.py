@@ -12,10 +12,11 @@ import hashlib
 import json
 import logging
 import os
-import tempfile
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
+
+from agent import retention
 
 logger = logging.getLogger("acp-agent.tool-output")
 
@@ -35,6 +36,8 @@ class SpillResult:
     original_size: int = 0       # 原始输出字符数
     shown_size: int = 0          # 实际展示给模型的字符数
     spill_id: str = ""           # 唯一标识（用于检索）
+    removed_lines: int = 0       # kilocode #3方向感知：被截断省略的行数（显式报告）
+    removed_bytes: int = 0       # kilocode #3方向感知：被截断省略的字节数（显式报告）
 
 
 class ToolOutputHandler:
@@ -57,6 +60,8 @@ class ToolOutputHandler:
         char_threshold: int = DEFAULT_CHAR_THRESHOLD,
         line_threshold: int = DEFAULT_LINE_THRESHOLD,
         preview_chars: int = DEFAULT_PREVIEW_CHARS,
+        retention_days: float = retention.DEFAULT_RETENTION_DAYS,
+        cleanup_interval: float = retention.DEFAULT_SWEEP_INTERVAL,
     ):
         if not spill_dir:
             spill_dir = str(Path.home() / ".hermes" / "soulmate" / "tool_spills")
@@ -65,9 +70,28 @@ class ToolOutputHandler:
         self.char_threshold = char_threshold
         self.line_threshold = line_threshold
         self.preview_chars = preview_chars
+        # kilocode #2保留策略：7天retention + 每小时cleanup（按mtime，ID回绕坑见retention.py）
+        self.retention_days = retention_days
+        self.cleanup_interval = cleanup_interval
         # AIHawk SHOWN/SENT双预算账本（JSONL）：agent子进程写、app.py读，跨进程可读。
         # "截断必须显式标记，不能静默丢数据"——每次工具结果处理（含未溢出）都记账。
         self.ledger_path = self.spill_dir / "spill_ledger.jsonl"
+
+    def maybe_cleanup(self):
+        """kilocode #2保留策略清扫入口：7天retention，每小时最多一次（进程内节流）。
+
+        清扫对象：spill_dir下*.txt溢出文件（按mtime）+ spill_ledger.jsonl账本（按记录ts轮转）。
+        失败仅日志绝不反噬工具流程。返回清扫结果dict或None（节流跳过）。
+        """
+        def _sweep():
+            spills = retention.sweep_mtime(
+                self.spill_dir, max_age_days=self.retention_days, patterns=("*.txt",))
+            ledger = retention.compact_jsonl(
+                self.ledger_path, max_age_days=self.retention_days)
+            return {"spills": spills, "ledger": ledger}
+
+        return retention.maybe_sweep(
+            f"tool-spill:{self.spill_dir}", _sweep, interval_s=self.cleanup_interval)
 
     def _record(
         self,
@@ -103,6 +127,13 @@ class ToolOutputHandler:
             return True
         return False
 
+    def _spill_reason(self, text: str) -> str:
+        """触发原因（kilocode #3方向感知的'双单位择一'依据）：
+        行数超限→"lines"（removed按行数报告）；字符/字节超限→"bytes"（removed按字节数报告）。"""
+        if text.count("\n") + 1 > self.line_threshold:
+            return "lines"
+        return "bytes"
+
     def _spill_to_file(self, tool_name: str, text: str) -> tuple[str, str]:
         """将完整工具输出写入磁盘
 
@@ -127,6 +158,45 @@ class ToolOutputHandler:
             logger.warning(f"Failed to spill tool output to file: {e}")
             return "", ""
 
+    # ── kilocode #1按agent能力分级提示：工具面判定集合 ──
+    _DELEGATE_TOOL_NAMES = ("task", "delegate", "spawn_agent", "dispatch_agent", "explore")
+    _SEARCH_TOOL_NAMES = ("search_files", "grep", "search", "search_chat_history")
+
+    def _readback_hint(self, spill_path: str, tool_names) -> list:
+        """kilocode #1能力分级提示（truncate.ts"按agent能力分级提示"忠实泛化）：
+        - 有task/派发类工具→"派子agent处理该文件，别自己整读"（kilocode原文语义）
+        - 有search类工具→"先定位关键片段再按需分段读"
+        - 否则→"用read_file_segment分段读取"（默认档，保持既有文案）
+        """
+        names = set(tool_names or ())
+        if any(d in names for d in self._DELEGATE_TOOL_NAMES):
+            return [
+                "输出过大：建议派子agent（task/explore类工具）处理该文件，不要自己整读。",
+                "如确需自己读，用 read_file_segment 工具分段读取:",
+                f"  read_file_segment(path='{spill_path}', start_line=1, end_line=200)",
+                f"  之后按需递增 start_line 继续读取后续段落。",
+            ]
+        if any(s in names for s in self._SEARCH_TOOL_NAMES):
+            return [
+                "输出过大：先用 search_files 定位关键片段（用pattern/command缩小范围），不要整读。",
+                "再用 read_file_segment 工具按行范围读取需要的段落:",
+                f"  read_file_segment(path='{spill_path}', start_line=1, end_line=200)",
+                f"  之后按需递增 start_line 继续读取后续段落。",
+            ]
+        return [
+            f"如需查看完整内容，请使用 read_file_segment 工具分段读取:",
+            f"  read_file_segment(path='{spill_path}', start_line=1, end_line=200)",
+            f"  之后按需递增 start_line 继续读取后续段落。",
+        ]
+
+    @staticmethod
+    def _removed_marker(removed_lines: int, removed_bytes: int, reason: str) -> str:
+        """kilocode #3方向感知：removed显式报告，'...347 lines truncated...'双单位择一——
+        行数触发的截断按行数报告、字节触发的按字节数报告（不静默、不模糊）。"""
+        if reason == "lines":
+            return f"... [{removed_lines} 行已截断] ..."
+        return f"... [{removed_bytes} 字节已截断] ..."
+
     def _build_stub(
         self,
         tool_name: str,
@@ -136,14 +206,19 @@ class ToolOutputHandler:
         spill_id: str,
         head_text: str,
         tail_text: str,
+        removed_lines: int = 0,
+        removed_bytes: int = 0,
+        reason: str = "bytes",
+        tool_names=None,
     ) -> str:
         """构建溢出stub — 教模型数据在哪、多大、如何读回
 
-        设计原则（AIHawk显式标记 + deepagents分段读回指引）：
+        设计原则（AIHawk显式标记 + deepagents分段读回指引 + kilocode #1分级提示/#3方向感知）：
         1. 明确标注[TRUNCATED]，不静默
         2. 给出完整数据的位置和大小
-        3. 告诉模型如何分段读回（read_file_segment）
-        4. 提供head+tail预览供快速判断
+        3. 告诉模型如何分段读回（按能力分级：派子agent > search定位 > 分段读取）
+        4. 提供head+tail预览供快速判断（方向显式标注开头/结尾）
+        5. removed行数/字节数显式报告（双单位择一，kilocode #3）
         """
         parts = [
             f"[TRUNCATED — 工具输出过大已外置]",
@@ -153,14 +228,14 @@ class ToolOutputHandler:
             f"完整输出已保存到: {spill_path}",
             f"Spill ID: {spill_id}",
             f"",
-            f"如需查看完整内容，请使用 read_file_segment 工具分段读取:",
-            f"  read_file_segment(path='{spill_path}', start_line=1, end_line=200)",
-            f"  之后按需递增 start_line 继续读取后续段落。",
+        ]
+        parts += self._readback_hint(spill_path, tool_names)
+        parts += [
             f"",
-            f"=== 预览（前 {min(len(head_text), self.preview_chars // 2)} 字符）===",
+            f"=== 预览（开头/head，前 {min(len(head_text), self.preview_chars // 2)} 字符）===",
             head_text,
-            f"... [{original_size - len(head_text) - len(tail_text)} 字符省略] ...",
-            f"=== 预览（后 {min(len(tail_text), self.preview_chars // 2)} 字符）===",
+            self._removed_marker(removed_lines, removed_bytes, reason),
+            f"=== 预览（结尾/tail，后 {min(len(tail_text), self.preview_chars // 2)} 字符）===",
             tail_text,
             f"[END PREVIEW — 完整内容见 {spill_path}]",
         ]
@@ -171,6 +246,7 @@ class ToolOutputHandler:
         tool_name: str,
         tool_call_id: str,
         result: str,
+        tool_names=None,
     ) -> SpillResult:
         """处理单个工具结果 — proactive溢出检测
 
@@ -178,10 +254,16 @@ class ToolOutputHandler:
             tool_name: 工具名称
             tool_call_id: 工具调用ID（用于日志追踪）
             result: 工具返回的原始文本
+            tool_names: 当前agent可用工具名集合（kilocode #1能力分级提示依据；None→默认档）
 
         Returns:
             SpillResult，processed_text字段即要放入context的内容
         """
+        # kilocode #2保留策略：每次处理顺带触发（每小时最多一次）7天retention清扫
+        try:
+            self.maybe_cleanup()
+        except Exception as _cleanup_err:
+            logger.debug(f"retention cleanup skipped (non-fatal): {_cleanup_err}")
         original_size = len(result)
         line_count = result.count("\n") + 1
 
@@ -196,17 +278,23 @@ class ToolOutputHandler:
 
         # 溢出：落盘 + 构建stub
         spill_path, spill_id = self._spill_to_file(tool_name, result)
+        # kilocode #3方向感知：removed行数/字节数显式计算（head/tail预览之外的中段）
+        half = self.preview_chars // 2
+        head_text = result[:half]
+        tail_text = result[-half:] if original_size > half else ""
+        middle = result[half: original_size - half] if original_size > 2 * half else ""
+        removed_bytes = len(middle.encode("utf-8"))
+        removed_lines = middle.count("\n") + (1 if middle and not middle.endswith("\n") else 0)
+        reason = self._spill_reason(result)
 
         if not spill_path:
-            # 落盘失败 → 降级截断（goose降级模式：原文+warning）
-            half = self.preview_chars // 2
-            head = result[:half]
-            tail = result[-half:] if original_size > half else ""
+            # 落盘失败 → 降级截断（goose降级模式：原文+warning），removed同样显式报告不静默
+            removed_marker = self._removed_marker(removed_lines, removed_bytes, reason)
             degraded = (
-                f"[Warning: 工具输出过大({original_size}字符)且落盘失败，已截断显示]\n"
-                f"{head}\n"
-                f"... [{original_size - len(head) - len(tail)} 字符省略，数据未保存] ...\n"
-                f"{tail}"
+                f"[Warning: 工具输出过大({original_size}字符/{line_count}行)且落盘失败，已截断显示]\n"
+                f"{head_text}\n"
+                f"{removed_marker} [数据未保存]\n"
+                f"{tail_text}"
             )
             logger.warning(f"[{tool_call_id}] Spill failed for {tool_name}, degraded truncation")
             self._record(tool_name, tool_call_id, original_size, len(degraded), True)
@@ -215,12 +303,9 @@ class ToolOutputHandler:
                 spilled=True,
                 original_size=original_size,
                 shown_size=len(degraded),
+                removed_lines=removed_lines,
+                removed_bytes=removed_bytes,
             )
-
-        # 构建head+tail预览
-        half = self.preview_chars // 2
-        head_text = result[:half]
-        tail_text = result[-half:] if original_size > half else ""
 
         stub = self._build_stub(
             tool_name=tool_name,
@@ -230,6 +315,10 @@ class ToolOutputHandler:
             spill_id=spill_id,
             head_text=head_text,
             tail_text=tail_text,
+            removed_lines=removed_lines,
+            removed_bytes=removed_bytes,
+            reason=reason,
+            tool_names=tool_names,
         )
 
         logger.info(
@@ -245,6 +334,8 @@ class ToolOutputHandler:
             original_size=original_size,
             shown_size=len(stub),
             spill_id=spill_id,
+            removed_lines=removed_lines,
+            removed_bytes=removed_bytes,
         )
 
     def read_segment(
@@ -319,6 +410,9 @@ class ToolOutputHandler:
             "total_size_bytes": total_size,
             "char_threshold": self.char_threshold,
             "line_threshold": self.line_threshold,
+            # ── kilocode #2保留策略可观测（用户极度重视可观测性）──
+            "retention_days": self.retention_days,
+            "cleanup_interval_s": self.cleanup_interval,
             # ── AIHawk SHOWN/SENT双预算账本聚合 ──
             "total_calls": 0,
             "truncated_calls": 0,

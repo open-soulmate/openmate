@@ -29,6 +29,8 @@ import time
 from pathlib import Path
 from typing import Optional
 
+from agent import retention
+
 logger = logging.getLogger("acp-agent.permission_provenance")
 
 SCHEMA = "kilocode-#14-v1"
@@ -201,16 +203,30 @@ class PermissionProvenanceRecorder:
 
     - 每条门禁判定（含拒绝）追加一行JSON到data/permission_provenance.jsonl
     - 记录失败仅WARNING日志、绝不中断工具流程（观测层不反噬执行层）
+    - kilocode #2同款retention：7天窗口轮转（每小时最多一次，只删可证超龄行，见agent/retention.py）
     """
 
-    def __init__(self, ledger_path: Optional[str] = None):
+    def __init__(self, ledger_path: Optional[str] = None,
+                 retention_days: float = 7.0, cleanup_interval: float = 3600.0):
         if ledger_path:
             self.ledger_path = Path(ledger_path)
         else:
             self.ledger_path = (Path(__file__).resolve().parent.parent
                                 / "data" / "permission_provenance.jsonl")
+        # 上轮遗留"provenance账本retention轮转"销账：与tool_spills同款7天mtime语义
+        self.retention_days = retention_days
+        self.cleanup_interval = cleanup_interval
         self.written = 0
         self.errors = 0
+
+    def maybe_cleanup(self):
+        """账本7天窗口轮转入口：每小时最多一次（进程内节流），失败仅日志不反噬。"""
+        return retention.maybe_sweep(
+            f"perm-prov:{self.ledger_path}",
+            lambda: retention.compact_jsonl(
+                self.ledger_path, max_age_days=self.retention_days),
+            interval_s=self.cleanup_interval,
+        )
 
     def record(self, entry: dict) -> bool:
         """追加一条provenance记录。成功True/失败False（失败必有日志，不静默）"""
@@ -222,6 +238,11 @@ class PermissionProvenanceRecorder:
             with open(self.ledger_path, "a", encoding="utf-8") as f:
                 f.write(line + "\n")
             self.written += 1
+            # kilocode #2同款retention：写入顺带触发（每小时最多一次）账本轮转
+            try:
+                self.maybe_cleanup()
+            except Exception as _c_err:
+                logger.debug(f"[perm-provenance] 账本轮转跳过（非致命）: {_c_err}")
             return True
         except Exception as e:
             self.errors += 1
