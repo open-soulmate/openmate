@@ -1983,3 +1983,40 @@
 4. kilocode supplement3其余缺口顺延：#13跨workspace二次授权、#15网络受限工具面收缩、#16 GoalPolicy工具门、#18 reminders合成part、#9记忆marker留痕的OpenMate前端badge、#10 memory事件总线前端活动流渲染——均为下轮P1候选
 5. mcp-attachments目录retention未清扫、mcp-client注册无持久化（上轮遗留#3/#5顺延）
 6. cron环境工具约束（持续有效）：execute_code被BLOCKED（write_file+terminal两步）；管道`cmd | tail`退出码是tail的；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）；ruff带子命令`ruff check --select`（裸--select报错，本轮踩过一次当场改正）
+
+## [2026-09-24 18:50 CST] P1 MCP消费面可靠性双遗留销账：Server注册持久化（kilocode Storage模式）+ mcp-attachments retention清扫
+**目标**：销账两笔明确承诺的下轮候选——①supplement3 #19轮遗留#5「mcp-client注册无持久化，服务重启后已配置Server需API重新注册」（MCP消费面配置资产不随服务存活，重启即丢=数据丢失级可靠性缺陷）；②#19轮遗留#3「mcp-attachments目录无retention清理（tool_output_handler的7天retention清扫未覆盖该目录）」（附件无限增长）。
+**调研来源**：①kilocode AGENTS.md「Storage: Filesystem-based JSON, not a database...Storage.write(["session", projectID, sessionID], data)」本地JSON快照持久化模式（~/.local/share/kilo/storage/）+ retention.py同款原子替换（tmp+os.replace）并发安全语义；②kilocode-source-supplement3.md #2「Truncate保留策略：7天retention+每小时cleanup扫mtime（编码ID会回绕所以不看ID看mtime——注释即坑教材）」扩展覆盖到MCP附件目录。
+**改动文件**（openmate仓库7文件+620/-31）：
+- openmate/mcp-client/persistence.py（新建85行：registry_path/save_snapshot/load_snapshot三函数）
+- openmate/mcp-client/registry.py（+95/-10增量8 hunk：import+__init__持久化参数+_persist/persist_info/restore三方法+add/remove/connect/_disconnect_internal/_watch_process五处变更点写快照）
+- openmate/mcp-client/main.py（+18/-2增量3 hunk：lifespan启动后台restore+registry构造注入persist_path+/api/mcp/status带persist快照）
+- openmate/acp-proxy/agent/mcp_resources.py（+8增量2 hunk：import retention+save_attachment落盘后maybe_sweep惰性清扫）
+- openmate/acp-proxy/agent/retention.py（+2增量1 hunk：适用对象清单补mcp-attachments行）
+- openmate/acp-proxy/tests/test_mcp_registry_persist.py（新建393行33用例）
+- openmate/acp-proxy/systemic_test_results.json（测试产物）
+**改动内容**：
+1. `persistence.py`（kilocode Storage模式逐语义移植）：①快照式**全量**持久化`{"version":1,"servers":[{"config":{...},"connected":bool}]}`——全量快照天然幂等，多实例/并发写无增量漂移；②原子替换（tmp+os.replace）并发读方永远看到完整文件；③**文件权限0600**（os.open mode=0o600）——ServerConfig.env可能含API密钥，快照含敏感配置不允许组/其他用户读；④恢复容错契约：坏JSON/非列表根/缺失文件→按空快照处理（WARNING，绝不阻塞服务启动）；⑤save_snapshot失败→False仅WARNING绝不抛出（持久化层不反噬执行层）；⑥`MCP_REGISTRY_PATH` env可覆盖，默认`~/.hermes/mcp-client/servers.json`。
+2. `registry.py`：①`_persist()`全量快照落盘在**五个状态变更点**接线——add_server/remove_server/connect成功（stdio与StreamableHTTP两条路径汇合后统一持久化）/_disconnect_internal/_watch_process子进程崩溃（connected标志=`sid in self._connections`真实连接态）；②`restore()`启动恢复：重注册全部持久化Server+**重连（快照connected:true ∨ config.auto_connect=True，两个入口同一恢复目标）**；容错契约=单条config非法→跳过该条其余照常+错误可见进errors（mem0 §1.1失败可见不静默）、重连失败→ERROR状态+errors记录**不阻塞其余**、整体绝不抛出（服务启动不可被坏快照拦截）、运行期已注册的优先（快照不覆盖现状）；③`persist_info()`可观测快照（enabled/path/restored/reconnected/restore_errors）——"重启恢复了什么"可见（用户可观测性关切）；④`__init__(persist_path=None)`默认**不持久化**（单测默认防污染真实快照，main.py显式注入真实路径）。
+3. `main.py`：lifespan启动即`asyncio.ensure_future(registry.restore())`——**后台任务恢复不阻塞监听**（重连走connection.py既有30s请求超时有界）；/api/mcp/status应答带`persist`快照。
+4. `mcp_resources.save_attachment`：附件落盘成功后`retention.maybe_sweep("mcp-attachments", lambda: retention.sweep_mtime(save_dir, patterns=("*",)))`——kilocode #2 7天mtime retention扩展到附件目录，随保存动作**惰性清扫**+maybe_sweep每小时最多一次节流；patterns=("*",)覆盖任意扩展名附件（_safe_basename产物不限*.txt）。
+**接线位置**（grep证据，文件:行号）：
+- 定义：mcp-client/persistence.py:34 `def registry_path` / :42 `def save_snapshot` / :68 `def load_snapshot`；registry.py:63 `def _persist` / :79 `def persist_info` / :89 `def restore`
+- 运行时消费（真实服务路径，无死代码）：main.py:28 `MCPRegistry(persist_path=persistence.registry_path())`（服务构造）+ :42 `asyncio.ensure_future(registry.restore())`（FastAPI lifespan启动路径，:46 `FastAPI(..., lifespan=lifespan)`挂载）+ :60 `registry.persist_info()`（/api/mcp/status真实应答路由）；registry.py:39/:53/:126/:160/:272/:284 `_persist()`（add/remove/restore/connect/_disconnect_internal/_watch_process真实变更点）+ :75 `persistence.save_snapshot(...)` + :99 `persistence.load_snapshot(...)`；mcp_resources.py:160-162 `retention.maybe_sweep(...)`（save_attachment真实落盘路径=soulmate _call_mcp_resource_tool→build_read_text→save_attachment真实工具链）
+**验证结果**：
+- 完整性✅：git diff --cached --stat 7文件+620/-31真实落盘（registry.py 8个增量hunk、main.py 3个增量hunk、mcp_resources 2个增量hunk均非全量重写，persistence.py/test为新建）；ast.parse 6文件全过；ruff check --select F821,F841,F401,E9：改动6文件**零问题**（一处新增F841在测试编写时当场修复；main.py `import sys` F401为**存量**（HEAD原文件既有import行非本轮改动，按先例如实记录不动）
+- 集成✅：grep证据如上（每个新符号=定义行+运行时消费行：restore在FastAPI lifespan启动路径、persist_info在/status真实应答路由、_persist在registry五个真实状态变更点、maybe_sweep在save_attachment真实落盘路径）；TestWiring 6项防死接线（main源码含registry.restore()/persist_info()、main registry持久化enabled=true、/status含persist、save_attachment源码含maybe_sweep+sweep_mtime、retention docstring覆盖mcp-attachments、add_server/remove_server/connect/_disconnect_internal方法体均含_persist()逐个inspect.getsource断言）
+- 测试✅：tests/test_mcp_registry_persist.py **33 passed**（persistence 9：roundtrip/原子无tmp残留/**0600权限**/缺失·坏JSON·非dict根·非列表servers→[]绝不抛出/env覆盖/version锁死；registry持久化 7：**默认不持久化防单测污染**/add写快照/connected标志/remove更新/**持久化失败绝不反噬注册**/persist_info形状；restore 9：重注册2个/**connected:true重连（stub _connect_stdio）**/auto_connect重连/**重连失败ERROR+errors记录不阻塞其余**（真实不存在命令FileNotFoundError路径）/坏条目跳过其余照常/空快照零/禁用registry零/**垃圾快照绝不抛出**；附件retention 4：**超龄删新留**/每小时节流窗口内不重复扫/**清扫失败不反噬落盘**/patterns=*覆盖无扩展名；Wiring 6）；广义回归**全tests/ 688 passed零破坏**（既有655+新增33）；systemic_test.py **29/29 passed**（重启后服务上S4并发/S5降级/S6混合负载全绿——mcp-client+acp-proxy多模块改动适用）
+- **live E2E全周期✅（/tmp/e2e_mcp_persist.py 11/11，真实HTTP :8094 + 两次真实systemctl restart mcp-client，决定性证据）**：A注册probe stdio server+connect（工具发现成功）→快照文件字节含connected:true；B**真实重启后注册存活**+/api/mcp/status `{"restored": 1, "reconnected": 1, "restore_errors": []}`；C**重连=重新握手=capabilities重新捕获**：/resources/servers含probe+resources/all返回3条资源（重启后resource工具面自动回到重启前状态）；D**删除持久**：DELETE→快照移除→二次重启不复活+restore=0（空快照）。断言全部打在系统生成物通道（HTTP API应答/snapshot文件字节/JSON-RPC握手能力声明）E2E ALL PASS
+- **live 附件retention✅（真实目录~/.hermes/soulmate/mcp-attachments+真实save_attachment调用）**：置8天前mtime超龄probe+新probe→save_attachment落盘触发maybe_sweep→**超龄probe被清扫、窗口内probe保留、本次新附件保留**（ls实证）
+**服务重启**：systemctl --user restart mcp-client.service（persistence/registry/main改动，E2E内含2次额外真实重启周期）+ acp-proxy-a.service + acp-proxy-b.service（mcp_resources/retention改动）→is-active三active→:8094/api/mcp/health 200 + :8092/health + :8095/health 双200→重启后systemic 29/29+全量688 pytest+两级live验证在重启后服务上通过；opensoul零改动不重启；openmate前端零改动不build
+**commit**：openmate `a1910fb3`（push `157de978..a1910fb3`经origin=ghfast镜像成功；**github官方直连ls-remote核实HEAD=`a1910fb3adaccfdf462d3a8a84a003e1bc21df17`与本地MATCH=官方侧落盘独立核实通过**；push前git grep --cached密钥扫描0命中；工作区他人未提交settings-client.tsx/locales不入库，staged仅本轮7文件）
+**数据清理**：E2E probe server删除后/servers=[]且二次重启不复活（D3实证）；真实附件目录e2e_old_probe.pdf（被清扫）/e2e_fresh_probe.pdf/1790217661062_retention.pdf全部清空（目录余0文件）；snapshot文件保留为空快照（生产artifact）；/tmp/e2e_mcp_persist.py保留作下轮复用（e2e_*模板先例）
+**E2E诚实实录（零失败迭代）**：测试编写阶段一次Pyright F841（未使用变量）+3处os.utime元组类型告警在写入后立即修复；一次curl|python3管道被安全闸BLOCKED（历史已知坑，按先例改-o落文件再读）；E2E实跑首跑11/11全绿、附件retention实证一次通过——本轮无断言误判/无产品缺陷回修
+**遗留问题**：
+1. restore重连仅覆盖persist时刻的connected:true与auto_connect=True——「断连(手动disconnect)后重启不自动重连」是设计语义（快照connected:false如实反映）；如需"曾连接过就永远自动重连"语义需另加ever_connected字段，暂无需求不加
+2. 快照含ServerConfig.env明文（0600权限缓解但非加密）——如存云端同步目录有泄漏面；密钥引用化（env indirection）或keyring留待安全轮
+3. Streamable HTTP server的restore重连在对端不可达时走30s超时握手（后台任务不阻塞监听，但restore_errors要等30s才完整）——/status的restore_errors有滞后窗口，观测项
+4. acp-proxy侧mcp-server消费端（soulmate _fetch_mcp_tools）无需感知持久化（对端接口不变）——但mcp-client重启瞬间的in-flight请求会失败，agent侧无重试（既有行为非本轮引入）；跨服务重试策略列为观察项
+5. kilocode supplement3其余缺口顺延：#13跨workspace读取二次授权、#15网络受限工具面收缩（依赖sandbox policy事实源，需先讨论归属）、#16 GoalPolicy工具门（依赖will Goal自主目标循环落地）、#10记忆事件总线前端活动流、#9记忆marker前端badge——均为下轮P1候选
+6. cron环境工具约束（持续有效）：execute_code被BLOCKED（write_file+terminal两步）；curl|python3管道被安全闸BLOCKED（先-o落文件再读，本轮又踩一次当场改正）；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）；ruff带子命令`ruff check --select`
