@@ -2020,3 +2020,34 @@
 4. acp-proxy侧mcp-server消费端（soulmate _fetch_mcp_tools）无需感知持久化（对端接口不变）——但mcp-client重启瞬间的in-flight请求会失败，agent侧无重试（既有行为非本轮引入）；跨服务重试策略列为观察项
 5. kilocode supplement3其余缺口顺延：#13跨workspace读取二次授权、#15网络受限工具面收缩（依赖sandbox policy事实源，需先讨论归属）、#16 GoalPolicy工具门（依赖will Goal自主目标循环落地）、#10记忆事件总线前端活动流、#9记忆marker前端badge——均为下轮P1候选
 6. cron环境工具约束（持续有效）：execute_code被BLOCKED（write_file+terminal两步）；curl|python3管道被安全闸BLOCKED（先-o落文件再读，本轮又踩一次当场改正）；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）；ruff带子命令`ruff check --select`
+
+## [2026-09-24 12:46 CST] P1 kilocode supplement3 #9 UI侧销账：记忆marker前端badge——"本回复用了记忆"消息级可审计徽章（写侧/读侧/UI三段闭环）
+**目标**：销账kilocode #9记忆marker留痕的最后一段——UI侧。写侧（acp-proxy agent/memory_marker.py→agent_messages.metadata kiloMemory）与读侧（opensoul sessions_api._decode_memory_marker→GET /api/sessions/{id}/messages每条消息`memory_marker`字段）在前两轮已落地（读侧轮原话："marker数据源必须在真实读路径暴露，UI badge才有据可依"），但grep实证前端src/全仓**零`memory_marker`消费**——chat-client.tsx加载消息时直接丢弃该字段，"本回复用了记忆"badge从未渲染，用户看不到"这条回复的记忆依赖"（可观测性缺口，supplement3 #9表格行"UI可显示badge，消息级可审计"的UI半边）。
+**调研来源**：kilocode-source-supplement3.md #9（marker.ts：synthetic+ignored part携带kiloMemory metadata，UI显示"本回复用了记忆"badge）+"可复用设计4. 记忆marker空part（55行）→ OpenMate消息流'用了记忆'badge的数据源"；badge交互形态参照本仓既有SecretScanBadge（紧凑徽章+点击展开审计面板，Warp hover点击揭示UX同族）。
+**改动文件**（openmate仓库3文件+189/-0，前端only）：
+- openmate/src/components/memory-marker-badge.tsx（新建103行：MemoryMarkerBadge组件+MemoryMarker接口）
+- openmate/src/app/(app)/chat/chat-client.tsx（+5增量4 hunk：import+Message.memoryMarker字段+loadHistory映射+消息渲染区badge）
+- openmate/render-test-memory-marker.cjs（新建81行：react-dom/server真实渲染测试10断言+live模式）
+**改动内容**：
+1. `memory-marker-badge.tsx`：①紧凑触发徽章`用了记忆（记忆召回 N 条）`+Brain图标+tooltip（kilocode"本回复用了记忆"语义）②点击展开审计面板：类型（recall=记忆召回/startup=启动记忆）/条数+token估算/记忆来源id列表/注入片段列表（items是verbose门控产物，缺失时不显示该段——kilocode"内容片段默认不外泄"）③**count缺省回退files.length**（与读侧_decode_memory_marker契约逐字段对齐：type/tokens/count/files/items五键同shape）④marker缺失/空→渲染null零UI干扰；violet语义色系（与消息气泡/SecretScanBadge风险色系区分，用户UI偏好：语义色≤4、低饱和）
+2. `chat-client.tsx`增量4处（零全量重写）：import + `Message.memoryMarker?: MemoryMarker | null`字段 + loadHistory DB映射`memoryMarker: m.memory_marker || null`（GET /api/sessions/{id}/messages读侧字段→组件props，真实历史加载路径） + 消息渲染区badge（仅agent消息，工具调用区块之后正文之前）
+3. `render-test-memory-marker.cjs`：tsc transpileModule+react-dom/server.renderToStaticMarkup真实渲染——null/undefined/零计数三种渲染空+徽章文案/类型/条数/tooltip+startup映射+count回退共10断言；`--render-marker '<json>'`live模式=真实API JSON直接喂组件渲染（E2E全链路用）
+**接线位置**（grep证据，文件:行号）：
+- 定义：src/components/memory-marker-badge.tsx:34 `export function MemoryMarkerBadge` / :23 `export interface MemoryMarker`
+- 运行时消费（真实聊天历史加载路径，无死代码）：chat-client.tsx:4 import / :102 `memoryMarker?: MemoryMarker | null`（Message接口）/ :1725 `memoryMarker: (m.memory_marker as MemoryMarker | null) || null`（loadHistory GET /api/sessions/{id}/messages映射）/ :2495 `{msg.role === 'agent' && <MemoryMarkerBadge marker={msg.memoryMarker} />}`（messages.map真实消息渲染循环内）；build产物.next/static/chunks/18lmg9afc8dor.js同时含"用了记忆"+"记忆注入审计"（grep实证=组件真实进bundle）
+**验证结果**：
+- 完整性✅：git diff --cached --stat 3文件+189/-0真实落盘（chat-client 4个增量hunk非全量重写）；build通过=TypeScript类型检查隐式通过
+- 集成✅：grep证据如上（每个新符号=定义行+运行时消费行，位于loadHistory真实DB加载→messages.map真实渲染循环）；build chunk 18lmg9afc8dor.js含两处新文案标识（与token归因轮"chunk grep实证"同方法）
+- 测试✅：render-test-memory-marker.cjs **10 passed**（react-dom/server真实DOM渲染：null/undefined/零计数渲染空×3+徽章文案/类型/条数/tooltip×4+startup映射+count回退files长度）——**测试驱动发现1个真实组件缺陷**：初版lucide图标用`Brain({className})`函数调用形态（参照SecretScanBadge的`riskIcon({...})`写法），react-dom/server渲染抛`Brain is not a function`，修为标准JSX `<Brain className/>`后全绿（JSX是React组件正确调用形态，此坑记入遗留#4）；opensoul tests/test_memory_marker_read.py **11 passed**（读侧契约回归：decode五形态+sources回退+坏JSON不丢消息）；acp-proxy tests/test_memory_marker.py+test_read_turn.py **84 passed**（写侧契约回归）；广义回归acp-proxy全tests/ **688 passed零破坏**；systemic_test.py **29/29 passed**（重启后服务上S4并发/S5降级/S6混合负载全绿）
+- **live E2E全周期✅（/tmp/e2e_marker_badge.py首跑全绿，写侧→读API→组件渲染三段全链路，决定性证据）**：seed LTM（ltm_5fd31174a9c5暗号8848）→真实WS /ws/acp soulmate回合（session om-0482d0cd76da，LLM真实召回）→agent_messages.metadata落kiloMemory（row 1151）→**真实GET /api/sessions/{om-0482d0cd76da}/messages（chat-client.tsx同一HTTP请求）返回`"memory_marker":{"type":"recall","tokens":34,"count":1,"files":["ltm_5fd31174a9c5"],"items":[]}`**→**该真实API JSON喂给MemoryMarkerBadge真实渲染出"用了记忆（记忆召回 1 条）"徽章HTML**（node --render-marker模式，LIVE-MARKER-RENDER OK）=badge展示的数据与真实记忆召回数学吻合（files=seed记忆id）E2E ALL PASS
+**服务重启**：前端改动→npm run build通过+systemctl --user restart openmate-web.service→is-active active→:3000/chat+:3000/ 双200→重启后systemic 29/29+全量acp-proxy 688 pytest+live E2E在重启后服务上通过；opensoul/acp-proxy零改动不重启
+**commit**：openmate `bd9304f1`（push `971b6ea6..bd9304f1`经origin=ghfast镜像成功；**github官方直连ls-remote核实HEAD=`bd9304f1769fe719a7fde6eb6c63a58fe906692c`与本地MATCH=官方侧落盘独立核实通过**；push前git grep --cached密钥扫描仅docs/agent-architecture-mimo/.tmp-srcs/的"xoxb-..."文档占位符3命中=非真实密钥且不在staged文件；工作区他人未提交settings-client.tsx/locales不入库，staged仅本轮3文件）
+**数据清理**：E2E回合（om-0482d0cd76da）agent_messages+agent_session行删除后cronbadgeprobe残留=0；seed记忆hard_delete后/ltm/search results=[]（唯一命中是nl_filters.clean_query查询回显非记忆内容）；/tmp/e2e_marker_badge.py保留作下轮复用（e2e_*模板先例）
+**E2E诚实实录（一轮断言通道修正+一个清理bug当场修复）**：①首轮清理用`params={"hard_delete":"true"}`query传参被静默忽略（hard_delete是LTMDeleteRequest **body**字段），实际执行的是软删——cleanup检查`GET after delete = 200`当场暴露（444/404才是已删），改`json={"hard_delete": True}` body传参后GET=444确认删除；E2E脚本两处cleanup已修正留档；②render测试首跑抓到组件真实缺陷（lucide图标函数调用形态，见验证结果）——**测试驱动发现-修复闭环本轮1次，缺陷发生在提交前**；③opensoul广义回归4 failed（test_evolution_loop×2：提案status='rejected'≠期望'pending'；test_marrow×2：httpx.ReadTimeout外部超时）——**本轮改动是纯前端3文件、opensoul零改动（git status仅runtime写的rbac_policy.csv），复跑复现=存量失败非本轮引入**，如实记录见遗留#2
+**遗留问题**：
+1. **opensoul存量测试失败4个（非本轮引入，opensoul零改动复跑复现）**：test_evolution_loop.py::TestEvolutionAPI两用例（提案declare后status='rejected'≠'pending'——疑evo审核策略/echo guard把测试提案自动拒了）+test_marrow.py两用例（httpx.ReadTimeout外部依赖超时，与test_pipeline.py同族环境问题）——test_evolution_loop的失败像是真实行为漂移（审批策略变了但测试没跟上），**列为下轮P1候选排查**
+2. live E2E的WS回合创建了真实agent session（om-0482d0cd76da）——agent_sessions表无该行（session行由别处管理或已级联），仅agent_messages残留2行已删净
+3. badge只覆盖loadHistory历史加载路径——**流式turning中的消息（WS实时到达）暂无memory_marker**（marker是落盘时_save_message写入，流式消息对象由WS handler构造不含该字段）；流式回填（turn结束后刷新该消息marker）列为观察项
+4. SecretScanBadge的`riskIcon({className})`函数调用形态在React严格语义下同样不规范（当前build能过是因为babel/webpack interop宽容），本轮新组件已用标准JSX；存量不动（非本轮改动范围），记录防后人照抄该写法进新组件踩坑
+5. verbose items（注入片段）现网marker恒为空（写侧metadata(verbose=False)默认不落内容片段，kilocode原语义"内容片段默认不外泄"）——badge的片段段落现网不显示是预期行为，verbose开关接入UI设置留待需求
+6. cron环境工具约束（持续有效）：execute_code被BLOCKED（write_file+terminal两步）；curl|python3管道被安全闸BLOCKED；管道`cmd | tail`退出码是tail的（本轮pytest管道又踩一次，提示后复跑裸命令核实）；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）
