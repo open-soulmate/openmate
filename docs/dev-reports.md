@@ -2231,3 +2231,41 @@
 3. 遗留#4（branch_summary.py第三处手搓router未接变体备胎）仍挂P2未动；遗留#2（ollama幻影备胎可达性探测）P2未动
 4. 遗留#1（LLM_SUBSCRIPTION_MODEL=partial-test占位符）**已被用户配置侧修复**（.env现状LLM_SUBSCRIPTION_MODEL=mimo-v2.5-pro）——本轮live subscription=ok即真实chat验证通过的绿灯，销账
 5. 上轮遗留"gland fallback链4 attempts全败"已销账于01:35轮；test_marrow外部超时flaky本轮未复跑全量tests/（口径=新22+集成28+相关回归138+build）
+
+## [2026-09-25 06:30 CST] P1 MemoryRedact存量收口：[[EXISTING]]/Dream现有记忆块进蒸馏prompt前先脱敏后截断——22:57轮遗留#2销账（Phase2存量块同规扩展到Dream同形缺口+截断拦腰泄漏一并堵住）
+
+**目标**：MemoryRedact上轮（22:57）收口了Phase1消息/Phase2候选块，但**存量记忆块**没过：Phase2 `[[EXISTING]]`（consolidate读store.list_memories 30条）与Dream「现有记忆」（dream读50条）的原文直接进蒸馏LLM prompt——库侧store()虽已脱敏，但历史存量行（脱敏功能上线前写入/外部直写/旧版本）可能含凭据原文。同形缺口还带一个**次生bug**：`_format_memories/_format_candidates`的token预算截断（[:100]/[:150]）发生在脱敏之前，会把密钥拦腰截成不再匹配规则的半个密钥漏出（上轮redact_message_bodies明文警惕过的失败形态，在存量格式化器里原样存在）。
+
+**调研来源**：①kilocode supplement3 #6 MemoryRedact「进入记忆的文本先过redact」+ ports.ts text()源端语义（存量记忆也是"进入记忆处理的文本"）；②evolution-engine-patterns.md mem0 §1.1「处理必须可见，禁止静默」→ span计数显式透出+fallback路径meta不丢计数；③上轮（22:57）自己的遗留#2原话「Phase2的[[EXISTING]]现有记忆块未过redact……防御性补一道下轮顺手」——本轮把它升为独立目标并发现Dream同形缺口+截断次生bug。
+
+**改动文件**（opensoul 3文件+141/-23）：
+- src/hippo/memory_pipeline.py（+57/-21：`_format_memories`/`_format_candidates`改tuple[str,int]返回+逐条先脱敏后截断；consolidate()存量块span并入redact_note新增existing_redacted_spans键）
+- src/hippo/dream_distiller.py（+23/-9：import补redact_for_memory；`_format_memories`同规改tuple；dream()存量span并入result.redacted_spans；顺手清死import typing.Any/Optional——HEAD既有F401非本轮引入）
+- tests/test_memory_llm_redact.py（+81：seed_raw_memory helper直写SQLite模拟历史存量行 + TestExistingMemoryPromptRedaction 5用例）
+
+**改动内容**：①`_format_memories`（pipeline/dream两处同形）：每条content先`redact_for_memory`后`[:100]`截断——先脱敏后截断，防token预算把密钥拦腰截成漏网半个；命中span数随文本返回；②`_format_candidates`同规（[:150]截断前脱敏，import模式直供候选可含原文）；③consolidate()：`exist_block, exist_spans = self._format_memories(existing)`，span并入redact_note（`existing_redacted_spans`显式键+total并入redacted_spans），LLM成功/fallback两条meta路径都携带（既有"fallback路径meta不丢计数"契约保持）；④dream()：`existing_spans`并入`result.redacted_spans`（可见性mem0 §1.1）；⑤decisions/apply侧语义不变（仍引用原始candidate对象，store()落库前照常脱敏+gatekeeper看原文）。
+
+**接线位置**（grep证据，文件:行号）：
+- 定义：memory_pipeline.py:807 `_format_memories` / :830 `_format_candidates` / dream_distiller.py:456 `_format_memories` / tests:223 `seed_raw_memory` / tests:235 `TestExistingMemoryPromptRedaction`
+- 运行时消费（真实路径非死代码）：memory_pipeline.py:435 `consolidate()`调`_format_candidates(candidates)`、:443调`_format_memories(existing)`（[[EXISTING]]拼装）；dream_distiller.py:315 `dream()`调`_format_memories(existing)`；逐条脱敏调用memory_pipeline.py:819/:838、dream_distiller.py:473 `redact_for_memory(...)`
+- 真实API入口：api/hippo.py:657 `POST /api/hippo/ltm/dream`（`_dream_distiller.dream`）、:733/:765 `POST /ltm/pipeline/run`（`_memory_pipeline.run`→consolidate）+ will/job_handlers.py:45/:61（hippo.dream、hippo.memory_pipeline后台作业）——本轮live E2E即打的:657真实端点
+- **live运行时证据（决定性，见下）**：真实HTTP请求中redacted_spans=1 + router层脱敏零命中=存量块脱敏在真实请求中执行
+
+**验证结果**：
+- **完整性✅**：git show --stat 22ee7b2b（3文件+141/-23，全部增量hunk零全量重写）；ast.parse 3文件全过；ruff --select F821,F841,F401,E9 "All checks passed!"（含顺手清掉的HEAD既有死import）
+- **集成✅**：grep证据链如上（每个改动符号=定义行+运行时消费行，位于dream/pipeline真实LLM prompt拼装路径→真实API端点）；证据阶梯第4级"真实请求中观察到"达成（live A/B实录）
+- **测试✅**：
+  - 新增tests/test_memory_llm_redact.py TestExistingMemoryPromptRedaction **5 passed**（存量泄漏Phase2/Dream双路、截断拦腰泄漏、干净不误伤、fallback计数可见）；全套该文件19 passed（14存量+5新，无回归）
+  - 相关10文件（test_memory_llm_redact/dream_distiller/memory_pipeline/memory_model/memory_redact/memory_echo_guard/hippo_gatekeeper/deermem_tags/moderator/token_usage_backfill）**279 passed**
+  - **全量tests/ 2050 passed, 0 failed**（109.00s，2 pre-existing warnings）
+  - **负控制（决定性对照）**：/tmp/negctl_existing_redact.py同输入跑旧语义（content[:100]直接截断）→截断片段含`'SuperSecr'`（密钥拦腰漏出实证，"SuperSec" in fragment=True）；新语义（先脱敏后截断）→`[REDACTED:password_`掩码、"SuperSec"零命中——新测试输入确实复现旧bug、堵住新泄漏
+  - **live A/B同库同输入（prod库种synthetic历史行`password: LiveE2EProbeFakePass9999`直写SQLite模拟存量）**：①旧码（改动未重启）POST /api/hippo/ltm/dream → HTTP 200，**redacted_spans=0**（存量块原文穿prompt层），journalctl实录router层兜底三连`Redacted 1 secret(s) before provider=openai/variant-subscription: password_leak`（秘密抵达router才被transport层拦）；②重启新码同调用 → HTTP 200（15.4s），**redacted_spans=1**（消息benign计0、存量块计1=新代码真实执行），journalctl该窗口**零**"Redacted 1 secret(s)"行（源头已掩码、router层无事可做）；③两次live run applied=0/skipped=0（零记忆污染），探针行已DELETE清理、行数497复原核实
+**服务重启**：systemctl --user restart opensoul.service（hippo两文件改动）→ active → /api/hippo/health 200 {status:ok, total_memories:497}；最终在commit 22ee7b2b代码上再重启一次（运行码=提交码）+health 200复验；acp-proxy/openmate前端零改动不重启不build
+**commit**：opensoul `22ee7b2b`（3文件141+/23-，staged仅本轮3文件，config/rbac_policy.csv runtime噪声不入库）
+**gene skill上报**：POST :8090/api/gene/skill/extract → 见本轮末尾执行记录（失败则记此条目为遗留）
+**遗留问题**：
+1. **live E2E揭示memory LLM链路慢**：旧码那次dream耗时75.9s、更早一次120s触发"memory model timed out after 120.0s"（402→partial-test拒绝→mimo-v2.5-pro备胎hung）——上轮fallback链修复后端点级402有了降级，但**备胎成功后的慢调用无二级超时**（120s端到端timeout即兜底，不算挂死但拖尾明显）；备胎调用级timeout/并发hedging列为P2观察项（与01:35轮遗留"并行hedging"同族）
+2. dream/pipeline两处`_format_memories`仍是逐字重复的双实现（历史遗留，本轮同规改两处）——收敛单一真源（memory_redact.py出格式化helper）列为P2
+3. `_format_messages`（会话消息）走redact_message_bodies整body先脱敏后由格式化器截断（顺序已对）；本轮把`_format_candidates`的evidence字段仍未脱敏——但evidence不进prompt输出（只content[:150]拼行），无出境面，防御性补一道列P2
+4. prod库497行历史存量中是否真有凭据原文未做全库审计（本轮用synthetic行验证机制，不动用户数据）——如需可跑一次只读扫描统计redact命中数，列P2
+5. cron环境约束持续有效：curl|python3管道BLOCKED（本轮curl落盘+python读文件）；管道`cmd | tail`吞退出码（本轮用`cmd > log; echo EXIT=$?; tail log`规避）；工作区出现sibling subagent并行编辑警告（git diff核实最终入库仅本轮3文件，无劫持）
