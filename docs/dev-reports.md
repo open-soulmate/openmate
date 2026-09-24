@@ -1951,3 +1951,35 @@
 6. github.com官方直连ls-remote timeout（历史欠账网络问题本轮再现）——官方侧push核实待网络恢复后补验
 7. kilocode supplement3其余缺口顺延：#13跨workspace二次授权、#15网络受限工具面收缩、#16 GoalPolicy工具门、#18 reminders合成part、readTurn "recent 8轮trace"第4输入源——均为下轮P1候选
 8. cron环境工具约束（持续有效）：execute_code被BLOCKED（write_file+terminal两步）；管道`cmd | tail`退出码是tail的（本轮未踩）；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）；ruff在opensoul/.venv/bin/ruff
+
+## [2026-09-24 16:25 CST] P1 kilocode supplement3 #4补全 readTurn第4输入源：recent 8轮trace进记忆digest（ports.ts trace()逐行移植）
+**目标**：销账readTurn轮遗留#1「readTurn完整规格的'recent 8轮trace'（#4第四个输入源）未做」——记忆digest此前只有当前轮user/assistant+文件快照diff+工具动作轮廓，缺kilocode readTurn的第4输入源recent 8轮trace：记忆提取看不到近期对话上下文（只知当前轮说了什么，不知前后文）。grep实证缺口：agent/read_turn.py只有toolSummary+快照diff两输入源，turn_lifecycle.MemoryDigestCollector载荷无trace段，全仓零`User: ${body}`/`Assistant: ${body}`形态的近期对话trace。
+**调研来源**：kilocode源码级精读~/agent-research-src/kilocode/packages/opencode/src/kilocode/memory/ports.ts（trace(messages, 96-109行)全文：user→`User: ${body}`/assistant→`Assistant: ${body}`、summary===true||error的assistant跳过、slice(-max)、join("\n\n")；text()(24-31行)：`!part.synthetic && !part.ignored`过滤；:266 `recent: trace(messages, 8)`=readTurn第4输入源）+ supplement3 #4表格行「readTurn提取user文本+assistant输出+快照diff+recent 8轮trace」。
+**改动文件**（openmate仓库4文件+258/-2）：
+- openmate/acp-proxy/agent/read_turn.py（+70增量2 hunk：RECENT_TRACE_MAX=8/TRACE_BRIEF_MAX=220常量 + _trace_body/render_trace两函数）
+- openmate/acp-proxy/agent/soulmate_agent.py（+30/-2增量3 hunk：import render_trace + _recent_trace_entries取数端 + aclose_turn传recent_trace）
+- openmate/acp-proxy/agent/turn_lifecycle.py（+5增量1 hunk：MemoryDigestCollector追加近期对话段）
+- openmate/acp-proxy/tests/test_read_turn.py（+155增量2 hunk：import扩展+3个新测试类18用例）
+**改动内容**：
+1. read_turn.render_trace()（ports.ts trace()/text()逐行移植）：①user→`User: {body}`/assistant→`Assistant: {body}`（原文格式逐字）②assistant带error/summary标记跳过（原文`item.info.summary === true || item.info.error`→return []）③synthetic/ignored条目跳过（原文text()的`!part.synthetic && !part.ignored`）④只留最后RECENT_TRACE_MAX=8条（原文`.slice(-max)`）⑤`\\n\\n`拼接（原文join）⑥tuple/dict混容输入+未知形态条目跳过，全程fail-safe绝不抛出。**有意偏离（docstring如实声明）**：kilocode trace()的body不截断，本侧digest载荷有界化——每条body过TRACE_BRIEF_MAX=220 brief并显式"…"标注（kilocode hidden()=MemoryShared.brief(220)同源上限；AIHawk截断显式标记铁律）
+2. soulmate_agent._recent_trace_entries()：从agent_messages取最近8条真实user/assistant消息（ORDER BY id DESC LIMIT 8再reversed=时序正确的"最近8条"，kilocode slice(-max)同义）。**数据源即过滤**：_save_message只落真实user_text与最终assistant输出——[用户插话]/[LoopGuard警告]/分支摘要注记等synthetic注入不进DB，天然满足kilocode text()的synthetic过滤语义（无需猜测性前缀过滤）。fail-safe：取数失败返回[]，trace缺失只是digest少一段，绝不反噬会话流
+3. turn_lifecycle.MemoryDigestCollector：载荷追加`近期对话（recent trace）:\\n{_rt}`段——**段序=readTurn输入序 user/assistant/recent**（近期对话段紧跟用户/助手行、在文件改动/工具动作之前）；空trace段不进记忆（既有"空段不进"契约）
+**接线位置**（grep证据，文件:行号）：
+- 定义：agent/read_turn.py:131 `def render_trace` / :112 `def _trace_body` / :52 `RECENT_TRACE_MAX` / :55 `TRACE_BRIEF_MAX`；soulmate_agent.py:415 `def _recent_trace_entries`
+- 运行时消费（真实消息路径=ws /ws/acp soulmate路由_prompt_inner收尾，无死代码）：soulmate_agent.py:56 import render_trace + :3409 `recent_trace=render_trace(self._recent_trace_entries(session_id))`（aclose_turn真实收尾调用点）；turn_lifecycle.py:341-345 `meta.get("recent_trace")`→`近期对话（recent trace）`段→build_digest_payload→POST /ltm/add（TurnClose订阅器真实记忆采集路径）
+**验证结果**：
+- 完整性✅：git diff --cached 4文件+258/-2真实落盘（read_turn/soulmate_agent/turn_lifecycle/test均为增量hunk，零全量重写）；ast.parse 4文件全过；ruff（opensoul/.venv/bin/ruff check）--select F821,F841,F401,E9：read_turn/turn_lifecycle/test_read_turn零问题，soulmate_agent 15个**存量**（F401×13/F841×2，与改前计数一致=本轮新增0 lint问题，render_trace新import有真实使用不入列）
+- 集成✅：grep证据如上（每个新符号=定义行+运行时消费行，位于_prompt_inner真实收尾aclose_turn→TurnClose订阅器→POST /ltm/add真实记忆路径）；TestRecentTraceWiring 4项防死接线（_prompt_inner源码含recent_trace=/render_trace(/_recent_trace_entries(、MemoryDigestCollector.__call__含recent_trace+近期对话、_recent_trace_entries源码含agent_messages+LIMIT、import接线`smod.render_trace is render_trace`身份断言）
+- 测试✅：tests/test_read_turn.py **58 passed**（既有40+新增18：TestRenderTrace 10——kilocode格式逐字/tuple混容/slice(-8)含RECENT_TRACE_MAX==8锁死/max_entries覆盖/**tool角色与空body跳过**/**error·summary assistant跳过**/**synthetic·ignored跳过**/220 brief显式"…"/parts列表提文本/fail-safe绝不抛出；TestDigestRecentTrace 4——trace段进digest/**段序=近期对话<本轮文件改动<工具动作**/空trace段不进+trace行形态绝迹/interrupted不digest；TestRecentTraceWiring 4）；广义回归**全tests/ 655 passed零破坏**（既有637+新增18）；systemic_test.py **29/29 passed**（重启后服务上S4并发/S5降级/S6混合负载全绿）
+- **live E2E全周期✅（/tmp/e2e_recent_trace.py首跑全绿，同一WS /ws/acp agent_id=soulmate会话两个真实回合，决定性证据）**：第1回合digest（ltm_616135b0ff91）255字符含`近期对话（recent trace）:\\nUser: rtprobe…rt-alpha…\\n\\nAssistant: 晴朗的天空通常是蓝色的。`；**第2回合digest（ltm_524023775d1a）327字符trace段含两轮完整`User: /Assistant: 行`（rt-alpha第1轮原文+rt-beta本轮原文）=recent跨轮语义实锤**；段序断言=用户/助手行在近期对话段之前（readTurn输入序）；journal两回合`[turn] close reason=completed`+`[turn-memory] digest collected`×2可见。断言全部打在系统组装通道（digest content由MemoryDigestCollector从DB行组装，段标签/行前缀是代码生成物）E2E ALL PASS
+**服务重启**：systemctl --user restart acp-proxy-a.service + acp-proxy-b.service（read_turn/soulmate_agent/turn_lifecycle改动双实例）→is-active双active→:8092/health+:8095/health双200→重启后systemic 29/29+全量655 pytest+live E2E在重启后服务上通过；opensoul零改动不重启；openmate前端零改动不build
+**commit**：openmate `b9ab128f`（push `aa293e2d..b9ab128f`输出URL=github.com/opensoulmate/openmate.git；**本轮网络恢复**：官方直连git ls-remote核实HEAD=`b9ab128f2b4dcb26ed8917778e8adb1aa0c13417`与本地HEAD MATCH=官方侧落盘独立核实通过（历史欠账"官方直连timeout无法核实"本轮补验翻篇）；push前git grep --cached密钥扫描0命中；工作区他人未提交settings-client.tsx/locales不入库，staged仅本轮4文件）
+**数据清理**：E2E两回合（om-52d64e657938）agent_messages共4行删除后count=0；两回合LTM digest按memory_id hard_delete后token命中=0；/tmp/e2e_recent_trace.py保留作下轮复用（e2e_*模板先例）
+**E2E诚实实录（一轮脚本自纠，未跑到失败）**：脚本编写时第④段序断言先写成方向相反的`c2.index("近期对话") < c2.index("用户: ")`且消息参数误写`... if False else True`恒真残句——**运行前自检发现改正**（正确断言=startswith("用户: ")且"助手: "在近期对话段之前），E2E实跑首跑全绿，无失败迭代
+**遗留问题**：
+1. trace的MemoryRedact脱敏未接（kilocode text()对每条body过MemoryRedact.text；本侧无记忆脱敏层——supplement3 #6"采集前脱敏redact接进hippo写入口"仍是缺口，涉及opensoul/immune moderator PII模块归属，下轮P1候选）
+2. body 220 brief是有意偏离（kilocode trace()不截断）——如未来digest走大上下文模型可配置放开；常量TRACE_BRIEF_MAX已独立可调
+3. trace取数用DB查询（每回合一次LIMIT 8轻查询，SQLite同进程毫秒级）——如会话消息已在内存session["messages"]可改为内存直读省一次IO，但需先解决内存列表含synthetic注入/tool角色条目的过滤（DB数据源天然干净，当前实现更忠实kilocode过滤语义），列为观察项
+4. kilocode supplement3其余缺口顺延：#13跨workspace二次授权、#15网络受限工具面收缩、#16 GoalPolicy工具门、#18 reminders合成part、#9记忆marker留痕的OpenMate前端badge、#10 memory事件总线前端活动流渲染——均为下轮P1候选
+5. mcp-attachments目录retention未清扫、mcp-client注册无持久化（上轮遗留#3/#5顺延）
+6. cron环境工具约束（持续有效）：execute_code被BLOCKED（write_file+terminal两步）；管道`cmd | tail`退出码是tail的；大文件追加禁write_file（本轮dev报告write_file临时文件+cat>>追加）；ruff带子命令`ruff check --select`（裸--select报错，本轮踩过一次当场改正）
