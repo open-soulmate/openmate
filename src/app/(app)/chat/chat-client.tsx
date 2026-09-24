@@ -1,6 +1,7 @@
 'use client';
 import MarkdownContent from "@/components/markdown-content";
 import { SecretScanBadge } from "@/components/secret-scan-badge";
+import { MemoryMarkerBadge, type MemoryMarker } from "@/components/memory-marker-badge";
 import { MultiFileDiff, type FileChange } from "@/components/multi-file-diff";
 import { TaskChoiceMenu, type ChoiceOption } from "@/components/task-choice-menu";
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
@@ -98,6 +99,7 @@ interface Message {
   tokenUsage?: TokenUsage;
   thinking?: ThinkingBlock[]; // 思考过程块列表（新增：Agent 推理链可见性）
   toolCalls?: ToolCallInfo[]; // 工具调用记录列表（新增：工具调用过程可见性）
+  memoryMarker?: MemoryMarker | null; // kilocode #9记忆marker（"本回复用了记忆"badge数据源）
 }
 interface Session { id: string; name?: string; title?: string; platform: string; chat_id?: string; last_message?: string; unread?: number; workspace?: string; last_active?: string; updated_at?: string; created_at?: string; message_count?: number; source?: string; }
 
@@ -1720,6 +1722,7 @@ export function ChatClient() {
               timestamp: new Date((m.timestamp as string) || Date.now()),
               source: m.source as string,
               fileChanges: isAgent ? parseFileChanges(content) : undefined,
+              memoryMarker: (m.memory_marker as MemoryMarker | null) || null,
             };
           });
         // DB数据可能比本地更完整（包含AI回复），但如果本地有更多消息（流式中），取更长的
@@ -2488,6 +2491,8 @@ export function ChatClient() {
                 {showThinking && msg.role === 'agent' && msg.toolCalls && msg.toolCalls.length > 0 && (
                   <ToolCallBlockComponent toolCalls={msg.toolCalls} />
                 )}
+                {/* ── 记忆marker badge（kilocode #9："本回复用了记忆"，消息级可审计）── */}
+                {msg.role === 'agent' && <MemoryMarkerBadge marker={msg.memoryMarker} />}
                 {msg.parts.map((p, i) => (
                   <div key={i}>
                     {p.type === 'text' && <MarkdownContent content={p.text || ''} onCodeApply={(code: string) => {
