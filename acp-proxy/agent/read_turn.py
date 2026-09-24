@@ -48,6 +48,13 @@ FILE_CAP = 20
 # 快照diff只读此大小以内的旧文件内容（超大文件不算行diff，显式标注）
 DIFF_MAX_BYTES = 500_000
 
+# kilocode #4第4输入源：recent 8轮trace（ports.ts trace(messages, 8)）
+RECENT_TRACE_MAX = 8
+# 近期对话每条brief上限（kilocode hidden()=MemoryShared.brief(220)同源上限；
+# kilocode trace()的body不截断，本侧digest载荷有界化——超限显式"…"标注，
+# 见render_trace docstring"有意偏离"声明）
+TRACE_BRIEF_MAX = 220
+
 
 def summarize_args(name: str, args: dict | None) -> str:
     """kilocode toolSummary参数轮廓：白名单键 + 值截断220字符。"""
@@ -100,6 +107,69 @@ def diff_line_stats(old_text: str | None, new_text: str | None) -> tuple[int, in
         if tag in ("replace", "insert"):
             added += j2 - j1
     return added, removed
+
+
+def _trace_body(content) -> str:
+    """提取消息正文（str / OpenAI parts列表 / 兼容text键dict）；其余形态返回空串。"""
+    if isinstance(content, str):
+        return content.strip()
+    if isinstance(content, list):
+        parts = []
+        for p in content:
+            if isinstance(p, str):
+                parts.append(p)
+            elif isinstance(p, dict) and p.get("text"):
+                parts.append(str(p["text"]))
+        return "\n".join(parts).strip()
+    return ""
+
+
+def render_trace(entries, max_entries: int = RECENT_TRACE_MAX) -> str:
+    """kilocode #4第4输入源：recent 8轮trace（ports.ts trace(messages, 8)逐行移植）。
+
+    移植语义（与ports.ts trace/text逐条对应）：
+    - user条目 → `User: {body}`；assistant条目 → `Assistant: {body}`
+    - assistant带 error / summary 标记的跳过（原文 `item.info.summary === true
+      || item.info.error` → return []）
+    - synthetic / ignored 条目跳过（原文 text(): `!part.synthetic && !part.ignored`）
+    - 只留最后 max_entries 条（原文 `.slice(-max)`），`\\n\\n`拼接（原文 join）
+
+    有意偏离（如实声明）：kilocode trace()的body不截断；本侧digest载荷有界化，
+    每条body过 TRACE_BRIEF_MAX(220) brief并显式"…"标注（kilocode hidden()=
+    MemoryShared.brief(220)同源上限；AIHawk截断必须显式标记铁律）。
+
+    输入：[(role, body), ...] 或 [{"role", "content"/"text", ...}, ...] 混容；
+    全程 fail-safe 绝不抛出（采集端异常不反噬宿主会话流）。
+    """
+    try:
+        lines: list[str] = []
+        raw = list(entries or [])
+        for item in raw:
+            role = body = ""
+            flags: dict = {}
+            if isinstance(item, dict):
+                role = str(item.get("role") or "").strip().lower()
+                body = _trace_body(item.get("content", item.get("text")))
+                flags = item
+            elif isinstance(item, (tuple, list)) and len(item) >= 2:
+                role = str(item[0] or "").strip().lower()
+                body = _trace_body(item[1])
+            else:
+                continue  # 未知形态条目跳过（fail-safe）
+            if role not in ("user", "assistant") or not body:
+                continue
+            if flags.get("synthetic") or flags.get("ignored"):
+                continue  # kilocode text()：synthetic/ignored part绝不进trace
+            if role == "assistant" and (flags.get("error") or flags.get("summary") is True):
+                continue  # kilocode trace()：错误/摘要assistant消息跳过
+            if len(body) > TRACE_BRIEF_MAX:
+                body = body[:TRACE_BRIEF_MAX] + "…"  # 显式截断标注（AIHawk）
+            label = "User" if role == "user" else "Assistant"
+            lines.append(f"{label}: {body}")
+        return "\n\n".join(lines[-int(max_entries):])
+    except Exception as e:
+        logger.debug(f"[read-turn] render_trace failed (non-fatal): {e}")
+        return ""
 
 
 class TurnReadView:

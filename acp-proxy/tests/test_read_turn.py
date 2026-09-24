@@ -29,8 +29,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from agent.read_turn import (
     ARG_VALUE_MAX,
     DIFF_MAX_BYTES,
+    RECENT_TRACE_MAX,
+    TRACE_BRIEF_MAX,
     TurnReadView,
     diff_line_stats,
+    render_trace,
     result_ok,
     summarize_args,
 )
@@ -371,3 +374,155 @@ class TestReadPrevForDiff:
         finally:
             monkeypatch.undo()
             os.unlink(path)
+
+
+# ════════════════════════════════════════════════════════════════
+# 8. render_trace（kilocode #4第4输入源：recent 8轮trace，ports.ts trace()）
+# ════════════════════════════════════════════════════════════════
+
+class TestRenderTrace:
+    def test_kilocode_format(self):
+        """原文格式逐字：`User: ${body}` / `Assistant: ${body}` / join("\\n\\n")"""
+        out = render_trace([
+            {"role": "user", "content": "帮我看看配置"},
+            {"role": "assistant", "content": "已查看，配置正常"},
+        ])
+        assert out == "User: 帮我看看配置\n\nAssistant: 已查看，配置正常"
+
+    def test_tuple_entries_accepted(self):
+        assert render_trace([("user", "你好"), ("assistant", "好的")]) == \
+            "User: 你好\n\nAssistant: 好的"
+
+    def test_slice_last_8(self):
+        """kilocode .slice(-max)：只留最后8条"""
+        entries = [{"role": "user", "content": f"msg{i}"} for i in range(10)]
+        out = render_trace(entries)
+        assert RECENT_TRACE_MAX == 8
+        assert out.count("User: ") == 8
+        assert "msg0" not in out and "msg1" not in out
+        assert "msg2" in out and "msg9" in out
+
+    def test_max_entries_override(self):
+        entries = [{"role": "user", "content": f"m{i}"} for i in range(5)]
+        assert render_trace(entries, max_entries=2) == "User: m3\n\nUser: m4"
+
+    def test_skip_tool_role_and_empty_body(self):
+        out = render_trace([
+            {"role": "tool", "content": "Tool write_file completed"},
+            {"role": "user", "content": "   "},
+            {"role": "assistant", "content": None},
+            {"role": "user", "content": "真实发言"},
+        ])
+        assert out == "User: 真实发言"
+
+    def test_skip_error_and_summary_assistant(self):
+        """kilocode trace()：summary===true || error 的assistant条目return []"""
+        out = render_trace([
+            {"role": "assistant", "content": "boom", "error": "timeout"},
+            {"role": "assistant", "content": "branch note", "summary": True},
+            {"role": "assistant", "content": "正常回复"},
+        ])
+        assert out == "Assistant: 正常回复"
+
+    def test_skip_synthetic_and_ignored(self):
+        """kilocode text()：!part.synthetic && !part.ignored"""
+        out = render_trace([
+            {"role": "user", "content": "[用户插话] 顺手改个日志", "synthetic": True},
+            {"role": "user", "content": "记忆注入", "ignored": True},
+            {"role": "user", "content": "真实发言"},
+        ])
+        assert out == "User: 真实发言"
+
+    def test_brief_220_explicit_marker(self):
+        """有意偏离：body过220 brief+显式'…'（kilocode hidden() brief(220)同源）"""
+        assert TRACE_BRIEF_MAX == 220
+        out = render_trace([{"role": "user", "content": "x" * 500}])
+        assert out == "User: " + "x" * 220 + "…"
+
+    def test_parts_list_content(self):
+        out = render_trace([{"role": "user", "content": [
+            {"type": "text", "text": "第一段"}, {"type": "text", "text": "第二段"},
+        ]}])
+        assert out == "User: 第一段\n第二段"
+
+    def test_fail_safe_never_raises(self):
+        assert render_trace(None) == ""
+        assert render_trace([object(), "junk", {"role": "user"}]) == ""
+        assert render_trace([{"role": 123, "content": {"weird": 1}}]) == ""
+
+
+# ════════════════════════════════════════════════════════════════
+# 9. digest集成：recent_trace段（第4输入源→记忆载荷）
+# ════════════════════════════════════════════════════════════════
+
+class TestDigestRecentTrace:
+    def _close(self, meta, reason=CLOSE_COMPLETED):
+        bus = TurnLifecycleBus()
+        client = FakeClient()
+        bus.subscribe("turn.close", MemoryDigestCollector(
+            client_factory=lambda: client))
+        bus.open_turn("s1")
+        run(bus.aclose_turn("s1", reason, **meta))
+        return client
+
+    def test_recent_trace_in_digest(self):
+        client = self._close({
+            "user_text": "u" * 60, "full_response": "r" * 120,
+            "recent_trace": "User: 之前的问题\n\nAssistant: 之前的回答",
+        })
+        content = client.calls[0]["json"]["content"]
+        assert "近期对话（recent trace）" in content
+        assert "User: 之前的问题" in content
+        assert "Assistant: 之前的回答" in content
+
+    def test_trace_segment_order(self):
+        """readTurn输入序 user/assistant/recent→近期对话段在文件改动/工具动作之前"""
+        client = self._close({
+            "user_text": "u" * 60, "full_response": "r" * 120,
+            "recent_trace": "User: q",
+            "file_changes": "- /a.py: write x1 +1/-0行",
+            "tool_actions": "Tool write_file completed | exit=0",
+        })
+        content = client.calls[0]["json"]["content"]
+        assert content.index("近期对话") < content.index("本轮文件改动") < content.index("工具动作")
+
+    def test_no_trace_section_when_empty(self):
+        client = self._close({
+            "user_text": "你好" * 30, "full_response": "好",
+            "recent_trace": "",
+        })
+        content = client.calls[0]["json"]["content"]
+        assert "近期对话" not in content
+        assert "\n\nUser: " not in content  # trace行形态绝迹
+        assert content.startswith("用户: ")
+
+    def test_interrupted_turn_trace_not_digested(self):
+        client = self._close({
+            "user_text": "x" * 60, "full_response": "y" * 120,
+            "recent_trace": "User: q\n\nAssistant: a",
+        }, reason=CLOSE_INTERRUPTED)
+        assert client.calls == []
+
+
+# ════════════════════════════════════════════════════════════════
+# 10. 接线断言（第4输入源防死接线）
+# ════════════════════════════════════════════════════════════════
+
+class TestRecentTraceWiring:
+    def test_prompt_inner_passes_recent_trace(self):
+        src = inspect.getsource(SoulMateAgent._prompt_inner)
+        assert "recent_trace=" in src and "render_trace(" in src
+        assert "_recent_trace_entries(" in src
+
+    def test_collector_consumes_recent_trace(self):
+        src = inspect.getsource(MemoryDigestCollector.__call__)
+        assert "recent_trace" in src and "近期对话" in src
+
+    def test_trace_source_is_agent_messages(self):
+        src = inspect.getsource(SoulMateAgent._recent_trace_entries)
+        assert "agent_messages" in src and "LIMIT" in src
+
+    def test_import_wired(self):
+        """import接线：render_trace必须真的进了soulmate_agent命名空间"""
+        import agent.soulmate_agent as smod
+        assert getattr(smod, "render_trace", None) is render_trace

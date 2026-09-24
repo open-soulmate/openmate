@@ -53,7 +53,7 @@ from agent.semantic_cache import SemanticCache
 from agent.context_compression import ContextCompressor
 from agent.loop_guard import LoopGuard
 from agent.code_mode import CodeModeExecutor
-from agent.read_turn import DIFF_MAX_BYTES, TurnReadView, result_ok
+from agent.read_turn import DIFF_MAX_BYTES, TurnReadView, render_trace, result_ok
 from agent.mcp_resources import (
     MCP_RESOURCE_TOOL_NAMES,
     build_read_text,
@@ -410,6 +410,31 @@ class SoulMateAgent:
             return messages
         except Exception as e:
             logger.error(f"Failed to load messages: {e}")
+            return []
+
+    def _recent_trace_entries(self, session_id: str, max_entries: int = 8) -> list[dict]:
+        """kilocode #4第4输入源取数端：会话最近N条真实user/assistant消息
+        （ports.ts trace(messages, 8)的messages输入）。
+
+        取自agent_messages表（_save_message只落真实user_text与最终assistant输出——
+        [用户插话]/[LoopGuard警告]/分支摘要注记等synthetic注入不进DB，天然满足
+        kilocode text()的 !part.synthetic 过滤语义）。DESC取最后N条再反转=
+        时序正确的"最近N条"（kilocode slice(-max)同义）。
+        fail-safe：取数失败返回[]——trace缺失只是digest少一段上下文，
+        绝不反噬宿主会话流。
+        """
+        try:
+            db = self._get_db()
+            rows = db.execute(
+                "SELECT role, content FROM agent_messages "
+                "WHERE session_id = ? AND role IN ('user', 'assistant') "
+                "ORDER BY id DESC LIMIT ?",
+                (session_id, int(max_entries)),
+            ).fetchall()
+            db.close()
+            return [{"role": r["role"], "content": r["content"]} for r in reversed(rows)]
+        except Exception as e:
+            logger.debug(f"[read-turn] recent trace load failed (non-fatal): {e}")
             return []
 
     def _session_exists_in_db(self, session_id: str) -> bool:
@@ -3371,7 +3396,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
         # ── kilocode #7 TurnClose：事件驱动记忆采集（订阅器隔离，失败不破坏会话流）──
         # close_reason语义：steer中断/取消等非正常收尾标记在此收尾；
         # superseded→按interrupted处理（"被排队消息顶掉的turn=被中断，不完整不digest"）
-        # kilocode #4 readTurn：快照diff+工具动作轮廓随turn元数据进记忆采集
+        # kilocode #4 readTurn：快照diff+工具动作轮廓+recent 8轮trace随turn元数据进记忆采集
         _rv = self._turn_read_view.render(session_id)
         await self._turn_lifecycle.aclose_turn(
             session_id,
@@ -3381,6 +3406,7 @@ You can send files to the user natively: to deliver a file, write a brief confir
             tool_calls=len(tool_calls_log),
             file_changes=_rv.get("file_changes", ""),
             tool_actions=_rv.get("tool_actions", ""),
+            recent_trace=render_trace(self._recent_trace_entries(session_id)),
         )
         self._turn_read_view.clear(session_id)
 

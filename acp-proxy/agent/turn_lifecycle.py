@@ -338,6 +338,11 @@ class MemoryDigestCollector:
         # kilocode #4 readTurn：记忆不只看"说了什么"，还要看"改了什么"——
         # 快照diff（本轮文件改动）+ 工具动作轮廓（toolSummary）随digest进记忆
         content_parts = [f"用户: {user_text[:200]}", f"助手: {full_response[:200]}"]
+        # kilocode #4第4输入源：recent 8轮trace（ports.ts trace(messages, 8)）——
+        # 记忆提取看得到近期对话上下文（readTurn输入序 user/assistant/recent）
+        _rt = str(meta.get("recent_trace") or "").strip()
+        if _rt:
+            content_parts.append(f"近期对话（recent trace）:\n{_rt}")
         _fc = str(meta.get("file_changes") or "").strip()
         if _fc:
             content_parts.append(f"本轮文件改动（快照diff）:\n{_fc}")
