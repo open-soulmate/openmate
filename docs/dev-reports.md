@@ -2143,3 +2143,49 @@
 **服务重启**：opensoul.service重启后active + GET /api/hippo/health HTTP 200（status:ok，memory_pipeline stats正常）；acp-proxy/openmate前端本轮零改动未重启
 **commit**：opensoul 3c5185dc
 **遗留问题**：①Phase1 live E2E时gland provider链4次全败（"All providers failed after 4 chain attempt(s). Tried: openai/mimo-v2..."），干净输入对照同样失败=provider侧/环境问题非本轮引入（dream路径同一call_memory_llm链live成功，疑瞬时抖动）——**列为下轮观察项**：gland fallback链4 attempts全败时为何没兜住（与test_fallback_chain既有机制的关系值得排查）②Phase2的[[EXISTING]]现有记忆块未过redact（入库前已被store()脱敏理论干净，但gatekeeper关闭/force写入的历史存量可能含原文——防御性补一道下轮顺手）③acp-proxy侧read_turn.render_trace逐条body脱敏（kilocode ports.ts text()同位）未做——本轮收口在opensoul LLM边界，acp-proxy digest载荷仍由store()落库前脱敏兜底；跨仓库脱敏层归属（复用opensoul immune moderator vs acp-proxy自带）待定④test_marrow存量2个httpx.ReadTimeout外部超时flaky（20:33轮已记录同族）未处理；全量回归1978条本轮未跑（本轮口径=10个相关文件238条全绿）⑤live验证在prod审计轨迹留下2条dream run记录（dream_runs 14→16，无记忆落库，ADD均被gatekeeper拒）——审计留痕属预期，如实报告
+
+## [2026-09-25 01:35 CST] P0 fallback链备胎兜住三件套：显式model候选降级 + 变体备胎入链 + tp-key认证协议——修复dream/Phase1全链饿死（22:57轮遗留#1「gland fallback链4 attempts全败时为何没兜住」销账）
+
+**目标**：排查上轮遗留「Phase1 live E2E时gland provider链4次全败（All providers failed after 4 chain attempt(s)）——gland fallback链4 attempts全败时为何没兜住」。排查结论=三层机制缺陷叠加，一个真实可用的备胎眼睁睁没被用上：①**显式model劫持备胎link**——journalctl实录`ollama/mimo-v2.5-pro (pass 1/2): All connection attempts failed`：`_resolve_model`的`if model: return model`让显式model成为链上所有link的唯一候选，ollama备胎明明声明了`deepseek-r1:latest`却被要求提供`mimo-v2.5-pro`，**备胎永远拿不到自己声明的模型，fallback链形同虚设**；②**真实备胎从未入链**——.env双体系（标准API/订阅制）两套base_url+api_key并存，live探测实证standard=low_balance(402)时subscription(token-plan-cn.xiaomimimo.com)仍然ok，但ModelRouter链上只有激活端点（api.xiaomimimo.com，402=账户额度耗尽）+一个用户早已停用的ollama（systemctl is-active=inactive），真实备胎没进过链；③**tp-订阅制key认证协议缺失**——router三处HTTP层只发`Authorization: Bearer`，而api/llm.py的list_models/test_connection约定`tp-` key走`api-key`头。加上`LLM_SUBSCRIPTION_MODEL=partial-test`是占位符配置（token-plan实测400 "Unsupported model partial-test"，/models真实清单=mimo-v2.5/2.5-pro/2.6-flash/2.6-pro等8个），4链attempt全灭，dream/Phase1在primary额度耗尽期间**整体饿死**（"但是一直没有进化啊"记忆侧同款机制病）。**本轮修复后同输入live成活（journalctl实录降级路径全链可见）。**
+
+**调研来源**：①SUMMARY.md cortex P0「模型降级有序链（fallback+限流立即切备胎）| CowAgent chat fallback链」+ 38-CowAgent-source-supplement3 #12（链语义参照——链=有序{provider, model}对，备胎=另一对）；②evolution-engine-patterns.md §2.4 CAMEL「能程序化验证的绝不靠LLM」→ 错误分类学（模型级拒绝vs端点级故障）用程序化状态码判定而非猜测；③mem0 §1.1「失败必须可见，禁止静默降级」→ 每个候选级拒绝都进tried账本（outcome=model_rejected）；④kilocode retry.ts既有错误分类传统（_is_rate_limited/_is_transient_error）→ _is_model_rejected同族第三分类。
+
+**改动文件**（opensoul仓6文件+639/-67，rbac_policy.csv为runtime噪声不入库）：
+- src/gland/router.py（+234/-67：`_MODEL_REJECTED_STATUSES`/`_is_model_rejected`/`_model_candidates`/`_auth_headers`四新符号 + `_build_links`/`_walk_chain`/`embed()`三处候选化改造 + 3处HTTP头接线）
+- src/api/llm.py（+28：`alternate_variant_config()`公共helper）
+- src/hippo/memory_model.py（+20：`_build_router`变体备胎注册）
+- src/api/gland.py（+20：`_ensure_bootstrapped`变体备胎注册）
+- tests/test_fallback_chain.py（+258：TestModelCandidates 7 + TestModelRejectedClassification 3 + TestAuthHeaders 3 + TestModelCandidateDegradation 8 = 21新用例）
+- tests/test_memory_model.py（+132：TestVariantBackupWiring 6新用例，含live失败形态全回归）
+
+**改动内容**：
+1. **显式model候选降级（备胎降级语义）**：每个link的调用model从单值变有序候选列表`_model_candidates(provider.models, own, explicit, is_primary)`——主link显式model恒赢优先+自己声明的role/task模型后备（"不许被role/task路由顶掉"契约保持，test驱动抓到一次语义偏差当场修正：初版纯声明判定让主link把调用方点名的model排到第二位，被test_primary_explicit_first_then_own_model抓住后补is_primary carve-out）；备胎link声明了显式model→显式优先（同模型多网关failover）；备胎link没声明→自己声明的模型优先、显式model作后备（**模型目录失真/占位配置的自愈路径**——partial-test 400后接住mimo-v2.5-pro的实证场景）。Candidate内模型级拒绝（400/404/422 `_is_model_rejected`）滑到下一候选；端点级错误（401/402/429/5xx/transport）整link放弃——"另一个模型救不了一个死端点"（专项测试锁死不烧多余调用）。无显式model=单候选，既有行为字节恒等。`_walk_chain`收敛出`_try_link`内层helper（pass1带kilocode retry/pass2快速重探共用候选语义），failure mark每link只记一次（防备胎冷却被候选数放大）。
+2. **变体备胎入链（priority=5）**：`api/llm.py alternate_variant_config()`——激活变体之外的另一已配置变体（标准API/订阅制双体系），返回{variant,base_url,api_key,model}，同端点=非备胎返回None，fail-safe任何异常→None绝不反噬调用方；`memory_model._build_router`（dream/Phase1真实路径）与`api/gland._ensure_bootstrapped`（gateway通用路径）两处注册为priority=5备胎link（主0→备胎5→ollama 10），备胎model空时回退主model。此前链=激活端点+死ollama，现在链上有了**真实的第二端点**。
+3. **tp- key认证协议**：`_auth_headers()`——`tp-`前缀key走`api-key`头（与api/llm.py list_models/test_connection既有约定一致，live实测token-plan两头都认但按仓内约定统一），其余`Bearer`，keyless不带头；router三处HTTP层（_call_chat/_call_embedding/test_provider）统一接线。
+
+**接线位置**（grep证据，文件:行号）：
+- 定义：router.py:139 `_is_model_rejected` / :149 `_model_candidates` / :188 `_auth_headers` / api/llm.py:238 `alternate_variant_config`
+- 运行时消费（真实链路非死代码）：router.py:436 `_build_links`调`_model_candidates(is_primary=idx==0)`（chat/embed请求的真实链构建）、:499 `_try_link`调`_is_model_rejected`（_walk_chain真实行走路径）、:674 embed链对称接线、:737/:754/:781 `_auth_headers`三处真实HTTP层
+- 变体备胎：memory_model.py:207-209 `_build_router`内`alternate_variant_config()`→add_provider(variant-subscription, priority=5)（call_memory_llm→_one_shot→_build_router，dream_distiller/memory_pipeline真实LLM路径）；api/gland.py:49-51 `_ensure_bootstrapped`同款（gateway.chat全部消费者：eval_loop/learn/ocr/asr/branch_summary）
+- **live运行时证据（决定性）**：journalctl实录降级路径完整执行——`Chain pass 1: provider=openai model=mimo-v2.5-pro failed: 402 Payment Required` → `Chain pass 1: provider=variant-subscription model=partial-test rejected by endpoint — falling back to mimo-v2.5-pro` → 成功（dream 01:29:35、extract 01:30:08两次实录）；GET /api/gland/health providers total=3（修复前2：openai+ollama，备胎未入链）
+
+**验证结果**：
+- 完整性✅：git diff --stat 6文件+639/-67真实落盘（src 4文件全部增量hunk，测试为文件尾追加+1处断言修正links[0][1]==("m2",)）；ast.parse 4个src文件全过；ruff check --select F821,F841,F401,E9 全过
+- 集成✅：grep证据链如上（每个新符号=定义行+运行时消费行，位于chat/embed/memory-LLM/gateway-bootstrap真实路径）；证据阶梯第4级"真实请求中观察到"达成——live journalctl的降级日志=新候选机制在真实请求中执行的运行时证据，gland providers=3=备胎注册在真实bootstrap生效
+- 测试✅：相关8文件**230 passed**（test_fallback_chain 87含21新+test_memory_model 50含6新+test_harness_profiles/test_memory_llm_redact/test_memory_pipeline/test_memory_three_factor/test_branch_summary_llm/test_memory_marker_read回归全绿）；**全量tests/ 2023 passed, 0 failed**（161.79s，2 pre-existing warnings——上轮5个外部超时flaky本轮全绿，含test_a2a×3/test_marrow×2）；改动单模块（opensoul gland/hippo/api）不涉acp-proxy故systemic_test.py非必需
+- **live E2E全链路✅（curl :8090真实HTTP，重放上轮失败原输入）**：①POST /api/hippo/ltm/dream（force=true）→ 200，33.1s，error=""，**applied=1**/counts={'ADD': 1}/failed=0，raw_response为结构化archive动作JSON（上轮同调用=LLM error: All providers failed after 4 chain attempt(s)）②POST /api/hippo/ltm/pipeline/extract → 200，33.2s，error=""，**count=2 candidates**（uv/pytest偏好真实提取，上轮22:55/22:56两次同调用全败）③journalctl降级路径三段实录（402→model_rejected→fallback成功）④GET /api/gland/health providers=3 + /api/hippo/health 200
+- **负控制（机制正确性自证）**：test_backup_self_heals_placeholder_model_config用live失败形态原样（402+partial-test 400）作MockTransport用例，断言seen序列精确到调用顺序[(a,ma),(b,partial-test),(b,ma)]——修复前该输入=AllProvidersFailedError；test_endpoint_level_error_skips_remaining_candidates证明402不烧多余候选
+
+**服务重启**：systemctl --user restart opensoul.service（gland/hippo/api三器官改动）→ is-active active → 重启后6s内/api/hippo/health 200 → 上述230相关+2023全量+live E2E全部在重启后服务上通过；acp-proxy零改动不重启；openmate前端零改动不build
+
+**commit**：opensoul `7d5e97d1`（全hash `7d5e97d1`见git log，6文件615+/66-，staged仅本轮6文件，config/rbac_policy.csv为runtime噪声按先例不入库，push前密钥扫描0命中）
+
+**E2E诚实实录（一轮语义偏差测试驱动修正+一处探测弱断言发现）**：①test_primary_explicit_first_then_own_model首跑失败（`['own-m'] == ['ask-m','own-m']`）——初版_model_candidates纯声明判定让主link显式model排第二，违反"显式model恒赢"既有契约，**测试当场抓住、补is_primary carve-out修正**（缺陷发生在提交前，测试驱动闭环本轮1次）；②api/llm.py `_probe_variant`的chat探测只判`==402`就算ok，401/400都会被误判ok（本轮"subscription=ok"绿灯其实是弱断言——真实可用性是用curl逐头实测确认的：好key+partial-test→400 Unsupported model、好key+mimo-v2.5-pro→200、坏key→401），探测器弱断言列为遗留#3；③curl|python3管道BLOCKED老约束改curl落盘+python读文件；管道`cmd | tail`吞退出码本轮刻意全程规避
+
+**遗留问题**：
+1. **LLM_SUBSCRIPTION_MODEL=partial-test是占位符坏配置**（token-plan实测400 Unsupported model；/models真实清单=mimo-v2.5/mimo-v2.5-pro/mimo-v2.6-flash/mimo-v2.6-pro等8个）——候选降级机制已自愈（partial-test 400→mimo-v2.5-pro接住），但每次备胎首发都白打一次400；**建议用户把该值改为真实模型名（如mimo-v2.5-pro）**，属用户配置未擅动；同理standard端点402=账户额度耗尽需要充值/切换激活变体，机制只能兜住不能充值
+2. ollama备胎是幻影（systemctl is-active=inactive，用户此前要求停用）——当前仍注册在链尾（优先级10，备胎成活后根本轮不到它），若备胎也灭它会白打ConnectError；可达性探测（不注册不可达的本地备胎）+「paused/retired备胎豁免」语义列为P2观察项
+3. api/llm.py `_probe_variant`绿灯弱断言（只判402，400/401误判ok）——本轮"subscription ok"差点误导判断，应改为"探针响应体/状态全量分类"（ok/unsupported_model/invalid_key/low_balance/unreachable五态），P1候选
+4. branch_summary.py:603的LLM summarizer自带独立router构建块（第三处手搓）——未接变体备胎，若primary额度耗尽branch摘要会走extractive-fallback降级（已有显式降级不饿死）；收敛到memory_model._build_router同款注册或公共builder列为P2
+5. 显式model候选降级的分类学（400/404/422=模型级）是工程判定——400也可能是坏请求非模型问题，会多打一次候选（成本=1次廉价调用，专项测试锁死上限）；如遇误分类provider可扩status集
+6. cron环境工具约束（持续有效）：execute_code被BLOCKED；curl|python3管道BLOCKED（本轮curl落盘+python读文件）；管道`cmd | tail`吞退出码（本轮全程规避）；复杂grep正则进terminal可能被误判BLOCKED
