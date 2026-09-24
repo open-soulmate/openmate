@@ -2189,3 +2189,45 @@
 4. branch_summary.py:603的LLM summarizer自带独立router构建块（第三处手搓）——未接变体备胎，若primary额度耗尽branch摘要会走extractive-fallback降级（已有显式降级不饿死）；收敛到memory_model._build_router同款注册或公共builder列为P2
 5. 显式model候选降级的分类学（400/404/422=模型级）是工程判定——400也可能是坏请求非模型问题，会多打一次候选（成本=1次廉价调用，专项测试锁死上限）；如遇误分类provider可扩status集
 6. cron环境工具约束（持续有效）：execute_code被BLOCKED；curl|python3管道BLOCKED（本轮curl落盘+python读文件）；管道`cmd | tail`吞退出码（本轮全程规避）；复杂grep正则进terminal可能被误判BLOCKED
+
+## [2026-09-25 03:55 CST] P1探针状态全量分类+tp-认证协议收敛——消灭_api/llm探针假绿灯（01:35轮遗留#3销账）
+
+**目标**：修复dev-report遗留#3「api/llm.py `_probe_variant`绿灯弱断言（只判402，400/401误判ok）」。缺陷形态：chat探针只判`==402`就算ok——400「Unsupported model」和401都被误判成ok，`partial-test`占位符配置打出的绿灯是**假绿**，差点误导fallback链备胎可用性判断（上轮"subscription=ok"结论就出自这个弱断言）。同轮顺手收口：`_probe_variant`是api/llm.py里**唯一漏掉tp-认证协议**的HTTP路径（tp-订阅key只发Bearer头，与仓内约定不符），且tp-认证头逻辑在同文件手搓3处（list_models/test_connection/completions内联）。
+
+**调研来源**：①SUMMARY.md P0-4可观测性「失败必须可见」+mem0 §1.1「禁止静默降级」→ 探针不允许把未验证状态冒充ok（unknown态的诚实语义）；②evolution-engine-patterns.md §2.4 CAMEL「能程序化验证的绝不靠LLM」→ 五态分类=程序化状态码判定（400/404/422模型级 vs 401/402端点级）直接复用上轮gland/router.py `_is_model_rejected`分类学（_MODEL_REJECTED_STATUSES={400,404,422}同族）；③上轮router.py `_auth_headers` tp-key协议（live 200实证）→ api/llm.py同约定收敛。
+
+**改动文件**（opensoul 2文件+276/-51，openmate 4文件+9/-1）：
+- src/api/llm.py（+133/-51：新增`_auth_headers`/`_probe_client`两符号，`_probe_variant`全量分类重写，3处内联认证头收敛）
+- tests/test_probe_variant.py（+194新增：TestAuthHeaders 3 + TestProbeClassification 16（含parametrize×3） + TestProbeAuthProtocol 2 = 22用例）
+- openmate: src/app/(app)/settings/settings-client.tsx（STATUS_DOT/STATUS_TEXT/stMap三处映射+2态）+ src/locales/{en,ja,zh}.json（statusUnsupportedModel/statusUnknown两键×3语）
+
+**改动内容**：
+1. **探针状态全量分类（弱断言→五态+unknown）**：探针200才算ok；400/404/422→`unsupported_model`（模型名不被服务、端点本身可能好）；401/403→`invalid_key`；402→`low_balance`；其余→`error_<code>`；探针异常（/models已通但chat超时/断连）→`unknown`（**不许冒充ok**——修复前落进except→ok）。/models侧同规则分类（401/403/402/非200/transport）。
+2. **空model不再弱绿**：model为空时用/models列表首个模型做真实chat探针（绿灯必须=真实chat调用成功）；列表不可解析→unknown（无法验证不冒充）。
+3. **tp-认证协议接线+手搓收敛**：新增`_auth_headers(api_key)`（keyless→无头；`tp-`前缀→`api-key`头；其余→Bearer，与gland/router.py `_auth_headers`同一约定），`_probe_variant`两处HTTP层接线（此前只发Bearer=协议缺失），并收敛list_models(:102)/test_connection(:563)/completions(:613)三处内联手搓为同一helper（同文件4处认证头逻辑归一）。
+4. **测试seam**：`_probe_client(timeout)`工厂（tests monkeypatch换httpx.MockTransport），探针纯单元可测不依赖live。
+5. **前端两态接入**：unsupported_model=黄点「模型不支持」、unknown=灰点「未确认」，STATUS_DOT/STATUS_TEXT/stMap三处+en/ja/zh i18n键（未映射态有兜底降级，前端先行兼容）。
+
+**接线位置**（grep证据，文件:行号）：
+- 定义：llm.py:407 `_auth_headers` / :420 `_probe_client` / :425 `_probe_variant`
+- 运行时消费（真实路径非死代码）：llm.py:507 `presets_status`调`_probe_variant`（GET /api/llm/presets/status→settings页状态灯真实数据源）；:448/:470探针两处HTTP层调`_auth_headers`；:102/:563/:613 list_models/test_connection/completions三真实端点收敛调用
+- 前端：settings-client.tsx:1156 stMap渲染状态灯（:345 STATUS_DOT/:350 STATUS_TEXT），settings页`useEffect`拉/presets/status（:330）真实链路
+- 消费端新增态全覆盖：status取值{ok,low_balance,invalid_key,unreachable,not_configured,unsupported_model,unknown,error_<code>}，前端前三处映射+未知态兜底
+
+**验证结果**：
+- 完整性✅：opensoul git show --stat c493a2ed（2文件+276/-51）；openmate git show --stat 8d78fdc5（4文件+9/-1，见下方"并行WIP避让"）；ast.parse两个py文件过；npm run build过（TypeScript 29.0s clean，96页生成）
+- 集成✅：grep证据如上（每个新符号=定义行+运行时消费行，位于presets/status真实API→settings页状态灯真实UI链路）；live curl实证GET /api/llm/presets/status 200返回分类状态（mimo/standard=low_balance、mimo/subscription=ok）——**ok现在是真实chat调用200的结论**（subscription profile model为空→走新空model路径：/models首模型chat探针通过才绿），不是旧的"models可达"弱绿
+- 测试✅：新增tests/test_probe_variant.py **22 passed**（分类语义16+认证协议2+auth helper 3，含live失败形态回归锁`test_unsupported_model_on_chat_400`——partial-test 400原样MockTransport输入，修复前=ok假绿）；tests/test_llm_api.py+test_probe_variant.py对live重启后服务跑**28 passed**；相关回归4文件（test_memory_model/test_llm_retry/test_branch_summary_llm/test_fallback_chain）**138 passed**；负控制：test_chat_transport_error_is_unknown_not_ok等5个用例标注"修复前=ok"语义反转点全部锁定
+
+**服务重启**：systemctl --user restart opensoul.service（api/llm改动）→ is-active active → /api/llm/health 200 {"status":"ok"} → 重启后live presets/status+28集成测试全部在新代码上通过；openmate前端已npm run build（build产物含新映射）；acp-proxy零改动不重启
+
+**commit**：opensoul `c493a2ed`；openmate `8d78fdc5`
+
+**并行WIP避让（本轮工程实录）**：openmate工作区有**并行进行中的未提交改动**（model-config高级参数/清除配置按钮/settings大改，settings-client.tsx+349行、locales各+47行，非本轮产物）。为不劫持他人进行中工作，本轮commit用`git diff`切hunks+`git apply --cached`**选择性暂存仅本轮hunks**（9增1改），对方WIP原样留在工作区未入库；混合hunk（stMap行与对方改动同hunk）用difflib对HEAD单行生成mini-patch单独staged。**下轮注意**：settings-client.tsx/locales的git diff会混着该WIP，比对前先看commit而非工作区。
+
+**遗留问题**：
+1. **混合hunk选择性暂存流程未自动化**（本轮手工python切hunks+git apply --cached）——若并行WIP持续存在，可沉淀为脚本；若对方agent随后提交其WIP，其commit会带上工作区里我的已提交改动的残留？不会（我已提交的部分在HEAD里，对方diff自动缩小）——已确认无冲突风险，但双agent同文件并发编辑的时序风险仍在
+2. error_xxx泛化态（如error_500/error_429）前端无显式映射（走兜底灰点+原文显示）——够用，如需可加通用映射
+3. 遗留#4（branch_summary.py第三处手搓router未接变体备胎）仍挂P2未动；遗留#2（ollama幻影备胎可达性探测）P2未动
+4. 遗留#1（LLM_SUBSCRIPTION_MODEL=partial-test占位符）**已被用户配置侧修复**（.env现状LLM_SUBSCRIPTION_MODEL=mimo-v2.5-pro）——本轮live subscription=ok即真实chat验证通过的绿灯，销账
+5. 上轮遗留"gland fallback链4 attempts全败"已销账于01:35轮；test_marrow外部超时flaky本轮未复跑全量tests/（口径=新22+集成28+相关回归138+build）
