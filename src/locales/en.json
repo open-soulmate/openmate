@@ -686,6 +686,8 @@
     "statusInvalidKey": "Invalid key",
     "statusUnreachable": "Unreachable",
     "statusNotConfigured": "Not configured",
+    "statusUnsupportedModel": "Model not supported",
+    "statusUnknown": "Unconfirmed",
     "providerDesc": {
       "mimo": "Xiaomi",
       "openai": "GPT",

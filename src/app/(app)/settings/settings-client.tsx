@@ -327,10 +327,12 @@ export function SettingsClient() {
   const STATUS_DOT: Record<string, string> = {
     ok: "bg-green-500", low_balance: "bg-yellow-500", invalid_key: "bg-red-500",
     unreachable: "bg-red-400", not_configured: "bg-gray-300",
+    unsupported_model: "bg-yellow-500", unknown: "bg-gray-400",
   };
   const STATUS_TEXT: Record<string, string> = {
     ok: "可用", low_balance: "余额不足", invalid_key: "Key无效",
     unreachable: "不可达", not_configured: "未配置",
+    unsupported_model: "模型不支持", unknown: "未确认",
   };
   const [customProviders, setCustomProviders] = useState<Array<{id: string; name: string; model: string; url: string; apiKey: string}>>(() => {
     if (typeof window === "undefined") return [];
@@ -1056,7 +1058,7 @@ export function SettingsClient() {
                         {(llmProviders.find(p => p.value === model.id)?.apiVariants || [{ id: "standard", label: "标准API" }]).map((variant) => {
                           const st = variantStatus(model.id, variant.id);
                           const vLabel = variant.label === "标准API" ? (t("settings.standardApi") || "标准API") : variant.label === "订阅制" ? (t("settings.subscription") || "订阅制") : variant.label === "本地" ? (t("settings.localProvider") || "本地") : variant.label;
-                          const stMap: Record<string, string> = { ok: "settings.statusOk", low_balance: "settings.statusLowBalance", invalid_key: "settings.statusInvalidKey", unreachable: "settings.statusUnreachable", not_configured: "settings.statusNotConfigured" };
+                          const stMap: Record<string, string> = { ok: "settings.statusOk", low_balance: "settings.statusLowBalance", invalid_key: "settings.statusInvalidKey", unreachable: "settings.statusUnreachable", not_configured: "settings.statusNotConfigured", unsupported_model: "settings.statusUnsupportedModel", unknown: "settings.statusUnknown" };
                           return (
                             <div key={variant.id} className="flex items-center gap-1" title={`${vLabel}: ${t(stMap[st]) || STATUS_TEXT[st] || st}`}>
                               <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${STATUS_DOT[st] || "bg-gray-300"}`} />

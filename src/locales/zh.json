@@ -685,6 +685,8 @@
     "statusInvalidKey": "Key无效",
     "statusUnreachable": "服务不可达",
     "statusNotConfigured": "未配置",
+    "statusUnsupportedModel": "模型不支持",
+    "statusUnknown": "未确认",
     "providerDesc": {
       "mimo": "小米",
       "openai": "GPT系列",
