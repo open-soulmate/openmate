@@ -10,6 +10,7 @@ from typing import Optional, Union
 
 from connection import MCPServerConnection, StreamableHTTPConnection, MCPError
 from models import ServerConfig, ServerState, ServerStatus, Tool, TransportType
+import persistence
 
 logger = logging.getLogger("mcp-client.registry")
 
@@ -17,11 +18,16 @@ logger = logging.getLogger("mcp-client.registry")
 class MCPRegistry:
     """多 Server 连接池管理器"""
 
-    def __init__(self):
+    def __init__(self, persist_path: Optional[str] = None):
         # server_id -> ServerState
         self._servers: dict[str, ServerState] = {}
         # server_id -> MCPServerConnection | StreamableHTTPConnection (仅已连接的)
         self._connections: dict[str, Union[MCPServerConnection, StreamableHTTPConnection]] = {}
+        # 注册持久化（kilocode Storage模式，supplement3 #19遗留#5销账）：
+        # None=不持久化（单测默认，防污染真实快照）；传入路径=配置/连接态变化写
+        # 全量快照，restore()启动恢复（connected/auto_connect自动重连）
+        self._persist_path = persist_path
+        self.last_restore: dict = {"restored": 0, "reconnected": 0, "errors": []}
 
     # ── Server 配置管理 ──────────────────────────────────────────
 
@@ -30,6 +36,7 @@ class MCPRegistry:
         state = ServerState(config=config)
         self._servers[config.id] = state
         logger.info("添加 Server 配置: %s (%s)", config.name, config.id)
+        self._persist()
         return state
 
     def remove_server(self, server_id: str) -> bool:
@@ -43,6 +50,7 @@ class MCPRegistry:
             asyncio.ensure_future(conn.close())
         del self._servers[server_id]
         logger.info("删除 Server: %s", server_id)
+        self._persist()
         return True
 
     def get_server(self, server_id: str) -> Optional[ServerState]:
@@ -50,6 +58,83 @@ class MCPRegistry:
 
     def list_servers(self) -> list[ServerState]:
         return list(self._servers.values())
+
+    # ── 注册持久化（kilocode Storage模式，supplement3 #19遗留#5销账）────────
+    def _persist(self) -> None:
+        """全量快照落盘（kilocode Storage.write语义）。失败仅WARNING绝不反噬主流程。"""
+        if not self._persist_path:
+            return
+        try:
+            snapshot = [
+                {
+                    "config": state.config.model_dump(mode="json"),
+                    "connected": sid in self._connections,
+                }
+                for sid, state in self._servers.items()
+            ]
+            persistence.save_snapshot(snapshot, self._persist_path)
+        except Exception as e:
+            logger.warning("[persist] 注册快照落盘失败（主流程照常）: %s", e)
+
+    def persist_info(self) -> dict:
+        """持久化可观测快照（/api/mcp/status消费——重启恢复了什么必须可见）"""
+        return {
+            "enabled": bool(self._persist_path),
+            "path": self._persist_path or "",
+            "restored": self.last_restore.get("restored", 0),
+            "reconnected": self.last_restore.get("reconnected", 0),
+            "restore_errors": list(self.last_restore.get("errors", [])),
+        }
+
+    async def restore(self) -> dict:
+        """启动恢复：重注册全部持久化Server + 重连connected/auto_connect的。
+
+        容错契约：单条失败不阻塞其余恢复、整体绝不抛出（服务启动不可被坏快照
+        拦截）；恢复目标=快照connected:true 或 config.auto_connect。
+        """
+        self.last_restore = {"restored": 0, "reconnected": 0, "errors": []}
+        if not self._persist_path:
+            return self.last_restore
+        try:
+            records = persistence.load_snapshot(self._persist_path)
+            to_connect: list[str] = []
+            for rec in records:
+                if not isinstance(rec, dict):
+                    self.last_restore["errors"].append({"record": "?", "error": "非dict条目，跳过"})
+                    continue
+                cfg_raw = rec.get("config") or {}
+                try:
+                    config = ServerConfig(**cfg_raw)
+                except Exception as e:
+                    self.last_restore["errors"].append({
+                        "record": cfg_raw.get("id") or cfg_raw.get("name") or "?",
+                        "error": f"config解析失败，跳过该条: {e}",
+                    })
+                    continue
+                if config.id in self._servers:
+                    continue  # 运行期已注册的优先（快照不覆盖现状）
+                self._servers[config.id] = ServerState(config=config)
+                self.last_restore["restored"] += 1
+                if rec.get("connected") or config.auto_connect:
+                    to_connect.append(config.id)
+            for sid in to_connect:
+                try:
+                    await self.connect(sid)
+                    self.last_restore["reconnected"] += 1
+                except Exception as e:
+                    self.last_restore["errors"].append({"server_id": sid, "error": f"重连失败: {e}"})
+            self._persist()
+            if self.last_restore["restored"] or self.last_restore["errors"]:
+                logger.info(
+                    "[persist] 恢复 %d 个Server（重连 %d 个，错误 %d 条）",
+                    self.last_restore["restored"],
+                    self.last_restore["reconnected"],
+                    len(self.last_restore["errors"]),
+                )
+        except Exception as e:
+            self.last_restore["errors"].append({"record": "*", "error": f"恢复失败: {e}"})
+            logger.warning("[persist] 注册恢复失败（服务照常）: %s", e)
+        return self.last_restore
 
     # ── 连接管理 ─────────────────────────────────────────────────
 
@@ -69,9 +154,11 @@ class MCPRegistry:
 
         try:
             if config.transport == TransportType.STREAMABLE_HTTP:
-                return await self._connect_streamable_http(server_id, state)
+                state = await self._connect_streamable_http(server_id, state)
             else:
-                return await self._connect_stdio(server_id, state)
+                state = await self._connect_stdio(server_id, state)
+            self._persist()
+            return state
         except Exception as e:
             state.status = ServerStatus.ERROR
             state.error = str(e)
@@ -182,6 +269,7 @@ class MCPRegistry:
             state.tools = []
             state.capabilities = {}
             state.error = None
+        self._persist()
 
     async def _watch_process(self, server_id: str, process: asyncio.subprocess.Process):
         """监控子进程退出"""
@@ -193,6 +281,7 @@ class MCPRegistry:
             state.error = f"子进程退出 (code={process.returncode})"
             state.capabilities = {}
             self._connections.pop(server_id, None)
+            self._persist()
 
     # ── 工具操作 ─────────────────────────────────────────────────
 

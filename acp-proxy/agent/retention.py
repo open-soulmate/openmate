@@ -9,6 +9,8 @@
   "provenance账本retention轮转（kilocode #2同款7天mtime）"销账）
 - ~/.hermes/soulmate/token_attribution/attribution_ledger.jsonl token归因账本
   （AttributionLedger，上轮遗留#4"token_attribution账本未接retention轮转"销账）
+- ~/.hermes/soulmate/mcp-attachments/* MCP resource附件
+  （mcp_resources.save_attachment随保存动作惰性清扫，supplement3 #19轮遗留#3销账）
 
 设计原则：
 1. 文件新旧一律按mtime判定，绝不按文件名/ID判定（kilocode注释坑：时间有序编码ID会回绕）

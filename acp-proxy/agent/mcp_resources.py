@@ -31,6 +31,8 @@ import os
 import re
 import time
 
+from agent import retention
+
 logger = logging.getLogger("acp.mcp_resources")
 
 # kilocode session/tools.ts MCP_RESOURCE_TOOLS
@@ -153,6 +155,12 @@ def save_attachment(att: dict, save_dir: str) -> str | None:
         path = os.path.join(save_dir, fname)
         with open(path, "wb") as f:
             f.write(raw)
+        # kilocode #2保留策略（#19轮遗留#3销账）：附件目录随保存动作惰性清扫——
+        # 7天retention按mtime（ID回绕坑见retention.py），每小时最多一次（maybe_sweep节流）
+        retention.maybe_sweep(
+            "mcp-attachments",
+            lambda: retention.sweep_mtime(save_dir, patterns=("*",)),
+        )
         return path
     except Exception as e:
         logger.warning("[mcp-resource] 附件落盘失败: %s", e)

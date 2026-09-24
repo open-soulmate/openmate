@@ -7,10 +7,12 @@ import argparse
 import asyncio
 import logging
 import sys
+from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 import uvicorn
 
+import persistence
 from registry import MCPRegistry
 from routes import servers as servers_routes
 from routes import tools as tools_routes
@@ -23,7 +25,7 @@ logging.basicConfig(
 logger = logging.getLogger("mcp-client")
 
 # ── 全局注册表 ──────────────────────────────────────────────────
-registry = MCPRegistry()
+registry = MCPRegistry(persist_path=persistence.registry_path())
 
 # 注入 registry 到路由模块
 servers_routes.init(registry)
@@ -31,7 +33,17 @@ tools_routes.init(registry)
 resources_routes.init(registry)
 
 # ── FastAPI 应用 ────────────────────────────────────────────────
-app = FastAPI(title="MCP Client", version="1.0.0")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    """启动即恢复持久化的Server注册（kilocode Storage模式，supplement3 #19遗留#5）。
+
+    后台任务恢复（不阻塞监听）：重连走30s超时握手，坏快照/重连失败绝不拦截启动。
+    """
+    asyncio.ensure_future(registry.restore())
+    yield
+
+
+app = FastAPI(title="MCP Client", version="1.0.0", lifespan=lifespan)
 
 app.include_router(servers_routes.router)
 app.include_router(tools_routes.router)
@@ -45,7 +57,7 @@ async def health():
 
 @app.get("/api/mcp/status")
 async def status():
-    return {"servers": registry.get_status()}
+    return {"servers": registry.get_status(), "persist": registry.persist_info()}
 
 
 # ── 启动 ────────────────────────────────────────────────────────
