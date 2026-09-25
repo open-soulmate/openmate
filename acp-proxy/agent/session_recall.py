@@ -49,6 +49,46 @@ PARTIAL_NOTICE = (
     "with their missing terms."
 )
 
+# ── kilocode supplement3 #13 跨workspace读取二次授权（ctx.ask(permission:"recall")）──
+# 本系统会话家族=agent归属（agent_sessions.agent_id）：soulmate自家家族外的会话
+# （hermes/codex/opencode/imported…）read全文转录必须人工二次授权——kilocode原文：
+# "recall read模式目标session不在当前worktree家族→ctx.ask(permission:'recall')再读"。
+# search模式跨家族开放（kilocode同款：search是发现工具，片段短且inert转义）。
+DEFAULT_AGENT_ID = "soulmate"
+FOREIGN_READ_DENIED = (
+    "[PERMISSION REQUIRED] 跨agent会话读取需要人工二次授权：会话 {sid} 归属agent "
+    "'{owner}'，不在当前agent（{current}）的会话家族内。"
+    "本次调用未获授权，转录内容未返回。请向用户说明并等待批准后再读取（勿重复发起）。"
+)
+
+
+def foreign_read_context(
+    engine: "SessionRecallEngine",
+    args: dict,
+    current_session_id: str | None = None,
+    current_agent_id: str = DEFAULT_AGENT_ID,
+) -> tuple[bool, str]:
+    """read模式跨agent二次授权判定（单一真源：soulmate侧询问与工具侧强制同用本函数）。
+
+    返回 (needs_auth, owner)。needs_auth=True仅当：mode=read ∧ 目标会话有归属行 ∧
+    归属≠当前agent家族 ∧ 非当前会话自身。归属不可证明（无agent_sessions行=ws直建
+    自家会话或不存在）不拦——不存在由read()报标准错误，ws直建会话是本agent自建；
+    agent_id为空串/旧schema缺列=归属不可信，保守视为外部（fail-closed）。
+    """
+    if str(args.get("mode") or "") != "read":
+        return False, ""
+    target = str(args.get("session_id") or "")
+    if not target:
+        return False, ""
+    if current_session_id and target == current_session_id:
+        return False, ""
+    owner = engine.owner_agent(target)
+    if owner is None:
+        return False, ""
+    if owner == current_agent_id:
+        return False, owner
+    return True, owner
+
 
 # ── inert转义（kilocode RecallSearch.inert）────────────────────────
 def inert(value: str) -> str:
@@ -222,6 +262,30 @@ class SessionRecallEngine:
         con = sqlite3.connect(self.db_path)
         con.row_factory = sqlite3.Row
         return con
+
+    def owner_agent(self, session_id: str) -> str | None:
+        """目标会话的归属agent（agent_sessions.agent_id）— supplement3 #13二次授权判定依据。
+
+        返回值三态：str=有归属行（''=归属不可信，保守按外部处理）；
+        None=无归属行（ws直建自家会话或不存在，不拦）。
+        旧schema缺agent_id列/查询异常→''（归属不可证明=fail-closed）。
+        """
+        try:
+            con = self._connect()
+            try:
+                row = con.execute(
+                    "SELECT agent_id FROM agent_sessions WHERE id = ?", (session_id,)
+                ).fetchone()
+            finally:
+                con.close()
+        except sqlite3.OperationalError:
+            return ""
+        except Exception as e:  # 归属查询失败不可静默放行（fail-closed）
+            logger.warning(f"[session-recall] owner查询失败(按外部处理): {e}")
+            return ""
+        if row is None:
+            return None
+        return str(row[0] or "")
 
     # ── search（kilocode RecallSearch.search 语义移植）────────────
     def search(
@@ -459,13 +523,31 @@ def execute_tool(
     args: dict,
     current_session_id: str | None = None,
     boundary_id: int | None = None,
+    current_agent_id: str = DEFAULT_AGENT_ID,
+    foreign_read_approved: bool = False,
 ) -> str:
     """search_chat_history工具统一入口（soulmate主循环+code_mode共用）。
 
     失败显式返回错误文本（mem0 §1.1失败必须可见），绝不静默空结果。
+    supplement3 #13强制层：跨agent会话read未带foreign_read_approved=True一律拒绝
+    （soulmate侧先经foreign_read_context→ACP真人审批才置位；本层是防绕过的最后闸门）。
     """
     mode = str(args.get("mode") or "")
     try:
+        needs_auth, owner = foreign_read_context(
+            engine, args, current_session_id=current_session_id,
+            current_agent_id=current_agent_id,
+        )
+        if needs_auth and not foreign_read_approved:
+            logger.warning(
+                f"[session-recall] 跨agent read被拒(未授权): target={args.get('session_id')} "
+                f"owner={owner} current={current_agent_id}"
+            )
+            return FOREIGN_READ_DENIED.format(
+                sid=inert(str(args.get("session_id") or "")),
+                owner=inert(owner),
+                current=inert(current_agent_id),
+            )
         if mode == "search":
             limit = args.get("limit") or DEFAULT_LIMIT
             try:

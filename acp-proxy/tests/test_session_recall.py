@@ -32,7 +32,8 @@ def _make_db(tmp_path):
         CREATE TABLE agent_sessions (
             id TEXT PRIMARY KEY, title TEXT,
             created_at REAL, last_activity_at REAL,
-            message_count INTEGER DEFAULT 0, metadata TEXT
+            message_count INTEGER DEFAULT 0, metadata TEXT,
+            agent_id TEXT DEFAULT 'soulmate'
         );
         CREATE TABLE agent_messages (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
