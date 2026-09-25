@@ -2386,3 +2386,56 @@
 4. 旧schema缺agent_id列的库按归属不可信fail-closed（read需授权）——现存opensoul.db schema正常不受影响；schema_doctor建表语句含agent_id未逐一核验，列下轮顺手确认
 5. kilocode supplement3剩余缺口顺延：#15网络受限→工具面收缩（SandboxPolicy.networkRestricted→registry不暴露code-mode工具）、#16 GoalPolicy工具门（goal循环Registry按session过滤工具）、#18 reminders合成提醒part（plan→code切换显式事件）——均为下轮P1候选
 6. cron环境约束持续有效：复杂regex管道被BLOCKED（git diff落文件+search_files工具绕开）；`cmd | head`管道吞退出码（$?=head的）再次踩坑用重定向+独立echo纠正
+
+## [2026-09-25 16:55 CST] P1 kilocode supplement3 #15 网络受限会话工具面收缩——registry不暴露网络类工具+运行时fail-safe兜底（顺手销账15:10轮遗留#4 schema_doctor agent_id缺失）
+
+**目标**：销账kilocode-source-supplement3 #15「SandboxPolicy.networkRestricted(session)→registry直接不暴露code-mode工具（受限会话工具面收缩，而非运行时拒绝）"按环境裁剪工具面优于给了再拦"」——网络受限会话此前**工具面原样暴露web_search/web_extract/batch_execute(code-mode)/MCP工具**，无任何环境裁剪能力。本轮建立会话级网络受限策略：受限会话的LLM工具列表里没有网络类工具（registry语义），模型幻觉出被裁工具名时显式合成拒绝（fail-safe双保险），并给出策略管理API。顺手销账15:10轮遗留#4（schema_doctor建表语句agent_id核验）——核验发现**缺失**，本轮补齐。
+
+**调研来源**：①kilocode-source-supplement3.md #15功能行+可复用设计#5「网络受限→工具面收缩模式→OpenSoul MCP/registry」；②本地源码库~/agent-research-src/kilocode三处原文精读（本repo现成，直接照抄语义不凭报告转述）：sandbox/policy.ts:351 `networkRestricted = active.state.enabled && active.state.mode !== "allow"`、tool/registry.ts:354 `describeCodeMode` 里 `if (input.networkRestricted) return`（registry不描述code-mode目录=不进工具面）、tool/code-mode.ts:222 `const mcpTools = restricted ? {} : Permission.visibleTools(...)`（执行层双保险：即便进了code-mode，MCP目录也是空的）、session/prompt.ts:947-971（受限会话MCP resource读取显式失败"Sandbox denied MCP resource access"）；③evolution-engine-patterns.md mem0 §1.1「处理必须可见，禁止静默」→ 被裁清单显式落WARNING日志+store损坏fail-closed且describe透出store_error；④15:10轮遗留#4原话「schema_doctor建表语句含agent_id未逐一核验，列下轮顺手确认」→ 本轮核验结论=缺失（v1-v7无一处agent_id），按v6/v7先例补v8幂等迁移。
+
+**改动文件**（openmate 8文件+745/-3，工作区settings-client.tsx/locales等sibling改动未staged）：
+- acp-proxy/agent/sandbox_policy.py（新243行：`SandboxPolicy`单一真源——store读写/`network_restricted`判定/`is_network_tool`分类/`filter_tools`工具面收缩/`deny_reason`兜底/`describe`可观测快照 + `default_policy()`进程级回退）
+- acp-proxy/agent/soulmate_agent.py（+54：import+`__init__`构造`self._sandbox_policy` + 三处接线hunk）
+- acp-proxy/app.py（+51：`/api/agent/sandbox-policy` GET快照/GET {sid} describe/PUT设置/DELETE清除 4端点，跨进程共享JSON store同款SandboxPolicy）
+- acp-proxy/agent/schema_doctor.py（+10：v8迁移`ALTER TABLE agent_sessions ADD COLUMN agent_id TEXT`+`idx_sessions_agent`索引，duplicate column安全跳过语义沿用v7）
+- acp-proxy/tests/test_sandbox_policy.py（新348行35用例）
+- acp-proxy/tests/test_message_tree_wiring.py（+33/-3：v8两新用例 + `CURRENT_VERSION==7→8`/`target_version==7→8`两条既有断言随版本演进显式更新）
+- acp-proxy/tests/test_steering.py（+4：make_agent harness注入独立tmp store）；acp-proxy/tests/test_code_mode.py（+5：_bare_agent同款+tempfile import）
+
+**改动内容**：
+1. **工具面收缩（kilocode registry.describeCodeMode语义，主改动）**：`_run_llm_with_tools`构建`all_tools`后过`filter_tools(session_id, all_tools, mcp_names=...)`——受限会话裁掉web_search/web_extract/batch_execute(code-mode)/MCP动态工具(server__tool)/MCP resource三件套；被裁清单显式WARNING日志（`[sandbox] ... 工具面收缩: dropped=[...] kept=N`）；code-mode的`available_tools`同源自`all_tools`一并收缩。**适配披露**：kilocode只裁code-mode目录（web_search/MCP靠真沙箱拦），本系统暂无网络沙箱（mirror差距P1）——不裁web工具则"网络受限"名不副实，故web_search/web_extract/MCP同类同裁，保真部分=terminal/execute_code不裁（kilocode同样保留bash/edit）。
+2. **运行时fail-safe兜底（kilocode code-mode.ts:222双保险）**：主循环tool_call执行前`deny_reason`——幻觉出被裁工具名→`[SANDBOX DENIED]`合成工具结果（open-webui三态loop不断）+账本`permission: "sandbox-restricted"`+TurnReadView留痕，**拒绝发生在permission_gate之前**；`_code_mode_tool_call`内层同款拦截（"即便进了code-mode，MCP目录也是空的"）。
+3. **判定与store**：`network_restricted(sid)`=per-session显式>store default（含env `SOULMATE_NETWORK_RESTRICTED`兜底）>False；store=JSON文件真源（`~/.hermes/soulmate/sandbox_policy.json`），agent子进程与app进程跨进程共享（与tool_output账本同模式）；**store损坏→fail-closed按受限处理**+WARNING+describe透出store_error（限制类配置宁可收紧不静默放开，Letta memory-confinement fail-closed同款）；写失败返回False不假装成功。
+4. **schema_doctor v8（顺手）**：`agent_sessions.agent_id`归属列+索引。核验实锤：v1-v7建表/迁移无一处agent_id，而session_recall.owner_agent依赖该列（缺列→"归属不可信"fail-closed，read全部需授权=降级）；fresh库经schema_doctor建库将得到缺列schema。v8按v7幂等先例（duplicate column安全跳过）。
+
+**接线位置**（grep证据，文件:行号）：
+- 定义：agent/sandbox_policy.py:64 `SandboxPolicy` / :142 `network_restricted` / :171 `filter_tools` / :196 `deny_reason` / :238 `default_policy`
+- 运行时消费（真实消息/执行路径）：soulmate_agent.py:266（`__init__`构造）+ :1506（`_run_llm_with_tools`工具面构建收缩——位于`tools=all_tools`发往LLM之前）+ :1706（主循环tool_call执行前兜底，:1723 `"permission": "sandbox-restricted"`）+ :808（`_code_mode_tool_call`内层双保险）
+- 调用链到真实入口：`_run_llm_with_tools`被soulmate_agent.py:3289（`_prompt_inner`主消息路径，ws /ws/acp真实turn）+:3209/:3242（task planner步骤路径）调用；`_code_mode_tool_call`被:2131（batch_execute内层dispatch）调用
+- API接线：app.py:323-368（4端点@router内联注册，无需include即在FastAPI app上）
+- 防死接线测试：test_sandbox_policy.py TestSoulmateWiring 5项（inspect.getsource断言__init__/face构建/主循环/code-mode内层+三调用点计数==2）
+
+**验证结果**：
+- **完整性✅**：git show --stat f31f0001（8文件+745/-3，全部增量hunk零全量重写，新增2文件）；git diff --cached逐hunk目检=纯本轮改动（sibling subagent并行修改settings-client.tsx/locales/systemic_test_results.json未staged）；ast.parse 6文件全过；staged diff密钥扫描（sk-/tp-/Bearer长token模式）0命中
+- **集成✅**：grep证据链如上（每个新符号=定义行+真实消息路径消费行）；**live运行时证据（决定性，证据阶梯第4级"真实请求中观察到"）**：真实ws turn（JWT+session/new+session/prompt全链）会话`om-a137224a1c94`设限后journal实录`[sandbox] network-restricted session=om-a137224a1c94 工具面收缩: dropped=['web_search', 'web_extract', 'batch_execute'] kept=...`（acp-proxy-a/b双路同刻16:29:10）——工具面收缩在**真实LLM请求路径**执行；REST侧同刻PUT 200+GET describe返回dropped_if_restricted=[batch_execute, web_search, web_extract, +MCP resource三件套共6项]
+- **测试✅**：
+  - 新增tests/test_sandbox_policy.py **35 passed**：TestStore 8（缺省不受限/跨实例持久化/clear回退/per-session压default/env兜底+per-session压env/**损坏store fail-closed**/非对象store fail-closed/snapshot透出store_error）；TestClassification 5（静态名/resource名/MCP动态名/**terminal/execute_code不裁=kilocode保真**/空名）；TestFilterTools 4（不受限恒等/受限裁剪/s2不受s1影响/非dict容错）；TestDenyReason 5（拒绝文本含[SANDBOX DENIED]+工具名/不受限None/本地工具None/MCP动态名/describe清单）；TestSoulmateWiring 5（inspect防死代码）；TestRunLlmFaceShrink 5（**真实_run_llm_with_tools路径**：受限面无web_search/对照不受限面有/幻觉调用[SANDBOX DENIED]+gate.calls==[]证明拒绝在gate前/对照不受限幻觉调用照常进gate/损坏store fail-closed裁面）；TestCodeModeInnerFailsafe 3（内层拦截在gate前/本地工具过sandbox进gate/不受限内层过sandbox）
+  - test_message_tree_wiring.py v8 2新用例（fresh库建agent_id列+索引+幂等up_to_date / 运行时已迁移duplicate column安全跳过）；全套该文件全绿
+  - **全量tests/ 751 passed, 0 failed**（245.29s，1 pre-existing warning；=上轮714+35新+2新）
+  - **负控制（决定性对照）**：①不受限会话工具面/web路径行为零变化（test_unrestricted_face_keeps_network_tools+test_unrestricted_call_reaches_gate+test_unrestricted_inner_network_call_reaches_gate）②拒绝≠gate伪装（受限幻觉调用gate.calls==[]）③store损坏不静默放开（fail-closed裁面+store_error可见）④"terminal/execute_code不裁"用例锁死保真边界（防过度裁剪）
+  - **live E2E诚实实录**：①真实turn中被裁数=3（web_search/web_extract/batch_execute）而非API describe的6——MCP动态工具/resource三件套当时不在工具面（无已连接MCP Server/resource能力Server，`_mcp_resource_servers`空=resource工具本就不进面），收缩是"面上有什么裁什么"，两数不矛盾；②live未观测到兜底拦截——模型面对无web_search的工具面直接回应未调用（未幻觉），兜底路径由单测E2E锁死（test_hallucinated_network_call_refused_not_executed）；③探针会话数据已清理（agent_messages 2行DELETE、策略条目DELETE复核sessions={}）
+- **systemic_test.py 29/29 passed**（S4并发/S5降级/S6混合负载全绿，EXIT=0）
+
+**服务重启**：systemctl --user restart acp-proxy-a.service + acp-proxy-b.service（soulmate_agent/app.py/schema_doctor改动）→ 双active → :8092/health+:8095/health双200（agent_activity/tool_output/token_attribution观测键齐全）→ 重启后全量751 passed+systemic 29/29+live E2E均在重启后服务上通过；opensoul零改动不重启；openmate前端零改动不build
+
+**commit**：openmate `f31f0001`（8文件+745/-3）；本轮docs commit随后单独入库
+
+**顺手销账**：15:10轮遗留#4「schema_doctor建表语句含agent_id未逐一核验」→ 核验结论=缺失（v1-v7无agent_id），本轮v8补齐+2用例锁死（见改动内容#4）——**销账完成**
+
+**遗留问题**：
+1. **push未落地（连续第3轮，网络）**：本轮ls-remote一度可通（EXIT=0核实到远端ref），但push两轮全灭——openmate `timeout 124`静默挂死+HTTP/1.1重试"Failed to connect to github.com:443 after 136s"，opensoul两轮均"SSL routines::unexpected eof"。**读通写不通=疑似本机到GitHub 443的出网对push（大上传）有限制/被重置**，建议用户检查网络出口（代理/防火墙/ISP）。commit f31f0001已在本地HEAD完整落盘（openmate本地ahead 16含本轮），网络恢复后`git push github main`两仓库各一次+ls-remote核实即可
+2. live未观测兜底拦截（模型未幻觉）：`[SANDBOX DENIED]`路径目前有单测E2E+inspect锁死但无live实录——如需live实锤可用stub LLM注入幻觉tool_call（llm_mode=stub目前仅a2a路径有，acp ws无stub），列P2
+3. 保真边界自述：terminal/execute_code不裁（kilocode同款），受限会话内任意shell仍可curl出网——硬性禁止需真网络沙箱（mirror organ差距P1，E2B网络策略）；本切片=工具面收缩+工具路由层拒绝，报告不夸大为"网络隔离"
+4. 前端无开关：策略目前只能REST API管理（GET/PUT/DELETE /api/agent/sandbox-policy），settings页加开关列P2（涉sibling subagent正在改settings-client.tsx，本轮避让未碰前端）
+5. MCP动态工具清单（server__tool）在API describe里只给静态6项+note（MCP名由agent子进程持有）——如需面板级精确清单可让agent把每轮工具面快照写共享账本（与token_attribution同模式），列P3
+6. cron环境约束持续有效：`sed -n`/`$(...)`命令替换被判BLOCKED×2（改search_files/read_file工具绕开）；管道`cmd | tail`吞退出码本轮全部用重定向+独立tail规避；sibling subagent并行编辑警告×2（git diff逐hunk核实入库纯本轮改动）
