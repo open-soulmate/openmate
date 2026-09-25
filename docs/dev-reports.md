@@ -2465,7 +2465,7 @@
 **服务重启**：systemctl --user restart acp-proxy-a.service + acp-proxy-b.service（soulmate_agent/task_engine双实例改动）→ 双active → :8092/health+:8095/health双200 → 重启后systemic_test.py **29/29 passed**（S1消息流/S2权限×工具/S3作业队列/S4并发插话/S5降级/S6混合负载全绿，EXIT=0）；opensoul零改动不重启；openmate前端零改动不build
 **commit**：openmate `4192ad91`（3文件+524/-30）；本轮docs commit随后单独入库
 **遗留问题**：
-1. **push未落地（连续第4轮，网络）**：git本地HEAD已含本轮4192ad91（openmate本地ahead 18），push通不通本轮未再消耗时间重试——建议用户检查本机到GitHub 443出口（前3轮现象=读通写不通，push大上传被重置），网络恢复后`git push github main`一次+ls-remote核实
+1. ~~push未落地~~ **本轮销账（网络恢复）**：`git push github main` EXIT=0——openmate `19b37f70..df39e472`（含本轮4192ad91+docs）+ opensoul `7d5e97d1..a3d87dc6`（积压8commits一并落地），双仓库`git ls-remote`核实远端ref与本地HEAD一致。连续4轮的"读通写不通"现象已消失；opensoul工作区有他人未提交的config/rbac_policy.csv改动未动
 2. Bug-G修复兼容旧存档（"StepStatus.X"形态容错读），但**存量opensoul.db里task_plans/task_steps的历史脏行未清理**（此前保存的行全是str-Enum形态）——容错解析已保证不崩，如需数据干净可加一次性迁移（列P3，不影响正确性）
 3. retry二次失败后不再触发replan（沿用原语义：retry一次即推进，终局由Bug-A判定failed）——是否改为"retry失败继续replan循环"涉及产品语义（可能陷入重规划循环），需先讨论再动
 4. `plan()`每条消息都发起一次LLM规划调用（judge/planning）——token成本项，与"上下文压缩引擎"cortex差距同族，列P2观察
