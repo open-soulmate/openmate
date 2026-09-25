@@ -2439,3 +2439,35 @@
 4. 前端无开关：策略目前只能REST API管理（GET/PUT/DELETE /api/agent/sandbox-policy），settings页加开关列P2（涉sibling subagent正在改settings-client.tsx，本轮避让未碰前端）
 5. MCP动态工具清单（server__tool）在API describe里只给静态6项+note（MCP名由agent子进程持有）——如需面板级精确清单可让agent把每轮工具面快照写共享账本（与token_attribution同模式），列P3
 6. cron环境约束持续有效：`sed -n`/`$(...)`命令替换被判BLOCKED×2（改search_files/read_file工具绕开）；管道`cmd | tail`吞退出码本轮全部用重定向+独立tail规避；sibling subagent并行编辑警告×2（git diff逐hunk核实入库纯本轮改动）
+
+## [2026-09-25 19:34 CST] P0 任务计划执行链状态语义修复——动态重规划真换真跑 + retry自省落库 + 存取往返断裂修复（7个静默错误一链销账）
+**目标**：修复`_prompt_inner`复杂任务执行环（plan→逐步执行→自省→动态重规划→报告）与`TaskStore`持久化的7个静默错误。task_engine.py自己承诺"失败时动态重规划，而非直接终止 / 全状态持久化，支持断点续跑"，但该契约此前**全部不成立**：replan替换的步骤永不执行、retry结局永久丢失、含失败步骤的计划谎报completed、中断恢复场景load_plan必崩、报告图标恒❓。属P0 bug修复（校验最高优先级），同时是SUMMARY路线图"分阶段checkpoint断点续跑"（P1 will）和P0-8长任务引擎状态机语义的前置正确性。
+**调研来源**：①kilocode goal runner五状态机（492行，P0-7）"失败即停+结果判定"——执行链状态必须真实反映步骤结局；②SUMMARY P1"分阶段checkpoint断点续跑（STORM分阶段落盘+agno /continue?continue_from）"——断点续跑的前提是持久化镜像与内存状态一致；③mem0 §1.1"处理必须可见，禁止静默"——状态说谎/图标恒❓即静默；④Python 3.11 str-Enum坑（str(StepStatus.X)="StepStatus.X"）与kilocode"注释即坑教材"方法论——存取两侧往返断裂的实锤来自本轮测试首跑（10 failed当场暴露Bug-G存量崩溃）。
+**改动文件**（openmate 3文件+524/-30，全部增量hunk；工作区sibling的settings-client.tsx/locales/systemic_test_results.json未staged）：
+- acp-proxy/agent/soulmate_agent.py（+96/-30：执行环4处hunk——while索引推进/retry自省落库/终局状态诚实/图标枚举value）
+- acp-proxy/agent/task_engine.py（+36：save_plan存value+load_plan容错解析（Bug-G往返断裂）+save_plan全量快照DELETE（Bug-F））
+- acp-proxy/tests/test_plan_execution.py（新建422行18用例）
+**改动内容**（7 bug逐项）：
+1. **Bug-D 动态重规划死缺口（最重）**：`for idx, step in enumerate(plan.subtasks)`绑定旧list对象，replan(action=replan)做`plan.subtasks = plan.subtasks[:idx]+new`后新步骤**永不执行**、被替换的旧步骤照跑——"动态重规划"实为"照旧执行"。改为`while idx < len(plan.subtasks)`每轮重取`plan.subtasks[idx]`；REPLANNED入终局守卫（replan未给新步骤时靠守卫推进防死循环）；replan落新列表后idx不推进（推进=跳过第一个新步骤）。
+2. **Bug-G 存取往返断裂（存量崩溃，测试首跑暴露）**：save_plan写`str(step.status)`在py3.11 str-Enum下="StepStatus.PENDING"，load_plan的`StepStatus(s["status"])`解析必抛ValueError——**中断恢复场景（plan留active→下条消息get_active_plan→load_plan）整条消息路径崩**，断点续跑恰好在最需要它的场景必死。修：`_step_status_raw`存value（'pending'）+`_coerce_step_status`容错读（兼容旧存档"StepStatus.X"形态，未知值fail-safe按PENDING at-least-once）。
+3. **Bug-C retry说谎**：retry结果原无条件`step.status=SUCCESS`（连自省都不过）→重试结果同样过SelfReflector，坏结果标FAILED。
+4. **Bug-B retry结局丢失**：原retry路径`continue`跳过循环尾save_plan（replan内部save发生在retry执行前）→重试结局永不落库，断点续跑重跑。修：所有路径统一save_plan后再推进。
+5. **Bug-A 终局状态说谎**：原`if plan.status != "failed": plan.status = "completed"`无条件——残留FAILED步骤的计划标completed，而get_active_plan只找回active计划=失败步骤永久脱离断点续跑+报告统计失真。修：仅全部收敛（SUCCESS/SKIPPED/REPLANNED）标completed，残留FAILED/PENDING/RUNNING→failed+"N个子任务未收敛：id=status"列明。
+6. **Bug-F 持久化镜像失真**：replan移除的task_steps行不删，load_plan按全量行重建"复活"旧步骤（停留pending），断点续跑会重跑已被替换的步骤。修：save_plan=全量快照语义，DELETE plan外步骤行（步骤是状态不是历史）。
+7. **Bug-E 报告图标恒❓**：`str(step.status)`="StepStatus.SUCCESS"≠键"success"，任务执行报告每步图标都是❓。修：`getattr(step.status,"value",step.status)`渲染。
+**接线位置**（grep证据，文件:行号）：
+- 真实消息路径调用链：`prompt()` soulmate_agent.py:2583→`_prompt_inner`→:3122 `self._task_planner.plan(`→task_engine.py:328 `store.get_active_plan`→:193 `_coerce_step_status`（Bug-G修复消费）；执行环:3163 `while idx < len(plan.subtasks)`→:3170/:3232/:3242/:3271/:3277/:3298 六处`store.save_plan(plan)`→task_engine.py:158 `_step_status_raw`+:168 DELETE快照（Bug-F/G修复消费）；:3240 `self._task_planner.replan(`（Bug-D修复消费）；:3262 retry路径`self._self_reflector.reflect(step)`（Bug-C）；:3285 `unresolved = [`终局判定（Bug-A）；:3310图标`getattr(step.status`（Bug-E）
+- 防死接线：tests/test_plan_execution.py TestWiring 5项（inspect.getsource断言while环在`_prompt_inner`内+旧enumerate已移除+reflect调用点计数==2+unresolved判定+图标value+TaskStore DELETE在save_plan内）
+**验证结果**：
+- **完整性✅**：git diff --stat 3文件+524/-30（soulmate_agent +96/-30全增量hunk零全量重写、task_engine +36、新测试422行）；staged diff密钥扫描（sk-/tp-/Bearer长token）0命中；sibling文件泄漏扫描0命中（settings-client.tsx/locales/systemic_test_results.json未staged）
+- **集成✅**：grep证据链如上（每个修复符号=定义行+真实消息路径消费行）；TestWiring inspect断言锁死调用点在`_prompt_inner`真实消息路径（非死代码）
+- **测试✅**：新增tests/test_plan_execution.py **18 passed**（TestReplanListReplacement 2含"执行序列==[A,B,B2,C2]且旧C不执行"+load_plan不复活旧步骤；TestRetrySemantics 2含retry成功落库/retry坏结果标FAILED；TestFinalStatusAndReport 3含残留失败→failed+reflection_report列明+图标✅❌非❓；TestResumeAndTermination 2含断点续跑跳过SUCCESS步骤+replan空新步骤15s超时防死循环；TestStoreSnapshotSemantics 4含Bug-G往返+旧存档容错；TestWiring 5）；**负控制（决定性对照）**：stash回退soulmate_agent.py后同套件10 failed 8 passed——铁证旧代码执行序列`['A','B','C']`（新步骤B2/C2永不执行）、retry坏结果标SUCCESS、'completed'=='failed'断言失败、报告输出原文`❓ **步骤1**`；**全量tests/ 769 passed 0 failed**（259s，=751基线+18新增，test_steering/test_sandbox_policy/test_code_mode 114条复跑全绿）
+**服务重启**：systemctl --user restart acp-proxy-a.service + acp-proxy-b.service（soulmate_agent/task_engine双实例改动）→ 双active → :8092/health+:8095/health双200 → 重启后systemic_test.py **29/29 passed**（S1消息流/S2权限×工具/S3作业队列/S4并发插话/S5降级/S6混合负载全绿，EXIT=0）；opensoul零改动不重启；openmate前端零改动不build
+**commit**：openmate `4192ad91`（3文件+524/-30）；本轮docs commit随后单独入库
+**遗留问题**：
+1. **push未落地（连续第4轮，网络）**：git本地HEAD已含本轮4192ad91（openmate本地ahead 18），push通不通本轮未再消耗时间重试——建议用户检查本机到GitHub 443出口（前3轮现象=读通写不通，push大上传被重置），网络恢复后`git push github main`一次+ls-remote核实
+2. Bug-G修复兼容旧存档（"StepStatus.X"形态容错读），但**存量opensoul.db里task_plans/task_steps的历史脏行未清理**（此前保存的行全是str-Enum形态）——容错解析已保证不崩，如需数据干净可加一次性迁移（列P3，不影响正确性）
+3. retry二次失败后不再触发replan（沿用原语义：retry一次即推进，终局由Bug-A判定failed）——是否改为"retry失败继续replan循环"涉及产品语义（可能陷入重规划循环），需先讨论再动
+4. `plan()`每条消息都发起一次LLM规划调用（judge/planning）——token成本项，与"上下文压缩引擎"cortex差距同族，列P2观察
+5. kilocode supplement3剩余缺口顺延：#16 GoalPolicy工具门（goal循环Registry按session过滤工具——本系统goal loop尚不存在，直接做=死代码，需先建goal循环或挂在task-plan环上）、#18 reminders合成提醒part（plan→执行切换显式事件）——均为下轮P1候选
+6. cron环境约束持续有效：管道`cmd | tail`吞退出码（tail退出码掩盖pytest失败）再次踩坑用不带管道重跑纠正；全量pytest输出243KB超窗落盘out-*.log用--tb=line压输出
