@@ -146,6 +146,16 @@ class SchemaDoctor:
                 "ALTER TABLE agent_messages ADD COLUMN metadata TEXT",
             ],
         },
+        {
+            "version": 8,
+            "description": "agent_sessions归属agent_id（supplement3 #13跨agent读取二次授权依赖列）",
+            "tables": [
+                # probe+ALTER幂等：运行时已迁移则duplicate column安全跳过（migrate()语义）。
+                # 缺此列时session_recall.owner_agent按"归属不可信"fail-closed（read需授权）
+                "ALTER TABLE agent_sessions ADD COLUMN agent_id TEXT",
+                "CREATE INDEX IF NOT EXISTS idx_sessions_agent ON agent_sessions(agent_id)",
+            ],
+        },
     ]
     
     CURRENT_VERSION = len(SCHEMA_VERSIONS)

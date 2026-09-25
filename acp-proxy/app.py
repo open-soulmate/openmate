@@ -318,6 +318,57 @@ async def agent_token_attribution(limit: int = 20):
         return {"error": str(e)}
 
 
+# ── kilocode supplement3 #15: 网络受限会话工具面收缩（策略API）──
+# agent子进程与本进程共享JSON store（文件真源），跨进程读写同款SandboxPolicy。
+def _sandbox_policy():
+    from agent.sandbox_policy import SandboxPolicy
+    return SandboxPolicy()
+
+
+@app.get("/api/agent/sandbox-policy")
+async def sandbox_policy_snapshot():
+    """全局策略快照（default/env/per-session覆盖/store健康）"""
+    try:
+        return _sandbox_policy().snapshot()
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.get("/api/agent/sandbox-policy/{session_id}")
+async def sandbox_policy_describe(session_id: str):
+    """会话策略+受影响网络类工具面（"限制了什么"可观测）。
+
+    MCP动态工具（server__tool）同属网络类但清单由agent侧持有，具体裁剪
+    以agent日志`[sandbox]`行为准。"""
+    try:
+        from agent.sandbox_policy import NETWORK_TOOL_NAMES
+        from agent.mcp_resources import MCP_RESOURCE_TOOL_NAMES
+        static_names = sorted(set(NETWORK_TOOL_NAMES) | set(MCP_RESOURCE_TOOL_NAMES))
+        data = _sandbox_policy().describe(session_id, tool_names=static_names)
+        data["note"] = ("MCP动态工具(server__tool)同样按网络类裁剪；"
+                        "生效清单见agent日志[sandbox]行")
+        return data
+    except Exception as e:
+        return {"error": str(e)}
+
+
+@app.put("/api/agent/sandbox-policy/{session_id}")
+async def sandbox_policy_set(session_id: str, req: dict):
+    """设置会话网络限制 {"network_restricted": true|false}（per-session显式覆盖）"""
+    if "network_restricted" not in req:
+        return {"error": "missing field: network_restricted"}
+    ok = _sandbox_policy().set_restricted(session_id, bool(req["network_restricted"]))
+    return {"ok": ok, "session_id": session_id,
+            "network_restricted": bool(req["network_restricted"])}
+
+
+@app.delete("/api/agent/sandbox-policy/{session_id}")
+async def sandbox_policy_clear(session_id: str):
+    """清除per-session覆盖（回到default/env语义）"""
+    ok = _sandbox_policy().clear_session(session_id)
+    return {"ok": ok, "session_id": session_id}
+
+
 @app.get("/health")
 async def health():
     """⚠️ 本路由被ws_chat.py的/health遮蔽——app.py:224 include_router(ws_router)先注册，

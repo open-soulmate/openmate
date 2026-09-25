@@ -170,12 +170,14 @@ class TestSchemaDoctorV6:
         doctor = SchemaDoctor(db_path=db)
         result = doctor.migrate()
         assert result["status"] == "migrated"
-        # v7（kilocode #9记忆marker）起CURRENT_VERSION=7；本用例覆盖v1→全量迁移
-        assert SchemaDoctor.CURRENT_VERSION == 7
+        # v8（supplement3 #13归属agent_id）起CURRENT_VERSION=8；本用例覆盖v1→全量迁移
+        assert SchemaDoctor.CURRENT_VERSION == 8
         conn = _connect(db)
         cols = [r["name"] for r in conn.execute("PRAGMA table_info(agent_messages)")]
         assert "parent_message_id" in cols
         assert "metadata" in cols  # v7记忆marker列
+        sess_cols = [r["name"] for r in conn.execute("PRAGMA table_info(agent_sessions)")]
+        assert "agent_id" in sess_cols  # v8归属列（session_recall.owner_agent依赖）
         rows = conn.execute(
             "SELECT id, parent_message_id FROM agent_messages ORDER BY id"
         ).fetchall()
@@ -218,5 +220,30 @@ class TestSchemaDoctorV6:
         db = _make_old_db(tmp_path)
         doctor = SchemaDoctor(db_path=db)
         status = doctor.check()
-        assert status["target_version"] == 7  # v7记忆marker
+        assert status["target_version"] == 8  # v8 agent_sessions.agent_id
         assert status["needs_migration"] is True
+
+    def test_v8_agent_id_column_and_idempotent(self, tmp_path):
+        """v8：agent_sessions.agent_id归属列——fresh库建列 + 已有列duplicate安全跳过"""
+        db = _make_old_db(tmp_path)
+        doctor = SchemaDoctor(db_path=db)
+        assert doctor.migrate()["status"] == "migrated"
+        conn = _connect(db)
+        cols = [r["name"] for r in conn.execute("PRAGMA table_info(agent_sessions)")]
+        assert "agent_id" in cols
+        idx = [r["name"] for r in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='idx_sessions_agent'")]
+        assert "idx_sessions_agent" in idx
+        conn.close()
+        # 幂等：重复migrate + 已迁移库（duplicate column）都不崩
+        assert doctor.migrate()["status"] == "up_to_date"
+
+    def test_v8_duplicate_column_skipped_when_runtime_migrated(self, tmp_path):
+        """运行时已给agent_sessions加过agent_id → doctor.migrate不因duplicate column崩"""
+        db = _make_old_db(tmp_path)
+        conn = sqlite3.connect(db)
+        conn.execute("ALTER TABLE agent_sessions ADD COLUMN agent_id TEXT")
+        conn.commit()
+        conn.close()
+        result = SchemaDoctor(db_path=db).migrate()
+        assert result["status"] == "migrated"

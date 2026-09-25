@@ -53,6 +53,7 @@ from agent.semantic_cache import SemanticCache
 from agent.context_compression import ContextCompressor
 from agent.loop_guard import LoopGuard
 from agent.code_mode import CodeModeExecutor
+from agent.sandbox_policy import SandboxPolicy  # kilocode supplement3 #15 网络受限工具面收缩
 from agent.read_turn import DIFF_MAX_BYTES, TurnReadView, render_trace, result_ok
 from agent.mcp_resources import (
     MCP_RESOURCE_TOOL_NAMES,
@@ -261,6 +262,8 @@ class SoulMateAgent:
         self._permission_gate = PermissionGate()  # P0-3 工具级权限门禁（opensoul immune引擎客户端）
         # kilocode #14 权限provenance账本（每次门禁判定含拒绝都留痕，"为什么允许/拒绝"可审计）
         self._perm_provenance = PermissionProvenanceRecorder()
+        # kilocode supplement3 #15 网络受限会话工具面收缩（registry不暴露网络类工具）
+        self._sandbox_policy = SandboxPolicy()
         # 本agent的会话家族归属（supplement3 #13跨agent读取二次授权的家族边界）
         self._agent_id = "soulmate"
         # 工具策略（per-tool配置，按需创建）
@@ -799,6 +802,17 @@ class SoulMateAgent:
         """批量化内层工具调用：每次stub调用同样过permission_gate（AgentScope引擎语义，
         deny→返回[被拦截]文本、绝不真实执行——批量化不绕过权限引擎），gate放行后按主
         循环同款语义执行builtin子集，其余路由MCP。"""
+        # ── kilocode supplement3 #15（code-mode.ts:222双保险）：受限会话的批内
+        # 网络类调用（web_search/web_extract/MCP路由）显式拒绝——"即便进了
+        # code-mode，MCP目录也是空的"──
+        _sb_reason = self._sandbox_policy.deny_reason(
+            session_id, func_name,
+            mcp_names=set(getattr(self, "_mcp_tool_call_id_map", None) or {}),
+        )
+        if _sb_reason:
+            logger.warning(
+                f"[sandbox] network-restricted session={session_id} code-mode内层拦截: {func_name}")
+            return _sb_reason
         gate_result = await self._permission_gate.check(
             session_id, func_name, func_args,
             working_dir=str(cwd or ""),
@@ -1485,6 +1499,18 @@ You can send files to the user natively: to deliver a file, write a brief confir
         # resource能力的已连接MCP Server时进工具面（无能力不暴露，registry同款裁剪）──
         mcp_resource_tools = resource_tool_defs() if getattr(self, "_mcp_resource_servers", None) else []
         all_tools = builtin_tools + (mcp_tools or []) + mcp_resource_tools + evolution_tools + [clarify_tool]
+        # ── kilocode supplement3 #15 网络受限工具面收缩（registry直接不暴露网络类
+        # 工具，"按环境裁剪工具面优于给了再拦"）：受限会话的batch_execute(code-mode)/
+        # web_search/web_extract/MCP工具不进LLM工具列表；被裁清单显式落日志（mem0
+        # §1.1处理必须可见）。下方_code_mode的available_tools同源自all_tools，一并收缩。──
+        all_tools, _sandbox_dropped = self._sandbox_policy.filter_tools(
+            session_id, all_tools,
+            mcp_names=set(getattr(self, "_mcp_tool_call_id_map", None) or {}),
+        )
+        if _sandbox_dropped:
+            logger.warning(
+                f"[sandbox] network-restricted session={session_id} 工具面收缩: "
+                f"dropped={_sandbox_dropped} kept={len(all_tools)}")
         # kilocode #1能力分级提示：记录本轮工具面（溢出stub按能力给分级读回指引）
         self._active_tool_names = {t.get("function", {}).get("name", "") for t in all_tools}
 
@@ -1672,6 +1698,34 @@ You can send files to the user natively: to deliver a file, write a brief confir
                             func_args = json.loads(tc["function"]["arguments"]) if tc["function"]["arguments"] else {}
                         except json.JSONDecodeError:
                             func_args = {}
+
+                        # ── kilocode supplement3 #15 fail-safe兜底（registry裁剪的
+                        # 双保险，kilocode code-mode.ts:222同款）：模型幻觉出被裁的
+                        # 网络类工具名 → 显式合成拒绝结果（open-webui三态，loop不断），
+                        # 绝不静默执行──
+                        _sb_reason = self._sandbox_policy.deny_reason(
+                            session_id, func_name,
+                            mcp_names=set(getattr(self, "_mcp_tool_call_id_map", None) or {}),
+                        )
+                        if _sb_reason:
+                            logger.warning(
+                                f"[sandbox] network-restricted session={session_id} "
+                                f"兜底拦截幻觉工具调用: {func_name}")
+                            tool_results.append({
+                                "tool_call_id": tc.get("id", ""),
+                                "role": "tool",
+                                "content": self._process_tool_output(func_name, tc.get("id", ""), _sb_reason),
+                            })
+                            all_tool_calls.append({
+                                "name": func_name,
+                                "arguments": func_args,
+                                "result_preview": _sb_reason[:200],
+                                "permission": "sandbox-restricted",
+                            })
+                            self._turn_read_view.record_tool(
+                                session_id, func_name, func_args,
+                                ok=False, error=_sb_reason)
+                            continue
 
                         # ── P0-3 工具权限引擎门禁（AgentScope PermissionEngine×kilocode分层）──
                         # opensoul immune评估：deny=合成阻断结果（open-webui三态，loop不断）；

@@ -23,6 +23,7 @@ from agent.steering import (
     SessionActivity,
     SteeringQueue,
 )
+from agent.sandbox_policy import SandboxPolicy
 from agent.soulmate_agent import SoulMateAgent
 
 
@@ -339,6 +340,9 @@ def make_agent(tmp_path, acquired=False, scripts=None) -> SoulMateAgent:
 
     agent._fetch_mcp_tools = _no_mcp
     agent._permission_gate = FakeGate(allow=False)
+    # kilocode supplement3 #15：每agent独立store（默认不受限，测试按需set_restricted）
+    agent._sandbox_policy = SandboxPolicy(
+        store_path=str(Path(tempfile.mkdtemp()) / "sandbox_policy.json"))
     agent.llm_engine = FakeLLM(scripts or [])
     return agent
 

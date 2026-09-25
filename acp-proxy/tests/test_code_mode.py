@@ -17,6 +17,7 @@ goose code_execution+kilocode code-mode（两方定案）| P1"；
 import asyncio
 import json
 import sys
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -31,6 +32,7 @@ from agent.code_mode import (
     CodeModeExecutor,
     CodeModeResult,
 )
+from agent.sandbox_policy import SandboxPolicy
 from agent.soulmate_agent import SoulMateAgent
 from tests.test_steering import make_agent, run
 
@@ -319,6 +321,9 @@ def _bare_agent(gate: RecordingGate) -> SoulMateAgent:
     agent = SoulMateAgent.__new__(SoulMateAgent)
     agent._permission_gate = gate
     agent._output_handler = None
+    # kilocode supplement3 #15：每agent独立store（默认不受限）
+    agent._sandbox_policy = SandboxPolicy(
+        store_path=str(Path(tempfile.mkdtemp()) / "sandbox_policy.json"))
 
     async def _mcp(name, args):
         return f"mcp:{name}"
