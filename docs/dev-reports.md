@@ -2269,3 +2269,49 @@
 3. `_format_messages`（会话消息）走redact_message_bodies整body先脱敏后由格式化器截断（顺序已对）；本轮把`_format_candidates`的evidence字段仍未脱敏——但evidence不进prompt输出（只content[:150]拼行），无出境面，防御性补一道列P2
 4. prod库497行历史存量中是否真有凭据原文未做全库审计（本轮用synthetic行验证机制，不动用户数据）——如需可跑一次只读扫描统计redact命中数，列P2
 5. cron环境约束持续有效：curl|python3管道BLOCKED（本轮curl落盘+python读文件）；管道`cmd | tail`吞退出码（本轮用`cmd > log; echo EXIT=$?; tail log`规避）；工作区出现sibling subagent并行编辑警告（git diff核实最终入库仅本轮3文件，无劫持）
+
+## [2026-09-25 08:48 CST] P1 fallback链自愈完备化：变体备胎入链branch摘要路径（register_variant_backup单一真源）+ chain_fallback候选对role驱动调用生效——01:35轮遗留#4销账（live E2E当场暴露的第二层候选缺口一并堵住）
+
+**目标**：销账01:35轮遗留#4「branch_summary.py:603的LLM summarizer自带独立router构建块（第三处手搓）未接变体备胎，若primary额度耗尽branch摘要会走extractive-fallback降级」。实施中live E2E暴露更深一层缺口：**无显式model的调用（role驱动整类：branch摘要chat(model=None, role="summarize")/eval_loop等）备胎link单候选无自愈**——占位声明`partial-test`（400 Unsupported model）成单候选直接死，01:35轮的「占位配置自愈路径」只对带显式model的调用生效（memory路径带resolved model所以当时live成活），对role驱动整类失效。两层一起修，目标=branch摘要LLM路径在primary额度耗尽时不再饿死。
+
+**调研来源**：①01:35轮dev-report遗留#4原文+SUMMARY.md cortex P0「模型降级有序链（fallback+限流立即切备胎）| CowAgent chat fallback链」（链=有序{provider,model}对，备胎=另一对）；②38-CowAgent-source-supplement3 #12链语义——备胎link声明了它服务什么，声明被端点拒绝时同端点试链主模型=多网关failover正解；③evolution-engine-patterns.md mem0 §1.1「失败必须可见禁止静默」→live失败原文进tried账本+报告如实记录两轮A/B；④kilocode「注释即规格书」→_model_candidates docstring写明每类语义+live实锤日期。
+
+**改动文件**（opensoul 7文件+571/-42，config/rbac_policy.csv runtime噪声不入库）：
+- src/api/llm.py（+31：`register_variant_backup(router, fallback_model)`单一真源——变体备胎注册块（priority=5+key注册+fail-safe）此前在memory_model/gland/branch_summary三处手搓，第三处漏备胎）
+- src/trajectory/branch_summary.py（+20/-3：`_call_llm_router`接线register_variant_backup + `router_factory`测试seam（call_memory_llm.router_factory同款先例））
+- src/hippo/memory_model.py（+13/-21：`_build_router`内联注册块收敛到单一真源，语义字节等价）
+- src/api/gland.py（+9/-18：`_ensure_bootstrapped`同款收敛）
+- src/gland/router.py（+28/-4：`_model_candidates`新增`chain_fallback`参数——备胎link无显式model时尾随主link解析模型作最后候选；`_build_links`/embed链两处对称接线传primary_model）
+- tests/test_branch_summary_backup.py（新337行13用例）
+- tests/test_fallback_chain.py（+113：TestChainFallbackCandidate 8用例；2条既有锁死断言显式更新）
+
+**改动内容**：
+1. **register_variant_backup单一真源**（三处手搓收敛）：alternate_variant_config()取激活变体之外的已配置变体→add_provider(priority=5)+tp-key注册，返回provider名或None，任何异常→None绝不反噬调用方。memory_model/gland/branch_summary三处调用同规。
+2. **branch_summary备胎入链**（遗留#4核心）：`_call_llm_router`此前链=primary(p0)+死ollama(p10)，现在=primary(p0)→变体备胎(p5)→ollama(p10)。
+3. **chain_fallback候选**（live E2E暴露的第二层）：`_model_candidates(provider.models, own, explicit, is_primary, chain_fallback)`——无显式model时备胎link候选=(own, chain_fallback)（主link保持(own,)字节恒等）；显式model语义完全不变。chat链`_build_links`与embed链各传primary_model（idx==0的解析模型）。候选内模型级拒绝(400/404/422)滑下一候选、端点级错误整link放弃语义不变。
+
+**接线位置**（grep证据，文件:行号）：
+- 定义：api/llm.py:261 `register_variant_backup` / gland/router.py:149 `_model_candidates`（chain_fallback参数）
+- 运行时消费（真实路径非死代码）：trajectory/branch_summary.py:607（`_call_llm_router`→llm_branch_summarizer→generate_branch_summary→sessions_api.py:806 POST /api/sessions/{id}/branch-summaries + fork端点:780 resolve_summarizer）；hippo/memory_model.py:210（dream_distiller/memory_pipeline记忆LLM真实路径）；api/gland.py:52（gateway.chat全部消费者：eval_loop/learn/ocr/asr/branch_summary）；gland/router.py:436（_build_links chat链）+:674（embed链）——`grep -rn register_variant_backup` 11处命中=1定义+3真实调用+7测试
+- **live运行时证据（决定性，证据阶梯第4级「真实请求中观察到」）**：journalctl实录`Chain pass 1: provider=openai model=mimo-v2.5-pro failed: 402 Payment Required` → `Chain pass 1: provider=variant-subscription model=partial-test rejected by endpoint — falling back to mimo-v2.5-pro` → 成功（chain_fallback新候选机制在真实请求中执行）
+
+**验证结果**：
+- **完整性✅**：git show --stat 5bdec044（7文件571+/42-，全部增量hunk零全量重写）；4个src文件ast.parse全过；兄弟WIP防护：llm/gland/memory_model/branch_summary/router/test_fallback_chain六文件git diff逐一目检=纯本轮hunks（工作区出现sibling subagent并行编辑警告×5次，最终入库核实无劫持）
+- **集成✅**：grep证据链如上；GET /api/gland/health providers total=3（变体备胎真实bootstrap注册生效）
+- **测试✅**：
+  - 新增tests/test_branch_summary_backup.py **13 passed**（register_variant_backup契约6+branch router接线/402降级/占位自愈live形态5+收敛回归1+负控制1）
+  - tests/test_fallback_chain.py TestChainFallbackCandidate **8 passed**（候选语义5+chat自愈live形态1+embed对称1）；全套该文件71 passed
+  - **全量tests/ 2070 passed, 0 failed**（177.75s，2 pre-existing warnings）
+  - **负控制（决定性对照）**：①test_no_backup_primary_402_fails_loudly=无备胎时402链全灭显式抛错（不是静默空摘要）②test_summary_degrades_visibly_without_backup=端到端断言summarizer="extractive-fallback"+error可见（失败必须可见）③对照test_variant_backup_makes_summary_llm_success同输入+备胎→summarizer="llm"④live失败形态逐字重放test_placeholder_backup_model_self_heals_live_shape（partial-test 400→m-v接住，修复前=AllProvidersFailedError 6 attempts实录）
+- **live E2E A/B（同端点同输入，唯一变量=chain_fallback是否在运行码）**：①修复前POST /api/sessions/{sid}/branch-summaries {summarizer:"llm"} → HTTP 200但**summarizer="extractive-fallback"+error="All providers failed after 6 chain attempt(s)"**（tried实录：openai/mimo-v2.5-pro 402×2 + variant-subscription/partial-test 400×2 + ollama ConnectError×2——备胎已入链（本轮改动1生效）但单候选死于占位model）②重启新码同调用（fresh session）→ HTTP 200，8.5s，**summarizer="llm"**，status=created（LLM摘要经pi EXACT格式门禁成活）③journalctl三段降级实录如上④synthetic会话已清理（agent_sessions/messages/branch_summaries三表LIKE 'e2e-branch-backup-%'删除2/6/2行，复核remaining全0）
+- **E2E诚实实录（测试驱动修正3次）**：①test_no_key_no_key_registration错误假设key空仍注册（alternate_variant_config契约=url+key双齐才是备胎）→改写为test_no_key_means_no_backup记录契约②test_variant_backup_registered_in_branch_router误用dict下标（真ModelRouter.providers值=ProviderConfig对象）→属性访问③两个generate_branch_summary用例fake_router自递归（monkeypatch后调用自己）——其中一例「错误原因巧合通过」被当场识破（recursion异常→extractive-fallback恰好匹配断言）→捕获真身后重验真因；④我的embed mock响应缺index字段（_call_embedding按index排序）→补字段；**语义扩展显式披露**：test_no_wraparound_for_permanent_errors(calls[b]1→2)与test_error_carries_tried_attribute(tried 2→3)两条既有锁死断言随chain_fallback语义扩展更新——备胎link双候选(mb,ma)各试1次，「非重试able每模型恰好1次」「无wrap-around」「失败mark每link一次」名称契约全部保持，候选滑动≠重试
+
+**服务重启**：systemctl --user restart opensoul.service ×2（router/branch_summary改动后）→ is-active active → /api/gland/health 200 providers=3 + /api/hippo/health 200 → 全部测试与live E2E在重启后服务上通过；acp-proxy零改动不重启；openmate前端零改动不build
+**commit**：opensoul `5bdec044`（7文件571+/42-，push前密钥扫描仅测试fixture假值sk-std/tp-sub命中=既有约定）
+**gene skill上报**：POST :8090/api/gene/skill/extract → 见本轮末尾执行记录（失败则记此条目为遗留）
+**遗留问题**：
+1. **LLM_SUBSCRIPTION_MODEL=partial-test占位符坏配置又出现了**（.env:72）——03:55轮记录「用户已修复为mimo-v2.5-pro」但现状回退/未生效。chain_fallback已让它每次备胎首发白打一次400后自愈（多花一次廉价调用），但**建议用户把该值改为真实模型名（如mimo-v2.5-pro）**——属用户配置未擅动。standard端点402=账户额度耗尽需充值/切激活变体，机制只能兜住不能充值
+2. chain_fallback的成本面：备胎link失败时+1次调用（换自愈能力）——如需可加「chain_fallback只对400 Unsupported model滑动」的窄化（当前400/404/422模型级拒绝都滑），P2观察项
+3. ollama幻影备胎（inactive）仍在链尾——备胎+chain_fallback双灭时会白打ConnectError；可达性探测豁免列P2（01:35遗留#2同款）
+4. 既有两条flaky外部超时（test_marrow/test_a2a同族）本轮全量全绿未复现；全量2070条本轮已跑
+5. cron环境约束持续有效：复杂sed/命令替换被tirith判BLOCKED×2（改search_files/read_file绕开）；管道`cmd | tail`吞退出码本轮用无管道全量输出规避
