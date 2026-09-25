@@ -75,6 +75,26 @@ class TaskPlan:
 
 # ── 数据库持久化 ──────────────────────────────────────
 
+def _step_status_raw(status) -> str:
+    """P0修复（存取往返断裂）：步骤状态入库存value（'pending'）。
+    原实现str(step.status)在py3.11的str-Enum下='StepStatus.PENDING'，
+    load_plan的StepStatus(s["status"])解析必抛ValueError——中断恢复场景
+    （plan留active→下条消息get_active_plan→load_plan）整条消息路径崩溃。"""
+    return getattr(status, "value", str(status))
+
+
+def _coerce_step_status(raw) -> "StepStatus":
+    """容错解析步骤状态：兼容旧存档的str(enum)='StepStatus.PENDING'形态；
+    未知值fail-safe按PENDING（at-least-once重跑优于静默丢步骤）。"""
+    v = str(raw or "")
+    if v.startswith("StepStatus."):
+        v = v.split(".", 1)[1]
+    try:
+        return StepStatus(v.lower())
+    except ValueError:
+        return StepStatus.PENDING
+
+
 class TaskStore:
     """任务状态持久化到 SQLite"""
 
@@ -135,9 +155,21 @@ class TaskStore:
                 (id, plan_id, description, tool_hint, depends_on, status, result, error, error_type, reflection, retry_count, created_at, completed_at, step_order)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """, (step.id, plan.id, step.description, step.tool_hint,
-                  json.dumps(step.depends_on), str(step.status), step.result,
+                  json.dumps(step.depends_on), _step_status_raw(step.status), step.result,
                   step.error, step.error_type, step.reflection, step.retry_count,
                   step.created_at, step.completed_at, idx))
+        # P0修复（持久化镜像失真）：replan替换/移除的步骤已不属于plan——不删行则
+        # load_plan按task_steps全量重建会"复活"旧步骤（停留在pending），断点续跑
+        # 会重跑已被替换的步骤。save_plan=全量快照语义（INSERT OR REPLACE），
+        # 删除plan外步骤行与之对齐（步骤是状态不是历史）。
+        if plan.subtasks:
+            placeholders = ",".join("?" for _ in plan.subtasks)
+            db.execute(
+                f"DELETE FROM task_steps WHERE plan_id = ? AND id NOT IN ({placeholders})",
+                (plan.id, *[s.id for s in plan.subtasks]),
+            )
+        else:
+            db.execute("DELETE FROM task_steps WHERE plan_id = ?", (plan.id,))
         db.commit()
         db.close()
 
@@ -158,7 +190,7 @@ class TaskStore:
         for s in steps:
             plan.subtasks.append(SubTask(
                 id=s["id"], description=s["description"], tool_hint=s["tool_hint"],
-                depends_on=json.loads(s["depends_on"]), status=StepStatus(s["status"]),
+                depends_on=json.loads(s["depends_on"]), status=_coerce_step_status(s["status"]),
                 result=s["result"], error=s["error"], error_type=s["error_type"],
                 reflection=s["reflection"], retry_count=s["retry_count"],
                 created_at=s["created_at"], completed_at=s["completed_at"],

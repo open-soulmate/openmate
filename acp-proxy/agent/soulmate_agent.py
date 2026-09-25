@@ -3155,8 +3155,15 @@ You can send files to the user natively: to deliver a file, write a brief confir
                 )
 
             all_results = []
-            for idx, step in enumerate(plan.subtasks):
-                if step.status in (StepStatus.SUCCESS, StepStatus.SKIPPED):
+            # P0修复（动态重规划死缺口）：while按索引推进+每轮重取plan.subtasks——
+            # 原enumerate绑定旧list对象，replan(action=replan)重建subtasks后新步骤永不
+            # 执行、被替换的旧步骤照跑（kilocode goal runner"失败即停+结果判定"语义）。
+            # REPLANNED入终局守卫：replan未给新步骤时靠守卫推进，防死循环。
+            idx = 0
+            while idx < len(plan.subtasks):
+                step = plan.subtasks[idx]
+                if step.status in (StepStatus.SUCCESS, StepStatus.SKIPPED, StepStatus.REPLANNED):
+                    idx += 1
                     continue
 
                 plan.current_step_idx = idx
@@ -3222,44 +3229,77 @@ You can send files to the user natively: to deliver a file, write a brief confir
                     step.status = StepStatus.SUCCESS
                     all_results.append(f"✅ 步骤{idx+1}: {step.description}\n   结果: {step.result[:200]}")
                     logger.info(f"[task] Step {idx+1} passed: {reflection.get('summary', '')}")
-                else:
-                    step.status = StepStatus.FAILED
-                    logger.warning(f"[task] Step {idx+1} failed: {reflection.get('summary', '')}")
+                    self._task_planner.store.save_plan(plan)
+                    idx += 1
+                    continue
 
-                    # 动态重规划
-                    plan = await self._task_planner.replan(plan, step, step.error or step.result)
-                    if plan.status == "failed":
-                        break
+                step.status = StepStatus.FAILED
+                logger.warning(f"[task] Step {idx+1} failed: {reflection.get('summary', '')}")
 
-                    # 如果是 retry，重置步骤状态并加强约束
-                    if step.status == StepStatus.PENDING:
-                        # 重试时注入更强的约束
-                        step_messages.append({
-                            "role": "system",
-                            "content": "⚠️ 上次执行失败了。注意：不要创建新文件、不要写代码脚本。直接用已有数据以文本形式输出结果。",
-                        })
-                        try:
-                            retry_result, _ = await self._run_llm_with_tools(step_messages, session_id, matched_skills=matched_skills)
-                            step.result = retry_result
-                            step.completed_at = time.time()
-                            step.status = StepStatus.SUCCESS
-                            all_results.append(f"✅ 步骤{idx+1}(重试): {step.description}\n   结果: {step.result[:200]}")
-                        except Exception as e2:
-                            step.result = f"重试执行异常: {e2}"
-                            step.status = StepStatus.FAILED
-                        continue
+                # 动态重规划
+                plan = await self._task_planner.replan(plan, step, step.error or step.result)
+                if plan.status == "failed":
+                    self._task_planner.store.save_plan(plan)
+                    break
 
+                # 如果是 retry，重置步骤状态并加强约束
+                if step.status == StepStatus.PENDING:
+                    # 重试时注入更强的约束
+                    step_messages.append({
+                        "role": "system",
+                        "content": "⚠️ 上次执行失败了。注意：不要创建新文件、不要写代码脚本。直接用已有数据以文本形式输出结果。",
+                    })
+                    try:
+                        retry_result, _ = await self._run_llm_with_tools(step_messages, session_id, matched_skills=matched_skills)
+                        step.result = retry_result
+                        step.completed_at = time.time()
+                    except Exception as e2:
+                        step.result = f"重试执行异常: {e2}"
+                        step.error = str(e2)
+                    # P0修复（retry结局说谎+落库丢失）：重试结果同样过SelfReflector
+                    # （原实现无条件标SUCCESS），且先落库再推进——原continue跳过
+                    # save_plan，重试结局在断点续跑时永久丢失。
+                    retry_reflection = await self._self_reflector.reflect(step)
+                    step.reflection = retry_reflection.get("summary", "")
+                    step.error_type = retry_reflection.get("error_type", "") or ""
+                    if retry_reflection.get("passed"):
+                        step.status = StepStatus.SUCCESS
+                        all_results.append(f"✅ 步骤{idx+1}(重试): {step.description}\n   结果: {step.result[:200]}")
+                    else:
+                        step.status = StepStatus.FAILED
+                        logger.warning(f"[task] Step {idx+1} 重试仍失败: {retry_reflection.get('summary', '')}")
+                    self._task_planner.store.save_plan(plan)
+                    idx += 1
+                    continue
+
+                # skip：步骤已SKIPPED，下轮终局守卫推进；replan：后续步骤已替换为新列表，
+                # plan.subtasks[idx]现为第一个新步骤——idx不推进（推进=跳过新步骤）
                 self._task_planner.store.save_plan(plan)
 
             # 生成最终报告
+            # P0修复（终局状态说谎）：只有全部步骤收敛（SUCCESS/SKIPPED/REPLANNED）才标
+            # completed；残留FAILED/PENDING/RUNNING→failed+列明。原实现无条件标completed，
+            # 而get_active_plan只找回active计划——谎报completed=失败步骤永久脱离断点续跑，
+            # 报告/统计也与真实结局不符（mem0 §1.1处理必须可见）。
             if plan.status != "failed":
-                plan.status = "completed"
+                unresolved = [
+                    s for s in plan.subtasks
+                    if s.status in (StepStatus.FAILED, StepStatus.PENDING, StepStatus.RUNNING)
+                ]
+                if unresolved:
+                    plan.status = "failed"
+                    plan.reflection_report = (
+                        f"{len(unresolved)}个子任务未收敛："
+                        + "；".join(f"{s.id}={s.status.value}" for s in unresolved[:5])
+                    )
+                else:
+                    plan.status = "completed"
                 plan.completed_at = time.time()
                 self._task_planner.store.save_plan(plan)
 
             report = f"## 任务执行报告\n\n**目标**: {plan.goal}\n\n"
             for i, step in enumerate(plan.subtasks):
-                icon = {"success": "✅", "failed": "❌", "skipped": "⏭️", "pending": "⏳"}.get(str(step.status), "❓")
+                icon = {"success": "✅", "failed": "❌", "skipped": "⏭️", "pending": "⏳"}.get(getattr(step.status, "value", step.status), "❓")  # P0修复：str(enum)="StepStatus.X"恒命中❓
                 report += f"{icon} **步骤{i+1}**: {step.description}\n"
                 if step.result:
                     report += f"   结果: {step.result[:150]}\n"
