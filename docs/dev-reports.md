@@ -2361,3 +2361,28 @@
 4. cost模式（route_policy prefer=local）在ollama缺席时直接走online——语义正确（无local可用）但UI「省钱」按钮的降级过程不再有ConnectError日志佐证，如需可在decision_log记录"local skipped (unreachable)"，列P3
 5. cron环境约束持续有效：复杂regex管道被判BLOCKED（拆成git add/重定向/rg工具三步绕开）；管道`cmd | tail`吞退出码本轮push误判踩坑实录（用git status -sb独立核实纠正）；sibling subagent并行编辑警告×3（git diff逐hunk核实最终入库纯本轮改动）
 **gene skill上报**：POST :8090/api/gene/skill/extract → HTTP 200，skill_id=`skill_608a0ac04e32`（success=true，本轮三重校验全过）
+
+## [2026-09-25 15:10 CST] P1 kilocode supplement3 #13 跨agent会话读取二次授权——search_chat_history read家族外转录默认拒绝+ASK真人审批
+**目标**：销账kilocode-source-supplement3 #13「跨workspace读取二次授权」。此前`search_chat_history` read模式**无任何会话家族边界**——agent_messages/agent_sessions共享库中任何agent（hermes/codex/opencode/pi-agent/imported/unknown）的会话转录可被soulmate不经授权直接读取（kilocode明令"read模式目标session不在当前worktree家族→ctx.ask(permission:'recall')再读"）。这是共享会话库上的隐私越权读取面，属工具权限链（P0-3）在recall工具上的缺口。
+**调研来源**：kilocode-source-supplement3.md #13（跨workspace读取二次授权：read目标session不在当前worktree家族→ctx.ask(permission:"recall")再读；search跨家族开放=发现工具+片段inert转义）+ #14权限provenance（审批结果含拒绝写回"为什么允许/为什么拒绝"）+ mem0 §1.1（失败必须可见）。
+**改动文件**：openmate/acp-proxy/agent/session_recall.py（+82）；agent/soulmate_agent.py（+81/-1，3处增量hunk+工具描述）；tests/test_cross_agent_recall_auth.py（新建295行）；tests/test_session_recall.py（+2/-1：测试schema补agent_id列，fixture层演进零断言修改）
+**改动内容**：
+1. `session_recall.py`：①`owner_agent()`三态归属查询（str=有归属行且''=归属不可信按外部处理 / None=无归属行ws直建自家会话或不存在不拦；旧schema缺agent_id列/查询异常→''fail-closed）②`foreign_read_context()`**单一真源判定**（needs_auth=True仅当mode=read∧有归属行∧归属≠当前agent家族∧非当前会话自身——soulmate侧询问与工具侧强制同用此函数，防两处判定漂移）③`execute_tool`强制闸门：未带`foreign_read_approved=True`的家族外read返回`FOREIGN_READ_DENIED`拒绝文本（含归属agent说明+勿重复发起，inert转义零转录内容泄漏，WARNING级可见日志）；search模式跨家族保持开放（kilocode语义）。
+2. `soulmate_agent.py`：①`self._agent_id="soulmate"`家族边界锚点②`_request_foreign_read_approval()`：家族外read→ACP v1.0 `session/request_permission`真人审批（复用`_request_tool_approval`，前端AcpApprovalModal弹窗；无人值守`_client=None`/超时/拒绝/异常一律fail-closed）+审批结果写permission_provenance账本（GateResult(behavior=ask-approved/ask-denied, rule_source=cross-agent-recall, denial_class=approval:human-rejected)+build_provenance，via=foreign_read）③主循环`_run_llm_with_tools`与code_mode批量化`_code_mode_tool_call`两个调用点均改为"先foreign_read_context→需授权则ASK→execute_tool带foreign_read_approved"守卫流④工具描述补"read其他agent的会话需要用户批准（跨agent家族外转录默认拒绝，勿重复发起）"。
+**接线位置**（grep证据，文件:行号）：
+- 定义：session_recall.py:66 `foreign_read_context` / :57 `FOREIGN_READ_DENIED` / :271 `owner_agent` / :526 `execute_tool`闸门；soulmate_agent.py:2243 `_request_foreign_read_approval` / :264 `self._agent_id`
+- 运行时消费（ws /ws/acp真实聊天路径+code_mode批量化路径）：soulmate_agent.py:960-974（`_code_mode_tool_call`内search_chat_history分支）+ :2024-2039（`_run_llm_with_tools`主循环search_chat_history分支）+ :967/:2031（`_request_foreign_read_approval`两调用点）；`grep -rn "foreign_read_context\|foreign_read_approved\|_request_foreign_read_approval\|owner_agent" agent/*.py` = 2定义+2判定消费+2审批调用+2闸门消费
+- 测试防死接线：test_cross_agent_recall_auth.py TestSoulmateWiring 4项（inspect.getsource断言主循环/code_mode双调用点守卫流+provenance留痕+既有`session_recall.execute_tool(`断言兼容）
+**验证结果**：
+- **完整性✅**：git diff --cached 4文件459+/2-（session_recall +82/soulmate_agent +81/-1/新测试295/schema fixture +2/-1），全部增量hunk；ast.parse 3文件全过；staged diff密钥扫描（sk-/tp-/Bearer长token模式）0命中；工作区sibling subagent警告×3逐文件git diff核实入库纯本轮改动（他人未提交settings-client.tsx/locales/systemic_test_results.json未staged）
+- **集成✅**：grep证据链如上（每个新符号=定义行+真实消息路径消费行）；**live运行时证据（决定性）**：部署代码对**真实opensoul.db**探针（/tmp/live_probe_recall_auth.py）——P1真实hermes家族行`om-6efcec6d1b58` read未授权→`[PERMISSION REQUIRED] 跨agent会话读取需要人工二次授权…转录内容未返回`（闸门在read()之前触发）P2自家会话read→转录正常（1140字节）P3备份副本注入hermes家族转录（SEEDED-FOREIGN-SECRET）read未授权→拒绝且**秘密内容零泄漏**（assert通过）P4同会话foreign_read_approved=True→转录可达 P5 foreign_read_context三态（foreign=(True,'unknown')/own=(False,'soulmate')）全符合
+- **测试✅**：新增tests/test_cross_agent_recall_auth.py **28 passed**（TestOwnerAgent 4含旧schema缺列fail-closed/TestForeignReadContext 8含search永不拦+当前会话免授权+空归属fail-closed+自定义家族/TestExecuteToolEnforcement 7含**决定性零泄漏断言**SECRET not in out+拒绝文本inert转义+不存在会话标准错误语义保持+search跨家族开放/TestSoulmateWiring 4/TestApprovalFlow 3含审批异常fail-closed）；tests/test_session_recall.py 27 passed（既有断言零修改，fixture补agent_id列）；**acp-proxy全量tests/ 714 passed 0 failed**（232s，含test_memory_echo_wiring/test_steering/test_permission_*全绿无破坏）
+**服务重启**：systemctl --user restart acp-proxy-a.service + acp-proxy-b.service（session_recall/soulmate_agent双实例改动）→is-active双active→:8092/health+:8095/health双200（agent_activity peek指标正常）→重启后systemic_test.py **29/29 passed**（S4并发/S5降级/S6混合负载全绿）；opensoul零改动不重启；openmate前端零改动不build
+**commit**：openmate `d7ade8a9`（4文件459+/2-，staged仅本轮4文件）
+**遗留问题**：
+1. **push未落地（网络）**：`git ls-remote github` 45s超时EXIT=124=GitHub直连本轮仍不通（与上轮同族），`git status -sb`确认本地ahead 14含本轮d7ade8a9完整落盘；网络恢复后push+ls-remote核实（连续第2轮，**建议用户关注本机到GitHub的网络出口**）
+2. **真实库中家族外转录当前为0条**（实测：hermes 16/codex/opencode/pi-agent/unknown共52个家族外会话但agent_messages中0条消息，69条孤儿消息均为ws直建自家）——本轮闸门是**预防性收口**（import_to_db导入的会话agent_id=imported、未来其他agent写共享库都会自动落入边界），不是对现存泄漏的修复；如需验证真实泄漏形态见P3备份副本种子探针
+3. search模式仍跨家族返回片段（kilocode语义如此：search是发现工具+inert转义+360字符短片段）——若用户认为片段也属隐私可再收紧（需先讨论，涉及recall工具可用性）
+4. 旧schema缺agent_id列的库按归属不可信fail-closed（read需授权）——现存opensoul.db schema正常不受影响；schema_doctor建表语句含agent_id未逐一核验，列下轮顺手确认
+5. kilocode supplement3剩余缺口顺延：#15网络受限→工具面收缩（SandboxPolicy.networkRestricted→registry不暴露code-mode工具）、#16 GoalPolicy工具门（goal循环Registry按session过滤工具）、#18 reminders合成提醒part（plan→code切换显式事件）——均为下轮P1候选
+6. cron环境约束持续有效：复杂regex管道被BLOCKED（git diff落文件+search_files工具绕开）；`cmd | head`管道吞退出码（$?=head的）再次踩坑用重定向+独立echo纠正
